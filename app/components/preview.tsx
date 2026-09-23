@@ -27,7 +27,8 @@ import type {
 import { previewDatasetPath, previewPath } from "~/review/urls"
 
 import { Badge, Button, Stack } from "./base"
-import { CommentSpot, CommentTimeline, DdbjMark, rememberName, useRememberedName, type CommentContext } from "./comments"
+import { authorLabel, CommentSpot, CommentTimeline, rememberName, useRememberedName, type CommentContext } from "./comments"
+import { Icon } from "./icons"
 import { DatasetBody } from "./dataset"
 import { CONTROL } from "./form"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "./page"
@@ -60,17 +61,19 @@ export function PreviewResearchScreen({ view, problem }: {
         whole={{ ...context, subject: "draft" }}
       >
         <Stack gap="block">
-          <AnnotationLayer annotate={(at) => (
-            <Marks
-              context={context}
-              at={at}
-              view={view}
-              comments={byPath[at] ?? []}
-              heading={view.publishedNumber === null
-                ? ""
-                : messagesFor(locale).preview.previousIn(view.publishedNumber)}
-            />
-          )}
+          <AnnotationLayer annotate={(at, part) => part === "value"
+            ? null
+            : (
+                <Marks
+                  context={context}
+                  at={at}
+                  view={view}
+                  comments={byPath[at] ?? []}
+                  heading={view.publishedNumber === null
+                    ? ""
+                    : messagesFor(locale).preview.previousIn(view.publishedNumber)}
+                />
+              )}
           >
             <ResearchBody
               view={view.view}
@@ -123,15 +126,17 @@ export function PreviewDatasetScreen({ view, problem }: {
           <p className="text-sm">
             <Link to={href(locale, previewPath(view.token))}>{t.backToResearch}</Link>
           </p>
-          <AnnotationLayer annotate={(at) => (
-            <Marks
-              context={context}
-              at={at}
-              view={view}
-              comments={byPath[at] ?? []}
-              heading={t.previousPublished}
-            />
-          )}
+          <AnnotationLayer annotate={(at, part) => part === "value"
+            ? null
+            : (
+                <Marks
+                  context={context}
+                  at={at}
+                  view={view}
+                  comments={byPath[at] ?? []}
+                  heading={t.previousPublished}
+                />
+              )}
           >
             <DatasetBody
               view={view.view}
@@ -150,12 +155,11 @@ export function PreviewDatasetScreen({ view, problem }: {
 /**
  * Both marks of one place: what changed, and what has been said about it.
  *
- * **They sit on the first line of the value and do not make it taller.** A mark
- * is `size-tap` (36px) against a line of 22.4px, so a pair left to its own
- * height opened the line to fit it — which pushed every row of every table down
- * and left the marks reading seven pixels below the words they belong to. The
- * negative margin takes the difference back out of the line while the thing a
- * finger has to find keeps its size.
+ * **They sit on the first line of the value and do not make it taller.** Both
+ * are drawn no higher than the 22.4px line the words set (`CommentSpot`,
+ * `Mark`), so a pair stands inside it and pushes no row of any table down.
+ * Both being marks, both stand with the name (`page.tsx` の `AnnotationPart`);
+ * nothing of a preview stands under a value.
  */
 export function Marks({ context, at, view, comments, heading, fieldLabel }: {
   context: CommentContext
@@ -167,7 +171,7 @@ export function Marks({ context, at, view, comments, heading, fieldLabel }: {
   fieldLabel?: string
 }) {
   return (
-    <span className="-my-2 ml-2 inline-flex flex-wrap items-start gap-1 align-top">
+    <span className="ml-2 inline-flex flex-wrap items-start gap-1 align-top">
       {view.changed.includes(at) && (
         <PreviousMark locale={context.locale} value={view.previous[at]} heading={heading} />
       )}
@@ -360,9 +364,8 @@ function Decide({ shell, problem }: {
               <p className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="text-ink-muted">{kind === "commented" ? t.commentedBy : t.approvedBy}</span>
                 {rows.map((row) => (
-                  <Badge key={`${row.name}-${row.createdAt}`}>
-                    {row.name}
-                    {row.bySignedIn && <DdbjMark locale={shell.locale} />}
+                  <Badge key={`${row.name}-${row.createdAt}`} icon={<Icon name="user" aria-hidden="true" />}>
+                    {authorLabel(shell.locale, row.name, row.bySignedIn)}
                   </Badge>
                 ))}
               </p>

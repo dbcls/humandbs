@@ -163,6 +163,7 @@ describe("alert の組み立て", () => {
   const half = (enabled: boolean) => [{
     id: "1",
     enabled,
+    createdAt: "2026-06-22T16:44:35.305+09:00",
     translations: [{ locale: "ja", content: "<p>お知らせ</p>" }],
   }]
 
@@ -170,6 +171,7 @@ describe("alert の組み立て", () => {
     const [alert] = buildAlerts([{
       id: "1",
       enabled: true,
+      createdAt: "2026-06-22T16:44:35.305+09:00",
       translations: [
         { locale: "ja", content: "<p>お知らせ</p>" },
         { locale: "en", content: "<p>notice</p>" },
@@ -200,7 +202,31 @@ describe("alert の組み立て", () => {
   })
 
   it("enabled が NULL のものは無効として入る", () => {
-    expect(buildAlerts([{ id: "1", enabled: null, translations: [] }])[0]?.active).toBe(false)
+    const [alert] = buildAlerts([{ id: "1", enabled: null, createdAt: "2026-06-22T16:44:35.305+09:00", translations: [] }])
+    expect(alert?.active).toBe(false)
+    expect(alert?.shownAt).toBeNull()
+  })
+
+  it("立っているものは、v1 で作られた瞬間を表示にした日時として持つ", () => {
+    const [alert] = buildAlerts(half(true), [{ ja: "お知らせ", en: "notice", why: "" }])
+    expect(alert?.shownAt).toEqual(new Date("2026-06-22T07:44:35.305Z"))
+  })
+
+  it("立っていないものは表示にした日時を持たない", () => {
+    expect(buildAlerts(half(false))[0]?.shownAt).toBeNull()
+  })
+
+  it("立っているのに作られた瞬間が読めなければ、移行が止まる", () => {
+    const [source] = half(true)
+    if (source === undefined) throw new Error("half() returned nothing")
+    expect(() => buildAlerts([{ ...source, createdAt: "2026-06-22 16:44:35 JST" }], [{ ja: "お知らせ", en: "notice", why: "" }]))
+      .toThrow(/unreadable created_at/)
+  })
+
+  it("立っていないものは、作られた瞬間が読めなくても入る", () => {
+    const [source] = half(false)
+    if (source === undefined) throw new Error("half() returned nothing")
+    expect(buildAlerts([{ ...source, createdAt: "" }])[0]?.shownAt).toBeNull()
   })
 })
 

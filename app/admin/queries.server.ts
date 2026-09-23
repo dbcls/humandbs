@@ -29,7 +29,6 @@ import {
   contentKey,
   dataset,
   draftDatasetEntry,
-  draftPresence,
   humAccession,
   labelPin,
   research,
@@ -41,10 +40,10 @@ import {
 import { icd10Code } from "~/icd10/codes"
 
 import { contentFlags, type ContentFlags } from "./flags"
+import { draftDatasets } from "./datasets"
 import { CHECKED_ACCESSION } from "./gate"
 import { isPortalIssuedId } from "./labels"
-import type { AdminResearchRow, AdminStatus } from "./listing"
-import { PRESENCE_WINDOW_SECONDS } from "./presence"
+import type { AdminDatasetRef, AdminResearchRow, AdminStatus } from "./listing"
 
 function latest(dates: readonly Date[]): string {
   return new Date(Math.max(...dates.map((date) => date.getTime()))).toISOString()
@@ -79,6 +78,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     versions,
     snapshots,
     drafts,
+    publishedDatasets,
   ] = await Promise.all([
     db.select({ id: research.id, createdAt: research.createdAt }).from(research),
     db
@@ -86,7 +86,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       .from(labelPin)
       .where(and(eq(labelPin.kind, "hum"), eq(labelPin.isPrimary, true))),
     db
-      .select({ researchId: dataset.researchId, label: labelPin.label })
+      .select({ researchId: dataset.researchId, datasetId: dataset.id, label: labelPin.label })
       .from(labelPin)
       .innerJoin(dataset, eq(dataset.id, labelPin.datasetId))
       .where(and(eq(labelPin.kind, "dataset"), eq(labelPin.isPrimary, true))),
@@ -115,6 +115,12 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
         updatedAt: researchDraft.updatedAt,
       })
       .from(researchDraft),
+    // A dataset with a search row is one a reader can open: that is the one
+    // question the public side answers from this table.
+    db
+      .select({ datasetId: searchDoc.targetId })
+      .from(searchDoc)
+      .where(eq(searchDoc.targetType, "dataset")),
   ])
 
   const humLabelOf = new Map(humLabels.flatMap((row) =>
@@ -128,7 +134,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     published: 0,
     publishedOn: null as string | null,
     datasets: 0,
-    datasetLabels: [] as string[],
+    pinned: [] as AdminDatasetRef[],
     drafts: [] as ResearchContent[],
     dates: [row.createdAt],
   }]))
@@ -154,8 +160,12 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     held.drafts.push(row.content)
     held.dates.push(row.updatedAt)
   }
+  const publishedIds = new Set(publishedDatasets.map((row) => row.datasetId))
   for (const row of datasetLabels) {
-    grouped.get(row.researchId)?.datasetLabels.push(row.label)
+    grouped.get(row.researchId)?.pinned.push({
+      label: row.label,
+      published: publishedIds.has(row.datasetId),
+    })
   }
 
   return researches.map((row): AdminResearchRow => {
@@ -163,16 +173,21 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     const publishedCount = held?.published ?? 0
     const draftContents = held?.drafts ?? []
     const publishedContent = publishedContentOf.get(row.id) ?? null
-    const working = draftContents[0] ?? publishedContent
+    // The row names the research the way a reader meets it: by its latest
+    // version that is out. A draft is the vessel of the next one, and is often
+    // empty while it waits, so its title is not what the research is called.
+    // Only a research that has never been out is named by its draft.
+    const shown = publishedContent ?? draftContents[0] ?? null
     const humLabel = humLabelOf.get(row.id) ?? null
-    const labels = held?.datasetLabels ?? []
+    const pinned = (held?.pinned ?? []).toSorted((a, b) => a.label < b.label ? -1 : a.label > b.label ? 1 : 0)
+    const labels = pinned.map((entry) => entry.label)
 
     return {
       researchId: row.id,
       humLabel,
-      title: working?.title ?? EMPTY_TITLE,
-      providerNames: (working?.dataProviders ?? []).map((provider) => provider.name),
-      datasetLabels: labels.toSorted(),
+      title: shown?.title ?? EMPTY_TITLE,
+      providerNames: (shown?.dataProviders ?? []).map((provider) => provider.name),
+      datasets: pinned,
       status: statusOf(publishedCount),
       publishedVersions: publishedCount,
       draftCount: draftContents.length,
@@ -222,12 +237,14 @@ export interface ResearchDatasetRow {
    * (docs/files.md).
    */
   portalIssued: boolean
+  /** The draft that made it, until a publish adopts it. Null once it is out. */
+  originDraftId: string | null
 }
 
 /**
- * The datasets belonging to a research, whether published or not. The editor
- * offers these to be listed by a version; nothing else may be listed, since a
- * dataset belongs to exactly one research.
+ * The datasets belonging to a research, whether published or not. A dataset
+ * belongs to exactly one research, and the next version of that research
+ * carries all of them (`admin/datasets.ts`).
  */
 export async function researchDatasets(
   db: Executor,
@@ -236,6 +253,7 @@ export async function researchDatasets(
   const rows = await db
     .select({
       id: dataset.id,
+      originDraftId: dataset.originDraftId,
       label: labelPin.label,
       pinId: labelPin.id,
       // Having a published row is what being published means; a dataset no
@@ -464,68 +482,71 @@ export async function readPublishedDataset(
   return found === undefined ? null : { number: row.number, content: descriptionOf(found) }
 }
 
+/**
+ * The identities this draft publishes, in the order it publishes them
+ * (`admin/datasets.ts`). **What a draft's content holds is the order alone**,
+ * so everything that asks "which datasets is this draft about" — the steps, the
+ * preview, the places a comment may be left — asks here rather than reading the
+ * order and taking it for the set.
+ */
+export async function draftDatasetIds(
+  db: Executor,
+  draftId: string,
+  researchId: string,
+  order: readonly string[],
+): Promise<string[]> {
+  return draftDatasets(await ownedDatasets(db, researchId), draftId, order).map((row) => row.id)
+}
+
+/**
+ * The research's datasets, as little of them as the order is worked out from.
+ * The rows come in a settled order, because what the draft has not named yet
+ * stands in the order it arrives (`admin/datasets.ts`).
+ */
+export async function ownedDatasets(
+  db: Executor,
+  researchId: string,
+): Promise<{ id: string, originDraftId: string | null }[]> {
+  return db
+    .select({ id: dataset.id, originDraftId: dataset.originDraftId })
+    .from(dataset)
+    .where(eq(dataset.researchId, researchId))
+    .orderBy(dataset.id)
+}
+
 export interface DraftDatasetRow extends ResearchDatasetRow {
-  /** Listed by the version this draft is writing. */
-  listed: boolean
   /** This draft has written something for it. */
   edited: boolean
-  /** This draft introduced it, so this draft may destroy it. */
+  /** This draft made it, and no publish has adopted it yet. */
   isOwn: boolean
 }
 
 /**
- * Every dataset of the research, as this draft sees it. The marks are separate
- * facts and none of them implies another: a dataset can be published and not
- * listed, listed and never touched, or introduced here and already edited.
+ * What this draft publishes, in the order it goes out in (`admin/datasets.ts`).
+ * The two marks are separate facts and neither implies the other: a dataset can
+ * be published and never touched here, or made here and already written.
  */
 export async function draftDatasetRows(
   db: Executor,
   draftId: string,
   researchId: string,
-  listedIds: readonly string[],
+  order: readonly string[],
 ): Promise<DraftDatasetRow[]> {
-  const [rows, entries, own] = await Promise.all([
+  const [rows, entries] = await Promise.all([
     researchDatasets(db, researchId),
     db
       .select({ datasetId: draftDatasetEntry.datasetId })
       .from(draftDatasetEntry)
       .where(eq(draftDatasetEntry.draftId, draftId)),
-    db
-      .select({ id: dataset.id })
-      .from(dataset)
-      .where(eq(dataset.originDraftId, draftId)),
   ])
 
   const edited = new Set(entries.map((row) => row.datasetId))
-  const introduced = new Set(own.map((row) => row.id))
-  const listed = new Set(listedIds)
 
-  return rows.map((row) => ({
+  return draftDatasets(rows, draftId, order).map((row) => ({
     ...row,
-    listed: listed.has(row.id),
     edited: edited.has(row.id),
-    isOwn: introduced.has(row.id),
+    isOwn: row.originDraftId === draftId,
   }))
-}
-
-export interface PresenceRow {
-  sessionId: string
-  displayName: string
-}
-
-/**
- * Who has this draft open. Expiry is a predicate on the read, so a sweep that
- * never runs cannot make somebody appear to still be editing.
- */
-export async function activePresence(db: Executor, draftId: string): Promise<PresenceRow[]> {
-  return db
-    .select({ sessionId: draftPresence.sessionId, displayName: draftPresence.displayName })
-    .from(draftPresence)
-    .where(and(
-      eq(draftPresence.draftId, draftId),
-      sql`${draftPresence.lastSeenAt} > now() - make_interval(secs => ${PRESENCE_WINDOW_SECONDS})`,
-    ))
-    .orderBy(draftPresence.displayName, draftPresence.sessionId)
 }
 
 export interface EditableKey {

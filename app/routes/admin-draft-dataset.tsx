@@ -29,7 +29,6 @@ export async function action({ request, params }: Route.ActionArgs) {
     return data(answer, { status: answer.status === "taken" ? 409 : 200 })
   }
   const result = await saveDatasetAction(request, params)
-  if (result.status === "invalid") return data(result, { status: 422 })
   if (result.status === "conflict") return data(result, { status: 409 })
   return result
 }

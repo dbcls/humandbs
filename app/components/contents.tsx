@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react"
 
-import type { LocaleState } from "~/admin/contents"
+import type { LocaleState, NewsState } from "~/admin/contents"
 import type { BodyProblem, ContentsResult, LocaleEditor } from "~/admin/contents.server"
 import { adminArticlePreviewPath } from "~/admin/urls"
 import type { ArticleContent } from "~/content/types"
@@ -19,8 +19,8 @@ import { messagesFor } from "~/i18n/messages"
 import type { ArticleView } from "~/public/site.server"
 
 import { usePanes } from "./admin"
-import { Badge, Button, type ButtonSize, Dialog, Heading, Stack, Stated } from "./base"
-import { TOOLS_HEIGHT, useDrawn } from "./draft-tools"
+import { Badge, Button, type ButtonSize, Dialog, Heading, Stack, Stated, Chevron } from "./base"
+import { useDrawn } from "./draft-tools"
 import { Editing, Field, MarkdownEditor, Result, Submit, Unsaved } from "./form"
 import { Icon, type IconName } from "./icons"
 import { Markdown } from "./markdown"
@@ -57,20 +57,39 @@ export const SHOWING = "min-w-36"
 
 /**
  * The glyph a publish state is drawn by: an eye for what readers can see, a
- * lock for what they cannot.
+ * lock for what they cannot, and a clock for what they will see once the
+ * announcement's date comes.
  *
- * **The same pair in the pane and down the table**, so that the shape a curator
+ * **The same set in the pane and down the table**, so that the shape a curator
  * narrows by is the shape they then read in the rows. It rides in front of the
  * word rather than standing alone: an eye or a lock is only obvious once you
  * know the question is who can see this.
  */
-export function stateMark(published: boolean): IconName {
-  return published ? "eye" : "lock"
+export function stateMark(state: NewsState): IconName {
+  if (state === "published") return "eye"
+  return state === "scheduled" ? "clock" : "lock"
+}
+
+function stateWord(locale: Locale, state: NewsState): string {
+  const t = messagesFor(locale).admin.contents
+  if (state === "published") return t.published
+  return state === "scheduled" ? t.scheduled : t.unpublished
+}
+
+/** A language's state as one word, from what the row knows: published or not, and whether the item's date is ahead. */
+export function newsStateOf(state: LocaleState, ahead: boolean): NewsState {
+  if (!state.published) return "unpublished"
+  return ahead ? "scheduled" : "published"
 }
 
 /** The glyph on its own, for the pane's choice of state. */
-export function StateIcon({ published }: { published: boolean }) {
-  return <Icon name={stateMark(published)} aria-hidden="true" className="mr-1 text-ink-muted" />
+export function StateIcon({ state }: { state: NewsState }) {
+  return <Icon name={stateMark(state)} aria-hidden="true" className="mr-1 text-ink-muted" />
+}
+
+/** The word for the pane's choice of state, beside its glyph. */
+export function stateLabel(locale: Locale, state: NewsState): string {
+  return stateWord(locale, state)
 }
 
 /**
@@ -93,11 +112,16 @@ export function StateIcon({ published }: { published: boolean }) {
  * not a copy of it: the part is what holds the pair in a box of one line's
  * height, and a copy left on the baseline moved every cell of the row 1.9px up.
  */
-export function StateCell({ state, locale }: { state: LocaleState, locale: Locale }) {
-  const t = messagesFor(locale).admin.contents
+export function StateCell({ state, locale, ahead = false }: {
+  state: LocaleState
+  locale: Locale
+  /** Whether the item's date is still ahead, which turns a published language into a scheduled one. */
+  ahead?: boolean
+}) {
+  const shown = newsStateOf(state, ahead)
   return (
-    <Stated icon={stateMark(state.published)}>
-      {state.published ? t.published : t.unpublished}
+    <Stated icon={stateMark(shown)}>
+      {stateWord(locale, shown)}
     </Stated>
   )
 }
@@ -221,7 +245,7 @@ function BodyProblems({ id, problems, locale, goTo }: {
           <Button
             type="button"
             size="row"
-            icon={<Icon name="chevron-right" aria-hidden="true" />}
+            icon={<Chevron dir="right" />}
             onClick={(event) => { goTo(event.currentTarget.form, problem.line) }}
           >
             {t.goToLine}
@@ -232,13 +256,23 @@ function BodyProblems({ id, problems, locale, goTo }: {
   )
 }
 
-export function LocaleEditors({ editors, locale, remember, result, onTyped, onDirty }: {
+/**
+ * What an announcement's date means for its languages' forms: whether there is
+ * one (nothing can be published without it) and whether it is still ahead
+ * (publishing then schedules). Absent for an article, which has no date.
+ */
+export interface Publishing {
+  dated: boolean
+  ahead: boolean
+}
+
+export function LocaleEditors({ editors, locale, remember, result, onTyped, onDirty, publishing }: {
   editors: LocaleEditor[]
   locale: Locale
   /**
    * What this screen's arrangement is filed under, and the root each
-   * language's own form id is built from — the save standing in the tools
-   * row above the panes sends it by that id (`useArticlePanes`).
+   * language's own form id is built from — the id Ctrl+S finds a form's save
+   * by (`useArticlePanes`).
    */
   remember: string
   /** What the last form did, for the language whose body it refused. */
@@ -247,6 +281,7 @@ export function LocaleEditors({ editors, locale, remember, result, onTyped, onDi
   onTyped?: (language: Locale, typed: ArticleContent) => void
   /** Told whenever a language's own "has this been typed into" answer changes. */
   onDirty?: (language: Locale, dirty: boolean) => void
+  publishing?: Publishing
 }) {
   return (
     <>
@@ -261,23 +296,26 @@ export function LocaleEditors({ editors, locale, remember, result, onTyped, onDi
             : []}
           onTyped={onTyped}
           onDirty={onDirty}
+          publishing={publishing}
         />
       ))}
     </>
   )
 }
 
-function LanguageSection({ editor, locale, id, problems, onTyped, onDirty }: {
+function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publishing }: {
   editor: LocaleEditor
   locale: Locale
-  /** Sent by the save standing outside this form (`form` attribute). */
+  /** The form's own id; its save is found by it (`ArticleTools` の Ctrl+S). */
   id: string
   problems: BodyProblem[]
   onTyped?: (language: Locale, typed: ArticleContent) => void
   onDirty?: (language: Locale, dirty: boolean) => void
+  publishing?: Publishing
 }) {
   const messages = messagesFor(locale)
   const t = messages.admin.contents
+  const shown = newsStateOf({ published: editor.published }, publishing?.ahead ?? false)
   // The list of refused lines, named so the box can point at it.
   const problemsId = useId()
   // The editor's own way to a line, once it stands; the textarea's until then.
@@ -305,9 +343,9 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty }: {
         language and it is the first thing the section says.
       */}
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        {editor.published
-          ? <Badge tone="accent" icon={<Icon name="eye" />}>{t.published}</Badge>
-          : <Badge tone="muted" icon={<Icon name="lock" />}>{t.unpublished}</Badge>}
+        <Badge tone={shown === "unpublished" ? "muted" : "accent"} icon={<Icon name={stateMark(shown)} />}>
+          {stateWord(locale, shown)}
+        </Badge>
         {editor.publishedAt !== null && (
           <span className="text-ink-muted text-xs">
             {t.publishedOn}
@@ -334,6 +372,12 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty }: {
         **Publishing is not held to the same condition as saving.** What
         goes out is what is on the screen whether or not it was typed just
         now, so a language with unsaved words can be published as it is.
+
+        **An announcement's date decides what the control is.** With no date
+        there is nothing to publish under, so the control stays shut and says
+        why when pointed at; with a date still ahead, pressing it schedules
+        rather than publishes, and the word says so before it is pressed
+        (docs/editing.md の「サイトコンテンツ」).
       */}
       <Editing
         id={id}
@@ -368,11 +412,11 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty }: {
           />
           {problems.length > 0 && <BodyProblems id={problemsId} problems={problems} locale={locale} goTo={goTo} />}
         </div>
-        {/* **Saving stands in the tools row above the panes, not here**
-            (`ArticleTools`) — one control per open language rather than one
-            per form, since two of these can be open at once. Publishing
-            stays: it is pressed back and forth with its own opposite, not
-            pressed on the way out of the box. */}
+        {/* **The two things done to a language stand in one row at the foot
+            of its form: the publish state first, the save to its right.**
+            The save is the form's own, so it reads what the form knows about
+            being typed into (`Editing` の `Changed`); its id is what Ctrl+S
+            finds (`ArticleTools`). */}
         <div className="flex flex-wrap items-center gap-3">
           {editor.published
             ? (
@@ -381,10 +425,19 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty }: {
                 </Submit>
               )
             : (
-                <Submit intent="publish" icon={<Icon name="upload" />} className={SHOWING}>
-                  {t.publish}
+                <Submit
+                  intent="publish"
+                  icon={<Icon name="upload" />}
+                  className={SHOWING}
+                  disabled={publishing?.dated === false ? t.news.publishUndated : undefined}
+                >
+                  {publishing?.ahead === true ? t.scheduled : t.publish}
                 </Submit>
               )}
+          <Submit id={`${id}-save`} intent="save" saves icon={<Icon name="save" aria-hidden="true" />}>
+            {messages.admin.editor.save}
+          </Submit>
+          <Unsaved locale={locale} />
         </div>
       </Editing>
     </Section>
@@ -440,20 +493,6 @@ interface PaneArrangement {
   showing: "both" | "left" | "right"
 }
 
-/**
- * Which languages currently stand open for editing, read off the arrangement
- * rather than tracked a second time — a save exists exactly where a
- * "編集 xx" pane stands, so the two cannot drift apart
- * (`docs/admin-ui.md` の「道具の行」).
- */
-export function openLanguagesOf(panes: PaneArrangement): Locale[] {
-  const shown = new Set([
-    ...(panes.showing !== "right" ? [panes.left] : []),
-    ...(panes.showing !== "left" ? [panes.right] : []),
-  ])
-  return (["ja", "en"] as const).filter((language) => shown.has(`form-${language}`))
-}
-
 /** Which language, if any, the left pane holds for editing — what Ctrl+S sends. */
 export function leftLanguageOf(panes: Pick<PaneArrangement, "left" | "showing">): Locale | null {
   if (panes.showing === "right") return null
@@ -461,60 +500,19 @@ export function leftLanguageOf(panes: Pick<PaneArrangement, "left" | "showing">)
 }
 
 /**
- * One open language's own way to send what is typed into it — pressed from
- * the tools row rather than from inside the form, which the row does not
- * contain (`ArticleTools`).
- *
- * **It sends a form it does not stand in.** `Submit`'s `form` names it by id,
- * the way `docs/admin-ui.md` の「道具の行」 describes, and `dirty` stands in
- * for `Changed` — the button is not inside the form's own tree, so it cannot
- * read that context.
- */
-function LanguageSave({ locale, language, formId, dirty }: {
-  locale: Locale
-  language: Locale
-  formId: string
-  dirty: boolean
-}) {
-  const t = messagesFor(locale).admin.editor
-  return (
-    <span className="flex items-center gap-2">
-      <Submit
-        id={`${formId}-save`}
-        form={formId}
-        intent="save"
-        saves
-        dirty={dirty}
-        icon={<Icon name="save" aria-hidden="true" />}
-      >
-        {t.save}
-        {/* **The mark, not a second word.** The button already says "保存";
-            what is next to it says which of the two open forms this one
-            sends (`docs/admin-ui.md` の「語と文」). */}
-        <span className="text-xs" lang={language}>{language}</span>
-      </Submit>
-      <Unsaved locale={locale} dirty={dirty} />
-    </span>
-  )
-}
-
-/**
  * The tools row an article or an announcement keeps at hand: the pane switch,
- * and one save per language currently open for editing — the same shape a
- * research draft's `DraftTools` stands in (`draft-tools.tsx`).
+ * in the same place a research draft's `DraftTools` keeps it (`draft-tools.tsx`).
  *
- * **Neither unresolved comments nor who else is here stand in it** — a
- * document and an announcement carry neither; both belong to a draft, and
- * these have none.
+ * **The save is not here but at the foot of each language's form** — one per
+ * form, beside the publish state, since two forms can be open at once and
+ * each is sent on its own. Neither unresolved comments nor who else is here
+ * stand in it either: both belong to a draft, and these have none.
  *
  * **Ctrl+S and Cmd+S send the left pane's form**, when it holds one — the one
  * form a curator typing has to reach without moving the pointer.
  */
-export function ArticleTools({ locale, panesControl, saves, leftFormId }: {
-  locale: Locale
+export function ArticleTools({ panesControl, leftFormId }: {
   panesControl: ReactNode
-  /** One entry per language whose edit form currently stands in a pane, left to right. */
-  saves: { language: Locale, formId: string, dirty: boolean }[]
   leftFormId: string | null
 }) {
   useEffect(() => {
@@ -532,19 +530,10 @@ export function ArticleTools({ locale, panesControl, saves, leftFormId }: {
   }, [leftFormId])
 
   return (
-    <div className={`sticky top-0 z-30 flex ${TOOLS_HEIGHT} items-center gap-4 rounded-b bg-white px-6`}>
-      {panesControl}
-      <div className="ml-auto flex shrink-0 items-center gap-4 whitespace-nowrap text-sm">
-        {saves.map((save) => (
-          <LanguageSave
-            key={save.language}
-            locale={locale}
-            language={save.language}
-            formId={save.formId}
-            dirty={save.dirty}
-          />
-        ))}
-      </div>
+    <div className="flex h-9 items-center gap-4">
+      {/* **The pane switch at the far end**, where a research draft's row
+          keeps it. */}
+      <span className="ml-auto">{panesControl}</span>
     </div>
   )
 }
@@ -552,7 +541,7 @@ export function ArticleTools({ locale, panesControl, saves, leftFormId }: {
 /**
  * The two panes an article or an announcement is written in: the form, and the
  * page it makes — the same arrangement a research draft is written in
- * (`editor.tsx`), remembered per screen.
+ * (`editor.tsx`).
  *
  * **The page is drawn by the server from what the form holds**, a pause after
  * the last key (`useDrawn`), through the function the public page runs — so the
@@ -560,14 +549,16 @@ export function ArticleTools({ locale, panesControl, saves, leftFormId }: {
  * reading of the markdown to keep in step (docs/editing.md の「サイトコンテンツ」).
  * Each language is drawn on its own, since each is its own form.
  */
-export function useArticlePanes({ locale, remember, editors, result, dated = null }: {
+export function useArticlePanes({ locale, remember, editors, result, dated = null, publishing }: {
   locale: Locale
-  /** What this screen's arrangement is filed under for the session. */
+  /** The root each language's form id is built from (`articleFormId`). */
   remember: string
   editors: LocaleEditor[]
   result: ContentsResult | undefined
   /** What the page says under its title — the day an announcement went out. */
   dated?: string | null
+  /** What an announcement's date means for its forms (`LocaleEditors`). */
+  publishing?: Publishing
 }): { view: ReactNode, tools: ReactNode } {
   const words = messagesFor(locale).admin.editor
   const [typed, setTyped] = useState<Record<Locale, ArticleContent>>(() => ({
@@ -576,10 +567,6 @@ export function useArticlePanes({ locale, remember, editors, result, dated = nul
   }))
   const onTyped = useCallback((language: Locale, content: ArticleContent) => {
     setTyped((was) => ({ ...was, [language]: content }))
-  }, [])
-  const [dirty, setDirty] = useState<Record<Locale, boolean>>({ ja: false, en: false })
-  const onDirty = useCallback((language: Locale, next: boolean) => {
-    setDirty((was) => (was[language] === next ? was : { ...was, [language]: next }))
   }, [])
   const at = adminArticlePreviewPath()
   const initial = (language: Locale): ArticleView => {
@@ -607,7 +594,7 @@ export function useArticlePanes({ locale, remember, editors, result, dated = nul
           remember={remember}
           result={result}
           onTyped={onTyped}
-          onDirty={onDirty}
+          publishing={publishing}
         />
       </Stack>
     </Card>
@@ -615,7 +602,6 @@ export function useArticlePanes({ locale, remember, editors, result, dated = nul
 
   const panes = usePanes({
     locale,
-    remember,
     opens: "page",
     under: "bar",
     contents: [
@@ -626,19 +612,11 @@ export function useArticlePanes({ locale, remember, editors, result, dated = nul
     ],
   })
 
-  const openLanguages = openLanguagesOf(panes)
   const leftLanguage = leftLanguageOf(panes)
-
   const tools = (
     <ArticleTools
-      locale={locale}
       panesControl={panes.control}
       leftFormId={leftLanguage === null ? null : articleFormId(remember, leftLanguage)}
-      saves={openLanguages.map((language) => ({
-        language,
-        formId: articleFormId(remember, language),
-        dirty: dirty[language],
-      }))}
     />
   )
 

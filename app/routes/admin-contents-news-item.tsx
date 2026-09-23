@@ -2,7 +2,7 @@ import { Form } from "react-router"
 
 import { newsAction, newsPage } from "~/admin/contents.server"
 import { adminNewsListPath } from "~/admin/urls"
-import { Badge, Confirm, Stack } from "~/components/base"
+import { Confirm, Stack } from "~/components/base"
 import { ResultLine, useArticlePanes } from "~/components/contents"
 import { DraftHead } from "~/components/draft-tools"
 import { Answered, Editing, Field, Submit, Unsaved } from "~/components/form"
@@ -72,13 +72,14 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
 
     **The clock in the box is the one the announcement goes out on** (JST), and
     a reader with no way to check which zone that is would have to guess from
-    the value — which reads the same either way. **Waiting is said by the date,
-    not by a state.** The two languages each have their own state and this date
-    belongs to the announcement as a whole, so a word about waiting in the state
-    would be the same word in two places saying something about a third.
+    the value — which reads the same either way. **What the date does is said
+    once, under the section's name**: that it is the date readers see, that a
+    language goes out only once it has come, and that a date ahead is how an
+    announcement is scheduled. Waiting itself is said by each language's state
+    (「公開予定」), since it is each published language that waits.
   */
   const dating = (
-    <Section title={t.news.publishedAt}>
+    <Section title={t.news.publishedAt} note={t.news.publishedAtNote}>
       <Stack gap="tight">
         <Editing method="post" className="flex flex-wrap items-end gap-2">
           <Field
@@ -93,12 +94,6 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
             <Unsaved locale={locale} />
           </span>
         </Editing>
-        {scheduled && (
-          <p className="flex flex-wrap items-center gap-2 text-ink-muted text-sm">
-            <Badge tone="accent">{t.news.scheduled}</Badge>
-            {t.news.scheduledNote}
-          </p>
-        )}
       </Stack>
     </Section>
   )
@@ -108,6 +103,7 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
     editors,
     result: actionData,
     dated: publishedAt === null ? null : dayOf(publishedAt),
+    publishing: { dated: publishedAt !== null, ahead: scheduled },
   })
 
   return (
@@ -116,11 +112,10 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
         <ResultLine result={actionData} locale={locale} />
       </Answered>
       <Stack>
-        {/* **The head is left for the announcement; the tools row is what
-            stays while typing** (`draft-tools.tsx` の `DraftHead`/
-            `DraftTools`). Between the two, the head's second line carries the
-            publish date — the one thing here that belongs to the
-            announcement rather than to a language. */}
+        {/* **The head is left for the announcement, and folds to its tools
+            row while typing** (`draft-tools.tsx` の `DraftHead`). Its second
+            line carries the publish date — the one thing here that belongs
+            to the announcement rather than to a language. */}
         <DraftHead
           locale={locale}
           title={t.news.itemHeading}
@@ -144,8 +139,8 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
             </Form>
           )}
           overview={dating}
+          tools={panes.tools}
         />
-        {panes.tools}
         {panes.view}
       </Stack>
     </Page>

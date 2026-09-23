@@ -17,7 +17,6 @@ import type { ResearchListRowView, ResearchView, TermView } from "~/public/view.
 import { Downloads } from "./files"
 import {
   AccessTypeBadge,
-  Annotation,
   Card,
   Crumbs,
   Empty,
@@ -28,7 +27,7 @@ import {
   Page,
   PageHead,
   Pairs,
-  Place,
+  MarkedPlace,
   Section,
   Table,
   Td,
@@ -134,10 +133,20 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
  * `datasetHref` exists because a draft's datasets may have no id pinned yet:
  * a preview addresses them by identity, the public page by label.
  */
-export function ResearchBody({ view, locale, datasetHref, releaseNote = false, cart = false }: {
+export function ResearchBody({ view, locale, datasetHref, releaseNote = false, cart = false, writtenOnly = false }: {
   view: ResearchView
   locale: Locale
   datasetHref?: (ref: { id: string | null, label: string }) => string | null
+  /**
+   * Whether to draw only what the research's own form writes. The editing
+   * pane does: the dataset table, the downloads and the controlled-access
+   * users have no field beside them — the datasets are decided on their own
+   * screen, the box is the research's, the users come from upstream — and a
+   * pane that draws them shows the writer places nothing they type reaches
+   * (docs/editing.md の「フォームの隣に立つ公開ページ」). The page and the
+   * share preview draw everything.
+   */
+  writtenOnly?: boolean
   /**
    * Whether the dataset table carries the cart marks. The published page does;
    * a preview does not, because nothing under a share link can be applied for
@@ -193,50 +202,52 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
         </Pairs>
       </Section>
 
-      <Section title={t.datasets} at="datasetIds">
-        <Stack gap="tight">
-          {!view.isLatest && (
-            <p className="text-ink-muted text-sm">{t.datasetsAreCurrent}</p>
-          )}
-          {view.datasets.length === 0
-            ? <Empty>{t.noDatasets}</Empty>
-            : (
-                <Table headers={[
-                  ...(cart ? [<CartColumnHead key="cart" locale={locale} />] : []),
-                  messages.dataset.datasetId,
-                  messages.dataset.typeOfData,
-                  messages.dataset.accessType,
-                  messages.dataset.datePublished,
-                ]}
-                >
-                  {view.datasets.map((row, at) => {
-                    const name = row.label === ""
-                      ? `${messages.dataset.datasetId} ${at + 1}`
-                      : row.label
-                    const to = linkTo(row)
-                    return (
-                      <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
-                        {cart && (
-                          <Td holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
-                        )}
-                        <Td className="break-all">
-                          <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-                          {to === null ? name : <Link to={to}>{name}</Link>}
-                        </Td>
-                        <Td>
-                          {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
-                        </Td>
-                        <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
-                        <Td>{row.datePublished}</Td>
-                      </tr>
-                    )
-                  })}
-                </Table>
-              )}
-        </Stack>
-      </Section>
+      {!writtenOnly && (
+        <Section title={t.datasets} at="datasetIds">
+          <Stack gap="tight">
+            {!view.isLatest && (
+              <p className="text-ink-muted text-sm">{t.datasetsAreCurrent}</p>
+            )}
+            {view.datasets.length === 0
+              ? <Empty>{t.noDatasets}</Empty>
+              : (
+                  <Table headers={[
+                    ...(cart ? [<CartColumnHead key="cart" locale={locale} />] : []),
+                    messages.dataset.datasetId,
+                    messages.dataset.typeOfData,
+                    messages.dataset.accessType,
+                    messages.dataset.datePublished,
+                  ]}
+                  >
+                    {view.datasets.map((row, at) => {
+                      const name = row.label === ""
+                        ? `${messages.dataset.datasetId} ${at + 1}`
+                        : row.label
+                      const to = linkTo(row)
+                      return (
+                        <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
+                          {cart && (
+                            <Td holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
+                          )}
+                          <Td className="break-all">
+                            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
+                            {to === null ? name : <Link to={to}>{name}</Link>}
+                          </Td>
+                          <Td>
+                            {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
+                          </Td>
+                          <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
+                          <Td>{row.datePublished}</Td>
+                        </tr>
+                      )
+                    })}
+                  </Table>
+                )}
+          </Stack>
+        </Section>
+      )}
 
-      {view.files.total > 0 && (
+      {!writtenOnly && view.files.total > 0 && (
         <Section title={t.downloads}>
           <Downloads
             locale={locale}
@@ -254,123 +265,120 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
         </Section>
       )}
 
-      {view.dataProviders.length > 0 && (
-        <Section title={t.dataProvider} at="dataProviders">
-          {view.dataProviders.map((provider) => (
-            <Pairs key={provider.id}>
-              <KeyValue title={t.principalInvestigator} at={`dataProviders.${provider.id}.name`}>
-                <Value field={provider.principalInvestigator} locale={locale} />
-              </KeyValue>
-              <KeyValue
-                title={t.organization}
-                at={`dataProviders.${provider.id}.organization.name`}
-              >
-                <Value field={provider.organization} locale={locale} />
-              </KeyValue>
-            </Pairs>
-          ))}
-        </Section>
-      )}
+      <Section title={t.dataProvider} at="dataProviders">
+        {view.dataProviders.length === 0 && <Empty>{t.noDataProviders}</Empty>}
+        {view.dataProviders.map((provider) => (
+          <Pairs key={provider.id}>
+            <KeyValue title={t.principalInvestigator} at={`dataProviders.${provider.id}.name`}>
+              <Value field={provider.principalInvestigator} locale={locale} />
+            </KeyValue>
+            <KeyValue
+              title={t.organization}
+              at={`dataProviders.${provider.id}.organization.name`}
+            >
+              <Value field={provider.organization} locale={locale} />
+            </KeyValue>
+          </Pairs>
+        ))}
+      </Section>
 
-      {view.researchProjects.length > 0 && (
-        <Section title={t.researchProjects} at="researchProjects">
-          <Table headers={[t.researchProjectName, t.url]}>
-            {view.researchProjects.map((project) => (
-              <tr key={project.id}>
-                <Td>
-                  <Place at={`researchProjects.${project.id}.name`}>
-                    <Value field={project.name} locale={locale} />
-                  </Place>
-                  <Annotation at={`researchProjects.${project.id}.name`} />
-                </Td>
-                <Td className="break-all">
-                  <Place at={`researchProjects.${project.id}.url`}>
-                    <LinksValue links={project.links} locale={locale} />
-                  </Place>
-                  <Annotation at={`researchProjects.${project.id}.url`} />
-                </Td>
-              </tr>
-            ))}
-          </Table>
-        </Section>
-      )}
+      <Section title={t.researchProjects} at="researchProjects">
+        {view.researchProjects.length === 0
+          ? <Empty>{t.noResearchProjects}</Empty>
+          : (
+              <Table headers={[t.researchProjectName, t.url]}>
+                {view.researchProjects.map((project) => (
+                  <tr key={project.id}>
+                    <Td>
+                      <MarkedPlace at={`researchProjects.${project.id}.name`}>
+                        <Value field={project.name} locale={locale} />
+                      </MarkedPlace>
+                    </Td>
+                    <Td className="break-all">
+                      <MarkedPlace at={`researchProjects.${project.id}.url`}>
+                        <LinksValue links={project.links} locale={locale} />
+                      </MarkedPlace>
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+      </Section>
 
-      {view.grants.length > 0 && (
-        <Section title={t.grants} at="grants">
-          {/* The funder names the programme, the programme names the project,
-              and the number identifies it — read the other way round a reader
-              meets an identifier before anything that says what it belongs to. */}
-          <Table headers={[t.grantAgency, t.grantTitle, t.grantId]}>
-            {view.grants.map((grant) => (
-              <tr key={grant.id}>
-                <Td>
-                  <Place at={`grants.${grant.id}.agency.name`}>
-                    <Value field={grant.agency} locale={locale} />
-                  </Place>
-                  <Annotation at={`grants.${grant.id}.agency.name`} />
-                </Td>
-                <Td>
-                  <Place at={`grants.${grant.id}.title`}>
-                    <Value field={grant.title} locale={locale} />
-                  </Place>
-                  <Annotation at={`grants.${grant.id}.title`} />
-                </Td>
-                <Td>
-                  {/* A line each, because a grant carrying several numbers runs
+      <Section title={t.grants} at="grants">
+        {/* The funder names the programme, the programme names the project,
+            and the number identifies it — read the other way round a reader
+            meets an identifier before anything that says what it belongs to. */}
+        {view.grants.length === 0
+          ? <Empty>{t.noGrants}</Empty>
+          : (
+              <Table headers={[t.grantAgency, t.grantTitle, t.grantId]}>
+                {view.grants.map((grant) => (
+                  <tr key={grant.id}>
+                    <Td>
+                      <MarkedPlace at={`grants.${grant.id}.agency.name`}>
+                        <Value field={grant.agency} locale={locale} />
+                      </MarkedPlace>
+                    </Td>
+                    <Td>
+                      <MarkedPlace at={`grants.${grant.id}.title`}>
+                        <Value field={grant.title} locale={locale} />
+                      </MarkedPlace>
+                    </Td>
+                    <Td>
+                      {/* A line each, because a grant carrying several numbers runs
                       them into one long code on a single line. */}
-                  <Place at={`grants.${grant.id}.grantIds`}>
-                    <ul className="flex flex-col items-start gap-1">
-                      {grant.grantIds.map((grantId) => (
-                        <li key={grantId}><Badge pill>{grantId}</Badge></li>
-                      ))}
-                    </ul>
-                  </Place>
-                  <Annotation at={`grants.${grant.id}.grantIds`} />
-                </Td>
-              </tr>
-            ))}
-          </Table>
-        </Section>
-      )}
+                      <MarkedPlace at={`grants.${grant.id}.grantIds`}>
+                        <ul className="flex flex-col items-start gap-1">
+                          {grant.grantIds.map((grantId) => (
+                            <li key={grantId}><Badge pill>{grantId}</Badge></li>
+                          ))}
+                        </ul>
+                      </MarkedPlace>
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+      </Section>
 
-      {view.relatedPublications.length > 0 && (
-        <Section title={t.relatedPublications} at="relatedPublications">
-          <Table headers={[t.publicationTitle, "DOI", t.dataInUse]}>
-            {view.relatedPublications.map((publication) => (
-              <tr key={publication.id}>
-                <Td>
-                  <Place at={`relatedPublications.${publication.id}.title`}>
-                    <Value field={publication.title} locale={locale} />
-                  </Place>
-                  <Annotation at={`relatedPublications.${publication.id}.title`} />
-                </Td>
-                <Td className="break-all">
-                  <Place at={`relatedPublications.${publication.id}.doi`}>
-                    {publication.doi.state === "plain" && publication.doi.text !== ""
-                      ? (
-                          <ExternalLink to={publication.doi.text} locale={locale}>
-                            {publication.doi.text}
-                          </ExternalLink>
-                        )
-                      : <Value field={publication.doi} locale={locale} />}
-                  </Place>
-                  <Annotation at={`relatedPublications.${publication.id}.doi`} />
-                </Td>
-                <Td>
-                  <Place at={`relatedPublications.${publication.id}.datasetIds`}>
-                    <DatasetList
-                      labels={publication.datasetLabels}
-                      linkTo={linkTo}
-                      messages={messages}
-                    />
-                  </Place>
-                  <Annotation at={`relatedPublications.${publication.id}.datasetIds`} />
-                </Td>
-              </tr>
-            ))}
-          </Table>
-        </Section>
-      )}
+      <Section title={t.relatedPublications} at="relatedPublications">
+        {view.relatedPublications.length === 0
+          ? <Empty>{t.noRelatedPublications}</Empty>
+          : (
+              <Table headers={[t.publicationTitle, "DOI", t.dataInUse]}>
+                {view.relatedPublications.map((publication) => (
+                  <tr key={publication.id}>
+                    <Td>
+                      <MarkedPlace at={`relatedPublications.${publication.id}.title`}>
+                        <Value field={publication.title} locale={locale} />
+                      </MarkedPlace>
+                    </Td>
+                    <Td className="break-all">
+                      <MarkedPlace at={`relatedPublications.${publication.id}.doi`}>
+                        {publication.doi.state === "plain" && publication.doi.text !== ""
+                          ? (
+                              <ExternalLink to={publication.doi.text} locale={locale}>
+                                {publication.doi.text}
+                              </ExternalLink>
+                            )
+                          : <Value field={publication.doi} locale={locale} />}
+                      </MarkedPlace>
+                    </Td>
+                    <Td>
+                      <MarkedPlace at={`relatedPublications.${publication.id}.datasetIds`}>
+                        <DatasetList
+                          labels={publication.datasetLabels}
+                          linkTo={linkTo}
+                          messages={messages}
+                        />
+                      </MarkedPlace>
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+      </Section>
 
       {/*
         Drawn even with nothing in it. What a research says about itself is
@@ -379,44 +387,46 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
         an empty one is an answer: nobody has been granted this data yet. Left
         out, a reader cannot tell that from a page that forgot to ask.
       */}
-      <Section title={t.controlledAccessUsers}>
-        {view.cau.length === 0
-          ? <Empty>{t.noControlledAccessUsers}</Empty>
-          : (
-              <Table headers={[
-                t.principalInvestigator,
-                t.organization,
-                t.country,
-                t.title,
-                t.periodOfDataUse,
-                t.dataInUse,
-              ]}
-              >
-                {view.cau.map((usage, index) => (
-                  // No identifier a reader may see reaches this table, and the
-                  // rows arrive in a fixed order that nothing here reorders.
-                  <tr key={index}>
-                    <Td>{usage.principalInvestigator}</Td>
-                    <Td>{usage.affiliation}</Td>
-                    <Td>{usage.country}</Td>
-                    <Td>{usage.researchTitle}</Td>
-                    <Td className="text-nowrap">
-                      {usage.periodStart !== null || usage.periodEnd !== null
-                        ? `${usage.periodStart ?? ""} – ${usage.periodEnd ?? ""}`
-                        : null}
-                    </Td>
-                    <Td>
-                      <DatasetList
-                        labels={usage.datasetAccessions}
-                        linkTo={linkTo}
-                        messages={messages}
-                      />
-                    </Td>
-                  </tr>
-                ))}
-              </Table>
-            )}
-      </Section>
+      {!writtenOnly && (
+        <Section title={t.controlledAccessUsers}>
+          {view.cau.length === 0
+            ? <Empty>{t.noControlledAccessUsers}</Empty>
+            : (
+                <Table headers={[
+                  t.principalInvestigator,
+                  t.organization,
+                  t.country,
+                  t.title,
+                  t.periodOfDataUse,
+                  t.dataInUse,
+                ]}
+                >
+                  {view.cau.map((usage, index) => (
+                    // No identifier a reader may see reaches this table, and the
+                    // rows arrive in a fixed order that nothing here reorders.
+                    <tr key={index}>
+                      <Td>{usage.principalInvestigator}</Td>
+                      <Td>{usage.affiliation}</Td>
+                      <Td>{usage.country}</Td>
+                      <Td>{usage.researchTitle}</Td>
+                      <Td className="text-nowrap">
+                        {usage.periodStart !== null || usage.periodEnd !== null
+                          ? `${usage.periodStart ?? ""} – ${usage.periodEnd ?? ""}`
+                          : null}
+                      </Td>
+                      <Td>
+                        <DatasetList
+                          labels={usage.datasetAccessions}
+                          linkTo={linkTo}
+                          messages={messages}
+                        />
+                      </Td>
+                    </tr>
+                  ))}
+                </Table>
+              )}
+        </Section>
+      )}
     </Stack>
   )
 }

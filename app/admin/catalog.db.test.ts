@@ -20,9 +20,9 @@ import { saveDatasetEntry } from "./drafts.server"
  *
  * What is worth watching here is the line between what an administrator may
  * change and what only a development change may: a type, and anything the data
- * already points at. Every vocabulary value is editable — ICD10 arrives as a
- * dictionary that seeds and checks the terms rather than as a vocabulary of its
- * own.
+ * already points at. What the data brings in is editable; the settled
+ * vocabularies — the portal's own, and ICD10 as the classification put in
+ * whole — are read here and refused every write.
  */
 const db = getDb()
 
@@ -355,25 +355,21 @@ describe("the keys an administrator may take away", () => {
 })
 
 describe("the terms of a vocabulary", () => {
-  it("lets the label of an ICD10 term be corrected", async () => {
+  it("refuses to reword an ICD10 term: its heading is the classification's, not the portal's", async () => {
     const token = await signIn(CURATOR, true)
-    const { id: setId } = only(await db.insert(s.vocabularySet)
-      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
-      .returning({ id: s.vocabularySet.id }))
+    const setId = await vocabulary("icd10")
     const termId = await term(setId, "C91")
+    const before = only(await db.select().from(s.vocabularyTerm))
 
-    // The dictionary seeds the label; it never owns it. v1 filed C91 as
-    // "Lymphoma" when the code is lymphoid leukaemia, and that has to be
-    // fixable in place.
+    // A code filed under the wrong disease is corrected on the value that names
+    // it, not by renaming the classification (docs/data-model.md の「ICD10」).
     expect(await catalogAction(post(token, {
       intent: "update-term",
       termId,
-      labelEn: "Lymphoid leukaemia",
-      labelJa: "リンパ性白血病",
-    }))).toMatchObject({ status: "ok" })
-    const held = only(await db.select().from(s.vocabularyTerm))
-    expect(held.labelEn).toBe("Lymphoid leukaemia")
-    expect(held.labelJa).toBe("リンパ性白血病")
+      labelEn: "Lymphoma",
+      labelJa: "リンパ腫",
+    }))).toEqual({ status: "not-editable" })
+    expect(only(await db.select().from(s.vocabularyTerm))).toEqual(before)
   })
 
   it("refuses to delete a term in use, and keeps it for the data that names it", async () => {
@@ -400,9 +396,9 @@ describe("the terms of a vocabulary", () => {
       .returning({ id: s.contentKey.id }))
     await publishedValue({ keyId, termId, asDisease: true })
 
-    // Deleting it would leave a published disease pointing at nothing.
-    expect(await catalogAction(post(token, { intent: "delete-term", termId })))
-      .toEqual({ status: "in-use" })
+    // The screen reads it as in use, the way a term a vocabulary value names is.
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/disease"), "disease")
+    expect(view?.terms.find((row) => row.id === termId)?.inUse).toBe(true)
   })
 
   it("renames a term without touching what points at it", async () => {
@@ -495,88 +491,25 @@ describe("the terms of a vocabulary", () => {
   })
 })
 
-describe("the ICD10 dictionary", () => {
-  async function icd10(): Promise<string> {
-    const { id } = only(await db.insert(s.vocabularySet)
-      .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
-      .returning({ id: s.vocabularySet.id }))
-    await db.insert(s.icd10Reference).values([
-      { code: "C34", titleEn: "Malignant neoplasm of bronchus and lung", titleJa: "気管支及び肺の悪性新生物" },
-      { code: "C349", titleEn: "Bronchus or lung, unspecified", titleJa: "気管支又は肺，部位不明" },
-    ])
-    return id
-  }
-
-  it("offers the codes it holds, and says which the vocabulary already has", async () => {
+describe("the ICD10 vocabulary", () => {
+  it("opens with nothing to press, and refuses every write", async () => {
     const token = await signIn(CURATOR, true)
-    const setId = await icd10()
+    const setId = await vocabulary("icd10")
     await fieldFor("disease", setId)
-    await term(setId, "C34")
+    const termId = await term(setId, "C34")
+    const other = await term(setId, "C349")
 
-    const view = await fieldTermsPage(
-      get(token, "/admin/experiment-fields/disease?dictionary=bronchus"),
-      "disease",
-    )
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/disease"), "disease")
+    expect(view?.editable).toBe(false)
 
-    expect(view?.dictionary?.rows).toEqual([
-      {
-        code: "C34",
-        titleEn: "Malignant neoplasm of bronchus and lung",
-        titleJa: "気管支及び肺の悪性新生物",
-        held: true,
-      },
-      {
-        code: "C349",
-        titleEn: "Bronchus or lung, unspecified",
-        titleJa: "気管支又は肺，部位不明",
-        held: false,
-      },
-    ])
-  })
-
-  it("is not offered on a vocabulary that is not ICD10", async () => {
-    const token = await signIn(CURATOR, true)
-    await fieldFor("assay", await vocabulary("assay"))
-
-    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/assay"), "assay")
-
-    expect(view?.dictionary).toBeNull()
-  })
-
-  it("files a new four-character code under its root, making the root if it is missing", async () => {
-    const token = await signIn(CURATOR, true)
-    const setId = await icd10()
-
-    expect(await catalogAction(post(token, {
-      intent: "create-term",
-      setId,
-      code: "C349",
-      labelEn: "Bronchus or lung, unspecified",
-      labelJa: "気管支又は肺，部位不明",
-    }))).toMatchObject({ status: "ok" })
-
-    // Without the root the four-character code would count as a root itself,
-    // and "the disease facet is counted by three characters" would quietly stop
-    // holding for it. The root is named from the dictionary, so nothing is
-    // invented by making it.
-    const terms = await db.select().from(s.vocabularyTerm)
-    const root = terms.find((one) => one.code === "C34")
-    const child = terms.find((one) => one.code === "C349")
-    expect(root?.labelEn).toBe("Malignant neoplasm of bronchus and lung")
-    expect(root?.labelJa).toBe("気管支及び肺の悪性新生物")
-    expect(child?.parentId).toBe(root?.id)
-  })
-
-  it("hangs a new code under the root that is already there rather than a second one", async () => {
-    const token = await signIn(CURATOR, true)
-    const setId = await icd10()
-    const rootId = await term(setId, "C34")
-
-    await catalogAction(post(token, { intent: "create-term", setId, code: "C349", labelEn: "x" }))
-
-    const terms = await db.select().from(s.vocabularyTerm)
-    expect(terms).toHaveLength(2)
-    expect(terms.find((one) => one.code === "C349")?.parentId).toBe(rootId)
+    expect(await catalogAction(post(token, { intent: "create-term", setId, labelEn: "Bronchus or lung, unspecified" })))
+      .toEqual({ status: "not-editable" })
+    expect(await catalogAction(post(token, { intent: "delete-term", termId })))
+      .toEqual({ status: "not-editable" })
+    expect(await catalogAction(post(token, { intent: "merge-term", termId, intoId: other })))
+      .toEqual({ status: "not-editable" })
+    expect((await db.select().from(s.vocabularyTerm)).map((row) => row.id).sort())
+      .toEqual([termId, other].sort())
   })
 
   it("leaves a flat vocabulary flat", async () => {

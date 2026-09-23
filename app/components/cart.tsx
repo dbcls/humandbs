@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 
 import type { CartNotice } from "~/cart/store"
 import { cartPressGathers, isCartable, useCart, useCartNotice } from "~/cart/store"
-import { Button, ButtonLink, IconButton, Menu, Note, Toast, TOAST_MS } from "~/components/base"
+import { Button, ButtonLink, IconButton, Menu, Note, Toast, TOAST_MS, Chevron } from "~/components/base"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import type { Messages } from "~/i18n/messages"
@@ -84,9 +84,9 @@ export function CartColumnHead({ locale }: { locale: Locale }) {
  * The same thing said in words, for the dataset's own page — there is one
  * dataset there and room to name the action.
  *
- * It sits on the page's band, so neither state may use a page colour: `ghost`
- * would leave brand text on the deep fill at 1.2:1. Collected is a white
- * button, not collected is the accent one.
+ * It sits on the page's band, so neither state may use a page colour: brand
+ * text on the deep fill would be 1.2:1. Collected is a white button, not
+ * collected is the accent one.
  */
 export function AddToCartButton({ datasetLabel, locale }: {
   datasetLabel: string
@@ -188,7 +188,7 @@ export function CartToast({ locale }: { locale: Locale }) {
                   {/* Outlined rather than bare: it is the one thing in the box
                       to press, and a word in the brand colour beside a sentence
                       reads as a link back to something. */}
-                  <Button type="button" variant="ghost" size="xs" onClick={undo}>
+                  <Button type="button" variant="secondary" size="xs" onClick={undo}>
                     {messages.cart.undo}
                   </Button>
                 </span>
@@ -273,7 +273,7 @@ export function CartMenu({ locale }: { locale: Locale }) {
         {count > 0 && (
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
             size="sm"
             className="mr-auto"
             onClick={() => {
@@ -285,7 +285,7 @@ export function CartMenu({ locale }: { locale: Locale }) {
         )}
         <ButtonLink to={href(locale, cartPath())} variant="secondary" size="sm">
           {messages.cart.view}
-          <Icon name="chevron-right" aria-hidden="true" />
+          <Chevron dir="right" />
         </ButtonLink>
       </div>
     </Menu>

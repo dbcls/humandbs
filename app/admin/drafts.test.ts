@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest"
 
 const WRITER = "app/admin/drafts.server.ts"
 
-const DRAFT_TABLES = ["researchDraft", "draftDatasetEntry", "draftPresence"]
+const DRAFT_TABLES = ["researchDraft", "draftDatasetEntry"]
 
 function sources(directory: string): string[] {
   return readdirSync(directory).flatMap((entry) => {
@@ -62,7 +62,7 @@ describe("writing to a draft", () => {
       "createDatasetInDraft",
       // Which datasets the version lists, and in what order, is content too.
       "changeListing",
-      "deleteDraftDataset",
+      "deleteResearchDataset",
       // Taking the draft away. Publishing calls it too, inside its own
       // transaction, which is how a publish stays inside this rule.
       "consumeDraft",
@@ -80,8 +80,7 @@ describe("writing to a draft", () => {
       .map((match) => match[1] ?? "")
 
     // Six of these create a row (or find the one already made), which has no
-    // earlier version of itself to disagree with. Three are not content: presence, which nobody reads for
-    // correctness and where a lost write costs one heartbeat, and the two share
+    // earlier version of itself to disagree with. Two are not content: the share
     // settings, where the last press winning is the answer and a check would
     // make flipping the switch fail every open editor's next save.
     //
@@ -98,7 +97,6 @@ describe("writing to a draft", () => {
         "draftCopiedFrom",
         "draftUpdating",
         "draftFromVersion",
-        "touchPresence",
         "setDraftSharing",
         "reissueShareToken",
         "mergeTermInDrafts",

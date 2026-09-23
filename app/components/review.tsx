@@ -21,7 +21,7 @@ import type { ReviewPageView } from "~/review/review.server"
 
 import { AdminBack } from "./admin"
 import { Badge, Confirm, Heading, Stack } from "./base"
-import { CommentRow, DdbjMark, type CommentContext } from "./comments"
+import { authorLabel, CommentRow, type CommentContext } from "./comments"
 import { Checkbox, Editing, Field, Submit, Unsaved } from "./form"
 import { Icon } from "./icons"
 import { Card, Empty, ExternalLink, Page, Section } from "./page"
@@ -100,9 +100,8 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
                       <ul className="flex flex-wrap gap-2 text-sm">
                         {rows.map((row) => (
                           <li key={`${row.name}-${row.createdAt}`}>
-                            <Badge>
-                              {`${row.name} — ${row.createdAt.slice(0, 10)}`}
-                              {row.bySignedIn && <DdbjMark locale={locale} />}
+                            <Badge icon={<Icon name="user" aria-hidden="true" />}>
+                              {`${authorLabel(locale, row.name, row.bySignedIn)} — ${row.createdAt.slice(0, 10)}`}
                             </Badge>
                           </li>
                         ))}

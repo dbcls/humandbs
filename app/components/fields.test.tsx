@@ -2,9 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { FieldProblem } from "~/admin/form.server"
-
-import { type Marks, PairField, SlotEditor, StateSwitch, toggledState } from "./fields"
+import { ItemList, LanguageMark, type Marks, PairField, Section, SlotEditor, StateSwitch, toggledState } from "./fields"
 
 /** Rendered inside a router, since the state switch beside the box closes on a move. */
 function render(element: React.ReactNode): string {
@@ -12,79 +10,6 @@ function render(element: React.ReactNode): string {
   return renderToStaticMarkup(<Stub initialEntries={["/admin"]} />)
 }
 
-function slot(problems: FieldProblem[], multiline = false): React.ReactNode {
-  return (
-    <SlotEditor
-      language="ja"
-      value={{ state: "value", text: "## 見出し" }}
-      multiline={multiline}
-      onChange={() => { /* nothing is typed here */ }}
-      locale="ja"
-      problems={problems}
-    />
-  )
-}
-
-const HEADING: FieldProblem = { path: "summary.aims", syntax: "heading", line: 1 }
-const TABLE: FieldProblem = { path: "summary.aims", syntax: "table", line: 3 }
-
-/** The ids the boxes name, in the order the boxes stand. */
-function describedBy(html: string): string[] {
-  return [...html.matchAll(/<(?:input|textarea)[^>]*aria-describedby="([^"]+)"/g)].map((found) => found[1] ?? "")
-}
-
-/** What the element carrying this id says, with the markup taken out. */
-function textOf(html: string, id: string): string {
-  const start = html.indexOf(`id="${id}"`)
-  if (start < 0) return ""
-  const end = html.indexOf("</ul>", start)
-  return html.slice(start, end).replace(/<[^>]*>/g, "")
-}
-
-describe("the problems a save found in one box", () => {
-  for (const multiline of [false, true]) {
-    const box = multiline ? "a box of several lines" : "a one-line box"
-
-    it(`are named by ${box}, so a reader on it hears what is wrong`, () => {
-      const html = render(slot([HEADING, TABLE], multiline))
-      const [id, ...more] = describedBy(html)
-      expect(more).toEqual([])
-      expect(id).toBeDefined()
-      expect(html).toMatch(/aria-invalid="true"/)
-      // The name leads to the list itself, and the list holds every problem.
-      expect(textOf(html, id ?? "")).toContain("見出し (1 行目)")
-      expect(textOf(html, id ?? "")).toContain("表 (3 行目)")
-    })
-
-    it(`leave ${box} unmarked when there are none`, () => {
-      const html = render(slot([], multiline))
-      expect(describedBy(html)).toEqual([])
-      expect(html).not.toContain("aria-invalid")
-      expect(html).not.toContain("text-danger")
-    })
-  }
-
-  it("are each box's own when two boxes of one field both have some", () => {
-    const html = render(
-      <>
-        {slot([HEADING])}
-        {slot([TABLE])}
-      </>,
-    )
-    const ids = describedBy(html)
-    expect(ids).toHaveLength(2)
-    expect(new Set(ids).size).toBe(2)
-    expect(textOf(html, ids[0] ?? "")).toContain("見出し (1 行目)")
-    expect(textOf(html, ids[0] ?? "")).not.toContain("表")
-    expect(textOf(html, ids[1] ?? "")).toContain("表 (3 行目)")
-  })
-})
-
-/**
- * The rule that keeps the two marks exclusive lives here rather than in the
- * button wiring, so it is checked as a fact about the function — not by
- * simulating a click the static render below cannot make.
- */
 describe("toggledState", () => {
   it("takes on the mark that was pressed, from a value", () => {
     expect(toggledState("value", "unknown")).toBe("unknown")
@@ -134,6 +59,26 @@ describe("the state switch", () => {
   })
 })
 
+describe("what a state mark says it does", () => {
+  it("draws the effect over the mark — taking it on, or letting it go once held — and keeps the state's word as the name", () => {
+    const value = render(<StateSwitch state="value" locale="ja" onChange={() => { /* nothing changes here */ }} />)
+    expect(value).toContain("未確定にする")
+    expect(value).toContain("該当なしにする")
+    expect(value).not.toContain("の解除")
+    const held = render(<StateSwitch state="unknown" locale="ja" onChange={() => { /* nothing changes here */ }} />)
+    expect(held).toContain("未確定の解除")
+    expect(held).toContain("該当なしにする")
+    expect(held).toContain("aria-label=\"未確定\"")
+  })
+
+  it("is a drawn sentence, not a title the browser shows late", () => {
+    const html = render(<StateSwitch state="value" locale="ja" onChange={() => { /* nothing changes here */ }} />)
+    expect(html).not.toContain("title=")
+    expect(html.match(/role="tooltip"/g)?.length).toBe(2)
+    expect(html).toMatch(/aria-describedby="[^"]+"/)
+  })
+})
+
 describe("a slot marked unsettled or not-applicable", () => {
   it("folds the box away and stands the state's own word in its place", () => {
     const html = render(
@@ -142,7 +87,6 @@ describe("a slot marked unsettled or not-applicable", () => {
         value={{ state: "unknown", text: "書きかけ" }}
         onChange={() => { /* nothing is typed here */ }}
         locale="ja"
-        problems={[]}
       />,
     )
     expect(html).not.toContain("<input")
@@ -158,7 +102,6 @@ describe("a slot marked unsettled or not-applicable", () => {
         multiline
         onChange={() => { /* nothing is typed here */ }}
         locale="ja"
-        problems={[]}
       />,
     )
     expect(html).not.toContain("<textarea")
@@ -177,7 +120,6 @@ describe("a slot marked unsettled or not-applicable", () => {
         value={{ state: "value", text: "書きかけ" }}
         onChange={() => { /* nothing is typed here */ }}
         locale="ja"
-        problems={[]}
       />,
     )
     expect(html).toContain("<input")
@@ -186,14 +128,29 @@ describe("a slot marked unsettled or not-applicable", () => {
 })
 
 describe("the dialect badge on a field's name row", () => {
-  const marks = (): Marks => ({ at: "summary.aims", changed: false, onTake: null, problems: [] })
+  const marks = (): Marks => ({ at: "summary.aims", changed: false, onTake: null })
   const pair = { ja: { state: "value" as const, text: "" }, en: { state: "value" as const, text: "" } }
 
-  it("stands on the name row even when the field has no name of its own", () => {
+  it("stands right after the name, before anything else on the row", () => {
+    const html = render(
+      <PairField label="対象" value={pair} multiline marks={{ ...marks(), changed: true }} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+    )
+    const name = html.indexOf(">対象<")
+    const badge = html.indexOf("リンクと改行")
+    const changed = html.indexOf("変更あり")
+    expect(name).toBeGreaterThan(-1)
+    expect(badge).toBeGreaterThan(name)
+    expect(changed).toBeGreaterThan(badge)
+    expect(html.slice(name, badge)).not.toContain("ml-auto")
+  })
+
+  it("is not drawn by a field with no name of its own — the heading naming it carries it", () => {
     const html = render(
       <PairField value={pair} multiline marks={marks()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
-    expect(html).toContain("リンクと改行")
+    expect(html).not.toContain("リンクと改行")
+    const section = render(<Section id="releaseNote" title="リリースノート" accepts="リンクと改行"><p>欄</p></Section>)
+    expect(section).toMatch(/<h2[^>]*>リリースノート[\s\S]*?リンクと改行[\s\S]*?<\/h2>/)
   })
 
   it("is absent from a field that does not read prose", () => {
@@ -201,5 +158,64 @@ describe("the dialect badge on a field's name row", () => {
       <PairField value={pair} marks={marks()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
     expect(html).not.toContain("リンクと改行")
+  })
+})
+
+describe("the language mark beside a box", () => {
+  it("names the language as its code, at the size of the words beside it", () => {
+    const html = render(<LanguageMark language="en" />)
+    expect(html).toContain("lang=\"en\"")
+    expect(html).toContain(">en<")
+    expect(html).toContain("text-sm")
+    expect(html).not.toContain("text-xs")
+  })
+})
+
+describe("a list of repeated elements", () => {
+  interface Row { id: string, name: string, number: string }
+  const columns = [
+    { header: "研究課題名", cell: (row: Row) => row.name },
+    { header: "研究課題番号", cell: (row: Row) => row.number },
+  ]
+  const list = (items: Row[]) => render(
+    <ItemList
+      path="grants"
+      locale="ja"
+      items={items}
+      title="助成金情報"
+      summary={(row) => row.name}
+      columns={columns}
+      onChange={() => { /* nothing changes here */ }}
+      makeEmpty={() => ({ id: "new", name: "", number: "" })}
+    >
+      {() => null}
+    </ItemList>,
+  )
+
+  it("stands as a table with the columns given, the four operations at each row's end, in the list's order", () => {
+    const html = list([{ id: "a", name: "課題 A", number: "JP1" }, { id: "b", name: "課題 B", number: "JP2" }])
+    expect(html).toContain("<table")
+    for (const header of ["研究課題名", "研究課題番号", "操作"]) expect(html).toContain(header)
+    expect(html.indexOf("課題 A")).toBeLessThan(html.indexOf("課題 B"))
+    expect(html).toContain("JP1")
+    for (const label of ["編集", "上へ", "下へ", "削除"]) {
+      expect(html.match(new RegExp(`aria-label="${label}"`, "g"))?.length, label).toBe(2)
+    }
+  })
+
+  it("lets a long value wrap rather than cutting it short", () => {
+    const html = list([{ id: "a", name: "ロングリード技術による ".repeat(8), number: "" }])
+    expect(html).not.toContain("truncate")
+  })
+
+  it("says 未入力 in the first column of a row with nothing written, and leaves the other cells empty", () => {
+    const html = list([{ id: "a", name: "", number: "" }])
+    expect(html.match(/未入力/g)?.length).toBe(1)
+  })
+
+  it("stands no table while the list is empty — only the way to add one", () => {
+    const html = list([])
+    expect(html).not.toContain("<table")
+    expect(html).toContain("追加")
   })
 })

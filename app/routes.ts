@@ -136,6 +136,11 @@ const management = [
       { id: "admin-research-files" },
     ),
     route(
+      "admin/research/:researchId/version/:number/dataset",
+      "routes/admin-version-datasets.tsx",
+      { id: "admin-version-datasets" },
+    ),
+    route(
       "admin/research/:researchId/draft/:draftId",
       "routes/admin-draft.tsx",
       { id: "admin-draft" },
@@ -185,7 +190,6 @@ const management = [
  * prefix has nothing to change about them.
  */
 const editing = [
-  route("admin/research/:researchId/draft/:draftId/presence", "routes/admin-draft-presence.ts"),
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
   route("admin/research/:researchId/draft/:draftId/page", "routes/admin-draft-page.ts"),
   route(

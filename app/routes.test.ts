@@ -77,7 +77,6 @@ describe("管理画面の登録", () => {
     // no frame to be inside of.
     expect(outside.every((path) => path?.startsWith("admin/assistant/api") === true
       || path?.includes("/upload") === true
-      || path?.includes("/presence") === true
       || path?.includes("/comments") === true
       // The draft drawn as its page, which the editor's second pane asks for
       // as the content changes. It answers with the drawing, not with a screen.
@@ -129,7 +128,6 @@ const TALKED_TO = [
   "draftCommentsPath",
   "draftPagePath",
   "datasetPagePath",
-  "draftPresencePath",
   "adminArticlePreviewPath",
 ]
 

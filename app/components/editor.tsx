@@ -20,7 +20,6 @@
  */
 
 import { useState, type ReactNode } from "react"
-import { Link } from "react-router"
 
 import { diffDraftInput, takeField } from "~/admin/diff"
 import type {
@@ -28,11 +27,12 @@ import type {
   DraftInput,
   LinkInput,
   LinksPairInput,
+  SlotState,
+  TextInput,
   ResearchContentInput,
 } from "~/admin/form"
 import type { AdminDraftPageView } from "~/admin/pages.server"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
-import type { DraftStepsView } from "~/admin/steps.server"
 import {
   adminDraftDatasetsPath,
   adminDraftPublishPath,
@@ -41,8 +41,8 @@ import {
   adminResearchPath,
   draftCommentsPath,
   draftPagePath,
-  draftPresencePath,
 } from "~/admin/urls"
+import type { CommentAnchor } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
@@ -51,34 +51,33 @@ import { RESEARCH } from "~/review/anchors"
 import {
   commentsByPath,
   memoComments,
-  unresolvedCount,
   wholeComments,
-  type CommentView,
 } from "~/review/comments"
 
-import { usePanes } from "./admin"
-import { Badge, Button, ButtonLink, IconButton, Note, Stack } from "./base"
+import { usePanes, WayTo } from "./admin"
+import { Badge, Button, IconButton, Stack } from "./base"
 import { DraftHead, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
-import { DraftNote, WholeNote, type CommentContext } from "./comments"
+import { DraftNote, OpenComments, WholeNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { ResearchBody, ResearchListTable } from "./research"
 import {
   ConflictBand,
-  FieldHead,
-  ItemList,
-  PairField,
-  ProblemBand,
-  Section,
-  SingleField,
-  StateSwitch,
-  UpstreamBand,
   emptyLinksPair,
   emptyPair,
   emptySlot,
-  newId,
+  FieldHead,
+  type ItemColumn,
+  ItemList,
+  LanguageMark,
   type Marks,
+  newId,
+  PairField,
+  Section,
+  SingleField,
+  StateSwitch,
+  PublishedBand,
 } from "./fields"
-import { CONTROL } from "./form"
+import { CONTROL, landOn } from "./form"
 import { Icon } from "./icons"
 
 /**
@@ -205,28 +204,35 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     if (found !== undefined && found !== null) setAt(found)
   }
 
-  /**
-   * Going to the place a band names.
-   *
-   * **Scrolling is not enough on its own.** An anchor moves the page to the
-   * section and leaves the keyboard where it was, so the eye and the caret end
-   * up in different places; what is focused here is the first thing in the
-   * section that will take it.
-   */
+  /** Going to the place a band or the page pane names (`form.tsx` の `landOn`). */
   function goTo(path: string): void {
     // The field itself when it stands open on the form; the section holding it
     // when it is written inside a panel that is not open (`ItemList`).
     const field = document.querySelector<HTMLElement>(`[data-at="${CSS.escape(path)}"]`)
     const target = field ?? document.getElementById(sectionOf(path))
     if (target === null) return
-    target.scrollIntoView(field === null ? undefined : { block: "center" })
-    // The first box that will take it, rather than the first one in the markup:
-    // the review layer hangs a comment form beside every field, and its own
-    // boxes come first while being hidden, folded away or otherwise unable to
-    // hold the caret. Asking each in turn is what tells the two apart.
-    for (const box of target.querySelectorAll<HTMLElement>("input, textarea")) {
-      box.focus({ preventScroll: true })
-      if (document.activeElement === box) return
+    landOn(target, field === null ? "start" : "center")
+  }
+
+  /**
+   * What to call the place an open comment is about (`OpenComments`).
+   *
+   * **The screen's own words, never a path.** `summary.aims` and
+   * `values.01a0…` are how the content addresses a place, not how anybody
+   * reading the panel knows it; a field this form draws is called what its
+   * label calls it, and a field of a dataset is called by that dataset, which
+   * is the screen it is written on.
+   */
+  function nameOf(anchor: CommentAnchor): string {
+    switch (anchor.kind) {
+      case "research-field":
+        return fieldLabelFor(anchor.path) ?? anchor.path
+      case "dataset-field": {
+        const dataset = view.datasets.find((one) => one.id === anchor.datasetId)
+        return dataset?.label ?? t.unpinnedDataset
+      }
+      default:
+        return t.whole
     }
   }
 
@@ -247,26 +253,41 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     goTo(path)
   }
 
+  // **The take-in's list is the band's**, since it shrinks as fields are
+  // taken; the dataset list is decided on its own screen, so its place is the
+  // way there — and it is added from the review's reading only when the
+  // take-in does not already carry it.
+  const comparedNumber = upstream?.number ?? view.review.publishedNumber
+  const differing = upstream?.differing ?? []
+  const differingPlaces = [
+    ...differing,
+    ...(view.review.changed.includes("datasetIds") && !differing.includes("datasetIds") ? ["datasetIds"] : []),
+  ].map((path) => (
+    path === "datasetIds"
+      ? { path, to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)) }
+      : { path, go: () => { goTo(path) } }
+  ))
+
   const formBody = (
     <div onFocusCapture={onFormFocus}>
       <Card under={false}>
         <Stack>
-          <PublishedBand view={view} onGo={goTo} />
+          {/* **The version's differences, once**, over the form. */}
+          {differingPlaces.length > 0 && comparedNumber !== null && (
+            <PublishedBand
+              locale={locale}
+              number={comparedNumber}
+              places={differingPlaces}
+              takeCount={differing.length}
+              onTakeAll={editing.takeUpstream}
+            />
+          )}
 
           {editing.conflict !== null && (
             <div onClick={onBandJump}>
               <ConflictBand locale={locale} changed={editing.conflict.changed} />
             </div>
           )}
-          {upstream !== null && upstream.differing.length > 0 && (
-            <UpstreamBand
-              locale={locale}
-              differing={upstream.differing}
-              number={upstream.number}
-              onTakeAll={editing.takeUpstream}
-            />
-          )}
-          {editing.problems.length > 0 && <ProblemBand locale={locale} problems={editing.problems} />}
 
           <Stack gap="block">
             <Stack gap="block">
@@ -279,7 +300,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 />
               </Section>
 
-              <Section id="releaseNote" title={words.releaseNote}>
+              <Section id="releaseNote" title={words.releaseNote} accepts={messages.admin.accepts.prose}>
                 <PairField
                   value={content.releaseNote}
                   multiline
@@ -327,7 +348,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 name: emptyPair(),
                 organization: { name: emptyPair() },
               })}
-              summary={(item) => item.name.ja.text || item.name.en.text}
+              summary={(item) => pairText(item.name, t.stateChoice)}
+              columns={[
+                { header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) },
+                { header: words.organization, cell: (item) => pairCell(item.organization.name, t.stateChoice) },
+              ]}
             >
               {(item, path, set) => (
                 <>
@@ -359,7 +384,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               marksFor={marksFor}
               onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
               makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
-              summary={(item) => item.name.ja.text || item.name.en.text}
+              summary={(item) => pairText(item.name, t.stateChoice)}
+              columns={[
+                { header: words.researchProjectName, cell: (item) => pairCell(item.name, t.stateChoice) },
+                { header: words.url, cell: (item) => <LinkLines links={item.url} /> },
+              ]}
             >
               {(item, path, set) => (
                 <>
@@ -394,7 +423,20 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 agency: { name: emptyPair() },
                 grantIds: [],
               })}
-              summary={(item) => item.title.ja.text || item.title.en.text}
+              summary={(item) => pairText(item.title, t.stateChoice)}
+              columns={[
+                { header: words.grantAgency, cell: (item) => pairCell(item.agency.name, t.stateChoice) },
+                { header: words.grantTitle, cell: (item) => pairCell(item.title, t.stateChoice) },
+                // A line each, as the page draws them: several numbers on one
+                // line run into one long code.
+                { header: words.grantId, cell: (item) => (
+                  <ul className="flex flex-col items-start gap-1">
+                    {item.grantIds.filter((grantId) => grantId !== "").map((grantId) => (
+                      <li key={grantId}><Badge pill>{grantId}</Badge></li>
+                    ))}
+                  </ul>
+                ) },
+              ]}
             >
               {(item, path, set) => (
                 <>
@@ -436,6 +478,17 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 datasetIds: [],
               })}
               summary={(item) => item.title.text}
+              columns={[
+                { header: words.publicationTitle, cell: (item) => slotCell(item.title, t.stateChoice) },
+                { header: t.doi, cell: (item) => <span className="break-all">{slotCell(item.doi, t.stateChoice)}</span> },
+                { header: words.dataInUse, cell: (item) => (
+                  <ul className="flex flex-col gap-1">
+                    {view.datasets
+                      .filter((row) => item.datasetIds.includes(row.id))
+                      .map((row) => <li key={row.id}>{datasetName(row, locale)}</li>)}
+                  </ul>
+                ) },
+              ]}
             >
               {(item, path, set) => (
                 <>
@@ -505,7 +558,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 locale={locale}
                 items={content.listingSummary.dataProviders}
                 title={words.principalInvestigator}
-                summary={(item) => item.name.ja.text || item.name.en.text}
+                summary={(item) => pairText(item.name, t.stateChoice)}
+                columns={[{ header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) }]}
                 makeEmpty={() => ({ id: newId(), name: emptyPair() })}
                 onChange={(next) => {
                   editContent((c) => ({
@@ -532,7 +586,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   )
   const panes = usePanes({
     locale,
-    remember: view.draftId,
     under: "bar",
     contents: [
       { id: "form", label: t.paneForm, body: formBody },
@@ -554,7 +607,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 **Where the caret is** is the page's to show too, on the value
                 itself (`page.tsx` の `Place`).
               */
-              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
+              annotate={(anchor, part) => <FieldReview review={review} at={anchor} part={part} fieldLabel={fieldLabelFor(anchor)} />}
               here={at}
               onGo={goTo}
               goLabel={t.goToField}
@@ -577,7 +630,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 {/* **Nothing is drawn until this language has been drawn.** The
                   other language's page would be the wrong words under the right
                   tab, and the first drawing arrives a keystroke's pause later. */}
-                {drawn !== null && <ResearchBody view={drawn.view} locale={language} releaseNote />}
+                {drawn !== null && <ResearchBody view={drawn.view} locale={language} releaseNote writtenOnly />}
               </Card>
             </AnnotationLayer>
           ),
@@ -594,7 +647,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             <Stack gap="block">
               {([["ja", pageJa], ["en", pageEn]] as const).map(([language, drawn]) => (
                 <Stack key={language} gap="tight">
-                  <span className="text-ink-muted text-xs" lang={language}>{language}</span>
+                  <LanguageMark language={language} />
                   {drawn !== null && (
                     <ResearchListTable
                       rows={[drawn.row]}
@@ -616,10 +669,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     <Page>
       <Stack>
         {/*
-          **The head is left for the research this draft belongs to; the
-          tools row is what stays while typing.** Between the two, the head's
-          second line reaches this draft's other faces, its memo and the way
-          to take a data-providing application in.
+          **The head is left for the research this draft belongs to, and folds
+          to its tools row while typing.** Its second line reaches this draft's
+          other faces, its memo and the way to take a data-providing
+          application in.
         */}
         <DraftHead
           locale={locale}
@@ -636,26 +689,27 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               locale={locale}
               researchId={view.researchId}
               draftId={view.draftId}
-              steps={view.steps}
-              review={{
-                context: review.context,
-                whole: wholeComments(view.review.comments),
-                memo: memoComments(view.review.comments),
-              }}
             />
           )}
-        />
-        <DraftTools
-          locale={locale}
-          panesControl={panes.control}
-          unresolved={view.steps.unresolved}
-          reviewHref={href(locale, adminDraftReviewPath(view.researchId, view.draftId))}
-          dirty={editing.dirty}
-          saved={editing.saved}
-          saving={editing.saving}
-          onSave={editing.save}
-          presencePath={draftPresencePath(view.researchId, view.draftId)}
-          presence={view.presence}
+          tools={(
+            <DraftTools
+              locale={locale}
+              panesControl={panes.control}
+              // **Memo, the whole, then what is still open** — from what only
+              // the office reads to what the office has to answer.
+              notes={(
+                <>
+                  <DraftNote context={review.context} comments={memoComments(view.review.comments)} />
+                  <WholeNote context={review.context} comments={wholeComments(view.review.comments)} />
+                  <OpenComments context={review.context} comments={view.review.comments} nameOf={nameOf} />
+                </>
+              )}
+              dirty={editing.dirty}
+              saved={editing.saved}
+              saving={editing.saving}
+              onSave={editing.save}
+            />
+          )}
         />
 
         {panes.view}
@@ -665,118 +719,36 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 }
 
 /**
- * What this draft is, read once on the way in: its other three faces (each
- * fact its own way there), the memo, the comments about the whole of it, and
- * the way to take a data-providing application in.
- *
- * **Each fact is the way to the screen it is about** (`docs/editing.md` の
- * 「draft」) — pressing "データセット 3 件" opens the dataset listing, and
- * "未解決 4" opens the review screen. The three stand in the order the work
- * runs in, but none is numbered and none is a step to complete: any of them
- * can be reached from any of the others, and what a curator reads here is how
- * the draft stands rather than what comes next.
+ * The draft's other faces, as the ways to them: taking an application in, the
+ * datasets, review and sharing, publishing — in the order the work goes, but
+ * named only, never numbered. **Each wears the face of the way out, with the
+ * mark after the word** (`admin.tsx` の `WayTo`): all four lead to another
+ * screen, and the row under them is where things are done in place. **The
+ * facts are not here** — how many datasets, whether it is shared, what stops
+ * publishing — each screen says its own on arrival, and what is still open is
+ * counted in the tools row.
  */
-function DraftOverview({ locale, researchId, draftId, steps, review }: {
+function DraftOverview({ locale, researchId, draftId }: {
   locale: Locale
   researchId: string
   draftId: string
-  steps: DraftStepsView
-  review: { context: CommentContext, whole: CommentView[], memo: CommentView[] }
 }) {
-  const messages = messagesFor(locale)
-  const admin = messages.admin
-  const detail = admin.detail
-  const share = steps.shared ? detail.shared : detail.notShared
-  const reviewFact = steps.unresolved > 0 ? `${share}・${detail.unresolved(steps.unresolved)}` : share
-  const publishFact = steps.blocks > 0
-    ? detail.blocked(steps.blocks)
-    : steps.findings > 0 ? detail.toConfirm(steps.findings) : detail.ready
-
+  const admin = messagesFor(locale).admin
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <ButtonLink
-        to={href(locale, adminDraftDatasetsPath(researchId, draftId))}
-        icon={<Icon name="database" aria-hidden="true" />}
-      >
-        {`${admin.draft.datasets} ${detail.datasetCount(steps.datasets)}`}
-      </ButtonLink>
-      <ButtonLink
-        to={href(locale, adminDraftReviewPath(researchId, draftId))}
-        icon={<Icon name="comment" aria-hidden="true" />}
-      >
-        {`${admin.review.heading} (${reviewFact})`}
-      </ButtonLink>
-      <ButtonLink
-        to={href(locale, adminDraftPublishPath(researchId, draftId))}
-        icon={<Icon name="upload" aria-hidden="true" />}
-      >
-        {`${admin.publish.heading} (${publishFact})`}
-      </ButtonLink>
-      <WholeNote context={review.context} comments={review.whole} />
-      <DraftNote context={review.context} comments={review.memo} />
-      <ButtonLink
-        to={href(locale, adminDraftUpstreamPath(researchId, draftId))}
-        icon={<Icon name="download" aria-hidden="true" />}
-      >
+      <WayTo to={href(locale, adminDraftUpstreamPath(researchId, draftId))} icon="download">
         {admin.templates.openApplication}
-      </ButtonLink>
+      </WayTo>
+      <WayTo to={href(locale, adminDraftDatasetsPath(researchId, draftId))} icon="database">
+        {admin.draft.datasets}
+      </WayTo>
+      <WayTo to={href(locale, adminDraftReviewPath(researchId, draftId))} icon="comment">
+        {admin.review.heading}
+      </WayTo>
+      <WayTo to={href(locale, adminDraftPublishPath(researchId, draftId))} icon="upload">
+        {admin.publish.heading}
+      </WayTo>
     </div>
-  )
-}
-
-/**
- * How this draft stands against the version a reader sees now, and what the
- * review has to say. The places are listed rather than only counted: some of
- * them — a list whose membership changed — have no field of their own to mark.
- */
-function PublishedBand({ view, onGo }: {
-  view: AdminDraftPageView
-  onGo: (path: string) => void
-}) {
-  const t = messagesFor(view.locale).admin.editor
-  const review = view.review
-  const open = unresolvedCount(review.comments)
-
-  if (review.publishedNumber === null) {
-    return <Empty>{t.noPublishedVersion}</Empty>
-  }
-  if (review.changed.length === 0 && open === 0) return null
-
-  return (
-    <Note kind="plain">
-      <Stack gap="tight">
-        {review.changed.length > 0 && (
-          <>
-            <p>{t.differsCount(review.publishedNumber, review.changed.length)}</p>
-            <ul className="flex flex-wrap gap-2">
-              {review.changed.map((path) => (
-                <li key={path}>
-                  {/* Each one goes to that field, and the mark is what says so:
-                      a bare path in a row of paths reads as a list, not as
-                      places to press (`docs/ui.md` の「押せるもの」). */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    icon={<Icon name="chevron-right" aria-hidden="true" />}
-                    onClick={() => { onGo(path) }}
-                  >
-                    {path}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        {open > 0 && (
-          <p>
-            <Link to={href(view.locale, adminDraftReviewPath(view.researchId, view.draftId))}>
-              {messagesFor(view.locale).admin.detail.openComments(open)}
-            </Link>
-          </p>
-        )}
-      </Stack>
-    </Note>
   )
 }
 
@@ -801,11 +773,11 @@ function writtenNames(providers: DataProviderInput[], locale: Locale): string {
  * A part of the form holding a list of one kind of thing: providers, projects,
  * grants, papers.
  *
- * The four differ in what one element holds and in what an empty one looks
- * like. **Everything around that is the same in all four** — the mark for the
- * list itself, a card per element carrying its own way to move and remove it,
- * and the way to add one more — and four copies of it would be four things able
- * to drift apart.
+ * The four differ in what one element holds, in what an empty one looks like
+ * and in which columns the table shows. **Everything around that is the same
+ * in all four** — the mark for the list itself, a row per element carrying its
+ * own way to open, move and remove it, and the way to add one more — and four
+ * copies of it would be four things able to drift apart.
  *
  * **The anchor is the path the list is addressed by** (`TAB_OF`), so a band
  * naming a place inside one of these elements can find the section holding it.
@@ -819,6 +791,7 @@ function RepeatingSection<T extends { id: string }>({
   onChange,
   makeEmpty,
   summary,
+  columns,
   children,
 }: {
   id: string
@@ -829,8 +802,10 @@ function RepeatingSection<T extends { id: string }>({
   onChange: (next: T[]) => void
   /** One more of whatever the list holds, with nothing written in it yet. */
   makeEmpty: () => T
-  /** What one element is, in a line, for the card that stands for it. */
+  /** What one element is, in a line, for the panel's name. */
   summary: (item: T) => string
+  /** The table's columns — the public page's for the same list (`fields.tsx` の `ItemList`). */
+  columns: ItemColumn<T>[]
   /** One element's own fields, given the path it is addressed by and its setter. */
   children: (item: T, path: string, set: (next: T) => void) => ReactNode
 }) {
@@ -845,6 +820,7 @@ function RepeatingSection<T extends { id: string }>({
         items={items}
         title={title}
         summary={summary}
+        columns={columns}
         onChange={onChange}
         makeEmpty={makeEmpty}
       >
@@ -857,6 +833,11 @@ function RepeatingSection<T extends { id: string }>({
 /**
  * A URL pair. The two languages are different resources rather than two
  * renderings of one, so nothing here is ever untranslated.
+ *
+ * **The two languages stand one above the other, as every pair does**
+ * (`docs/ui.md` の「1 つの値の 2 つの言語は上下に積む」): side by side, each
+ * link's address and text had half a panel's width between them and the pair
+ * read as two columns of a table rather than as one value written twice.
  */
 function LinksField({ label, value, marks, locale, onChange }: {
   label: string
@@ -870,7 +851,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
   return (
     <Stack gap="tight" at={marks.at}>
       <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="flex flex-col gap-2">
         {(["ja", "en"] as const).map((language) => {
           const side = value[language]
           const setLinks = (links: LinkInput[]) => {
@@ -879,7 +860,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
           return (
             <Stack key={language} gap="tight">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-ink-muted text-xs" lang={language}>{language}</span>
+                <LanguageMark language={language} />
                 <StateSwitch
                   state={side.state}
                   onChange={(state) => { onChange({ ...value, [language]: { ...side, state } }) }}
@@ -922,7 +903,7 @@ function LinksField({ label, value, marks, locale, onChange }: {
               <div>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="secondary"
                   size="xs"
                   icon={<Icon name="plus" aria-hidden="true" />}
                   disabled={side.state !== "value"}
@@ -980,7 +961,7 @@ function GrantIds({ locale, value, marks, onChange }: {
           <div>
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="xs"
               icon={<Icon name="plus" aria-hidden="true" />}
               onClick={() => { onChange([...value, ""]) }}
@@ -991,6 +972,52 @@ function GrantIds({ locale, value, marks, onChange }: {
         </Stack>
       </div>
     </Stack>
+  )
+}
+
+/** The words for the two states a side can wear instead of a value (`admin.editor.stateChoice`). */
+type StateWords = Record<Exclude<SlotState, "value">, string>
+
+/**
+ * What one side of a value says in a line: its text, or the word for the
+ * state it wears instead. A side marked unsettled or not applicable has no
+ * text to show, and a row saying 未入力 for it would say the curator has not
+ * answered when they have.
+ */
+function sideLine(side: TextInput, states: StateWords): { text: string, isState: boolean } {
+  return side.state === "value" ? { text: side.text, isState: false } : { text: states[side.state], isState: true }
+}
+
+/** The Japanese side, or the English while the Japanese side is a value with nothing typed. */
+function pairLine(pair: { ja: TextInput, en: TextInput }, states: StateWords): { text: string, isState: boolean } {
+  const ja = sideLine(pair.ja, states)
+  return ja.text !== "" ? ja : sideLine(pair.en, states)
+}
+
+function pairText(pair: { ja: TextInput, en: TextInput }, states: StateWords): string {
+  return pairLine(pair, states).text
+}
+
+/** A line as a table cell: a state's word in the muted face a folded box wears (`fields.tsx`), a value as it is. */
+function lineCell(line: { text: string, isState: boolean }): ReactNode {
+  return line.isState ? <span className="text-ink-muted">{line.text}</span> : line.text
+}
+
+function pairCell(pair: { ja: TextInput, en: TextInput }, states: StateWords): ReactNode {
+  return lineCell(pairLine(pair, states))
+}
+
+function slotCell(slot: TextInput, states: StateWords): ReactNode {
+  return lineCell(sideLine(slot, states))
+}
+
+/** A pair of link lists as lines, the way the page draws them: a link's text, or its address. */
+function LinkLines({ links }: { links: LinksPairInput }) {
+  const shown = links.ja.links.length > 0 ? links.ja.links : links.en.links
+  return (
+    <ul className="flex flex-col gap-1 break-all">
+      {shown.map((link) => <li key={link.id}>{link.text !== "" ? link.text : link.url}</li>)}
+    </ul>
   )
 }
 

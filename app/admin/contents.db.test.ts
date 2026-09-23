@@ -167,6 +167,19 @@ describe("slug", () => {
     expect(result.status).toBe("duplicate-slug")
     expect(await slugOf(id)).toBe("faq")
   })
+
+  it("版の slug は打ち直せない — 系列の下にある document の rename は撥ねる", async () => {
+    const token = await signIn(CURATOR, true)
+    const revision = await makeDocument("x/version/1")
+    await db.insert(s.documentSeries).values({ slug: "x", currentId: revision })
+
+    const result = await documentAction(
+      post(token, adminDocumentPath(revision), { intent: "rename", slug: "y" }),
+      revision,
+    )
+    expect(result.status).toBe("not-a-revision")
+    expect(await slugOf(revision)).toBe("x/version/1")
+  })
 })
 
 describe("本文と公開", () => {
@@ -586,7 +599,7 @@ describe("版", () => {
 })
 
 describe("お知らせ", () => {
-  it("作るといまの日時で始まり、その画面へ送られる", async () => {
+  it("作ると日時は未入力で、その画面へ送られる", async () => {
     const token = await signIn(CURATOR, true)
     const redirected = await thrown(() => newsListAction(
       post(token, adminNewsListPath(), { intent: "create-news" }),
@@ -594,10 +607,38 @@ describe("お知らせ", () => {
 
     expect(redirected.status).toBe(302)
     const row = only(await db.select().from(s.news))
-    // 分まで突き合わせると、作った時点と測る時点で日が跨ぐことがある。形と日付を見る。
-    expect(row.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
-    expect(row.publishedAt?.slice(0, 10)).toBe(today())
+    // 作った時点の日時が入ると、意図して入れた日付と見分けが付かない。
+    expect(row.publishedAt).toBeNull()
     expect(redirected.headers.get("location")).toContain(row.id)
+  })
+
+  it("日時が未入力のあいだは公開できず、言語はどれも上がらない", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = only(await db.insert(s.news).values({}).returning({ id: s.news.id })).id
+
+    const result = await newsAction(post(token, adminNewsPath(id), {
+      intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
+    }), id)
+
+    expect(result.status).toBe("undated")
+    expect(await db.select().from(s.newsContent)).toEqual([])
+    expect(await db.select().from(s.event).where(eq(s.event.subjectType, "news"))).toEqual([])
+  })
+
+  it("公開中の言語があるあいだは日時を空にできない", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = only(await db.insert(s.news).values({ publishedAt: "2026-03-01 09:30:00" })
+      .returning({ id: s.news.id })).id
+    await newsAction(post(token, adminNewsPath(id), {
+      intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
+    }), id)
+
+    const result = await newsAction(post(token, adminNewsPath(id), {
+      intent: "set-date", publishedAt: "",
+    }), id)
+
+    expect(result.status).toBe("dated-while-published")
+    expect(only(await db.select().from(s.news)).publishedAt).toBe("2026-03-01 09:30:00")
   })
 
   it("公開日時は admin が入れる", async () => {
@@ -657,7 +698,8 @@ describe("お知らせ", () => {
 
   it("公開は locale ごとで、証跡の相手は news になる", async () => {
     const token = await signIn(CURATOR, true)
-    const id = only(await db.insert(s.news).values({}).returning({ id: s.news.id })).id
+    const id = only(await db.insert(s.news).values({ publishedAt: "2026-01-01 09:00:00" })
+      .returning({ id: s.news.id })).id
 
     const result = await newsAction(post(token, adminNewsPath(id), {
       intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
@@ -686,7 +728,8 @@ describe("お知らせ", () => {
 
   it("お知らせを消すと本文ごと消えて、公開されていた言語だけが証跡に残る", async () => {
     const token = await signIn(CURATOR, true)
-    const id = only(await db.insert(s.news).values({}).returning({ id: s.news.id })).id
+    const id = only(await db.insert(s.news).values({ publishedAt: "2026-01-01 09:00:00" })
+      .returning({ id: s.news.id })).id
     await newsAction(post(token, adminNewsPath(id), {
       intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
     }), id)
@@ -764,7 +807,7 @@ describe("お知らせ", () => {
     expect(view.rows.map((row) => row.id)).toEqual([out])
     expect(view.total).toBe(1)
     // 日本語の軸は自分の条件を外して数えるので、母集団は 3 件のまま。
-    expect(view.counts.ja).toEqual({ published: 1, unpublished: 2 })
+    expect(view.counts.ja).toEqual({ published: 1, scheduled: 0, unpublished: 2 })
     // 公開日の軸は日本語の条件が効いた 1 件の中で数える。
     expect(view.counts.dating).toEqual({ dated: 1, undated: 0 })
   })
@@ -1111,5 +1154,60 @@ describe("隣に描く姿", () => {
     const token = await signIn(READER, false)
     const refused = await thrown(() => articlePreviewAction(postJson(token, { locale: "ja", title: "", body: "" })))
     expect(refused.status).toBe(403)
+  })
+})
+
+describe("お知らせの公開日時と公開", () => {
+  it("作ったばかりのお知らせは公開日時を持たない", async () => {
+    const token = await signIn(CURATOR, true)
+    await thrown(() => newsListAction(post(token, adminNewsListPath(), { intent: "create-news" })))
+
+    expect(only(await db.select().from(s.news)).publishedAt).toBe(null)
+  })
+
+  it("公開日時が無いお知らせは公開できず、本文も書かれない", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = only(await db.insert(s.news).values({}).returning({ id: s.news.id })).id
+
+    const result = await newsAction(post(token, adminNewsPath(id), {
+      intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
+    }), id)
+
+    expect(result.status).toBe("undated")
+    expect(await db.select().from(s.newsContent)).toEqual([])
+  })
+
+  it("公開中の言語があるあいだは公開日時を空にできず、公開停止すれば空にできる", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = only(await db.insert(s.news).values({ publishedAt: "2020-01-01 09:00:00" })
+      .returning({ id: s.news.id })).id
+    await newsAction(post(token, adminNewsPath(id), {
+      intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
+    }), id)
+
+    const refused = await newsAction(post(token, adminNewsPath(id), { intent: "set-date", publishedAt: "" }), id)
+    expect(refused.status).toBe("dated-while-published")
+    expect(only(await db.select().from(s.news)).publishedAt).toBe("2020-01-01 09:00:00")
+
+    const revision = String(only(await db.select().from(s.newsContent)).revision)
+    await newsAction(post(token, adminNewsPath(id), { intent: "unpublish", locale: "ja", revision }), id)
+    const cleared = await newsAction(post(token, adminNewsPath(id), { intent: "set-date", publishedAt: "" }), id)
+    expect(cleared.status).toBe("ok")
+    expect(only(await db.select().from(s.news)).publishedAt).toBe(null)
+  })
+
+  it("一覧は、日時がまだ来ていない公開中の言語を公開予定として数える", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = only(await db.insert(s.news).values({ publishedAt: "2099-01-01 09:00:00" })
+      .returning({ id: s.news.id })).id
+    await newsAction(post(token, adminNewsPath(id), {
+      intent: "publish", locale: "ja", revision: "", title: "題", body: "本文",
+    }), id)
+
+    const view = await newsListPage(get(token, adminNewsListPath()))
+    expect(view.counts.ja).toEqual({ published: 0, scheduled: 1, unpublished: 0 })
+    expect(view.counts.en).toEqual({ published: 0, scheduled: 0, unpublished: 1 })
+    const narrowed = await newsListPage(get(token, `${adminNewsListPath()}?ja=scheduled`))
+    expect(narrowed.rows.map((row) => row.id)).toEqual([id])
   })
 })

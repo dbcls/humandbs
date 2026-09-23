@@ -22,7 +22,10 @@ const CODE = /^[A-Z][0-9]{2}[0-9A-Z]{0,2}$/
 /** The vocabulary whose term codes are ICD10 codes. */
 export const ICD10_SET_CODE = "icd10"
 
-/** One entry of the dictionary. Either title may be missing. */
+/** How that vocabulary is named where it has to be made before the catalog is seeded. */
+export const ICD10_SET_LABELS = { ja: "疾患", en: "Disease" } as const
+
+/** One code as a distribution names it. Either title may be missing. */
 export interface Icd10Entry {
   code: string
   titleEn: string | null

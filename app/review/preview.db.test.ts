@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import {
   createDatasetInDraft,
+  createEmptyDraft,
   createResearchWithDraft,
   reissueShareToken,
   saveDatasetEntry,
@@ -347,32 +348,28 @@ describe("the listing row a draft is drawn with", () => {
 
 describe("the comments a preview shows", () => {
   /**
-   * A draft that has since stopped listing one of its research's datasets:
-   * `unlistedId` still has an entry and could still be commented on from the
-   * editor, but no version and no preview page draws it any more.
+   * This draft beside another draft of the same research. **A dataset another
+   * draft made is not this one's** (docs/data-model.md の「research /
+   * experiment / dataset」): it could be commented on from that draft's editor,
+   * but no version and no preview page here draws it.
    */
-  async function withUnlistedDataset(): Promise<{
+  async function withAnotherDraftsDataset(): Promise<{
     draftId: string
     token: string
-    listedId: string
-    unlistedId: string
+    carriedId: string
+    otherId: string
   }> {
     const { draftId, researchId, token } = await sharedDraft()
-    const listed = await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
-    if (listed.status !== "created") throw new Error("expected the listed dataset to be created")
-    const unlisted = await createDatasetInDraft(db, { draftId, revision: 3 }, researchId)
-    if (unlisted.status !== "created") throw new Error("expected the unlisted dataset to be created")
-    const saved = await saveDraftContent(
-      db,
-      { draftId, revision: 4 },
-      { content: { ...titled("題目"), datasetIds: [listed.datasetId] } },
-    )
-    if (saved.status !== "saved") throw new Error("expected the version's dataset list to save")
-    return { draftId, token, listedId: listed.datasetId, unlistedId: unlisted.datasetId }
+    const carried = await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
+    if (carried.status !== "created") throw new Error("expected this draft's dataset to be created")
+    const otherDraftId = await createEmptyDraft(db, researchId)
+    const theirs = await createDatasetInDraft(db, { draftId: otherDraftId, revision: 1 }, researchId)
+    if (theirs.status !== "created") throw new Error("expected the other draft's dataset to be created")
+    return { draftId, token, carriedId: carried.datasetId, otherId: theirs.datasetId }
   }
 
-  it("returns research comments and comments of the datasets the version lists, and no others", async () => {
-    const { draftId, token, listedId, unlistedId } = await withUnlistedDataset()
+  it("returns research comments and the comments of the datasets it carries, and no others", async () => {
+    const { draftId, token, carriedId, otherId } = await withAnotherDraftsDataset()
     await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
@@ -381,22 +378,22 @@ describe("the comments a preview shows", () => {
     })
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: listedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: carriedId }, "values.k1"),
       author: { sub: null, name: "reader" },
-      body: "on the listed dataset",
+      body: "on the dataset it carries",
     })
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: otherId }, "values.k1"),
       author: { sub: null, name: "reader" },
-      body: "on the dropped dataset",
+      body: "on another draft's dataset",
     })
 
     const view = await previewResearchPage(get(), "ja", token)
 
     expect(view.comments.map((one) => one.body).sort()).toEqual([
       "on research",
-      "on the listed dataset",
+      "on the dataset it carries",
     ])
   })
 
@@ -411,17 +408,17 @@ describe("the comments a preview shows", () => {
     expect(view.comments.map((one) => one.body)).toEqual(["on the whole"])
   })
 
-  it("drops a dataset's comments once the version stops listing it, resolved or not", async () => {
-    const { draftId, token, unlistedId } = await withUnlistedDataset()
+  it("drops the comments of a dataset another draft made, resolved or not", async () => {
+    const { draftId, token, otherId } = await withAnotherDraftsDataset()
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: otherId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "open",
     })
     const toResolve = await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k2"),
+      anchor: anchorOf({ kind: "dataset", datasetId: otherId }, "values.k2"),
       author: { sub: null, name: "reader" },
       body: "resolved",
     })
@@ -438,7 +435,7 @@ describe("the comments a preview shows", () => {
   })
 
   it("counts unresolved comments only among the ones the page draws", async () => {
-    const { draftId, token, unlistedId } = await withUnlistedDataset()
+    const { draftId, token, otherId } = await withAnotherDraftsDataset()
     await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
@@ -447,9 +444,9 @@ describe("the comments a preview shows", () => {
     })
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: otherId }, "values.k1"),
       author: { sub: null, name: "reader" },
-      body: "on the dropped dataset",
+      body: "on another draft's dataset",
     })
 
     const view = await previewResearchPage(get(), "ja", token)
@@ -458,7 +455,7 @@ describe("the comments a preview shows", () => {
   })
 
   it("returns a dataset preview only the comments addressed to that dataset", async () => {
-    const { draftId, token, listedId, unlistedId } = await withUnlistedDataset()
+    const { draftId, token, carriedId, otherId } = await withAnotherDraftsDataset()
     await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
@@ -467,18 +464,18 @@ describe("the comments a preview shows", () => {
     })
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: listedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: carriedId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "on this dataset",
     })
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: unlistedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: otherId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "on another dataset",
     })
 
-    const view = await previewDatasetPage(get(), "ja", token, listedId)
+    const view = await previewDatasetPage(get(), "ja", token, carriedId)
 
     expect(view.comments.map((one) => one.body)).toEqual(["on this dataset"])
   })

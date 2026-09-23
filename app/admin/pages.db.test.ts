@@ -10,7 +10,12 @@ import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { seedDataset, seedVersion } from "~/db/seed"
 
-import { createDatasetInDraft, createResearchWithDraft, saveDraftContent } from "./drafts.server"
+import {
+  createDatasetInDraft,
+  createEmptyDraft,
+  createResearchWithDraft,
+  saveDraftContent,
+} from "./drafts.server"
 import { researchContentInput, type DraftInput } from "./form"
 import {
   createResearchAction,
@@ -19,13 +24,13 @@ import {
   draftDatasetListAction,
   draftDatasetListPage,
   draftEditorPage,
-  presenceAction,
   publishAction,
   researchDetailAction,
   researchDetailPage,
   researchListPage,
   saveDatasetAction,
   saveDraftAction,
+  versionDatasetListPage,
 } from "./pages.server"
 import { readDraft } from "./queries.server"
 
@@ -166,6 +171,91 @@ describe("the listing", () => {
 
     expect(view.rows[0]?.flags.untranslated).toBe(true)
     expect(view.rows[0]?.title).toBe("題目")
+  })
+
+  it("names a published research by its latest version while its draft is still empty", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1, body: { title: { ja: filled("最初の題目"), en: filled("") } } })
+    await seedVersion(db, { researchId, number: 2, body: { title: { ja: filled("いまの題目"), en: filled("") } } })
+
+    const view = await researchListPage(get(token, "/admin/research"), "ja")
+
+    expect(only(view.rows).title).toBe("いまの題目")
+    expect(only(view.rows).draftCount).toBe(1)
+  })
+
+  it("keeps naming by the version when the draft carries a title of its own", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1, body: { title: { ja: filled("公開の題目"), en: filled("") } } })
+    await saveDraftContent(db, { draftId, revision: 1 }, {
+      content: { ...emptyResearchContent(), title: { ja: filled("下書きの題目"), en: filled("") } },
+    })
+
+    const view = await researchListPage(get(token, "/admin/research"), "ja")
+
+    expect(only(view.rows).title).toBe("公開の題目")
+  })
+
+  it("still reads what is missing from the draft while naming by the version", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await seedVersion(db, {
+      researchId,
+      number: 1,
+      body: { title: { ja: filled("公開の題目"), en: filled("Published title") } },
+    })
+    await saveDraftContent(db, { draftId, revision: 1 }, {
+      content: { ...emptyResearchContent(), title: { ja: filled("下書きの題目"), en: filled("") } },
+    })
+
+    const row = only((await researchListPage(get(token, "/admin/research"), "ja")).rows)
+
+    expect(row.title).toBe("公開の題目")
+    expect(row.flags.untranslated).toBe(true)
+  })
+
+  it("matches the box against the title the row shows, not against a draft's", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1, body: { title: { ja: filled("公開の題目"), en: filled("") } } })
+    await saveDraftContent(db, { draftId, revision: 1 }, {
+      content: { ...emptyResearchContent(), title: { ja: filled("下書きの題目"), en: filled("") } },
+    })
+
+    expect((await researchListPage(get(token, "/admin/research?q=公開の題目"), "ja")).rows)
+      .toHaveLength(1)
+    expect((await researchListPage(get(token, "/admin/research?q=下書きの題目"), "ja")).rows)
+      .toHaveLength(0)
+  })
+
+  it("says which datasets a reader can open: the ones with a search row, in label order", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await pinHum(researchId, "hum0001")
+    const out = only(await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id }))
+    const held = only(await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id }))
+    await pinDataset(out.id, "JGAD000002")
+    await pinDataset(held.id, "JGAD000001")
+    await db.insert(s.searchDoc).values({
+      targetType: "dataset",
+      targetId: out.id,
+      researchId,
+      humLabel: "hum0001",
+      datasetLabel: "JGAD000002",
+      content: emptyDatasetContent(),
+      title: "",
+      textJa: "",
+      textEn: "",
+    })
+
+    const row = only((await researchListPage(get(token, "/admin/research"), "ja")).rows)
+
+    expect(row.datasets).toEqual([
+      { label: "JGAD000001", published: false },
+      { label: "JGAD000002", published: true },
+    ])
   })
 
   it("narrows to what was typed into the box", async () => {
@@ -353,11 +443,11 @@ describe("saving a draft", () => {
     expect((await readDraft(db, draftId))?.content.title.ja).toEqual(filled("theirs"))
   })
 
-  it("writes nothing at all when prose holds markup the tree cannot keep", async () => {
+  it("writes prose holding markup the tree cannot keep as the characters typed", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     const input = draftInput()
-    input.content.title.ja = { state: "value", text: "この題目は保存されない" }
+    input.content.title.ja = { state: "value", text: "この題目は保存される" }
     input.content.summary.aims.en = { state: "value", text: "# a heading" }
 
     const result = await saveDraftAction(
@@ -365,12 +455,10 @@ describe("saving a draft", () => {
       { researchId, draftId },
     )
 
-    expect(result.status).toBe("invalid")
-    if (result.status !== "invalid") return
-    expect(result.problems).toEqual([{ path: "summary.aims.en", syntax: "heading", line: 1 }])
+    expect(result.status).toBe("saved")
     const draft = await readDraft(db, draftId)
-    expect(draft?.revision).toBe(1)
-    expect(draft?.content).toEqual(emptyResearchContent())
+    expect(draft?.content.title.ja).toEqual(filled("この題目は保存される"))
+    expect(draft?.content.summary.aims.en).toEqual({ state: "value", value: [[{ text: "# a heading" }]] })
   })
 
   it("refuses a version that lists a dataset belonging to another research", async () => {
@@ -661,6 +749,65 @@ describe("the research screen's table", () => {
   })
 })
 
+describe("the datasets of a version", () => {
+  it("lists what the version lists, in the version's order, under the ids they carry now", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    const first = await seedDataset(db, researchId, "JGAD000001")
+    const second = await seedDataset(db, researchId, "JGAD000002")
+    // The research has a third, which this version does not list.
+    await seedDataset(db, researchId, "JGAD000003")
+    await seedVersion(db, { researchId, number: 1, datasets: [{ datasetId: second }, { datasetId: first }] })
+    await seedVersion(db, { researchId, number: 2, datasets: [{ datasetId: first }] })
+
+    const view = await versionDatasetListPage(get(token, "/x"), "ja", { researchId, number: "1" })
+
+    expect(view.number).toBe(1)
+    expect(view.rows).toEqual([{ id: second, label: "JGAD000002" }, { id: first, label: "JGAD000001" }])
+  })
+
+  it("lists an empty version as empty rather than as the research's datasets", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await seedDataset(db, researchId, "JGAD000001")
+    await seedVersion(db, { researchId, number: 1 })
+
+    const view = await versionDatasetListPage(get(token, "/x"), "ja", { researchId, number: "1" })
+
+    expect(view.rows).toEqual([])
+  })
+
+  it("answers 404 for a number the research has no version of, and for what is not a number", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1 })
+
+    for (const number of ["2", "0", "01", "v1", "1.5", "-1", "", undefined]) {
+      expect((await thrown(() =>
+        versionDatasetListPage(get(token, "/x"), "ja", { researchId, number }))).status).toBe(404)
+    }
+  })
+
+  it("answers 404 under another research, even for a number that one has", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    const { researchId: other } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1 })
+
+    expect((await thrown(() =>
+      versionDatasetListPage(get(token, "/x"), "ja", { researchId: other, number: "1" }))).status).toBe(404)
+  })
+
+  it("refuses somebody signed in without the capability", async () => {
+    const token = await signIn(READER, false)
+    const { researchId } = await createResearchWithDraft(db)
+    await seedVersion(db, { researchId, number: 1 })
+
+    expect((await thrown(() =>
+      versionDatasetListPage(get(token, "/x"), "ja", { researchId, number: "1" }))).status).toBe(403)
+  })
+})
+
 describe("the dataset screens of a draft", () => {
   async function seedCatalog(): Promise<{
     textKey: string
@@ -891,7 +1038,7 @@ describe("the dataset screens of a draft", () => {
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
   })
 
-  it("answers refused markup with the field it was written in, and writes nothing", async () => {
+  it("writes a text value holding markup the tree cannot keep as the characters typed", async () => {
     const token = await signIn(CURATOR, true)
     const catalog = await seedCatalog()
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -903,8 +1050,10 @@ describe("the dataset screens of a draft", () => {
       params,
     )
 
-    expect(result.status).toBe("invalid")
-    expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
+    expect(result.status).toBe("saved")
+    const entries = await db.select().from(s.draftDatasetEntry)
+    expect(entries).toHaveLength(1)
+    expect(JSON.stringify(entries[0]?.content)).toContain("# 見出し")
   })
 
   it("answers a stale save with what the entry holds now, and leaves it alone", async () => {
@@ -927,7 +1076,7 @@ describe("the dataset screens of a draft", () => {
     expect(theirs?.kind === "text" && theirs.text.ja.text).toBe("theirs")
   })
 
-  it("lists a dataset it creates, and refuses to destroy one that is published", async () => {
+  it("carries a dataset it creates, and takes a published one out of the research", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     const params = { researchId, draftId }
@@ -941,18 +1090,18 @@ describe("the dataset screens of a draft", () => {
 
     const view = await draftDatasetListPage(get(token, "/x"), "ja", params)
     expect(view.rows).toHaveLength(1)
-    expect(view.rows[0]?.listed).toBe(true)
     expect(view.rows[0]?.isOwn).toBe(true)
 
     const datasetId = view.rows[0]?.id ?? ""
-    // Publishing is what clears `originDraftId`; after that the draft that made
-    // it may no longer destroy it.
+    // Publishing is what clears `originDraftId`. A dataset belongs to the
+    // research either way, so it is still this draft's to take out.
     await db.update(s.dataset).set({ originDraftId: null }).where(eq(s.dataset.id, datasetId))
     expect(await draftDatasetListAction(
       postForm(token, "/x", { intent: "delete-dataset", datasetId, revision: String(view.revision) }),
       "ja",
       params,
-    )).toEqual({ status: "refused" })
+    )).toBeInstanceOf(Response)
+    expect(await db.select().from(s.dataset)).toEqual([])
   })
 
   it("pins a dataset's id from its own screen and takes it off again, leaving the entry alone", async () => {
@@ -1012,14 +1161,14 @@ describe("the dataset screens of a draft", () => {
     expect(view.datasetIdSuggestion).toBe("hum0042-NHA001")
   })
 
-  it("decides what the version lists, and in what order, from the listing screen", async () => {
+  it("puts the research's datasets in order from the dataset screen", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     const params = { researchId, draftId }
     await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", params)
     await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "2" }), "ja", params)
     const made = await draftDatasetListPage(get(token, "/x"), "ja", params)
-    const [a, b] = made.listedIds
+    const [a, b] = made.rows.map((row) => row.id)
     expect(made.revision).toBe(3)
 
     expect(await draftDatasetListAction(
@@ -1027,32 +1176,38 @@ describe("the dataset screens of a draft", () => {
       "ja",
       params,
     )).toBeInstanceOf(Response)
-    expect((await draftDatasetListPage(get(token, "/x"), "ja", params)).listedIds).toEqual([b, a])
-
-    expect(await draftDatasetListAction(
-      postForm(token, "/x", { intent: "unlist-dataset", datasetId: a ?? "", revision: "4" }),
-      "ja",
-      params,
-    )).toBeInstanceOf(Response)
-    const unlisted = await draftDatasetListPage(get(token, "/x"), "ja", params)
-    expect(unlisted.listedIds).toEqual([b])
-    expect(unlisted.rows.find((row) => row.id === a)?.listed).toBe(false)
+    const moved = await draftDatasetListPage(get(token, "/x"), "ja", params)
+    expect(moved.rows.map((row) => row.id)).toEqual([b, a])
 
     // A stale screen changes nothing.
     expect(await draftDatasetListAction(
-      postForm(token, "/x", { intent: "list-dataset", datasetId: a ?? "", revision: "4" }),
+      postForm(token, "/x", { intent: "move-dataset", datasetId: a ?? "", by: "-1", revision: "3" }),
       "ja",
       params,
     )).toEqual({ status: "conflict" })
-    expect(await draftDatasetListAction(
-      postForm(token, "/x", { intent: "list-dataset", datasetId: a ?? "", revision: "5" }),
-      "ja",
-      params,
-    )).toBeInstanceOf(Response)
-    expect((await draftDatasetListPage(get(token, "/x"), "ja", params)).listedIds).toEqual([b, a])
+    expect((await draftDatasetListPage(get(token, "/x"), "ja", params)).rows.map((row) => row.id))
+      .toEqual([b, a])
   })
 
-  it("refuses to list a dataset of another research, and a step that names no direction", async () => {
+  it("carries a published dataset without anybody listing it, and never another draft's", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    // One that is out: `originDraftId` is null, which is what publishing leaves.
+    const out = only(await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id }))
+    const otherDraftId = await createEmptyDraft(db, researchId)
+    const theirs = only(await db.insert(s.dataset)
+      .values({ researchId, originDraftId: otherDraftId })
+      .returning({ id: s.dataset.id }))
+
+    const view = await draftDatasetListPage(get(token, "/x"), "ja", { researchId, draftId })
+
+    expect(view.rows.map((row) => row.id)).toEqual([out.id])
+    expect(view.rows.map((row) => row.id)).not.toContain(theirs.id)
+    // Nothing was written to say so: the order stays empty until somebody moves a row.
+    expect((await readDraft(db, draftId))?.content.datasetIds).toEqual([])
+  })
+
+  it("refuses a step that names no direction, and one aimed at another research's dataset", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     const other = await createResearchWithDraft(db)
@@ -1063,29 +1218,20 @@ describe("the dataset screens of a draft", () => {
     )
     const theirs = (await draftDatasetListPage(get(token, "/x"), "ja", other)).rows[0]?.id ?? ""
 
-    const refused = await thrown(() => draftDatasetListAction(
-      postForm(token, "/x", { intent: "list-dataset", datasetId: theirs, revision: "1" }),
-      "ja",
-      { researchId, draftId },
-    ))
-    expect(refused.status).toBe(400)
     const sideways = await thrown(() => draftDatasetListAction(
       postForm(token, "/x", { intent: "move-dataset", datasetId: theirs, by: "2", revision: "1" }),
       "ja",
       { researchId, draftId },
     ))
     expect(sideways.status).toBe(400)
+
+    // A step aimed at a dataset this research does not have moves nothing.
+    expect(await draftDatasetListAction(
+      postForm(token, "/x", { intent: "move-dataset", datasetId: theirs, by: "-1", revision: "1" }),
+      "ja",
+      { researchId, draftId },
+    )).toBeInstanceOf(Response)
     expect((await readDraft(db, draftId))?.content.datasetIds).toEqual([])
-  })
-
-  it("records who is editing and answers with everybody, marking the one who asked", async () => {
-    const token = await signIn(CURATOR, true)
-    const { researchId, draftId } = await createResearchWithDraft(db)
-
-    const answer = await presenceAction(postForm(token, "/x", {}), { researchId, draftId })
-
-    expect(answer.present).toEqual([{ name: "curator", isSelf: true }])
-    expect(await db.select().from(s.draftPresence)).toHaveLength(1)
   })
 })
 

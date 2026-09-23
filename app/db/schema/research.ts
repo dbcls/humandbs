@@ -5,7 +5,6 @@ import {
   integer,
   jsonb,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   unique,
@@ -146,24 +145,4 @@ export const draftDatasetEntry = pgTable("draft_dataset_entry", {
   revision: integer().notNull().default(1),
 }, (t) => [
   unique("draft_dataset_entry_unique").on(t.draftId, t.datasetId),
-])
-
-/**
- * Who currently has an editing screen open. Display only — nobody is made
- * read-only, and correctness comes from the revision check on save.
- *
- * `holderSub` and `holdExpiresAt` stay null. They are here so that turning this
- * into a lease, if the measured rate of conflicting saves ever justifies it,
- * does not need a schema change.
- */
-export const draftPresence = pgTable("draft_presence", {
-  draftId: uuid().notNull().references(() => researchDraft.id, { onDelete: "cascade" }),
-  sessionId: text().notNull(),
-  actorSub: text(),
-  displayName: text().notNull(),
-  lastSeenAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-  holderSub: text(),
-  holdExpiresAt: timestamp({ withTimezone: true }),
-}, (t) => [
-  primaryKey({ columns: [t.draftId, t.sessionId] }),
 ])

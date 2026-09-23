@@ -69,6 +69,9 @@ export type IconName
     | "log-in"
     | "spinner"
     | "users"
+    | "user"
+    | "send"
+    | "clock"
     | "help-circle"
     | "circle-slash"
 
@@ -421,6 +424,27 @@ const NODES: Record<IconName, ReactNode> = {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </>
   ),
+  /* One person: who said this. */
+  "user": (
+    <>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </>
+  ),
+  /* A paper plane: what was written goes to somebody. */
+  "send": (
+    <>
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </>
+  ),
+  /* A clock face: something that will happen at a set time, by itself. */
+  "clock": (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </>
+  ),
   /* A question mark in a circle: a field the reader has not answered yet. */
   "help-circle": (
     <>
@@ -463,6 +487,7 @@ export const ACTION_ICON = {
   hide: "eye-off",
   revert: "undo",
   resolve: "check",
+  post: "send",
   goTo: "chevron-right",
   reorderUp: "chevron-up",
   reorderDown: "chevron-down",

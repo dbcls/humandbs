@@ -100,7 +100,7 @@ describe("selectPublishedDatasets", () => {
     expect(selection.datasets.map((d) => d.doc.version)).toEqual(["v2"])
   })
 
-  it("keeps a dataset only an older published version lists", () => {
+  it("leaves out a dataset only an older published version lists", () => {
     const selection = selectPublishedDatasets(dump(
       [research("hum0001", "v2")],
       [
@@ -109,7 +109,11 @@ describe("selectPublishedDatasets", () => {
       ],
       [datasetDoc("JGAD1", "v1", "hum0001")],
     ))
-    expect(selection.datasets.map((d) => d.label)).toEqual(["JGAD1"])
+    // A row would put it back on the public side at the next publish: a
+    // dataset belongs to the research and every version carries all of them.
+    expect(selection.datasets).toEqual([])
+    // Not a defect in the input either — the old version keeps its description.
+    expect(selection.missingDocuments).toEqual([])
   })
 
   it("ignores a dataset that only an unpublished version lists", () => {

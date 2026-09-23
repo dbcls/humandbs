@@ -183,6 +183,23 @@ describe("what the review screen does", () => {
     expect(one?.resolvedBy).toBe("curator")
   })
 
+  it("deletes a comment from the editing screen and answers with what is left", async () => {
+    const created = await createResearchWithDraft(db)
+    const taken = await saidAt(created.draftId, "title", "消す")
+    await saidAt(created.draftId, "title", "残す")
+    const token = await signIn(CURATOR, true)
+
+    const outcome = await reviewAction(
+      postForm(token, { intent: "delete", commentId: taken }),
+      "ja",
+      created,
+      "comments",
+    )
+
+    if (outcome instanceof Response || outcome.status !== "comments") throw new Error("no comments")
+    expect(outcome.comments.map((one) => one.body)).toEqual(["残す"])
+  })
+
   /** What an open editor needs back: the comments, and no navigation. */
   it("answers an editing screen with the comments rather than with a redirect", async () => {
     const created = await createResearchWithDraft(db)

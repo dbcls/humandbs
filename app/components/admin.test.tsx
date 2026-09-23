@@ -11,7 +11,6 @@ import { usePanes } from "./admin"
 function Panes({ under }: { under: "page" | "bar" }) {
   const panes = usePanes({
     locale: "ja",
-    remember: `test:${under}`,
     under,
     contents: [
       { id: "form", label: "編集", body: <p>form</p> },
@@ -46,5 +45,12 @@ describe("usePanes", () => {
   it("hands the switch back either way, for a caller with somewhere else to put it", () => {
     expect(parts("page").control).toContain("表示 pane")
     expect(parts("bar").control).toContain("表示 pane")
+  })
+
+  it("shows the word beside the switch once, hidden from the reader the group's name already reaches", () => {
+    const { control } = parts("bar")
+    expect(control).toContain("aria-hidden=\"true\">表示 pane<")
+    expect(control).toContain("aria-label=\"表示 pane\"")
+    expect(control.match(/表示 pane/g)).toHaveLength(2)
   })
 })

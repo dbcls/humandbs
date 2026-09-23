@@ -46,6 +46,7 @@ import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { diffDatasetInput } from "./dataset-diff"
 import { datasetContentInput } from "./dataset-form"
+import { draftDatasets } from "./datasets"
 import { diffDraftInput } from "./diff"
 import { consumeDraft, draftFromVersion, type DraftAt } from "./drafts.server"
 import { researchContentInput } from "./form"
@@ -230,20 +231,22 @@ async function readGround(
 }
 
 /**
- * What each listed dataset would end up with. `null` content is a dataset the
- * version lists and nobody has described — the gate lists it, and passing means
- * publishing it empty rather than leaving the version listing nothing.
+ * What each dataset of this research would end up with, in the order the draft
+ * puts them in (`admin/datasets.ts`). **The draft does not choose which of them
+ * go** — they belong to the research — so this is every one of them but those
+ * another draft made. `null` content is a dataset nobody has described: the
+ * gate says so, and passing means publishing it empty rather than leaving a
+ * dataset the listing names and the reader cannot open.
  */
 function gateDatasets(ground: Ground): GateDataset[] {
-  return ground.draft.content.datasetIds.flatMap((datasetId) => {
-    const row = ground.datasets.get(datasetId)
-    if (row === undefined) return []
-    return [{
-      datasetId,
-      label: row.label,
-      content: ground.entries.get(datasetId) ?? null,
-    }]
-  })
+  // A stable order for whatever the draft has not named: the map comes from a
+  // query, and the order a query gives back is not one to lean on.
+  const rows = [...ground.datasets.values()].sort((one, other) => one.id.localeCompare(other.id))
+  return draftDatasets(rows, ground.draft.id, ground.draft.content.datasetIds).map((row) => ({
+    datasetId: row.id,
+    label: row.label,
+    content: ground.entries.get(row.id) ?? null,
+  }))
 }
 
 /** The next number is one past the highest a version holds. */
@@ -394,12 +397,10 @@ export async function draftGate(
 
 /** The gate's question, put from what was read. */
 function gateOf(ground: Ground, privateFiles: ReadonlySet<string>): PublishGate {
-  const previous = ground.updating ?? ground.versions[0]
   return publishGate({
     humLabel: ground.humLabel,
     content: ground.draft.content,
     datasets: gateDatasets(ground),
-    previousDatasetIds: previous === undefined ? [] : datasetIdsOf(previous),
     upstream: ground.upstreamHumLabelOf,
     privateFiles,
   })
@@ -460,7 +461,6 @@ export async function publishDraft(
       humLabel: ground.humLabel,
       content: ground.draft.content,
       datasets,
-      previousDatasetIds: previous === undefined ? [] : datasetIdsOf(previous),
       upstream: ground.upstreamHumLabelOf,
       privateFiles: request.privateFiles,
     })

@@ -96,7 +96,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
           (`docs/ui.md` の「縦の間隔」) — `common/` の箱と同じ。 */}
       <Card under={false}>
         <Stack gap="normal">
-          <Heading title={t.heading} aside={view.humLabel ?? undefined}>
+          <Heading title={t.heading} aside={view.humLabel ?? undefined} note={t.note}>
             <AdminBack
               to={href(locale, adminResearchPath(view.researchId))}
               label={t.backToResearch}
@@ -113,7 +113,6 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
             endpoint={fileUploadPath(view.researchId)}
             threshold={view.multipartThreshold}
             partSize={view.partSize}
-            hint={t.uploadHint}
           />
 
           {/* The store did not answer, which is not the same as an empty box —

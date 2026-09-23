@@ -21,6 +21,7 @@ import { join } from "node:path"
 
 import { sql } from "drizzle-orm"
 
+import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import type { DatasetContent, ResearchContent, VersionContent } from "~/content/types"
 import { closePools, getOwnerDb, type Executor } from "~/db/client.server"
 import {
@@ -32,6 +33,7 @@ import {
   document,
   documentContent,
   documentSeries,
+  event,
   facetCategory,
   humAccession,
   labelPin,
@@ -42,7 +44,7 @@ import {
   vocabularySet,
   vocabularyTerm,
 } from "~/db/schema"
-import { knownCodes, titlesOf } from "~/icd10/dictionary.server"
+import { icd10TermIds, importIcd10Terms } from "~/icd10/vocabulary.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
@@ -63,6 +65,7 @@ import {
 } from "./catalog"
 import { loadDump, selectPublishedDatasets, versionNumber, type PublishedDataset } from "./es"
 import { collectTerms, DISEASE_SET, vocabularySetSeeds } from "./facets"
+import { heldIcd10Entries } from "./icd10-input"
 import { byHand, type ReadByHand } from "./numbers"
 import { loadHumAccessions } from "./upstream"
 
@@ -127,8 +130,9 @@ async function insertChunked<Row>(
  *
  * The terms are minted from the data rather than declared, because what a
  * controlled set ought to hold is a decision and this load is not the place for
- * it. Roots go in before the terms that roll up into them, so that a child has
- * an identity to point at — the only vocabulary with a shape at all is ICD10.
+ * it. **The one exception is the disease vocabulary**, which is the ICD10
+ * classification put in whole from the distributions on disk
+ * (`~/icd10/vocabulary.server`); the dump's codes are looked up in it.
  */
 async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
   const categories = await insertReturning(
@@ -160,10 +164,17 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       .returning({ id: vocabularySet.id }),
   )
 
-  // The dictionary decides which written codes become terms, so it has to be in
-  // before this runs (`docs/development.md` の「ICD10 の辞書を入れる」).
-  const known = await knownCodes(tx)
-  const knownCode = (code: string) => known.has(code)
+  // The classification has to be on disk before this runs; the import script
+  // leaves it there (`docs/development.md` の「ICD10 の語彙を入れる」). Nothing
+  // is written yet, so stopping here leaves the previous data as it was.
+  const classification = heldIcd10Entries()
+  if (classification === null) {
+    throw new Error("the ICD10 distributions are not under migration/input; run `npm run icd10:import` first")
+  }
+  await importIcd10Terms(tx, classification)
+  const icd10Ids = await icd10TermIds(tx)
+  const knownCode = (code: string) => icd10Ids.has(code)
+
   const experiments = datasets.flatMap((d) => d.doc.experiments ?? [])
   const terms = [
     ...ACCESS_CRITERIA_TERMS.map((t) => ({
@@ -172,34 +183,23 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       parentCode: null,
       maker: null,
     })),
-    ...[...collectTerms(experiments, knownCode)].flatMap(([setCode, held]) =>
+    ...[...collectTerms(experiments)].flatMap(([setCode, held]) =>
       held.map((term) => ({ setCode, ...term }))),
   ]
-  // The disease vocabulary takes its labels from the ICD10 dictionary rather
-  // than from the dump: v1 filed some codes under the wrong disease and left
-  // the rest named by the code itself (docs/data-model.md の「ICD10」).
-  const titles = await titlesOf(tx, terms.filter((t) => t.setCode === DISEASE_SET).map((t) => t.code))
-  const unnamed = terms.filter((t) => t.setCode === DISEASE_SET && !titles.has(t.code))
-  if (unnamed.length > 0) {
-    console.log(`icd10: ${unnamed.length} not in the dictionary (${unnamed.map((t) => t.code).join(", ")})`)
-  }
 
   const termRow = (
     term: (typeof terms)[number],
     index: number,
     parentId: string | null,
-  ) => {
-    const title = term.setCode === DISEASE_SET ? titles.get(term.code) : undefined
-    return {
-      setId: identityOf(setIdByCode, term.setCode, "vocabulary set"),
-      code: term.code,
-      labelJa: title?.titleJa ?? term.labelJa,
-      labelEn: title?.titleEn ?? title?.titleJa ?? term.labelEn,
-      maker: term.maker,
-      position: index,
-      parentId,
-    }
-  }
+  ) => ({
+    setId: identityOf(setIdByCode, term.setCode, "vocabulary set"),
+    code: term.code,
+    labelJa: term.labelJa,
+    labelEn: term.labelEn,
+    maker: term.maker,
+    position: index,
+    parentId,
+  })
   const termKey = (term: { setCode: string, code: string }) => `${term.setCode}/${term.code}`
 
   const rootIds = await insertReturning(
@@ -222,7 +222,11 @@ async function seedCatalog(tx: Executor, datasets: PublishedDataset[]) {
       )))
       .returning({ id: vocabularyTerm.id }),
   )
-  const termIdBySetAndCode = new Map([...rootIds, ...childIds])
+  const termIdBySetAndCode = new Map([
+    ...rootIds,
+    ...childIds,
+    ...[...icd10Ids].map(([code, id]): [string, string] => [`${DISEASE_SET}/${code}`, id]),
+  ])
 
   const { keys, codeBySourceKey } = contentKeySeeds()
   const keyIdByCode = await insertReturning(
@@ -314,7 +318,31 @@ async function loadSiteContent(tx: Executor) {
   )
 
   const alerts = buildAlerts(cms.alerts, suppliedAlertText())
-  await insertChunked(alerts, (chunk) => tx.insert(alert).values(chunk))
+  const alertIds = await insertReturning(
+    alerts,
+    (_, index) => index,
+    (chunk) => tx
+      .insert(alert)
+      .values(chunk.map((a) => ({ content: a.content, active: a.active })))
+      .returning({ id: alert.id }),
+  )
+
+  // The editing screen says since when an alert has been up by reading the
+  // trail, so one that comes across standing is put up there as well — under
+  // the reserved actor, at the instant the input holds for it.
+  await insertChunked(
+    alerts.flatMap((a, index) => a.shownAt === null
+      ? []
+      : [{
+          occurredAt: a.shownAt,
+          actorSub: BOOTSTRAP_ACTOR.sub,
+          actorName: BOOTSTRAP_ACTOR.name,
+          action: "publish-site-content" as const,
+          subjectType: "alert" as const,
+          subjectId: identityOf(alertIds, index, "alert"),
+        }]),
+    (chunk) => tx.insert(event).values(chunk),
+  )
 
   return {
     documents: documents.length,

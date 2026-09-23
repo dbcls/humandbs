@@ -28,7 +28,7 @@
 import type { DiseaseValue, NumberValue, ValueSlot } from "~/content/types"
 
 import { counts, GENOME_REGION_LABELS, numbersWithUnit, type ReadNumber } from "./numbers"
-import { icd10Parent, icd10Resolve } from "~/icd10/codes"
+import { icd10Resolve } from "~/icd10/codes"
 
 import { diseasesIn } from "./diseases"
 import type { EsExperiment, EsSearchable } from "./es"
@@ -274,22 +274,6 @@ function diseasesOf(experiment: EsExperiment): ReturnType<typeof diseasesIn> {
   const node = experiment.data?.[DISEASE_SOURCE]
   if (node === undefined) return []
   return diseasesIn(node.ja?.text ?? "", node.en?.text ?? "")
-}
-
-/**
- * The terms an experiment's diseases point at. **A code the dictionary does not
- * hold becomes no term at all**, and the disease keeps its name — which is what
- * makes the classification optional rather than required.
- */
-function diseaseTerms(experiment: EsExperiment, known: (code: string) => boolean): TermSeed[] {
-  return diseasesOf(experiment).flatMap((seed) =>
-    seed.codes.flatMap((written): TermSeed[] => {
-      const code = icd10Resolve(written, known)
-      if (code === null) return []
-      // The dictionary names these terms (`migration/run.ts`); nothing the
-      // article wrote becomes a heading of the classification.
-      return [{ code, labelEn: code, labelJa: null, parentCode: icd10Parent(code), maker: null }]
-    }))
 }
 
 export const VOCABULARY_FACETS: VocabularyFacet[] = [
@@ -827,9 +811,9 @@ export function vocabularySetSeeds(): VocabularySetSeed[] {
 
 /**
  * Every term the dump uses, parents before children so that a child can point
- * at one. A code seen first as a parent gets its label when the code itself
- * turns up as a value — an ICD10 root is named by whatever v1 filed directly
- * under it, and by its code alone when nothing was.
+ * at one. **The disease vocabulary is not among them**: it is the ICD10
+ * classification put in whole (`~/icd10/vocabulary.server`), and the codes the
+ * articles write are looked up in it rather than minted (`diseaseSlots`).
  *
  * **This order becomes `position`**, which is the order the editing form lists
  * a key's values in and the order a listing cell puts them in. Makers come
@@ -838,10 +822,7 @@ export function vocabularySetSeeds(): VocabularySetSeed[] {
  * nothing, and leaving it would make the cell's first three values — all a
  * reader sees before "and 12 more" — an accident of how rows came back.
  */
-export function collectTerms(
-  experiments: Iterable<EsExperiment>,
-  knownCode: (code: string) => boolean,
-): Map<string, TermSeed[]> {
+export function collectTerms(experiments: Iterable<EsExperiment>): Map<string, TermSeed[]> {
   const bySet = new Map<string, Map<string, TermSeed>>()
   const take = (setCode: string, terms: TermSeed[]) => {
     const held = bySet.get(setCode) ?? new Map<string, TermSeed>()
@@ -864,7 +845,6 @@ export function collectTerms(
       }
       take(facet.setCode, facet.read(searchable))
     }
-    take(DISEASE_SET, diseaseTerms(experiment, knownCode))
   }
   return new Map([...bySet].map(([setCode, terms]) => [
     setCode,

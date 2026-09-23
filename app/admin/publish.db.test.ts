@@ -156,7 +156,7 @@ describe("publishing a draft", () => {
     expect(dataset.originDraftId).toBeNull()
   })
 
-  it("takes with it a dataset the draft made and left off the version", async () => {
+  it("publishes every dataset the research has, whatever the order names", async () => {
     const ground = await ready()
     const spare = await createDatasetInDraft(
       db,
@@ -165,7 +165,8 @@ describe("publishing a draft", () => {
     )
     if (spare.status !== "created") throw new Error(spare.status)
     await pinDataset(spare.datasetId, "JGAD000002")
-    // Taking it off the listing leaves the identity behind, still the draft's.
+    // The order names one of the two. The other is the research's all the same,
+    // so the version carries it — at the end, where what is unnamed stands.
     const draft = await readDraft(db, ground.draftId)
     await saveDraftContent(db, { draftId: ground.draftId, revision: draft?.revision ?? 0 }, {
       content: { ...titled("研究"), datasetIds: [ground.datasetId] },
@@ -175,7 +176,11 @@ describe("publishing a draft", () => {
     await publish({ draftId: ground.draftId, revision: after?.revision ?? 0 })
 
     const remaining = await db.select({ id: s.dataset.id }).from(s.dataset)
-    expect(remaining.map((row) => row.id)).toEqual([ground.datasetId])
+    expect(remaining.map((row) => row.id).toSorted())
+      .toEqual([ground.datasetId, spare.datasetId].toSorted())
+    const version = await theVersion()
+    expect(version.content.datasets.map((row) => row.datasetId))
+      .toEqual([ground.datasetId, spare.datasetId])
   })
 
   it("folds the description of every dataset the version lists into the version", async () => {

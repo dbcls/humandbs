@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { pageWindow, Paging, Table, Td, TermLabel, Value } from "./page"
+import { AnnotationLayer, KeyValue, MarkedPlace, pageWindow, Paging, Section, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -377,5 +377,38 @@ describe("横に流れる表で残る列", () => {
     )
     expect(marked).toMatch(/<td[^>]*w-15[^>]*sticky left-0|<td[^>]*sticky left-0[^>]*w-15/)
     expect(marked).toMatch(/<td[^>]*sticky left-15/)
+  })
+})
+
+describe("where a place's two annotations stand", () => {
+  const annotate = (at: string, part: "name" | "value") => <i data-part={part}>{`${part}:${at}`}</i>
+  const draw = (element: React.ReactNode) => renderToStaticMarkup(<AnnotationLayer annotate={annotate}>{element}</AnnotationLayer>)
+
+  it("a section's mark stands in its heading, and what the published version said under its value", () => {
+    const html = draw(<Section title="研究題目" at="title"><p>値</p></Section>)
+    expect(html).toMatch(/<h2[^>]*>研究題目[\s\S]*?name:title[\s\S]*?<\/h2>/)
+    expect(html.indexOf("value:title")).toBeGreaterThan(html.indexOf("値"))
+    expect(html.slice(0, html.indexOf("</h2>"))).not.toContain("value:title")
+  })
+
+  it("a pair's mark stands with its name (dt), not under the value", () => {
+    const html = draw(<dl><KeyValue title="研究代表者" at="dataProviders.p.name">松原</KeyValue></dl>)
+    expect(html).toMatch(/<dt[^>]*>研究代表者[\s\S]*?name:dataProviders\.p\.name[\s\S]*?<\/dt>/)
+    const dd = html.slice(html.indexOf("<dd"))
+    expect(dd).not.toContain("name:dataProviders.p.name")
+    expect(dd.indexOf("value:dataProviders.p.name")).toBeGreaterThan(dd.indexOf("松原"))
+  })
+
+  it("a cell's mark stands at the value's right on its row, and what was published under the row", () => {
+    const html = draw(<MarkedPlace at="grants.g.title">課題名</MarkedPlace>)
+    const row = html.slice(0, html.indexOf("value:grants.g.title"))
+    expect(row.indexOf("name:grants.g.title")).toBeGreaterThan(row.indexOf("課題名"))
+    expect(row).toContain("flex items-start")
+  })
+
+  it("draws none of it on a page without a layer", () => {
+    const html = renderToStaticMarkup(<dl><KeyValue title="研究代表者" at="dataProviders.p.name">松原</KeyValue></dl>)
+    expect(html).not.toContain("name:")
+    expect(html).not.toContain("value:")
   })
 })

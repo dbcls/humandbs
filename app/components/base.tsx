@@ -463,22 +463,22 @@ export const LISTING_CONTROL = "border border-brand bg-white text-brand"
  * What a control looks like, and **what decides it is how much the screen wants
  * it pressed** — never how it would look nicest there.
  *
- * **Three faces, and a fourth that is a warning rather than a rank.** A reader
+ * **Two faces, and a third that is a warning rather than a rank.** A reader
  * arriving at any screen should be able to read the row of controls without
- * reading the words: one filled thing is what they came to do, an outlined
- * thing is a tool, and words alone are the way back out.
+ * reading the words: one filled thing is what they came to do, and an outlined
+ * thing is a tool — the way back out among them, told from the deed by
+ * standing to its left.
  *
  * | | 姿 | いつ |
  * |---|---|---|
  * | `primary` | brand の塗り | **その画面が頼んでいる 1 つ。画面に 1 つまで** |
  * | `accent` | accent の塗り | **送っていない変更を抱えた保存だけ。**状態が決めるので、いくつ出るかは画面ではなく読者の手が決める |
- * | `secondary` | 白地に brand の枠 | 道具・その場の操作。**既定** |
- * | `ghost` | 枠を持たない文字 | 取り消し・閉じる・繰り返し要素の上下と削除 |
+ * | `secondary` | 白地に brand の枠 | 道具・その場の操作・出る道。**既定** |
  * | `danger` | 白地に danger の枠 | **取り消せないもの** — 公開の取り下げ、削除、draft の破棄 |
  *
- * **`ghost` は並びの片方にしか立たない。** 枠を持たないものが単独で置かれると、
- * それが押せることを言うものが何も無い — 「取り消し」が「保存」の隣にいるから
- * 押せると分かる。**`danger` を数で薄めない**のも同じ理由で、色が意味を持ち続ける
+ * **枠を持たない面は無い。** 素の語は文の続きに読め、hover して初めて箱が浮く —
+ * 押せると分かるのが押したあとになる。「取り消し」も「保存」と同じ枠を着て、
+ * 違いは並びの左右と色が言う。**`danger` を数で薄めない** — 色が意味を持ち続ける
  * のは滅多に出ないあいだだけになる。
  *
  * **面の数を増やさない。**かつて塗りを 3 色持っていて、そのうち 1 つ (`soft`) は
@@ -490,14 +490,13 @@ export const LISTING_CONTROL = "border border-brand bg-white text-brand"
  * あるあいだの保存だけ。多くの画面では `Submit` の `saves` がその判定を持ち、自分で
  * `dirty` を持っている編集画面だけが直に着せる。**それ以外の場所に書かない。**
  */
-export type ButtonVariant = "primary" | "accent" | "secondary" | "danger" | "ghost"
+export type ButtonVariant = "primary" | "accent" | "secondary" | "danger"
 
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   primary: "border-transparent bg-brand text-white hover:brightness-90",
   accent: "border-transparent bg-accent text-white hover:brightness-90",
   secondary: "border-brand bg-white text-brand hover:bg-surface-hover",
   danger: "border-danger bg-white text-danger hover:bg-danger/10",
-  ghost: "border-transparent bg-transparent text-brand hover:bg-surface-hover",
 }
 
 /**
@@ -517,7 +516,6 @@ const BUTTON_ON_BAND: Record<ButtonVariant, string> = {
   accent: "border-transparent bg-white text-accent hover:bg-surface-hover",
   secondary: "border-white/70 bg-transparent text-white hover:bg-white/15",
   danger: "border-transparent bg-white text-danger hover:bg-surface-hover",
-  ghost: "border-transparent bg-transparent text-white hover:bg-white/15",
 }
 
 const BUTTON_SIZE = {
@@ -547,7 +545,7 @@ export type ButtonSize = keyof typeof BUTTON_SIZE
 function buttonClass(look: Required<Omit<ButtonLook, "icon">>) {
   const { variant, size, listing, onBand, className } = look
   return [
-    "inline-flex cursor-pointer items-center justify-center border font-medium no-underline transition-colors",
+    "group/way inline-flex cursor-pointer items-center justify-center border font-medium no-underline transition-colors",
     listing ? "rounded-full" : "rounded",
     "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100",
     onBand ? BUTTON_ON_BAND[variant] : BUTTON_VARIANT[variant],
@@ -580,6 +578,16 @@ interface ButtonLook {
   icon?: ReactNode
   className?: string
 }
+
+/**
+ * A sentence drawn over a control while the pointer is on it or it has focus —
+ * a closed control's reason (`Button`), a mark's effect (`fields.tsx` の
+ * `StateMark`). One look, so that a thing standing over a control is read as
+ * the control speaking wherever it appears. Kept `hidden` rather than
+ * `invisible` and shown by the wrapper's `group-hover` / `group-focus-visible`;
+ * which edge it hangs from is the wrapper's to say.
+ */
+export const TOOLTIP = "pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max max-w-64 rounded bg-ink px-2 py-1 text-left text-white text-xs shadow-md"
 
 export function Button({
   variant = "secondary",
@@ -656,7 +664,7 @@ export function Button({
       <span
         id={reasonId}
         role="tooltip"
-        className={`pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max max-w-64 rounded bg-ink px-2 py-1 text-left text-white text-xs shadow-md group-focus-visible:block group-hover:block ${reasonAt === "left" ? "left-0" : "right-0"}`}
+        className={`${TOOLTIP} group-focus-visible:block group-hover:block ${reasonAt === "left" ? "left-0" : "right-0"}`}
       >
         {disabled}
       </span>
@@ -940,7 +948,7 @@ export function controlFace({
  * the cell four columns along said it in grey fourteen with nothing, and the
  * reader had no way to know that only one of them could be pressed.
  */
-const MORE = "inline-flex items-center gap-0.5 whitespace-nowrap font-semibold text-brand text-xs"
+const MORE = "group/way inline-flex items-center gap-0.5 whitespace-nowrap font-semibold text-brand text-xs"
 
 /**
  * The way to lift conditions, at either of the two ranges it comes in — all of
@@ -988,8 +996,38 @@ export function MoreLink({ to, children }: { to: string, children: ReactNode }) 
   return (
     <Link to={to} className={MORE}>
       {children}
-      <Icon name="chevron-right" aria-hidden="true" />
+      <Chevron dir="right" />
     </Link>
+  )
+}
+
+/**
+ * The mark of a way somewhere — before the word for "to there", after it for
+ * "onward" — that moves the way it points while the control it stands in is
+ * pointed at or focused.
+ *
+ * **The motion is what tells a way from a deed.** A way out and a way in wear
+ * the face every other control wears (`docs/admin-ui.md` の「区画の枠」), so
+ * the chevron alone says "elsewhere"; one that answers the pointer says it
+ * again, in the one place the reader is already looking. **Half a step, and
+ * only for those who allow motion.** A chevron that turns to open and close
+ * something in place is not this: it is drawn as an `Icon` where it turns.
+ *
+ * The control is the group: every `Button` and `ButtonLink` is one
+ * (`buttonClass`), as is `MoreLink`; a bare link adds `group/way` by hand. The
+ * group is named so that a chevron inside a folded box does not move when the
+ * box's own summary is hovered.
+ */
+export function Chevron({ dir }: { dir: "left" | "right" }) {
+  const move = dir === "left"
+    ? "group-hover/way:-translate-x-0.5 group-focus-visible/way:-translate-x-0.5"
+    : "group-hover/way:translate-x-0.5 group-focus-visible/way:translate-x-0.5"
+  return (
+    <Icon
+      name={dir === "left" ? "chevron-left" : "chevron-right"}
+      aria-hidden="true"
+      className={`motion-safe:transition-transform ${move}`}
+    />
   )
 }
 
@@ -1379,7 +1417,7 @@ export function SectionTabs({ label, tabs, current, onSelect, scope, aside }: {
           aria-controls={`tabpanel-${tabbedAs(scope, tab.id)}`}
           tabIndex={tab.id === current ? 0 : -1}
           onClick={() => { onSelect(tab.id) }}
-          className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-b-2 px-4 py-2 text-sm ${
+          className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-b-[3px] px-4 py-2 text-sm ${
             tab.id === current
               ? "border-brand font-semibold text-brand"
               : "border-transparent text-ink-muted hover:text-ink"
@@ -1996,7 +2034,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
             <span className="flex flex-wrap items-center justify-end gap-2">
               <Button
                 type="button"
-                variant={action === undefined ? "secondary" : "ghost"}
+                variant="secondary"
                 disabled={holding}
                 onClick={close}
               >
@@ -2319,7 +2357,14 @@ export function Menu({ label, icon = "more", glyph, round = false, filled = fals
         {value !== undefined && <Icon name="chevron-down" aria-hidden="true" />}
         <CountBadge count={count} />
       </summary>
-      <div className={`absolute right-0 z-20 mt-2 flex ${MENU_PANEL}`}>
+      {/* **Over anything the page holds up on its own** — a stuck head card
+          (`draft-tools.tsx`, z-20) or a table's stuck columns — and level with
+          the strip that answers an operation (`Toast`, z-30): an open menu is
+          the newest thing on the screen, and the two never share a place (the
+          strip is centred at the top, a menu hangs from the bar's right end).
+          Under it, the account menu opened from the bar slid behind the card
+          of an editing screen. */}
+      <div className={`absolute right-0 z-30 mt-2 flex ${MENU_PANEL}`}>
         {children}
       </div>
     </details>

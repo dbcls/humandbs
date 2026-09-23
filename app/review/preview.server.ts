@@ -69,6 +69,8 @@ import {
   type AcknowledgementView,
   type CommentAuthor,
 } from "./comments.server"
+import { draftDatasetIds } from "~/admin/queries.server"
+
 import { previewDatasets, versionAgainst } from "./queries.server"
 
 /** A preview keeps what has not been settled. No public route can ask for this. */
@@ -243,10 +245,14 @@ export async function drawDraft(
   },
 ): Promise<DrawnDraft> {
   const db = getDb()
+  // **What the preview shows is what the next version carries**, which is the
+  // research's datasets rather than what the draft's order happens to name
+  // (`admin/datasets.ts`).
+  const shown = await draftDatasetIds(db, draft.draftId, draft.researchId, draft.content.datasetIds)
   const [humLabel, catalog, datasets, published] = await Promise.all([
     humLabelOf(db, draft.researchId),
     loadCatalog(db),
-    previewDatasets(db, draft.draftId, draft.content.datasetIds),
+    previewDatasets(db, draft.draftId, shown),
     versionAgainst(db, draft),
   ])
   const cau = humLabel === null ? [] : await controlledAccessUsers(db, humLabel)
@@ -323,10 +329,11 @@ export async function previewResearchPage(
   if (draft === null) notFound()
 
   const drawn = await drawDraft(request, locale, draft)
+  const shown = await draftDatasetIds(db, draft.draftId, draft.researchId, draft.content.datasetIds)
   return {
     ...await shellOf(request, locale, draft, drawn.publishedNumber, drawn.humLabel, [
       { kind: "research" },
-      ...draft.content.datasetIds.map((id) => ({ kind: "dataset" as const, datasetId: id })),
+      ...shown.map((id) => ({ kind: "dataset" as const, datasetId: id })),
     ]),
     view: drawn.view,
     changed: drawn.changed,
@@ -468,8 +475,9 @@ export async function previewDatasetPage(
   const db = getDb()
   const draft = await sharedDraftByToken(db, token)
   if (draft === null) notFound()
-  // The preview is the version's face, so it shows what the version lists.
-  if (!draft.content.datasetIds.includes(datasetId)) notFound()
+  // The preview is the version's face, so it shows what the version carries.
+  const shown = await draftDatasetIds(db, draft.draftId, draft.researchId, draft.content.datasetIds)
+  if (!shown.includes(datasetId)) notFound()
 
   const drawn = await drawDatasetDraft(request, locale, draft, datasetId)
   return {
@@ -547,7 +555,7 @@ export async function previewAction(
       draftId: draft.draftId,
       content: draft.content,
       // A share link may comment on what the version shows, and nothing else.
-      datasetIds: draft.content.datasetIds,
+      datasetIds: await draftDatasetIds(db, draft.draftId, draft.researchId, draft.content.datasetIds),
     },
     subject,
     path,

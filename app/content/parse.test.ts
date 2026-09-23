@@ -1,47 +1,35 @@
 import { describe, expect, it } from "vitest"
 
-import { parseRichText, type RichTextSyntax } from "./parse.server"
+import { parseRichText } from "./parse.server"
 import { toMarkdown } from "./richtext"
-
-function parsed(source: string) {
-  const result = parseRichText(source)
-  if (!result.ok) throw new Error(`expected the source to parse: ${JSON.stringify(result.problems)}`)
-  return result.value
-}
-
-function refusedAs(source: string): RichTextSyntax[] {
-  const result = parseRichText(source)
-  if (result.ok) throw new Error("expected the source to be refused")
-  return result.problems.map((problem) => problem.syntax)
-}
 
 describe("parseRichText", () => {
   it("reads a single newline as a line, which is how values list things", () => {
-    expect(parsed("JGAD000004: 375.31 GB\nJGAD000106: 885.30 GB")).toEqual([
+    expect(parseRichText("JGAD000004: 375.31 GB\nJGAD000106: 885.30 GB")).toEqual([
       [{ text: "JGAD000004: 375.31 GB" }],
       [{ text: "JGAD000106: 885.30 GB" }],
     ])
   })
 
   it("reads a blank line as an empty line between paragraphs", () => {
-    expect(parsed("a\n\nb")).toEqual([[{ text: "a" }], [], [{ text: "b" }]])
+    expect(parseRichText("a\n\nb")).toEqual([[{ text: "a" }], [], [{ text: "b" }]])
   })
 
   it("collapses several blank lines into the one line the tree can hold", () => {
-    expect(parsed("a\n\n\n\nb")).toEqual([[{ text: "a" }], [], [{ text: "b" }]])
+    expect(parseRichText("a\n\n\n\nb")).toEqual([[{ text: "a" }], [], [{ text: "b" }]])
   })
 
   it("produces no lines at all for prose nobody wrote", () => {
-    expect(parsed("")).toEqual([])
-    expect(parsed("   \n  \n")).toEqual([])
+    expect(parseRichText("")).toEqual([])
+    expect(parseRichText("   \n  \n")).toEqual([])
   })
 
   it("drops the whitespace at either end of a line, which markdown cannot hold", () => {
-    expect(parsed("  spaced  ")).toEqual([[{ text: "spaced" }]])
+    expect(parseRichText("  spaced  ")).toEqual([[{ text: "spaced" }]])
   })
 
   it("reads a written link as a span with a destination", () => {
-    expect(parsed("see [NBDC policy](/nbdc-policy) first")).toEqual([[
+    expect(parseRichText("see [NBDC policy](/nbdc-policy) first")).toEqual([[
       { text: "see " },
       { text: "NBDC policy", href: "/nbdc-policy" },
       { text: " first" },
@@ -49,107 +37,97 @@ describe("parseRichText", () => {
   })
 
   it("reads an angle-bracket autolink as a link", () => {
-    expect(parsed("<https://ddbj.nig.ac.jp/>"))
+    expect(parseRichText("<https://ddbj.nig.ac.jp/>"))
       .toEqual([[{ text: "https://ddbj.nig.ac.jp/", href: "https://ddbj.nig.ac.jp/" }]])
   })
 
   it("leaves a bare URL as text, so that saving a field does not add a link nobody wrote", () => {
-    expect(parsed("see https://ddbj.nig.ac.jp/ first"))
+    expect(parseRichText("see https://ddbj.nig.ac.jp/ first"))
       .toEqual([[{ text: "see https://ddbj.nig.ac.jp/ first" }]])
-  })
-
-  it("leaves a bare address alone even where the serialiser escaped its first character", () => {
-    // What `toMarkdown` writes for a value beginning with `-` or `_`, so that
-    // the line is not read as a bullet. GFM recognises the address across the
-    // escape, and the link it hands back carries no position — which is what
-    // tells it apart from one somebody wrote.
-    expect(parsed("\\-@0.A")).toEqual([[{ text: "-@0.A" }]])
-    expect(parsed("\\_a@b.co")).toEqual([[{ text: "_a@b.co" }]])
-    expect(parsed("\\-x@y.z and [t](https://e.g)")).toEqual([
-      [{ text: "-x@y.z and " }, { text: "t", href: "https://e.g" }],
-    ])
+    expect(parseRichText("mail x@y.z or www.example.com"))
+      .toEqual([[{ text: "mail x@y.z or www.example.com" }]])
   })
 
   it("keeps a destination the page will refuse, because refusing is the renderer's job", () => {
-    expect(parsed("[x](javascript:alert(1))"))
+    expect(parseRichText("[x](javascript:alert(1))"))
       .toEqual([[{ text: "x", href: "javascript:alert(1)" }]])
-  })
-})
-
-describe("parseRichText refuses what prose cannot hold", () => {
-  it("refuses a heading", () => {
-    expect(refusedAs("# Aims")).toEqual(["heading"])
-    expect(refusedAs("Aims\n====")).toEqual(["heading"])
-  })
-
-  it("refuses a list, however it is written", () => {
-    expect(refusedAs("- one\n- two")).toEqual(["list"])
-    expect(refusedAs("1. one")).toEqual(["list"])
-    expect(refusedAs("3) one")).toEqual(["list"])
-  })
-
-  it("refuses a numbered list the parser hands back as prose", () => {
-    expect(refusedAs("    indented\n\n3. one")).toEqual(["code", "list"])
-    expect(refusedAs("    indented\n\n3. one\n\n7. two")).toEqual(["code", "list", "list"])
-  })
-
-  it("leaves a number that opens a line of prose alone", () => {
-    expect(parsed("2026 was the year")).toEqual([[{ text: "2026 was the year" }]])
-    expect(parsed("3.5 mm of it")).toEqual([[{ text: "3.5 mm of it" }]])
-  })
-
-  it("refuses a table, which is why GFM is switched on at all", () => {
-    expect(refusedAs("| a | b |\n| --- | --- |\n| 1 | 2 |")).toContain("table")
-  })
-
-  it("refuses emphasis, strong text and strikethrough alike", () => {
-    expect(refusedAs("*a*")).toEqual(["emphasis"])
-    expect(refusedAs("**a**")).toEqual(["emphasis"])
-    expect(refusedAs("~~a~~")).toEqual(["emphasis"])
-  })
-
-  it("refuses code, inline and fenced", () => {
-    expect(refusedAs("`a`")).toEqual(["code"])
-    expect(refusedAs("```\na\n```")).toEqual(["code"])
-  })
-
-  it("refuses raw HTML, which is the route the tree exists to close", () => {
-    expect(refusedAs("<div>a</div>")).toEqual(["html"])
-    expect(refusedAs("a<sup>2</sup>")).toEqual(["html", "html"])
-    expect(refusedAs("line<br>break")).toEqual(["html"])
-  })
-
-  it("refuses an image, a quote, a rule, a footnote and a reference link", () => {
-    expect(refusedAs("![alt](/a.png)")).toEqual(["image"])
-    expect(refusedAs("> quoted")).toEqual(["quote"])
-    expect(refusedAs("a\n\n---\n\nb")).toEqual(["rule"])
-    expect(refusedAs("a[^1]\n\n[^1]: note")).toEqual(["footnote", "footnote"])
-    expect(refusedAs("[a][b]\n\n[b]: /x")).toEqual(["reference", "reference"])
-  })
-
-  it("refuses what is inside a link as well as what is beside it", () => {
-    expect(refusedAs("[**a**](/x)")).toEqual(["emphasis"])
-  })
-
-  it("reports every problem rather than the first, in the order they were written", () => {
-    const result = parseRichText("# heading\n\ntext\n\n- item")
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.problems).toEqual([
-      { syntax: "heading", line: 1 },
-      { syntax: "list", line: 5 },
-    ])
   })
 
   it("lets escaped punctuation through, which is how the editor shows a stored value", () => {
-    expect(parsed("\\# not a heading")).toEqual([[{ text: "# not a heading" }]])
-    expect(parsed("\\- not a list")).toEqual([[{ text: "- not a list" }]])
-    expect(parsed("call rate \\< 0.95")).toEqual([[{ text: "call rate < 0.95" }]])
-    expect(parsed("PI_HAT > 0.175")).toEqual([[{ text: "PI_HAT > 0.175" }]])
+    expect(parseRichText("call rate \\< 0.95")).toEqual([[{ text: "call rate < 0.95" }]])
+    expect(parseRichText("\\[not a link](x)")).toEqual([[{ text: "[not a link](x)" }]])
+    expect(parseRichText("PI_HAT > 0.175")).toEqual([[{ text: "PI_HAT > 0.175" }]])
+  })
+})
+
+/**
+ * What prose cannot hold is not refused and not flattened into the words it
+ * wraps: it stays as the characters typed, so the page beside the form shows
+ * the author that the dialect did not read it (`docs/editing.md` の「文の保存」).
+ */
+describe("parseRichText keeps what prose cannot hold as the characters typed", () => {
+  it("keeps a heading, however it is written", () => {
+    expect(parseRichText("# Aims")).toEqual([[{ text: "# Aims" }]])
+    expect(parseRichText("Aims\n====")).toEqual([[{ text: "Aims" }], [{ text: "====" }]])
   })
 
-  it("accepts everything the serialiser writes for a tree holding table punctuation", () => {
-    const tree = [[{ text: "a | b" }], [{ text: ":--- | ---:" }]]
-    expect(parsed(toMarkdown(tree))).toEqual(tree)
+  it("keeps a list, however it is written", () => {
+    expect(parseRichText("- one\n- two")).toEqual([[{ text: "- one" }], [{ text: "- two" }]])
+    expect(parseRichText("1. one")).toEqual([[{ text: "1. one" }]])
+    expect(parseRichText("3) one")).toEqual([[{ text: "3) one" }]])
+  })
+
+  it("keeps a table as its rows", () => {
+    expect(parseRichText("| a | b |\n| --- | --- |\n| 1 | 2 |")).toEqual([
+      [{ text: "| a | b |" }],
+      [{ text: "| --- | --- |" }],
+      [{ text: "| 1 | 2 |" }],
+    ])
+  })
+
+  it("keeps emphasis, strong text and strikethrough with their marks", () => {
+    expect(parseRichText("*a*")).toEqual([[{ text: "*a*" }]])
+    expect(parseRichText("**a** and b")).toEqual([[{ text: "**a** and b" }]])
+    expect(parseRichText("~~a~~")).toEqual([[{ text: "~~a~~" }]])
+  })
+
+  it("keeps code, inline and fenced", () => {
+    expect(parseRichText("`a`")).toEqual([[{ text: "`a`" }]])
+    expect(parseRichText("```\na\n```")).toEqual([[{ text: "```" }], [{ text: "a" }], [{ text: "```" }]])
+  })
+
+  it("keeps raw HTML as text, which is the route the tree exists to close", () => {
+    expect(parseRichText("<div>a</div>")).toEqual([[{ text: "<div>a</div>" }]])
+    expect(parseRichText("a<sup>2</sup>")).toEqual([[{ text: "a<sup>2</sup>" }]])
+    expect(parseRichText("line<br>break")).toEqual([[{ text: "line<br>break" }]])
+  })
+
+  it("keeps an image, a quote, a rule and a reference link", () => {
+    expect(parseRichText("![alt](/a.png)")).toEqual([[{ text: "![alt](/a.png)" }]])
+    expect(parseRichText("> quoted")).toEqual([[{ text: "> quoted" }]])
+    expect(parseRichText("a\n\n---\n\nb")).toEqual([[{ text: "a" }], [], [{ text: "---" }], [], [{ text: "b" }]])
+    expect(parseRichText("[a][b]\n\n[b]: /x")).toEqual([[{ text: "[a][b]" }], [], [{ text: "[b]: /x" }]])
+  })
+
+  it("keeps a link written inside emphasis as the characters of the whole, and emphasis inside a link as its text", () => {
+    expect(parseRichText("*[a](/x)*")).toEqual([[{ text: "*[a](/x)*" }]])
+    expect(parseRichText("[**a**](/x)")).toEqual([[{ text: "**a**", href: "/x" }]])
+  })
+
+  it("puts a blank line only where one was written, even between blocks the parser tells apart", () => {
+    expect(parseRichText("a\n- b")).toEqual([[{ text: "a" }], [{ text: "- b" }]])
+    expect(parseRichText("a\n\n- b")).toEqual([[{ text: "a" }], [], [{ text: "- b" }]])
+    expect(parseRichText("# h\ntext")).toEqual([[{ text: "# h" }], [{ text: "text" }]])
+  })
+
+  it("reads back unchanged what the serialiser writes for a tree holding such characters", () => {
+    for (const tree of [
+      [[{ text: "**bold** and *em*" }]],
+      [[{ text: "# not a heading" }], [{ text: "- not a list" }], [{ text: "1. nor this" }]],
+      [[{ text: "a | b" }], [{ text: ":--- | ---:" }]],
+      [[{ text: "[not a link](x) <b>" }, { text: "t", href: "/x" }]],
+    ]) {
+      expect(parseRichText(toMarkdown(tree))).toEqual(tree)
+    }
   })
 })

@@ -12,6 +12,7 @@ import type { ShownLine } from "~/admin/changes"
 import type { CommentView } from "~/review/comments"
 
 import { CommentSpot, type CommentContext } from "./comments"
+import type { AnnotationPart } from "./page"
 import { PreviousLines } from "./previous"
 
 export interface FieldReviewData {
@@ -25,23 +26,28 @@ export interface FieldReviewData {
   termLabel?: (id: string) => string
 }
 
-export function FieldReview({ review, at, fieldLabel }: {
+/**
+ * The two parts of a place's review, each where the page stands it
+ * (`page.tsx` の `AnnotationPart`): the comment mark with the name, and the
+ * published version's lines under the value.
+ */
+export function FieldReview({ review, at, part, fieldLabel }: {
   review: FieldReviewData
   at: string
+  part: AnnotationPart
   /** The field's own name, for the comment panel's heading (`comments.tsx` の `CommentSpot`). */
   fieldLabel?: string
 }) {
+  if (part === "name") {
+    return <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
+  }
+  if (!review.changed.includes(at)) return null
   return (
-    <>
-      {review.changed.includes(at) && (
-        <PreviousLines
-          locale={review.context.locale}
-          lines={review.previous[at] ?? null}
-          heading={review.heading}
-          termLabel={review.termLabel}
-        />
-      )}
-      <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
-    </>
+    <PreviousLines
+      locale={review.context.locale}
+      lines={review.previous[at] ?? null}
+      heading={review.heading}
+      termLabel={review.termLabel}
+    />
   )
 }

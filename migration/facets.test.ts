@@ -18,11 +18,10 @@ function readerOf(code: string): (searchable: EsSearchable) => TermSeed[] {
 }
 
 /** These examples are not about the classification. */
-const NOTHING_KNOWN = () => false
 
 /** The v1 layer is one field of an experiment; these examples only set that. */
 function collectFrom(searchables: EsSearchable[]): Map<string, TermSeed[]> {
-  return collectTerms(searchables.map((searchable) => ({ searchable })), NOTHING_KNOWN)
+  return collectTerms(searchables.map((searchable) => ({ searchable })))
 }
 
 interface Platform {
@@ -137,12 +136,6 @@ describe("the order the terms are numbered in", () => {
     ])
     expect(held(terms)).toEqual(["Illumina HiSeq 2000", "Illumina HiSeq 2500"])
   })
-
-  it("keeps parents before children, so that a child can point at one", () => {
-    const codes = diseaseCodes("乳がん(ICD10: C50.1)", ["C50", "C501"])
-    expect(codes).toContain("C501")
-    expect(codes.indexOf("C50")).toBeLessThan(codes.indexOf("C501"))
-  })
 })
 
 function held(terms: Map<string, TermSeed[]>): string[] {
@@ -153,24 +146,33 @@ function experimentSaying(ja: string, en = ""): EsExperiment {
   return { data: { "Materials and Participants": { ja: { text: ja }, en: { text: en } } } }
 }
 
-function diseaseCodes(ja: string, dictionary: string[]): string[] {
-  const held = collectTerms([experimentSaying(ja)], (code) => dictionary.includes(code))
-  return (held.get(DISEASE_SET) ?? []).map((term) => term.code)
+/** The terms the article's diseases end up pointing at, against a vocabulary holding `codes`. */
+function diseaseTermsOf(ja: string, codes: readonly string[]): string[] {
+  const slot = diseaseSlots(experimentSaying(ja), {
+    keyIdByCode: new Map([[DISEASE_KEY, "key-1"]]),
+    termIdBySetAndCode: new Map(codes.map((code) => [`${DISEASE_SET}/${code}`, `term-${code}`])),
+    knownCode: (code) => codes.includes(code),
+  })[0]?.value
+  if (slot?.kind !== "disease" || slot.diseases.state !== "value") return []
+  return slot.diseases.value.flatMap((disease) => disease.termIds)
 }
 
 describe("the diseases an article names", () => {
-  it("becomes a term for the code the dictionary holds", () => {
-    expect(diseaseCodes("肺がん(ICD10: C34.9)", ["C34", "C349"])).toEqual(["C34", "C349"])
+  it("points at the term the vocabulary holds for the code", () => {
+    expect(diseaseTermsOf("肺がん(ICD10: C34.9)", ["C34", "C349"])).toEqual(["term-C349"])
   })
 
-  it("shortens a code the dictionary does not hold until it does", () => {
+  it("shortens a code the vocabulary does not hold until it does", () => {
     // The five-character codes are ICD-10-CM (`docs/data-model.md` の「ICD10」).
-    // The root comes with it: a four-character term needs one to roll up into.
-    expect(diseaseCodes("NASH(ICD10: K75.81)", ["K75", "K758"])).toEqual(["K75", "K758"])
+    expect(diseaseTermsOf("NASH(ICD10: K75.81)", ["K75", "K758"])).toEqual(["term-K758"])
   })
 
-  it("makes no term at all when even the root is unknown", () => {
-    expect(diseaseCodes("リンチ症候群(ICD10: Z15.09)", ["C34"])).toEqual([])
+  it("points at nothing when even the root is unknown, and keeps the disease", () => {
+    expect(diseaseTermsOf("リンチ症候群(ICD10: Z15.09)", ["C34"])).toEqual([])
+  })
+
+  it("mints no term for the disease vocabulary: the classification is put in whole", () => {
+    expect(collectTerms([experimentSaying("肺がん(ICD10: C34.9)")]).get(DISEASE_SET) ?? []).toEqual([])
   })
 
   it("takes no term from the layer v1 extracted", () => {

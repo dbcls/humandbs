@@ -11,9 +11,10 @@ import {
   adminDraftReviewPath,
   adminResearchFilesPath,
   adminResearchListPath,
+  adminVersionDatasetsPath,
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Badge, ButtonLink, Confirm, Dialog, Heading, Stack, Stated } from "~/components/base"
+import { Badge, ButtonLink, Confirm, Dialog, Heading, Stack, Stated, Chevron } from "~/components/base"
 import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, ExternalLink, Page, Section, Table, Td } from "~/components/page"
@@ -223,7 +224,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 <Dialog
                   label={t.addLabel}
                   title={t.addLabelTitle}
-                  icon={<Icon name="plus" />}
+                  icon={<Icon name="link" />}
                   dismiss={t.cancel}
                   action={() => (
                     <Submit intent="pin" variant="primary" icon={<Icon name="link" />}>
@@ -251,19 +252,17 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
               does not say what is in it, which is why this one section has a
               line under its name. */}
           <Section title={messages.admin.files.heading} note={t.filesNote}>
-            {/* **The way in is a link, and says it goes somewhere.** A button
-                standing alone under a section reads as something done here;
-                the one control this section has leads to another screen, so it
-                wears the face of a way there — the word and the mark after it
-                (`docs/ui.md` の「管理画面の枠」) — with what the box holds beside it. */}
+            {/* **The way in is a control, and says it goes somewhere.** The one
+                thing this section has leads to another screen, so it wears the
+                face of the way out (`AdminBack`) with the mark after the word
+                (docs/admin-ui.md の「区画の枠」) — a bare link under a name
+                reads as a caption, and an outlined button with no mark reads as
+                something done here. What the box holds stands beside it. */}
             <p className="flex flex-wrap items-center gap-3 text-sm">
-              <Link
-                to={href(locale, adminResearchFilesPath(view.researchId))}
-                className="inline-flex items-center gap-1 font-semibold"
-              >
+              <ButtonLink to={href(locale, adminResearchFilesPath(view.researchId))}>
                 {t.openFiles}
-                <Icon name="chevron-right" aria-hidden="true" />
-              </Link>
+                <Chevron dir="right" />
+              </ButtonLink>
               <span className="text-ink-muted">
                 {view.box === null
                   ? messages.admin.files.unavailable
@@ -352,8 +351,11 @@ function DraftRow({ draft, review, researchId, locale }: {
   )
 }
 
-/** How many datasets a draft would list, which is always somewhere to go — even
- * an empty list has a screen to add the first one on. */
+/**
+ * How many datasets a row lists, which is always somewhere to go: a draft's to
+ * the screen they are decided on (even an empty list has a screen to add the
+ * first one on), a version's to the screen that reads what it lists.
+ */
 function Datasets({ count, to, locale }: { count: number, to: string, locale: Locale }) {
   const t = messagesFor(locale).admin.detail
   return <Link to={to}>{t.datasetCount(count)}</Link>
@@ -371,7 +373,7 @@ function Review({ review, to, locale }: { review: AdminDraftReviewRow | null, to
   const t = messagesFor(locale).admin.detail
   if (review === null) return null
   return (
-    <span className="flex flex-wrap items-center gap-2">
+    <span className="flex items-center gap-2 text-nowrap">
       {review.shared
         ? <Stated icon="link">{t.shared}</Stated>
         : review.expired
@@ -398,7 +400,7 @@ function Problems({ review, to, locale }: { review: AdminDraftReviewRow | null, 
   if (review === null) return null
   if (review.blocks === 0 && review.findings === 0) return <Stated icon="check">{t.ready}</Stated>
   return (
-    <span className="flex flex-wrap items-center gap-2">
+    <span className="flex items-center gap-2 text-nowrap">
       {review.blocks > 0 && (
         <Link to={to}>
           <Badge tone="danger" icon={<Icon name="alert" />}>{t.blocked(review.blocks)}</Badge>
@@ -420,7 +422,9 @@ function Problems({ review, to, locale }: { review: AdminDraftReviewRow | null, 
  *
  * **Editing one does not take it out.** It opens the draft the version is
  * updated in — made now if none is open — and the version stays as it is until
- * that draft is published in its place (docs/editing.md の「draft」). **The
+ * that draft is published in its place (docs/editing.md の「draft」). **Its
+ * dataset count leads to the screen that reads what it lists** — a version is
+ * not edited in place, so that screen has nothing to press. **The
  * update is a state of this row, not a row of its own**: while it is on, the
  * row says so, carries the draft's day, dataset count, review and
  * shortcomings in the cells a version leaves empty, and offers stopping it;
@@ -441,7 +445,7 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
   return (
     <tr>
       <Td nowrap>
-        <span className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-2 text-nowrap">
           {/* The same mark the listing gives a published research. */}
           <Stated icon="eye">{t.published}</Stated>
           {updating !== null && (
@@ -462,7 +466,13 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
       <Td nowrap>{version.releaseDate}</Td>
       <Td>
         {updating === null
-          ? t.datasetCount(version.datasets)
+          ? (
+              <Datasets
+                count={version.datasets}
+                to={href(locale, adminVersionDatasetsPath(researchId, version.number))}
+                locale={locale}
+              />
+            )
           : (
               <Datasets
                 count={review?.datasets ?? 0}
@@ -483,6 +493,10 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
       </Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
+          {/* The same order as the name row (docs/admin-ui.md の「画面の名乗り」):
+              what leaves nothing behind first, what cannot be undone last.
+              Stopping an update throws a draft away, so it stands with
+              withdrawing at the end and not beside the way into that draft. */}
           {updating === null
             ? (
                 <Form method="post">
@@ -491,36 +505,36 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
                 </Form>
               )
             : (
-                <>
-                  <ButtonLink
-                    to={href(locale, adminDraftPath(researchId, updating.id))}
-                    size="row"
-                    icon={<Icon name="edit" />}
-                  >
-                    {t.edit}
-                  </ButtonLink>
-                  {/* Stopping is discarding the draft; the version is not
-                      touched, which is what the panel says. */}
-                  <Form method="post">
-                    <input type="hidden" name="draftId" value={updating.id} />
-                    <input type="hidden" name="revision" value={updating.revision} />
-                    <Confirm
-                      label={t.stopUpdating}
-                      title={t.stopUpdatingTitle(name)}
-                      warning={t.stopUpdatingWarning}
-                      confirm={t.stopUpdatingConfirm}
-                      cancel={t.cancel}
-                      intent="discard-draft"
-                      icon="close"
-                      size="row"
-                    />
-                  </Form>
-                </>
+                <ButtonLink
+                  to={href(locale, adminDraftPath(researchId, updating.id))}
+                  size="row"
+                  icon={<Icon name="edit" />}
+                >
+                  {t.edit}
+                </ButtonLink>
               )}
           <Form method="post">
             <input type="hidden" name="number" value={version.number} />
             <Submit intent="copy-version" size="row" icon={<Icon name="plus" />}>{t.copyToDraft}</Submit>
           </Form>
+          {updating !== null && (
+            /* Stopping is discarding the draft; the version is not touched,
+               which is what the panel says. */
+            <Form method="post">
+              <input type="hidden" name="draftId" value={updating.id} />
+              <input type="hidden" name="revision" value={updating.revision} />
+              <Confirm
+                label={t.stopUpdating}
+                title={t.stopUpdatingTitle(name)}
+                warning={t.stopUpdatingWarning}
+                confirm={t.stopUpdatingConfirm}
+                cancel={t.cancel}
+                intent="discard-draft"
+                icon="close"
+                size="row"
+              />
+            </Form>
+          )}
           {/* Taking a version out of sight: the mark is the one the listing
               gives what is not published, not the one for throwing away. */}
           <Form method="post">

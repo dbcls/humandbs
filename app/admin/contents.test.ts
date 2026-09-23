@@ -1,21 +1,22 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  type ContentsFilter,
+  type DocumentRow,
   entryNames,
   filterEntries,
   filterNewsRows,
   matchingEntries,
+  type NewsFilter,
+  type NewsRow,
+  newsStateIn,
   nextVersionNumber,
   parseVersionNumber,
+  type SeriesRow,
   siteTree,
   slugProblem,
   unansweredLocales,
   versionNumberIn,
-  type ContentsFilter,
-  type DocumentRow,
-  type NewsFilter,
-  type NewsRow,
-  type SeriesRow,
 } from "./contents"
 
 function states(published: { ja?: boolean, en?: boolean } = {}) {
@@ -321,5 +322,34 @@ describe("お知らせの一覧の絞り込み", () => {
   it("窓と軸も AND", () => {
     expect(found({ keyword: "制限公開", ja: ["published"] })).toEqual(["a", "b"])
     expect(found({ keyword: "制限公開", ja: ["unpublished"] })).toEqual([])
+  })
+})
+
+describe("お知らせの言語の状態", () => {
+  const row = (published: boolean, scheduled: boolean): NewsRow => ({
+    id: "x",
+    publishedAt: scheduled ? "2099-01-01 09:00:00" : "2020-01-01 09:00:00",
+    title: "題",
+    scheduled,
+    states: states({ ja: published, en: false }),
+  })
+
+  it("公開中の言語は、日時がまだ来ていなければ公開予定になる", () => {
+    expect(newsStateIn(row(true, false), "ja")).toBe("published")
+    expect(newsStateIn(row(true, true), "ja")).toBe("scheduled")
+  })
+
+  it("未公開の言語は、日時が未来でも未公開のまま — 待っているのは公開中の言語だけ", () => {
+    expect(newsStateIn(row(false, true), "ja")).toBe("unpublished")
+    expect(newsStateIn(row(true, true), "en")).toBe("unpublished")
+  })
+
+  it("絞り込みは 3 つの状態を別々に引く", () => {
+    const rows = [row(true, true), { ...row(true, false), id: "y" }]
+    const ids = (ja: readonly ("published" | "scheduled" | "unpublished")[]) =>
+      filterNewsRows(rows, { keyword: "", dating: [], ja, en: [] }).map((one) => one.id)
+    expect(ids(["scheduled"])).toEqual(["x"])
+    expect(ids(["published"])).toEqual(["y"])
+    expect(ids(["unpublished"])).toEqual([])
   })
 })

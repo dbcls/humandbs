@@ -1,14 +1,15 @@
 import { Link } from "react-router"
 
+import type { BranchStanding } from "~/admin/listing"
 import type { UpstreamChoiceView } from "~/admin/templates.server"
 import { adminExperimentFieldsPath, adminResearchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import { Stack } from "./base"
+import { Stack, Stated } from "./base"
 import { Submit } from "./form"
-import { Icon } from "./icons"
+import { Icon, type IconName } from "./icons"
 import { Empty, Section } from "./page"
 
 /**
@@ -22,6 +23,31 @@ import { Empty, Section } from "./page"
 export function UpstreamNotConnected({ locale }: { locale: Locale }) {
   const t = messagesFor(locale).admin.templates
   return <Empty>{t.notConnected}</Empty>
+}
+
+/**
+ * Where a branch stands with the portal, drawn as a glyph and a word.
+ *
+ * Whether the hum's research is already here is the question every row of the
+ * branch listing is opened to answer, and a label that is or is not a link says
+ * it only to a reader who tries to press it. **The pair is the one the pane
+ * narrows by** (`Stated`): the same three glyphs stand beside the ticks, so the
+ * shape a curator narrows by is the shape they then read down the rows. **The
+ * glyphs differ from one another** — the glyph is what tells the states apart
+ * at a glance, and the word says which it is.
+ */
+export const STANDING_MARK: Record<BranchStanding, IconName> = {
+  held: "check",
+  absent: "circle-slash",
+  unlabelled: "help-circle",
+}
+
+export function BranchStandingMark({ standing, locale }: {
+  standing: BranchStanding
+  locale: Locale
+}) {
+  const t = messagesFor(locale).admin.templates
+  return <Stated icon={STANDING_MARK[standing]}>{t.standings[standing]}</Stated>
 }
 
 /**
@@ -69,10 +95,7 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
                           ? null
                           : (
                               <span key={language} className="flex gap-2">
-                                <span
-                                  className="w-5 shrink-0 text-ink-muted text-xs leading-[1.6]"
-                                  lang={language}
-                                >
+                                <span className="w-5 shrink-0 text-ink-muted text-sm" lang={language}>
                                   {language}
                                 </span>
                                 <span lang={language}>{field[language]}</span>

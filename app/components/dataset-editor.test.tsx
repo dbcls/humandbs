@@ -187,7 +187,6 @@ function view(
     revision: 2,
     input: datasetContentInput(content),
     catalog,
-    presence: [],
     upstream: null,
     review: {
       changed: [],
@@ -517,15 +516,14 @@ describe("the dataset editing form", () => {
     expect(html).toContain("未確定")
   })
 
-  it("says nothing about a conflict or refused markup until a save has been answered", () => {
+  it("says nothing about a conflict until a save has been answered", () => {
     const html = render(view(described()))
 
     expect(html).not.toContain("別の場所で保存されました")
-    expect(html).not.toContain("文として保存できない記法があります")
   })
 
   it("offers a file selection for a dataset the portal issued the id for", () => {
-    expect(render(view(emptyDatasetContent(), true))).toContain("この研究の箱にあるファイル")
+    expect(render(view(emptyDatasetContent(), true))).toContain("この研究にアップロードしたファイルから選ぶ")
   })
 
   it("does not offer a file selection for a dataset an archive issued the id for", () => {
@@ -569,7 +567,7 @@ describe("the head", () => {
     const html = render(view())
     expect(html).not.toContain("研究の編集へ")
     expect(html).not.toContain("レビューと共有")
-    expect(html).not.toContain("公開の確認")
+    expect(html).not.toContain("公開前の確認")
   })
 })
 
@@ -602,6 +600,6 @@ describe("the comment panel's own name", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
     }]
     const html = render(withComment)
-    expect(html).toContain("title=\"解析手法 のコメント\"")
+    expect(html).toContain("title=\"解析手法 へのコメント\"")
   })
 })

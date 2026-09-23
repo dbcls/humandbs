@@ -527,7 +527,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
               {t.chooseFiles}
             </Button>
             {sending && (
-              <Button type="button" variant="ghost" onClick={() => { aborter.current?.abort() }}>
+              <Button type="button" variant="secondary" onClick={() => { aborter.current?.abort() }}>
                 {t.uploadCancel}
               </Button>
             )}

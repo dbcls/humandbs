@@ -31,11 +31,12 @@ import { href } from "~/public/urls"
 import { isAnchorPath, isFieldAnchor, subjectOf, type AnchorSubject } from "./anchors"
 import { byAttention, checkComment, unresolvedCount, type CommentProblem, type CommentView } from "./comments"
 import {
+  deleteComment,
+  postAboutDraft,
+  postComment,
   readAcknowledgements,
   readComments,
   setCommentResolved,
-  postAboutDraft,
-  postComment,
   type AcknowledgementView,
 } from "./comments.server"
 import { readShare } from "./queries.server"
@@ -235,6 +236,14 @@ export async function reviewAction(
       resolved: intent === "resolve",
       actorSub: actor.sub,
     })
+    if (outcome.status === "gone") notFound()
+    return done()
+  }
+
+  if (intent === "delete") {
+    const commentId = readString(form, "commentId")
+    if (commentId === "") badRequest()
+    const outcome = await deleteComment(db, { draftId, commentId })
     if (outcome.status === "gone") notFound()
     return done()
   }

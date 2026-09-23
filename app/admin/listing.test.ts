@@ -8,7 +8,6 @@ import {
   ADMIN_FLAG_KEYS,
   ADMIN_STATUSES,
   axisCounts,
-  BRANCH_REGISTRATIONS,
   BRANCH_STANDINGS,
   branchStanding,
   filterBranchRows,
@@ -38,7 +37,7 @@ function row(overrides: Partial<AdminResearchRow> = {}): AdminResearchRow {
     humLabel: "hum0001",
     title: pair("糖尿病のゲノム解析", "Genome analysis of diabetes"),
     providerNames: [pair("田中 太郎", "Taro Tanaka")],
-    datasetLabels: ["JGAD000001"],
+    datasets: [{ label: "JGAD000001", published: false }],
     status: "published",
     publishedVersions: 1,
     draftCount: 0,
@@ -82,7 +81,7 @@ describe("the direct lookup", () => {
   })
 
   it("has nothing to match on a research with no label and no title", () => {
-    const bare = row({ humLabel: null, title: pair("", ""), providerNames: [], datasetLabels: [] })
+    const bare = row({ humLabel: null, title: pair("", ""), providerNames: [], datasets: [] })
 
     expect(matching("hum", [bare])).toBe(0)
     expect(matching("", [bare])).toBe(1)
@@ -284,8 +283,8 @@ function branch(overrides: Partial<BranchRow> = {}): BranchRow {
 const HELD = branch()
 const ABSENT = branch({ applicationId: "J-DS000200-001", heldBy: null })
 const UNLABELLED = branch({ applicationId: "J-DS000300-001", humLabel: null, heldBy: null })
-const NOTHING_REGISTERED = branch({ applicationId: "J-DS000400-001", datasets: [] })
-const ALL = [HELD, ABSENT, UNLABELLED, NOTHING_REGISTERED]
+const UNREGISTERED = branch({ applicationId: "J-DS000400-001", datasets: [] })
+const ALL = [HELD, ABSENT, UNLABELLED, UNREGISTERED]
 
 describe("where a branch stands with the portal", () => {
   it("reads the hum label first: no label is its own standing, not a missing research", () => {
@@ -294,36 +293,28 @@ describe("where a branch stands with the portal", () => {
     expect(branchStanding(UNLABELLED)).toBe("unlabelled")
   })
 
-  it("keeps every branch when an axis is asked for in full, as when it is not asked at all", () => {
-    const every = { standings: BRANCH_STANDINGS, registrations: BRANCH_REGISTRATIONS }
-    const none = { standings: [], registrations: [] }
-
-    expect(filterBranchRows(ALL, every)).toEqual(ALL)
-    expect(filterBranchRows(ALL, none)).toEqual(ALL)
+  it("keeps every branch when the axis is asked for in full, as when it is not asked at all", () => {
+    expect(filterBranchRows(ALL, { standings: BRANCH_STANDINGS })).toEqual(ALL)
+    expect(filterBranchRows(ALL, { standings: [] })).toEqual(ALL)
   })
 
-  it("combines the two axes as an AND and the values within one as an OR", () => {
-    const held = filterBranchRows(ALL, { standings: ["held"], registrations: [] })
+  it("takes a branch in any of the ticked standings", () => {
+    const held = filterBranchRows(ALL, { standings: ["held"] })
     expect(held.map((row) => row.applicationId))
-      .toEqual([HELD.applicationId, NOTHING_REGISTERED.applicationId])
+      .toEqual([HELD.applicationId, UNREGISTERED.applicationId])
 
-    const twoStandings = filterBranchRows(ALL, {
-      standings: ["absent", "unlabelled"],
-      registrations: [],
-    })
-    expect(twoStandings.map((row) => row.applicationId))
+    const two = filterBranchRows(ALL, { standings: ["absent", "unlabelled"] })
+    expect(two.map((row) => row.applicationId))
       .toEqual([ABSENT.applicationId, UNLABELLED.applicationId])
-
-    // Held **and** holding datasets: the one row that manages both, not the
-    // three that manage either.
-    const both = filterBranchRows(ALL, { standings: ["held"], registrations: ["some"] })
-    expect(both.map((row) => row.applicationId)).toEqual([HELD.applicationId])
   })
 
-  it("counts a branch with no dataset as registering nothing", () => {
-    const none = filterBranchRows(ALL, { standings: [], registrations: ["none"] })
-
-    expect(none.map((row) => row.applicationId)).toEqual([NOTHING_REGISTERED.applicationId])
+  it("does not narrow by whether the branch registered anything", () => {
+    for (const standing of BRANCH_STANDINGS) {
+      const kept = filterBranchRows(ALL, { standings: [standing] })
+      const datasetsOf = new Set(kept.map((row) => row.datasets.length === 0))
+      expect(kept.every((row) => branchStanding(row) === standing)).toBe(true)
+      if (standing === "held") expect(datasetsOf).toEqual(new Set([true, false]))
+    }
   })
 })
 

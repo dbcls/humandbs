@@ -9,17 +9,7 @@ import {
   type AdminDestination,
 } from "~/admin/navigation"
 import { CartMenu } from "~/components/cart"
-import {
-  Announcement,
-  Badge,
-  LanguagePills,
-  Menu,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
-  RoundLink,
-  Stack,
-} from "~/components/base"
-import { Icon } from "~/components/icons"
+import { Announcement, Badge, LanguagePills, Menu, MENU_ITEM, MENU_ITEM_HERE, RoundLink, Stack, Chevron } from "~/components/base"
 import { Markdown } from "~/components/markdown"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -245,10 +235,10 @@ function AccountControl({ account, locale, managing }: {
       {account.isAdmin && (
         <Link
           to={href(locale, managing ? "/" : "/admin")}
-          className="flex items-center gap-0.5 whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
+          className="group/way flex items-center gap-0.5 whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
         >
           {managing ? messages.account.public : messages.account.admin}
-          <Icon name="chevron-right" />
+          <Chevron dir="right" />
         </Link>
       )}
       <Form method="post" action="/auth/logout">

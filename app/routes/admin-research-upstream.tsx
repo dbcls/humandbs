@@ -1,12 +1,11 @@
 import { Form, Link } from "react-router"
 
 import {
-  BRANCH_REGISTRATIONS,
   BRANCH_SORT,
   BRANCH_SORT_KEYS,
   BRANCH_STANDINGS,
   branchOrder,
-  type BranchRegistration,
+  branchStanding,
   type BranchStanding,
 } from "~/admin/listing"
 import { upstreamResearchPage } from "~/admin/templates.server"
@@ -31,7 +30,7 @@ import { Checkbox } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { UpstreamNotConnected } from "~/components/upstream"
+import { BranchStandingMark, STANDING_MARK, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
@@ -61,9 +60,8 @@ const SHOWN_DATASETS = 3
  * **It is presented the way the other listings are** (`components/search.tsx`):
  * the conditions in a pane at the left, the ordering and the page size over the
  * rows, and every branch that matched counted and paged. What it narrows by is
- * its own — where the branch stands with the portal, and whether it has
- * registered anything yet — because those are the two questions a curator opens
- * a row to answer.
+ * its own — where the branch stands with the portal — because that is the
+ * question a curator opens a row to answer.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
@@ -90,7 +88,6 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.standings.length
-    + view.registrations.length
 
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
@@ -113,7 +110,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                   locale={locale}
                   onToggle={togglePane}
                   inForce={inForce}
-                  // The box is never alone in the pane here: two axes stand
+                  // The box is never alone in the pane here: the axis stands
                   // under it whatever the reader has asked for.
                   refineHasMore
                   refine={<Filters view={view} locale={locale} />}
@@ -128,7 +125,15 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                         それがこの表の主役でもある。 */}
                     <Table
                       stuck={1}
-                      headers={[t.application, t.humLabel, t.approvedOn, t.title, t.pi, t.registered]}
+                      headers={[
+                        t.application,
+                        t.humLabel,
+                        t.standing,
+                        t.approvedOn,
+                        t.title,
+                        t.pi,
+                        t.registered,
+                      ]}
                       whenEmpty={t.none}
                     >
                       {view.rows.map((row) => (
@@ -139,11 +144,12 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                             </Link>
                           </Td>
                           <Td nowrap>
-                            {/* **The three ways this cell reads are the three
-                                standings the pane narrows by** — a way into the
-                                research, a number the portal does not hold, and
-                                no number at all. The glyph is the one every
-                                listing gives a research. */}
+                            {/* **The label, and a way into the research when
+                                the portal holds one.** Whether it does is said
+                                by the column beside, not by this one — a label
+                                that is or is not a link says it only to a
+                                reader who tries to press it. The glyph is the
+                                one every listing gives a research. */}
                             {row.humLabel === null
                               ? <span className="text-ink-muted">{t.noHumLabel}</span>
                               : (
@@ -162,6 +168,9 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                                         )}
                                   </>
                                 )}
+                          </Td>
+                          <Td nowrap>
+                            <BranchStandingMark standing={branchStanding(row)} locale={locale} />
                           </Td>
                           <Td nowrap>{row.approvedOn ?? ""}</Td>
                           <Td floor="min-w-64">
@@ -251,9 +260,6 @@ function Filters({ view, locale }: ViewProps) {
         {view.standings.map((standing) => (
           <input key={standing} type="hidden" name="standing" value={standing} />
         ))}
-        {view.registrations.map((registration) => (
-          <input key={registration} type="hidden" name="registered" value={registration} />
-        ))}
         <Presented view={view} />
       </SearchBox>
 
@@ -266,22 +272,11 @@ function Filters({ view, locale }: ViewProps) {
               <Checkbox
                 key={standing}
                 label={t.standings[standing]}
+                icon={<Icon name={STANDING_MARK[standing]} aria-hidden="true" className="mr-1 text-ink-muted" />}
                 name="standing"
                 value={standing}
                 checked={view.standings.includes(standing)}
                 count={view.counts.standings[standing]}
-              />
-            ))}
-          </RefineAxis>
-          <RefineAxis label={t.registration}>
-            {BRANCH_REGISTRATIONS.map((registration: BranchRegistration) => (
-              <Checkbox
-                key={registration}
-                label={t.registrations[registration]}
-                name="registered"
-                value={registration}
-                checked={view.registrations.includes(registration)}
-                count={view.counts.registrations[registration]}
               />
             ))}
           </RefineAxis>
@@ -315,7 +310,6 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Branch
   return href(locale, adminUpstreamResearchPath() + branchListingQuery({
     keyword: view.keyword,
     standings: view.standings,
-    registrations: view.registrations,
     page: 1,
     sort: view.sort === BRANCH_SORT ? null : view.sort,
     order: view.order === branchOrder(view.sort) ? null : view.order,

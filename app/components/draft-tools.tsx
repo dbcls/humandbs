@@ -1,97 +1,24 @@
 /**
  * What every editing screen of a draft carries, whichever thing it edits.
  *
- * Who else has the draft open is about the draft rather than about the screen,
- * so a research and one of its datasets show the same people. **A dataset
- * editor is an editor of the draft**, and somebody who has one open is somebody
- * to be careful of on the other. `DraftHead`, `DraftTools` and the state behind
- * them are here for the same reason: the two screens differ in what a field
- * is, not in what saving one means.
+ * **A dataset editor is an editor of the draft.** `DraftHead`, `DraftTools`
+ * and the state behind them are shared for that reason: the two screens
+ * differ in what a field is, not in what saving one means.
  */
 
-import { useEffect, useState, type ReactNode } from "react"
-import { Link, useFetcher, type SubmitTarget } from "react-router"
+import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useFetcher, type SubmitTarget } from "react-router"
 
-import type { FieldProblem } from "~/admin/form.server"
 import { takeAll } from "~/admin/merge"
-import type { PresenceView, UpstreamView } from "~/admin/pages.server"
-import { PRESENCE_HEARTBEAT_SECONDS } from "~/admin/presence"
+import type { UpstreamView } from "~/admin/pages.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { useHoldsUnsaved } from "~/components/unsaved"
 
 import { AdminBack } from "./admin"
-import { Badge, Button, controlFace, Heading, Stack, useDismissible } from "./base"
+import { Badge, Button, Heading, Stack } from "./base"
 import { Icon, type IconName } from "./icons"
-import { Card } from "./page"
 import type { Marks } from "./fields"
-
-/**
- * How tall the tools row is, as the panes under it have to know (`admin.tsx`
- * の `PANE_STANCE`). One row of 36px controls with 12px above and below.
- */
-export const TOOLS_HEIGHT = "h-[3.75rem]"
-
-/**
- * Saying we are here, over and over, and showing who else is.
- *
- * The heartbeat answers with the current list, so announcing and finding out
- * are one exchange. Nobody is made read-only by any of it: a save is checked
- * against a revision, and this is only so that two people editing the same
- * thing know about each other before that happens.
- *
- * **It stands beside the save, and always takes its place.** What it tells the
- * person about to save is that the save may meet somebody else's — which is
- * news about the save, and nowhere else on the screen. Drawn only when
- * somebody else is there, it moved everything beside it when they arrived; so
- * the mark and the count stay, and read "0" when the answer is nobody. The
- * names are behind the count, where somebody who wants them can open them.
- */
-export function PresenceMark({ locale, path, initial }: {
-  locale: Locale
-  path: string
-  initial: PresenceView[]
-}) {
-  const t = messagesFor(locale).admin.editor
-  const fetcher = useFetcher<{ present: PresenceView[] }>()
-  const submit = fetcher.submit
-  const box = useDismissible()
-
-  useEffect(() => {
-    const beat = () => {
-      void submit({}, { method: "post", action: path })
-    }
-    beat()
-    const timer = setInterval(beat, PRESENCE_HEARTBEAT_SECONDS * 1000)
-    return () => {
-      clearInterval(timer)
-    }
-  }, [submit, path])
-
-  const others = (fetcher.data?.present ?? initial).filter((row) => !row.isSelf)
-  if (others.length === 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-ink-muted text-xs" title={t.presenceNobody}>
-        <Icon name="users" aria-hidden="true" />
-        {t.presence(0)}
-        <span className="sr-only">{t.presenceNobody}</span>
-      </span>
-    )
-  }
-  return (
-    <details ref={box} className="relative">
-      <summary
-        className={`${controlFace({ size: "xs" })} list-none marker:content-none`}
-        title={t.presenceOthers}
-      >
-        <Icon name="users" aria-hidden="true" />
-        {t.presence(others.length)}
-      </summary>
-      <ul className="absolute top-[calc(100%+0.25rem)] right-0 z-20 min-w-48 rounded border border-line bg-white px-3 py-2 text-sm shadow">
-        {others.map((row) => <li key={row.name}>{row.name}</li>)}
-      </ul>
-    </details>
-  )
-}
 
 /**
  * The head of an editing screen: what is being edited, the way back out of
@@ -108,12 +35,21 @@ export function PresenceMark({ locale, path, initial }: {
  * **The second line is what this draft is, read once.** Its other three
  * faces, the memo, the comments about the whole of it, and the way to take in
  * a data-providing application — read on the way in and not needed again
- * while typing, which is why it stands here and not in the row that stays
- * (`DraftTools`). A dataset is a part of the draft rather than a face of its
- * own, so its screen carries no second line
- * (`docs/admin-ui.md` の「編集画面」).
+ * while typing, which is why it folds away with the name. A dataset is a part
+ * of the draft rather than a face of its own, so its screen carries no second
+ * line (`docs/admin-ui.md` の「編集画面」).
+ *
+ * **The last row is the tools row, and it is the one row that stays.** The
+ * card sticks to the top of the window; once it is held there, the name and
+ * the second line fold away and the tools row is what is left — one 36px row
+ * with 12px above and below (3.75rem), which is what the panes under it add
+ * up from (`admin.tsx` の `PANE_STANCE`). The screens are thousands of pixels
+ * long, and a save that scrolled away with the head was off the screen for
+ * most of the time anything was typed (measured: gone after 306px). **Folded
+ * rather than a row of its own**: a row standing apart from the head read as
+ * a card with one line in it.
  */
-export function DraftHead({ locale, title, aside, updating, badge, back, headExtra, overview }: {
+export function DraftHead({ locale, title, aside, updating, badge, back, headExtra, overview, tools }: {
   locale: Locale
   title: string
   aside?: string
@@ -136,45 +72,97 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
   headExtra?: ReactNode
   /** This draft's other faces and its memo — the research editor's own. */
   overview?: ReactNode
+  /**
+   * What stays in reach while typing — the pane switch and the way to save
+   * (`DraftTools`, `contents.tsx` の `ArticleTools`). Once the page is
+   * scrolled, the card is folded down to this one row.
+   */
+  tools: ReactNode
 }) {
   const t = messagesFor(locale).admin.editor
+  const card = useRef<HTMLDivElement>(null)
+  const [folded, setFolded] = useState(false)
+
+  // **Folded once the card is held at the top of the window.** The card stays
+  // at the top once scrolled to; the observer sees it stop being wholly inside
+  // a root shrunk by 1px at the top, which is exactly when its top edge has
+  // met the window's.
+  // A card cut off at the bottom (a short window) is not held, so the top
+  // edge is asked as well. Without script the card stays open and sticks at
+  // its full height.
+  useEffect(() => {
+    const el = card.current
+    if (el === null) return
+    const watcher = new IntersectionObserver(([entry]) => {
+      if (entry === undefined) return
+      setFolded(entry.intersectionRatio < 1 && entry.boundingClientRect.top < 1)
+    }, { threshold: [1], rootMargin: "-1px 0px 0px 0px" })
+    watcher.observe(el)
+    return () => {
+      watcher.disconnect()
+    }
+  }, [])
+
   return (
-    <Card under={false}>
-      <Stack>
-        <Heading
-          title={title}
-          aside={aside}
-          badge={(
-            <>
-              {updating !== null && (
-                <Badge tone="accent" icon={<Icon name="edit" aria-hidden="true" />}>
-                  {t.updatingBadge(`v${updating}`)}
-                </Badge>
+    <div
+      ref={card}
+      // **Under the strip that answers an operation** (`base.tsx` の `Toast`,
+      // z-30): the card is held at the top of the window, which is where the
+      // answer floats, and the answer is the newer of the two.
+      className={`sticky top-0 z-20 bg-white motion-safe:transition-[padding] motion-safe:duration-150 ${
+        folded ? "rounded-b py-3" : "rounded py-6"
+      }`}
+    >
+      {/* **The name and the facts fold away; the tools stay.** Folding is a
+          grid track going to nothing, which needs no measured height. What is
+          folded is also inert, so neither focus nor a reader lands in it.
+          **The card's side padding is the folding box's own**, so that the
+          name's rule, which reaches out to the card's edge, is clipped at the
+          edge and not at the padding. */}
+      <div
+        className={`grid motion-safe:transition-[grid-template-rows] motion-safe:duration-150 ${
+          folded ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden px-6" inert={folded}>
+          <Stack>
+            <Heading
+              title={title}
+              aside={aside}
+              badge={(
+                <>
+                  {updating !== null && (
+                    <Badge tone="accent" icon={<Icon name="edit" aria-hidden="true" />}>
+                      {t.updatingBadge(`v${updating}`)}
+                    </Badge>
+                  )}
+                  {badge}
+                </>
               )}
-              {badge}
-            </>
-          )}
-        >
-          <AdminBack to={back.to} label={back.label} icon={back.icon} />
-          {headExtra}
-        </Heading>
-        {overview}
-      </Stack>
-    </Card>
+            >
+              <AdminBack to={back.to} label={back.label} icon={back.icon} />
+              {headExtra}
+            </Heading>
+            {overview}
+          </Stack>
+          <div className="h-4" />
+        </div>
+      </div>
+      <div className="px-6">{tools}</div>
+    </div>
   )
 }
 
 /**
- * The row an editing screen keeps at hand: the pane switch, unresolved
- * comments, who else is here, and the way to save.
+ * The row an editing screen keeps at hand, as the head's last row
+ * (`DraftHead`): the way to save, what the save is doing, the panels read
+ * while typing (the memo, the whole, what is still open), and — at the far
+ * end — the pane switch.
  *
- * **It, and only it, stays at the top of the window.** The screens it serves
- * are thousands of pixels long, and a save that scrolled away with the head
- * was off the screen for most of the time anything was being typed (measured:
- * gone after 306px). The panes below stick under it (`admin.tsx` の
- * `PANE_STANCE`). **Drawn as the head's own last row** — white, the same
- * left and right margin, rounded at the bottom — it reads as one card until
- * the head scrolls out from under it, at which point it is what is left.
+ * **Save stands first.** It is the one thing on the row that has to be
+ * pressed, so it is where the eye starts; its news stands to its right, and
+ * the panels after that. **The switch stands last**, apart from the rest: it
+ * arranges the boxes below and changes nothing.
  *
  * **Ctrl+S and Cmd+S save.** The hands typing are on the keyboard, and what the
  * browser offers for that chord — saving the page as a file — is nothing anyone
@@ -183,30 +171,28 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
 export function DraftTools({
   locale,
   panesControl,
-  unresolved,
-  reviewHref,
+  notes,
   dirty,
   saved,
   saving,
   onSave,
-  presencePath,
-  presence,
 }: {
   locale: Locale
   /** The pane arrangement's own switch (`admin.tsx` の `usePanes`). */
   panesControl: ReactNode
-  /** Comments nobody has closed yet. */
-  unresolved: number
-  /** Where the count leads: the review screen, so a curator can read what they are. */
-  reviewHref: string
+  /** The entries of the panels read while typing (`comments.tsx` の `DraftNote` / `WholeNote` / `OpenComments`). */
+  notes: ReactNode
   dirty: boolean
   saved: boolean
   saving: boolean
   onSave: () => void
-  presencePath: string
-  presence: PresenceView[]
 }) {
   const t = messagesFor(locale).admin
+
+  // The guard at the way off the screen hears this screen's own answer
+  // (`unsaved.tsx`); saving here goes through a fetcher, which is not a way
+  // off and is never stopped.
+  useHoldsUnsaved(dirty)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -221,24 +207,18 @@ export function DraftTools({
   }, [dirty, saving, onSave])
 
   return (
-    <div className={`sticky top-0 z-30 flex ${TOOLS_HEIGHT} items-center gap-4 rounded-b bg-white px-6`}>
-      {/* **How the panes are arranged is about the boxes below, not about the
-          draft** — it stands first, beside nothing it acts on. */}
-      {panesControl}
-      {/* **The count is a way to the screen that reads them all.** A curator
-          picking it out here does not need to know which field yet — the
-          review screen lists them, each beside its place. */}
-      <Link to={reviewHref} className="no-underline">
-        <Badge tone={unresolved > 0 ? "accent" : undefined} icon={<Icon name="comment" aria-hidden="true" />}>
-          {t.detail.openComments(unresolved)}
-        </Badge>
-      </Link>
+    // **One line where the window allows, and a second line rather than a
+    // squeeze where it does not.** The entries are words in boxes, and a box
+    // whose word is folded onto two lines is taller than the row and reads as
+    // broken; so nothing here folds inside itself, and a narrow window sends
+    // the pane switch — the last thing, at the far end — down to a line of
+    // its own instead.
+    <div className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2">
       {/*
-        **Who else is here, and what to do with the work, at the far end.**
-        The two are one group: the first says what the second may run into.
+        **Save stands first, at the row's left, with its news beside it.** The
+        two are one group: what to do with the work, and what the save is doing.
       */}
-      <div className="ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-sm">
-        <PresenceMark locale={locale} path={presencePath} initial={presence} />
+      <div className="flex shrink-0 items-center gap-3 whitespace-nowrap text-sm">
         {/*
           **The one control that carries the accent, and only while there is
           something to save.** The colour says there is unsaved work and the
@@ -268,6 +248,13 @@ export function DraftTools({
           {!saving && !dirty && saved && <span className="text-ink-muted">{t.editor.saved}</span>}
         </span>
       </div>
+      {/* **What is read while typing, beside what is written.** Each entry
+          opens a panel over the form, so none of them takes the reader off
+          the screen. */}
+      <span className="flex flex-wrap items-center gap-4 whitespace-nowrap">{notes}</span>
+      {/* **How the panes are arranged is about the boxes below, not about the
+          draft** — it stands at the far end, beside nothing it acts on. */}
+      <span className="ml-auto">{panesControl}</span>
     </div>
   )
 }
@@ -322,7 +309,6 @@ export function useDrawn<T>(at: string, body: string, initial: T | null): T | nu
  */
 export type DraftAnswer<T>
   = | { status: "saved", revision: number }
-    | { status: "invalid", problems: FieldProblem[] }
     | { status: "conflict", revision: number, current: T }
 
 /** What a screen has to say about the shape it edits, and nothing more. */
@@ -360,7 +346,6 @@ export interface DraftEditing<T> {
   /** The version a refused save came back with, and where it disagrees. */
   conflict: { theirs: T, changed: string[] } | null
   upstream: UpstreamView<T> | null
-  problems: FieldProblem[]
   /** Taking everything only the other publish touched. */
   takeUpstream: () => void
   marksFor: (path: string) => Marks
@@ -408,7 +393,6 @@ export function useDraftEditing<T>({
   const [revision, setRevision] = useState<number | null>(startingRevision)
   const [conflict, setConflict] = useState<{ theirs: T, changed: string[] } | null>(null)
   const [upstream, setUpstream] = useState(startingUpstream)
-  const [problems, setProblems] = useState<FieldProblem[]>([])
   const [saved, setSaved] = useState(false)
 
   // What the pending save carried, so that a success can record it as the
@@ -424,14 +408,10 @@ export function useDraftEditing<T>({
       setRevision(answer.revision)
       setBase(sent)
       setConflict(null)
-      setProblems([])
-    } else if (answer.status === "invalid") {
-      setProblems(answer.problems)
     } else {
       setConflict({ theirs: answer.current, changed: diff(base, answer.current) })
       setRevision(answer.revision)
       setBase(answer.current)
-      setProblems([])
     }
   }
 
@@ -478,7 +458,6 @@ export function useDraftEditing<T>({
               })
             }
           },
-      problems: problems.filter((problem) => problem.path.startsWith(`${path}.`)),
       extra: extraFor?.(path),
     }
   }
@@ -492,7 +471,6 @@ export function useDraftEditing<T>({
     save,
     conflict,
     upstream,
-    problems,
     takeUpstream,
     marksFor,
   }

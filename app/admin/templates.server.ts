@@ -50,18 +50,15 @@ import {
 } from "./drafts.server"
 import {
   axisCounts,
-  BRANCH_REGISTRATIONS,
   BRANCH_SORT,
   BRANCH_STANDINGS,
   branchOrder,
   branchStanding,
   filterBranchRows,
-  isBranchRegistration,
   isBranchSortKey,
   isBranchStanding,
   pageOf,
   sortBranchRows,
-  type BranchRegistration,
   type BranchSortKey,
   type BranchStanding,
 } from "./listing"
@@ -152,14 +149,12 @@ export interface UpstreamResearchView {
   connected: boolean
   keyword: string
   standings: BranchStanding[]
-  registrations: BranchRegistration[]
   /**
    * How many branches each choice of the pane would leave, counted the way the
    * public panel counts (`app/admin/listing.ts` の `axisCounts`).
    */
   counts: {
     standings: Record<BranchStanding, number>
-    registrations: Record<BranchRegistration, number>
   }
   sort: BranchSortKey
   order: SortOrder
@@ -360,11 +355,10 @@ function dedupe(dropped: readonly DroppedValue[]): DroppedValue[] {
  * The applications a draft can be taken from, newest approval first.
  *
  * **Every branch the word matched is read, and the page is cut here rather than
- * upstream.** Two of the three things a curator narrows by — whether the portal
- * already holds the hum label, and whether anything has been registered — are
- * the portal's own answer about the branch, which the application system has no
- * way to know. Reading all of them costs what reading thirty costs
- * (`upstream/application-db.server.ts`).
+ * upstream.** One of the two things a curator narrows by — whether the portal
+ * already holds the hum label — is the portal's own answer about the branch,
+ * which the application system has no way to know. Reading all of them costs
+ * what reading thirty costs (`upstream/application-db.server.ts`).
  *
  * An ordering or a size that is not one of the offered ones is read as none
  * asked for, the way every other listing reads its address.
@@ -379,7 +373,6 @@ export async function upstreamResearchPage(
   const keyword = url.searchParams.get("q") ?? ""
   const filter = {
     standings: url.searchParams.getAll("standing").filter(isBranchStanding),
-    registrations: url.searchParams.getAll("registered").filter(isBranchRegistration),
   }
   const askedSort = url.searchParams.get("sort")
   const sort = isBranchSortKey(askedSort) ? askedSort : BRANCH_SORT
@@ -398,7 +391,6 @@ export async function upstreamResearchPage(
       ...presented,
       counts: {
         standings: axisCounts([], BRANCH_STANDINGS, () => false),
-        registrations: axisCounts([], BRANCH_REGISTRATIONS, () => false),
       },
       rows: [],
       total: 0,
@@ -415,18 +407,13 @@ export async function upstreamResearchPage(
     readPage(url.searchParams.get("page")),
     size,
   )
-  // Each axis is counted over the branches the *other* axis leaves, so that a
-  // second standing is still reachable after the first has been ticked.
+  // The axis is counted with its own condition lifted, so that a second
+  // standing is still reachable after the first has been ticked.
   const counts = {
     standings: axisCounts(
       filterBranchRows(found, { ...filter, standings: [] }),
       BRANCH_STANDINGS,
       (row, standing) => branchStanding(row) === standing,
-    ),
-    registrations: axisCounts(
-      filterBranchRows(found, { ...filter, registrations: [] }),
-      BRANCH_REGISTRATIONS,
-      (row, registration) => (row.datasets.length === 0 ? "none" : "some") === registration,
     ),
   }
   return {

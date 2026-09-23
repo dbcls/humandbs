@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { eq, sql } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
@@ -11,22 +11,19 @@ import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { seedVersion } from "~/db/seed"
 
-import { PRESENCE_WINDOW_SECONDS } from "./presence"
 import {
   changeListing,
   createDatasetInDraft,
   createEmptyDraft,
   createResearchWithDraft,
-  deleteDraftDataset,
+  deleteResearchDataset,
   discardDraft,
   draftCopiedFrom,
   draftUpdating,
   saveDatasetEntry,
   saveDraftContent,
-  touchPresence,
 } from "./drafts.server"
 import {
-  activePresence,
   readDatasetEntry,
   readDraft,
 } from "./queries.server"
@@ -245,51 +242,38 @@ describe("deciding what a version lists", () => {
     return (await readDraft(db, draftId))?.content.datasetIds ?? []
   }
 
-  it("takes a dataset off the list and puts it back at the end, moving the revision each time", async () => {
-    const { researchId, draftId, a, b } = await ground()
-
-    expect(await changeListing(db, { draftId, revision: 3 }, researchId, { kind: "unlist", datasetId: a }))
-      .toEqual({ status: "changed" })
-    expect(await listed(draftId)).toEqual([b])
-    expect(await changeListing(db, { draftId, revision: 4 }, researchId, { kind: "list", datasetId: a }))
-      .toEqual({ status: "changed" })
-    expect(await listed(draftId)).toEqual([b, a])
-    expect((await readDraft(db, draftId))?.revision).toBe(5)
-  })
-
   it("moves a dataset one step, and leaves the end where it is", async () => {
     const { researchId, draftId, a, b } = await ground()
 
-    await changeListing(db, { draftId, revision: 3 }, researchId, { kind: "move", datasetId: b, by: -1 })
+    await changeListing(db, { draftId, revision: 3 }, researchId, { datasetId: b, by: -1 })
     expect(await listed(draftId)).toEqual([b, a])
-    await changeListing(db, { draftId, revision: 4 }, researchId, { kind: "move", datasetId: b, by: -1 })
+    await changeListing(db, { draftId, revision: 4 }, researchId, { datasetId: b, by: -1 })
     expect(await listed(draftId)).toEqual([b, a])
   })
 
-  it("refuses to list a dataset of another research, and writes nothing", async () => {
-    const { researchId, draftId } = await ground()
-    const other = await createResearchWithDraft(db)
-    const theirs = await createDatasetInDraft(db, { draftId: other.draftId, revision: 1 }, other.researchId)
-    if (theirs.status !== "created") throw new Error("not created")
+  it("moves one the order has never named, and writes the whole order back", async () => {
+    const { researchId, draftId, a, b } = await ground()
+    // A draft that has never been ordered: the datasets are the research's all
+    // the same, so the step is taken on what the screen shows.
+    await saveDraftContent(db, { draftId, revision: 3 }, {
+      content: { ...emptyResearchContent(), datasetIds: [] },
+    })
 
-    const outcome = await changeListing(
-      db,
-      { draftId, revision: 3 },
-      researchId,
-      { kind: "list", datasetId: theirs.datasetId },
-    )
+    expect(await changeListing(db, { draftId, revision: 4 }, researchId, { datasetId: b, by: -1 }))
+      .toEqual({ status: "changed" })
 
-    expect(outcome).toEqual({ status: "refused" })
-    expect((await readDraft(db, draftId))?.revision).toBe(3)
+    // The whole order is written back, not just the step: the identities are
+    // time-ordered, so a was made first and b now stands in front of it.
+    expect(await listed(draftId)).toEqual([b, a])
   })
 
   it("refuses a revision that has moved, and a draft that is gone", async () => {
     const { researchId, draftId, a } = await ground()
 
-    expect(await changeListing(db, { draftId, revision: 1 }, researchId, { kind: "unlist", datasetId: a }))
+    expect(await changeListing(db, { draftId, revision: 1 }, researchId, { datasetId: a, by: 1 }))
       .toEqual({ status: "conflict" })
     expect(await listed(draftId)).toHaveLength(2)
-    expect(await changeListing(db, { draftId: randomUUID(), revision: 1 }, researchId, { kind: "unlist", datasetId: a }))
+    expect(await changeListing(db, { draftId: randomUUID(), revision: 1 }, researchId, { datasetId: a, by: 1 }))
       .toEqual({ status: "gone" })
   })
 })
@@ -338,7 +322,6 @@ describe("discarding a draft", () => {
       .returning({ id: s.dataset.id }))
     await db.insert(s.draftDatasetEntry)
       .values({ draftId, datasetId: dataset.id, content: emptyDatasetContent() })
-    await db.insert(s.draftPresence).values({ draftId, sessionId: "a-session", displayName: "curator" })
     await db.insert(s.comment).values({
       draftId,
       anchor: { kind: "research-field", path: "title" },
@@ -348,7 +331,7 @@ describe("discarding a draft", () => {
     await db.insert(s.reviewAcknowledgement).values({ draftId, kind: "commented", actorName: "a provider" })
   }
 
-  it("takes the entries, the comments, the presence and its own datasets", async () => {
+  it("takes the entries, the comments and its own datasets", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     await hangEverythingOff(draftId, researchId)
 
@@ -357,7 +340,6 @@ describe("discarding a draft", () => {
 
     expect(await db.select().from(s.researchDraft)).toHaveLength(0)
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
-    expect(await db.select().from(s.draftPresence)).toHaveLength(0)
     expect(await db.select().from(s.comment)).toHaveLength(0)
     expect(await db.select().from(s.reviewAcknowledgement)).toHaveLength(0)
     expect(await db.select().from(s.dataset)).toHaveLength(0)
@@ -509,32 +491,6 @@ describe("writing a dataset of a draft", () => {
   })
 })
 
-describe("who has a draft open", () => {
-  it("keeps one row per session however often it says so", async () => {
-    const { draftId } = await createResearchWithDraft(db)
-
-    await touchPresence(db, { draftId, sessionId: "s1", actorSub: "sub-1", displayName: "tanaka" })
-    await touchPresence(db, { draftId, sessionId: "s1", actorSub: "sub-1", displayName: "tanaka" })
-    await touchPresence(db, { draftId, sessionId: "s2", actorSub: "sub-2", displayName: "suzuki" })
-
-    expect((await activePresence(db, draftId)).map((row) => row.displayName))
-      .toEqual(["suzuki", "tanaka"])
-  })
-
-  it("leaves out somebody who has stopped saying they are there", async () => {
-    const { draftId } = await createResearchWithDraft(db)
-    await touchPresence(db, { draftId, sessionId: "s1", actorSub: "sub-1", displayName: "tanaka" })
-    await db
-      .update(s.draftPresence)
-      .set({ lastSeenAt: sql`now() - make_interval(secs => ${PRESENCE_WINDOW_SECONDS + 1})` })
-      .where(eq(s.draftPresence.sessionId, "s1"))
-
-    expect(await activePresence(db, draftId)).toEqual([])
-    // The row is still there: expiry is a predicate on the read, not a sweep.
-    expect(await db.select().from(s.draftPresence)).toHaveLength(1)
-  })
-})
-
 describe("a dataset a draft adds", () => {
   it("is listed by the version straight away, and belongs to the draft", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -559,13 +515,13 @@ describe("a dataset a draft adds", () => {
     expect(await db.select().from(s.dataset)).toHaveLength(0)
   })
 
-  it("goes off the version's list when the draft destroys it", async () => {
+  it("goes out of the research with its entry, and out of the order", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     const created = await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
     if (created.status !== "created") throw new Error("expected a dataset")
     await saveDatasetEntry(db, { draftId, datasetId: created.datasetId, revision: null }, described("wip"))
 
-    expect(await deleteDraftDataset(db, { draftId, revision: 2 }, created.datasetId))
+    expect(await deleteResearchDataset(db, { draftId, revision: 2 }, researchId, created.datasetId, CURATOR))
       .toEqual({ status: "deleted" })
 
     expect(await db.select().from(s.dataset)).toHaveLength(0)
@@ -573,27 +529,58 @@ describe("a dataset a draft adds", () => {
     expect((await readDraft(db, draftId))?.content.datasetIds).toEqual([])
   })
 
-  it("cannot destroy one that has been published, however it got there", async () => {
+  it("takes a published one out too, with its published row, and says so in the trail", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     const created = await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
     if (created.status !== "created") throw new Error("expected a dataset")
-    // Publishing is what clears `originDraftId`, and that is what takes the
-    // dataset out of this draft's reach.
+    // Publishing is what clears `originDraftId` and writes the published row.
     await db.update(s.dataset).set({ originDraftId: null })
       .where(eq(s.dataset.id, created.datasetId))
+    await db.insert(s.labelPin)
+      .values({ kind: "dataset", label: "JGAD000999", datasetId: created.datasetId, isPrimary: true })
+    await db.insert(s.searchDoc).values({
+      targetType: "dataset",
+      targetId: created.datasetId,
+      researchId,
+      humLabel: "hum0001",
+      datasetLabel: "JGAD000999",
+      content: emptyDatasetContent(),
+      title: "",
+      textJa: "",
+      textEn: "",
+    })
 
-    expect(await deleteDraftDataset(db, { draftId, revision: 2 }, created.datasetId))
-      .toEqual({ status: "refused" })
-    expect(await db.select().from(s.dataset)).toHaveLength(1)
+    expect(await deleteResearchDataset(db, { draftId, revision: 2 }, researchId, created.datasetId, CURATOR))
+      .toEqual({ status: "deleted" })
+
+    expect(await db.select().from(s.dataset)).toHaveLength(0)
+    // The published row is what the public side reads, so it goes at once.
+    expect(await db.select().from(s.searchDoc)).toHaveLength(0)
+    // The pin goes by cascade, which frees the accession to be pinned again.
+    expect(await db.select().from(s.labelPin)).toHaveLength(0)
+    const [event] = await db.select().from(s.event).where(eq(s.event.action, "delete-dataset"))
+    expect(event?.subjectId).toBe(created.datasetId)
+    expect(event?.detail).toEqual({ researchId, label: "JGAD000999" })
   })
 
-  it("cannot destroy one that belongs to another draft", async () => {
+  it("cannot take out one that belongs to another draft", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     const otherDraftId = await createEmptyDraft(db, researchId)
     const created = await createDatasetInDraft(db, { draftId: otherDraftId, revision: 1 }, researchId)
     if (created.status !== "created") throw new Error("expected a dataset")
 
-    expect(await deleteDraftDataset(db, { draftId, revision: 1 }, created.datasetId))
+    expect(await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, created.datasetId, CURATOR))
+      .toEqual({ status: "refused" })
+    expect(await db.select().from(s.dataset)).toHaveLength(1)
+  })
+
+  it("cannot take out one of another research", async () => {
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const other = await createResearchWithDraft(db)
+    const theirs = await createDatasetInDraft(db, { draftId: other.draftId, revision: 1 }, other.researchId)
+    if (theirs.status !== "created") throw new Error("expected a dataset")
+
+    expect(await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, theirs.datasetId, CURATOR))
       .toEqual({ status: "refused" })
     expect(await db.select().from(s.dataset)).toHaveLength(1)
   })

@@ -1,4 +1,4 @@
-import { Button, Stack } from "~/components/base"
+import { Button, Stack, Chevron } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { Counted, Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
@@ -65,9 +65,9 @@ export function AdminAssistantTaskList({
                     says so, where the identifier alone reads as a cell of text. */}
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="secondary"
                   size="xs"
-                  icon={<Icon name="chevron-right" aria-hidden="true" />}
+                  icon={<Chevron dir="right" />}
                   onClick={() => { onSelect(task.task_id) }}
                 >
                   {task.task_id}

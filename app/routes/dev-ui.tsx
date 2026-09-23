@@ -186,7 +186,7 @@ const COLOURS: [string, string, string][] = [
 
 const TEXT_SIZES = ["text-xs", "text-sm", "text-base", "text-lg", "text-xl", "text-2xl", "text-3xl"]
 
-const BUTTON_VARIANTS: ButtonVariant[] = ["primary", "secondary", "ghost", "danger"]
+const BUTTON_VARIANTS: ButtonVariant[] = ["primary", "secondary", "danger"]
 const TONES: Tone[] = ["brand", "accent", "muted", "warning", "danger"]
 const NOTE_KINDS: NoteKind[] = ["info", "tip", "warning", "danger"]
 
@@ -372,7 +372,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" variant="primary" icon={<Icon name="save" />}>保存する</Button>
-                <Button type="button" variant="ghost">取り消す</Button>
+                <Button type="button" variant="secondary">取り消す</Button>
               </div>
               <p className="text-ink-muted text-sm">
                 形も色も「どこに立っているか」で決まる。丸いのは一覧の上の操作の行にいる印
@@ -422,7 +422,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   <Button type="button" onBand variant="secondary" icon={<Icon name="check" />}>
                     カートに入っています
                   </Button>
-                  <Button type="button" onBand variant="ghost">取り消す</Button>
+                  <Button type="button" onBand variant="secondary">取り消す</Button>
                 </div>
               </Band>
               <div className="flex flex-wrap items-center gap-3">
@@ -516,7 +516,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     <span className="text-ink text-sm">
                       JGAD000117 をカートに入れました（3 件）
                     </span>
-                    <Button type="button" variant="ghost" size="xs">取り消す</Button>
+                    <Button type="button" variant="secondary" size="xs">取り消す</Button>
                   </span>
                 </Note>
               </div>

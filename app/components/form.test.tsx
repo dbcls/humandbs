@@ -125,3 +125,11 @@ describe("a body's box", () => {
     expect(html).toMatch(/<textarea[^>]*rows="30"/)
   })
 })
+
+describe("a box the caret was brought to", () => {
+  it("wears the warning ground only while marked landed, and keeps the one ring colour", () => {
+    const html = render(<TextArea label="研究題目" name="title" value="" />)
+    expect(html).toContain("data-landed:bg-warning-surface")
+    expect(html).not.toMatch(/data-landed:outline-/)
+  })
+})

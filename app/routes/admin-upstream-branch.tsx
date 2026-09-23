@@ -3,9 +3,8 @@ import { data, Form, Link } from "react-router"
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
 import { adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Heading, Note, Stack } from "~/components/base"
+import { Heading, Note, Stack, Chevron } from "~/components/base"
 import { Answered, Result } from "~/components/form"
-import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
 import { UpstreamChoice, UpstreamNotConnected } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
@@ -134,10 +133,10 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                               <p className="flex flex-wrap items-center gap-3 text-sm">
                                 <Link
                                   to={href(locale, adminResearchPath(holder.researchId))}
-                                  className="inline-flex items-center gap-1 font-semibold"
+                                  className="group/way inline-flex items-center gap-1 font-semibold"
                                 >
                                   {t.toResearch}
-                                  <Icon name="chevron-right" aria-hidden="true" />
+                                  <Chevron dir="right" />
                                 </Link>
                                 <span className="text-ink-muted">{t.takeFromResearch}</span>
                               </p>

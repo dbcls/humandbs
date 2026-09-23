@@ -68,17 +68,16 @@ import {
   createDatasetInDraft,
   createEmptyDraft,
   createResearchWithDraft,
-  deleteDraftDataset,
+  deleteResearchDataset,
   discardDraft,
   draftCopiedFrom,
   draftUpdating,
   saveDatasetEntry,
   saveDraftContent,
-  touchPresence,
   type ListingChange,
 } from "./drafts.server"
 import { researchContentInput, type DraftInput } from "./form"
-import { researchContentOf, saveDraftSchema, type FieldProblem } from "./form.server"
+import { researchContentOf, saveDraftSchema } from "./form.server"
 import {
   GATE_FINDING_KINDS,
   type GateBlock,
@@ -91,7 +90,6 @@ import { compareDataset, compareResearch, isEmptyComparison } from "./merge"
 import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
 import { draftSteps, researchDraftSteps, type DraftStepsView } from "./steps.server"
 import {
-  activePresence,
   adminResearch,
   adminResearchIndex,
   draftDatasetRows,
@@ -108,7 +106,6 @@ import {
   type DraftDatasetRow,
   type EditableCatalog,
   type EditableTerm,
-  type PresenceRow,
   type ResearchDatasetRow,
 } from "./queries.server"
 import {
@@ -120,6 +117,7 @@ import {
   isAdminStatus,
   pageOf,
   sortResearchRows,
+  type AdminDatasetRef,
   type AdminFlagKey,
   type AdminFlags,
   type AdminStatus,
@@ -167,8 +165,8 @@ export interface AdminListRowView {
   researchId: string
   humLabel: string | null
   title: string
-  /** Every dataset the research holds, in the order the listing prints them. */
-  datasetLabels: string[]
+  /** Every pinned dataset of the research, in label order, and whether a reader can open it. */
+  datasets: AdminDatasetRef[]
   status: AdminStatus
   publishedVersions: number
   draftCount: number
@@ -275,7 +273,7 @@ export async function researchListPage(
       researchId: row.researchId,
       humLabel: row.humLabel,
       title: resolved(row.title, locale),
-      datasetLabels: row.datasetLabels,
+      datasets: row.datasets,
       status: row.status,
       publishedVersions: row.publishedVersions,
       draftCount: row.draftCount,
@@ -382,6 +380,56 @@ export async function researchDetailPage(
   }
 }
 
+export interface VersionDatasetListView {
+  locale: Locale
+  researchId: string
+  humLabel: string | null
+  number: number
+  /** What the version lists, in its order, each with the id it is known by now. */
+  rows: { id: string, label: string | null }[]
+}
+
+/**
+ * What a published version lists, for reading. **Nothing on a version is
+ * written in place** (docs/publishing.md), so this has no action: the list is
+ * changed in the draft the version's "編集" opens.
+ *
+ * The labels are the ledger's now rather than the version's then — a dataset
+ * is known by its primary id, and correcting a label is not a new version.
+ */
+export async function versionDatasetListPage(
+  request: Request,
+  locale: Locale,
+  params: { researchId: string | undefined, number: string | undefined },
+): Promise<VersionDatasetListView> {
+  await requireCapability(request, "view-unpublished")
+
+  const researchId = identity(params.researchId)
+  const number = versionNumber(params.number)
+  const db = getDb()
+  const version = await comparableVersion(db, researchId, number)
+  if (version === null) notFound()
+
+  const [humLabel, datasets] = await Promise.all([
+    humLabelOf(db, researchId),
+    researchDatasets(db, researchId),
+  ])
+  const labels = new Map(datasets.map((row) => [row.id, row.label]))
+  return {
+    locale,
+    researchId,
+    humLabel,
+    number,
+    rows: version.content.datasetIds.map((id) => ({ id, label: labels.get(id) ?? null })),
+  }
+}
+
+/** An address that cannot name a version answers as a version that is not there. */
+function versionNumber(value: string | undefined): number {
+  if (value === undefined || !/^[1-9]\d*$/.test(value)) notFound()
+  return Number(value)
+}
+
 /**
  * The published description as it stands now, and how it stands against this
  * draft. **Taking it is an edit like any other** — it goes into the form, and
@@ -421,8 +469,6 @@ export interface AdminDraftPageView {
   revision: number
   input: DraftInput
   datasets: ResearchDatasetRow[]
-  /** Who else has this draft open, and what there is to go back to. */
-  presence: PresenceView[]
   upstream: UpstreamView<DraftInput> | null
   review: ReviewMarksView
   /**
@@ -460,21 +506,6 @@ async function draftOf(
   return { db, actor, researchId, draftId, draft }
 }
 
-/**
- * Who has the draft open, as a screen says it. The rows are named rather than
- * counted, and the reader's own session is marked rather than dropped here:
- * "somebody else is editing this" is what the line means, and only the request
- * knows which of the sessions is the one asking.
- */
-export interface PresenceView {
-  name: string
-  isSelf: boolean
-}
-
-function presenceView(rows: PresenceRow[], sessionId: string): PresenceView[] {
-  return rows.map((row) => ({ name: row.displayName, isSelf: row.sessionId === sessionId }))
-}
-
 export async function draftEditorPage(
   request: Request,
   locale: Locale,
@@ -485,10 +516,9 @@ export async function draftEditorPage(
   // Every reading of "what differs" on this screen is against the same
   // version: the one the draft updates, or else the newest out.
   const published = await versionAgainst(db, draft)
-  const [humLabel, datasets, presence, moved, comments, page, steps] = await Promise.all([
+  const [humLabel, datasets, moved, comments, page, steps] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
-    activePresence(db, draftId),
     comparableVersion(db, researchId, published?.number ?? null),
     readComments(db, draftId),
     drawDraft(request, locale, { researchId, draftId, content: draft.content, updating: draft.updating }),
@@ -508,7 +538,6 @@ export async function draftEditorPage(
     revision: draft.revision,
     input,
     datasets,
-    presence: presenceView(presence, actor.sessionId),
     upstream: moved === null ? null : researchUpstream(moved, input),
     review: {
       changed,
@@ -545,10 +574,8 @@ export interface DraftDatasetListView {
   humLabel: string | null
   /** The draft's revision, which every change to the listing moves. */
   revision: number
+  /** Everything this draft publishes, in the order it goes out in. */
   rows: DraftDatasetRow[]
-  /** What the version lists, in its order — the order the rows are shown in. */
-  listedIds: string[]
-  presence: PresenceView[]
   /** The number of the version the draft updates, which names the last step. */
   updating: number | null
   steps: DraftStepsView
@@ -559,12 +586,11 @@ export async function draftDatasetListPage(
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
 ): Promise<DraftDatasetListView> {
-  const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
+  const { db, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, rows, presence, steps] = await Promise.all([
+  const [humLabel, rows, steps] = await Promise.all([
     humLabelOf(db, researchId),
     draftDatasetRows(db, draftId, researchId, draft.content.datasetIds),
-    activePresence(db, draftId),
     draftSteps(db, researchId, draftId, draft.content),
   ])
 
@@ -575,8 +601,6 @@ export async function draftDatasetListPage(
     humLabel,
     revision: draft.revision,
     rows,
-    listedIds: draft.content.datasetIds,
-    presence: presenceView(presence, actor.sessionId),
     updating: draft.updating?.number ?? null,
     steps,
   }
@@ -588,16 +612,15 @@ export interface DatasetListRefusal {
 }
 
 /**
- * Making a dataset, destroying one this draft made, and deciding which
- * datasets the version lists and in what order. All change the draft's
- * content, so all carry its revision.
+ * Making a dataset, taking one out of the research, and putting the ones that
+ * go out in order. All change the draft's content, so all carry its revision.
  */
 export async function draftDatasetListAction(
   request: Request,
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
 ): Promise<Response | DatasetListRefusal> {
-  const { db, researchId, draftId } = await draftOf(request, params)
+  const { db, actor, researchId, draftId } = await draftOf(request, params)
 
   const form = await request.formData()
   const intent = form.get("intent")
@@ -621,29 +644,32 @@ export async function draftDatasetListAction(
   if (change !== null) {
     const outcome = await changeListing(db, { draftId, revision }, researchId, change)
     if (outcome.status === "gone") notFound()
-    if (outcome.status === "refused") badRequest()
     if (outcome.status === "conflict") return { status: "conflict" }
     return listing
   }
 
   if (intent !== "delete-dataset") badRequest()
-  const outcome = await deleteDraftDataset(db, { draftId, revision }, datasetId)
+  const outcome = await deleteResearchDataset(
+    db,
+    { draftId, revision },
+    researchId,
+    datasetId,
+    actorOf(actor),
+  )
   if (outcome.status === "gone") notFound()
   if (outcome.status !== "deleted") return { status: outcome.status }
   return listing
 }
 
-/** The listing change a form asked for, or null for a form that asked something else. */
+/** The step a form asked for, or null for a form that asked something else. */
 function listingChange(
   intent: FormDataEntryValue | null,
   datasetId: string,
   by: FormDataEntryValue | null,
 ): ListingChange | null {
-  if (intent === "list-dataset") return { kind: "list", datasetId }
-  if (intent === "unlist-dataset") return { kind: "unlist", datasetId }
   if (intent !== "move-dataset") return null
   if (by !== "-1" && by !== "1") badRequest()
-  return { kind: "move", datasetId, by: by === "-1" ? -1 : 1 }
+  return { datasetId, by: by === "-1" ? -1 : 1 }
 }
 
 export interface DatasetEditorView {
@@ -680,7 +706,6 @@ export interface DatasetEditorView {
    * (`findTerms`).
    */
   terms: EditableTerm[]
-  presence: PresenceView[]
   upstream: UpstreamView<DatasetContentInput> | null
   review: ReviewMarksView
   /**
@@ -721,12 +746,11 @@ export async function datasetEditorPage(
   // not a dataset this draft could be editing.
   if (row === undefined) notFound()
 
-  const [entry, published, humLabel, catalog, presence, comments, steps] = await Promise.all([
+  const [entry, published, humLabel, catalog, comments, steps] = await Promise.all([
     readDatasetEntry(db, draftId, datasetId),
     readPublishedDataset(db, researchId, datasetId, draft.updating?.versionId ?? null),
     humLabelOf(db, researchId),
     loadEditableCatalog(db),
-    activePresence(db, draftId),
     readComments(db, draftId),
     draftSteps(db, researchId, draftId, draft.content),
   ])
@@ -769,7 +793,6 @@ export async function datasetEditorPage(
     page,
     catalog,
     terms,
-    presence: presenceView(presence, actor.sessionId),
     upstream: datasetUpstream(published, input),
     review: {
       changed,
@@ -801,7 +824,6 @@ function datasetUpstream(
 
 export type SaveDatasetResult
   = | { status: "saved", revision: number }
-    | { status: "invalid", problems: FieldProblem[] }
     | {
       status: "conflict"
       revision: number
@@ -972,12 +994,11 @@ export async function saveDatasetAction(
 
   const unitOf = new Map(catalog.keys.map((key) => [key.id, key.canonicalUnit]))
   const content = datasetContentOf(payload.data.content, (keyId) => unitOf.get(keyId) ?? null)
-  if (!content.ok) return { status: "invalid", problems: content.problems }
 
   const outcome = await saveDatasetEntry(
     db,
     { draftId, datasetId, revision: payload.data.revision },
-    content.content,
+    content,
   )
   if (outcome.status === "saved") return { status: "saved", revision: outcome.revision }
   if (outcome.status === "gone") notFound()
@@ -989,26 +1010,6 @@ export async function saveDatasetAction(
     revision: current.revision,
     current: datasetContentInput(current.content),
   }
-}
-
-/**
- * Saying that somebody still has this draft open, and answering with who else
- * does. The two go together so that an open editor learns of a colleague by
- * the same request that announces itself.
- */
-export async function presenceAction(
-  request: Request,
-  params: { researchId: string | undefined, draftId: string | undefined },
-): Promise<{ present: PresenceView[] }> {
-  const { db, actor, draftId } = await draftOf(request, params)
-
-  await touchPresence(db, {
-    draftId,
-    sessionId: actor.sessionId,
-    actorSub: actor.sub,
-    displayName: actor.name,
-  })
-  return { present: presenceView(await activePresence(db, draftId), actor.sessionId) }
 }
 
 /**
@@ -1339,7 +1340,7 @@ function groupFindings(
     }
     place(finding.kind, finding.datasetId, () => ({
       label: into.naming(finding.datasetId),
-      href: finding.kind === "empty-dataset" ? into.datasetHref(finding.datasetId) : null,
+      href: into.datasetHref(finding.datasetId),
       count: 1,
       note: null,
     }))
@@ -1454,7 +1455,6 @@ function readString(form: FormData, name: string): string | undefined {
 
 export type SaveResult
   = | { status: "saved", revision: number }
-    | { status: "invalid", problems: FieldProblem[] }
     | {
       status: "conflict"
       /** What the draft holds now, for the screen to compare against its own. */
@@ -1490,12 +1490,11 @@ export async function saveDraftAction(
   if (listed.some((id) => !known.has(id))) badRequest()
 
   const content = researchContentOf(payload.data.content)
-  if (!content.ok) return { status: "invalid", problems: content.problems }
 
   const outcome = await saveDraftContent(
     db,
     { draftId, revision: payload.data.revision },
-    { content: content.content },
+    { content: content },
   )
   if (outcome.status === "saved") return { status: "saved", revision: outcome.revision }
   if (outcome.status === "gone") notFound()
@@ -1540,11 +1539,10 @@ export async function draftPageAction(
   if (draft?.researchId !== researchId) notFound()
 
   const content = researchContentOf(payload.data.content)
-  if (!content.ok) return null
   return drawDraft(request, locale, {
     researchId,
     draftId,
-    content: content.content,
+    content,
     updating: draft.updating,
   })
 }
@@ -1574,12 +1572,11 @@ export async function datasetPageAction(
   const catalog = await loadEditableCatalog(db)
   const unitOf = new Map(catalog.keys.map((key) => [key.id, key.canonicalUnit]))
   const content = datasetContentOf(payload.data.content, (keyId) => unitOf.get(keyId) ?? null)
-  if (!content.ok) return null
   return drawDatasetDraft(
     request,
     locale,
     { researchId, draftId, updating: draft.updating },
     datasetId,
-    content.content,
+    content,
   )
 }

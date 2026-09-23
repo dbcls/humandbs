@@ -30,7 +30,7 @@ import { messagesFor } from "~/i18n/messages"
  *
  * **An update asks for no number.** The draft carries the number of the version
  * it stands in for, so the screen names that version instead and offers the day
- * it went out as the release date (docs/publishing.md の「公開の確認画面」).
+ * it went out as the release date (docs/publishing.md の「公開前の確認の画面」).
  */
 export function PublishConfirmation({ view, result }: {
   view: PublishPageView

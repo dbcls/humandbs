@@ -17,8 +17,10 @@ import { readComments } from "~/review/comments.server"
 import { readShare, type DraftReviewSummary } from "~/review/queries.server"
 import { isShareOpen } from "~/review/share"
 
+import { draftDatasets } from "./datasets"
 import type { PublishGate } from "./gate"
 import { draftGate } from "./publish.server"
+import { draftDatasetIds, ownedDatasets } from "./queries.server"
 
 export interface DraftStepsView {
   /** How many datasets the version would list. */
@@ -60,7 +62,12 @@ export async function draftSteps(
     known.unresolved ?? unresolvedNow(db, draftId),
     known.gate ?? gateNow(db, researchId, draftId),
   ])
-  return stepsView({ datasetIds: content.datasetIds, shared, unresolved, gate })
+  return stepsView({
+    datasetIds: await draftDatasetIds(db, draftId, researchId, content.datasetIds),
+    shared,
+    unresolved,
+    gate,
+  })
 }
 
 /**
@@ -83,11 +90,14 @@ export async function researchDraftSteps(
 ): Promise<Map<string, DraftStepsView>> {
   const privateFiles = await privateNames(researchId).catch(() => new Set<string>())
   const reviewOf = new Map(reviews.map((row) => [row.draftId, row]))
+  // The research's datasets are read once for every draft: each draft
+  // publishes all of them but what another draft made (`admin/datasets.ts`).
+  const owned = await ownedDatasets(db, researchId)
   const gates = await Promise.all(drafts.map((draft) => draftGate(db, draft.id, privateFiles)))
   return new Map(drafts.map((draft, at) => {
     const review = reviewOf.get(draft.id)
     return [draft.id, stepsView({
-      datasetIds: draft.content.datasetIds,
+      datasetIds: draftDatasets(owned, draft.id, draft.content.datasetIds).map((row) => row.id),
       shared: review?.shared ?? false,
       unresolved: review?.unresolved ?? 0,
       gate: gates[at] ?? null,

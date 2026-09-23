@@ -1,26 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
 import { Form, Link } from "react-router"
 
-import {
-  BAND_FILL,
-  Button,
-  ButtonLink,
-  Chip,
-  Chooser,
-  CHOOSER_SIDE,
-  CLEAR,
-  Heading,
-  LISTING_CONTROL,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
-  MoreLink,
-  Note,
-  PALE,
-  PANE_LABEL,
-  PaneHeading,
-  Stack,
-  SwitchTabs,
-} from "~/components/base"
+import { BAND_FILL, Button, ButtonLink, Chip, Chooser, CHOOSER_SIDE, CLEAR, Heading, LISTING_CONTROL, MENU_ITEM, MENU_ITEM_HERE, MoreLink, Note, PALE, PANE_LABEL, PaneHeading, Stack, SwitchTabs, Chevron } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -397,9 +378,9 @@ export function RefinableList({
             type="button"
             onClick={onToggle}
             aria-expanded="true"
-            className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
+            className="group/way inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
           >
-            <Icon name="chevron-left" aria-hidden="true" />
+            <Chevron dir="left" />
             {messages.search.refine.fold}
           </button>
         </PaneHeading>

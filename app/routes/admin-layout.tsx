@@ -2,6 +2,7 @@ import { Outlet } from "react-router"
 
 import { requireActor } from "~/auth/actor.server"
 import { PageWidthDefault } from "~/components/page"
+import { LeaveGuard } from "~/components/unsaved"
 
 import type { Route } from "./+types/admin-layout"
 
@@ -22,6 +23,10 @@ import type { Route } from "./+types/admin-layout"
  * **The navigation is not here.** It is the bar across the top of every page
  * (`components/layout.tsx`), drawn above the route tree (`root.tsx`) because
  * the error boundary needs it too.
+ *
+ * **The guard against leaving unsent work behind is here**, once for the
+ * area (`components/unsaved.tsx`): the forms that hold work are on every
+ * screen, and the router takes one blocker.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   await requireActor(request)
@@ -36,6 +41,7 @@ export default function AdminLayout() {
   return (
     <PageWidthDefault width="full">
       <Outlet />
+      <LeaveGuard />
     </PageWidthDefault>
   )
 }

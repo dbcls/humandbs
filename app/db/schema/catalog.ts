@@ -17,11 +17,11 @@ import { primaryId } from "./common"
  * tree, because selecting a 3-character code has to match the 4-character codes
  * under it.
  *
- * **Every set is editable; none is read-only.** Taking an external standard in
- * as a vocabulary would leave no way to correct either the standard's own
- * mistakes or a spelling it does not carry. ICD10 instead arrives as a
- * dictionary (`icd10Reference`) that seeds and checks the terms without ever
- * writing them.
+ * **What the data brings in is editable; what is settled is not.** The
+ * vocabularies the portal's own structure fixes, and ICD10 — the classification
+ * put in whole, whose headings are the standard's to word — are read here and
+ * written by nothing an administrator presses (`admin/catalog.ts` の
+ * `SETTLED_VOCABULARIES`, docs/data-model.md の「ICD10」).
  */
 export const vocabularySet = pgTable("vocabulary_set", {
   id: primaryId(),
@@ -63,28 +63,6 @@ export const vocabularyTerm = pgTable("vocabulary_term", {
   unique("vocabulary_term_code_unique").on(t.setId, t.code),
   index().on(t.parentId),
 ])
-
-/**
- * The ICD10 classification itself, held as a dictionary rather than as a
- * vocabulary. **It is never read by the public side.** Its three uses are all
- * on the editing side: seeding the labels of a new term, deciding what a
- * written code resolves to, and finding a code by name on the disease field's screen.
- *
- * Keeping it out of `vocabularyTerm` is what lets every term be editable. An
- * import replaces this table wholesale and touches nothing else, so a label a
- * curator corrected cannot disappear at the next import.
- *
- * English comes from WHO's ICD-10 2019 meta files and Japanese from the
- * Japanese statistical classification, which follows the 2013 version — the two
- * do not cover exactly the same codes, and a row with only one of them is
- * expected rather than broken.
- */
-export const icd10Reference = pgTable("icd10_reference", {
-  /** The code without its point, as terms and the address write it. */
-  code: text().primaryKey(),
-  titleEn: text(),
-  titleJa: text(),
-})
 
 /**
  * Display grouping for facets. Which group a facet sits in is an admin choice.

@@ -15,13 +15,13 @@
  *
  * **What is in use cannot be removed.** A key is in use when a dataset holds a
  * value under it, published or in a draft; a term is in use when a value names
- * it. A term that has served its purpose is deactivated instead, which takes it
- * out of the input control while leaving it resolvable for the data that
- * already points at it.
+ * it. A term that has served its purpose is merged into another instead, which
+ * rewrites everything that names it and then removes it (docs/data-model.md の
+ * 「catalog と語彙」).
  */
 
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
-import { alias, type PgColumn } from "drizzle-orm/pg-core"
+import type { PgColumn } from "drizzle-orm/pg-core"
 
 import { requireCapability } from "~/auth/actor.server"
 import { getDb, type Executor } from "~/db/client.server"
@@ -34,9 +34,7 @@ import {
   vocabularyTerm,
 } from "~/db/schema"
 import { versionWithTermMerged } from "~/content/terms"
-import { ICD10_SET_CODE, icd10Parent } from "~/icd10/codes"
 import { pageRange } from "~/paging"
-import { lookUpCode, searchDictionary } from "~/icd10/dictionary.server"
 import type { Locale } from "~/i18n/locale"
 import { readLocale } from "~/public/urls"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
@@ -129,7 +127,6 @@ export interface TermRow {
   code: string
   labelJa: string | null
   labelEn: string
-  parentCode: string | null
   /** How many published datasets carry this value (`usageOfTerms`). */
   used: number
   /**
@@ -138,14 +135,6 @@ export interface TermRow {
    * published under it, and that is enough to keep it from being deleted.
    */
   inUse: boolean
-}
-
-/** One candidate of the ICD10 dictionary, and whether the vocabulary has it. */
-export interface DictionaryRow {
-  code: string
-  titleEn: string | null
-  titleJa: string | null
-  held: boolean
 }
 
 export interface VocabularyView {
@@ -178,19 +167,11 @@ export interface VocabularyView {
    * listing gives it the box and the pages that are already there.
    */
   mergeFrom: TermRow | null
-  /**
-   * Set on the ICD10 vocabulary: what was typed into the dictionary's box and
-   * what it answered. The dictionary is where a new term's labels come from, so
-   * that a code is never filed under a name somebody invented at the keyboard
-   * (docs/data-model.md の「ICD10」).
-   */
-  dictionary: { find: string, rows: DictionaryRow[] } | null
 }
 
 /** What a form did, when it did not simply work. */
 export type CatalogProblem
-  = | "malformed-code"
-    | "no-code"
+  = | "no-code"
     | "duplicate-code"
     | "missing-label"
     | "in-use"
@@ -252,9 +233,6 @@ function termOrder(sort: TermSortKey, order: "asc" | "desc") {
     ? [way(vocabularyTerm.labelEn), asc(vocabularyTerm.code)]
     : [way(vocabularyTerm.code)]
 }
-
-/** How many codes one search of the dictionary answers with. */
-const DICTIONARY_CANDIDATES = 20
 
 async function keyRows(db: Executor): Promise<Omit<CatalogKeyRow, "inUse" | "used">[]> {
   return db
@@ -337,7 +315,6 @@ export async function fieldTermsPage(
   const db = getDb()
   const url = new URL(request.url)
   const find = url.searchParams.get("find") ?? ""
-  const lookUp = url.searchParams.get("dictionary") ?? ""
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1)
   const asked = url.searchParams.get("sort")
   const sort = TERM_SORT_KEYS.find((one) => one === asked) ?? TERM_SORT
@@ -370,7 +347,6 @@ export async function fieldTermsPage(
   const { keyCode: fieldCode, keyLabelJa, keyLabelEn, ...set } = found
   const field = { code: fieldCode, labelJa: keyLabelJa, labelEn: keyLabelEn }
 
-  const parent = alias(vocabularyTerm, "parent")
   const matching = find === ""
     ? sql`TRUE`
     : sql`(${vocabularyTerm.code} ILIKE ${`%${find}%`}
@@ -390,10 +366,8 @@ export async function fieldTermsPage(
       code: vocabularyTerm.code,
       labelJa: vocabularyTerm.labelJa,
       labelEn: vocabularyTerm.labelEn,
-      parentCode: parent.code,
     })
     .from(vocabularyTerm)
-    .leftJoin(parent, eq(parent.id, vocabularyTerm.parentId))
     .where(and(eq(vocabularyTerm.setId, set.id), matching))
     .orderBy(...termOrder(sort, order))
     .limit(size)
@@ -413,10 +387,8 @@ export async function fieldTermsPage(
           code: vocabularyTerm.code,
           labelJa: vocabularyTerm.labelJa,
           labelEn: vocabularyTerm.labelEn,
-          parentCode: parent.code,
         })
         .from(vocabularyTerm)
-        .leftJoin(parent, eq(parent.id, vocabularyTerm.parentId))
         // Compared as text: the address carries whatever was typed, and a
         // uuid column refuses anything that is not one.
         .where(and(
@@ -442,31 +414,7 @@ export async function fieldTermsPage(
     mergeFrom: aimed === undefined
       ? null
       : { ...aimed, used: (aimedUsed.get(aimed.id) ?? 0) as number, inUse: held.has(aimed.id) },
-    dictionary: set.code === ICD10_SET_CODE
-      ? { find: lookUp, rows: await dictionaryRows(db, set.id, lookUp) }
-      : null,
   }
-}
-
-/** What the dictionary offers for what was typed, minus nothing: a code the
- * vocabulary already holds is shown as held rather than hidden, because that is
- * the answer to "is this one in?". */
-async function dictionaryRows(
-  db: Executor,
-  setId: string,
-  find: string,
-): Promise<DictionaryRow[]> {
-  const entries = await searchDictionary(db, find, DICTIONARY_CANDIDATES)
-  if (entries.length === 0) return []
-  const held = new Set((await db
-    .select({ code: vocabularyTerm.code })
-    .from(vocabularyTerm)
-    .where(and(
-      eq(vocabularyTerm.setId, setId),
-      inArray(vocabularyTerm.code, entries.map((entry) => entry.code)),
-    )))
-    .map((row) => row.code))
-  return entries.map((entry) => ({ ...entry, held: held.has(entry.code) }))
 }
 
 /**
@@ -856,20 +804,12 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
     .limit(1)
   if (set === undefined) return { status: "unknown-target" }
   if (SETTLED_VOCABULARIES.has(set.code)) return { status: "not-editable" }
-  // The standard's own spelling is what the dictionary and the data already
-  // carry; everywhere else the label says it (`catalog.ts` の `codeFrom`).
-  const brought = set.code === ICD10_SET_CODE
-  const asked = brought ? text(form, "code") : codeFrom(labelEn)
-  if (termCodeProblem(asked) !== null) return { status: brought ? "malformed-code" : "no-code" }
-  const code = brought ? asked : await freeTermCode(db, setId, asked)
-  if (brought) {
-    const [held] = await db
-      .select({ id: vocabularyTerm.id })
-      .from(vocabularyTerm)
-      .where(and(eq(vocabularyTerm.setId, setId), eq(vocabularyTerm.code, code)))
-      .limit(1)
-    if (held !== undefined) return { status: "duplicate-code" }
-  }
+  // The code is made from the label (`catalog.ts` の `codeFrom`): it is an
+  // address the public side carries rather than a name to choose. The one
+  // vocabulary whose codes are its own, ICD10, is settled and never made here.
+  const asked = codeFrom(labelEn)
+  if (termCodeProblem(asked) !== null) return { status: "no-code" }
+  const code = await freeTermCode(db, setId, asked)
   await db.insert(vocabularyTerm).values({
     setId,
     code,
@@ -877,44 +817,10 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
     // English is required and Japanese is not: whether a concept is written in
     // Japanese varies inside one vocabulary, so an empty one is not a gap.
     labelJa: labelJa === "" ? null : labelJa,
-    parentId: set.code === ICD10_SET_CODE ? await icd10Root(db, setId, code) : null,
+    // Every vocabulary an administrator adds to is flat; the one tree is ICD10's.
+    parentId: null,
   })
   return { status: "ok" }
-}
-
-/**
- * The three-character term a longer ICD10 code hangs under, made if it is not
- * there yet.
- *
- * **A four-character code without its root would count as a root itself**, and
- * the rule that the disease facet is counted by three characters would quietly
- * stop holding for it. The root is named from the dictionary, so nothing is
- * invented by making it.
- */
-async function icd10Root(
-  db: Executor,
-  setId: string,
-  code: string,
-): Promise<string | null> {
-  const parent = icd10Parent(code)
-  if (parent === null) return null
-  const [held] = await db
-    .select({ id: vocabularyTerm.id })
-    .from(vocabularyTerm)
-    .where(and(eq(vocabularyTerm.setId, setId), eq(vocabularyTerm.code, parent)))
-    .limit(1)
-  if (held !== undefined) return held.id
-  const entry = await lookUpCode(db, parent)
-  const [made] = await db
-    .insert(vocabularyTerm)
-    .values({
-      setId,
-      code: parent,
-      labelEn: entry?.titleEn ?? entry?.titleJa ?? parent,
-      labelJa: entry?.titleJa ?? null,
-    })
-    .returning({ id: vocabularyTerm.id })
-  return made?.id ?? null
 }
 
 /**

@@ -16,7 +16,7 @@
 
 import { z } from "zod"
 
-import { parseRichText, type RichTextSyntax } from "~/content/parse.server"
+import { parseRichText } from "~/content/parse.server"
 import type {
   Link,
   ListingProvider,
@@ -121,17 +121,6 @@ export const saveDraftSchema = z.object({
   content: researchContentInputSchema,
 })
 
-export interface FieldProblem {
-  /** The path of the field the construct was written in (`form.ts`). */
-  path: string
-  syntax: RichTextSyntax
-  line: number
-}
-
-export type ContentResult
-  = | { ok: true, content: ResearchContent }
-    | { ok: false, problems: FieldProblem[] }
-
 /** Whatever was typed is dropped once the state says there is no value. */
 export function textSlot(input: TextInput): Slot<string> {
   return input.state === "value" ? { state: "value", value: input.text } : { state: input.state }
@@ -166,49 +155,34 @@ function linksPair(pair: LinksPairInput): LocalizedLinks {
   return { ja: side(pair.ja), en: side(pair.en) }
 }
 
-/**
- * Prose, and the problems it held. The language is part of the path so that a
- * table written into the English side is reported against the English side.
- */
-export function prosePair(
-  pair: TextPairInput,
-  path: string,
-  problems: FieldProblem[],
-): TranslatedRichText {
-  const side = (input: TextInput, language: string): Slot<RichText> => {
-    if (input.state !== "value") return { state: input.state }
-    const result = parseRichText(input.text)
-    if (result.ok) return { state: "value", value: result.value }
-    for (const problem of result.problems) {
-      problems.push({ path: `${path}.${language}`, syntax: problem.syntax, line: problem.line })
-    }
-    return { state: "value", value: [] }
-  }
-  return { ja: side(pair.ja, "ja"), en: side(pair.en, "en") }
+/** Prose, one language at a time: what was typed, read into the tree it is stored as. */
+export function prosePair(pair: TextPairInput): TranslatedRichText {
+  const side = (input: TextInput): Slot<RichText> =>
+    input.state === "value" ? { state: "value", value: parseRichText(input.text) } : { state: input.state }
+  return { ja: side(pair.ja), en: side(pair.en) }
 }
 
-export function researchContentOf(input: ResearchContentInput): ContentResult {
-  const problems: FieldProblem[] = []
-  const prose = (pair: TextPairInput, path: string) => prosePair(pair, path, problems)
+export function researchContentOf(input: ResearchContentInput): ResearchContent {
+  const prose = (pair: TextPairInput) => prosePair(pair)
 
   const content: ResearchContent = {
     title: textPair(input.title),
     summary: {
-      aims: prose(input.summary.aims, "summary.aims"),
-      methods: prose(input.summary.methods, "summary.methods"),
-      targets: prose(input.summary.targets, "summary.targets"),
+      aims: prose(input.summary.aims),
+      methods: prose(input.summary.methods),
+      targets: prose(input.summary.targets),
       url: linksPair(input.summary.url),
     },
     listingSummary: {
-      methods: prose(input.listingSummary.methods, "listingSummary.methods"),
-      targets: prose(input.listingSummary.targets, "listingSummary.targets"),
-      typeOfData: prose(input.listingSummary.typeOfData, "listingSummary.typeOfData"),
+      methods: prose(input.listingSummary.methods),
+      targets: prose(input.listingSummary.targets),
+      typeOfData: prose(input.listingSummary.typeOfData),
       dataProviders: input.listingSummary.dataProviders.flatMap((provider) => {
         const one = listingProvider(provider)
         return one === null ? [] : [one]
       }),
     },
-    releaseNote: prose(input.releaseNote, "releaseNote"),
+    releaseNote: prose(input.releaseNote),
     dataProviders: input.dataProviders.map((provider) => ({
       id: provider.id,
       name: textPair(provider.name),
@@ -236,5 +210,5 @@ export function researchContentOf(input: ResearchContentInput): ContentResult {
     datasetIds: [...input.datasetIds],
   }
 
-  return problems.length > 0 ? { ok: false, problems } : { ok: true, content }
+  return content
 }

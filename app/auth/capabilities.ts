@@ -29,7 +29,7 @@ export const CAPABILITIES = [
 export type Capability = (typeof CAPABILITIES)[number]
 
 export interface Actor {
-  /** The session this request arrived with. `draft_presence` will key on it. */
+  /** The session this request arrived with. */
   sessionId: string
   /** The Keycloak `sub`, and the only thing a person is identified by. */
   sub: string

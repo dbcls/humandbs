@@ -222,12 +222,11 @@ describe("draft_dataset_entry", () => {
 })
 
 describe("discarding a draft", () => {
-  it("takes the entries, comments and presence with it", async () => {
+  it("takes the entries and comments with it", async () => {
     const researchId = await createResearch()
     const datasetId = await createDataset(researchId)
     const draftId = await createDraft(researchId, "token-a")
     await db.insert(s.draftDatasetEntry).values({ draftId, datasetId, content: emptyDatasetContent() })
-    await db.insert(s.draftPresence).values({ draftId, sessionId: "session-1", displayName: "curator" })
     await db.insert(s.comment).values({
       draftId,
       anchor: { kind: "research-field", path: "summary.aims" },
@@ -239,7 +238,6 @@ describe("discarding a draft", () => {
     await db.delete(s.researchDraft).where(eq(s.researchDraft.id, draftId))
 
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
-    expect(await db.select().from(s.draftPresence)).toHaveLength(0)
     expect(await db.select().from(s.comment)).toHaveLength(0)
     expect(await db.select().from(s.reviewAcknowledgement)).toHaveLength(0)
   })
@@ -262,18 +260,6 @@ describe("discarding a draft", () => {
     expect(remaining.map((d) => d.id)).toEqual([existing])
     // The version still describes it: what the draft held was a copy.
     expect(only(await db.select().from(s.researchVersion)).content.datasets).toHaveLength(1)
-  })
-
-  it("keeps one presence row per session", async () => {
-    const researchId = await createResearch()
-    const draftId = await createDraft(researchId, "token-a")
-    await db.insert(s.draftPresence).values({ draftId, sessionId: "session-1", displayName: "curator" })
-
-    await expect(
-      db.insert(s.draftPresence).values({ draftId, sessionId: "session-1", displayName: "curator" }),
-    ).rejects.toThrow()
-    await db.insert(s.draftPresence).values({ draftId, sessionId: "session-2", displayName: "curator" })
-    expect(await db.select().from(s.draftPresence)).toHaveLength(2)
   })
 })
 

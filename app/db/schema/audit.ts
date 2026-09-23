@@ -15,6 +15,12 @@ export const eventAction = pgEnum("event_action", [
    */
   "withdraw-version",
   "delete-research",
+  /**
+   * A dataset taken out of its research. Recorded because it reaches readers:
+   * a published dataset leaves the pages, the listings and the search the
+   * moment it goes, and nothing else keeps a trace of it having been there.
+   */
+  "delete-dataset",
   "discard-draft",
   "pin-label",
   "unpin-label",

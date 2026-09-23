@@ -7,9 +7,7 @@ import { researchContentInput } from "./form"
 import { researchContentOf, saveDraftSchema } from "./form.server"
 
 function contentOf(input: ReturnType<typeof researchContentInput>): ResearchContent {
-  const result = researchContentOf(input)
-  if (!result.ok) throw new Error(`expected the form to convert: ${JSON.stringify(result.problems)}`)
-  return result.content
+  return researchContentOf(input)
 }
 
 describe("what the editor is handed", () => {
@@ -56,29 +54,17 @@ describe("what the editor sends back", () => {
     expect(JSON.stringify(content)).not.toContain("a heading nobody will see")
   })
 
-  it("refuses prose holding a construct the tree cannot keep, naming the field and language", () => {
+  it("keeps prose holding a construct the tree cannot keep, as the characters typed", () => {
     const input = researchContentInput(emptyResearchContent())
     input.summary.methods.en = { state: "value", text: "| a | b |\n| --- | --- |" }
-
-    const result = researchContentOf(input)
-
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.problems.map((problem) => problem.path)).toEqual(["summary.methods.en"])
-    expect(result.problems[0]?.syntax).toBe("table")
-  })
-
-  it("reports every field that holds refused markup, not only the first", () => {
-    const input = researchContentInput(emptyResearchContent())
     input.summary.aims.ja = { state: "value", text: "# heading" }
     input.releaseNote.en = { state: "value", text: "- item" }
 
-    const result = researchContentOf(input)
+    const content = contentOf(input)
 
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.problems.map((problem) => problem.path))
-      .toEqual(["summary.aims.ja", "releaseNote.en"])
+    expect(content.summary.methods.en).toEqual({ state: "value", value: [[{ text: "| a | b |" }], [{ text: "| --- | --- |" }]] })
+    expect(content.summary.aims.ja).toEqual({ state: "value", value: [[{ text: "# heading" }]] })
+    expect(content.releaseNote.en).toEqual({ state: "value", value: [[{ text: "- item" }]] })
   })
 
   it("does not read a value field as markdown, so punctuation stays punctuation", () => {

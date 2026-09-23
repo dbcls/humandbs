@@ -45,24 +45,26 @@ describe("toMarkdown", () => {
       .toBe("[panel](</files/hum0405/TGS probe.xlsx>)")
   })
 
-  it("escapes what would otherwise be read back as syntax", () => {
+  it("escapes only what the save path would read as something else", () => {
     expect(toMarkdown([[{ text: "call rate < 0.95" }]])).toBe("call rate \\< 0.95")
-    expect(toMarkdown([[{ text: "*not emphasis*" }]])).toBe("\\*not emphasis\\*")
     expect(toMarkdown([[{ text: "[not a link](x)" }]])).toBe("\\[not a link\\](x)")
     expect(toMarkdown([[{ text: "a & b" }]])).toBe("a \\& b")
+    expect(toMarkdown([[{ text: "a \\ b" }]])).toBe("a \\\\ b")
+    // What the save path keeps as characters goes out as those characters.
+    expect(toMarkdown([[{ text: "*not emphasis*" }]])).toBe("*not emphasis*")
+    expect(toMarkdown([[{ text: "**bold** `code` ~~x~~ a | b" }]])).toBe("**bold** `code` ~~x~~ a | b")
   })
 
-  it("escapes at the start of a line what only means something there", () => {
-    expect(toMarkdown([[{ text: "- not a list" }]])).toBe("\\- not a list")
-    expect(toMarkdown([[{ text: "# not a heading" }]])).toBe("\\# not a heading")
-    expect(toMarkdown([[{ text: "1. not a list" }]])).toBe("1\\. not a list")
-    expect(toMarkdown([[{ text: "a" }, { text: "- still not a list" }]]))
-      .toBe("a- still not a list")
+  it("leaves the start of a line alone — a heading or a list written there comes back as the same characters", () => {
+    expect(toMarkdown([[{ text: "- not a list" }]])).toBe("- not a list")
+    expect(toMarkdown([[{ text: "# not a heading" }]])).toBe("# not a heading")
+    expect(toMarkdown([[{ text: "1. not a list" }]])).toBe("1. not a list")
+    expect(toMarkdown([[{ text: "_leading" }]])).toBe("_leading")
   })
 
-  it("leaves an underscore inside a word alone, as markdown does", () => {
+  it("leaves underscores alone, wherever they stand — they come back as themselves", () => {
     expect(toMarkdown([[{ text: "PI_HAT > 0.175" }]])).toBe("PI_HAT > 0.175")
-    expect(toMarkdown([[{ text: "_leading" }]])).toBe("\\_leading")
+    expect(toMarkdown([[{ text: "_leading" }]])).toBe("_leading")
   })
 
   it("writes one line per line", () => {

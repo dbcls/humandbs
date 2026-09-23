@@ -4,14 +4,13 @@ import {
   NEWS_DATINGS,
   NEWS_SORT,
   NEWS_SORT_KEYS,
-  PUBLISH_STATES,
+  NEWS_STATES,
   type NewsRow,
   type NewsSortKey,
 } from "~/admin/contents"
 import { newsListAction, newsListPage } from "~/admin/contents.server"
 import { adminNewsListPath, adminNewsPath, newsQuery, type NewsListingQuery } from "~/admin/urls"
 import {
-  Badge,
   Chooser,
   CHOOSER_SIDE,
   Heading,
@@ -19,7 +18,7 @@ import {
   MENU_ITEM_HERE,
   Stack,
 } from "~/components/base"
-import { ResultLine, StateCell, StateIcon } from "~/components/contents"
+import { ResultLine, StateCell, StateIcon, stateLabel } from "~/components/contents"
 import { Answered, Checkbox, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Paging, Table, Td } from "~/components/page"
@@ -161,22 +160,17 @@ function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
           {row.title === "" ? t.news.untitled : row.title}
         </Link>
       </Td>
-      {/* **A date still ahead is marked in this column**, because the date is
-          what holds the announcement back — the two language columns say what a
-          curator set, and an item can be published in both and still be
-          waiting. */}
+      {/* **A date still ahead is read in the language columns**, as the
+          state 「公開予定」: what the date holds back is each published
+          language, and the column that says a language is up is the one
+          that has to say it is not up yet. */}
       <Td nowrap>
         {row.publishedAt === null
           ? <span className="text-ink-muted">{t.news.undated}</span>
-          : (
-              <span className="inline-flex items-center gap-2">
-                {minuteOf(row.publishedAt)}
-                {row.scheduled && <Badge tone="accent">{t.news.scheduled}</Badge>}
-              </span>
-            )}
+          : minuteOf(row.publishedAt)}
       </Td>
-      <Td nowrap><StateCell state={row.states.ja} locale={locale} /></Td>
-      <Td nowrap><StateCell state={row.states.en} locale={locale} /></Td>
+      <Td nowrap><StateCell state={row.states.ja} locale={locale} ahead={row.scheduled} /></Td>
+      <Td nowrap><StateCell state={row.states.en} locale={locale} ahead={row.scheduled} /></Td>
     </tr>
   )
 }
@@ -238,11 +232,11 @@ function Filters({ view, locale }: ViewProps) {
               the thing this listing is most often asked — needs. */}
           {(["ja", "en"] as const).map((each) => (
             <RefineAxis key={each} label={t.languages[each]}>
-              {PUBLISH_STATES.map((one) => (
+              {NEWS_STATES.map((one) => (
                 <Checkbox
                   key={one}
-                  label={one === "published" ? t.published : t.unpublished}
-                  icon={<StateIcon published={one === "published"} />}
+                  label={stateLabel(locale, one)}
+                  icon={<StateIcon state={one} />}
                   name={each}
                   value={one}
                   checked={view[each].includes(one)}

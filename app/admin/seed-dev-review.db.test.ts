@@ -121,24 +121,30 @@ describe("hum0127 のレビュー用 draft", () => {
     expect(draft.content.releaseNote.en).toEqual({ state: "value", value: [] })
   })
 
-  it("dataset を 3 件載せ、そのうち新規の 1 件だけラベルを pin しない", async () => {
+  it("研究の dataset に新規の 1 件を足し、それだけラベルを pin しない", async () => {
     await seedFixture()
 
     const result = await seedDevReviewData(db)
 
     const [draft] = await db
-      .select({ content: s.researchDraft.content })
+      .select({ content: s.researchDraft.content, researchId: s.researchDraft.researchId })
       .from(s.researchDraft)
       .where(eq(s.researchDraft.id, result.reviewDraftId))
     if (draft === undefined) throw new Error("the review draft is gone")
-    expect(draft.content.datasetIds).toHaveLength(3)
+    // **載せる操作は無い** — draft は研究の dataset を全部公開するので、seed が
+    // 足すのは自分で作る 1 件だけ (`admin/datasets.ts`)。
+    const carried = await db
+      .select({ id: s.dataset.id })
+      .from(s.dataset)
+      .where(eq(s.dataset.researchId, draft.researchId))
+    expect(carried).toHaveLength(3)
 
     const pinned = await db
       .select({ datasetId: s.labelPin.datasetId })
       .from(s.labelPin)
       .where(eq(s.labelPin.kind, "dataset"))
     const pinnedIds = new Set(pinned.map((row) => row.datasetId))
-    const unpinned = draft.content.datasetIds.filter((id) => !pinnedIds.has(id))
+    const unpinned = carried.map((row) => row.id).filter((id) => !pinnedIds.has(id))
     expect(unpinned).toHaveLength(1)
 
     const entries = await db

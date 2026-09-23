@@ -34,7 +34,7 @@ import type { ArticleView } from "~/public/site.server"
 import { href, readLocale } from "~/public/urls"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 
-import { nowInJst, stampFromLocalInput, today } from "~/dates"
+import { stampFromLocalInput, today } from "~/dates"
 import { axisCounts, pageOf, type ListingPage } from "./listing"
 import { readPage } from "./pages.server"
 import {
@@ -45,38 +45,41 @@ import {
   adminSeriesPath,
 } from "./urls"
 import {
+  type ContentsFilter,
   datingOf,
+  type DocumentRow,
   emptyStates,
   filterEntries,
   filterNewsRows,
   isNewsDating,
   isNewsSortKey,
-  NEWS_SORT,
-  sortedNews,
+  isNewsState,
   isPublishState,
   isVersioning,
   NEWS_DATINGS,
+  NEWS_SORT,
+  NEWS_STATES,
+  type NewsDating,
+  type NewsFilter,
+  type NewsRow,
+  type NewsSortKey,
+  type NewsState,
+  newsStateIn,
   parseVersionNumber,
-  publishStateIn,
-  publishStateOf,
   PUBLISH_STATES,
+  type PublishState,
+  publishStateOf,
+  type SeriesRow,
   siteTree,
   slugProblem,
+  sortedNews,
+  type TreeEntry,
   unansweredLocales,
+  type Versioning,
   versioningOf,
   VERSIONINGS,
   versionNumberIn,
   versionSlug,
-  type ContentsFilter,
-  type DocumentRow,
-  type NewsDating,
-  type NewsFilter,
-  type NewsSortKey,
-  type NewsRow,
-  type PublishState,
-  type SeriesRow,
-  type TreeEntry,
-  type Versioning,
 } from "./contents"
 
 /**
@@ -95,7 +98,9 @@ function idIs(column: PgColumn, value: string) {
 const EMPTY_ARTICLE: ArticleContent = { title: "", body: "" }
 
 export type ContentsProblem
-  = | "malformed-slug"
+  = | "undated"
+    | "dated-while-published"
+    | "malformed-slug"
     | "reserved-slug"
     | "duplicate-slug"
     | "missing-title"
@@ -127,8 +132,9 @@ export interface AlertRow {
    * is recorded there in the same transaction, so the day is true without a
    * second thing being written — and it is the day of the *latest* raising,
    * because what a reader of the screen wants to know is how long the sentence
-   * has been standing, not when it first went up. An alert raised before the
-   * trail existed (the two the migration carries) has no day to show.
+   * has been standing, not when it first went up. An alert that comes across
+   * from v1 standing is put up in the trail by the load, at the instant v1
+   * holds for it, so it has a day as well.
    */
   shownAt: string | null
   ja: string
@@ -203,16 +209,16 @@ export interface NewsListView extends ListingPage<NewsRow> {
   /** The conditions in force, as the address carries them. */
   keyword: string
   dating: NewsDating[]
-  ja: PublishState[]
-  en: PublishState[]
+  ja: NewsState[]
+  en: NewsState[]
   /**
    * How many announcements each choice of the pane would leave, counted the way
    * the articles are (`app/admin/listing.ts` の `axisCounts`).
    */
   counts: {
     dating: Record<NewsDating, number>
-    ja: Record<PublishState, number>
-    en: Record<PublishState, number>
+    ja: Record<NewsState, number>
+    en: Record<NewsState, number>
   }
   size: PageSize
   sort: NewsSortKey
@@ -590,8 +596,8 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
   const filter: NewsFilter = {
     keyword: url.searchParams.get("q") ?? "",
     dating: url.searchParams.getAll("dating").filter(isNewsDating),
-    ja: url.searchParams.getAll("ja").filter(isPublishState),
-    en: url.searchParams.getAll("en").filter(isPublishState),
+    ja: url.searchParams.getAll("ja").filter(isNewsState),
+    en: url.searchParams.getAll("en").filter(isNewsState),
   }
   // A size that is not one of the offered ones is read as none asked for, the
   // way the other listings read theirs.
@@ -615,13 +621,13 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
     ),
     ja: axisCounts(
       filterNewsRows(rows, { ...filter, ja: [] }),
-      PUBLISH_STATES,
-      (row, value) => publishStateIn(row.states, "ja") === value,
+      NEWS_STATES,
+      (row, value) => newsStateIn(row, "ja") === value,
     ),
     en: axisCounts(
       filterNewsRows(rows, { ...filter, en: [] }),
-      PUBLISH_STATES,
-      (row, value) => publishStateIn(row.states, "en") === value,
+      NEWS_STATES,
+      (row, value) => newsStateIn(row, "en") === value,
     ),
   }
 
@@ -1289,6 +1295,12 @@ async function renameDocument(
   target: ContentTarget & { kind: "document" },
   form: FormData,
 ): Promise<ContentsResult> {
+  // **A revision's address is the series' slug and its number**, neither of
+  // which is this document's own to change: renaming one would take it out
+  // from under its series without the series knowing.
+  const series = await tx.select({ slug: documentSeries.slug }).from(documentSeries)
+  if (series.some((one) => versionNumberIn(one.slug, target.slug) !== null)) return { status: "not-a-revision" }
+
   const slug = text(form, "slug")
   if (slug === target.slug) return { status: "ok" }
   const problem = await guardSlug(tx, slug, target.id)
@@ -1340,10 +1352,12 @@ export async function newsListAction(request: Request): Promise<ContentsResult> 
   if (text(form, "intent") !== "create-news") return { status: "unknown-target" }
   const [created] = await getDb()
     .insert(news)
-    // Dated now rather than at midnight: a new announcement is written to go
-    // out, and a date whose time has already passed is one less thing to
-    // correct. It is unpublished in both languages either way.
-    .values({ publishedAt: nowInJst() })
+    // **Undated until somebody dates it.** The date is the announcement's own
+    // — what readers see and what the listing orders by — and the moment a
+    // curator pressed "create" is not that; an item dated by that press reads
+    // as dated on purpose. Nothing can be published under it until it is
+    // dated (`newsAction`).
+    .values({})
     .returning({ id: news.id })
   if (created === undefined) return { status: "unknown-target" }
   return settle(request, { status: "ok", goTo: adminNewsPath(created.id) })
@@ -1356,7 +1370,7 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
 
   const applied = await getDb().transaction(async (tx): Promise<Applied> => {
     const [row] = await tx
-      .select({ id: news.id })
+      .select({ id: news.id, publishedAt: news.publishedAt })
       .from(news)
       .where(idIs(news.id, newsId))
       .limit(1)
@@ -1369,6 +1383,11 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
       case "save":
         return saveLocale(tx, target, form)
       case "publish":
+        // **Nothing goes out undated.** The public side shows a language only
+        // once the item's date has come, so publishing an undated item would
+        // set a state that changes nothing; the screen keeps the control
+        // shut for the same reason, and this is what holds when it did not.
+        if (row.publishedAt === null) return { status: "undated" }
         return publishLocale(tx, target, form, actor)
       case "unpublish":
         return unpublishLocale(tx, target, form, actor)
@@ -1384,15 +1403,25 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
 /**
  * The date an announcement goes out under, as the field sent it.
  *
- * **An empty field clears the date**, which is how an announcement goes back to
- * being a draft. Anything else has to be the minute the field is made of — the
- * value reaches here as text, and one that is not is a form that was not the
- * screen's.
+ * **An empty field clears the date, but not from under a published language.**
+ * A published language with no date is a state the public side reads as
+ * nothing and the screen reads as "公開中" — the two would disagree, and the
+ * way back is to take the languages down first. Anything else has to be the
+ * minute the field is made of — the value reaches here as text, and one that
+ * is not is a form that was not the screen's.
  */
 async function setNewsDate(tx: Executor, id: string, form: FormData): Promise<ContentsResult> {
   const value = text(form, "publishedAt")
   const stamp = value === "" ? null : stampFromLocalInput(value)
   if (value !== "" && stamp === null) return { status: "unknown-target" }
+  if (stamp === null) {
+    const [up] = await tx
+      .select({ locale: newsContent.locale })
+      .from(newsContent)
+      .where(and(eq(newsContent.newsId, id), eq(newsContent.published, true)))
+      .limit(1)
+    if (up !== undefined) return { status: "dated-while-published" }
+  }
   await tx.update(news).set({ publishedAt: stamp }).where(eq(news.id, id))
   return { status: "ok" }
 }

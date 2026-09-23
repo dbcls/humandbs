@@ -1,7 +1,7 @@
 import { Children, createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, EDGE_SHADE, LISTING_CONTROL, Note, Stack } from "~/components/base"
+import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, EDGE_SHADE, LISTING_CONTROL, Note, Stack, Chevron } from "~/components/base"
 import { Icon, type IconName } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
@@ -10,17 +10,29 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import type { FieldView, LinksView, TermView } from "~/public/view.server"
 
+import { scrollPaneTo } from "./scroll"
+
 /**
  * What a preview hangs beside a place the page draws — a comment mark, a note
  * that the published version says something else.
  *
- * A page marks its places by putting `<Annotation at="…" />` where the mark
- * belongs, and the anchor it names is the same path a comment is attached by
- * and the diff reports. **A public page provides nothing**, so `annotate` is
- * absent, every mark renders as nothing, and the published page is drawn by the
- * same code that draws the preview.
+ * A page marks its places by putting `<Annotation at="…" part="…" />` where
+ * each part belongs, and the anchor it names is the same path a comment is
+ * attached by and the diff reports. **A public page provides nothing**, so
+ * `annotate` is absent, every mark renders as nothing, and the published page
+ * is drawn by the same code that draws the preview.
+ *
+ * **A place has two parts to annotate, and they stand in different places.**
+ * The mark (a comment's) stands with the name — beside a section's heading,
+ * beside a pair's name, at the value's right in a cell that has no name of
+ * its own — where the form beside the page stands its own marks, and where a
+ * reader looks to see what a thing is called. What the published version said
+ * instead stands under the value, being lines to read against it. Drawn in
+ * one place, the mark sat under the value and read as belonging to whatever
+ * came next.
  */
-export type Annotate = (at: string) => ReactNode
+export type AnnotationPart = "name" | "value"
+export type Annotate = (at: string, part: AnnotationPart) => ReactNode
 
 interface AnnotationLayerValue {
   annotate: Annotate
@@ -48,9 +60,27 @@ export function AnnotationLayer({ annotate, here = null, onGo = null, goLabel = 
   return <AnnotateContext.Provider value={value}>{children}</AnnotateContext.Provider>
 }
 
-export function Annotation({ at }: { at: string }) {
+export function Annotation({ at, part }: { at: string, part: AnnotationPart }) {
   const layer = useContext(AnnotateContext)
-  return layer === null ? null : <>{layer.annotate(at)}</>
+  return layer === null ? null : <>{layer.annotate(at, part)}</>
+}
+
+/**
+ * A place with its mark beside it, for a cell that has no name of its own —
+ * the name is the column's heading, and a mark under the value read as
+ * belonging to the row below. The mark stands at the value's right on its
+ * first line; what stands under a value stands under it here too.
+ */
+export function MarkedPlace({ at, children }: { at: string, children: ReactNode }) {
+  return (
+    <>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1"><Place at={at}>{children}</Place></div>
+        <Annotation at={at} part="name" />
+      </div>
+      <Annotation at={at} part="value" />
+    </>
+  )
 }
 
 /**
@@ -75,7 +105,9 @@ export function Place({ at, children }: { at: string, children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null)
   const here = layer !== null && layer.here === at
   useEffect(() => {
-    if (here) box.current?.scrollIntoView({ block: "center" })
+    // Only the pane moves (`scroll.ts`): the caret is in the form beside this
+    // pane, and the window it stands in is where the reader left it.
+    if (here && box.current !== null) scrollPaneTo(box.current, "center")
   }, [here])
   if (layer === null) return <>{children}</>
   const go = layer.onGo
@@ -270,7 +302,7 @@ export function Card({ under = true, fill = false, children }: {
  * the 32px that separates one part from the next, 8px leaves the page a single
  * rhythm, and the name crowds the first thing in the block.
  */
-export function Section({ title, note, at, fill = false, children }: {
+export function Section({ title, note, at, aside, fill = false, children }: {
   title: string
   /**
    * What the part is for, for the parts whose name does not say it.
@@ -279,10 +311,22 @@ export function Section({ title, note, at, fill = false, children }: {
    * reads, and the names stop being read along with them — so this says what a
    * reader could not have worked out from "公開バージョン", and nothing that
    * repeats it.
+   *
+   * **One string is one line.** A note that says several things is given as
+   * several strings, one per thing, so that a line ends where a thought does
+   * and not where the window happens to — five sentences run together across
+   * the width of a table are read as a paragraph, and a paragraph under a
+   * name is skipped.
    */
-  note?: string
+  note?: string | readonly string[]
   /** The anchor of the whole section, when it draws one field. */
   at?: string
+  /**
+   * What stands beside the name: the badge naming the notation of a section's
+   * one field (`fields.tsx` の `Section`), which has no name row of its own to
+   * carry it.
+   */
+  aside?: ReactNode
   /** Take the room left in the column above (`base.tsx` の `Stack` の `fill`). */
   fill?: boolean
   children: ReactNode
@@ -300,11 +344,17 @@ export function Section({ title, note, at, fill = false, children }: {
             What says "this names what follows" is the rule beside it. */}
         <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
           {title}
-          {at !== undefined && <Annotation at={at} />}
+          {aside}
+          {at !== undefined && <Annotation at={at} part="name" />}
         </h2>
-        {note !== undefined && <p className="text-ink-muted text-sm">{note}</p>}
+        {note !== undefined && (
+          <div className="flex flex-col gap-1 text-ink-muted text-sm">
+            {(typeof note === "string" ? [note] : note).map((line) => <p key={line}>{line}</p>)}
+          </div>
+        )}
       </Stack>
       {at === undefined ? children : <Place at={at}>{children}</Place>}
+      {at !== undefined && <Annotation at={at} part="value" />}
     </Stack>
   )
 }
@@ -359,10 +409,13 @@ export function KeyValue({ title, at, children }: {
   return (
     <div className="break-inside-avoid py-2">
       <Stack gap="tight">
-        <dt className="text-ink-muted text-xs">{title}</dt>
+        <dt className="flex flex-wrap items-center gap-2 text-ink-muted text-xs">
+          {title}
+          {at !== undefined && <Annotation at={at} part="name" />}
+        </dt>
         <dd>
           {at === undefined ? children : <Place at={at}>{children}</Place>}
-          {at !== undefined && <Annotation at={at} />}
+          {at !== undefined && <Annotation at={at} part="value" />}
         </dd>
       </Stack>
     </div>
@@ -842,7 +895,7 @@ export function Empty({ children }: { children: ReactNode }) {
  * filled by their own words, so a round end there reads as the end of a word.
  */
 const PAGE_BOX = "inline-flex min-h-tap min-w-tap items-center justify-center rounded px-2"
-const PAGE_STEP = `${PAGE_BOX} ${LISTING_CONTROL} hover:bg-surface-hover`
+const PAGE_STEP = `group/way ${PAGE_BOX} ${LISTING_CONTROL} hover:bg-surface-hover`
 const PAGE_HERE = `${PAGE_BOX} border border-transparent bg-brand font-semibold text-white`
 
 /** How many pages either side are offered one by one, before the steps double. */
@@ -918,7 +971,7 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
     <nav aria-label={label} className="flex flex-wrap items-center gap-1 text-sm">
       {page > 1 && (
         <Link to={at(page - 1)} aria-label={previous} title={previous} className={PAGE_STEP}>
-          <Icon name="chevron-left" />
+          <Chevron dir="left" />
         </Link>
       )}
       {pageWindow(page, pageCount, most).map((number) => (
@@ -932,7 +985,7 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
       ))}
       {page < pageCount && (
         <Link to={at(page + 1)} aria-label={next} title={next} className={PAGE_STEP}>
-          <Icon name="chevron-right" />
+          <Chevron dir="right" />
         </Link>
       )}
     </nav>

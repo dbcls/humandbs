@@ -32,7 +32,7 @@
  */
 
 import { useId, useState } from "react"
-import { useFetcher } from "react-router"
+import { Link, useFetcher } from "react-router"
 
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
 import {
@@ -57,7 +57,6 @@ import {
   adminDraftReviewPath,
   datasetPagePath,
   draftCommentsPath,
-  draftPresencePath,
   termsPath,
 } from "~/admin/urls"
 import {
@@ -90,17 +89,17 @@ import {
   ElementCard,
   FieldHead,
   PairField,
-  ProblemBand,
   Section,
   SingleField,
   StateSwitch,
-  UpstreamBand,
+  PublishedBand,
   emptySlot,
   moved,
   newId,
   replacing,
   type Marks,
 } from "./fields"
+import { landOn } from "./form"
 
 /**
  * How many candidates the term picker offers at once. A vocabulary can hold
@@ -207,13 +206,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     if (found !== undefined && found !== null) setAt(found)
   }
 
-  /**
-   * Going to the place a band names.
-   *
-   * **Scrolling is not enough on its own.** An anchor moves the page and leaves
-   * the keyboard where it was, so what is focused here is the first thing in
-   * the section that will take it.
-   */
+  /** Going to the place a band or the page pane names (`form.tsx` の `landOn`). */
   function goTo(path: string): void {
     // The field itself when it stands open on the form; the section holding it
     // when it is written inside a panel that is not open.
@@ -221,13 +214,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     const wanted = SECTION_OF[path.split(".")[0] ?? path]
     const section = field ?? (wanted === undefined ? null : document.getElementById(wanted))
     if (section === null) return
-    section.scrollIntoView(field === null ? undefined : { block: "center" })
-    // The first box that will take the caret, rather than the first in the
-    // markup: the review layer hangs its own hidden boxes beside every field.
-    for (const box of section.querySelectorAll<HTMLElement>("input, textarea")) {
-      box.focus({ preventScroll: true })
-      if (document.activeElement === box) return
-    }
+    landOn(section, field === null ? "start" : "center")
   }
 
   /** The same move, for a band that draws its own anchors. */
@@ -255,26 +242,19 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     <div onFocusCapture={onFormFocus}>
       <Card under={false}>
         <Stack>
-          {view.review.publishedNumber !== null && view.review.changed.length > 0 && (
-            <Note kind="plain">
-              {editor.differsCount(view.review.publishedNumber, view.review.changed.length)}
-            </Note>
+          {editing.upstream !== null && editing.upstream.differing.length > 0 && (
+            <PublishedBand
+              locale={locale}
+              number={editing.upstream.number}
+              places={editing.upstream.differing.map((path) => ({ path, go: () => { goTo(path) } }))}
+              takeCount={editing.upstream.differing.length}
+              onTakeAll={editing.takeUpstream}
+            />
           )}
           {editing.conflict !== null && (
             <div onClick={onBandJump}>
               <ConflictBand locale={locale} changed={editing.conflict.changed} />
             </div>
-          )}
-          {editing.upstream !== null && editing.upstream.differing.length > 0 && (
-            <UpstreamBand
-              locale={locale}
-              differing={editing.upstream.differing}
-              number={editing.upstream.number}
-              onTakeAll={editing.takeUpstream}
-            />
-          )}
-          {editing.problems.length > 0 && (
-            <ProblemBand locale={locale} problems={editing.problems} />
           )}
 
           <DatasetIdSection view={view} locale={locale} />
@@ -391,7 +371,6 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   )
   const panes = usePanes({
     locale,
-    remember: `${view.draftId}:${view.datasetId}`,
     under: "bar",
     contents: [
       { id: "form", label: editor.paneForm, body: formBody },
@@ -408,7 +387,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                 the form. Where the caret is, the page shows on the value itself
                 (`page.tsx` の `Place`).
               */
-              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
+              annotate={(anchor, part) => <FieldReview review={review} at={anchor} part={part} fieldLabel={fieldLabelFor(anchor)} />}
               here={at}
               onGo={goTo}
               goLabel={editor.goToField}
@@ -467,18 +446,26 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             label: t.backToList,
             icon: "chevron-left",
           }}
-        />
-        <DraftTools
-          locale={locale}
-          panesControl={panes.control}
-          unresolved={view.steps.unresolved}
-          reviewHref={href(locale, adminDraftReviewPath(researchId, draftId))}
-          dirty={editing.dirty}
-          saved={editing.saved}
-          saving={editing.saving}
-          onSave={editing.save}
-          presencePath={draftPresencePath(researchId, draftId)}
-          presence={view.presence}
+          tools={(
+            <DraftTools
+              locale={locale}
+              panesControl={panes.control}
+              // **The count is a way to the screen that reads them all** — a
+              // dataset is a part of the draft, and the draft's questions are
+              // read on the draft's own screens.
+              notes={(
+                <Link to={href(locale, adminDraftReviewPath(researchId, draftId))} className="no-underline">
+                  <Badge tone={view.steps.unresolved > 0 ? "accent" : undefined} icon={<Icon name="comment" aria-hidden="true" />}>
+                    {messagesFor(locale).admin.detail.openComments(view.steps.unresolved)}
+                  </Badge>
+                </Link>
+              )}
+              dirty={editing.dirty}
+              saved={editing.saved}
+              saving={editing.saving}
+              onSave={editing.save}
+            />
+          )}
         />
 
         {panes.view}
@@ -497,7 +484,6 @@ function markedPaths(editing: DraftEditing<DatasetContentInput>): string[] {
   return [
     ...editing.conflict?.changed ?? [],
     ...editing.upstream?.differing ?? [],
-    ...editing.problems.map((problem) => problem.path),
   ]
 }
 
@@ -741,7 +727,7 @@ function AddValue({ locale, keys, onAdd }: {
                   <li key={key.id}>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="secondary"
                       size="xs"
                       icon={<Icon name="plus" />}
                       onClick={() => { onAdd(key) }}
@@ -915,7 +901,7 @@ function NumberField({ label, locale, marks, units, labelCandidates, state, rows
             <div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 size="xs"
                 icon={<Icon name="plus" />}
                 onClick={() => {
@@ -1095,7 +1081,7 @@ function DiseaseField({ label, locale, marks, setId, known, state, diseases, rem
             <div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 size="xs"
                 icon={<Icon name="plus" />}
                 onClick={() => {
@@ -1224,7 +1210,7 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
             <li key={term.id}>
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 size="xs"
                 className="w-full justify-start"
                 onClick={() => {

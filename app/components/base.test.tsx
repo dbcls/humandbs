@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { Button, Chip, Clamped, Confirm, Fold, foldShown, PaneHeading, Stated } from "./base"
+import { Button, Chevron, Chip, Clamped, Confirm, Fold, foldShown, PaneHeading, Stated } from "./base"
 
 /** Rendered at an address, since a part may hold a link. */
 function render(element: React.ReactNode): string {
@@ -270,5 +270,30 @@ describe("a control that cannot be pressed", () => {
     expect(wayIn).toContain("role=\"tooltip\"")
     expect(wayIn).toContain("使われています。")
     expect(wayIn).toMatch(/<button[^>]*\bdisabled=""/)
+  })
+})
+
+/**
+ * The mark of a way moves the way it points while the control it stands in is
+ * pointed at — and only then, and only for those who allow motion.
+ */
+describe("Chevron", () => {
+  it("points and moves left, or right, as told", () => {
+    const left = render(<Chevron dir="left" />)
+    expect(left).toContain("group-hover/way:-translate-x-0.5")
+    expect(left).toContain("group-focus-visible/way:-translate-x-0.5")
+    expect(left).toContain("motion-safe:transition-transform")
+    const right = render(<Chevron dir="right" />)
+    expect(right).toContain("group-hover/way:translate-x-0.5")
+    expect(right).not.toContain("-translate-x-0.5")
+  })
+
+  it("is hidden from readers — the word beside it says where", () => {
+    expect(render(<Chevron dir="right" />)).toContain("aria-hidden=\"true\"")
+  })
+
+  it("moves inside any Button, which is the group it answers to", () => {
+    const html = render(<Button type="button" icon={<Chevron dir="right" />}>研究へ</Button>)
+    expect(html).toMatch(/<button[^>]*class="[^"]*\bgroup\/way\b/)
   })
 })

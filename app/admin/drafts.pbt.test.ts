@@ -11,7 +11,7 @@ describe("listingAfter", () => {
       fc.constantFrom(-1 as const, 1 as const),
       (ids, pick, by) => {
         const datasetId = ids[pick % ids.length] ?? ""
-        const after = listingAfter(ids, { kind: "move", datasetId, by })
+        const after = listingAfter(ids, { datasetId, by })
         expect([...after].toSorted()).toEqual([...ids].toSorted())
         expect(Math.abs(after.indexOf(datasetId) - ids.indexOf(datasetId))).toBeLessThanOrEqual(1)
       },
@@ -25,22 +25,40 @@ describe("listingAfter", () => {
       fc.constantFrom(-1 as const, 1 as const),
       (ids, stranger, by) => {
         fc.pre(!ids.includes(stranger))
-        expect(listingAfter(ids, { kind: "move", datasetId: stranger, by })).toEqual(ids)
+        expect(listingAfter(ids, { datasetId: stranger, by })).toEqual(ids)
       },
     ))
   })
 
-  it("lists each dataset once however many times it is listed, and unlisting takes it out", () => {
+  it("keeps the same datasets whatever the step, so a move only reorders", () => {
     fc.assert(fc.property(
-      fc.uniqueArray(fc.uuid(), { maxLength: 6 }),
-      fc.uuid(),
-      (ids, datasetId) => {
-        const once = listingAfter(ids, { kind: "list", datasetId })
-        const twice = listingAfter(once, { kind: "list", datasetId })
-        expect(twice).toEqual(once)
-        expect(once.filter((id) => id === datasetId)).toHaveLength(1)
-        expect(once.slice(0, ids.includes(datasetId) ? ids.length : ids.length)).toEqual(ids)
-        expect(listingAfter(twice, { kind: "unlist", datasetId })).not.toContain(datasetId)
+      fc.uniqueArray(fc.uuid(), { minLength: 1, maxLength: 6 }),
+      fc.nat(),
+      fc.constantFrom(-1 as const, 1 as const),
+      (ids, pick, by) => {
+        const datasetId = ids[pick % ids.length] ?? ""
+        const after = listingAfter(ids, { datasetId, by })
+
+        expect(after.toSorted()).toEqual(ids.toSorted())
+        expect(after).toHaveLength(ids.length)
+      },
+    ))
+  })
+
+  it("moves a dataset one place and no further, and the ends stay put", () => {
+    fc.assert(fc.property(
+      fc.uniqueArray(fc.uuid(), { minLength: 1, maxLength: 6 }),
+      fc.nat(),
+      fc.constantFrom(-1 as const, 1 as const),
+      (ids, pick, by) => {
+        const at = pick % ids.length
+        const datasetId = ids[at] ?? ""
+        const to = at + by
+
+        const after = listingAfter(ids, { datasetId, by })
+
+        // Off either end there is nowhere to go, and the order is untouched.
+        expect(after.indexOf(datasetId)).toBe(to < 0 || to >= ids.length ? at : to)
       },
     ))
   })

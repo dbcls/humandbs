@@ -11,7 +11,6 @@ const branchListing = fc.record({
   order: fc.constantFrom(null, "asc", "desc"),
   size: fc.constantFrom(null, 50, 100),
   standings: fc.subarray(["held", "absent", "unlabelled"]),
-  registrations: fc.subarray(["some", "none"]),
 })
 
 function read(address: string): URLSearchParams {
@@ -19,12 +18,12 @@ function read(address: string): URLSearchParams {
 }
 
 describe("the address of the listing of branches", () => {
-  it("writes the word and the two axes, and nothing it was not given", () => {
+  it("writes the word and the axis, and nothing it was not given", () => {
     fc.assert(fc.property(branchListing, (query) => {
       const written = read(branchListingQuery(query))
       expect(written.get("q") ?? "").toBe(query.keyword)
       expect(written.getAll("standing")).toEqual(query.standings)
-      expect(written.getAll("registered")).toEqual(query.registrations)
+      expect(written.has("registered")).toBe(false)
     }))
   })
 })

@@ -64,7 +64,7 @@ function chosenOf(slot: ValueSlot): string[] {
   return []
 }
 
-describe("語彙値の併合", () => {
+describe("語彙値の統合", () => {
   it("指している値が、統合先を指すようになる", () => {
     const merged = datasetWithTermMerged(dataset([vocabulary(["a"])]), "a", "b")
     expect(chosenOf(nth(merged.values, 0))).toEqual(["b"])
@@ -137,8 +137,8 @@ const mergeArb = datasetContentArb.chain((content) => {
   })
 })
 
-describe("語彙値の併合 (性質)", () => {
-  it("併合したあと、元の語を指している値は 1 つも残らない", () => {
+describe("語彙値の統合 (性質)", () => {
+  it("統合したあと、元の語を指している値は 1 つも残らない", () => {
     fc.assert(fc.property(mergeArb, ({ content, from, into }) => {
       if (from === into) return
       expect(termIdsIn(datasetWithTermMerged(content, from, into))).not.toContain(from)
@@ -176,7 +176,7 @@ describe("語彙値の併合 (性質)", () => {
     }))
   })
 
-  it("指していない語を併合しても、content は 1 か所も変わらない", () => {
+  it("指していない語を統合しても、content は 1 か所も変わらない", () => {
     fc.assert(fc.property(datasetContentArb, (content) => {
       const merged = datasetWithTermMerged(content, "nothing-points-at-this", "somewhere")
       // 値の同一を見る。`fc.record` は prototype を持たない object を作るので、
@@ -185,7 +185,7 @@ describe("語彙値の併合 (性質)", () => {
     }))
   })
 
-  it("自分自身への併合は、何も変えない", () => {
+  it("自分自身への統合は、何も変えない", () => {
     fc.assert(fc.property(mergeArb, ({ content, from }) => {
       expect(datasetWithTermMerged(content, from, from)).toEqual(content)
     }))

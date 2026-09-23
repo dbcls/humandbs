@@ -40,6 +40,6 @@ describe("the marks a preview draws beside a value", () => {
         fieldLabel="研究の目的"
       />,
     )
-    expect(html).toContain("title=\"研究の目的 のコメント\"")
+    expect(html).toContain("title=\"研究の目的 へのコメント\"")
   })
 })

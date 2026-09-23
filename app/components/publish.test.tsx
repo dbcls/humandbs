@@ -64,7 +64,7 @@ describe("the publish screen", () => {
   it("asks for no number for an update, names the version, and dates it the day it went out", () => {
     const html = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", heldNumbers: [3, 1] }))
 
-    expect(html).toContain("更新の確認")
+    expect(html).toContain("更新前の確認")
     expect(html).toContain("v3 を更新します")
     expect(html).toContain("v3 の更新")
     expect(html).not.toContain("type=\"number\"")

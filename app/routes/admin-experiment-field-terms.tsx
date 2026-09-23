@@ -36,7 +36,7 @@ import {
   Unsaved,
 } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Code, Empty, ExternalLink, Page, Paging, Section, Table, Td } from "~/components/page"
+import { Card, Code, Empty, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
 import { RefinableList, SearchBox, usePaneOpen } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
@@ -56,14 +56,15 @@ import type { Route } from "./+types/admin-experiment-field-terms"
  * only ever be answered with "which vocabulary?" — while 「プラットフォームで
  * 選べる語」 says both what is here and what it is for (`admin/urls.ts`).
  *
- * **Every term is editable.** ICD10 arrives as a dictionary that seeds and
- * checks the terms rather than as a vocabulary of its own, so there is no set
- * whose values an import would overwrite (docs/data-model.md の「ICD10」).
+ * **What the data brings in is editable; what is settled is read.** The
+ * vocabularies the portal's structure fixes, and ICD10 — the classification put
+ * in whole — open here with nothing to press (`admin/catalog.ts` の
+ * `SETTLED_VOCABULARIES`, docs/data-model.md の「ICD10」).
  *
- * **A term in use is deactivated rather than deleted.** Deactivating takes it
- * out of the input control while leaving it resolvable for the values that
- * already name it; deleting one that is still named would leave a value nobody
- * can render.
+ * **A term in use is merged rather than deleted.** Merging rewrites every
+ * value that names the term so it names another term of the same vocabulary,
+ * then removes the term; deleting one that is still named would leave a value
+ * nobody can render.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const view = await fieldTermsPage(request, params.key)
@@ -136,9 +137,6 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
   const messages = messagesFor(locale)
   const t = messages.admin.catalog
   const set = view.set
-  // The one vocabulary whose values arrive with codes of their own.
-  const brought = set.code === ICD10_SET_CODE
-  const here = adminExperimentFieldPath(view.field.code)
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
   const flipped = view.order === "asc" ? "desc" : "asc"
@@ -226,7 +224,17 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
               **The way to make one stands with the name**, as it does over the
               table of fields: it is the one thing a reader comes here to do
               that is not "open one of these". */}
-          <Heading title={t.termsHeading} aside={catalogLabel(view.field, locale)} note={t.termsNote}>
+          {/* The line under the name says what can be done to these values —
+              deleting and merging — or, for a settled vocabulary, why nothing
+              can: the portal's own vocabularies are fixed by what the portal
+              is, ICD10 by being a standard put in whole (docs/data-model.md の
+              「ICD10」). It is the same line every screen with a note has, so
+              the reason is read where the screen's name is. */}
+          <Heading
+            title={t.termsHeading}
+            aside={catalogLabel(view.field, locale)}
+            note={view.editable ? t.termsNote : set.code === ICD10_SET_CODE ? t.standardNote : t.settledNote}
+          >
             <AdminBack
               to={href(locale, adminExperimentFieldsPath())}
               label={t.backToList}
@@ -253,30 +261,17 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                     </Submit>
                   )}
                 >
-                  {/* **The code is asked for only where the standard owns it.**
-                      Everywhere else it is made from the English label
-                      (`admin/catalog.ts` の `codeFrom`): it is an address
-                      the public side carries rather than a name to choose,
-                      and asking for one asks the curator to know which
-                      characters a query holds unquoted. */}
-                  {brought && <Field label={t.code} name="code" width="w-full" />}
+                  {/* **No code is asked for.** It is made from the English label
+                      (`admin/catalog.ts` の `codeFrom`): it is an address the
+                      public side carries rather than a name to choose, and
+                      asking for one asks the curator to know which characters
+                      a query holds unquoted. */}
                   <Field label={t.labelJa} name="labelJa" width="w-full" />
                   <Field label={t.labelEn} name="labelEn" width="w-full" />
                 </Dialog>
               </Form>
             )}
           </Heading>
-
-          {set.hierarchical && (
-            <p className="text-sm"><Badge>{t.hierarchical}</Badge></p>
-          )}
-
-          {/* **A settled vocabulary is read here and changed nowhere**, so the
-              screen says so once at the top instead of drawing a row of
-              controls that refuse. */}
-          {!view.editable && (
-            <Note kind="info">{t.settledNote}</Note>
-          )}
 
           {/* **Choosing where to fold a term into is reading this listing**, so
               what is in force says so over the rows it changes the meaning of —
@@ -322,9 +317,15 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                   <Table
                     align="middle"
                     headers={[
+                      /* **The standard's own code leads the row** where the
+                         codes are ICD10's: it is what the value is known by,
+                         and its prefix is what tells a four-character term
+                         from the three-character one above it. Elsewhere a
+                         code is an address made from the English label, and
+                         nobody reads it. */
+                      ...(set.code === ICD10_SET_CODE ? [t.code] : []),
                       t.labelJa,
                       t.labelEn,
-                      ...(set.hierarchical ? [t.parent] : []),
                       t.usage,
                       /* The column of things to press names itself for anyone
                          reading the row aloud and nowhere else. */
@@ -337,7 +338,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                         key={term.id}
                         term={term}
                         field={view.field.code}
-                        hierarchical={set.hierarchical}
+                        showsCode={set.code === ICD10_SET_CODE}
                         editable={view.editable}
                         mergeFrom={view.mergeFrom}
                         mergeAt={(termId) => at(view, { mergeFrom: termId })}
@@ -347,47 +348,6 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                   </Table>
                 )}
           </RefinableList>
-
-          {view.dictionary !== null && (
-            <Section title={t.dictionary}>
-              <p className="text-ink-muted text-sm">{t.dictionaryNote}</p>
-              <SearchBox
-                action={href(locale, here)}
-                name="dictionary"
-                value={view.dictionary.find}
-                label={t.dictionaryFind}
-                placeholder={t.dictionaryFind}
-                submit={t.dictionaryFind}
-                searchAsTyped
-              >
-                {view.find !== "" && <input type="hidden" name="find" value={view.find} />}
-              </SearchBox>
-              {view.dictionary.find !== "" && view.dictionary.rows.length === 0 && (
-                <Empty>{t.dictionaryEmpty}</Empty>
-              )}
-              <ul className="flex flex-col divide-y divide-line">
-                {view.dictionary.rows.map((row) => (
-                  <li key={row.code} className="py-2">
-                    <Form method="post" className="flex flex-wrap items-center gap-2 text-sm">
-                      <input type="hidden" name="intent" value="create-term" />
-                      <input type="hidden" name="setId" value={set.id} />
-                      <input type="hidden" name="code" value={row.code} />
-                      <input type="hidden" name="labelEn" value={row.titleEn ?? row.titleJa ?? row.code} />
-                      <input type="hidden" name="labelJa" value={row.titleJa ?? ""} />
-                      <Code className="w-24 shrink-0">{row.code}</Code>
-                      <span className="min-w-0 flex-1 break-words">
-                        {[row.titleEn, row.titleJa].filter((name) => name !== null).join(" / ")}
-                      </span>
-                      {row.held
-                        ? <Badge>{t.dictionaryHeld}</Badge>
-                        : <Submit icon={<Icon name="plus" />}>{t.addTerm}</Submit>}
-                    </Form>
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
         </Stack>
       </Card>
     </Page>
@@ -440,12 +400,12 @@ function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
  * one that grows to hold a form leaves the listing a column of boxes of
  * different heights.
  */
-function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }: {
+function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
   term: TermRow
   /** The code of the field these values belong to, which the address needs. */
   field: string
-  /** Whether this vocabulary nests, which is what gives the column a value. */
-  hierarchical: boolean
+  /** Whether the term's code is a standard's, and so leads the row. */
+  showsCode: boolean
   /** Whether this vocabulary is the administrator's to change at all. */
   editable: boolean
   /** The term a merge is being aimed from, when the address names one. */
@@ -458,6 +418,7 @@ function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }
 
   return (
     <tr>
+      {showsCode && <Td nowrap><Code size="xs">{term.code}</Code></Td>}
       {/* **A missing Japanese label is said, not dashed**: the English one is
           always there, so what is missing is the translation, and that is a
           thing to fix rather than a blank in the row (docs/ui.md の
@@ -466,13 +427,6 @@ function Row({ term, field, hierarchical, editable, mergeFrom, mergeAt, locale }
         {term.labelJa ?? <span className="text-ink-muted">{t.untranslated}</span>}
       </Td>
       <Td floor="min-w-40">{term.labelEn}</Td>
-      {hierarchical && (
-        <Td nowrap>
-          {/* A term at the top has no parent: nothing is missing, so the cell
-              is empty rather than marked. */}
-          {term.parentCode !== null && <Code size="xs">{term.parentCode}</Code>}
-        </Td>
-      )}
       {/* **How many published objects name it**, which is the one thing that
           decides whether it can still be taken away — and the way to see which
           ones they are. **The count goes to the public listing narrowed by this

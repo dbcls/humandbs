@@ -34,6 +34,7 @@ import {
 } from "~/admin/catalog.server"
 import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
 import {
+  Badge,
   Button,
   Confirm,
   Dialog,
@@ -41,7 +42,6 @@ import {
   IconButton,
   MoreLink,
   Stack,
-  Stated,
 } from "~/components/base"
 import {
   Answered,
@@ -357,11 +357,15 @@ function Row({ entry, ordered, at, of, locale }: {
       <Td floor="min-w-36">{entry.labelJa}</Td>
       <Td floor="min-w-36">{entry.labelEn}</Td>
       <Td nowrap>
-        <Stated icon={TYPE_MARK[entry.valueType]}>
+        {/* **A kind, not a state, so it is a chip.** The glyph and the word
+            are the pair the pane narrows by; the box says the cell holds a
+            category of the field rather than something that happened to it.
+            Muted, because nothing here is to be picked out of the rows. */}
+        <Badge icon={<Icon name={TYPE_MARK[entry.valueType]} aria-hidden="true" />}>
           {entry.canonicalUnit === null
             ? t.types[entry.valueType]
             : `${t.types[entry.valueType]} (${entry.canonicalUnit})`}
-        </Stated>
+        </Badge>
       </Td>
       {/* What the field draws from, when it draws from anything.
 
@@ -578,6 +582,7 @@ function Filters({ view, locale }: {
               <Checkbox
                 key={one}
                 label={t.types[one]}
+                icon={<Icon name={TYPE_MARK[one]} aria-hidden="true" className="mr-1 text-ink-muted" />}
                 name="type"
                 value={one}
                 checked={view.types.includes(one)}

@@ -29,7 +29,7 @@ import {
 } from "~/components/base"
 import { Checkbox, Submit } from "~/components/form"
 import { Icon, type IconName } from "~/components/icons"
-import { Card, Page, Paging, Table, Td } from "~/components/page"
+import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { boxSummariesOf } from "~/files/listing.server"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
@@ -37,7 +37,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
 import { pageTitle } from "~/i18n/title"
-import { href, readLocale } from "~/public/urls"
+import { datasetPath, href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 import { DEFAULT_SORT, defaultOrder, SORT_KEYS } from "~/search/sort"
@@ -171,17 +171,34 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                       </Link>
                     </Td>
                     <Td nowrap>
-                      {/* Not links: a dataset of an unpublished research has no
-                          page to lead to, and the row already leads somewhere —
-                          to the research these belong to. */}
+                      {/* **A published dataset opens its public page in a new
+                          tab; one that is not out has no page to lead to** and
+                          stays a word. The row itself leads to the research
+                          these belong to, and a curator reading down the rows
+                          loses their place if the page opens here. The mark and
+                          the word are the ones every way out of the portal has
+                          (`ExternalLink`). */}
                       <Clamped
                         shown={SHOWN_DATASETS}
                         more={(rest) => messages.search.andMore(rest)}
                         less={messages.search.showLess}
-                        items={row.datasetLabels.map((label) => (
-                          <span key={label} className="text-nowrap">
-                            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-                            {label}
+                        items={row.datasets.map(({ label, published }) => (
+                          // **1 行の中で揃え方を 2 つ持たない。** 外部リンクは
+                          // 中身を中心で揃える箱なので、行ごと中心で揃え、字との
+                          // 距離はこの行の gap が持つ。箱の載せ方は `top` — 枝番の
+                          // 一覧の同じ列と同じ理由 (`admin-research-upstream.tsx`)。
+                          <span
+                            key={label}
+                            className="inline-flex items-center gap-1 align-top text-nowrap"
+                          >
+                            <Icon name="database" aria-hidden="true" className="text-ink-muted" />
+                            {published
+                              ? (
+                                  <ExternalLink to={href(locale, datasetPath(label))} locale={locale}>
+                                    {label}
+                                  </ExternalLink>
+                                )
+                              : label}
                           </span>
                         ))}
                       />

@@ -65,11 +65,9 @@ async function sourcesUnder(dir: string): Promise<{ name: string, text: string }
  * so one added later is held to the rule without anybody remembering to name it
  * here.
  *
- * **`components/preview.tsx` is deliberately absent.** It draws the marks a
- * reader of a shared draft sees, and those take a negative margin so that a
- * 36px control rides inside the row the words set (`docs/ui.md` の「押せるものの
- * 大きさ」). The rule below cannot tell that apart from a screen choosing a
- * distance of its own.
+ * **`components/preview.tsx` is deliberately absent.** It is the page a reader
+ * of a shared draft sees, drawn with the public page's parts rather than the
+ * management area's, so the card rule below is not its to keep.
  */
 const MANAGEMENT_PARTS = [
   "components/admin.tsx",
@@ -137,11 +135,12 @@ describe("縦の間隔", () => {
    * (`routes/admin-contents-alert.tsx`)。h1 の下に来るのは 1 件目のアラートで、
    * それが開くのは名前ではなく自分の状態のチップ。
    *
-   * **研究の編集画面のバーはカードではない** (`components/draft-tools.tsx`)。1 行の帯で、
-   * 節を持たないので距離の選択そのものが無い。**記事とお知らせの編集画面のバーは
-   * `normal`** (`useArticlePanes` を呼ぶ画面) — 名前の行とペインの並びの行のあいだに、
-   * 名前を持つ節 (バージョン管理・公開日時) が立つ。h1 の 8px 下に節の名前が乗ると h1 の
-   * 2 行目に読め、32px 空けると帯が節を持つ箱に見える。
+   * **編集画面の頭の区画は `Card` ではなく自前の箱** (`components/draft-tools.tsx` の
+   * `DraftHead`) で、この規則の外にある — 留まると道具の行 1 行に畳まれる箱で、行の
+   * あいだは `Stack` の既定。**記事とお知らせの編集画面の頭の区画は `normal`**
+   * (`useArticlePanes` を呼ぶ画面) — 名前の行と道具の行のあいだに、名前を持つ節
+   * (バージョン管理・公開日時) が立つ。h1 の 8px 下に節の名前が乗ると h1 の 2 行目に
+   * 読め、32px 空けると帯が節を持つ箱に見える。
    */
   it("管理画面のカードは block で始まる — 絞り込む一覧と編集画面のバーだけが違う", async () => {
     const offenders: string[] = []
@@ -592,11 +591,11 @@ describe("ボタンの面と形", () => {
   })
 
   /** The palette itself, so that a face nobody uses cannot quietly come back. */
-  it("面は 5 つしかない", async () => {
+  it("面は 4 つしかない", async () => {
     const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
     const union = /export type ButtonVariant = ([^\n]*)/.exec(parts)?.[1]
     expect(union?.match(/"[a-z]+"/g))
-      .toEqual(["\"primary\"", "\"accent\"", "\"secondary\"", "\"danger\"", "\"ghost\""])
+      .toEqual(["\"primary\"", "\"accent\"", "\"secondary\"", "\"danger\""])
   })
 })
 
@@ -720,21 +719,19 @@ describe("名前の行の並び", () => {
     expect([...body.matchAll(/<AdminBack\b/g)]).toHaveLength(1)
   })
 
-  it("DraftTools の行は、切り替え・未解決・presence・保存・その状態の順に並ぶ", async () => {
+  it("DraftTools の行は、保存・その状態・面の入口・切り替えの順に並ぶ", async () => {
     const text = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
     const start = text.indexOf("export function DraftTools")
     expect(start).toBeGreaterThan(-1)
     const body = text.slice(start)
-    const control = body.indexOf("{panesControl}")
-    const unresolved = body.indexOf("openComments")
-    const presence = body.indexOf("<PresenceMark")
     const save = body.indexOf("variant=\"accent\"")
     const status = body.indexOf("role=\"status\"")
-    expect(control).toBeGreaterThan(-1)
-    expect(unresolved).toBeGreaterThan(control)
-    expect(presence).toBeGreaterThan(unresolved)
-    expect(save).toBeGreaterThan(presence)
+    const unresolved = body.indexOf("{notes}")
+    const control = body.indexOf("{panesControl}")
+    expect(save).toBeGreaterThan(-1)
     expect(status).toBeGreaterThan(save)
+    expect(unresolved).toBeGreaterThan(status)
+    expect(control).toBeGreaterThan(unresolved)
   })
 })
 
@@ -1082,7 +1079,10 @@ describe("押せるものの印", () => {
     if (found === undefined) return fallback
     if ("literal" in found) return found.literal
     const nested = /<Icon\s+name="([\w-]+)"/.exec(found.expr)
-    return nested === null ? undefined : nested[1]
+    if (nested !== null) return nested[1]
+    // A way's mark is drawn by `Chevron` (`base.tsx`), which names its direction rather than the glyph.
+    const way = /<Chevron\s+dir="(left|right)"/.exec(found.expr)
+    return way === null ? undefined : `chevron-${way[1]}`
   }
 
   function wordAt(attrs: string, prop: string, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
@@ -1147,6 +1147,22 @@ describe("押せるものの印", () => {
     expect(offenders).toEqual([])
     // The rule has something to hold: this many admin controls carry a rule-covered word.
     expect(matched).toBeGreaterThan(20)
+  })
+})
+
+/**
+ * A way's mark moves the way it points (`base.tsx` の `Chevron`, `docs/ui.md` の
+ * 「押せるもの」). A screen drawing the glyph itself would draw one that stands
+ * still beside ones that move, and the motion would stop saying anything.
+ */
+describe("向きのある印", () => {
+  it("chevron-left / chevron-right を Icon で直に描くのは base.tsx だけ — 他は Chevron", async () => {
+    const files = [...(await sourcesUnder("routes")), ...(await sourcesUnder("components"))]
+      .filter(({ name }) => !name.endsWith("base.tsx") && !name.endsWith("icons.tsx"))
+    const offenders = files
+      .filter(({ text }) => /<Icon\s+name="chevron-(?:left|right)"/.test(text))
+      .map(({ name }) => name)
+    expect(offenders).toEqual([])
   })
 })
 
@@ -1265,39 +1281,44 @@ describe("下書きの頭の区画と道具の行", () => {
     expect(drawn).toEqual([])
   })
 
-  it("道具の行 (DraftTools) を描くのは editor と dataset-editor の 2 つで、sticky は道具の行だけが持つ", async () => {
+  it("道具の行 (DraftTools) を描くのは editor と dataset-editor の 2 つで、sticky は頭の区画 (DraftHead) だけが持つ", async () => {
     const sources = await draftScreenSources()
     const drawsTools = sources.filter(({ text }) => /<DraftTools\b/.test(text)).map(({ name }) => name).sort()
     expect(drawsTools).toEqual(["components/dataset-editor.tsx", "components/editor.tsx"])
-    // Five画面 own files never write `sticky` themselves — it is `DraftTools`'s alone (`draft-tools.tsx`).
+    // Five画面 own files never write `sticky` themselves — it is `DraftHead`'s alone (`draft-tools.tsx`),
+    // the card that folds to the tools row and stays.
     const stickyHere = sources.filter(({ text }) => /\bsticky\b/.test(text)).map(({ name }) => name)
     expect(stickyHere).toEqual([])
+    const tools = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
+    const head = tools.slice(tools.indexOf("export function DraftHead"), tools.indexOf("export function DraftTools"))
+    expect(head.match(/\bsticky\b/g)).toHaveLength(1)
+    expect(tools.match(/\bsticky\b/g)).toHaveLength(1)
   })
 
-  it("頭の区画の 2 行目の道は ButtonLink で、番号を持たない", async () => {
+  it("頭の区画の 2 行目の道は WayTo (枠の面 + 語の後ろの chevron) で、番号を持たない", async () => {
     const text = await readFile(path.join(ROOT, "components/editor.tsx"), "utf8")
     const start = text.indexOf("function DraftOverview")
     expect(start).toBeGreaterThan(-1)
     const end = text.indexOf("\nfunction ", start + 1)
     const body = text.slice(start, end === -1 ? undefined : end)
-    expect([...body.matchAll(/<ButtonLink\b/g)].length).toBeGreaterThanOrEqual(3)
-    // No chevron and no step number: the four ways are facts, not a stepper.
+    expect([...body.matchAll(/<WayTo\b/g)]).toHaveLength(4)
+    // The transition mark is `WayTo`'s own; the row draws neither a chevron nor a step number itself.
     expect(body).not.toContain("chevron-right")
     expect(body).not.toMatch(/>\s*\{at \+ 1\}\s*</)
   })
 
-  it("記事とお知らせも道具の行 (ArticleTools) を持ち、sticky はそこだけが持つ", async () => {
+  it("記事とお知らせは道具の行 (ArticleTools) を頭の区画に渡し、sticky は自分でも contents.tsx でも書かない", async () => {
     const routeNames = ["routes/admin-contents-document.tsx", "routes/admin-contents-news-item.tsx"]
     const routes = await Promise.all(routeNames.map(async (name) => ({
       name, text: await readFile(path.join(ROOT, name), "utf8"),
     })))
-    const drawsTools = routes.filter(({ text }) => text.includes("{panes.tools}")).map(({ name }) => name)
-    expect(drawsTools).toEqual(routeNames)
-    // The two screens never write `sticky` themselves — it is `ArticleTools`'s alone (`components/contents.tsx`).
+    const handsTools = routes.filter(({ text }) => text.includes("tools={panes.tools}")).map(({ name }) => name)
+    expect(handsTools).toEqual(routeNames)
+    // The head (`DraftHead`) is what sticks; neither screen nor `ArticleTools` writes `sticky`.
     const stickyHere = routes.filter(({ text }) => /\bsticky\b/.test(text)).map(({ name }) => name)
     expect(stickyHere).toEqual([])
 
     const contents = await readFile(path.join(ROOT, "components/contents.tsx"), "utf8")
-    expect(contents.match(/\bsticky\b/g)?.length ?? 0).toBe(1)
+    expect(contents.match(/\bsticky\b/g)?.length ?? 0).toBe(0)
   })
 })

@@ -17,9 +17,7 @@
  *
  * The functions that create a row take no revision because there is nothing to
  * check against; the first save of a dataset entry finds its conflict by not
- * being the insert that won. Presence is the one write with no revision at all:
- * it is not content, nobody reads it for correctness, and a lost update costs
- * one heartbeat.
+ * being the insert that won.
  *
  * A conflict is told apart from a draft that is simply gone, because the two
  * mean different things to whoever asked: one is somebody else's edit to look
@@ -43,12 +41,14 @@ import type { Database, Executor, Transaction } from "~/db/client.server"
 import {
   dataset,
   draftDatasetEntry,
-  draftPresence,
+  labelPin,
   research,
   researchDraft,
   researchVersion,
+  searchDoc,
 } from "~/db/schema"
 
+import { draftDatasets } from "./datasets"
 import { pinLabelsIn, type PinRequest } from "./labels.server"
 
 const SHARE_TOKEN_BYTES = 32
@@ -89,7 +89,7 @@ export type DeleteDatasetOutcome
   = | { status: "deleted" }
     | { status: "conflict" }
     | { status: "gone" }
-    /** Published, or belonging to another draft: not this draft's to destroy. */
+    /** Not this research's, or belonging to another draft. */
     | { status: "refused" }
 
 function one<T>(rows: T[]): T {
@@ -611,31 +611,30 @@ export async function createDatasetInDraft(
 }
 
 /** What the listing screen does to which datasets the version lists. */
-export type ListingChange
-  = | { kind: "list", datasetId: string }
-    | { kind: "unlist", datasetId: string }
-    /** One step up (-1) or down (1) among the listed. */
-    | { kind: "move", datasetId: string, by: -1 | 1 }
+/** One step of the order: a dataset, and whether it goes up (-1) or down (1). */
+export interface ListingChange {
+  datasetId: string
+  by: -1 | 1
+}
 
 export type ListingOutcome
   = | { status: "changed" }
     | { status: "conflict" }
     | { status: "gone" }
-    /** The dataset is not this research's, so it cannot be listed by it. */
-    | { status: "refused" }
 
 /**
- * Which datasets the version lists, and in what order, changed by one step.
+ * The order the datasets go out in, changed by one step.
  *
- * The listing is research content, so it moves the draft's revision like a
- * save does; it is changed here rather than by the editor's save because the
- * datasets are decided on their own screen (docs/editing.md の「編集フォーム」).
- * **A dataset of another research cannot be listed** — one belongs to exactly
- * one research, and the screen never offers any other.
+ * **The order is all a draft decides about datasets** — which of them the
+ * version carries is the research's answer, not the draft's
+ * (docs/data-model.md の「research / experiment / dataset」). The order is
+ * research content, so it moves the draft's revision like a save does; it is
+ * changed here rather than by the editor's save because the datasets are
+ * decided on their own screen (docs/editing.md の「編集フォーム」).
  *
- * A step that changes nothing (listing what is listed, moving the first row
- * up) still moves the revision: the draft was written to, and the next save is
- * checked against that.
+ * A step that changes nothing (moving the first row up) still moves the
+ * revision: the draft was written to, and the next save is checked against
+ * that.
  */
 export async function changeListing(
   db: Database,
@@ -647,19 +646,23 @@ export async function changeListing(
     const before = await currentContent(tx, at.draftId)
     if (before === null) return { status: "gone" }
 
-    if (change.kind === "list") {
-      const [own] = await tx
-        .select({ id: dataset.id })
-        .from(dataset)
-        .where(and(eq(dataset.id, change.datasetId), eq(dataset.researchId, researchId)))
-        .limit(1)
-      if (own === undefined) return { status: "refused" }
-    }
+    // **The step is taken on the order the screen shows**, which is every
+    // dataset this draft publishes — not on what the content happens to name
+    // already. A draft that has never been ordered names none of them, and a
+    // move inside an empty list would be a press that does nothing. What is
+    // written back is that whole order, so the content catches up with the
+    // research on the first move.
+    const owned = await tx
+      .select({ id: dataset.id, originDraftId: dataset.originDraftId })
+      .from(dataset)
+      .where(eq(dataset.researchId, researchId))
+      .orderBy(dataset.id)
+    const shown = draftDatasets(owned, at.draftId, before.datasetIds).map((row) => row.id)
 
     const rows = await tx
       .update(researchDraft)
       .set({
-        content: { ...before, datasetIds: listingAfter(before.datasetIds, change) },
+        content: { ...before, datasetIds: listingAfter(shown, change) },
         revision: sql`${researchDraft.revision} + 1`,
         updatedAt: sql`now()`,
       })
@@ -670,12 +673,8 @@ export async function changeListing(
   })
 }
 
-/** The listing after one change. Pure, so that the screen and the server agree. */
+/** The order after one change. Pure, so that the screen and the server agree. */
 export function listingAfter(listed: readonly string[], change: ListingChange): string[] {
-  if (change.kind === "list") {
-    return listed.includes(change.datasetId) ? [...listed] : [...listed, change.datasetId]
-  }
-  if (change.kind === "unlist") return listed.filter((id) => id !== change.datasetId)
   const at = listed.indexOf(change.datasetId)
   const to = at + change.by
   if (at === -1 || to < 0 || to >= listed.length) return [...listed]
@@ -686,31 +685,47 @@ export function listingAfter(listed: readonly string[], change: ListingChange): 
 }
 
 /**
- * Destroying a dataset this draft introduced, when it turns out to have been a
- * mistake. **Only this draft's own, still unpublished datasets**: one that has
- * ever been published is referenced by the versions that listed it, and taking
- * it off the current version is a different operation with a different meaning.
+ * Taking a dataset out of its research.
  *
- * Its entry, and any pin, go with it by cascade.
+ * **A dataset belongs to the research, so this is the one way it goes**
+ * (docs/data-model.md の「research / experiment / dataset」): there is no
+ * taking it off a version, because a version does not choose. A published one
+ * can go too, and it goes at once — the published row goes with it, so the
+ * pages, the listings and the search stop showing it without waiting for the
+ * next publish. The versions that described it keep their description; what
+ * they lose is the dataset to lead to.
+ *
+ * **What another draft made is not this draft's to destroy.** It has never
+ * been out, and it belongs to the draft that made it.
+ *
+ * The entries and the pins go by cascade, which is what frees the accession to
+ * be pinned again. The trail keeps the row's name, because nothing else will.
  */
-export async function deleteDraftDataset(
+export async function deleteResearchDataset(
   db: Database,
   at: DraftAt,
+  researchId: string,
   datasetId: string,
+  actor: EventActor,
 ): Promise<DeleteDatasetOutcome> {
   return db.transaction(async (tx) => {
     const before = await currentContent(tx, at.draftId)
     if (before === null) return { status: "gone" }
 
-    // **Belonging to this draft is what makes it deletable.** Publishing clears
-    // `originDraftId`, so a row that still names a draft has never been in a
-    // version and taking it away changes nothing anybody has seen.
     const [target] = await tx
-      .select({ id: dataset.id })
+      .select({ id: dataset.id, originDraftId: dataset.originDraftId, label: labelPin.label })
       .from(dataset)
-      .where(and(eq(dataset.id, datasetId), eq(dataset.originDraftId, at.draftId)))
+      .leftJoin(labelPin, and(
+        eq(labelPin.datasetId, dataset.id),
+        eq(labelPin.kind, "dataset"),
+        eq(labelPin.isPrimary, true),
+      ))
+      .where(and(eq(dataset.id, datasetId), eq(dataset.researchId, researchId)))
       .limit(1)
     if (target === undefined) return { status: "refused" }
+    if (target.originDraftId !== null && target.originDraftId !== at.draftId) {
+      return { status: "refused" }
+    }
 
     const rows = await tx
       .update(researchDraft)
@@ -726,40 +741,21 @@ export async function deleteDraftDataset(
       .returning({ revision: researchDraft.revision })
     if (rows[0] === undefined) return { status: "conflict" }
 
+    // The published row is not reached by any cascade: nothing in the search
+    // rows points at a dataset by foreign key (`schema/search.ts`).
+    await tx
+      .delete(searchDoc)
+      .where(and(eq(searchDoc.targetType, "dataset"), eq(searchDoc.targetId, datasetId)))
     await tx.delete(dataset).where(eq(dataset.id, datasetId))
+    await recordEvent(tx, {
+      actor,
+      action: "delete-dataset",
+      subjectType: "dataset",
+      subjectId: datasetId,
+      detail: { researchId, label: target.label },
+    })
     return { status: "deleted" }
   })
-}
-
-/**
- * Saying that somebody still has this draft open.
- *
- * The only write here that carries no revision, because presence is not
- * content: nobody is made read-only by it, correctness comes from the checks
- * above, and a row that is lost or overwritten costs one heartbeat. Rows are
- * left to expire rather than deleted when a screen closes — a browser that is
- * closed sends nothing reliable.
- */
-export async function touchPresence(
-  db: Executor,
-  presence: {
-    draftId: string
-    sessionId: string
-    actorSub: string
-    displayName: string
-  },
-): Promise<void> {
-  await db
-    .insert(draftPresence)
-    .values({ ...presence, lastSeenAt: sql`now()` })
-    .onConflictDoUpdate({
-      target: [draftPresence.draftId, draftPresence.sessionId],
-      set: {
-        actorSub: presence.actorSub,
-        displayName: presence.displayName,
-        lastSeenAt: sql`now()`,
-      },
-    })
 }
 
 export type ShareOutcome
@@ -809,7 +805,7 @@ export type ConsumeOutcome
 
 /**
  * Taking the draft away, with everything that hung off it — the changed dataset
- * entries, the presence rows, the comments, the share link, and any dataset
+ * entries, the comments, the share link, and any dataset
  * identity the draft introduced and nothing has adopted, all by cascade. A draft is not history, so there is nowhere for any of it to go.
  *
  * **Both discarding and publishing end here**, which is why it takes a

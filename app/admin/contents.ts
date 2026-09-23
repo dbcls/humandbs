@@ -232,6 +232,28 @@ export function publishStateIn(states: LocaleStates, locale: Locale): PublishSta
   return states[locale].published ? "published" : "unpublished"
 }
 
+/**
+ * What one language of an announcement is up to: the article's two states,
+ * and a third for a language that is published against a date still ahead —
+ * out of readers' sight until the date, without anybody pressing anything.
+ *
+ * **The third state is the announcement's, not the language's.** The date is
+ * one per item, so both languages wait on the same moment; what differs per
+ * language is only whether it is published at all.
+ */
+export type NewsState = PublishState | "scheduled"
+
+export const NEWS_STATES: readonly NewsState[] = ["published", "scheduled", "unpublished"]
+
+export function isNewsState(value: string): value is NewsState {
+  return (NEWS_STATES as readonly string[]).includes(value)
+}
+
+export function newsStateIn(row: { states: LocaleStates, scheduled: boolean }, locale: Locale): NewsState {
+  if (!row.states[locale].published) return "unpublished"
+  return row.scheduled ? "scheduled" : "published"
+}
+
 export interface ContentsFilter {
   keyword: string
   /** Which kinds to keep. Empty is every kind, as an untouched axis is. */
@@ -378,8 +400,8 @@ export interface NewsFilter {
   keyword: string
   /** Which to keep. Empty is every one, as an untouched axis is. */
   dating: readonly NewsDating[]
-  ja: readonly PublishState[]
-  en: readonly PublishState[]
+  ja: readonly NewsState[]
+  en: readonly NewsState[]
 }
 
 /**
@@ -403,7 +425,7 @@ export function filterNewsRows(rows: readonly NewsRow[], filter: NewsFilter): Ne
     }
     if (filter.dating.length > 0 && !filter.dating.includes(datingOf(row))) return false
     for (const [locale, wanted] of [["ja", filter.ja], ["en", filter.en]] as const) {
-      if (wanted.length > 0 && !wanted.includes(publishStateIn(row.states, locale))) return false
+      if (wanted.length > 0 && !wanted.includes(newsStateIn(row, locale))) return false
     }
     return true
   })

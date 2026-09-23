@@ -3,10 +3,10 @@
  *
  * The preview, the review screen and the editing screens all show the same
  * thing, and they differ in two ways only: where the form posts, and whether
- * the reader may resolve. The preview posts to the page it is on and gets a
- * redirect back, so it works with JavaScript switched off; an editing screen
- * posts to a resource route that answers with the comments, because it is
- * holding unsaved work and must not navigate.
+ * the reader may resolve and delete. The preview posts to the page it is on
+ * and gets a redirect back, so it works with JavaScript switched off; an
+ * editing screen posts to a resource route that answers with the comments,
+ * because it is holding unsaved work and must not navigate.
  *
  * **The comments at one place are a flat timeline**: oldest first, one box to
  * write the next one under them, and each resolved on its own. There is no
@@ -17,15 +17,21 @@
  * who has not signed in types one, and it is kept in `sessionStorage` rather
  * than `localStorage` so a shared machine does not hand the next person the
  * previous one's name.
+ *
+ * **The words on the controls follow the reader.** In the management area what
+ * can be pressed is named by a noun (docs/ui.md の「押せるもの」); the preview
+ * is written for a provider and says 「投稿する」. Which side a panel is on is
+ * what `canResolve` already tells it.
  */
 
-import { useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useFetcher } from "react-router"
 
-import { Badge, Button, controlFace, Dialog, Note, Stack } from "~/components/base"
+import { Badge, Button, controlFace, Dialog, Note, PANE_LABEL, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { minuteInJst } from "~/dates"
+import type { CommentAnchor } from "~/content/types"
 import { isFieldAnchor, type AnchorSubject } from "~/review/anchors"
 import { unresolvedCount, type CommentView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
@@ -40,7 +46,7 @@ export interface CommentContext {
   action: string
   /** What is being commented on — a subject, the draft as a whole, or the administrators' memo. */
   subject: AnchorSubject | "draft" | "memo"
-  /** Only an administrator resolves; a link holder reads and answers. */
+  /** Only an administrator resolves and deletes; a link holder reads and answers. */
   canResolve: boolean
   /** The name comments will be signed with, when the reader is signed in. */
   signedInName: string | null
@@ -84,24 +90,57 @@ export function rememberName(name: string): void {
 }
 
 /**
- * The mark for a comment or an acknowledgement recorded through a DDBJ
- * account.
+ * Who said something, as words: the name, and — where it was typed rather than
+ * taken from an account — that nobody has vouched for it.
  *
- * **Shared by every place that draws one**, so the accessible name cannot
- * drift between them the way it had: an `aria-label` and a `title` say the
- * same thing to a screen reader and to a pointer, where the glyph alone says
- * neither.
+ * **What differs is said after the name rather than by a second glyph.** A
+ * reader who has learned one mark for "person" should not have to learn
+ * another for "which kind of person"; `(anonymous)` reads without being taught.
  */
-export function DdbjMark({ locale }: { locale: Locale }) {
-  const t = messagesFor(locale).comment
+export function authorLabel(locale: Locale, name: string, bySignedIn: boolean): string {
+  return bySignedIn ? name : `${name} (${messagesFor(locale).comment.anonymous})`
+}
+
+/**
+ * Who said something, as a row draws it: the mark of a person, then the words.
+ *
+ * **Every author gets the mark**, so that a bare word at the head of a row
+ * reads as a name and not as a label.
+ */
+export function Author({ locale, name, bySignedIn }: {
+  locale: Locale
+  name: string
+  bySignedIn: boolean
+}) {
   return (
-    <span aria-label={t.ddbjAccount} title={t.ddbjAccount} className="ml-1">
-      🅳
+    <span className="inline-flex items-center gap-1 font-semibold text-ink">
+      <Icon name="user" aria-hidden="true" />
+      {name}
+      {!bySignedIn && (
+        <span className="font-normal text-ink-muted">{`(${messagesFor(locale).comment.anonymous})`}</span>
+      )}
     </span>
   )
 }
 
 type Fetcher = ReturnType<typeof useFetcher<Answer>>
+
+/**
+ * Whether the fetcher a panel shares is carrying a posting right now. **The
+ * one fetcher carries posting, resolving and deleting**, so the form cannot
+ * read "busy" off its state alone: resolving a row would then say 投稿中 beside
+ * a box nobody has sent, and hold the send button shut while it did.
+ */
+export function postingInFlight(fetcher: Pick<Fetcher, "state" | "formData">): boolean {
+  return fetcher.state !== "idle" && fetcher.formData?.get("intent") === "comment"
+}
+
+/** Whether the fetcher is carrying a resolve, reopen or delete of this one comment. */
+export function actingOn(fetcher: Pick<Fetcher, "state" | "formData">, commentId: string): boolean {
+  return fetcher.state !== "idle"
+    && fetcher.formData?.get("intent") !== "comment"
+    && fetcher.formData?.get("commentId") === commentId
+}
 
 /** What the last answer holds for a place, and until one comes, what the loader gave. */
 function shownOf(
@@ -122,6 +161,13 @@ function problemText(locale: Locale, problem: string): string {
  * The mark beside a place: how many people have said something about it
  * (coloured if any of it is unresolved), and the way to open the panel that
  * reads, writes and resolves it (`docs/admin-ui.md` の「コメントの面」).
+ *
+ * **Drawn at the height of a line of text, with the 36px target kept out of
+ * sight.** What stands beside it is a heading or a value — the thing it is
+ * about — and a box the size of its subject reads as the larger of the two.
+ * The face is `row` (22px); what a finger has to find is widened past the
+ * face by a pseudo-element, so the line the mark stands in keeps its own
+ * height (`docs/ui.md` の「押せるものの大きさ」).
  */
 export function CommentSpot({ context, at, comments, fieldLabel }: {
   context: CommentContext
@@ -151,7 +197,7 @@ export function CommentSpot({ context, at, comments, fieldLabel }: {
         type="button"
         onClick={() => { setHeld(true) }}
         title={heading}
-        className={`${controlFace({ size: "xs" })} min-h-tap min-w-tap`}
+        className={`${controlFace({ size: "row" })} relative after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']`}
       >
         <Icon name="comment" aria-hidden="true" />
         <span className="sr-only">{heading}</span>
@@ -208,10 +254,17 @@ export function CommentTimeline({ context, comments, at, fetcher, placeholder, e
 }
 
 /**
- * One comment: who said it, when, what, and whether it is dealt with.
+ * One comment: who said it, when, what, and whether it is dealt with — and,
+ * for an administrator, the two things to do about it at the row's right end.
  *
  * **A line of the memo carries no state**: it is a note rather than a question,
- * so it is neither open nor resolved and offers nothing to press.
+ * so it is neither open nor resolved and offers nothing to resolve. It can
+ * still be deleted.
+ *
+ * **Deleting is not asked about.** The row already stands in a panel, and a
+ * panel over a panel leaves the reader answering two questions at once; what
+ * goes is one line whose words they have just read. The way in wears the
+ * warning face all the same, since there is no way to press it back.
  */
 export function CommentRow({ context, comment, at, fetcher }: {
   context: CommentContext
@@ -221,9 +274,13 @@ export function CommentRow({ context, comment, at, fetcher }: {
   fetcher?: Fetcher
 }) {
   const t = messagesFor(context.locale).comment
+  const words = messagesFor(context.locale).admin.comment
   const own = useFetcher<Answer>()
   const post = fetcher ?? own
   const question = comment.anchor.kind !== "memo"
+  // Only this row's own action shuts its controls: the fetcher is shared, and a
+  // posting or another row's resolving is not this row's business.
+  const acting = actingOn(post, comment.id)
 
   return (
     // A rule above rather than below: the caller holds comments in a
@@ -231,40 +288,104 @@ export function CommentRow({ context, comment, at, fetcher }: {
     // sides of that gap would draw it twice.
     <div className="border-line border-t pt-2">
       <Stack gap="tight">
-        <div className="flex flex-wrap items-baseline gap-2 text-ink-muted text-xs">
-          <span className="font-semibold text-ink">{comment.authorName}</span>
-          {comment.bySignedIn && <DdbjMark locale={context.locale} />}
+        <div className="flex flex-wrap items-center gap-2 text-ink-muted text-xs">
+          <Author locale={context.locale} name={comment.authorName} bySignedIn={comment.bySignedIn} />
           <span>{minuteInJst(comment.createdAt)}</span>
-          {question && (comment.resolved
-            ? (
-                <Badge>
-                  {comment.resolvedBy === null ? t.resolved : t.resolvedBy(comment.resolvedBy)}
-                  {/* The date only: the hour a comment was closed answers nothing. */}
-                  {comment.resolvedAt !== null && ` (${comment.resolvedAt.slice(0, 10)})`}
-                </Badge>
-              )
-            : <span className="text-accent">{t.unresolved}</span>)}
-          {question && context.canResolve && (
-            <post.Form method="post" action={context.action} className="inline">
-              <input type="hidden" name="intent" value={comment.resolved ? "reopen" : "resolve"} />
-              <input type="hidden" name="commentId" value={comment.id} />
-              {at !== undefined && <input type="hidden" name="at" value={at} />}
-              <Button type="submit" variant="ghost" size="xs">
-                {comment.resolved ? t.reopen : t.resolve}
-              </Button>
-            </post.Form>
+          {/* The state alone: who closed it and when is on record, but a
+              badge that recites it is a sentence in a row of marks. */}
+          {question && <Badge tone={comment.resolved ? undefined : "accent"}>{comment.resolved ? t.resolved : t.unresolved}</Badge>}
+          {context.canResolve && (
+            <span className="ml-auto flex items-center gap-2">
+              {question && (
+                <post.Form method="post" action={context.action}>
+                  <input type="hidden" name="intent" value={comment.resolved ? "reopen" : "resolve"} />
+                  <input type="hidden" name="commentId" value={comment.id} />
+                  {at !== undefined && <input type="hidden" name="at" value={at} />}
+                  <Button
+                    type="submit"
+                    size="xs"
+                    icon={<Icon name={comment.resolved ? "undo" : "check"} aria-hidden="true" />}
+                    disabled={acting}
+                  >
+                    {comment.resolved ? words.reopen : words.resolve}
+                  </Button>
+                </post.Form>
+              )}
+              <post.Form method="post" action={context.action}>
+                <input type="hidden" name="intent" value="delete" />
+                <input type="hidden" name="commentId" value={comment.id} />
+                {at !== undefined && <input type="hidden" name="at" value={at} />}
+                <Button type="submit" variant="danger" size="xs" icon={<Icon name="trash" aria-hidden="true" />} disabled={acting}>
+                  {words.remove}
+                </Button>
+              </post.Form>
+              {/* The buttons keep their names while the row works; what is
+                  happening is said beside them, out of sight (`Submit` does the
+                  same, docs/ui.md の「壊れるもの」). */}
+              <span role="status" className="sr-only">{acting ? messagesFor(context.locale).admin.busy : ""}</span>
+            </span>
           )}
         </div>
-        <p className="whitespace-pre-wrap text-ink text-sm">{comment.body}</p>
+        {/* Set in from the edge by the width of the person's mark, so the words
+            start under the name rather than under the glyph before it. */}
+        <p className="whitespace-pre-wrap pl-4 text-ink text-sm">{comment.body}</p>
       </Stack>
     </div>
   )
+}
+
+/** The comments of one place, in the order they were said. */
+interface CommentGroup {
+  key: string
+  name: string
+  comments: CommentView[]
+}
+
+/**
+ * What a comment is about, as one key. **A dataset is one place, not one per
+ * field**: its fields are written on that dataset's own screen, so a reader of
+ * this panel is told which dataset to open rather than which box inside it.
+ */
+function placeKey(anchor: CommentAnchor): string {
+  if (anchor.kind === "research-field") return `research:${anchor.path}`
+  if (anchor.kind === "dataset-field") return `dataset:${anchor.datasetId}`
+  return anchor.kind
+}
+
+/**
+ * The open comments gathered under their places, the places in the order they
+ * were first spoken about. **Nothing is sorted** — what a reader has just been
+ * told about stays where they saw it.
+ */
+export function groupedByPlace(
+  comments: readonly CommentView[],
+  nameOf: (anchor: CommentAnchor) => string,
+): CommentGroup[] {
+  const groups = new Map<string, CommentGroup>()
+  for (const one of comments) {
+    const key = placeKey(one.anchor)
+    const held = groups.get(key) ?? { key, name: nameOf(one.anchor), comments: [] }
+    held.comments.push(one)
+    groups.set(key, held)
+  }
+  return [...groups.values()]
 }
 
 /**
  * Writing something. The name box is there for a reader who has not signed in;
  * for one who has, the account's name is what the server signs with and the box
  * would be a second answer to the same question.
+ *
+ * **The box stands on the page's tint, apart from the rows above it.** Rows and
+ * the box are the same width in the same panel, and with nothing between them
+ * the place to write reads as one more row.
+ *
+ * **The box empties once what was in it has been taken.** Only a posting
+ * empties it: the same fetcher carries resolving and deleting, and an answer
+ * to those must not throw away what is being typed. A refused posting keeps
+ * the words, so they can be fixed rather than typed again. **Only a posting
+ * says 投稿中 and shuts the send button** (`postingInFlight`) — a row being
+ * resolved is that row's business, and it shuts its own buttons.
  */
 export function CommentForm({ context, at, fetcher, placeholder }: {
   context: CommentContext
@@ -274,19 +395,31 @@ export function CommentForm({ context, at, fetcher, placeholder }: {
 }) {
   const t = messagesFor(context.locale).comment
   const remembered = useRememberedName()
-  const busy = fetcher.state !== "idle"
+  const busy = postingInFlight(fetcher)
   const subject = context.subject
+  const form = useRef<HTMLFormElement>(null)
+  const sent = useRef(false)
+  const post = context.canResolve ? messagesFor(context.locale).admin.comment.post : t.post
+
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !sent.current) return
+    sent.current = false
+    if (fetcher.data?.status !== "invalid") form.current?.reset()
+  }, [fetcher.state, fetcher.data])
 
   return (
     <fetcher.Form
+      ref={form}
       method="post"
       action={context.action}
+      className="rounded bg-surface p-3"
       onSubmit={(event) => {
+        sent.current = true
         const typed = new FormData(event.currentTarget).get("name")
         if (typeof typed === "string" && typed.trim() !== "") rememberName(typed.trim())
       }}
     >
-      <Stack gap="normal">
+      <Stack gap="tight">
         <input type="hidden" name="intent" value="comment" />
         <input type="hidden" name="subject" value={typeof subject === "string" ? subject : subject.kind} />
         {/* The draft as a whole and the memo name no place, so they post no path. */}
@@ -307,19 +440,22 @@ export function CommentForm({ context, at, fetcher, placeholder }: {
             className={`${CONTROL} text-sm`}
           />
         )}
-        <textarea
-          name="body"
-          rows={2}
-          placeholder={placeholder}
-          aria-label={t.body}
-          className={`${CONTROL} text-sm`}
-        />
-        {/* **The button keeps its name while it works.** What it is doing is
-            said beside it, where assistive tech hears it as news rather than as
-            the control changing identity (`docs/ui.md` の「壊れるもの」). */}
+        {/* **The way to send stands at the box's right, on its middle line**: the
+            box is two lines and the control one, and a control hanging under a
+            box is a second row the reader has to find. */}
         <div className="flex items-center gap-2">
-          <Button type="submit" size="xs" disabled={busy}>{t.post}</Button>
-          <span role="status" className="text-ink-muted text-xs">{busy ? t.posting : ""}</span>
+          <textarea
+            name="body"
+            rows={2}
+            placeholder={placeholder}
+            aria-label={t.body}
+            className={`${CONTROL} min-w-0 flex-1 text-sm`}
+          />
+          {/* **The button keeps its name while it works.** What it is doing is
+              said beside it, where assistive tech hears it as news rather than as
+              the control changing identity (`docs/ui.md` の「壊れるもの」). */}
+          <Button type="submit" icon={<Icon name="send" aria-hidden="true" />} disabled={busy}>{post}</Button>
+          <span role="status" className="self-center text-ink-muted text-xs">{busy ? t.posting : ""}</span>
         </div>
       </Stack>
     </fetcher.Form>
@@ -357,9 +493,10 @@ export function DraftNote({ context, comments }: {
     <>
       <Button
         type="button"
-        variant="ghost"
         size="xs"
-        icon={<Icon name="comment" aria-hidden="true" />}
+        // **Not the speech bubble**: a memo is a note kept, not a question
+        // asked, and the mark says which of the two the entry opens.
+        icon={<Icon name="clipboard" aria-hidden="true" />}
         onClick={() => { setHeld(true) }}
       >
         {t.memo}
@@ -375,7 +512,7 @@ export function DraftNote({ context, comments }: {
           context={{ ...context, subject: "memo" }}
           comments={shown}
           fetcher={fetcher}
-          placeholder={t.memoEmpty}
+          placeholder={t.memoPlaceholder}
           empty={t.memoEmpty}
         />
       </Dialog>
@@ -406,7 +543,6 @@ export function WholeNote({ context, comments }: {
     <>
       <Button
         type="button"
-        variant="ghost"
         size="xs"
         icon={<Icon name="comment" aria-hidden="true" />}
         onClick={() => { setHeld(true) }}
@@ -424,9 +560,80 @@ export function WholeNote({ context, comments }: {
           context={{ ...context, subject: "draft" }}
           comments={shown}
           fetcher={fetcher}
-          placeholder={messagesFor(context.locale).preview.wholePlaceholder}
+          placeholder={messagesFor(context.locale).comment.bodyPlaceholder}
           empty={t.wholeEmpty}
         />
+      </Dialog>
+    </>
+  )
+}
+
+/**
+ * Every question still open on the draft, wherever it was asked — a field of
+ * the research, a field of one of its datasets, or the draft as a whole — in
+ * one panel, each under the way to the place it is about.
+ *
+ * **The entry stands with the memo and the whole**, the three panels a curator
+ * reads while typing (`docs/admin-ui.md` の「コメントの面」). **The rows are the
+ * rows the places' own panels draw** (`CommentRow`), so resolving here is the
+ * same press as resolving there. **Nothing is written here** — an answer
+ * belongs at the place it answers, and the way there stands over each row.
+ * A memo line is never open: it is a note, not a question.
+ */
+export function OpenComments({ context, comments, nameOf }: {
+  context: CommentContext
+  comments: readonly CommentView[]
+  /** What to call the place a comment is about, in the screen's own words. */
+  nameOf: (anchor: CommentAnchor) => string
+}) {
+  const t = messagesFor(context.locale).admin.editor
+  const fetcher = useFetcher<Answer>()
+  const isOpen = (one: CommentView): boolean => one.anchor.kind !== "memo" && !one.resolved
+  const shown = shownOf(fetcher.data, comments.filter(isOpen), isOpen)
+  const [held, setHeld] = useState(false)
+  const close = () => {
+    setHeld(false)
+  }
+  const groups = groupedByPlace(shown, nameOf)
+
+  return (
+    <>
+      <Button
+        type="button"
+        size="xs"
+        icon={<Icon name="comment" aria-hidden="true" />}
+        onClick={() => { setHeld(true) }}
+      >
+        {t.openComments}
+        {shown.length > 0 && <Badge tone="accent">{shown.length}</Badge>}
+      </Button>
+      <Dialog
+        title={t.openComments}
+        note={t.openCommentsHint}
+        held={{ open: held, close }}
+        dismiss={messagesFor(context.locale).comment.close}
+      >
+        {groups.length === 0
+          ? <Note kind="plain">{t.openCommentsEmpty}</Note>
+          : (
+              <Stack as="ul" gap="block">
+                {groups.map((group) => (
+                  <li key={group.key}>
+                    <Stack gap="tight">
+                      {/* **The place names the group rather than each row.**
+                          Said once over the comments it holds, it is a heading
+                          — and drawn as one, under the panel's own h2;
+                          repeated over every row it becomes part of the row and
+                          the eye stops reading it. */}
+                      <h3 className={PANE_LABEL}>{group.name}</h3>
+                      {group.comments.map((one) => (
+                        <CommentRow key={one.id} context={context} comment={one} fetcher={fetcher} />
+                      ))}
+                    </Stack>
+                  </li>
+                ))}
+              </Stack>
+            )}
       </Dialog>
     </>
   )

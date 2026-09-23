@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
+import { messagesFor } from "~/i18n/messages"
+
 import { emptyResearchContent } from "~/content/empty"
 import {
   researchListRowView,
@@ -182,10 +184,6 @@ describe("the record of who has used the controlled access data", () => {
     expect(html).not.toContain("JGAD000004")
     expect(html).toContain("他 2 件")
   })
-
-  it("keeps a section a research merely has none of out of the page", () => {
-    expect(renderWith({ grants: [] })).not.toContain("助成金情報")
-  })
 })
 
 /**
@@ -264,5 +262,78 @@ describe("the row of the research listing", () => {
     expect(html).toContain("hum0001")
     expect(html).toContain("JGAD000001")
     expect(html).toContain("2021-01-01")
+  })
+})
+
+/**
+ * The editing pane draws the body beside the form, and only what the form
+ * writes: a section with no field beside it would show the writer places
+ * nothing they type reaches (docs/editing.md の「フォームの隣に立つ公開ページ」).
+ */
+describe("the body beside the form", () => {
+  const FILES: FileListView = {
+    rows: [{ name: "a.zip", size: 1, isPublic: true }],
+    total: 1,
+    rangeFrom: 1,
+    rangeTo: 1,
+    page: 1,
+    pageCount: 1,
+  }
+  const t = messagesFor("ja").research
+
+  function beside(writtenOnly: boolean): string {
+    return renderToStaticMarkup(<ResearchBody view={view(FILES)} locale="ja" writtenOnly={writtenOnly} />)
+  }
+
+  it("leaves out the datasets, the downloads and the controlled-access users, which the form does not write", () => {
+    const html = beside(true)
+    expect(html).not.toContain(t.noDatasets)
+    expect(html).not.toContain(t.downloads)
+    expect(html).not.toContain(t.controlledAccessUsers)
+  })
+
+  it("keeps what the form writes", () => {
+    expect(beside(true)).toContain("題目")
+  })
+
+  it("draws all three for the page and the share preview", () => {
+    const html = beside(false)
+    expect(html).toContain(t.noDatasets)
+    expect(html).toContain(t.downloads)
+    expect(html).toContain(t.controlledAccessUsers)
+  })
+})
+
+/**
+ * A section stands whether or not the research has anything to put in it: once
+ * it is gone a reader cannot tell "none" from "no such section", and every
+ * research reads in the same order (docs/public-pages.md の「research の版」).
+ */
+describe("a section with nothing in it", () => {
+  const t = messagesFor("ja").research
+  const HEADINGS = [t.dataProvider, t.researchProjects, t.grants, t.relatedPublications]
+  const SENTENCES = [t.noDataProviders, t.noResearchProjects, t.noGrants, t.noRelatedPublications]
+
+  it("stands on the page, and says in a sentence that nothing is registered", () => {
+    const html = render(NOTHING)
+    for (const heading of HEADINGS) expect(html).toContain(heading)
+    for (const sentence of SENTENCES) expect(html).toContain(sentence)
+  })
+
+  it("stands in the share preview and beside the form as well", () => {
+    const beside = renderToStaticMarkup(<ResearchBody view={view(NOTHING)} locale="ja" writtenOnly />)
+    for (const html of [renderPreview(NO_LINKS), beside]) {
+      for (const sentence of SENTENCES) expect(html).toContain(sentence)
+    }
+  })
+
+  it("gives way to the rows once there are any", () => {
+    const html = renderWith({
+      grants: [{ id: "g1", title: field("研究課題"), agency: field("科研費"), grantIds: ["19H05656"] }],
+    })
+    expect(html).not.toContain(t.noGrants)
+    expect(html).toContain("19H05656")
+    // The other three are still empty, and still stand.
+    expect(html).toContain(t.noResearchProjects)
   })
 })

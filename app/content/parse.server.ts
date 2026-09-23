@@ -3,92 +3,35 @@
  *
  * This is the inbound direction of `richtext.ts`, and the two are a pair: what
  * the editor shows is `toMarkdown` of the stored tree, and what it sends back
- * comes through here. **Everything the tree cannot hold is refused rather than
- * flattened.** A heading, a list, a table, emphasis, raw HTML — each of them is
- * something the author meant, and dropping it silently would publish text that
- * is not what they wrote. The migration flattens instead, because a dump cannot
- * be asked to correct itself; a person can.
+ * comes through here. **The tree holds lines, text and written links, and
+ * everything else stays as the characters that were typed.** A heading, a
+ * list, a table, emphasis, raw HTML — none of them is refused, and none is
+ * flattened into the words it wraps: `**bold**` is stored as `**bold**`, so
+ * the page beside the form shows the asterisks and the author sees that the
+ * dialect does not read them (`docs/editing.md` の「文の保存」). Nothing is
+ * lost and nothing is executed — raw HTML is text, and text is drawn escaped.
  *
  * **A single newline is a line**, as it is on the way out, so a value that lists
- * things one per line survives the round trip. A blank line separates
- * paragraphs and becomes an empty line in the tree.
+ * things one per line survives the round trip. A blank line is a blank line in
+ * the tree, and only where one was written: two blocks the parser tells apart
+ * on adjacent lines stay on adjacent lines.
  *
- * GFM is switched on so that a table is seen as a table instead of arriving as
- * a paragraph full of pipes. Its literal autolinks are the one part not wanted:
- * a bare URL sitting in a value is text today, and turning it into a link would
- * change stored content the moment somebody opened a field and saved it
- * unchanged. They are told apart from real links by what the source says at the
- * node's own offset — a written link starts with `[`, an autolink with `<`.
+ * **Plain CommonMark, without GFM.** A table, a strikethrough and a footnote
+ * are characters here whether or not a parser names them, and GFM's literal
+ * autolinks would turn a bare URL sitting in a value into a link nobody wrote
+ * the moment the field was saved unchanged.
  *
  * **Server only.** The parser is several hundred kilobytes and the save path is
  * the only caller.
  */
 
 import type { Nodes, PhrasingContent, RootContent } from "mdast"
-import remarkGfm from "remark-gfm"
 import remarkParse from "remark-parse"
 import { unified } from "unified"
 
 import type { Line, RichText, Span } from "./types"
 
-const processor = unified().use(remarkParse).use(remarkGfm)
-
-/**
- * What was written that prose cannot hold. The name is the whole of the answer;
- * the wording shown to the author is chosen where the screen is (`messages.ts`),
- * because this module has no language.
- */
-export type RichTextSyntax
-  = | "heading"
-    | "list"
-    | "quote"
-    | "code"
-    | "emphasis"
-    | "table"
-    | "html"
-    | "image"
-    | "reference"
-    | "rule"
-    | "footnote"
-    | "unsupported"
-
-export interface RichTextProblem {
-  syntax: RichTextSyntax
-  /** 1-based line of the source, so the author can find what was refused. */
-  line: number
-}
-
-export type RichTextResult
-  = | { ok: true, value: RichText }
-    | { ok: false, problems: RichTextProblem[] }
-
-/**
- * Every node type that is a refusal, and what to call it. Listing them rather
- * than falling through to a catch-all is what makes an author's mistake
- * nameable: "this is a table" is actionable, "this is not allowed" is not.
- */
-const REFUSED: Partial<Record<Nodes["type"], RichTextSyntax>> = {
-  heading: "heading",
-  list: "list",
-  listItem: "list",
-  blockquote: "quote",
-  code: "code",
-  inlineCode: "code",
-  emphasis: "emphasis",
-  strong: "emphasis",
-  delete: "emphasis",
-  table: "table",
-  tableRow: "table",
-  tableCell: "table",
-  html: "html",
-  image: "image",
-  imageReference: "image",
-  linkReference: "reference",
-  definition: "reference",
-  thematicBreak: "rule",
-  footnoteDefinition: "footnote",
-  footnoteReference: "footnote",
-}
+const processor = unified().use(remarkParse)
 
 /**
  * Lines being built up. Whitespace at either end of a line is layout rather
@@ -158,90 +101,40 @@ function lines(): Lines {
 
 interface Reader {
   source: string
-  /** The source split once, for reading the line a node begins on. */
-  sourceLines: string[]
   into: Lines
-  problems: RichTextProblem[]
-}
-
-function refuse(reader: Reader, syntax: RichTextSyntax, node: Nodes): void {
-  reader.problems.push({ syntax, line: node.position?.start.line ?? 1 })
 }
 
 /**
- * The head of an ordered list: up to three spaces, digits, `.` or `)`, then a
- * space or the end of the line. Past nine digits CommonMark stops reading it as
- * a number.
- */
-const ORDERED_HEAD = /^ {0,3}\d{1,9}[.)]([ \t]|$)/
-
-/**
- * True when a paragraph is a numbered list the parser handed back as prose.
+ * The characters a node was written with, as the characters they stand for.
  *
- * An ordered list that does not start at 1 may not interrupt a paragraph, and
- * remark carries the restriction past the end of an indented code block as
- * well: `3. item` sitting after one arrives as a paragraph, where the CommonMark
- * reference implementation has a list. **What the author wrote is a list either
- * way**, and the same text is refused wherever else it stands, so the reading
- * that lets it through is the one to close.
+ * **A backslash before punctuation is markdown's own escape and not a
+ * character the author meant** — it is what `toMarkdown` writes in front of
+ * `[`, `<`, `&` and `\\` so that a stored value comes back as itself, and a
+ * stored `# [a](b)` has to survive the trip through the heading the parser
+ * reads it as. Removed here the way a text node has it removed by the
+ * parser, so that what is kept as written is the same whether or not the
+ * parser named it.
  */
-function startsOrderedList(reader: Reader, node: Nodes): boolean {
-  const line = node.position?.start.line
-  if (line === undefined) return false
-  const head = reader.sourceLines[line - 1]
-  return head !== undefined && ORDERED_HEAD.test(head)
-}
-
-/**
- * True when the source wrote the link out, rather than GFM having recognised a
- * bare URL. The offset is the node's own start, so the character there is `[`
- * for `[text](url)` and `<` for `<url>`; a literal autolink starts with the URL
- * itself.
- *
- * **A node with no position of its own is one GFM built, not one the source
- * wrote.** An address whose first character is escaped — which is how the
- * serialiser writes a value beginning with `-` or `_`, so that the line is not
- * read as a bullet — is recognised across that escape, and the link the parser
- * hands back for it carries no position at all. Written links always carry one,
- * so the absence is what tells the two apart; reading it as "written" put a
- * `mailto:` nobody typed into every such value the second time it was saved.
- */
-function isWritten(reader: Reader, node: Nodes): boolean {
-  const offset = node.position?.start.offset
-  if (offset === undefined) return false
-  const head = reader.source.charAt(offset)
-  return head === "[" || head === "<"
+function written(reader: Reader, node: Nodes): string {
+  const start = node.position?.start.offset
+  const end = node.position?.end.offset
+  if (start === undefined || end === undefined) return ""
+  return reader.source.slice(start, end).replace(/\\([!-/:-@[-`{-~])/g, "$1")
 }
 
 /** The text of a link, which is one span however many nodes carried it. */
 function linkText(nodes: PhrasingContent[], reader: Reader): string {
   const parts = nodes.map((node) => {
-    const refused = REFUSED[node.type]
-    if (refused !== undefined) {
-      refuse(reader, refused, node)
-      return ""
-    }
     if (node.type === "text") return node.value
     // A line break cannot happen inside a span, and a link inside a link is not
     // a thing markdown produces.
     if (node.type === "break") return " "
-    refuse(reader, "unsupported", node)
-    return ""
+    return written(reader, node)
   })
   return parts.join("").replace(/\s+/g, " ").trim()
 }
 
-function walkInline(nodes: PhrasingContent[], reader: Reader): void {
-  for (const node of nodes) walk(node, reader)
-}
-
 function walk(node: RootContent, reader: Reader): void {
-  const refused = REFUSED[node.type]
-  if (refused !== undefined) {
-    refuse(reader, refused, node)
-    return
-  }
-
   switch (node.type) {
     case "text":
       reader.into.text(node.value)
@@ -250,42 +143,41 @@ function walk(node: RootContent, reader: Reader): void {
       reader.into.endLine()
       return
     case "link":
-      if (isWritten(reader, node)) reader.into.link(linkText(node.children, reader), node.url)
-      else reader.into.text(linkText(node.children, reader))
+      reader.into.link(linkText(node.children, reader), node.url)
       return
     case "paragraph":
-      if (startsOrderedList(reader, node)) {
-        refuse(reader, "list", node)
-        return
-      }
-      walkInline(node.children, reader)
+      for (const child of node.children) walk(child, reader)
       reader.into.endLine()
       return
     default:
-      refuse(reader, "unsupported", node)
+      // **Everything else is the characters it was written with.** The node is
+      // not walked: a link inside emphasis is part of what the emphasis was
+      // written as, and comes back as those characters too.
+      reader.into.text(written(reader, node))
   }
 }
 
-/**
- * The tree the source says, or everything about the source that prose cannot
- * hold. **All the problems are reported, not the first one** — a field is fixed
- * once, and finding out about the table only after the heading has been dealt
- * with is two round trips for one edit.
- */
-export function parseRichText(source: string): RichTextResult {
-  const reader: Reader = { source, sourceLines: source.split("\n"), into: lines(), problems: [] }
+/** True when the source has an empty line between the end of one node and the start of the next. */
+function blankBetween(reader: Reader, before: RootContent, after: RootContent): boolean {
+  const from = before.position?.end.offset
+  const to = after.position?.start.offset
+  if (from === undefined || to === undefined) return true
+  return /\n[ \t]*\n/.test(reader.source.slice(from, to))
+}
+
+/** The tree the source says. Every source has one. */
+export function parseRichText(source: string): RichText {
+  const reader: Reader = { source, into: lines() }
   const root = processor.parse(source)
 
   root.children.forEach((child, index) => {
-    if (index > 0) reader.into.blankLine()
+    const before = root.children[index - 1]
+    if (before !== undefined) {
+      if (blankBetween(reader, before, child)) reader.into.blankLine()
+      else reader.into.endLine()
+    }
     walk(child, reader)
   })
 
-  if (reader.problems.length > 0) {
-    return {
-      ok: false,
-      problems: [...reader.problems].sort((a, b) => a.line - b.line),
-    }
-  }
-  return { ok: true, value: reader.into.finish() }
+  return reader.into.finish()
 }

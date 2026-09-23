@@ -20,7 +20,6 @@ function gate(over: Partial<GateInput> = {}) {
     humLabel: "hum0001",
     content: emptyResearchContent(),
     datasets: [],
-    previousDatasetIds: [],
     upstream: NO_UPSTREAM,
     privateFiles: new Set<string>(),
     ...over,
@@ -107,15 +106,6 @@ describe("what is listed and passed", () => {
     const findings = gate({ datasets: [dataset({ content: null })] }).findings
 
     expect(findings).toEqual([{ kind: "empty-dataset", datasetId: "d1" }])
-  })
-
-  it("names a dataset the previous version listed and this one does not", () => {
-    const findings = gate({
-      datasets: [dataset({ datasetId: "a" })],
-      previousDatasetIds: ["a", "gone"],
-    }).findings
-
-    expect(findings).toEqual([{ kind: "dropped-dataset", datasetId: "gone" }])
   })
 
   /**

@@ -109,15 +109,34 @@ describe("括弧の全角・半角", () => {
 })
 
 /**
- * 「破棄」「外す」「未記載」「未割り当て」「English」はそれぞれ「削除」「解除」「未入力」
- * 「未発行」「英語」に言い換えた古い語で、1 つの概念を 2 つの語で言う状態に戻さない
- * (`decisions.md` の「語」)。
+ * 「破棄」「外す」「未記載」「未割り当て」「English」「併合」はそれぞれ「削除」「解除」「未入力」
+ * 「未発行」「英語」「統合」に言い換えた古い語で、1 つの概念を 2 つの語で言う状態に戻さない
+ * (`decisions.md` の「語」、`docs/admin-ui.md` の「語と文」)。
  */
 describe("言い換えた古い語", () => {
   const admin = warnings(messagesFor("ja").admin, "admin")
-  const banned = ["破棄", "外す", "未記載", "未割り当て", "English"]
+  const banned = ["破棄", "外す", "未記載", "未割り当て", "English", "併合", "箱"]
 
   it.each(banned)("「%s」を含まない", (word) => {
+    expect(admin.filter(([, text]) => text.includes(word)).map(([path]) => path)).toStrictEqual([])
+  })
+})
+
+/**
+ * 解析手法の画面で選べるものは「値」で、「語」「語彙」「カタログ」とは呼ばない — 画面の語は
+ * key / 値 / 選択肢の 3 つで、語彙は仕組みの名前であって画面の名前ではない (`docs/admin-ui.md` の
+ * 「語と文」)。「日本語」「英語」の中の「語」は言語の名前なので数えない。
+ */
+describe("解析手法の画面の語", () => {
+  const catalog = warnings(messagesFor("ja").admin.catalog, "admin.catalog")
+    .map(([path, text]) => [path, text.replace(/(日本|英)語/g, "")] as const)
+
+  it("選べるものを「語」と呼ばない", () => {
+    expect(catalog.filter(([, text]) => text.includes("語")).map(([path]) => path)).toStrictEqual([])
+  })
+
+  it.each(["語彙", "カタログ"])("admin に「%s」を出さない", (word) => {
+    const admin = warnings(messagesFor("ja").admin, "admin")
     expect(admin.filter(([, text]) => text.includes(word)).map(([path]) => path)).toStrictEqual([])
   })
 })

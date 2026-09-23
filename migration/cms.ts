@@ -60,6 +60,8 @@ export interface CmsNews {
 export interface CmsAlert {
   id: string
   enabled: boolean | null
+  /** The instant the row was made, with its offset written. */
+  createdAt: string
   translations: { locale: string, content: string }[]
 }
 
@@ -210,6 +212,13 @@ export function buildNews(items: CmsNews[]): BuiltNews[] {
 export interface BuiltAlert {
   content: AlertContent
   active: boolean
+  /**
+   * The instant it went up, for one that comes across standing. The editing
+   * screen reads that day from the trail and nowhere else, so the load has to
+   * put the raising there — and the input holds no record of the switch, only
+   * of the row being made, which for a banner is the same act.
+   */
+  shownAt: Date | null
 }
 
 /**
@@ -240,6 +249,11 @@ export interface SuppliedAlertText {
  * it on every page in a language it was not written for. One that is switched
  * off is carried as it is: it says nothing to anybody yet, and the editor asks
  * for the other side before it can be switched on (`docs/editing.md`).
+ *
+ * **A banner that is up carries the instant it went up** (`shownAt`), read
+ * from the offset the input writes rather than from the digits as if they were
+ * already local. One whose instant cannot be read stops the migration too — a
+ * day that cannot be made is not one to make up.
  */
 export function buildAlerts(alerts: CmsAlert[], supplied: SuppliedAlertText[] = []): BuiltAlert[] {
   return alerts.map((alert) => {
@@ -263,6 +277,11 @@ export function buildAlerts(alerts: CmsAlert[], supplied: SuppliedAlertText[] = 
       )
     }
 
-    return { content: { body: text }, active }
+    const shownAt = active ? new Date(alert.createdAt) : null
+    if (shownAt !== null && Number.isNaN(shownAt.getTime())) {
+      throw new Error(`alert ${alert.id} is enabled with an unreadable created_at (${alert.createdAt})`)
+    }
+
+    return { content: { body: text }, active, shownAt }
   })
 }

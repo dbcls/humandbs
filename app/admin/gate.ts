@@ -32,7 +32,6 @@ export type GateFinding
   = | { kind: "unsettled", subject: GateSubject, path: string, language: Language | null }
     | { kind: "untranslated", subject: GateSubject, path: string, missing: Language }
     | { kind: "empty-dataset", datasetId: string }
-    | { kind: "dropped-dataset", datasetId: string }
     | { kind: "pin-unknown-upstream", datasetId: string, label: string }
     | { kind: "pin-disagrees-upstream", datasetId: string, label: string, upstreamHumLabel: string }
     /** A file this dataset selects is in the private bucket, so a reader would not get it. */
@@ -44,7 +43,6 @@ export const GATE_FINDING_KINDS: readonly GateFindingKind[] = [
   "unsettled",
   "untranslated",
   "empty-dataset",
-  "dropped-dataset",
   "pin-unknown-upstream",
   "pin-disagrees-upstream",
   "private-file",
@@ -61,10 +59,8 @@ export interface GateDataset {
 export interface GateInput {
   humLabel: string | null
   content: ResearchContent
-  /** The datasets this version lists, in the order it lists them. */
+  /** The datasets this version carries, in the order it carries them. */
   datasets: readonly GateDataset[]
-  /** What the most recent published version listed, for spotting what fell off. */
-  previousDatasetIds: readonly string[]
   /**
    * Which hum label the application system holds for each JGA accession. The
    * cache is built once and only ever gains rows, so an accession missing from
@@ -130,11 +126,6 @@ function findingsOf(input: GateInput): GateFinding[] {
     .filter((dataset) => dataset.content === null)
     .map((dataset) => ({ kind: "empty-dataset", datasetId: dataset.datasetId }))
 
-  const listed = new Set(input.datasets.map((dataset) => dataset.datasetId))
-  const dropped: GateFinding[] = input.previousDatasetIds
-    .filter((datasetId) => !listed.has(datasetId))
-    .map((datasetId) => ({ kind: "dropped-dataset", datasetId }))
-
   const privateFiles: GateFinding[] = input.datasets.flatMap((dataset) =>
     (dataset.content?.fileSelection ?? [])
       .filter((fileName) => input.privateFiles.has(fileName))
@@ -148,7 +139,6 @@ function findingsOf(input: GateInput): GateFinding[] {
     ...unsettled,
     ...untranslated,
     ...empty,
-    ...dropped,
     ...pinFindings(input),
     ...privateFiles,
   ]

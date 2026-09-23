@@ -1,14 +1,9 @@
-import {
-  useCallback,
-  useMemo,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react"
+import { useCallback, useState, type ReactNode } from "react"
 
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { ButtonLink, Choice, SectionTabs } from "./base"
+import { ButtonLink, Choice, SectionTabs, Chevron } from "./base"
 import { Icon, type IconName } from "./icons"
 
 /**
@@ -42,7 +37,11 @@ export function AdminBack({ to, label, icon, onBand = false }: {
       to={to}
       variant="secondary"
       onBand={onBand}
-      icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}
+      icon={icon === undefined
+        ? undefined
+        : icon === "chevron-left" || icon === "chevron-right"
+          ? <Chevron dir={icon === "chevron-left" ? "left" : "right"} />
+          : <Icon name={icon} aria-hidden="true" />}
     >
       {label}
     </ButtonLink>
@@ -70,35 +69,15 @@ interface Arrangement {
 }
 
 /**
- * The arrangement lives in session storage and is read from there.
- *
- * **Storage is the state rather than a copy of it.** Held in React and written
- * out as a side effect, the two disagree for the length of a render, and the
- * server — which has no session storage — sends markup the browser then rebuilds
- * differently. Read as an external store there is one answer, and the server's
- * is simply "nothing kept yet".
- */
-const paneWatchers = new Set<() => void>()
-
-function watchPanes(notify: () => void): () => void {
-  paneWatchers.add(notify)
-  return () => {
-    paneWatchers.delete(notify)
-  }
-}
-
-function writePanes(filed: string, value: Arrangement): void {
-  sessionStorage.setItem(filed, JSON.stringify(value))
-  for (const notify of paneWatchers) notify()
-}
-
-/**
  * Two panes, each showing whatever it is told to.
  *
- * **What each pane holds belongs to the person, not to the screen.** Which of
- * the two is showing and what each holds are theirs, and neither changes a
- * single value — so both are kept for the session rather than written into the
- * address, the line every other arrangement is held to.
+ * **Every screen opens the same way: both panes, the form on the left, the
+ * Japanese page on the right.** Which of the two is showing and what each
+ * holds are the person's to change while the screen is open, and neither
+ * changes a single value — so the arrangement is not written into the
+ * address, the line every other arrangement is held to, and **it is not kept
+ * either**: the next screen, and the next visit to this one, open the same
+ * way. What was rearranged for one draft is not what the next one wants.
  *
  * **The two are the same width.** What is read here is a form beside the page it
  * writes and neither of them is the subject, so there is no width to prefer; a
@@ -113,68 +92,47 @@ function writePanes(filed: string, value: Arrangement): void {
  * height is the window's rather than a number measured on the way past, so
  * nothing has to be told when the bar above wraps onto a second line.
  *
- * The switch is handed back apart from the panes, for a screen that has a
- * `DraftTools` row to put it on — up with saving and the draft's other faces —
- * rather than floating above one of the two things it governs. A screen with
- * no such row keeps it where it always stood, on the showing pane's own tabs.
+ * The switch is handed back apart from the panes, for a screen whose head
+ * carries a tools row (`draft-tools.tsx` の `DraftTools`, `contents.tsx` の
+ * `ArticleTools`) to put it on — at that row's far end, beside saving — rather
+ * than floating above one of the two things it governs. A screen with no such
+ * row keeps it where it always stood, on the showing pane's own tabs.
  */
 /**
  * How far from the top of the window the panes stick, and how tall they are.
  *
- * **Under a row that stays, the panes start below it.** The row is one line of
- * a known height (`draft-tools.tsx` の `TOOLS_HEIGHT`), so the two are a sum
- * rather than a measurement: the page's own margin above, then the row, then
- * the gap between the row and the boxes. Without such a row the panes start at
- * the page's margin.
+ * **Under a head that folds to one row, the panes start below that row.** The
+ * folded head is one 36px row with 12px above and below (`draft-tools.tsx` の
+ * `DraftHead`), so the two are a sum rather than a measurement: the row, then
+ * the gap between it and the boxes. Without such a head the panes start at the
+ * page's margin.
  */
 const PANE_STANCE = {
   page: "top-4 h-[calc(100dvh-2rem)]",
   bar: "top-[calc(3.75rem+1rem)] h-[calc(100dvh-3.75rem-2rem)]",
 } as const
 
-export function usePanes({ locale, contents, remember, opens, under = "page" }: {
+export function usePanes({ locale, contents, opens, under = "page" }: {
   locale: Locale
   contents: PaneContent[]
-  /** What this screen's arrangement is filed under for the session. */
-  remember: string
-  /** What the right pane opens on when nothing is remembered; the second content otherwise. */
+  /** What the right pane opens on; the second content otherwise. */
   opens?: string
   /** What the panes stand under: the page's margin, or a row that stays at the top. */
   under?: keyof typeof PANE_STANCE
 }): { view: ReactNode, control: ReactNode, left: string, right: string, showing: Arrangement["showing"] } {
   const words = messagesFor(locale).admin.panes
-  const filed = `panes:${remember}`
-  const raw = useSyncExternalStore(
-    watchPanes,
-    () => sessionStorage.getItem(filed),
-    () => null,
-  )
-
-  const state = useMemo<Arrangement>(() => {
+  const [state, setState] = useState<Arrangement>(() => {
     const first = contents[0]?.id ?? ""
-    const fallback: Arrangement = {
+    return {
       left: first,
       right: (opens !== undefined && contents.some((one) => one.id === opens) ? opens : contents[1]?.id) ?? first,
       showing: "both",
     }
-    if (raw === null) return fallback
-    const known = (id: unknown): id is string => contents.some((one) => one.id === id)
-    try {
-      const read = JSON.parse(raw) as Partial<Arrangement>
-      return {
-        left: known(read.left) ? read.left : fallback.left,
-        right: known(read.right) ? read.right : fallback.right,
-        showing: read.showing ?? fallback.showing,
-      }
-    } catch {
-      // A value this screen cannot read is one it did not write.
-      return fallback
-    }
-  }, [raw, contents, opens])
+  })
 
   const change = useCallback((next: Partial<Arrangement>) => {
-    writePanes(filed, { ...state, ...next })
-  }, [filed, state])
+    setState((was) => ({ ...was, ...next }))
+  }, [])
 
   // Left to right, the way the panes themselves stand: a list that starts with
   // "both" asks the reader to find the arrangement they are looking at.
@@ -184,21 +142,28 @@ export function usePanes({ locale, contents, remember, opens, under = "page" }: 
     { id: "right", label: words.right },
   ] as const
 
-  // **No word beside it.** It stands on the panes' own edge, which is what says
-  // what it is about; the name is kept for whoever cannot see where it stands.
+  // **The word stands beside it, and once.** The group is named for whoever
+  // is not looking, and the same word is shown for whoever is — hidden from
+  // the reader that already has it as the group's name, so it is not said
+  // twice. A step smaller than the save it shares a row with: it arranges the
+  // screen and changes nothing, and should not weigh what the save weighs.
   const control = (
-    <Choice
-      label={words.showing}
-      value={state.showing}
-      options={shows}
-      onChange={(showing) => { change({ showing }) }}
-      pill
-    />
+    <span className="inline-flex items-center gap-2 whitespace-nowrap text-ink-muted text-xs">
+      <span aria-hidden="true">{words.showing}</span>
+      <Choice
+        label={words.showing}
+        value={state.showing}
+        options={shows}
+        onChange={(showing) => { change({ showing }) }}
+        pill
+        size="xs"
+      />
+    </span>
   )
 
-  // **A screen with a `DraftTools` row draws the switch there instead**
-  // (`draft-tools.tsx`): the row stays at the top of the window and the switch
-  // belongs with saving and the draft's other faces, not floating above one of
+  // **A screen whose head carries a tools row draws the switch there instead**
+  // (`draft-tools.tsx` の `DraftTools`): that row stays at the top of the
+  // window, and the switch belongs beside saving, not floating above one of
   // the two panes it governs. Every other screen keeps it where it always
   // stood — on the panes' own top edge, at the far end of the strip of
   // whichever pane stands last, the right one or the only one.
@@ -227,7 +192,7 @@ export function usePanes({ locale, contents, remember, opens, under = "page" }: 
             instead — and a box only clips what it is the containing block of,
             so the comment marks hanging beside the fields escape the pane and
             stretch the document to the length of the form. */}
-        <div className="relative min-h-0 flex-1 overflow-y-auto">{shown?.body}</div>
+        <div data-pane-body className="relative min-h-0 flex-1 overflow-y-auto">{shown?.body}</div>
       </div>
     )
   }
@@ -253,4 +218,28 @@ export function usePanes({ locale, contents, remember, opens, under = "page" }: 
   // showing — and Ctrl+S sends the left one specifically — which the switch's
   // own markup does not carry (`contents.tsx` の `ArticleTools`).
   return { view, control, left: state.left, right: state.right, showing: state.showing }
+}
+
+/**
+ * The way to another screen, standing in a row of controls.
+ *
+ * **The face of the way out, with the mark after the word** (`AdminBack`
+ * turned around): an outlined button with no mark reads as something done
+ * here, and a bare link reads as a caption (`docs/admin-ui.md` の「区画の枠」).
+ * The mark before the word says what the screen is about; the chevron after
+ * it says it is somewhere else, and moves that way when pointed at
+ * (`base.tsx` の `Chevron`).
+ */
+export function WayTo({ to, icon, children }: {
+  to: string
+  /** What the screen is about, before the word. */
+  icon?: IconName
+  children: ReactNode
+}) {
+  return (
+    <ButtonLink to={to} icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}>
+      {children}
+      <Chevron dir="right" />
+    </ButtonLink>
+  )
 }

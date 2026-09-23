@@ -52,35 +52,19 @@ export function linkHref(href: string): string | null {
 }
 
 /**
- * Punctuation markdown reads as syntax wherever in a line it appears.
+ * The four characters that would come back as something other than themselves.
  *
- * `|` and `~` are here for the dialect's sake rather than CommonMark's: a table
- * and a strikethrough are things prose cannot hold, and the save path rejects
- * them, so text that already holds one of those characters has to come back out
- * as text. Escaping them is what makes "what this writes out, the save path
- * accepts and reads back unchanged" true for every tree.
+ * **Only what the save path reads is escaped.** A backslash would swallow the
+ * character after it, `[` and `<` open a written link, and `&` opens an entity;
+ * everything else markdown could read — emphasis, a heading, a list, a table —
+ * the save path keeps as the characters written (`parse.server.ts`), so a
+ * stored `*` or `#` goes out bare and comes back a `*` or `#`. Escaping those
+ * too would show an author their own `**bold**` back as `\\*\\*bold\\*\\*`.
  */
-const INLINE = /[\\`*_[\]<&|~]/g
+const INLINE = /[\\[\]<&]/g
 
-function isWordChar(char: string | undefined): boolean {
-  return char !== undefined && /[\p{L}\p{N}]/u.test(char)
-}
-
-/**
- * An underscore between two word characters is left alone: markdown does not
- * read it as emphasis, and the published values are full of them (`PI_HAT`,
- * file names), which the editor would otherwise show back full of backslashes.
- */
 function escapeText(text: string): string {
-  return text.replace(INLINE, (char: string, offset: number) => {
-    if (char === "_" && isWordChar(text[offset - 1]) && isWordChar(text[offset + 1])) return char
-    return `\\${char}`
-  })
-}
-
-/** At the start of a line these open a heading, a quote, a list or a rule. */
-function escapeLineStart(text: string): string {
-  return text.replace(/^([#>+\-=])/, "\\$1").replace(/^(\d+)([.)])/, "$1\\$2")
+  return text.replace(INLINE, (char: string) => `\\${char}`)
 }
 
 /**
@@ -93,10 +77,9 @@ function destination(href: string): string {
     : href
 }
 
-function spanMarkdown(span: Span, index: number): string {
+function spanMarkdown(span: Span): string {
   const text = escapeText(span.text)
-  if (span.href !== undefined) return `[${text}](${destination(span.href)})`
-  return index === 0 ? escapeLineStart(text) : text
+  return span.href === undefined ? text : `[${text}](${destination(span.href)})`
 }
 
 function lineMarkdown(line: Line): string {

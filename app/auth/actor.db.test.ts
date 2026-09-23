@@ -72,7 +72,7 @@ describe("要求ごとの主体の導出", () => {
     expect(actor?.capabilities.size).toBe(CAPABILITIES.length)
   })
 
-  it("主体は自分のセッションを名指しできる。presence がこれを主キーにする", async () => {
+  it("主体は自分のセッションを名指しできる", async () => {
     const token = await createSession(db, PERSON)
 
     const actor = await readActor(requestFor(token))

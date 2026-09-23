@@ -37,47 +37,25 @@ function form(produce: (input: DatasetContentInput) => void = () => undefined): 
 }
 
 describe("reading a dataset back off the form", () => {
-  it("reports refused markup against the key and the language it was written in", () => {
-    const result = datasetContentOf(form((input) => {
+  it("keeps markup the tree cannot hold as the characters typed, against the key and language it was written in", () => {
+    const content = datasetContentOf(form((input) => {
       input.values = [text("type-of-data", "ふつうの文", "| a | b |\n| - | - |\n| 1 | 2 |")]
-    }), UNITS)
-
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.problems).toEqual([
-      { path: "values.type-of-data.en", syntax: "table", line: 1 },
-    ])
-  })
-
-  it("reports one written inside an experiment against that experiment", () => {
-    const result = datasetContentOf(form((input) => {
       input.experiments = [
         { id: "exp-1", label: { state: "value", text: "Exome" }, values: [text("coverage", "# 見出し")] },
       ]
     }), UNITS)
 
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.problems).toEqual([
-      { path: "experiments.exp-1.values.coverage.ja", syntax: "heading", line: 1 },
-    ])
-  })
-
-  it("reports every refusal rather than stopping at the first", () => {
-    const result = datasetContentOf(form((input) => {
-      input.values = [text("type-of-data", "# 見出し", "- 箇条書き")]
-      input.experiments = [
-        { id: "exp-1", label: { state: "value", text: "" }, values: [text("coverage", "> 引用")] },
-      ]
-    }), UNITS)
-
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.problems.map((problem) => problem.path)).toEqual([
-      "values.type-of-data.ja",
-      "values.type-of-data.en",
-      "experiments.exp-1.values.coverage.ja",
-    ])
+    expect(content.values[0]?.value).toEqual({
+      kind: "text",
+      text: {
+        ja: { state: "value", value: [[{ text: "ふつうの文" }]] },
+        en: { state: "value", value: [[{ text: "| a | b |" }], [{ text: "| - | - |" }], [{ text: "| 1 | 2 |" }]] },
+      },
+    })
+    expect(content.experiments[0]?.values[0]?.value).toMatchObject({
+      kind: "text",
+      text: { ja: { state: "value", value: [[{ text: "# 見出し" }]] } },
+    })
   })
 
   it("drops whatever was typed into a slot whose state says there is no value", () => {
@@ -102,14 +80,12 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values[0]?.value).toEqual({
+    expect(result.values[0]?.value).toEqual({
       kind: "text",
       text: { ja: { state: "unknown" }, en: { state: "not-applicable" } },
     })
-    expect(result.content.experiments[0]?.label).toEqual({ state: "unknown" })
-    expect(result.content.experiments[0]?.values[0]?.value)
+    expect(result.experiments[0]?.label).toEqual({ state: "unknown" })
+    expect(result.experiments[0]?.values[0]?.value)
       .toEqual({ kind: "vocabulary", termIds: { state: "unknown" } })
   })
 
@@ -125,9 +101,7 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values[0]?.value).toEqual({
+    expect(result.values[0]?.value).toEqual({
       kind: "number",
       values: {
         state: "value",
@@ -157,9 +131,7 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values[0]?.value).toEqual({
+    expect(result.values[0]?.value).toEqual({
       kind: "number",
       values: {
         state: "value",
@@ -255,9 +227,7 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values).toEqual([])
+    expect(result.values).toEqual([])
   })
 
   it("keeps a number marked unsettled as a state with no value at all", () => {
@@ -272,9 +242,7 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values[0]?.value).toEqual({ kind: "number", values: { state: "unknown" } })
+    expect(result.values[0]?.value).toEqual({ kind: "number", values: { state: "unknown" } })
   })
 
   it("keeps a disease that names no term, which is what the type is for", () => {
@@ -289,9 +257,7 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values[0]?.value).toEqual({
+    expect(result.values[0]?.value).toEqual({
       kind: "disease",
       diseases: {
         state: "value",
@@ -312,9 +278,7 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values[0]?.value).toEqual({
+    expect(result.values[0]?.value).toEqual({
       kind: "disease",
       diseases: {
         state: "value",
@@ -339,17 +303,13 @@ describe("reading a dataset back off the form", () => {
       }]
     }), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.values).toEqual([])
+    expect(result.values).toEqual([])
   })
 
   it("reads an unwritten date as no date rather than as an empty one", () => {
     const result = datasetContentOf(form(), UNITS)
 
-    expect(result.ok).toBe(true)
-    if (!result.ok) return
-    expect(result.content.releaseDate).toBeNull()
+    expect(result.releaseDate).toBeNull()
   })
 })
 

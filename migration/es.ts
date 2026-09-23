@@ -260,9 +260,13 @@ export interface DatasetSelection {
  * it, since v1 numbered dataset versions by content and 113 of them run
  * backwards in time.
  *
- * The set of ids comes from **every** published version, not just the latest
- * one: four datasets are reachable only from an older version, and dropping
- * them would leave those versions pointing at nothing.
+ * **Only what the latest published version pins gets a row.** A dataset belongs
+ * to the research and every publish carries all of them
+ * (docs/data-model.md の「research / experiment / dataset」), so a row made for
+ * a dataset that the latest version dropped would put it back on the public
+ * side at the next publish. Four of them are reachable only from an older
+ * version; those versions keep their description and lose the link, which is
+ * what a deletion leaves behind in v2 as well.
  */
 export function selectPublishedDatasets(dump: Dump): DatasetSelection {
   const pinnedVersions = new Map<string, Set<string>>()
@@ -299,6 +303,9 @@ export function selectPublishedDatasets(dump: Dump): DatasetSelection {
   const missingDocuments: string[] = []
 
   for (const [label, versions] of [...pinnedVersions].sort((a, b) => a[0].localeCompare(b[0]))) {
+    // `preferred` is written by the latest version alone, so an id missing from
+    // it is one only an older version listed.
+    if (!preferred.has(label)) continue
     const hums = [...(humsOf.get(label) ?? [])].sort()
     if (hums.length > 1) sharedAcrossResearch.push({ label, humIds: hums })
     const humId = hums[0]

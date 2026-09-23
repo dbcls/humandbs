@@ -166,6 +166,23 @@ export async function setCommentResolved(
   return row === undefined ? { status: "gone" } : { status: "posted", commentId: row.id }
 }
 
+/**
+ * Taking a comment away. **There is no way to press it back**, which is why
+ * the screen asks first; and there is no soft state to keep — what was asked
+ * and answered is not history, and a draft's comments do not outlive the
+ * draft either.
+ */
+export async function deleteComment(
+  db: Executor,
+  input: { draftId: string, commentId: string },
+): Promise<{ status: "deleted" } | { status: "gone" }> {
+  const [row] = await db
+    .delete(comment)
+    .where(and(eq(comment.id, input.commentId), eq(comment.draftId, input.draftId)))
+    .returning({ id: comment.id })
+  return row === undefined ? { status: "gone" } : { status: "deleted" }
+}
+
 export interface AcknowledgementView {
   kind: AcknowledgementKind
   name: string

@@ -278,7 +278,7 @@ function Filters({ view, locale }: ViewProps) {
                 <Checkbox
                   key={one}
                   label={one === "published" ? t.published : t.unpublished}
-                  icon={<StateIcon published={one === "published"} />}
+                  icon={<StateIcon state={one} />}
                   name={each}
                   value={one}
                   checked={view[each].includes(one)}

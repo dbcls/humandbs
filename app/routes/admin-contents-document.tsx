@@ -66,11 +66,11 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
         <ResultLine result={actionData} locale={locale} />
       </Answered>
       <Stack>
-        {/* **The head is left for the article; the tools row is what stays
-            while typing** (`draft-tools.tsx` の `DraftHead`/`DraftTools`, the
-            same two steps a research draft takes). Between the two, the
-            head's second line reaches version control — a document without
-            revisions has nowhere else that operation belongs. */}
+        {/* **The head is left for the article, and folds to its tools row
+            while typing** (`draft-tools.tsx` の `DraftHead`, the same shape a
+            research draft takes). Its second line reaches version control — a
+            document without revisions has nowhere else that operation
+            belongs. */}
         <DraftHead
           locale={locale}
           title={t.documentHeading}
@@ -86,10 +86,16 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
               {/* **The slug is changed from beside the name that shows it.** It
                   is the one thing the article has apart from what it says, and
                   it already stands at the name's side as the identifier; a part
-                  of the page for it would hold nothing but this one control. */}
-              <Form method="post">
-                <SlugEditor locale={locale} intent="rename" name="slug" value={slug} hint={t.slugHint} />
-              </Form>
+                  of the page for it would hold nothing but this one control.
+                  **A revision has no slug of its own to correct** — its address
+                  is the series' slug and its number, and neither is this
+                  document's to change — so only an article standing alone
+                  has the control (the server refuses the rest). */}
+              {seriesOf === null && (
+                <Form method="post">
+                  <SlugEditor locale={locale} intent="rename" name="slug" value={slug} hint={t.slugHint} />
+                </Form>
+              )}
               {/* **What takes the whole article away stands beside its name**,
                   next to the way back, rather than among the languages
                   (`admin-contents-news-item.tsx`). **The revision a series points
@@ -132,8 +138,8 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
               </Form>
             </Section>
           )}
+          tools={panes.tools}
         />
-        {panes.tools}
         {panes.view}
       </Stack>
     </Page>

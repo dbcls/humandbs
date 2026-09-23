@@ -23,6 +23,8 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react"
 import { Form, useNavigation } from "react-router"
 
+import { scrollPaneTo } from "./scroll"
+
 import {
   Badge,
   Button,
@@ -42,6 +44,7 @@ import { Icon, Spinner } from "~/components/icons"
 import type { MountedMarkdown } from "./codemirror.client"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { holdUnsaved } from "~/components/unsaved"
 import { usePressed } from "~/navigating"
 
 /**
@@ -74,7 +77,40 @@ const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
  * 大きさ」): at 4px of padding the field sat 32.4px against the button's 36.4px
  * and the pair read as a step rather than as a row.
  */
-export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outline-offset-1`
+export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outline-offset-1 data-landed:bg-warning-surface`
+
+/**
+ * Landing on a field from somewhere else on the screen — the page pane, a band
+ * naming a conflict, the published version's differences.
+ *
+ * **Scrolling is not enough on its own.** An anchor moves the pane to the
+ * section and leaves the keyboard where it was, so the eye and the caret end up
+ * in different places; what is focused here is the first box in `target` that
+ * will take the caret. **The first that will take it, rather than the first in
+ * the markup** — the review layer hangs a comment form beside every field, and
+ * its own boxes come first while being hidden, folded away or otherwise unable
+ * to hold the caret. Asking each in turn is what tells the two apart.
+ *
+ * **The box that took the caret says so with its ground** (`data-landed`,
+ * `CONTROL`) until the caret leaves. The ring alone did not: it is the same ring
+ * every box wears when the caret arrives by Tab, so a jump from the other pane
+ * landed without anything on the form saying where. The ring keeps its one
+ * colour (`docs/ui.md` の「色」), and the ground is what differs.
+ *
+ * Only the pane scrolls, and only up and down (`scroll.ts`).
+ */
+export function landOn(target: HTMLElement, block: "start" | "center"): void {
+  scrollPaneTo(target, block)
+  for (const box of target.querySelectorAll<HTMLElement>("input, textarea")) {
+    box.focus({ preventScroll: true })
+    if (document.activeElement !== box) continue
+    box.dataset.landed = ""
+    box.addEventListener("blur", () => {
+      delete box.dataset.landed
+    }, { once: true })
+    return
+  }
+}
 
 /**
  * What a box reads as syntax, said beside its name.
@@ -180,7 +216,8 @@ function Labelled({
       {label}
       {required !== undefined && (
         <>
-          <span aria-hidden="true" className="text-danger">*</span>
+          {/* A hair off the last letter: set flush, the asterisk reads as part of the word. */}
+          <span aria-hidden="true" className="ml-1 text-danger">*</span>
           <span className="sr-only">{required}</span>
         </>
       )}
@@ -938,7 +975,7 @@ function changedIn(form: HTMLFormElement): boolean {
  * screen that had to thread the answer from its boxes to that button would
  * write the same three lines on every screen that saves anything.
  */
-export function Editing({ children, onInput, onDirty, ...rest }: ComponentProps<typeof Form> & {
+export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: ComponentProps<typeof Form> & {
   /**
    * Told whenever this form's own answer to "has this been typed into"
    * changes — for a save standing outside the form it sends, which cannot
@@ -949,6 +986,7 @@ export function Editing({ children, onInput, onDirty, ...rest }: ComponentProps<
 }) {
   const [changed, setChanged] = useState(false)
   const form = useRef<HTMLFormElement>(null)
+  const id = useId()
   const { state } = useNavigation()
   // **What was sent is no longer unsent.** Once a submission has settled the
   // screen has been read again, and every control's loaded value is what the
@@ -961,8 +999,15 @@ export function Editing({ children, onInput, onDirty, ...rest }: ComponentProps<
       const next = changedIn(form.current)
       setChanged(next)
       onDirty?.(next)
+      holdUnsaved(id, next)
     }
-  }, [state, onDirty])
+  }, [state, onDirty, id])
+  // **The guard at the way off the screen hears the same answer**
+  // (`unsaved.tsx`), and hears it let go when the form unmounts — a panel
+  // closed with words in it is not holding them any more.
+  useEffect(() => () => {
+    holdUnsaved(id, false)
+  }, [id])
   return (
     <Form
       {...rest}
@@ -971,7 +1016,16 @@ export function Editing({ children, onInput, onDirty, ...rest }: ComponentProps<
         const next = changedIn(event.currentTarget)
         setChanged(next)
         onDirty?.(next)
+        holdUnsaved(id, next)
         onInput?.(event)
+      }}
+      // **Sending is a way off the screen the guard must not stop**, so the
+      // hold is let go in the same event, before the router asks. A refused
+      // save comes back with the words still here, and the walk above takes
+      // the hold again.
+      onSubmit={(event) => {
+        holdUnsaved(id, false)
+        onSubmit?.(event)
       }}
     >
       <Changed.Provider value={changed}>{children}</Changed.Provider>

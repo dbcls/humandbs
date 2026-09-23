@@ -101,8 +101,12 @@ export function freeKeyCode(wanted: string, held: Iterable<string>): string {
  * that they are settled by the structure and must not be reworded
  * (docs/glossary.md).
  *
- * **The other twelve grow with the data** — platform, library prep kit, tissue,
- * disease and the rest — and those are the ones an administrator keeps
+ * **ICD10 is settled for a different reason**: it is an external standard put
+ * in whole, and its headings are the standard's to word, not the portal's
+ * (docs/data-model.md の「ICD10」).
+ *
+ * **The other eleven grow with the data** — platform, library prep kit, tissue
+ * and the rest — and those are the ones an administrator keeps
  * (docs/data-model.md の「catalog と語彙」).
  *
  * The label of the *field* one of these belongs to is not settled by this: what
@@ -114,6 +118,7 @@ export const SETTLED_VOCABULARIES: ReadonlySet<string> = new Set([
   "age-group",
   "has-phenotype-data",
   "health-status",
+  "icd10",
   "is-tumor",
   "read-type",
   "sex",

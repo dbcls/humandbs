@@ -66,6 +66,15 @@ export function fileUploadPath(researchId: string): string {
   return `${adminResearchFilesPath(researchId)}/upload`
 }
 
+/**
+ * What a published version lists, for reading. A version is addressed by its
+ * number rather than its row: updating one puts a new row under the same
+ * number, and the address should still open (docs/publishing.md の「版番号」).
+ */
+export function adminVersionDatasetsPath(researchId: string, number: number): string {
+  return `${adminResearchPath(researchId)}/version/${number}/dataset`
+}
+
 export function adminDraftPath(researchId: string, draftId: string): string {
   return `${adminResearchPath(researchId)}/draft/${draftId}`
 }
@@ -153,15 +162,6 @@ export function adminDraftDatasetPath(
 }
 
 /**
- * Where an open editor says it is still open. **No language prefix**, as with
- * the three above: nothing it returns is interface text, and a page that
- * changed language mid-edit would otherwise heartbeat to a second address.
- */
-export function draftPresencePath(researchId: string, draftId: string): string {
-  return `${adminDraftPath(researchId, draftId)}/presence`
-}
-
-/**
  * What every listing carries in its address beside the conditions: the word it
  * was searched by, and how the result is presented.
  */
@@ -181,10 +181,9 @@ export interface ListingQuery extends ListingPresentation {
   flags: readonly string[]
 }
 
-/** The listing of approval branches narrows by two axes of its own. */
+/** The listing of approval branches narrows by one axis of its own. */
 export interface BranchListingQuery extends ListingPresentation {
   standings: readonly string[]
-  registrations: readonly string[]
 }
 
 /**
@@ -220,7 +219,6 @@ export function listingQuery(query: ListingQuery): string {
 export function branchListingQuery(query: BranchListingQuery): string {
   return listingAddress(query, {
     standing: query.standings,
-    registered: query.registrations,
   })
 }
 

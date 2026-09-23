@@ -67,14 +67,22 @@ export function isAdminFlagKey(value: string): value is AdminFlagKey {
   return (ADMIN_FLAG_KEYS as readonly string[]).includes(value)
 }
 
+/** A dataset as the listing names it: by its pinned label, out or not. */
+export interface AdminDatasetRef {
+  label: string
+  /** A search row exists for it, which is what gives it a public page. */
+  published: boolean
+}
+
 export interface AdminResearchRow {
   researchId: string
   humLabel: string | null
-  /** From the working content: the drafts if there are any, else what is published. */
+  /** From the latest version that is out, or from a draft while none is. */
   title: TranslatedText
-  /** Matched against, never shown: a listing of names would crowd out the titles. */
+  /** From the same content as the title. Matched against, never shown: a listing of names would crowd out the titles. */
   providerNames: TranslatedText[]
-  datasetLabels: string[]
+  /** Every pinned dataset of the research, in label order. */
+  datasets: AdminDatasetRef[]
   status: AdminStatus
   publishedVersions: number
   draftCount: number
@@ -103,7 +111,7 @@ function sides(pair: TranslatedText): string[] {
 function haystack(row: AdminResearchRow): string {
   return [
     row.humLabel ?? "",
-    ...row.datasetLabels,
+    ...row.datasets.map((entry) => entry.label),
     ...sides(row.title),
     ...row.providerNames.flatMap(sides),
   ].join("\n").toLowerCase()
@@ -241,19 +249,6 @@ export type BranchStanding = "held" | "absent" | "unlabelled"
 export const BRANCH_STANDINGS: readonly BranchStanding[] = ["held", "absent", "unlabelled"]
 
 /**
- * Whether the branch registered anything yet.
- *
- * An approval comes before the registration it approves, so a third of the
- * branches hold no accession at the moment they are approved and grow one
- * later. Taking one in writes the research and leaves the datasets for the
- * second visit, which is a different errand from taking in a branch that has
- * its datasets.
- */
-export type BranchRegistration = "some" | "none"
-
-export const BRANCH_REGISTRATIONS: readonly BranchRegistration[] = ["some", "none"]
-
-/**
  * The orderings this listing offers.
  *
  * **Not the ones the other listings offer** (`app/search/sort.ts`): a branch is
@@ -275,10 +270,6 @@ export function branchOrder(sort: BranchSortKey): SortOrder {
 
 export function isBranchStanding(value: string): value is BranchStanding {
   return (BRANCH_STANDINGS as readonly string[]).includes(value)
-}
-
-export function isBranchRegistration(value: string): value is BranchRegistration {
-  return (BRANCH_REGISTRATIONS as readonly string[]).includes(value)
 }
 
 export function isBranchSortKey(value: string | null): value is BranchSortKey {
@@ -303,27 +294,27 @@ export function branchStanding(row: BranchRow): BranchStanding {
 
 export interface BranchFilter {
   standings: readonly BranchStanding[]
-  registrations: readonly BranchRegistration[]
 }
 
 /**
  * The branches a curator asked to see.
  *
  * **The word is not matched here.** It is matched by the application system,
- * which is where the titles and the names are; what these two axes read is the
+ * which is where the titles and the names are; what this axis reads is the
  * portal's own answer about the branch, which upstream cannot know.
  *
- * The axes combine as an AND and an empty axis narrows nothing, as on the
- * research listing.
+ * **Whether the branch registered anything is not an axis.** The row already
+ * lists what it registered, and the listing is for finding the branch a
+ * research is made from, which a branch without datasets still is.
+ *
+ * An empty axis narrows nothing, as on the research listing.
  */
 export function filterBranchRows<Row extends BranchRow>(
   rows: readonly Row[],
   filter: BranchFilter,
 ): Row[] {
   return rows.filter((row) =>
-    (filter.standings.length === 0 || filter.standings.includes(branchStanding(row)))
-    && (filter.registrations.length === 0
-      || filter.registrations.includes(row.datasets.length === 0 ? "none" : "some")))
+    filter.standings.length === 0 || filter.standings.includes(branchStanding(row)))
 }
 
 /**

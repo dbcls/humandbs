@@ -14,6 +14,7 @@ import * as s from "~/db/schema"
 import { RESEARCH } from "./anchors"
 import {
   acknowledgeDraft,
+  deleteComment,
   postAboutDraft,
   postComment,
   readAcknowledgements,
@@ -193,6 +194,43 @@ describe("a comment", () => {
     await discardDraft(db, { draftId, revision: 1 }, CURATOR)
 
     expect(await db.select().from(s.comment)).toHaveLength(0)
+  })
+})
+
+describe("deleting a comment", () => {
+  it("takes it away and leaves the others at the same place", async () => {
+    const { draftId } = await draft()
+    const first = await saidAt(draftId, "title", "一つ目")
+    await saidAt(draftId, "title", "二つ目")
+
+    expect(await deleteComment(db, { draftId, commentId: first })).toEqual({ status: "deleted" })
+    expect((await readComments(db, draftId)).map((row) => row.body)).toEqual(["二つ目"])
+  })
+
+  it("cannot be done through another draft's address", async () => {
+    const mine = await draft()
+    const other = await draft()
+    const commentId = await saidAt(mine.draftId, "title")
+
+    expect(await deleteComment(db, { draftId: other.draftId, commentId })).toEqual({ status: "gone" })
+    expect(await readComments(db, mine.draftId)).toHaveLength(1)
+  })
+
+  it("has nothing left to take the second time", async () => {
+    const { draftId } = await draft()
+    const commentId = await saidAt(draftId, "title")
+    await deleteComment(db, { draftId, commentId })
+
+    expect(await deleteComment(db, { draftId, commentId })).toEqual({ status: "gone" })
+  })
+
+  it("takes a line of the memo, which resolving never touches", async () => {
+    const { draftId } = await draft()
+    const outcome = await postAboutDraft(db, { draftId, kind: "memo", author: CURATOR, body: "覚え書き" })
+    if (outcome.status !== "posted") throw new Error("the line was not written")
+
+    expect(await deleteComment(db, { draftId, commentId: outcome.commentId })).toEqual({ status: "deleted" })
+    expect(await readComments(db, draftId)).toHaveLength(0)
   })
 })
 

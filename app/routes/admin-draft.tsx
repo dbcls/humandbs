@@ -23,7 +23,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export async function action({ request, params }: Route.ActionArgs) {
   const result = await saveDraftAction(request, params)
-  if (result.status === "invalid") return data(result, { status: 422 })
   if (result.status === "conflict") return data(result, { status: 409 })
   return result
 }

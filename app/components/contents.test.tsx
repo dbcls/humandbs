@@ -9,7 +9,6 @@ import {
   articleFormId,
   leftLanguageOf,
   LocaleEditors,
-  openLanguagesOf,
   ResultLine,
   SlugEditor,
   StateCell,
@@ -146,21 +145,36 @@ describe("the lines a save refused", () => {
 })
 
 /**
- * A language's form is sent from outside itself now (`ArticleTools`), so what
- * is left inside it is what only that form can do: hold the body, and flip
- * the publish state.
+ * A language's form holds everything done to that language: the body, the
+ * publish state, and — at its foot, right of the publish control — its own
+ * save, which Ctrl+S finds by the form's id (`ArticleTools`).
  */
 describe("the languages' forms", () => {
-  it("carry no save of their own — it stands in the tools row, addressed by the form's own id", () => {
+  it("carry their own save at the foot, right of the publish control, findable by the form's id", () => {
+    const formId = articleFormId("document:x", "ja")
     const html = render(
       <LocaleEditors editors={[editor("ja", { published: true })]} locale="ja" remember="document:x" />,
     )
 
-    expect(html).toContain(`id="${articleFormId("document:x", "ja")}"`)
+    expect(html).toContain(`id="${formId}"`)
     const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"))
-    expect(form).not.toContain("value=\"save\"")
+    const publishAt = form.indexOf("value=\"unpublish\"")
+    const saveAt = form.indexOf("value=\"save\"")
+    expect(publishAt).toBeGreaterThan(-1)
+    expect(saveAt).toBeGreaterThan(publishAt)
+    expect(form).toContain(`id="${formId}-save"`)
     expect(form).not.toContain("下書き")
     expect(html).toContain("公開中")
+  })
+
+  it("の保存は、打つまで押せず、打つと accent を着る — form の外に立つものではないので form 自身の答えを読む", () => {
+    const html = render(<LocaleEditors editors={[editor("ja")]} locale="ja" remember="document:x" />)
+    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"))
+    const save = form.slice(form.indexOf("value=\"save\"") - 400, form.indexOf("value=\"save\""))
+    // Nothing typed at first draw: the save waits, without the accent.
+    expect(save).toMatch(/disabled=""/)
+    expect(save).not.toMatch(/bg-accent/)
+    expect(form).not.toContain("未保存の変更があります")
   })
 
   it("keep publishing inside the form — it is pressed back and forth, not on the way out of the box", () => {
@@ -179,7 +193,7 @@ describe("the languages' forms", () => {
     const html = render(<LocaleEditors editors={[editor("ja")]} locale="ja" remember="document:x" />)
 
     const title = html.slice(html.indexOf("タイトル"), html.indexOf("</label>"))
-    expect(title).toContain("<span aria-hidden=\"true\" class=\"text-danger\">*</span>")
+    expect(title).toContain("<span aria-hidden=\"true\" class=\"ml-1 text-danger\">*</span>")
     expect(title).toContain("<span class=\"sr-only\">必須</span>")
     // Said once, for the title only: the body's own label carries none of it.
     expect(html.match(/必須/g)).toHaveLength(1)
@@ -187,7 +201,7 @@ describe("the languages' forms", () => {
   })
 })
 
-/** `articleFormId` and `ArticleTools`'s `saves` array are built from the same function, so the two cannot disagree. */
+/** `articleFormId` is what both a language's form and Ctrl+S's lookup of its save are built from, so the two cannot disagree. */
 describe("articleFormId", () => {
   it("記事とお知らせで別の根を持ち、言語ごとに別の id になる", () => {
     expect(articleFormId("document:x", "ja")).not.toBe(articleFormId("document:x", "en"))
@@ -196,110 +210,96 @@ describe("articleFormId", () => {
 })
 
 /**
- * Which languages a save stands for is read off the arrangement, not tracked
- * a second time — this is the table `usePanes`'s `left`/`right`/`showing`
- * feeds it through.
+ * Which form Ctrl+S sends is read off the arrangement, not tracked a second
+ * time — this is the table `usePanes`'s `left`/`showing` feeds it through.
  */
-describe("openLanguagesOf / leftLanguageOf", () => {
-  it("既定 (左が編集 ja、右が公開ページ ja) では ja の 1 つだけ開く", () => {
-    const panes = { left: "form-ja", right: "page", showing: "both" as const }
-    expect(openLanguagesOf(panes)).toStrictEqual(["ja"])
-    expect(leftLanguageOf(panes)).toBe("ja")
+describe("leftLanguageOf", () => {
+  it("既定 (左が編集 ja、右が公開ページ ja) では Ctrl+S は ja を送る", () => {
+    expect(leftLanguageOf({ left: "form-ja", showing: "both" })).toBe("ja")
   })
 
-  it("両方のペインが編集のとき、両方の言語が開く", () => {
-    const panes = { left: "form-ja", right: "form-en", showing: "both" as const }
-    expect(openLanguagesOf(panes)).toStrictEqual(["ja", "en"])
-    expect(leftLanguageOf(panes)).toBe("ja")
+  it("編集の言語が右だけにあるとき、左の Ctrl+S は宛先を持たない", () => {
+    expect(leftLanguageOf({ left: "page", showing: "both" })).toBeNull()
   })
 
-  it("編集の言語が右だけにあるとき、開くのは en の 1 つだけで、左の Ctrl+S は宛先を持たない", () => {
-    const panes = { left: "page", right: "form-en", showing: "both" as const }
-    expect(openLanguagesOf(panes)).toStrictEqual(["en"])
-    expect(leftLanguageOf(panes)).toBeNull()
+  it("左のペインが隠れているときは、編集の言語であっても送らない", () => {
+    expect(leftLanguageOf({ left: "form-ja", showing: "left" })).toBe("ja")
+    expect(leftLanguageOf({ left: "form-ja", showing: "right" })).toBeNull()
   })
 
-  it("隠れている側のペインは、編集の言語であっても数えない", () => {
-    const onlyLeft = { left: "form-ja", right: "form-en", showing: "left" as const }
-    expect(openLanguagesOf(onlyLeft)).toStrictEqual(["ja"])
-    expect(leftLanguageOf(onlyLeft)).toBe("ja")
-
-    const onlyRight = { left: "form-ja", right: "form-en", showing: "right" as const }
-    expect(openLanguagesOf(onlyRight)).toStrictEqual(["en"])
-    // The left pane holds an edit form but is not shown, so Ctrl+S sends nothing.
-    expect(leftLanguageOf(onlyRight)).toBeNull()
-  })
-
-  it("どちらのペインも公開ページなら、開く言語は無い", () => {
-    const panes = { left: "page", right: "page-en", showing: "both" as const }
-    expect(openLanguagesOf(panes)).toStrictEqual([])
-    expect(leftLanguageOf(panes)).toBeNull()
+  it("どちらのペインも公開ページなら、送る form は無い", () => {
+    expect(leftLanguageOf({ left: "page", showing: "both" })).toBeNull()
   })
 })
 
 /**
- * The tools row itself: one save per open language, each addressed to the
- * right form by the `form` attribute, and none at all when neither pane
- * holds one.
+ * The tools row itself holds the pane switch and nothing that saves — each
+ * language's save stands at the foot of its own form.
  */
 describe("ArticleTools", () => {
-  it("開いている言語ごとに保存を 1 つ立て、form 属性で正しい form を指す", () => {
-    const html = render(
-      <ArticleTools
-        locale="ja"
-        panesControl={null}
-        leftFormId={articleFormId("document:x", "ja")}
-        saves={[
-          { language: "ja", formId: articleFormId("document:x", "ja"), dirty: true },
-          { language: "en", formId: articleFormId("document:x", "en"), dirty: false },
-        ]}
-      />,
-    )
-
-    expect(html.match(/value="save"/g)).toHaveLength(2)
-    expect(html).toContain(`form="${articleFormId("document:x", "ja")}"`)
-    expect(html).toContain(`form="${articleFormId("document:x", "en")}"`)
-    // Ctrl+S looks the left one up by this id.
-    expect(html).toContain(`id="${articleFormId("document:x", "ja")}-save"`)
-  })
-
-  it("両方のペインが編集 (ja と en) のとき、保存は 2 つ立つ", () => {
-    const panes = { left: "form-ja", right: "form-en", showing: "both" as const }
-    const saves = openLanguagesOf(panes).map((language) => ({
-      language, formId: articleFormId("document:x", language), dirty: false,
-    }))
-    const html = render(<ArticleTools locale="ja" panesControl={null} leftFormId={null} saves={saves} />)
-    expect(html.match(/value="save"/g)).toHaveLength(2)
-  })
-
-  it("開いている編集の言語が無ければ、保存は 1 つも立たない", () => {
-    const html = render(<ArticleTools locale="ja" panesControl={null} leftFormId={null} saves={[]} />)
+  it("切替だけを持ち、保存は 1 つも立てない", () => {
+    const html = render(<ArticleTools panesControl={<span>SWITCH</span>} leftFormId={null} />)
+    expect(html).toContain("SWITCH")
     expect(html).not.toContain("value=\"save\"")
+    expect(html).not.toContain("保存")
+  })
+})
+
+describe("an announcement's date, seen from its languages' forms", () => {
+  const undated = { dated: false, ahead: false }
+  const ahead = { dated: true, ahead: true }
+  const arrived = { dated: true, ahead: false }
+
+  it("keeps publishing shut while the item is undated, and says why", () => {
+    const html = render(
+      <LocaleEditors editors={[editor("ja")]} locale="ja" remember="news:x" publishing={undated} />,
+    )
+    // The whole tag: the attributes come in the order React writes them, and
+    // `disabled` stands after the intent rather than before it.
+    const at = html.indexOf("value=\"publish\"")
+    const publish = html.slice(html.lastIndexOf("<button", at), html.indexOf(">", at) + 1)
+    expect(publish).toMatch(/disabled=""/)
+    expect(html).toContain("公開日時が未入力のため公開できません")
   })
 
-  it("未保存 (dirty) だけが押せて accent を着る。保存済みは押せず色を持たない", () => {
+  it("offers to schedule rather than publish while the date is ahead", () => {
     const html = render(
-      <ArticleTools
-        locale="ja"
-        panesControl={null}
-        leftFormId={null}
-        saves={[{ language: "ja", formId: articleFormId("document:x", "ja"), dirty: true }]}
-      />,
+      <LocaleEditors editors={[editor("ja")]} locale="ja" remember="news:x" publishing={ahead} />,
     )
-    expect(html).toMatch(/<button[^>]*bg-accent[^>]*>/)
-    expect(html).not.toMatch(/<button[^>]* disabled=""/)
-    expect(html).toContain("未保存の変更があります")
+    expect(html).toMatch(/公開予定<\/button>/)
+    expect(html).not.toMatch(/>公開<\/button>/)
+    expect(html).not.toContain("公開日時が未入力")
+  })
 
-    const saved = render(
-      <ArticleTools
-        locale="ja"
-        panesControl={null}
-        leftFormId={null}
-        saves={[{ language: "ja", formId: articleFormId("document:x", "ja"), dirty: false }]}
-      />,
+  it("offers to publish once the date has come", () => {
+    const html = render(
+      <LocaleEditors editors={[editor("ja")]} locale="ja" remember="news:x" publishing={arrived} />,
     )
-    expect(saved).not.toMatch(/bg-accent/)
-    expect(saved).toMatch(/<button[^>]* disabled=""/)
-    expect(saved).not.toContain("未保存の変更があります")
+    expect(html).toMatch(/公開<\/button>/)
+    expect(html).not.toContain("公開予定")
+  })
+
+  it("names a published language waiting on its date 公開予定, with the way to take it down", () => {
+    const html = render(
+      <LocaleEditors editors={[editor("ja", { published: true })]} locale="ja" remember="news:x" publishing={ahead} />,
+    )
+    expect(html).toContain("公開予定")
+    expect(html).not.toContain("公開中")
+    expect(html).toContain("value=\"unpublish\"")
+  })
+
+  it("draws an article, which has no date, as before", () => {
+    const html = render(<LocaleEditors editors={[editor("ja")]} locale="ja" remember="document:x" />)
+    expect(html).toMatch(/公開<\/button>/)
+    expect(html).not.toContain("公開予定")
+    expect(html).not.toContain("公開日時が未入力")
+  })
+})
+
+describe("StateCell, for an announcement", () => {
+  it("says 公開予定 for a published language whose date is ahead, and nothing new otherwise", () => {
+    expect(render(<StateCell state={{ published: true }} locale="ja" ahead />)).toContain("公開予定")
+    expect(render(<StateCell state={{ published: true }} locale="ja" />)).toContain("公開中")
+    expect(render(<StateCell state={{ published: false }} locale="ja" ahead />)).toContain("未公開")
   })
 })

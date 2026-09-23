@@ -24,7 +24,6 @@ import type { Database, Executor } from "~/db/client.server"
 import {
   comment,
   contentKey,
-  dataset,
   labelPin,
   researchDraft,
   researchVersion,
@@ -40,7 +39,6 @@ import {
 } from "~/review/comments.server"
 
 import {
-  changeListing,
   createDatasetInDraft,
   createEmptyDraft,
   draftUpdating,
@@ -48,7 +46,7 @@ import {
   saveDraftContent,
   setDraftSharing,
 } from "./drafts.server"
-import { readDraft } from "./queries.server"
+import { draftDatasetIds, readDraft } from "./queries.server"
 
 const MARK = "[seed-dev-review]"
 const REVIEW_DRAFT_MEMO = `${MARK} レビュー画面確認用の共有 draft`
@@ -98,16 +96,6 @@ async function draftMarkedWith(db: Executor, researchId: string, memo: string): 
     ))
     .limit(1)
   return row?.draftId ?? null
-}
-
-async function existingDatasetIds(db: Executor, researchId: string, count: number): Promise<string[]> {
-  const rows = await db
-    .select({ id: dataset.id })
-    .from(dataset)
-    .where(eq(dataset.researchId, researchId))
-    .orderBy(dataset.id)
-    .limit(count)
-  return rows.map((row) => row.id)
 }
 
 /** The dataset-scope `access-criteria` key and its `unrestricted-access` term, by code. */
@@ -184,20 +172,12 @@ async function ensureReviewDraft(db: Database, researchId: string): Promise<stri
   const draftContent = reviewDraftContent()
   const saved = await saveDraftContent(db, { draftId, revision: opened.revision }, { content: draftContent })
   if (saved.status !== "saved") throw new Error(`saving the review draft's content: ${saved.status}`)
-  let revision = saved.revision
+  const revision = saved.revision
   let content = draftContent
 
-  const [datasetA, datasetB] = await existingDatasetIds(db, researchId, 2)
-  if (datasetA === undefined || datasetB === undefined) {
-    throw new Error("hum0127 needs at least two existing datasets — run db:load-dev-data first")
-  }
-  for (const datasetId of [datasetA, datasetB]) {
-    const listed = await changeListing(db, { draftId, revision }, researchId, { kind: "list", datasetId })
-    if (listed.status !== "changed") throw new Error(`listing an existing dataset: ${listed.status}`)
-    revision += 1
-    content = { ...content, datasetIds: [...content.datasetIds, datasetId] }
-  }
-
+  // The research's own datasets need no listing: a draft publishes all of them
+  // (`admin/datasets.ts`). What the seed adds is one of its own, so that the
+  // review has a dataset written in this draft to comment on.
   const created = await createDatasetInDraft(db, { draftId, revision }, researchId)
   if (created.status !== "created") throw new Error(`creating the new dataset: ${created.status}`)
   content = { ...content, datasetIds: [...content.datasetIds, created.datasetId] }
@@ -216,7 +196,11 @@ async function ensureReviewDraft(db: Database, researchId: string): Promise<stri
   )
   if (entrySaved.status !== "saved") throw new Error(`writing the new dataset's content: ${entrySaved.status}`)
 
-  const about = { draftId, content, datasetIds: content.datasetIds }
+  const about = {
+    draftId,
+    content,
+    datasetIds: await draftDatasetIds(db, draftId, researchId, content.datasetIds),
+  }
 
   const titleComment = await postComment(db, {
     about,

@@ -50,8 +50,8 @@ export function useBusyHere(): boolean {
 /**
  * Whether a deed is on its way to an action — by navigation or by a fetcher.
  *
- * **Reading is not sending.** A listing narrowed by its pane, or a presence
- * line asking who else is here, is a load: nothing the reader pressed is
+ * **Reading is not sending.** A listing narrowed by its pane, or the pane
+ * beside a form asking for the page, is a load: nothing the reader pressed is
  * waiting on it. What is held is the deed in flight, and it stays in flight
  * through the read that follows it, until the screen shows what it did.
  */

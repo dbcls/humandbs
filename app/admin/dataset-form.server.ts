@@ -43,7 +43,6 @@ import {
   textInputSchema,
   textPairSchema,
   textSlot,
-  type FieldProblem,
 } from "./form.server"
 
 /**
@@ -128,10 +127,6 @@ export const saveDatasetSchema = z.object({
   content: datasetContentInputSchema,
 })
 
-export type DatasetContentResult
-  = | { ok: true, content: DatasetContent }
-    | { ok: false, problems: FieldProblem[] }
-
 /**
  * The stored form of a number: converted to the key's unit, with what was typed
  * kept beside it. Null when there is nothing to store — an empty box, or a unit
@@ -195,14 +190,8 @@ function diseaseValue(row: DiseaseRow): DiseaseValue | null {
 /** The unit a key stores its numbers in, for the keys that store numbers. */
 export type CanonicalUnits = (keyId: string) => string | null
 
-function contentValue(
-  body: ValueBody,
-  keyId: string,
-  path: string,
-  problems: FieldProblem[],
-  units: CanonicalUnits,
-): ContentValue | null {
-  if (body.kind === "text") return { kind: "text", text: prosePair(body.text, path, problems) }
+function contentValue(body: ValueBody, keyId: string, units: CanonicalUnits): ContentValue | null {
+  if (body.kind === "text") return { kind: "text", text: prosePair(body.text) }
   if (body.kind === "vocabulary") {
     return {
       kind: "vocabulary",
@@ -233,51 +222,27 @@ function contentValue(
   return held.length === 0 ? null : { kind: "number", values: { state: "value", value: held } }
 }
 
-function valueSlot(
-  input: ValueInput,
-  path: string,
-  problems: FieldProblem[],
-  units: CanonicalUnits,
-): ValueSlot[] {
-  const value = contentValue(
-    input.value,
-    input.keyId,
-    `${path}.${input.keyId}`,
-    problems,
-    units,
-  )
+function valueSlot(input: ValueInput, units: CanonicalUnits): ValueSlot[] {
+  const value = contentValue(input.value, input.keyId, units)
   return value === null ? [] : [{ keyId: input.keyId, value }]
 }
 
-/**
- * Problems come back in the order the form shows the fields, which is why the
- * dataset's own values are read before its experiments: a list of refusals is
- * read from the top of the screen down, and one that jumps about makes the
- * author hunt for each of them.
- */
-export function datasetContentOf(
-  input: DatasetContentInput,
-  units: CanonicalUnits,
-): DatasetContentResult {
-  const problems: FieldProblem[] = []
-
-  const values = input.values.flatMap((value) => valueSlot(value, "values", problems, units))
+/** The dataset a form describes, read into what the store holds. */
+export function datasetContentOf(input: DatasetContentInput, units: CanonicalUnits): DatasetContent {
+  const values = input.values.flatMap((value) => valueSlot(value, units))
 
   const experiments: Experiment[] = input.experiments.map((experiment) => ({
     id: experiment.id,
     label: textSlot(experiment.label),
-    values: experiment.values.flatMap((value) =>
-      valueSlot(value, `experiments.${experiment.id}.values`, problems, units)),
+    values: experiment.values.flatMap((value) => valueSlot(value, units)),
   }))
 
-  const content: DatasetContent = {
+  return {
     releaseDate: input.releaseDate === "" ? null : input.releaseDate,
     fileSelection: [...input.fileSelection],
     values,
     experiments,
   }
-
-  return problems.length > 0 ? { ok: false, problems } : { ok: true, content }
 }
 
 /**
