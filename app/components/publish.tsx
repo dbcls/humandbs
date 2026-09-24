@@ -5,22 +5,21 @@ import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import type { PublishBlockView, PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
 import { adminDraftDatasetPath, adminDraftPath, adminDraftReviewPath, adminResearchPath, draftCommentsPath } from "~/admin/urls"
 import type { CommentAnchor } from "~/content/types"
-import { minuteInJst } from "~/dates"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 
 import { AdminBack, WayTo } from "./admin"
-import { Heading, Stack, Stated } from "./base"
-import { Author, OpenComments, type CommentContext } from "./comments"
+import { Heading, Stack } from "./base"
+import { OpenComments, type CommentContext } from "./comments"
 import { IdForm, shownNhaId } from "./dataset-id"
-import { Flag } from "./flags"
-import { Answered, Checkbox, CONTROL, Field, Result, Submit } from "./form"
+import { Flag, Stated } from "./flags"
+import { Answer, Checkbox, CONTROL, Field, Submit } from "./form"
 import { Icon } from "./icons"
-import { Card, Empty, Page, Section, Table, Td } from "./page"
+import { Card, Empty, Fact, Facts, Page, Section, Table, Td } from "./page"
 import { DatasetCells, datasetColumns } from "./research"
 import { researchFieldLabel } from "./research-fields"
-import { firstSentence } from "./review"
+import { PressedBy, pressedTitle } from "./review"
 
 /**
  * The last screen before a draft becomes a version.
@@ -54,29 +53,25 @@ export function PublishConfirmation({ view, result }: {
     <Page>
       {/* Only a refusal is answered here: a publish that worked leaves this
           screen for the research it published. */}
-      <Answered answer={actionData} locale={locale}>
-        {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
-        {actionData?.status === "gone" && <Result ok={false}>{t.gone}</Result>}
-        {actionData?.status === "unacknowledged" && (
-          <Result ok={false}>{t.acknowledgeRequired}</Result>
-        )}
-        {actionData?.status === "taken" && <Result ok={false}>{t.pinTaken}</Result>}
-        {actionData?.status === "issued" && (
-          <Result ok>{messages.admin.detail.issued(actionData.label)}</Result>
-        )}
-        {actionData?.status === "reserved" && (
-          <Result ok={false}>{messages.admin.detail.pinReserved}</Result>
-        )}
-        {actionData?.status === "number-unavailable" && (
-          <Result ok={false}>{t.numberUnavailable}</Result>
-        )}
-        {actionData?.status === "malformed" && (
-          <Result ok={false}>{messages.admin.detail.pinMalformed}</Result>
-        )}
-        {actionData?.status === "unchanged" && view.updating !== null && (
-          <Result ok={false}>{t.unchanged(`v${view.updating.number}`)}</Result>
-        )}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        ok={(answer) => answer.status === "issued"}
+        said={(answer) => {
+          switch (answer.status) {
+            case "conflict": return messages.admin.conflict
+            case "gone": return t.gone
+            case "unacknowledged": return t.acknowledgeRequired
+            case "taken": return t.pinTaken
+            case "issued": return messages.admin.detail.issued(answer.label)
+            case "reserved": return messages.admin.detail.pinReserved
+            case "number-unavailable": return t.numberUnavailable
+            case "malformed": return messages.admin.detail.pinMalformed
+            case "unchanged": return view.updating === null ? null : t.unchanged(`v${view.updating.number}`)
+            default: return null
+          }
+        }}
+      />
       <Card under={false}>
         <Stack gap="block">
           <Heading
@@ -321,39 +316,25 @@ function Review({ view }: { view: PublishPageView }) {
   return (
     <Section title={t.review} note={t.reviewNote}>
       <Stack gap="normal">
-        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-3 text-sm">
-          <dt className="text-ink-muted">{t.share}</dt>
-          <dd>
+        <Facts>
+          <Fact name={t.share}>
             {review.shared
-              ? <Stated icon="link">{messages.admin.detail.shared}</Stated>
-              : <Stated icon="lock">{messages.admin.detail.notShared}</Stated>}
-          </dd>
-          <dt className="text-ink-muted">{t.unresolved}</dt>
-          <dd><OpenComments context={context} comments={review.comments} nameOf={nameOf} /></dd>
-          {(["commented", "approved"] as const).map((kind) => {
-            const rows = review.acknowledgements.filter((row) => row.kind === kind)
-            const button = firstSentence(kind === "commented" ? messages.preview.commented : messages.preview.approved)
-            return (
-              <div key={kind} className="contents">
-                <dt className="text-ink-muted">{messages.preview.pressedBy(button)}</dt>
-                <dd>
-                  {rows.length === 0
-                    ? messages.admin.review.nobodyYet
-                    : (
-                        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          {rows.map((row) => (
-                            <span key={`${row.bySignedIn ? "signed" : "typed"}-${row.name}`} className="flex items-center gap-2">
-                              <Author locale={locale} name={row.name} bySignedIn={row.bySignedIn} />
-                              <span className="text-ink-muted">{minuteInJst(row.createdAt)}</span>
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                </dd>
-              </div>
-            )
-          })}
-        </dl>
+              ? <Stated kind="shared">{messages.admin.detail.shared}</Stated>
+              : review.expired
+                ? <Stated kind="short">{messages.admin.detail.shareExpired}</Stated>
+                : <Stated kind="hidden">{messages.admin.detail.notShared}</Stated>}
+          </Fact>
+          <Fact name={t.unresolved}>
+            <OpenComments context={context} comments={review.comments} nameOf={nameOf} />
+          </Fact>
+          {/* **The marks are the review screen's tables**, a row per person with
+              when they last pressed and how often (`PressedBy`). */}
+          {(["commented", "approved"] as const).map((kind) => (
+            <Fact key={kind} name={pressedTitle(kind, locale)}>
+              <PressedBy rows={review.acknowledgements.filter((row) => row.kind === kind)} locale={locale} />
+            </Fact>
+          ))}
+        </Facts>
         <div>
           <WayTo to={href(locale, adminDraftReviewPath(view.researchId, view.draftId))} icon="comment">
             {messages.admin.review.heading}
@@ -395,31 +376,26 @@ function Findings({ view }: { view: PublishPageView }) {
   const messages = messagesFor(locale)
   const t = messages.admin.publish
 
-  if (view.groups.length === 0) {
-    return (
-      <Section title={t.findings}>
-        <Empty>{t.noFindings}</Empty>
-      </Section>
-    )
-  }
-
+  // **The table stands when it is empty**: its columns say what was looked
+  // for, and the one row in its place says nothing was found.
   return (
-    <Section title={t.findings} note={t.findingsNote}>
+    <Section title={t.findings} note={view.groups.length === 0 ? undefined : t.findingsNote}>
       <Stack gap="normal">
         <Table
+          actions
           align="middle"
           headers={[
             t.findingKind,
             t.findingCount,
             t.findingPlaces,
-            <span key="actions" className="sr-only">{messages.admin.actions}</span>,
           ]}
+          whenEmpty={t.noFindings}
         >
           {view.groups.map((group) => (
             <FindingRow key={group.kind} group={group} locale={locale} />
           ))}
         </Table>
-        <Checkbox label={t.acknowledge(view.findingCount)} name="acknowledged" />
+        {view.groups.length > 0 && <Checkbox label={t.acknowledge(view.findingCount)} name="acknowledged" />}
       </Stack>
     </Section>
   )

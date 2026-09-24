@@ -138,7 +138,7 @@ describe("the dialect badge on a field's name row", () => {
     )
     const name = html.indexOf(">対象<")
     const badge = html.indexOf("リンクと改行")
-    const changed = html.indexOf("変更あり")
+    const changed = html.indexOf("別の場所で変更")
     expect(name).toBeGreaterThan(-1)
     expect(badge).toBeGreaterThan(name)
     expect(changed).toBeGreaterThan(badge)
@@ -164,7 +164,7 @@ describe("the dialect badge on a field's name row", () => {
       />,
     )
     expect(html).not.toContain("未翻訳")
-    expect(html).not.toContain("変更あり")
+    expect(html).not.toContain("別の場所で変更")
     const section = render(<Section id="title" title="研究題目" flags={<i>未翻訳</i>}><p>欄</p></Section>)
     expect(section).toMatch(/<h2[^>]*>研究題目[\s\S]*?<i>未翻訳<\/i>[\s\S]*?<\/h2>/)
   })

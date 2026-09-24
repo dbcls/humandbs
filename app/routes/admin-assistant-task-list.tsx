@@ -1,4 +1,6 @@
+import { minuteInJst } from "~/dates"
 import { Button, Stack, Chevron } from "~/components/base"
+import { Flag, Stated } from "~/components/flags"
 import { Icon } from "~/components/icons"
 import { Counted, Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
@@ -75,11 +77,9 @@ export function AdminAssistantTaskList({
               </Td>
               <Td>{task.application_type}</Td>
               <Td>
-                <span className={statusClass(task.status)}>
-                  {words.statuses[task.status]}
-                </span>
+                <AssistantStatus status={task.status} locale={locale} />
               </Td>
-              <Td>{formatTime(task.updated_at ?? task.created_at, locale)}</Td>
+              <Td>{timeOf(task.updated_at ?? task.created_at)}</Td>
             </tr>
           ))}
         </Table>
@@ -88,21 +88,26 @@ export function AdminAssistantTaskList({
   )
 }
 
-function formatTime(value: string | undefined, locale: Locale): string {
-  if (value === undefined) return "-"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleString(locale === "ja" ? "ja-JP" : "en-GB")
+/**
+ * When a task was made or last moved, written the way every date-time on the
+ * management side is (`YYYY-MM-DD HH:MM`, JST). A time the service did not give
+ * leaves the cell empty; one it gave unreadable is shown as given.
+ */
+export function timeOf(value: string | undefined): string {
+  if (value === undefined) return ""
+  return Number.isNaN(new Date(value).getTime()) ? value : minuteInJst(value)
 }
 
 /**
- * **Only a state worth acting on carries a colour.** A finished task is the
- * ordinary outcome, so it is drawn in the ordinary way; what is still running
- * is quiet, and what stopped is the one thing to look at.
+ * Where a task stands, as the listing and the task's own screen both say it.
+ *
+ * **Every task has a status, so it is a glyph and a word** (`Stated`), and
+ * **only a failure is a badge** (`Flag` の `stops`): a finished task is the
+ * ordinary outcome and one still queued or running needs nobody, so the one
+ * worth acting on is the only one boxed in a colour.
  */
-function statusClass(status: Status): string {
-  if (status === "error") return "text-danger"
-  if (status === "pending" || status === "processing") return "text-ink-muted"
-  return ""
+export function AssistantStatus({ status, locale }: { status: Status, locale: Locale }) {
+  const word = messagesFor(locale).admin.assistant.statuses[status]
+  if (status === "error") return <Flag kind="stops">{word}</Flag>
+  return <Stated kind={status === "completed" ? "resolved" : "waiting"}>{word}</Stated>
 }

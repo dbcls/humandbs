@@ -40,14 +40,15 @@ import {
   Dialog,
   Heading,
   IconButton,
+  ReorderButtons,
   Stack,
 } from "~/components/base"
 import {
-  Answered,
+  Answer,
   Checkbox,
   Editing,
   Field,
-  Result,
+  LanguagePair,
   Submit,
   Unsaved,
 } from "~/components/form"
@@ -183,18 +184,14 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        {actionData !== undefined && (
-          <Result
-            ok={actionData.status === "ok"}
-            also={actionData.status === "ok" && actionData.moved !== undefined
-              ? <Undo moved={actionData.moved} label={t.undo} />
-              : undefined}
-          >
-            {actionData.status === "ok" ? said(actionData) : t.problems[actionData.status]}
-          </Result>
-        )}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        said={(answer) => answer.status === "ok" ? said(answer) : t.problems[answer.status]}
+        also={(answer) => answer.status === "ok" && answer.moved !== undefined
+          ? <Undo moved={answer.moved} label={t.undo} />
+          : undefined}
+      />
       <Card under={false}>
         <Stack gap="normal">
           {/*
@@ -206,19 +203,19 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
           */}
           <Heading title={t.heading} note={t.note}>
             <Form method="post">
-              <input type="hidden" name="intent" value="create-key" />
               <Dialog
                 label={t.addKey}
                 title={t.addKey}
                 icon={<Icon name="plus" />}
-                dismiss={t.cancel}
-                action={() => <Submit variant="primary" icon={<Icon name="plus" />}>{t.create}</Submit>}
+                action={() => <Submit intent="create-key" variant="primary" icon={<Icon name="plus" />}>{t.create}</Submit>}
               >
                 {/* **No code is asked for.** It is made from the English
                     label (`admin/catalog.ts` の `codeFrom`) — an address
                     the public side carries, not a name to choose. */}
-                <Field label={t.labelJa} name="labelJa" width="w-full" />
-                <Field label={t.labelEn} name="labelEn" width="w-full" />
+                <LanguagePair>
+                  <Field label={t.labelJa} name="labelJa" width="w-full" />
+                  <Field label={t.labelEn} name="labelEn" width="w-full" />
+                </LanguagePair>
               </Dialog>
             </Form>
           </Heading>
@@ -252,6 +249,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
               accessibility={{ announcements, screenReaderInstructions: { draggable: t.dragInstructions } }}
             >
               <Table
+                actions
                 align="middle"
                 headers={[
                   t.labelJa,
@@ -260,9 +258,6 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
                   t.terms,
                   t.usage,
                   ...(ordered ? [t.order] : []),
-                  /* The column of things to press names itself for anyone reading
-                     the row aloud and nowhere else. */
-                  <span key="actions" className="sr-only">{messages.admin.actions}</span>,
                 ]}
                 whenEmpty={inForce === 0 ? t.noKey : t.noMatchingKey}
               >
@@ -327,7 +322,8 @@ function Row({ entry, ordered, at, of, locale }: {
   of: number
   locale: Locale
 }) {
-  const t = messagesFor(locale).admin.catalog
+  const messages = messagesFor(locale)
+  const t = messages.admin.catalog
   const typed = entry.valueType !== "text"
   const settled = entry.vocabularySetCode !== null
     && SETTLED_VOCABULARIES.has(entry.vocabularySetCode)
@@ -413,8 +409,20 @@ function Row({ entry, ordered, at, of, locale }: {
                 {...listeners}
               />
             </span>
-            <Move id={entry.id} intent="move-key-up" icon="chevron-up" label={t.up} stuck={at === 0} />
-            <Move id={entry.id} intent="move-key-down" icon="chevron-down" label={t.down} stuck={at === of - 1} />
+            <ReorderButtons
+              at={at}
+              of={of}
+              labels={{ up: messages.admin.moveUp, down: messages.admin.moveDown }}
+              render={(by, button) => (
+                // Each direction is a form of its own: `IconButton` spends its
+                // `name` on the glyph, so the intent goes in a hidden field.
+                <Form method="post">
+                  <input type="hidden" name="keyId" value={entry.id} />
+                  <input type="hidden" name="intent" value={by === -1 ? "move-key-up" : "move-key-down"} />
+                  {button}
+                </Form>
+              )}
+            />
           </span>
         </Td>
       )}
@@ -434,7 +442,6 @@ function Row({ entry, ordered, at, of, locale }: {
               title={t.editKeyTitle}
               size="row"
               icon={<Icon name="edit" />}
-              dismiss={t.cancel}
               action={() => (
                 <>
                   {/* **The filled face belongs to the screen's own act**, which
@@ -450,8 +457,10 @@ function Row({ entry, ordered, at, of, locale }: {
                 </>
               )}
             >
-              <Field label={t.labelJa} name="labelJa" value={entry.labelJa} width="w-full" />
-              <Field label={t.labelEn} name="labelEn" value={entry.labelEn} width="w-full" />
+              <LanguagePair>
+                <Field label={t.labelJa} name="labelJa" value={entry.labelJa} width="w-full" />
+                <Field label={t.labelEn} name="labelEn" value={entry.labelEn} width="w-full" />
+              </LanguagePair>
             </Dialog>
           </Editing>
           {/* A typed field is a refinement; taking one away is a development
@@ -465,16 +474,13 @@ function Row({ entry, ordered, at, of, locale }: {
                 title={t.removeTitle(catalogLabel(entry, locale))}
                 warning={t.removeKeyWarning}
                 confirm={t.removeConfirm}
-                cancel={t.cancel}
-                icon="trash"
                 size="row"
                 // The way in stays where it is and says why it cannot be
                 // pressed: a control that vanishes leaves a reader looking
                 // for it, and one that opens only to be refused wastes the press.
                 disabled={entry.inUse ? t.inUseKey : undefined}
-              >
-                <input type="hidden" name="intent" value="delete-key" />
-              </Confirm>
+                intent="delete-key"
+              />
             </Form>
           )}
         </span>
@@ -499,35 +505,6 @@ function Undo({ moved, label }: { moved: Moved, label: string }) {
       <input type="hidden" name="keyId" value={moved.id} />
       <input type="hidden" name="to" value={moved.from} />
       <Button size="row" icon={<Icon name="undo" />}>{label}</Button>
-    </Form>
-  )
-}
-
-/**
- * One direction of the ordering.
- *
- * **Each direction stands in its own form.** `IconButton` spends its `name` on
- * the glyph, so two of them in one form have nothing left to tell the press
- * apart by; the intent goes in a hidden field instead.
- *
- * **A glyph has no colour of its own to dim**, so the row's end is said by the
- * box around it.
- */
-function Move({ id, intent, icon, label, stuck }: {
-  id: string
-  intent: string
-  icon: IconName
-  label: string
-  /** At the end it points to, where there is nothing left to swap with. */
-  stuck: boolean
-}) {
-  return (
-    <Form method="post">
-      <input type="hidden" name="keyId" value={id} />
-      <input type="hidden" name="intent" value={intent} />
-      <span className={stuck ? "opacity-50" : ""}>
-        <IconButton name={icon} label={label} type="submit" disabled={stuck} />
-      </span>
     </Form>
   )
 }

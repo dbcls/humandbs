@@ -1,11 +1,13 @@
 import { Link } from "react-router"
 
-import { Band, Stack } from "~/components/base"
+import { Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import {
+  BandBox,
   Card,
   Crumbs,
   Empty,
+  IdMark,
   KeyValue,
   Page,
   PageHead,
@@ -77,22 +79,22 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
           <UntranslatedNotice show={view.untranslated} locale={locale} />
           <Stack gap="normal" as="ul">
             {view.versions.map((version) => (
-              <li key={version.number} className="overflow-hidden rounded border border-line">
-                {/* The versions are what this page is a list of, so each one is
-                    named on a band: a grey strip is the weakest thing on a page
-                    whose whole job is to separate them. */}
-                <Band>
-                  <h2 className="font-bold">
-                    <Link
-                      to={href(locale, researchVersionPath(view.humLabel, version.number))}
-                      className="text-white visited:text-white"
-                    >
-                      {version.label}
-                    </Link>
-                  </h2>
-                  <span className="text-sm">{version.releaseDate}</span>
-                </Band>
-                <div className="grid gap-x-8 bg-white px-4 py-2 sm:grid-cols-[18rem_1fr]">
+              <BandBox
+                key={version.number}
+                as="li"
+                level={2}
+                title={(
+                  <Link
+                    to={href(locale, researchVersionPath(view.humLabel, version.number))}
+                    className="text-white visited:text-white"
+                  >
+                    {version.label}
+                  </Link>
+                )}
+                aside={<span className="text-sm">{version.releaseDate}</span>}
+              >
+                {/* Two pairs side by side, separated by the space between the columns. */}
+                <dl className="grid gap-x-8 sm:grid-cols-[18rem_1fr]">
                   <KeyValue title={t.datasetsAddedInRelease}>
                     {version.addedDatasetLabels.length === 0
                       ? <Empty>{t.noDatasetsAddedInRelease}</Empty>
@@ -100,7 +102,7 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
                           <Stack gap="tight" as="ul">
                             {version.addedDatasetLabels.map((label) => (
                               <li key={label} className="whitespace-nowrap text-sm">
-                                <Link to={href(locale, datasetPath(label))}>{label}</Link>
+                                <IdMark kind="dataset" to={href(locale, datasetPath(label))}>{label}</IdMark>
                               </li>
                             ))}
                           </Stack>
@@ -109,8 +111,8 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
                   <KeyValue title={t.releaseNote}>
                     <Value field={version.releaseNote} locale={locale} />
                   </KeyValue>
-                </div>
-              </li>
+                </dl>
+              </BandBox>
             ))}
           </Stack>
         </Stack>

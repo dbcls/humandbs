@@ -14,8 +14,8 @@ import {
   adminVersionDatasetsPath,
 } from "~/admin/urls"
 import { AdminBack, WayTo } from "~/components/admin"
-import { ButtonLink, Confirm, Dialog, Heading, Stack, Stated, Chevron } from "~/components/base"
-import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
+import { ButtonLink, Confirm, Dialog, Heading, Stack } from "~/components/base"
+import { Answer, Checkbox, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, ExternalLink, Page, Section, Table, Td } from "~/components/page"
 import { minuteInJst } from "~/dates"
@@ -26,7 +26,7 @@ import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale, researchPath } from "~/public/urls"
 
 import type { Route } from "./+types/admin-research"
-import { Flag } from "~/components/flags"
+import { Flag, Stated } from "~/components/flags"
 
 /**
  * One research: what is out, what is being written, which IDs name it, and
@@ -79,12 +79,19 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        {actionData?.status === "conflict" && <Result ok={false}>{t.discardConflict}</Result>}
-        {actionData?.status === "updating" && <Result ok={false}>{t.withdrawUpdating}</Result>}
-        {actionData?.status === "taken" && <Result ok={false}>{t.pinTaken}</Result>}
-        {actionData?.status === "malformed" && <Result ok={false}>{t.pinMalformed}</Result>}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        said={(answer) => {
+          switch (answer.status) {
+            case "conflict": return messages.admin.conflict
+            case "updating": return t.withdrawUpdating
+            case "taken": return t.pinTaken
+            case "malformed": return t.pinMalformed
+            default: return null
+          }
+        }}
+      />
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.heading} aside={view.humLabel ?? undefined}>
@@ -102,7 +109,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 title={t.deleteResearchTitle(view.humLabel ?? t.heading)}
                 warning={t.deleteResearchWarning}
                 confirm={t.deleteResearchConfirm}
-                cancel={t.cancel}
                 intent="delete-research"
               />
             </Form>
@@ -120,6 +126,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                   table stays when empty: the column names say what would
                   stand here. */}
               <Table
+                actions
                 align="middle"
                 headers={[
                   t.kind,
@@ -128,9 +135,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                   t.releaseDate,
                   t.datasets,
                   t.review,
-                  /* The column of things to press names itself for anyone reading
-                     the row aloud and nowhere else. */
-                  <span key="actions" className="sr-only">{messages.admin.actions}</span>,
                 ]}
                 whenEmpty={t.noRows}
               >
@@ -224,9 +228,8 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
               <Form method="post">
                 <Dialog
                   label={t.addLabel}
-                  title={t.addLabelTitle}
+                  title={t.addLabel}
                   icon={<Icon name="link" />}
-                  dismiss={t.cancel}
                   action={() => (
                     <Submit intent="pin" variant="primary" icon={<Icon name="link" />}>
                       {t.pinSubmit}
@@ -260,10 +263,9 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 reads as a caption, and an outlined button with no mark reads as
                 something done here. What the box holds stands beside it. */}
             <p className="flex flex-wrap items-center gap-3 text-sm">
-              <ButtonLink to={href(locale, adminResearchFilesPath(view.researchId))}>
+              <WayTo to={href(locale, adminResearchFilesPath(view.researchId))}>
                 {t.openFiles}
-                <Chevron dir="right" />
-              </ButtonLink>
+              </WayTo>
               <span className="text-ink-muted">
                 {view.box === null
                   ? messages.admin.files.unavailable
@@ -302,7 +304,7 @@ function DraftRow({ draft, review, researchId, locale }: {
   return (
     <tr>
       <Td nowrap>
-        <Stated icon="edit">{t.draft}</Stated>
+        <Stated kind="changed">{t.draft}</Stated>
       </Td>
       <Td />
       <Td nowrap>{minuteInJst(draft.updatedAt)}</Td>
@@ -333,7 +335,6 @@ function DraftRow({ draft, review, researchId, locale }: {
               title={t.discardTitle}
               warning={t.discardWarning}
               confirm={t.discardConfirm}
-              cancel={t.cancel}
               intent="discard-draft"
               size="row"
             />
@@ -367,9 +368,9 @@ function Datasets({ count, to, locale }: { count: number, to: string, locale: Lo
 function Review({ review, locale }: { review: AdminDraftReviewRow | null, locale: Locale }) {
   const t = messagesFor(locale).admin.detail
   if (review === null) return null
-  if (review.shared) return <Stated icon="link">{t.shared}</Stated>
-  if (review.expired) return <Stated icon="link">{t.shareExpired}</Stated>
-  return <Stated icon="lock">{t.notShared}</Stated>
+  if (review.shared) return <Stated kind="shared">{t.shared}</Stated>
+  if (review.expired) return <Stated kind="short">{t.shareExpired}</Stated>
+  return <Stated kind="hidden">{t.notShared}</Stated>
 }
 
 /**
@@ -425,7 +426,7 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
       <Td nowrap>
         <span className="flex items-center gap-2 text-nowrap">
           {/* The same mark the listing gives a published research. */}
-          <Stated icon="eye">{t.published}</Stated>
+          <Stated kind="live">{t.published}</Stated>
           {updating !== null && (
             <Flag kind="changed">{t.updating}</Flag>
           )}
@@ -500,15 +501,14 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
                 title={t.stopUpdatingTitle(name)}
                 warning={t.stopUpdatingWarning}
                 confirm={t.stopUpdatingConfirm}
-                cancel={t.cancel}
                 intent="discard-draft"
-                icon="close"
+                icon="trash"
                 size="row"
               />
             </Form>
           )}
-          {/* Taking a version out of sight: the mark is the one the listing
-              gives what is not published, not the one for throwing away. */}
+          {/* Taking a version off the page: the mark is the one every way of
+              stopping a publication takes, and the state it leaves wears. */}
           <Form method="post">
             <input type="hidden" name="versionId" value={version.id} />
             <Confirm
@@ -516,9 +516,8 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
               title={t.withdrawTitle(name)}
               warning={t.withdrawWarning}
               confirm={t.withdrawConfirm}
-              cancel={t.cancel}
               intent="withdraw-version"
-              icon="eye-off"
+              icon="lock"
               size="row"
               disabled={updating === null ? undefined : t.withdrawUpdating}
             />
@@ -539,7 +538,6 @@ function Unpin({ pinId, subject, locale }: { pinId: string, subject: string, loc
         title={t.unpinTitle(subject)}
         warning={t.unpinWarning}
         confirm={t.unpinConfirm}
-        cancel={t.cancel}
         intent="unpin"
         icon="close"
         size="row"

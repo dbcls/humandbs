@@ -2,8 +2,8 @@ import { Form } from "react-router"
 
 import { adminTasks } from "~/admin/navigation"
 import { requireActor } from "~/auth/actor.server"
-import { ButtonLink, Heading, Note, Stack, Stated } from "~/components/base"
-import { Flag } from "~/components/flags"
+import { ButtonLink, Heading, Note, Stack } from "~/components/base"
+import { Flag, Stated } from "~/components/flags"
 import { Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, KeyValue, Page, Section, Table, Td } from "~/components/page"
@@ -145,8 +145,8 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                               </Stack>
                             )
                           : row.succeededAt === null
-                            ? <Stated icon="clock">{words.never}</Stated>
-                            : <Stated icon="check">{words.ok}</Stated>}
+                            ? <Stated kind="waiting">{words.never}</Stated>
+                            : <Stated kind="resolved">{words.ok}</Stated>}
                       </Td>
                     </tr>
                   ))}

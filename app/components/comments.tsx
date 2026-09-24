@@ -27,9 +27,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useFetcher } from "react-router"
 
-import { Badge, Button, type ButtonSize, controlFace, Dialog, Note, Stack } from "~/components/base"
+import { Badge, Button, type ButtonSize, Dialog, MarkButton, Note, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
-import { Icon, type IconName } from "~/components/icons"
+import { Icon, type IconName, SUBJECT_ICON } from "~/components/icons"
 import { minuteInJst } from "~/dates"
 import type { CommentAnchor } from "~/content/types"
 import { isFieldAnchor, type AnchorSubject } from "~/review/anchors"
@@ -37,6 +37,7 @@ import { unresolvedCount, type CommentView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { Flag } from "./flags"
+import { Empty } from "./page"
 
 const NAME_KEY = "humandbs.review.name"
 
@@ -91,18 +92,6 @@ export function rememberName(name: string): void {
 }
 
 /**
- * Who said something, as words: the name, and — where it was typed rather than
- * taken from an account — that nobody has vouched for it.
- *
- * **What differs is said after the name rather than by a second glyph.** A
- * reader who has learned one mark for "person" should not have to learn
- * another for "which kind of person"; `(anonymous)` reads without being taught.
- */
-export function authorLabel(locale: Locale, name: string, bySignedIn: boolean): string {
-  return bySignedIn ? name : `${name} (${messagesFor(locale).comment.anonymous})`
-}
-
-/**
  * Who said something, as a row draws it: the mark of a person, then the words.
  *
  * **Every author gets the mark**, so that a bare word at the head of a row
@@ -152,7 +141,8 @@ function shownOf(
   return answer?.status === "comments" ? answer.comments.filter(pick) : [...given]
 }
 
-function problemText(locale: Locale, problem: string): string {
+/** What a refused comment or mark was missing, said the same wherever it was refused. */
+export function problemText(locale: Locale, problem: string): string {
   const t = messagesFor(locale).comment
   if (problem === "name-required") return t.nameRequired
   return problem === "body-required" ? t.bodyRequired : t.tooLong
@@ -194,16 +184,9 @@ export function CommentSpot({ context, at, comments, fieldLabel }: {
 
   return (
     <span id={encodeURIComponent(at)} className="inline-flex align-top">
-      <button
-        type="button"
-        onClick={() => { setHeld(true) }}
-        title={heading}
-        className={`${controlFace({ size: "row" })} relative after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']`}
-      >
-        <Icon name="comment" aria-hidden="true" />
-        <span className="sr-only">{heading}</span>
+      <MarkButton icon="comment" label={heading} onClick={() => { setHeld(true) }}>
         {shown.length > 0 && <span className={open > 0 ? "text-accent" : ""}>{t.count(shown.length)}</span>}
-      </button>
+      </MarkButton>
       <Dialog
         title={fieldLabel === undefined ? t.heading : t.fieldHeading(fieldLabel)}
         held={{ open: held, close: () => { setHeld(false) } }}
@@ -353,9 +336,9 @@ export interface CommentGroup {
  */
 const PLACE_MARK: Record<CommentAnchor["kind"], IconName> = {
   "research-field": "type",
-  "dataset-field": "database",
+  "dataset-field": SUBJECT_ICON.dataset,
   "draft": "comment",
-  "memo": "clipboard",
+  "memo": SUBJECT_ICON.memo,
 }
 
 /**
@@ -655,19 +638,31 @@ export function OpenComments({ context, comments, nameOf, perField = false }: {
         held={{ open: held, close }}
         dismiss={messagesFor(context.locale).comment.close}
       >
-        {groups.length === 0
-          ? <Note kind="plain">{t.openCommentsEmpty}</Note>
-          : (
-              <Stack as="ul" gap="block">
-                {groups.map((group) => (
-                  <li key={group.key}>
-                    <PlaceGroup context={context} group={group} fetcher={fetcher} />
-                  </li>
-                ))}
-              </Stack>
-            )}
+        <PlaceGroups context={context} groups={groups} fetcher={fetcher} />
       </Dialog>
     </>
+  )
+}
+
+/**
+ * The open comments, one box per place — the same list in the panel and on the
+ * review screen (`docs/admin-ui.md` の「レビューと共有の画面」), so the two say
+ * "nothing open" the same way too.
+ */
+export function PlaceGroups({ context, groups, fetcher }: {
+  context: CommentContext
+  groups: readonly CommentGroup[]
+  fetcher?: Fetcher
+}) {
+  if (groups.length === 0) return <Empty>{messagesFor(context.locale).admin.editor.openCommentsEmpty}</Empty>
+  return (
+    <Stack as="ul" gap="normal">
+      {groups.map((group) => (
+        <li key={group.key}>
+          <PlaceGroup context={context} group={group} fetcher={fetcher} />
+        </li>
+      ))}
+    </Stack>
   )
 }
 

@@ -27,10 +27,10 @@ import type {
 } from "~/review/preview.server"
 import { previewDatasetPath, previewPath } from "~/review/urls"
 
-import { Badge, Button, ButtonLink, Stack } from "./base"
-import { CommentSpot, rememberName, useRememberedName, WholeNote, type CommentContext } from "./comments"
+import { Badge, Button, ButtonLink, Note, Stack } from "./base"
+import { type CommentContext, CommentSpot, problemText, rememberName, useRememberedName, WholeNote } from "./comments"
 import { DatasetBody } from "./dataset"
-import { Answered, CONTROL, Result } from "./form"
+import { Answer, CONTROL } from "./form"
 import { AnnotationLayer, Card, Code, Page, PageHead } from "./page"
 import { Icon } from "./icons"
 import { PreviousMark } from "./previous"
@@ -252,7 +252,7 @@ export function PreviewHead({ shell, label, locale, problem, whole, children }: 
             </Decide>
           )}
           {problem !== null && (
-            <p className="text-danger text-xs">{problemText(locale, problem)}</p>
+            <Note kind="danger" live>{problemText(locale, problem)}</Note>
           )}
         </Stack>
       </Card>
@@ -370,12 +370,6 @@ function WhoBar({ shell, locale, joins }: {
   )
 }
 
-function problemText(locale: Locale, problem: CommentProblem): string {
-  const t = messagesFor(locale).comment
-  if (problem === "name-required") return t.nameRequired
-  return problem === "body-required" ? t.bodyRequired : t.tooLong
-}
-
 /**
  * The two marks a reader can leave: that they have finished commenting and it
  * is the office's turn, or that there is nothing to fix. Neither is an
@@ -408,10 +402,10 @@ function Decide({ shell, children }: {
           rather than being asked for a second time beside each button. */}
       <Form id={DECIDE_FORM} method="post" className="flex flex-wrap items-center gap-3">
         <input type="hidden" name="intent" value="acknowledge" />
-        <Button type="submit" name="kind" value="commented" variant="secondary" disabled={sending !== null} aria-busy={sending === "commented" || undefined}>
+        <Button type="submit" name="kind" value="commented" variant="secondary" icon={<Icon name="send" aria-hidden="true" />} disabled={sending !== null} aria-busy={sending === "commented" || undefined}>
           {t.commented}
         </Button>
-        <Button type="submit" name="kind" value="approved" variant="primary" disabled={sending !== null} aria-busy={sending === "approved" || undefined}>
+        <Button type="submit" name="kind" value="approved" variant="primary" icon={<Icon name="check" aria-hidden="true" />} disabled={sending !== null} aria-busy={sending === "approved" || undefined}>
           {t.approved}
         </Button>
         {sending !== null && <span role="status" className="sr-only">{t.sending}</span>}
@@ -432,13 +426,17 @@ function Decide({ shell, children }: {
 export function MarkAnswer({ answer, locale }: { answer: PreviewActionResult | undefined, locale: Locale }) {
   const messages = messagesFor(locale)
   const t = messages.preview
-  const done = answer?.status === "acknowledged" ? answer : undefined
   return (
-    <Answered answer={done} locale={locale} label={t.notice} dismiss={messages.comment.close}>
-      {done !== undefined && (
-        <Result ok>{t.sent(firstSentence(done.kind === "commented" ? t.commented : t.approved))}</Result>
-      )}
-    </Answered>
+    <Answer
+      answer={answer}
+      locale={locale}
+      label={t.notice}
+      dismiss={messages.comment.close}
+      said={(one) => one.status === "acknowledged"
+        ? t.sent(firstSentence(one.kind === "commented" ? t.commented : t.approved))
+        : null}
+      ok={() => true}
+    />
   )
 }
 

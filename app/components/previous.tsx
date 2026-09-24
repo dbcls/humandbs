@@ -19,9 +19,8 @@ import type { AnchoredValue, RowsView } from "~/public/view.server"
 import { compareRows, type ComparedRow } from "~/review/compare-rows"
 import { afterParts, beforeParts, diffSentences, type DiffPart } from "~/passage-diff"
 
-import { controlFace, Dialog } from "./base"
+import { Dialog, MarkButton } from "./base"
 import { Flag } from "./flags"
-import { Icon } from "./icons"
 import { Table, Td } from "./page"
 
 /** One side of one line: its text, or the state it says instead. */
@@ -40,8 +39,8 @@ export interface CompareRow {
 /**
  * The mark, and the comparison it opens.
  *
- * **The mark wears the face of the comment mark beside it** (`controlFace` の
- * `row`) — the two stand on one line and are both ways into a panel, and a
+ * **The mark wears the face of the comment mark beside it** (`base.tsx` の
+ * `MarkButton`) — the two stand on one line and are both ways into a panel, and a
  * badge beside a button read as a state that could not be pressed. The word is
  * in the accent that says "changed" wherever it is said. **Where there is
  * nothing to set side by side** — a list whose difference is which elements it
@@ -60,14 +59,9 @@ function ChangeMark({ locale, fieldLabel, children }: {
 
   return (
     <span className="inline-flex">
-      <button
-        type="button"
-        onClick={() => { setOpen(true) }}
-        className={`${controlFace({ size: "row" })} relative after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']`}
-      >
-        <Icon name="diff" aria-hidden="true" />
+      <MarkButton icon="diff" onClick={() => { setOpen(true) }}>
         <span className="text-accent">{t.preview.differsHere}</span>
-      </button>
+      </MarkButton>
       <Dialog
         title={fieldLabel === undefined ? t.preview.changeHeading : t.preview.fieldChangeHeading(fieldLabel)}
         held={{ open, close: () => { setOpen(false) } }}

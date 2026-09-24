@@ -34,6 +34,8 @@ import {
   MENU_ITEM_HERE,
   MENU_PANEL,
   Note,
+  PANE_LABEL,
+  Stack,
   Toast,
   TOAST_MS,
   useDismissible,
@@ -319,7 +321,7 @@ function Labelled({
             <>
               <label
                 htmlFor={id}
-                className="flex items-center gap-2 font-semibold text-ink-muted text-xs"
+                className={`flex items-center gap-2 ${PANE_LABEL}`}
               >
                 <span>{name}</span>
                 {accepts !== undefined && <Accepts>{accepts}</Accepts>}
@@ -808,7 +810,7 @@ export function RadioGroup({ label, name, value, options, hint, disabled }: {
 }) {
   return (
     <fieldset className="flex flex-col gap-2 text-sm" disabled={disabled}>
-      <legend className="font-semibold text-ink-muted text-xs">{label}</legend>
+      <legend className={PANE_LABEL}>{label}</legend>
       <div className="flex flex-wrap gap-4">
         {options.map((option) => (
           <label key={option.value} className="flex items-center gap-1.5">
@@ -909,38 +911,14 @@ export function FileField({
 }
 
 /**
- * A translated pair, side by side.
- *
- * The two languages are one field with two values, not two fields, and putting
- * them beside each other is what makes a missing translation visible without
- * anything having to say so.
+ * One value's two languages, **one above the other, at the distance a label
+ * sits from its value** (`docs/ui.md` の「1 つの値の 2 つの言語は上下に積む」
+ * 「言語どうしは 8px」). Side by side they read as two columns of a table
+ * rather than one thing said twice; at the 16px between fields they read as
+ * two fields.
  */
-export function BilingualField({ label, name, ja, en, required, hint, error, disabled }: FieldLook & {
-  ja?: string
-  en?: string
-}) {
-  return (
-    <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-      <Field
-        label={`${label} (ja)`}
-        name={`${name}.ja`}
-        value={ja}
-        required={required}
-        hint={hint}
-        error={error}
-        disabled={disabled}
-        width="w-full"
-      />
-      <Field
-        label={`${label} (en)`}
-        name={`${name}.en`}
-        value={en}
-        required={required}
-        disabled={disabled}
-        width="w-full"
-      />
-    </div>
-  )
+export function LanguagePair({ children }: { children: ReactNode }) {
+  return <Stack gap="tight">{children}</Stack>
 }
 
 /**
@@ -982,21 +960,6 @@ export function SelectAll({ name, label }: { name: string, label: string }) {
           for (const box of boxes) box.checked = checked
         }}
       />
-    </span>
-  )
-}
-
-/**
- * One line's own box, in a column headed by a `SelectAll`.
- *
- * **The value is the name it announces itself by.** A column of boxes all
- * saying "select" tells a reader who cannot see the row which column they are
- * in and nothing about which line they are on.
- */
-export function SelectOne({ name, value }: { name: string, value: string }) {
-  return (
-    <span className={MARK}>
-      <input type="checkbox" name={name} value={value} aria-label={value} />
     </span>
   )
 }
@@ -1299,6 +1262,44 @@ export function Result({ ok, also, children }: {
       {children}
     </Note>
   )
+}
+
+/**
+ * The answer to what was just sent, said the one way every screen says it:
+ * over the screen (`Answered`), in one box (`Result`), in the words `said`
+ * gives for it (`docs/admin-ui.md` の「操作の答えは画面の上に浮く」).
+ *
+ * **A screen gives the table from answer to sentence and nothing else** — not
+ * a row of boxes one per refusal, not a box of its own. An answer the screen
+ * does not speak to (`said` gives `null`: a publish that left for the research
+ * it published) raises nothing.
+ */
+export function Answer<A extends object>({ answer, locale, said, ok = saysOk, also, label, dismiss }: {
+  answer: A | null | undefined
+  locale: Locale
+  /** What the answer is said as, or `null` where it needs no word. */
+  said: (answer: A) => string | null
+  /** Whether it went through; by default an answer whose `status` is `"ok"`. */
+  ok?: (answer: A) => boolean
+  /** The way to take back what was just done (`Result` の `also`). */
+  also?: (answer: A) => ReactNode
+  /** For an answer outside the management screens (`Answered` の `label` / `dismiss`). */
+  label?: string
+  dismiss?: string
+}) {
+  const words = answer === null || answer === undefined ? null : said(answer)
+  const spoken = words === null ? null : answer
+  return (
+    <Answered answer={spoken} locale={locale} label={label} dismiss={dismiss}>
+      {spoken !== null && spoken !== undefined && words !== null && (
+        <Result ok={ok(spoken)} also={also?.(spoken)}>{words}</Result>
+      )}
+    </Answered>
+  )
+}
+
+function saysOk(answer: object): boolean {
+  return "status" in answer && answer.status === "ok"
 }
 
 /** The way to put the answer away, handed to the `Result` inside it. */

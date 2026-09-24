@@ -56,7 +56,7 @@ export function IdForm({ nextNhaId, locale, onIssuing, size }: {
       />
       <Submit intent={issuing ? "issue" : "pin"} size={size} icon={<Icon name="link" />}>{detail.pinSubmit}</Submit>
       {issuing
-        ? <Button type="button" size={size} onClick={() => { setIssuing(false) }}>{detail.cancel}</Button>
+        ? <Button type="button" size={size} onClick={() => { setIssuing(false) }}>{messagesFor(locale).admin.cancel}</Button>
         : (
             <Button
               type="button"

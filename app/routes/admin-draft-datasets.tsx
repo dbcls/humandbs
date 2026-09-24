@@ -8,10 +8,10 @@ import {
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { AccessionSection } from "~/components/accession"
-import { Confirm, Heading, IconButton, Stack, Stated } from "~/components/base"
-import { Flag } from "~/components/flags"
-import { Answered, Result, Submit } from "~/components/form"
-import { Icon, type IconName } from "~/components/icons"
+import { Confirm, Heading, ReorderButtons, Stack } from "~/components/base"
+import { Flag, Stated } from "~/components/flags"
+import { Answer, Submit } from "~/components/form"
+import { Icon } from "~/components/icons"
 import { Card, Page, Table, Td } from "~/components/page"
 import { DatasetCells, datasetColumns } from "~/components/research"
 import type { Locale } from "~/i18n/locale"
@@ -67,10 +67,11 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
     <Page>
       {/* Only a refusal is answered: what worked comes back as the listing it
           changed. */}
-      <Answered answer={actionData} locale={locale}>
-        {actionData?.status === "conflict" && <Result ok={false}>{t.listConflict}</Result>}
-        {actionData?.status === "refused" && <Result ok={false}>{t.deleteRefused}</Result>}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        said={(answer) => answer.status === "conflict" ? messages.admin.conflict : t.deleteRefused}
+      />
       <Card under={false}>
         <Stack gap="block">
           {/* Who else is in this draft belongs to its name rather than to the
@@ -92,12 +93,12 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
               it is. The table stays when empty: the column names say what
               would stand here. */}
           <Table
+            actions
             align="middle"
             headers={[
               ...datasetColumns(locale),
               t.state,
               <span key="order" className="sr-only">{t.order}</span>,
-              <span key="actions" className="sr-only">{messages.admin.actions}</span>,
             ]}
             whenEmpty={t.noListed}
           >
@@ -167,15 +168,29 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
       <Td>
         <span className="flex flex-wrap items-center gap-2">
           {row.published
-            ? <Stated icon="eye">{t.publishedDataset}</Stated>
-            : <Stated icon="lock">{messages.admin.detail.unpublishedDataset}</Stated>}
+            ? <Stated kind="live">{t.publishedDataset}</Stated>
+            : <Stated kind="hidden">{messages.admin.detail.unpublishedDataset}</Stated>}
           {row.edited && <Flag kind="changed">{t.edited}</Flag>}
         </span>
       </Td>
       <Td holds="mark">
-        <span className="flex gap-1">
-          <Move id={row.id} by={-1} icon="chevron-up" label={t.moveUp} stuck={at.index === 0} revision={revision} />
-          <Move id={row.id} by={1} icon="chevron-down" label={t.moveDown} stuck={at.index === at.of - 1} revision={revision} />
+        <span className="flex items-center gap-1">
+          <ReorderButtons
+            at={at.index}
+            of={at.of}
+            labels={{ up: messages.admin.moveUp, down: messages.admin.moveDown }}
+            render={(by, button) => (
+              // Each direction is a form of its own: the arrows are the only
+              // things on the row told apart by direction rather than by intent.
+              <Form method="post">
+                <input type="hidden" name="revision" value={revision} />
+                <input type="hidden" name="datasetId" value={row.id} />
+                <input type="hidden" name="by" value={by} />
+                <input type="hidden" name="intent" value="move-dataset" />
+                {button}
+              </Form>
+            )}
+          />
         </span>
       </Td>
       {/* **Every row can go, published or not** — a dataset belongs to the
@@ -191,40 +206,11 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
             title={t.deleteDatasetTitle(name)}
             warning={t.deleteWarning}
             confirm={t.deleteConfirm}
-            cancel={messages.admin.detail.cancel}
             intent="delete-dataset"
             size="row"
           />
         </Form>
       </Td>
     </tr>
-  )
-}
-
-/**
- * One step up or down. A form of its own, because the arrows are the only
- * things on the row that are told apart by direction rather than by intent.
- * **A glyph has no colour of its own to dim**, so the row's end is said by
- * the box around it.
- */
-function Move({ id, by, icon, label, stuck, revision }: {
-  id: string
-  by: -1 | 1
-  icon: IconName
-  label: string
-  /** At the end it points to, where there is nothing left to swap with. */
-  stuck: boolean
-  revision: number
-}) {
-  return (
-    <Form method="post">
-      <input type="hidden" name="revision" value={revision} />
-      <input type="hidden" name="datasetId" value={id} />
-      <input type="hidden" name="by" value={by} />
-      <input type="hidden" name="intent" value="move-dataset" />
-      <span className={stuck ? "opacity-50" : ""}>
-        <IconButton name={icon} label={label} type="submit" disabled={stuck} />
-      </span>
-    </Form>
   )
 }

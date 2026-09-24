@@ -5,7 +5,7 @@ import type { UpstreamChoiceView } from "~/admin/templates.server"
 import { adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
 import { AdminBack, WayTo } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
-import { Answered, Result, Submit } from "~/components/form"
+import { Answer, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
 import { BranchDatasets, BranchPairs, DroppedNote, UpstreamNotConnected } from "~/components/upstream"
@@ -55,10 +55,11 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
     <Page>
       {/* Only a refusal is answered here: taking the branch in leaves this
           screen for the draft it wrote into. */}
-      <Answered answer={actionData} locale={locale}>
-        {actionData?.status === "taken" && <Result ok={false}>{t.takenLabel}</Result>}
-        {actionData?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        said={(answer) => answer.status === "taken" ? t.takenLabel : messages.admin.conflict}
+      />
       <Card under={false}>
         <Stack gap="block">
           {/* The name says what is done here and the branch stands beside it —

@@ -33,7 +33,7 @@ v1 はこれを backend (定義域) と frontend (UI type) と localization (値
 | 提供者 | 提供者 | Data provider |
 | 研究代表者 | 研究代表者 | Principal investigator |
 | 所属機関 | 所属機関 | Affiliation |
-| 研究プロジェクト | 研究プロジェクト | Research project |
+| 研究プロジェクト | 研究プロジェクト情報 | Research project |
 | 助成金 | 助成金情報 | Grants |
 | 研究課題番号 | 研究課題番号 | Project number |
 | 関連論文 | 関連論文 | Related publications |
@@ -98,9 +98,11 @@ curator が見る語。**未確定と該当なしと未翻訳は preview にも�
 | 語彙値 | 値 | Value |
 | 語彙型 | 選択肢 | Choice |
 | alert (全ページの上部の 1 文) | アラート | Announcement |
+| news | お知らせ | News |
 
 **alert は「アラート」で、「告知」「お知らせ」とは呼ばない** — 「お知らせ」は news の名前で、公開側も管理側も
-同じ 1 文を同じ語で呼ぶ。
+同じ 1 文を同じ語で呼ぶ。**news は公開側でも「お知らせ」** — 見出し・検索の窓・空の表示のどれでも「ニュース」とは
+呼ばない。en は `News`。
 
 **`catalog` も `vocabulary` もモデル上の名前で、画面には出さない。** curator が口で言うのは「データセットが
 解析手法の表を持つ」「表の key と値」で、値の候補を決まった集合から取る型が「選択肢」になる。仕様の側は

@@ -25,7 +25,7 @@ import { useId, useState } from "react"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Button, Dialog, IconButton, Note, Stack, TOOLTIP, ButtonLink, Chevron } from "./base"
+import { Button, ButtonLink, Chevron, Dialog, IconButton, Note, PANE_LABEL, ReorderButtons, Stack, TOOLTIP } from "./base"
 import { Accepts, CONTROL } from "./form"
 import { Icon, type IconName } from "./icons"
 import { Section as PageSection, Table, Td } from "./page"
@@ -65,6 +65,7 @@ export interface Marks {
    * element carrying it.
    */
   at: string
+  /** Somebody saved this field elsewhere after the screen was opened (a refused save's list). */
   changed: boolean
   onTake: (() => void) | null
   extra?: React.ReactNode
@@ -198,7 +199,7 @@ export function FieldHead({ label, marks, locale, untranslated = false, accepts,
   if (label === undefined) return null
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="font-semibold text-ink-muted text-xs">{label}</span>
+      <span className={PANE_LABEL}>{label}</span>
       {accepts !== undefined && <Accepts>{accepts}</Accepts>}
       <FieldFlags marks={marks} locale={locale} untranslated={untranslated} />
       {(way !== undefined || remove !== undefined) && (
@@ -225,7 +226,7 @@ export function FieldFlags({ marks, locale, untranslated = false }: {
   return (
     <>
       {untranslated && <Flag kind="short">{t.untranslated}</Flag>}
-      {marks.changed && <Flag kind="changed">{t.changed}</Flag>}
+      {marks.changed && <Flag kind="conflicted">{t.changedElsewhere}</Flag>}
       {marks.onTake !== null && (
         <Button
           type="button"
@@ -258,11 +259,10 @@ export function toggledState(state: SlotState, mark: "unknown" | "not-applicable
  * One of the two marks a slot can wear instead of a value: unsettled, or that
  * the question does not apply.
  *
- * **A plain `button`, not `IconButton`.** Pressed, this takes the brand fill
- * that elsewhere means "this is what the screen is asking for"
- * (`docs/ui.md` の「押せるもの」) — the one exception the rule names for
- * itself, because here the fill is reporting what the field already holds
- * rather than asking for anything.
+ * **Pressed, it takes the brand fill** (`IconButton` の `fill`) that elsewhere
+ * means "this is what the screen is asking for" (`docs/ui.md` の「押せるもの」)
+ * — the one exception the rule names for itself, because here the fill is
+ * reporting what the field already holds rather than asking for anything.
  *
  * **What pressing it does is drawn over it** while it is pointed at or holds
  * focus (`base.tsx` の `TOOLTIP`) — "未確定にする", or "未確定の解除" once it
@@ -282,18 +282,15 @@ function StateMark({ icon, label, does, pressed, onClick }: {
   const doesId = useId()
   return (
     <span className="group/tip relative inline-flex">
-      <button
-        type="button"
-        aria-pressed={pressed}
-        aria-label={label}
+      <IconButton
+        name={icon}
+        label={label}
+        pressed={pressed}
+        fill
+        titled={false}
         aria-describedby={doesId}
         onClick={onClick}
-        className={`inline-flex size-tap shrink-0 cursor-pointer items-center justify-center rounded transition-colors ${
-          pressed ? "bg-brand text-white" : "text-ink-muted hover:bg-surface-hover hover:text-ink"
-        }`}
-      >
-        <Icon name={icon} aria-hidden="true" />
-      </button>
+      />
       <span id={doesId} role="tooltip" className={`${TOOLTIP} right-0 group-has-focus-visible/tip:block group-hover/tip:block`}>
         {does}
       </span>
@@ -418,10 +415,9 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
 /**
  * Both languages of one field.
  *
- * **Not `form.tsx`'s `BilingualField`**, which is a plain form's pair: one line
- * each, uncontrolled, and with no state beside it. A draft is held in React
- * state so that a refused save can be answered field by field, and half of
- * these run to several lines.
+ * **Not `form.tsx`'s `LanguagePair`**, which stacks a plain form's two fields
+ * with no state beside them. A draft is held in React state so that a refused
+ * save can be answered field by field, and half of these run to several lines.
  */
 export function PairField({ label, value, multiline, marks, locale, onChange, remove }: {
   /** Absent for the one field of a section, which the section's heading names. */
@@ -593,7 +589,7 @@ export function ItemList<T extends { id: string }>({
   return (
     <>
       {items.length > 0 && (
-        <Table headers={[...columns.map((column) => column.header), messages.admin.actions]}>
+        <Table actions headers={columns.map((column) => column.header)}>
           {items.map((item, at) => (
             // The row is the element's place on the form: a cell of the same
             // list on the page lands here (`form.tsx` の `landAt`), and the
@@ -733,28 +729,17 @@ function ItemOperations({ index, count, locale, onEdit, onMove, onRemove }: {
   onMove: (by: number) => void
   onRemove: () => void
 }) {
-  const t = messagesFor(locale).admin.editor
+  const admin = messagesFor(locale).admin
+  const t = admin.editor
   return (
     <span className="flex items-center gap-1">
       <IconButton name="edit" label={t.edit} onClick={onEdit} />
-      {/* A glyph carries no colour of its own to dim, so what says a move is
-          unavailable is put on the box around it. */}
-      <span className={index === 0 ? "opacity-50" : ""}>
-        <IconButton
-          name="chevron-up"
-          label={t.moveUp}
-          disabled={index === 0}
-          onClick={() => { onMove(-1) }}
-        />
-      </span>
-      <span className={index === count - 1 ? "opacity-50" : ""}>
-        <IconButton
-          name="chevron-down"
-          label={t.moveDown}
-          disabled={index === count - 1}
-          onClick={() => { onMove(1) }}
-        />
-      </span>
+      <ReorderButtons
+        at={index}
+        of={count}
+        labels={{ up: admin.moveUp, down: admin.moveDown }}
+        onMove={onMove}
+      />
       <IconButton name="trash" label={t.remove} onClick={onRemove} />
     </span>
   )
@@ -802,9 +787,8 @@ export function ConflictBand({ locale, changed }: { locale: Locale, changed: str
           <ul className="flex flex-wrap gap-2">
             {changed.map((path) => (
               <li key={path}>
-                <ButtonLink external size="row" to={`#${path.split(".")[0] ?? path}`}>
+                <ButtonLink external size="row" to={`#${path.split(".")[0] ?? path}`} icon={<Chevron dir="right" />}>
                   {path}
-                  <Chevron dir="right" />
                 </ButtonLink>
               </li>
             ))}

@@ -98,13 +98,202 @@ describe("理由の結び方", () => {
   })
 })
 
+/** Every Japanese string the interface says, public and admin alike. */
+const JA = warnings(messagesFor("ja"), "ja")
+
 /**
- * 括弧は半角 `( )` で、全角 `（ ）` を混ぜない (`decisions.md` の「語」)。
+ * A markdown link's target is an address, not words: its brackets and what is
+ * inside them are not the sentence's.
  */
-describe("括弧の全角・半角", () => {
-  it("全角括弧を含まない", () => {
-    const admin = warnings(messagesFor("ja").admin, "admin")
-    expect(admin.filter(([, text]) => /[（）]/.test(text)).map(([path]) => path)).toStrictEqual([])
+function withoutLinkTargets(text: string): string {
+  return text.replace(/\]\([^)]*\)/g, "]")
+}
+
+/**
+ * Where a bracket stands without the half-width space the rule asks for.
+ * **At the start or end of the line and next to punctuation it needs none.**
+ */
+function cramped(text: string): boolean {
+  const plain = withoutLinkTargets(text)
+  return /[^\s([「『]\(/.test(plain) || /\)[^\s)\]。、」』,.:;]/.test(plain)
+}
+
+/**
+ * 括弧は ja でも全部半角 `( )` で、前後に半角の空白を置く (行頭・行末・句読点の隣を除く)。
+ * 区切りの全角スラッシュ「／」も使わない (`docs/admin-ui.md` の「語と文」)。
+ */
+describe("括弧と区切り", () => {
+  // A search example is a value typed into the box as it is, not a sentence.
+  const QUERY_VALUES = new Set(["ja.search.exampleQueries.2"])
+
+  it("規則に掛かる件数が十分ある", () => {
+    expect(JA.length).toBeGreaterThan(500)
+    expect(JA.filter(([, text]) => text.includes("(")).length).toBeGreaterThan(10)
+  })
+
+  it("検査は全角括弧・全角スラッシュ・詰まった括弧を見つける", () => {
+    expect(/[（）／]/.test("カート（3 件）")).toBe(true)
+    expect(cramped("カート(3 件)")).toBe(true)
+    expect(cramped("カート (3 件)です")).toBe(true)
+    expect(cramped("カート (3 件)")).toBe(false)
+    expect(cramped("作成してください (詳細は[こちら](https://example.org/a(b)))。")).toBe(false)
+  })
+
+  it("全角括弧と全角スラッシュを含まない", () => {
+    expect(JA.filter(([, text]) => /[（）／]/.test(text)).map(([path]) => path)).toStrictEqual([])
+  })
+
+  it("括弧の前後に半角空白がある", () => {
+    const offenders = JA.filter(([path, text]) => !QUERY_VALUES.has(path) && cramped(text))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
+  })
+})
+
+/**
+ * 公開側の news は「お知らせ」で、admin と同じ 1 つの名前で呼ぶ (`docs/glossary.md`)。
+ * en は News のまま。
+ */
+describe("news の語", () => {
+  it("ja は「ニュース」を使わない", () => {
+    expect(JA.length).toBeGreaterThan(500)
+    expect(JA.filter(([, text]) => text.includes("ニュース")).map(([path]) => path)).toStrictEqual([])
+  })
+
+  it("公開側の見出しも「お知らせ」", () => {
+    expect(messagesFor("ja").news.heading).toBe("お知らせ")
+    expect(messagesFor("en").news.heading).toBe("News")
+  })
+})
+
+/**
+ * What stands where rows would be says there are none in one form:
+ * 「{もの}はありません。」, and 「条件に合う{もの}はありません。」 when a narrowing
+ * emptied the list. **Not in the past tense** — the list is empty now, not
+ * "was found empty" — and not 「まだ」, which promises rows to come.
+ */
+const EMPTY_KEY = /^(none|empty|emptyRow|nobodyYet|no[A-Z]\w*|\w+Empty|\w+None)$/
+
+/** Keys that match the naming but carry a refusal rather than an empty list. */
+const NOT_EMPTY_STATES = new Set([
+  "ja.admin.datasetEditor.filesEmpty", // 紐づけられない理由
+  "ja.admin.files.noBox", // 公開できない理由
+])
+
+/** Narrowed lists: the empty state after conditions were applied. */
+const FILTERED_EMPTY = /(^|\.)(noMatch\w*|search\.none|research\.none|templates\.none|datasetEditor\.noKey|datasetEditor\.noCandidate)$/
+
+function firstSentence(text: string): string {
+  return `${text.split("。")[0] ?? ""}。`
+}
+
+/** 「{もの}はありません。」 (人なら「いません」) で、「まだ」を持たない — 2 文目は続けてよい。 */
+function saysEmpty(text: string): boolean {
+  const first = firstSentence(text)
+  return /はありません。$|はいません。$/.test(first) && !first.includes("まだ")
+}
+
+describe("空の表示", () => {
+  const empties = JA
+    .filter(([path]) => EMPTY_KEY.test(lastKey(path)))
+    .filter(([path]) => !NOT_EMPTY_STATES.has(path))
+    // A word standing in for a value (「未選択」) is not a sentence about a list.
+    .filter(([, text]) => text.endsWith("。"))
+
+  it("規則に掛かる件数が十分ある", () => {
+    expect(empties.length).toBeGreaterThan(40)
+    expect(empties.filter(([path]) => FILTERED_EMPTY.test(path)).length).toBeGreaterThan(8)
+  })
+
+  it("検査は崩れた形を見つける", () => {
+    expect(saysEmpty("記事はありません。")).toBe(true)
+    expect(saysEmpty("記事はまだありません。")).toBe(false)
+    expect(saysEmpty("バージョンがありません。")).toBe(false)
+    expect(saysEmpty("提供者は登録されていません。")).toBe(false)
+    expect(saysEmpty("カートは空です。")).toBe(false)
+  })
+
+  it("「ありませんでした」(過去形) を使わない", () => {
+    expect(JA.filter(([, text]) => text.includes("ありませんでした")).map(([path]) => path)).toStrictEqual([])
+  })
+
+  it("「{もの}はありません。」の形で、「まだ」を持たない", () => {
+    const offenders = empties.filter(([, text]) => !saysEmpty(text))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
+  })
+
+  it("絞り込みの 0 件は「条件に合う{もの}はありません。」", () => {
+    const offenders = empties
+      .filter(([path]) => FILTERED_EMPTY.test(path))
+      .filter(([, text]) => !text.startsWith("条件に合う"))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
+  })
+
+  it("「その条件に当てはまる」「その語を含む」「当てはまる」の言い方を使わない", () => {
+    const offenders = JA.filter(([, text]) => /当てはまる|その語を含む/.test(text))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
+  })
+})
+
+/**
+ * 別の場所で先に書かれたときの答えは 1 文で、全画面が同じ文を言う。次にすることが
+ * どの画面でも同じなので、語も同じにする。
+ */
+describe("衝突の答え", () => {
+  const admin = messagesFor("ja").admin
+  const said = warnings(admin, "admin").filter(([, text]) => /別の場所で.*(編集|変更)されました/.test(text))
+
+  it("規則に掛かる件数が十分ある — 共通の文と、記事の画面の 409", () => {
+    expect(said.length).toBeGreaterThanOrEqual(2)
+    expect(admin.contents.problems.stale).toBe(admin.conflict)
+  })
+
+  it("どれも共通の 1 文と同じ", () => {
+    expect(said.filter(([, text]) => text !== admin.conflict).map(([path]) => path)).toStrictEqual([])
+  })
+})
+
+/**
+ * 面の文・断り・操作の答えは敬体で結ぶ (`docs/admin-ui.md` の「語と文」)。常体で終わるのは
+ * 画面の説明と欄の下の説明 (note / hint) だけで、読む人に話しかける文には混ぜない。
+ * 公開側の文はどれも読者に話しかけるものなので、全部が敬体。
+ */
+function plainEnding(sentence: string): boolean {
+  if (/(です|ます|ません|ました|ましょう|ください|でした)。$/.test(sentence)) return false
+  return /[うくすつぬふむゆるぐずづぶぷだたい]。$/.test(sentence)
+}
+
+describe("話しかける文の文体", () => {
+  const SPOKEN_KEY = /(Warning|Failed|Refused|Required|Taken|Malformed|Reserved|Updating|Switching)$|^(conflict|gone|missing|same|unchanged|blockedReason|notAdmin|absent|notConnected|queued|reanalyzing)$/
+  const spokenAdmin = JA
+    .filter(([path]) => path.startsWith("ja.admin."))
+    .filter(([path]) => SPOKEN_KEY.test(lastKey(path))
+      || /\.(problems|done)\./.test(path)
+      || (EMPTY_KEY.test(lastKey(path)) && !NOT_EMPTY_STATES.has(path)))
+  const publicSide = JA.filter(([path]) => !path.startsWith("ja.admin."))
+  const sentences = (text: string): string[] => withoutLinkTargets(text).match(/[^。]*。/g) ?? []
+
+  it("規則に掛かる件数が十分ある", () => {
+    expect(spokenAdmin.flatMap(([, text]) => sentences(text)).length).toBeGreaterThan(60)
+    expect(publicSide.flatMap(([, text]) => sentences(text)).length).toBeGreaterThan(30)
+  })
+
+  it("検査は常体の結びを見つけ、敬体と体言止めは通す", () => {
+    expect(plainEnding("この値を伝える。")).toBe(true)
+    expect(plainEnding("代表アドレスになる。")).toBe(true)
+    expect(plainEnding("必要だ。")).toBe(true)
+    expect(plainEnding("元に戻せません。")).toBe(false)
+    expect(plainEnding("入力してください。")).toBe(false)
+    expect(plainEnding("データ登録手順は[こちら]。")).toBe(false)
+  })
+
+  it("admin の面の文・断り・答えは常体で結ばない", () => {
+    const offenders = spokenAdmin.filter(([, text]) => sentences(text).some(plainEnding))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
+  })
+
+  it("公開側の文は常体で結ばない", () => {
+    const offenders = publicSide.filter(([, text]) => sentences(text).some(plainEnding))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
   })
 })
 
@@ -195,6 +384,60 @@ describe("button の語は動詞止めにしない", () => {
 
   it("「する」で終わらない", () => {
     expect(admin.filter(([, text]) => text.endsWith("する")).map(([path]) => path)).toStrictEqual([])
+  })
+})
+
+/**
+ * 押せるものの語は名詞で終わり、動詞の終止形で終わらない (`docs/ui.md` の「押せるもの」)。
+ * 押せるものかどうかは key の名前で見分ける — 動作の語で始まり、説明・見出し・状態の語尾を
+ * 持たない key。**例外は「閉じる」1 つ**で、捨てるものを持たない面の出口の語として決まっている。
+ */
+const PRESSABLE_KEY = /^(create|delete|save|add|remove|edit|publish|unpublish|withdraw|discard|unpin|reissue|merge|cancel|undo|look|upload|apply|choose|repoint|rename|cut|show|hide|post|resolve|reopen|copy|pin|dismiss|reanalyze|refresh|overwrite|schedule|issueNha|makePrimary|stopUpdating|stopSharing|startSharing|copyToDraft|createEmptyDraft|confirm|take|open|done|download|grab|goToLine|moveUp|moveDown|up|down|linkFiles|chooseFiles)([A-Z]\w*)?$/
+const NOT_PRESSABLE = /(Title|Warning|Note|Hint|Placeholder|Failed|Required|Blocked|Heading|Switching|Undated|Refused|Label|Column|Reason|Said|Field|Comment|Instructions|Start|Over|End|Choosing)$/
+const VERB_ENDING = /[うくすつぬふむゆるぐずづぶぷ]$/
+const DECIDED_VERBS = new Set(["閉じる"])
+
+describe("押せるものの語は名詞で終わる", () => {
+  const pressables = warnings(messagesFor("ja").admin, "admin")
+    .filter(([path]) => PRESSABLE_KEY.test(lastKey(path)) && !NOT_PRESSABLE.test(lastKey(path)))
+    .filter(([, text]) => !text.endsWith("。"))
+  const paths = new Set(pressables.map(([path]) => path))
+
+  it("規則に掛かる件数が十分あり、崩れやすい語の key を含む", () => {
+    expect(pressables.length).toBeGreaterThan(100)
+    for (const path of [
+      "admin.detail.stopUpdating",
+      "admin.detail.stopUpdatingConfirm",
+      "admin.cancel",
+      "admin.catalog.mergeInto",
+      "admin.catalog.undo",
+      "admin.templates.look",
+      "admin.comment.reopen",
+      "admin.leave.confirm",
+    ]) expect(paths).toContain(path)
+  })
+
+  it("検査は動詞の終止形を見つける", () => {
+    for (const word of ["更新をやめる", "取り消す", "未解決に戻す", "調べる", "元に戻す"]) {
+      expect(VERB_ENDING.test(word)).toBe(true)
+    }
+    for (const word of ["更新の中止", "取り消し", "解決の取り消し", "検索", "キャンセル"]) {
+      expect(VERB_ENDING.test(word)).toBe(false)
+    }
+  })
+
+  it("動詞の終止形で終わらない (決まった「閉じる」を除く)", () => {
+    const offenders = pressables.filter(([, text]) => VERB_ENDING.test(text) && !DECIDED_VERBS.has(text))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
+  })
+
+  it("確かめる面の実行の語は、面の名前が言う動作と同じ", () => {
+    const detail = messagesFor("ja").admin.detail
+    const catalog = messagesFor("ja").admin.catalog
+    expect(detail.stopUpdatingTitle("v1").endsWith(detail.stopUpdatingConfirm)).toBe(true)
+    expect(detail.stopUpdating).toBe(detail.stopUpdatingConfirm)
+    expect(catalog.mergeTitle("a", "b").endsWith(catalog.mergeConfirm)).toBe(true)
+    expect(catalog.mergeInto).toBe(catalog.mergeConfirm)
   })
 })
 

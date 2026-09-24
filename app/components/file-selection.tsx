@@ -6,7 +6,8 @@ import { inBoxOrder } from "~/files/selection"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Button, ButtonLink, Dialog, Stack, Stated } from "./base"
+import { Button, ButtonLink, Dialog, PANE_LABEL, Stack } from "./base"
+import { Stated } from "./flags"
 import { CONTROL } from "./form"
 import { Icon } from "./icons"
 import { Empty, Table, Td } from "./page"
@@ -47,7 +48,6 @@ export function FileSelection({ locale, listing, selected, filesAt, onChange }: 
       newTab
       newTabLabel={messages.newTab}
       size="row"
-      icon={<Icon name="external" aria-hidden="true" />}
     >
       {messages.admin.detail.openFiles}
     </ButtonLink>
@@ -87,7 +87,6 @@ export function FileSelection({ locale, listing, selected, filesAt, onChange }: 
         held={{ open, close: () => { setOpen(false) } }}
         title={t.linkFiles}
         note={t.linkFilesNote}
-        dismiss={messages.admin.files.cancel}
         wide
         action={(close) => (
           <Button
@@ -149,7 +148,7 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
     <Stack gap="normal">
       {/* A plain, controlled input: the rows narrow on every keystroke. */}
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-semibold text-ink-muted text-xs">{t.filterFiles}</span>
+        <span className={PANE_LABEL}>{t.filterFiles}</span>
         <input
           type="search"
           value={filter}
@@ -195,8 +194,8 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
             <Td nowrap>{dayInJst(entry.updatedAt)}</Td>
             <Td nowrap>
               {entry.isPublic
-                ? <Stated icon="eye">{files.isPublic}</Stated>
-                : <Stated icon="lock">{files.isPrivate}</Stated>}
+                ? <Stated kind="live">{files.isPublic}</Stated>
+                : <Stated kind="hidden">{files.isPrivate}</Stated>}
             </Td>
           </tr>
         ))}

@@ -33,7 +33,7 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     comparedWith: 1,
     updatingReleaseDate: null,
     datasetRows: {},
-    review: { shared: false, unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", datasetLabels: {} },
+    review: { shared: false, expired: false, unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", datasetLabels: {} },
     ...over,
   }
 }
@@ -107,7 +107,7 @@ describe("the publish screen", () => {
 
     expect(html).toContain(">公開できない理由</h2>")
     // Said the way the research's own screen says it — a quiet sentence, not a line in red.
-    expect(html).toContain("研究 ID がまだ割り当てられていません。")
+    expect(html).toContain("研究 ID は未発行です。")
     expect(html).not.toContain("text-danger")
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?公開<\/button>/)
     expect(html).toContain("公開できない理由が残っているため、公開できません。")
@@ -228,6 +228,7 @@ describe("the publish screen", () => {
     const html = render(view({
       review: {
         shared: true,
+        expired: false,
         unresolved: 0,
         acknowledgements: [{ kind: "approved", name: "山田太郎", bySignedIn: true, createdAt: "2026-09-20T01:00:00Z", count: 1 }],
         comments: [],
@@ -244,6 +245,40 @@ describe("the publish screen", () => {
     expect(html).not.toMatch(/disabled=""/)
   })
 
+  /** The review screen's table (#217): a row per person, when they last pressed and how often. */
+  it("lists who pressed each mark as the review screen does — a table of name, last time and count", () => {
+    const html = render(view({
+      review: {
+        shared: true,
+        expired: false,
+        unresolved: 0,
+        acknowledgements: [{ kind: "approved", name: "山田太郎", bySignedIn: true, createdAt: "2026-09-20T01:00:00Z", count: 3 }],
+        comments: [],
+        signedInName: "curator",
+        datasetLabels: {},
+      },
+    }))
+    const review = html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開前に確かめるもの</h2>"))
+    // One table per mark, both standing, the empty one saying nobody pressed.
+    expect(review.match(/<table/g)).toHaveLength(2)
+    expect(review.match(/>名前<\/th>/g)).toHaveLength(2)
+    expect(review).toContain(">最後に押した日時</th>")
+    expect(review).toContain("2026-09-20 10:00")
+    expect(review).toContain("3 回")
+    expect(review).toContain("印を押した人はいません。")
+  })
+
+  it("says a link past its date as expired, apart from a draft never shared", () => {
+    const base = { unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", datasetLabels: {} }
+    const review = (html: string) => html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開</h2>"))
+    const expired = review(render(view({ review: { ...base, shared: false, expired: true } })))
+    expect(expired).toContain("共有の期限切れ")
+    expect(expired).not.toContain("未共有")
+    const never = review(render(view({ review: { ...base, shared: false, expired: false } })))
+    expect(never).toContain("未共有")
+    expect(never).not.toContain("期限切れ")
+  })
+
   it("opens the open questions in a panel from the review, counting them on its way in", () => {
     const comment = {
       id: "c1",
@@ -257,7 +292,7 @@ describe("the publish screen", () => {
       createdAt: "2026-09-20T01:00:00Z",
     }
     const html = render(view({
-      review: { shared: true, unresolved: 1, acknowledgements: [], comments: [comment], signedInName: "curator", datasetLabels: {} },
+      review: { shared: true, expired: false, unresolved: 1, acknowledgements: [], comments: [comment], signedInName: "curator", datasetLabels: {} },
     }))
     const review = html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開</h2>"))
     // The panel's way in: a button, with the count on it, not a link away.
@@ -304,7 +339,7 @@ describe("the publish screen", () => {
   })
 
   it("says why a publish came back rather than leaving the screen unchanged", () => {
-    expect(render(view(), { status: "conflict" })).toContain("別の場所で編集されました")
+    expect(render(view(), { status: "conflict" })).toContain("この画面を開いた後に別の場所で変更されました。")
     expect(render(view(), { status: "unacknowledged" })).toContain("確認のチェック")
     expect(render(view(), { status: "taken" })).toContain("既に別のものに割り当てられています")
   })

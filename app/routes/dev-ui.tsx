@@ -24,12 +24,14 @@ import { AddToCartButton, CartToggle } from "~/components/cart"
 import { Markdown } from "~/components/markdown"
 import {
   AppliedConditions,
+  ListingTools,
   PageSizeChooser,
   Pagination,
   SearchExamples,
   SearchForm,
   SortChooser,
 } from "~/components/search"
+import { PressedBy } from "~/components/review"
 import { ActionButton, ActionRow, NewsList } from "~/components/site"
 
 import {
@@ -44,33 +46,38 @@ import {
   type ButtonVariant,
   Chip,
   Choice,
-  Clamped,
   CLEAR,
-  Excerpt,
   Confirm,
+  CopyButton,
+  CountBubble,
+  Excerpt,
   Heading,
   IconButton,
   LanguagePills,
+  MarkButton,
   Menu,
   MoreLink,
   Note,
+  type NoteKind,
   PANE_LABEL,
   PaneHeading,
-  RoundLink,
-  type NoteKind,
   Progress,
+  ReorderButtons,
+  RoundLink,
   SectionTabs,
   Stack,
   SwitchTabs,
   TabPanel,
   type Tone,
+  ValueChip,
 } from "~/components/base"
+import { FLAG, Flag, type FlagKind, Stated } from "~/components/flags"
 import { FacetPanel } from "~/components/facets"
 import {
-  BilingualField,
   Checkbox,
   Field,
   FileField,
+  LanguagePair,
   RadioGroup,
   Result,
   Select,
@@ -80,8 +87,13 @@ import {
 import { Icon, ICON_NAMES } from "~/components/icons"
 import {
   AccessTypeBadge,
+  BandBox,
   Card,
+  DatasetIds,
   Empty,
+  Fact,
+  Facts,
+  IdMark,
   KeyValue,
   Page,
   PageHead,
@@ -188,6 +200,7 @@ const TEXT_SIZES = ["text-xs", "text-sm", "text-base", "text-lg", "text-xl", "te
 
 const BUTTON_VARIANTS: ButtonVariant[] = ["primary", "secondary", "danger"]
 const TONES: Tone[] = ["brand", "accent", "muted", "warning", "danger"]
+const FLAG_KINDS = Object.keys(FLAG) as FlagKind[]
 const NOTE_KINDS: NoteKind[] = ["info", "tip", "warning", "danger"]
 
 const FIELD_TABS = [
@@ -203,6 +216,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
   const [pane, setPane] = useState<"both" | "left" | "right">("both")
   const [slot, setSlot] = useState<"value" | "unknown">("value")
   const first = ROWS[0]
+  const messages = messagesFor(LOCALE)
 
   return (
     <Page>
@@ -380,8 +394,26 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 それ。同じ行でもページ送りの番号だけは 4px で、数字が箱を埋めないため。
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" listing icon={<Icon name="copy" />}>listing — 一覧の行</Button>
-                <Button type="button" icon={<Icon name="copy" />}>listing 無し — それ以外</Button>
+                <Button type="button" listing icon={<Icon name="search" />}>listing — 一覧の行</Button>
+                <Button type="button" icon={<Icon name="search" />}>listing 無し — それ以外</Button>
+              </div>
+              <p className="text-ink-muted text-sm">
+                コピーは 1 つの部品。押すと印が ✓ に、語が「コピーしました」に入れ替わり、読み上げにも
+                届いて、数秒で戻る。2 つの語は同じ升に立つので、答えても幅は動かない。
+              </p>
+              <div id="copy" className="flex flex-wrap items-center gap-3">
+                <CopyButton listing text="hum0001" label="コピー" done={messages.copied} />
+                <CopyButton text="hum0001" label="リンクのコピー" done={messages.copied} />
+                <CopyButton size="row" text="/common/example.pdf" label="アドレスのコピー" done={messages.copied} />
+              </div>
+              <p className="text-ink-muted text-sm">
+                文の行の中に立つ、面を開く印 (MarkButton)。行の背丈 24px で描き、押せる範囲だけを
+                36px に広げる。コメントの印と「変更あり」がこれ。
+              </p>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <span>研究題目</span>
+                <MarkButton icon="comment" label="コメント" onClick={() => undefined}>2</MarkButton>
+                <MarkButton icon="diff" onClick={() => undefined}><span className="text-accent">変更あり</span></MarkButton>
               </div>
               <p className="text-ink-muted text-sm">
                 選ぶことは押すことではないので、面を借りない。選択肢は 1 つの器を分け合い、
@@ -431,8 +463,11 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <Button type="button" variant="primary" size="lg">lg — 頁の呼びかけ</Button>
                 <Button type="button" variant="primary" disabled>変更がありません</Button>
                 <Button type="button" variant="danger" disabled icon={<Icon name="trash" />}>削除する</Button>
-                <ButtonLink to="/research" variant="secondary" icon={<Icon name="external" />}>
+                <ButtonLink to="/research" variant="secondary" way>
                   研究一覧へ
+                </ButtonLink>
+                <ButtonLink to="/research" external newTab newTabLabel={messages.newTab}>
+                  新しいタブで開く
                 </ButtonLink>
                 <IconButton name="edit" label="編集する" />
                 <IconButton name="trash" label="削除する" />
@@ -453,12 +488,15 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div className="flex flex-wrap items-center gap-2">
                 {TONES.map((tone) => <Badge key={tone} tone={tone}>{tone}</Badge>)}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="brand" icon={<Icon name="book" />}>研究</Badge>
-                <Badge tone="brand" icon={<Icon name="database" />}>データセット</Badge>
-                <Badge tone="muted" icon={<Icon name="eye" />}>未公開</Badge>
-                <Badge tone="warning" icon={<Icon name="warning" />}>上流と食い違い</Badge>
-                <Badge tone="danger" icon={<Icon name="alert" />}>公開できません</Badge>
+              <p className="text-ink-muted text-sm">
+                印の色と形は種類が決める (Flag)。一部の行だけが持つものはバッジ、どの行も持つ状態は
+                同じ種類の印 + 語 (Stated) で、色を持たない。
+              </p>
+              <div id="flag" className="flex flex-wrap items-center gap-2">
+                {FLAG_KINDS.map((kind) => <Flag key={kind} kind={kind}>{kind}</Flag>)}
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                {FLAG_KINDS.map((kind) => <Stated key={kind} kind={kind}>{kind}</Stated>)}
               </div>
               <Band className="rounded">
                 <span className="flex items-center gap-2 text-sm">
@@ -487,6 +525,14 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   remove="アクセス制限: 制限公開（Type I） を解除"
                 />
                 <Chip value="肺癌" to="/research" remove="肺癌 を解除" />
+              </div>
+              <p className="text-ink-muted text-sm">
+                選んだ値 (ValueChip)。バッジの面で、押すと欄から外れる。語彙の欄がこれを並べる。
+              </p>
+              <div id="value-chip" className="flex flex-wrap items-center gap-2">
+                <ValueChip remove="解除" onRemove={() => undefined}>肺癌</ValueChip>
+                <ValueChip remove="解除" onRemove={() => undefined}>全ゲノムシークエンス</ValueChip>
+                <ValueChip remove="解除" disabled onRemove={() => undefined}>押せない値</ValueChip>
               </div>
             </div>
           </Section>
@@ -546,6 +592,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               />
               <RoundLink to="/research" name="search" label="キーワード検索" />
               <RoundLink to="/auth/login" name="log-in" label="ログイン" filled external />
+              {/* 件数の丸 (CountBubble)。丸い操作の角に浮くか、箱の中で語の隣に立つ */}
+              <CountBubble count={3} />
+              <CountBubble count={12} tone="brand" />
               {/* 数を持つ丸は `Menu` の側。中身を開くものなのでリンクではない */}
               <Menu label="カート（3 件）" icon="cart" round count={3}>
                 <p className="px-4 py-2 text-ink-muted text-sm">3 件を集めています</p>
@@ -613,7 +662,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 {FIELD_TABS.map((entry) => (
                   <TabPanel key={entry.id} id={entry.id} current={tab}>
                     <div className="py-4">
-                      <BilingualField label={entry.label} name={entry.id} />
+                      <LanguagePair>
+                        <Field label={`${entry.label} (ja)`} name={`${entry.id}.ja`} width="w-full" />
+                        <Field label={`${entry.label} (en)`} name={`${entry.id}.en`} width="w-full" />
+                      </LanguagePair>
                     </div>
                   </TabPanel>
                 ))}
@@ -642,10 +694,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                       <IconButton name="cart" label={`${row.humLabel} をカートに入れる`} />
                     </Td>
                     <Td nowrap>
-                      <Link to={`/research/${row.humLabel}`} className="flex items-center gap-1">
-                        <Icon name="book" />
-                        {row.humLabel}
-                      </Link>
+                      <IdMark kind="research" to={`/research/${row.humLabel}`}>{row.humLabel}</IdMark>
                     </Td>
                     <Td floor="min-w-72">
                       <Excerpt more="もっと見る" less="閉じる">
@@ -653,16 +702,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                       </Excerpt>
                     </Td>
                     <Td nowrap>
-                      <Clamped
-                        items={row.datasetLabels.map((label) => (
-                          <span key={label} className="flex items-center gap-1">
-                            <Icon name="database" className="text-ink-muted" />
-                            {label}
-                          </span>
-                        ))}
-                        more={(rest) => `他 ${String(rest)} 件`}
-                        less="閉じる"
-                      />
+                      <DatasetIds locale={LOCALE} items={row.datasetLabels.map((label) => ({ label, to: null }))} />
                     </Td>
                     <Td nowrap>
                       <div className="flex flex-col items-start gap-1">
@@ -932,12 +972,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   ]}
                 />
               </div>
-              <BilingualField
-                label="研究題目"
-                name="title"
-                ja="シークエンス解析によるがんゲノム研究：胆道がん"
-                en="Genome sequencing analysis for biliary tract cancer"
-              />
+              <LanguagePair>
+                <Field label="研究題目 (ja)" name="title.ja" value="シークエンス解析によるがんゲノム研究：胆道がん" width="w-full" />
+                <Field label="研究題目 (en)" name="title.en" value="Genome sequencing analysis for biliary tract cancer" width="w-full" />
+              </LanguagePair>
               <div className="flex flex-wrap items-start gap-8">
                 <RadioGroup
                   label="公開の仕方"
@@ -972,7 +1010,6 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   title="hum0001 の削除"
                   warning="公開バージョンも下書きも削除されます。元に戻せません。"
                   confirm="削除"
-                  cancel="キャンセル"
                 />
                 <Menu label="ほかの操作">
                   <Link to="/dev/ui" className="px-4 py-2 text-sm no-underline hover:bg-surface-hover">
@@ -985,6 +1022,84 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div className="max-w-sm">
                 <Progress label="hum0103.v1.CpG.v1.zip を送っています" done={62} total={100} />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="管理画面の部品">
+            <div id="admin-parts" className="flex flex-col gap-8">
+              <div>
+                <p className="mb-2 text-ink-muted text-sm">
+                  管理画面の一覧の道具の行 (`ListingTools`)。並び替え・表示件数・件数・ページ送りが 1 行で、
+                  既定の並びと向きはアドレスに書かない。絞り込みの form は `ListingPresented` が並びと件数を運ぶ。
+                </p>
+                <ListingTools
+                  locale="ja"
+                  presented={{
+                    sort: {
+                      keys: ["published", "title"],
+                      current: "title",
+                      order: "asc",
+                      unwritten: "published",
+                      runs: () => "desc",
+                      opens: (key) => key === "title" ? "asc" : "desc",
+                      name: (key) => key === "title" ? "タイトル" : "公開日時",
+                    },
+                    size: 20,
+                  }}
+                  at={() => "/dev/ui"}
+                  paging={{ total: 43, from: 1, to: 20, page: 1, pageCount: 3, at: () => "/dev/ui" }}
+                />
+              </div>
+              <div>
+                <p className="mb-2 text-ink-muted text-sm">
+                  表の操作の列 (`Table` の `actions`、見出しは読み上げだけ)、行の上げ下げ (`ReorderButtons`、端は押せない姿)、
+                  識別子の頭の印 (`IdMark`)。
+                </p>
+                <Table actions align="middle" headers={["データセット ID", "研究 ID"]}>
+                  {["JGAD000001", "JGAD000002", "JGAD000003"].map((label, at) => (
+                    <tr key={label}>
+                      <Td nowrap><IdMark kind="dataset" to="/dev/ui">{label}</IdMark></Td>
+                      <Td nowrap><IdMark kind="research" to="/dev/ui" newTab locale="ja">hum0001</IdMark></Td>
+                      <Td holds="control">
+                        <span className="flex items-center gap-1">
+                          <ReorderButtons at={at} of={3} labels={{ up: "上へ", down: "下へ" }} onMove={() => undefined} />
+                        </span>
+                      </Td>
+                    </tr>
+                  ))}
+                </Table>
+              </div>
+              <div className="grid gap-8 lg:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-ink-muted text-sm">
+                    節の中の短い名前と値の列挙 (`Facts`)。値が操作や複数行でも 1 行目が名前に揃う。
+                  </p>
+                  <Facts>
+                    <Fact name="共有"><Stated kind="shared">共有中</Stated></Fact>
+                    <Fact name="研究題目">
+                      <LanguagePair>
+                        <span>シークエンス解析によるがんゲノム研究</span>
+                        <span>Genome sequencing analysis</span>
+                      </LanguagePair>
+                    </Fact>
+                  </Facts>
+                </div>
+                <div>
+                  <p className="mb-2 text-ink-muted text-sm">同じ種類のものが並ぶ帯付きの箱 (`BandBox`)。</p>
+                  <BandBox level={3} title="解析手法 1" aside={<span className="text-sm">2026-09-24</span>}>
+                    <span className="text-sm">本文</span>
+                  </BandBox>
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-ink-muted text-sm">
+                  レビューと共有・公開前の確認の「押した人」(`PressedBy`)。行は人で、名前・最後に押した日時・回数。
+                </p>
+                <PressedBy
+                  locale="ja"
+                  rows={[{ kind: "approved", name: "山田太郎", bySignedIn: true, createdAt: "2026-09-20T01:00:00Z", count: 2 }]}
+                />
               </div>
             </div>
           </Section>

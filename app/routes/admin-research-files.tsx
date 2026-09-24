@@ -1,4 +1,4 @@
-import { data, Form, Link } from "react-router"
+import { data, Form } from "react-router"
 
 import {
   adminResearchFilesPath,
@@ -9,19 +9,15 @@ import {
 } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import {
-  Chooser,
-  CHOOSER_SIDE,
   Heading,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
   Note,
   Stack,
 } from "~/components/base"
 import { BoxTable, UploadPanel } from "~/components/files"
-import { Answered, Checkbox, Result } from "~/components/form"
+import { Answer, Checkbox } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Paging } from "~/components/page"
-import { DateRange, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { DateRange, type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import { BOX_SORT, BOX_SORT_KEYS, BOX_STATES, type BoxSortKey, type BoxState } from "~/files/box"
 import { filesAction, filesPage, type FilesPageView } from "~/files/pages.server"
 import type { Locale } from "~/i18n/locale"
@@ -30,7 +26,6 @@ import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { dateWindows } from "~/search/date-window"
-import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 import { useAsk } from "~/search-as-typed"
 
 import type { Route } from "./+types/admin-research-files"
@@ -85,13 +80,20 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
     <Page>
       {/* Only a refusal is answered: publishing, taking down and deleting all
           come back as the box they changed. */}
-      <Answered answer={actionData} locale={locale}>
-        {actionData?.status === "nothing-selected" && <Result ok={false}>{t.nothingSelected}</Result>}
-        {actionData?.status === "no-box" && <Result ok={false}>{t.publishNeedsLabel}</Result>}
-        {actionData?.status === "malformed-name" && <Result ok={false}>{t.malformedName}</Result>}
-        {actionData?.status === "name-taken" && <Result ok={false}>{t.nameTaken}</Result>}
-        {actionData?.status === "switching" && <Result ok={false}>{t.renameSwitching}</Result>}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        said={(answer) => {
+          switch (answer.status) {
+            case "nothing-selected": return t.nothingSelected
+            case "no-box": return t.publishNeedsLabel
+            case "malformed-name": return t.malformedName
+            case "name-taken": return t.nameTaken
+            case "switching": return t.renameSwitching
+            default: return null
+          }
+        }}
+      />
       {/* **節を 1 つも持たない画面なので、h1 の下は節と節の距離ではない**
           (`docs/ui.md` の「縦の間隔」) — `common/` の箱と同じ。 */}
       <Card under={false}>
@@ -131,8 +133,15 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                   // sides stand under it whatever the reader has asked for.
                   refineHasMore
                   refine={<Filters view={view} locale={locale} />}
-                  tools={<Tools view={view} locale={locale} />}
-                  pages={<Pages view={view} locale={locale} />}
+                  tools={(
+                    <ListingTools
+                      locale={locale}
+                      presented={presentation(view, locale)}
+                      at={(presented) => at(view, presented)}
+                      paging={paging(view)}
+                    />
+                  )}
+                  pages={<Paging locale={locale} {...paging(view)} />}
                   panel={null}
                 >
                   <BoxTable
@@ -169,9 +178,7 @@ function at(view: FilesPageView, over: Partial<BoxListingQuery>): string {
     to: view.to,
     states: view.states,
     page: 1,
-    sort: view.sort === BOX_SORT ? null : view.sort,
-    order: view.order === "asc" ? null : view.order,
-    size: view.size === PAGE_SIZE ? null : view.size,
+    ...presentedQuery(presentation(view, view.locale)),
     ...over,
   }))
 }
@@ -218,7 +225,7 @@ function Filters({ view, locale }: ViewProps) {
         {view.from !== null && <input type="hidden" name="from" value={view.from} />}
         {view.to !== null && <input type="hidden" name="to" value={view.to} />}
         <Sides view={view} />
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
       {/* **The day is the one the column shows** — the JST day the file was
@@ -229,7 +236,7 @@ function Filters({ view, locale }: ViewProps) {
         <DateRange locale={locale} action={to} windows={windows} from={view.from ?? ""} to={view.to ?? ""}>
           <input type="hidden" name="q" value={view.keyword} />
           <Sides view={view} />
-          <Presented view={view} />
+          <ListingPresented presented={presentation(view, locale)} />
         </DateRange>
       </RefineAxis>
 
@@ -237,7 +244,7 @@ function Filters({ view, locale }: ViewProps) {
         <input type="hidden" name="q" value={view.keyword} />
         {view.from !== null && <input type="hidden" name="from" value={view.from} />}
         {view.to !== null && <input type="hidden" name="to" value={view.to} />}
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
         <RefineAxis label={t.state}>
           {BOX_STATES.map((state: BoxState) => (
             <Checkbox
@@ -268,99 +275,36 @@ function Sides({ view }: { view: FilesPageView }) {
 }
 
 /**
- * How the result is presented, carried across a change of conditions. **Only
- * what differs from the default is written**, so an unnarrowed box is still the
- * bare address.
+ * How the box is read: in what order and how much of it at a time — the same
+ * tools the research listing carries, in the same place and the same shape.
+ * Every key runs from its smallest end in the bare address.
  */
-function Presented({ view }: { view: FilesPageView }) {
-  return (
-    <>
-      {view.sort !== BOX_SORT && <input type="hidden" name="sort" value={view.sort} />}
-      {view.order !== "asc" && <input type="hidden" name="order" value={view.order} />}
-      {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
-    </>
-  )
-}
-
-/**
- * How the box is read: in what order, how much of it at a time, and which part
- * of it is on screen. The same four the research listing carries, in the same
- * place and the same shape.
- */
-function Tools({ view, locale }: ViewProps) {
-  const messages = messagesFor(locale)
-  const t = messages.admin.files
+function presentation(view: FilesPageView, locale: Locale): Presentation<BoxSortKey> {
+  const t = messagesFor(locale).admin.files
   // The box names its own columns, so the orders are named by them rather than
   // by a second set of words meaning the same three things.
-  const sortNames: Record<BoxSortKey, string> = {
-    slug: t.name,
-    size: t.size,
-    updated: t.updatedAt,
+  const names: Record<BoxSortKey, string> = { slug: t.name, size: t.size, updated: t.updatedAt }
+  return {
+    sort: {
+      keys: BOX_SORT_KEYS,
+      current: view.sort,
+      order: view.order,
+      unwritten: BOX_SORT,
+      runs: () => "asc",
+      name: (key) => names[key],
+    },
+    size: view.size,
   }
-  const flipped = view.order === "asc" ? "desc" : "asc"
-  const turn = flipped === "asc"
-    ? messages.search.sort.toAscending
-    : messages.search.sort.toDescending
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
-      <Chooser
-        label={messages.search.sort.label}
-        value={sortNames[view.sort]}
-        beside={(
-          <Link
-            to={at(view, { order: flipped === "asc" ? null : flipped })}
-            aria-label={turn}
-            title={turn}
-            className={CHOOSER_SIDE}
-          >
-            {/* The glyph says which way the box runs now, not where it goes. */}
-            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
-          </Link>
-        )}
-      >
-        {BOX_SORT_KEYS.map((option) => (
-          <Link
-            key={option}
-            to={at(view, { sort: option === BOX_SORT ? null : option, order: null })}
-            aria-current={option === view.sort ? "true" : undefined}
-            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {sortNames[option]}
-          </Link>
-        ))}
-      </Chooser>
-      <Chooser label={messages.search.pageSize} value={String(view.size)}>
-        {PAGE_SIZES.map((option) => (
-          <Link
-            key={option}
-            to={at(view, { size: option === PAGE_SIZE ? null : option })}
-            aria-current={option === view.size ? "true" : undefined}
-            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {option}
-          </Link>
-        ))}
-      </Chooser>
-      <Pages view={view} locale={locale} />
-    </div>
-  )
 }
 
-/**
- * The count and the way through the pages, which stand over the table and again
- * under it — the ordering and the page size have no business at the foot.
- */
-function Pages({ view, locale }: ViewProps) {
-  return (
-    <Paging
-      locale={locale}
-      total={view.total}
-      from={view.rangeFrom}
-      to={view.rangeTo}
-      page={view.page}
-      pageCount={view.pageCount}
-      at={(page) => at(view, { page })}
-    />
-  )
+/** The count and the way through the pages, over the table and again under it. */
+function paging(view: FilesPageView): ListingPaging {
+  return {
+    total: view.total,
+    from: view.rangeFrom,
+    to: view.rangeTo,
+    page: view.page,
+    pageCount: view.pageCount,
+    at: (page) => at(view, { page }),
+  }
 }

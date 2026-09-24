@@ -35,7 +35,7 @@ export function AssistantReport({
    * **The area's own words reach this subtree, not just the assistant's.** What
    * it draws is built from `words` — the slice the service's screen owns — but a
    * table's parts are the management area's, and those are named where every
-   * other table names them (`admin.actions`).
+   * other table names them (`Table` の `actions`).
    */
   locale: Locale
   words: AssistantWords

@@ -16,19 +16,17 @@ import { datasetPath, filePath, href } from "~/public/urls"
 import {
   Button,
   ButtonLink,
-  Clamped,
   Confirm,
   Note,
   Progress,
   Stack,
-  Stated,
-  TOAST_MS,
+  CopyButton,
 } from "./base"
 import { SlugEditor } from "./contents"
 import { Submit } from "./form"
 import { Icon } from "./icons"
-import { ExternalLink, Paging, Table, Td } from "./page"
-import { Flag } from "./flags"
+import { DatasetIds, Paging, Table, Td } from "./page"
+import { Flag, Stated } from "./flags"
 
 /**
  * The download list, and the box behind it.
@@ -189,6 +187,7 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
 
   return (
     <Table
+      actions
       // No cell of a row runs to a second line but the name, and the row
       // holds controls a line taller than its words.
       align="middle"
@@ -198,9 +197,6 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
         { text: t.size, align: "right" },
         t.updatedAt,
         t.state,
-        /* The column of things to press names itself for anyone reading
-           the row aloud and nowhere else. */
-        <span key="actions" className="sr-only">{messages.admin.actions}</span>,
       ]}
       whenEmpty={whenEmpty ?? t.empty}
     >
@@ -256,15 +252,10 @@ function BoxRow({ row, humLabel, locale, selectedBy }: {
               the way the research listing's dataset IDs do: the curator is
               working down this box and would lose the row. */}
           {selectedBy.length > 0 && (
-            <Clamped
-              more={(rest) => messages.search.andMore(rest)}
-              less={messages.search.showLess}
-              items={selectedBy.map((label) => (
-                <span key={label} className="inline-flex items-center gap-1 align-top text-nowrap">
-                  <Icon name="database" aria-hidden="true" className="text-ink-muted" />
-                  <ExternalLink to={href(locale, datasetPath(label))} locale={locale}>{label}</ExternalLink>
-                </span>
-              ))}
+            <DatasetIds
+              newTab
+              locale={locale}
+              items={selectedBy.map((label) => ({ label, to: href(locale, datasetPath(label)) }))}
             />
           )}
         </Td>
@@ -318,7 +309,6 @@ function BoxRow({ row, humLabel, locale, selectedBy }: {
               title={t.deleteTitle(row.name)}
               warning={t.deleteWarning}
               confirm={t.deleteConfirm}
-              cancel={t.cancel}
               intent="delete"
               size="row"
             />
@@ -339,8 +329,8 @@ function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
   // Every row has a side, so the side is a mark and a word rather than a box
   // (docs/ui.md の「壊れるもの」); only a failure is a box.
   const side = entry.isPublic
-    ? <Stated icon="eye">{t.isPublic}</Stated>
-    : <Stated icon="lock">{t.isPrivate}</Stated>
+    ? <Stated kind="live">{t.isPublic}</Stated>
+    : <Stated kind="hidden">{t.isPrivate}</Stated>
   if (entry.pending?.failed !== true) return side
   return (
     <span className="flex flex-wrap items-center gap-2">
@@ -590,7 +580,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button
               type="button"
-              icon={<Icon name="upload" />}
+              icon={<Icon name="file" />}
               disabled={busy}
               onClick={() => { input.current?.click() }}
             >
@@ -598,7 +588,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
             </Button>
             {sending && (
               <Button type="button" variant="secondary" onClick={() => { aborter.current?.abort() }}>
-                {t.uploadCancel}
+                {messagesFor(locale).admin.cancel}
               </Button>
             )}
           </div>
@@ -617,7 +607,6 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
           title={t.overwriteTitle}
           warning={t.overwriteWarning(pending?.existing.length ?? 0, pending?.existing.join(", ") ?? "")}
           confirm={t.overwrite}
-          cancel={t.cancel}
           icon="upload"
           onConfirm={() => {
             if (pending !== null) void transfer(pending.files)
@@ -642,47 +631,19 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
  *
  * **What is copied is the path rather than the whole URL.** It is written into
  * a body, and a body carrying the host it was written on stops working as soon
- * as the same content is read anywhere else.
- *
- * **The answer is a word, not only a glyph.** Copying leaves no trace on the
- * screen — the clipboard is somewhere else — so the press has nothing to show
- * for itself but what the control says afterwards, and a glyph that turns from
- * two squares into a tick is a difference nobody catches out of the corner of
- * an eye. It goes back to offering itself again after the same wait a toast
- * keeps (`TOAST_MS`).
- *
- * **The two faces are one control, so it does not change size when it answers.**
- * The word is held to the width of the longer of the two: a button that grew by
- * a few pixels on being pressed would shift whatever is beside it in the row at
- * the moment the reader is still looking there.
+ * as the same content is read anywhere else. The path is shown to a pointer,
+ * since the row names the file rather than the address.
  */
 export function CopyAddress({ address, locale }: { address: string, locale: Locale }) {
-  const t = messagesFor(locale).admin.files
-  const [copied, setCopied] = useState(false)
-
+  const messages = messagesFor(locale)
   return (
-    <Button
-      type="button"
+    <CopyButton
       size="row"
-      icon={<Icon name={copied ? "check" : "copy"} />}
+      text={address}
       title={address}
-      className={`justify-center transition-colors duration-200 ${copied ? "border-line-strong text-ink-muted" : ""}`}
-      onClick={() => {
-        void navigator.clipboard.writeText(address).then(() => {
-          setCopied(true)
-          window.setTimeout(() => {
-            setCopied(false)
-          }, TOAST_MS)
-        })
-      }}
-    >
-      {/* The two words stand in one cell, so the control is the width of the
-          longer of them whichever one it is showing. */}
-      <span className="grid">
-        <span className={`col-start-1 row-start-1 ${copied ? "invisible" : ""}`}>{t.copyAddress}</span>
-        <span className={`col-start-1 row-start-1 ${copied ? "" : "invisible"}`}>{t.copied}</span>
-      </span>
-    </Button>
+      label={messages.admin.files.copyAddress}
+      done={messages.copied}
+    />
   )
 }
 

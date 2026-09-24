@@ -1,8 +1,8 @@
 import { Children, createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, EDGE_SHADE, LISTING_CONTROL, Note, Stack, Chevron } from "~/components/base"
-import { Icon, type IconName } from "~/components/icons"
+import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, Clamped, EDGE_SHADE, LISTING_CONTROL, Note, Stack, Chevron } from "~/components/base"
+import { Icon, type IconName, SUBJECT_ICON } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
@@ -426,6 +426,149 @@ export function Pairs({ children }: { children: ReactNode }) {
 }
 
 /**
+ * An identifier with the mark of what it names before it — `book` for a
+ * research, `database` for a dataset (`docs/ui.md` の「識別子の頭のアイコン」).
+ *
+ * **The mark is chosen by what the identifier points at, never by where it
+ * stands**: the same ID stands in a listing, a table of a page and a table of
+ * publications, and a mark picked per place gives one thing two faces. **The
+ * mark is muted** — the identifier already carries the link's colour, and a
+ * brand mark beside it would make two things in one row shine alike.
+ *
+ * It is the pair and nothing around it, so the cell or the list it stands in
+ * decides how it wraps.
+ */
+export function IdMark(props: {
+  kind: "research" | "dataset"
+  /** Where the identifier leads; left out, it is text. */
+  to?: string | null
+  children: ReactNode
+} & ({ newTab?: false } | {
+  /**
+   * The identifier opens its page in a new tab (`ExternalLink`), for a screen
+   * somebody is working down. The link is a box that centres its contents, so
+   * the mark is centred with it and the pair sits by its top — a box that
+   * centres takes its baseline from the words inside and would stretch the row.
+   */
+  newTab: true
+  locale: Locale
+})) {
+  const { kind, to = null, children } = props
+  const mark = <Icon name={SUBJECT_ICON[kind]} aria-hidden="true" className={props.newTab === true ? "text-ink-muted" : "mr-1 text-ink-muted"} />
+  if (props.newTab === true) {
+    return (
+      <span className="inline-flex items-center gap-1 align-top text-nowrap">
+        {mark}
+        {to === null ? children : <ExternalLink to={to} locale={props.locale}>{children}</ExternalLink>}
+      </span>
+    )
+  }
+  return (
+    <>
+      {mark}
+      {to === null ? children : <Link to={to}>{children}</Link>}
+    </>
+  )
+}
+
+export interface DatasetIdItem {
+  label: string
+  to: string | null
+  /** Another research's dataset: that research's ID, after it, as a way to its page. */
+  research?: { label: string, to: string | null } | null
+}
+
+/**
+ * Dataset IDs in a cell, **cut to a few with the rest a press away** (`Clamped`):
+ * one row can name sixty-seven accessions, and a row that tall pushes every row
+ * under it off the screen. Each is one `IdMark`, and none breaks across a line.
+ */
+export function DatasetIds({ items, shown, newTab = false, locale }: {
+  items: readonly DatasetIdItem[]
+  shown?: number
+  /** Each opens its page in a new tab (`IdMark` の `newTab`). */
+  newTab?: boolean
+  locale: Locale
+}) {
+  const messages = messagesFor(locale)
+  return (
+    <Clamped
+      shown={shown}
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={items.map((item) => newTab
+        ? <IdMark key={item.label} kind="dataset" to={item.to} newTab locale={locale}>{item.label}</IdMark>
+        : (
+            <span key={item.label} className="whitespace-nowrap">
+              <IdMark kind="dataset" to={item.to}>{item.label}</IdMark>
+              {item.research != null && (
+                <>
+                  {" ("}
+                  {item.research.to === null ? item.research.label : <Link to={item.research.to}>{item.research.label}</Link>}
+                  )
+                </>
+              )}
+            </span>
+          ))}
+    />
+  )
+}
+
+/**
+ * A framed box named on a band across its top — one of several of the same
+ * kind on a page (the versions of a research, the experiments of a dataset).
+ *
+ * **The band is what separates them**: a grey strip is the weakest thing on a
+ * page whose whole job is to tell these apart. The box clips the band rather
+ * than rounding it (`docs/ui.md` の「線を持つ箱に帯を敷くときは、帯を丸めず箱の
+ * 側で切る」), and the name and the body keep one weight and one inset whatever
+ * the page.
+ */
+export function BandBox({ as: Box = "section", level, title, aside, children }: {
+  as?: "section" | "li"
+  /** The heading's level on the page it stands in. */
+  level: 2 | 3
+  title: ReactNode
+  /** What stands at the band's far end, such as a date. */
+  aside?: ReactNode
+  children: ReactNode
+}) {
+  const Heading = level === 2 ? "h2" : "h3"
+  return (
+    <Box className="overflow-hidden rounded border border-line">
+      <Band>
+        <Heading className="flex flex-wrap items-center gap-2 font-semibold">{title}</Heading>
+        {aside}
+      </Band>
+      <div className="px-4 py-3">{children}</div>
+    </Box>
+  )
+}
+
+/**
+ * A short list of names and values in two narrow columns — the name at the
+ * left, its value beside it.
+ *
+ * **For a few facts inside a section or a box**, where `Pairs`' two newspaper
+ * columns would set a name far from its value or split four lines across a
+ * page. **The name and the first line of the value share a baseline**, so a
+ * value that is a control or runs to several lines still starts on its name's
+ * line. The gap between two facts is the one between a label and its value.
+ */
+export function Facts({ children }: { children: ReactNode }) {
+  return <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-2 text-sm">{children}</dl>
+}
+
+export function Fact({ name, children }: { name: ReactNode, children: ReactNode }) {
+  return (
+    <div className="contents">
+      <dt className="text-ink-muted">{name}</dt>
+      <dd className="min-w-0 text-ink">{children}</dd>
+    </div>
+  )
+}
+
+/**
  * A label and its value.
  *
  * **A value that says `split` may run from the foot of one column to the head
@@ -605,8 +748,16 @@ function isNumericHeader(header: ReactNode | NumericHeader): header is NumericHe
   return typeof header === "object" && header !== null && "align" in header
 }
 
-export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }: {
+export function Table({ headers: named, children, stuck = 0, whenEmpty, align = "top", actions }: {
   headers: (ReactNode | NumericHeader)[]
+  /**
+   * The rows end in a column of things to press, **named for anyone hearing the
+   * row read aloud and nowhere else** — a word over a column of marks is a
+   * heading for something already said, and it drags the column off its own
+   * width (`docs/ui.md` の「押せるものの大きさ」). `true` names it 「操作」; a
+   * public table gives its own word.
+   */
+  actions?: boolean | string
   children: ReactNode
   /** How many of the leading columns stay put when the table scrolls sideways. */
   stuck?: number
@@ -625,6 +776,9 @@ export function Table({ headers, children, stuck = 0, whenEmpty, align = "top" }
    */
   align?: "top" | "middle"
 }) {
+  const headers = actions === undefined || actions === false
+    ? named
+    : [...named, <span key="actions" className="sr-only">{actions === true ? messagesFor("ja").admin.actions : actions}</span>]
   const box = useRef<HTMLDivElement>(null)
   const rail = useRef<HTMLDivElement>(null)
   const [reach, setReach] = useState({ back: false, on: false })

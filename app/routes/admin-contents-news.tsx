@@ -10,19 +10,12 @@ import {
 } from "~/admin/contents"
 import { newsListAction, newsListPage } from "~/admin/contents.server"
 import { adminNewsListPath, adminNewsPath, newsQuery, type NewsListingQuery } from "~/admin/urls"
-import {
-  Chooser,
-  CHOOSER_SIDE,
-  Heading,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
-  Stack,
-} from "~/components/base"
-import { ResultLine, StateCell, StateIcon, stateLabel } from "~/components/contents"
-import { Answered, Checkbox, Submit } from "~/components/form"
+import { Heading, Stack } from "~/components/base"
+import { contentsSaid, StateCell, StateIcon, stateLabel } from "~/components/contents"
+import { Answer, Checkbox, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Paging, Table, Td } from "~/components/page"
-import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import { minuteOf } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -30,7 +23,6 @@ import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
-import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-contents-news"
 
@@ -39,11 +31,9 @@ import type { Route } from "./+types/admin-contents-news"
  *
  * **It is presented the way the articles are** — the conditions in a pane at
  * the left, the page size over the rows — because the two screens are the same
- * job on different bodies (docs/editing.md の「サイトコンテンツ」).
- *
- * **There is no ordering to choose**: the date is what the public listing runs
- * on, and an item without one is being written rather than standing at one end
- * of an order somebody picked.
+ * job on different bodies (docs/editing.md の「サイトコンテンツ」). **Unlike the
+ * articles it can be ordered**, by the day and by the title: an editor looking
+ * for one they wrote does not always know its date.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   return newsListPage(request)
@@ -79,14 +69,19 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
   // next one, and the ordering and the page size would send them back to the top.
-  const tools = <Tools view={view} locale={locale} />
-  const pages = <Pages view={view} locale={locale} />
+  const tools = (
+    <ListingTools
+      locale={locale}
+      presented={presentation(view, locale)}
+      at={(presented) => listingAt(view, locale, presented)}
+      paging={paging(view, locale)}
+    />
+  )
+  const pages = <Paging locale={locale} {...paging(view, locale)} />
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        <ResultLine result={actionData} locale={locale} />
-      </Answered>
+      <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Card under={false}>
         <Stack gap="normal">
           {/*
@@ -206,12 +201,12 @@ function Filters({ view, locale }: ViewProps) {
         {view.dating.map((one) => <input key={one} type="hidden" name="dating" value={one} />)}
         {view.ja.map((one) => <input key={one} type="hidden" name="ja" value={one} />)}
         {view.en.map((one) => <input key={one} type="hidden" name="en" value={one} />)}
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
       <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
         <input type="hidden" name="q" value={view.keyword} />
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
         <Stack gap="normal">
           {/* **An undated announcement is one being written**, so the axis is
               about whether an item is finished rather than about when it ran. */}
@@ -252,16 +247,6 @@ function Filters({ view, locale }: ViewProps) {
 }
 
 /**
- * How the result is presented, carried across a change of conditions. **Only
- * what differs from the default is written**, so an unnarrowed listing is still
- * the bare address.
- */
-function Presented({ view }: { view: ViewProps["view"] }) {
-  if (view.size === PAGE_SIZE) return null
-  return <input type="hidden" name="size" value={String(view.size)} />
-}
-
-/**
  * This listing under a different setting. Everything the reader chose is
  * carried, and the page is the first one unless the page is what changes.
  */
@@ -272,94 +257,43 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<NewsLi
     ja: view.ja,
     en: view.en,
     page: 1,
-    sort: view.sort === NEWS_SORT ? null : view.sort,
-    order: view.order === "desc" ? null : view.order,
-    size: view.size === PAGE_SIZE ? null : view.size,
+    ...presentedQuery(presentation(view, locale)),
     ...over,
   }))
 }
 
 /**
- * How the rows are presented, over the rows: how many a page holds, and the way
- * through the pages.
+ * How the rows are presented. **Both keys run newest-first in the bare
+ * address**, and the title still opens at A: the day is read from the latest
+ * and a title from the start of the alphabet.
  */
-function Tools({ view, locale }: ViewProps) {
-  const messages = messagesFor(locale)
-  const t = messages.admin.contents
-  const at = (over: Partial<NewsListingQuery>): string => listingAt(view, locale, over)
-
+function presentation(view: ViewProps["view"], locale: Locale): Presentation<NewsSortKey> {
+  const t = messagesFor(locale).admin.contents
   // The table names these two columns, so the orders are named by them rather
   // than by a second set of words meaning the same things.
-  const sortNames: Record<NewsSortKey, string> = {
-    published: t.news.publishedAt,
-    title: t.title,
+  const names: Record<NewsSortKey, string> = { published: t.news.publishedAt, title: t.title }
+  return {
+    sort: {
+      keys: NEWS_SORT_KEYS,
+      current: view.sort,
+      order: view.order,
+      unwritten: NEWS_SORT,
+      runs: () => "desc",
+      opens: (key) => key === "title" ? "asc" : "desc",
+      name: (key) => names[key],
+    },
+    size: view.size,
   }
-  // **The day runs newest first and the title runs A to Z**, so the direction
-  // each opens in is the key's own rather than one for the listing.
-  const flipped = view.order === "asc" ? "desc" : "asc"
-  const turn = flipped === "asc"
-    ? messages.search.sort.toAscending
-    : messages.search.sort.toDescending
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
-      <Chooser
-        label={messages.search.sort.label}
-        value={sortNames[view.sort]}
-        beside={(
-          <Link
-            to={at({ order: flipped })}
-            aria-label={turn}
-            title={turn}
-            className={CHOOSER_SIDE}
-          >
-            {/* The glyph says which way the listing runs now, not where it goes. */}
-            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
-          </Link>
-        )}
-      >
-        {NEWS_SORT_KEYS.map((option) => (
-          <Link
-            key={option}
-            to={at({ sort: option === NEWS_SORT ? null : option, order: option === "title" ? "asc" : null })}
-            aria-current={option === view.sort ? "true" : undefined}
-            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {sortNames[option]}
-          </Link>
-        ))}
-      </Chooser>
-      <Chooser label={messages.search.pageSize} value={String(view.size)}>
-        {PAGE_SIZES.map((option) => (
-          <Link
-            key={option}
-            to={at({ size: option === PAGE_SIZE ? null : option })}
-            aria-current={option === view.size ? "true" : undefined}
-            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {option}
-          </Link>
-        ))}
-      </Chooser>
-      <Pages view={view} locale={locale} />
-    </div>
-  )
 }
 
-/**
- * The count and the way through the pages, which stand over the rows and again
- * under them.
- */
-function Pages({ view, locale }: ViewProps) {
-  return (
-    <Paging
-      locale={locale}
-      total={view.total}
-      from={view.rangeFrom}
-      to={view.rangeTo}
-      page={view.page}
-      pageCount={view.pageCount}
-      at={(page) => listingAt(view, locale, { page })}
-    />
-  )
+/** The count and the way through the pages, over the rows and again under them. */
+function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
+  return {
+    total: view.total,
+    from: view.rangeFrom,
+    to: view.rangeTo,
+    page: view.page,
+    pageCount: view.pageCount,
+    at: (page) => listingAt(view, locale, { page }),
+  }
 }

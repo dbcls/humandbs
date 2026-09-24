@@ -19,7 +19,7 @@ function panel(locale: Locale, at: string): string {
 describe("ヘッダのカート", () => {
   it("何も入っていなくても、カートの画面への道を持つ", () => {
     const html = panel("ja", "/research")
-    expect(html).toContain("カートは空です")
+    expect(html).toContain("カートに入れたデータセットはありません。")
     expect(html).toContain("href=\"/cart\"")
     expect(html).toContain("カートを見る")
   })

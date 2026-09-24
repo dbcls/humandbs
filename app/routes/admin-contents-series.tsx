@@ -4,9 +4,9 @@ import { nextVersionNumber } from "~/admin/contents"
 import { seriesAction, seriesPage } from "~/admin/contents.server"
 import { adminContentsPath, adminDocumentPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Confirm, Heading, Stack } from "~/components/base"
-import { ResultLine, StateCell } from "~/components/contents"
-import { Answered, Field, Result, Select, Submit } from "~/components/form"
+import { Confirm, Heading, Note, Stack } from "~/components/base"
+import { contentsSaid, StateCell } from "~/components/contents"
+import { Answer, Field, Select, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Code, Page, Section, Table, Td } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
@@ -53,9 +53,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        <ResultLine result={actionData} locale={locale} />
-      </Answered>
+      <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Card under={false}>
         <Stack gap="block">
           {/* **What takes the whole series away stands beside its name**, next
@@ -75,16 +73,15 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
                 title={t.removeSeriesTitle(series.slug)}
                 warning={t.removeSeriesWarning(series.revisions.length)}
                 confirm={t.removeSeriesConfirm}
-                cancel={t.cancel}
                 intent="delete-series"
               />
             </Form>
           </Heading>
 
           {unanswered.length > 0 && (
-            <Result ok={false}>
+            <Note kind="danger">
               {t.unanswered(series.slug, unanswered.map((each) => t.languages[each]).join(" / "))}
-            </Result>
+            </Note>
           )}
 
           {/*

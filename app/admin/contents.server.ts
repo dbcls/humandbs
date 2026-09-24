@@ -117,8 +117,26 @@ export interface BodyProblem {
   line: number
 }
 
+/**
+ * What a form that went through did, so that the answer can say so — 「公開しました」
+ * rather than the same 「保存しました」 for every button on the screen.
+ */
+export type ContentsDone
+  = | "saved"
+    | "published"
+    | "unpublished"
+    | "renamed"
+    | "cut"
+    | "repointed"
+    | "alert-created"
+    | "alert-saved"
+    | "alert-shown"
+    | "alert-hidden"
+    | "alert-deleted"
+    | "dated"
+
 export type ContentsResult
-  = | { status: "ok" }
+  = | { status: "ok", done: ContentsDone }
     | { status: ContentsProblem }
     | { status: "body", problems: BodyProblem[] }
 
@@ -718,10 +736,10 @@ async function guardSlug(
  * **The redirect is thrown after the transaction commits**, not inside it: a
  * throw is how a transaction is rolled back.
  */
-type Applied = ContentsResult & { goTo?: string }
+type Applied = ContentsResult | { status: "ok", goTo: string }
 
 function settle(request: Request, applied: Applied): ContentsResult {
-  if (applied.goTo === undefined) return applied
+  if (!("goTo" in applied)) return applied
   const { locale } = readLocale(new URL(request.url).pathname)
   throw redirect(href(locale, applied.goTo))
 }
@@ -839,7 +857,7 @@ async function repointSeries(
     .update(documentSeries)
     .set({ currentId: target.id })
     .where(eq(documentSeries.id, series.id))
-  return { status: "ok" }
+  return { status: "ok", done: "repointed" }
 }
 
 /**
@@ -920,7 +938,7 @@ async function deleteSeries(tx: Executor, seriesId: string, actor: Actor): Promi
 
 async function createAlert(tx: Executor): Promise<ContentsResult> {
   await tx.insert(alert).values({ content: { body: { ja: "", en: "" } }, active: false })
-  return { status: "ok" }
+  return { status: "ok", done: "alert-created" }
 }
 
 async function updateAlert(
@@ -966,7 +984,8 @@ async function updateAlert(
       subjectId: before.id,
     })
   }
-  return { status: "ok" }
+  if (showing === null || showing === before.active) return { status: "ok", done: "alert-saved" }
+  return { status: "ok", done: showing ? "alert-shown" : "alert-hidden" }
 }
 
 async function deleteAlert(tx: Executor, form: FormData, actor: Actor): Promise<ContentsResult> {
@@ -988,7 +1007,7 @@ async function deleteAlert(tx: Executor, form: FormData, actor: Actor): Promise<
       detail: { deleted: true },
     })
   }
-  return { status: "ok" }
+  return { status: "ok", done: "alert-deleted" }
 }
 
 // --- one locale of a document or a news item ---------------------------------
@@ -1117,11 +1136,11 @@ async function saveLocale(
   const revision = revisionOf(form)
   if (revision === null) {
     return await insertLocale(tx, target, locale, article, false)
-      ? { status: "ok" }
+      ? { status: "ok", done: "saved" }
       : { status: "stale" }
   }
   return await updateLocale(tx, target, locale, revision, { content: article })
-    ? { status: "ok" }
+    ? { status: "ok", done: "saved" }
     : { status: "stale" }
 }
 
@@ -1163,7 +1182,7 @@ async function publishLocale(
     subjectId: target.id,
     detail: { ...subject.detail, locale },
   })
-  return { status: "ok" }
+  return { status: "ok", done: "published" }
 }
 
 async function unpublishLocale(
@@ -1187,7 +1206,7 @@ async function unpublishLocale(
     subjectId: target.id,
     detail: { ...subject.detail, locale },
   })
-  return { status: "ok" }
+  return { status: "ok", done: "unpublished" }
 }
 
 /**
@@ -1302,11 +1321,11 @@ async function renameDocument(
   if (series.some((one) => versionNumberIn(one.slug, target.slug) !== null)) return { status: "not-a-revision" }
 
   const slug = text(form, "slug")
-  if (slug === target.slug) return { status: "ok" }
+  if (slug === target.slug) return { status: "ok", done: "renamed" }
   const problem = await guardSlug(tx, slug, target.id)
   if (problem !== null) return { status: problem }
   await tx.update(document).set({ slug }).where(eq(document.id, target.id))
-  return { status: "ok" }
+  return { status: "ok", done: "renamed" }
 }
 
 /**
@@ -1341,7 +1360,7 @@ async function cutIntoVersion(
 
   await tx.update(document).set({ slug }).where(eq(document.id, target.id))
   await tx.insert(documentSeries).values({ slug: target.slug, currentId: target.id })
-  return { status: "ok" }
+  return { status: "ok", done: "cut" }
 }
 
 // --- news --------------------------------------------------------------------
@@ -1423,7 +1442,7 @@ async function setNewsDate(tx: Executor, id: string, form: FormData): Promise<Co
     if (up !== undefined) return { status: "dated-while-published" }
   }
   await tx.update(news).set({ publishedAt: stamp }).where(eq(news.id, id))
-  return { status: "ok" }
+  return { status: "ok", done: "dated" }
 }
 
 const previewSchema = z.object({

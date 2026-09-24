@@ -482,6 +482,27 @@ describe("一覧の件数とページ送り", () => {
       .sort()
     expect(writers).toEqual(["components/page.tsx", "routes/dev-ui.tsx"])
   })
+
+  // 並び替えの向きと 1 ページの件数を画面ごとに組むと、既定の向きをアドレスに書く・絞り込みの form が
+  // 並びを運ばない、の 2 つが 1 画面ずつずれていく (`search.tsx` の `ListingTools` / `ListingPresented`)。
+  it("並び替えと 1 ページの件数を組むのは search.tsx だけ", async () => {
+    const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
+    const building = sources
+      .filter(({ name, text }) => name !== "components/base.tsx"
+        && (/\bCHOOSER_SIDE\b/.test(text) || /PAGE_SIZES\.map\b/.test(text)))
+      .map(({ name }) => name)
+    expect(building).toEqual(["components/search.tsx"])
+  })
+
+  it("管理画面の絞り込みの form が並びと件数を運ぶのは ListingPresented だけ", async () => {
+    const files = [...await managementFiles(), "components/search.tsx"]
+    const carrying: string[] = []
+    for (const file of files) {
+      const text = await readFile(path.join(ROOT, file), "utf8")
+      if (/type="hidden" name="(sort|order|size)"/.test(text)) carrying.push(file)
+    }
+    expect(carrying).toEqual(["components/search.tsx"])
+  })
 })
 
 /**
@@ -547,7 +568,8 @@ describe("ボタンの面と形", () => {
    */
   it("丸いのは一覧の帯にいるものだけ", async () => {
     const wearing = (await everySource())
-      .filter(({ text }) => /<Button(?:Link)?\b[^>]*\slisting\b/s.test(text))
+      // A part handing its caller's choice on (`listing={listing}`) is not a place.
+      .filter(({ text }) => /<(?:Button|ButtonLink|CopyButton)\b[^>]*\slisting\b(?!=\{listing\})/s.test(text))
       .map(({ name }) => name)
       .sort()
     expect(wearing).toEqual(["components/search.tsx", "routes/dev-ui.tsx"])
@@ -726,7 +748,7 @@ describe("名前の行の並び", () => {
    * the research's screen puts what it offers. Pushed to the right end it sits
    * under the row's buttons and reads as one more of them.
    */
-  it("研究の編集の「空の下書き」は表の下の左端に立つ", async () => {
+  it("研究の編集の「空の下書きの作成」は表の下の左端に立つ", async () => {
     const text = await readFile(path.join(ROOT, "routes/admin-research.tsx"), "utf8")
     const submit = text.indexOf("intent=\"create-draft\"")
     expect(submit).toBeGreaterThan(-1)
@@ -1000,6 +1022,160 @@ describe("面の幅・文・見出し", () => {
   })
 })
 
+/* ------------------------------------------------ reading JSX for the rules below */
+
+/**
+ * Where a JSX opening tag ends: a nested `<Icon .../>` is one token deep
+ * rather than a close, and `=>` inside an inline handler is not a close
+ * either — both would otherwise read as the tag's own `>`.
+ */
+function openingTag(text: string, start: number): { end: number, selfClosing: boolean, attrs: string } | null {
+  let i = start + 1
+  while (i < text.length && /[\w.]/.test(text[i] ?? "")) i++
+  let depth = 0
+  while (i < text.length) {
+    if (text.startsWith("/>", i)) {
+      if (depth === 0) return { end: i + 2, selfClosing: true, attrs: text.slice(start, i) }
+      depth--
+      i += 2
+      continue
+    }
+    if (text[i] === "<") {
+      depth++
+      i++
+      continue
+    }
+    if (text[i] === ">") {
+      if (text[i - 1] === "=") {
+        i++
+        continue
+      }
+      if (depth === 0) return { end: i + 1, selfClosing: false, attrs: text.slice(start, i) }
+      depth--
+      i++
+      continue
+    }
+    i++
+  }
+  return null
+}
+
+interface Usage { attrs: string, children: string | null }
+
+function findUsages(text: string, component: string): Usage[] {
+  const found: Usage[] = []
+  const re = new RegExp(`<${component}\\b`, "g")
+  let match = re.exec(text)
+  while (match !== null) {
+    const tag = openingTag(text, match.index)
+    if (tag === null) {
+      match = re.exec(text)
+      continue
+    }
+    let children: string | null = null
+    if (!tag.selfClosing) {
+      const close = text.indexOf(`</${component}>`, tag.end)
+      if (close !== -1) children = text.slice(tag.end, close)
+    }
+    found.push({ attrs: tag.attrs, children })
+    match = re.exec(text)
+  }
+  return found
+}
+
+interface Assign { name: string, path: string, index: number }
+
+/**
+ * Every `const t = messagesFor(locale).admin.a.b`, and every `const u = t.c`
+ * chained off one already seen — `t` is not always assigned straight from
+ * `messagesFor`, some screens go through a `messages` variable first.
+ */
+function findAssignments(text: string): Assign[] {
+  const found: Assign[] = []
+  const latest: Record<string, string> = {}
+  const re = /\b(?:const|let)\s+(\w+)\s*=\s*(messagesFor\([^)]*\)|\w+)((?:\.\w+)*)/g
+  let match = re.exec(text)
+  while (match !== null) {
+    const name = match[1] ?? ""
+    const base = match[2] ?? ""
+    const chain = (match[3] ?? "").replace(/^\./, "")
+    let assigned: string | undefined
+    if (base.startsWith("messagesFor(")) assigned = chain
+    else if (base in latest) assigned = [latest[base], chain].filter((one) => one !== "").join(".")
+    if (assigned !== undefined) {
+      found.push({ name, path: assigned, index: match.index })
+      latest[name] = assigned
+    }
+    match = re.exec(text)
+  }
+  return found
+}
+
+/** The nearest assignment of `name` before `atIndex`, plus whatever path followed it. */
+function resolvePath(assigns: Assign[], expr: string, atIndex: number): string | undefined {
+  const trimmed = expr.trim()
+  const direct = /^messagesFor\([^)]*\)((?:\.\w+)*)$/.exec(trimmed)
+  if (direct !== null) return (direct[1] ?? "").replace(/^\./, "")
+  const idMatch = /^(\w+)((?:\.\w+)*)$/.exec(trimmed)
+  if (idMatch === null) return undefined
+  const [, name, rest] = idMatch
+  const candidates = assigns.filter((a) => a.name === name && a.index < atIndex)
+  if (candidates.length === 0) return undefined
+  const best = candidates.reduce((a, b) => (b.index > a.index ? b : a))
+  return [best.path, (rest ?? "").replace(/^\./, "")].filter((one) => one !== "").join(".")
+}
+
+function getAt(obj: unknown, dotted: string): unknown {
+  if (dotted === "") return obj
+  return dotted.split(".").reduce<unknown>((acc, key) => {
+    if (acc === null || typeof acc !== "object") return undefined
+    return (acc as Record<string, unknown>)[key]
+  }, obj)
+}
+
+type AttrFound = { literal: string } | { expr: string } | undefined
+
+function attrValue(attrs: string, prop: string): AttrFound {
+  const m = new RegExp(`\\b${prop}=(?:"([^"]*)"|\\{([^}]*)\\})`).exec(attrs)
+  if (m === null) return undefined
+  return m[1] !== undefined ? { literal: m[1] } : { expr: m[2] ?? "" }
+}
+
+/** The `IconName` an icon-carrying prop resolves to, or `undefined` for one this cannot read. */
+function iconAt(attrs: string, prop: string, fallback?: string): string | undefined {
+  const found = attrValue(attrs, prop)
+  if (found === undefined) return fallback
+  if ("literal" in found) return found.literal
+  const nested = /<Icon\s+name="([\w-]+)"/.exec(found.expr)
+  if (nested !== null) return nested[1]
+  // A way's mark is drawn by `Chevron` (`base.tsx`), which names its direction rather than the glyph.
+  const way = /<Chevron\s+dir="(left|right)"/.exec(found.expr)
+  return way === null ? undefined : `chevron-${way[1]}`
+}
+
+function wordAt(attrs: string, prop: string, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
+  const found = attrValue(attrs, prop)
+  if (found === undefined) return undefined
+  if ("literal" in found) return found.literal
+  const msgPath = resolvePath(assigns, found.expr, atIndex)
+  const value = msgPath === undefined ? undefined : getAt(ja, msgPath)
+  return typeof value === "string" ? value : undefined
+}
+
+/** A control's own word is its children — plain text, or a single `{t.x}` expression. */
+function wordInChildren(children: string | null, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
+  const text = children?.trim()
+  if (text === undefined || text === "") return undefined
+  const braced = /^\{([^{}]*)\}$/.exec(text)
+  if (braced !== null) {
+    const msgPath = resolvePath(assigns, braced[1] ?? "", atIndex)
+    const value = msgPath === undefined ? undefined : getAt(ja, msgPath)
+    return typeof value === "string" ? value : undefined
+  }
+  // Anything else — a ternary, a nested tag, a function call — is a word this cannot read.
+  return /[{}<>]/.test(text) ? undefined : text
+}
+
 /**
  * **The glyph on a pressable control names the kind of deed, not the screen**
  * (`docs/ui.md` の「押せるもの」の「印が言うのは操作の種類で、画面が選ぶものではない」)。
@@ -1010,19 +1186,43 @@ describe("面の幅・文・見出し", () => {
 describe("押せるものの印", () => {
   // Longest ending first, so "非表示" is not read as "表示" with a prefix left over.
   const WORD_ACTION: Record<string, keyof typeof ACTION_ICON> = {
-    非表示: "hide",
-    作成: "create",
-    追加: "create",
-    保存: "save",
-    削除: "delete",
-    公開: "publish",
-    取り込み: "takeIn",
-    解除: "remove",
-    解決: "resolve",
-    戻す: "revert",
-    表示: "show",
-    検索: "search",
-    外す: "remove",
+    "非表示": "hide",
+    "作成": "create",
+    "追加": "create",
+    "発行": "create",
+    "保存": "save",
+    "削除": "delete",
+    // Stopping an update throws its draft away; the version is not touched.
+    "更新の中止": "delete",
+    "公開": "publish",
+    "上書き": "publish",
+    "公開停止": "withdraw",
+    "取り下げ": "withdraw",
+    "取り込み": "takeIn",
+    // A file brought down to the reader's machine comes the same way a value is taken in.
+    "ダウンロード": "takeIn",
+    "割り当て": "assign",
+    "張り替え": "assign",
+    "primary に変更": "assign",
+    "解除": "remove",
+    "解決": "resolve",
+    "戻す": "revert",
+    "表示": "show",
+    "共有": "show",
+    "共有停止": "hide",
+    "検索": "search",
+    "外す": "remove",
+    "統合": "merge",
+    "再発行": "redo",
+    "再解析": "redo",
+    "編集": "edit",
+    "コピー": "copy",
+    "複製": "copy",
+    "切り出し": "copy",
+    "その行へ": "goTo",
+    "上へ": "reorderUp",
+    "下へ": "reorderDown",
+    "ファイルの選択": "chooseFile",
   }
   const ENDINGS = Object.keys(WORD_ACTION).sort((a, b) => b.length - a.length)
 
@@ -1031,197 +1231,244 @@ describe("押せるものの印", () => {
     return ending === undefined ? undefined : WORD_ACTION[ending]
   }
 
-  /**
-   * Where a JSX opening tag ends: a nested `<Icon .../>` is one token deep
-   * rather than a close, and `=>` inside an inline handler is not a close
-   * either — both would otherwise read as the tag's own `>`.
-   */
-  function openingTag(text: string, start: number): { end: number, selfClosing: boolean, attrs: string } | null {
-    let i = start + 1
-    while (i < text.length && /[\w.]/.test(text[i] ?? "")) i++
-    let depth = 0
-    while (i < text.length) {
-      if (text.startsWith("/>", i)) {
-        if (depth === 0) return { end: i + 2, selfClosing: true, attrs: text.slice(start, i) }
-        depth--
-        i += 2
-        continue
-      }
-      if (text[i] === "<") {
-        depth++
-        i++
-        continue
-      }
-      if (text[i] === ">") {
-        if (text[i - 1] === "=") {
-          i++
-          continue
-        }
-        if (depth === 0) return { end: i + 1, selfClosing: false, attrs: text.slice(start, i) }
-        depth--
-        i++
-        continue
-      }
-      i++
-    }
-    return null
-  }
-
-  interface Usage { attrs: string, children: string | null }
-
-  function findUsages(text: string, component: string): Usage[] {
-    const found: Usage[] = []
-    const re = new RegExp(`<${component}\\b`, "g")
-    let match = re.exec(text)
-    while (match !== null) {
-      const tag = openingTag(text, match.index)
-      if (tag === null) {
-        match = re.exec(text)
-        continue
-      }
-      let children: string | null = null
-      if (!tag.selfClosing) {
-        const close = text.indexOf(`</${component}>`, tag.end)
-        if (close !== -1) children = text.slice(tag.end, close)
-      }
-      found.push({ attrs: tag.attrs, children })
-      match = re.exec(text)
-    }
-    return found
-  }
-
-  interface Assign { name: string, path: string, index: number }
-
-  /**
-   * Every `const t = messagesFor(locale).admin.a.b`, and every `const u = t.c`
-   * chained off one already seen — `t` is not always assigned straight from
-   * `messagesFor`, some screens go through a `messages` variable first.
-   */
-  function findAssignments(text: string): Assign[] {
-    const found: Assign[] = []
-    const latest: Record<string, string> = {}
-    const re = /\b(?:const|let)\s+(\w+)\s*=\s*(messagesFor\([^)]*\)|\w+)((?:\.\w+)*)/g
-    let match = re.exec(text)
-    while (match !== null) {
-      const name = match[1] ?? ""
-      const base = match[2] ?? ""
-      const chain = (match[3] ?? "").replace(/^\./, "")
-      let assigned: string | undefined
-      if (base.startsWith("messagesFor(")) assigned = chain
-      else if (base in latest) assigned = [latest[base], chain].filter((one) => one !== "").join(".")
-      if (assigned !== undefined) {
-        found.push({ name, path: assigned, index: match.index })
-        latest[name] = assigned
-      }
-      match = re.exec(text)
-    }
-    return found
-  }
-
-  /** The nearest assignment of `name` before `atIndex`, plus whatever path followed it. */
-  function resolvePath(assigns: Assign[], expr: string, atIndex: number): string | undefined {
-    const trimmed = expr.trim()
-    const direct = /^messagesFor\([^)]*\)((?:\.\w+)*)$/.exec(trimmed)
-    if (direct !== null) return (direct[1] ?? "").replace(/^\./, "")
-    const idMatch = /^(\w+)((?:\.\w+)*)$/.exec(trimmed)
-    if (idMatch === null) return undefined
-    const [, name, rest] = idMatch
-    const candidates = assigns.filter((a) => a.name === name && a.index < atIndex)
-    if (candidates.length === 0) return undefined
-    const best = candidates.reduce((a, b) => (b.index > a.index ? b : a))
-    return [best.path, (rest ?? "").replace(/^\./, "")].filter((one) => one !== "").join(".")
-  }
-
-  function getAt(obj: unknown, dotted: string): unknown {
-    if (dotted === "") return obj
-    return dotted.split(".").reduce<unknown>((acc, key) => {
-      if (acc === null || typeof acc !== "object") return undefined
-      return (acc as Record<string, unknown>)[key]
-    }, obj)
-  }
-
-  type AttrFound = { literal: string } | { expr: string } | undefined
-
-  function attrValue(attrs: string, prop: string): AttrFound {
-    const m = new RegExp(`\\b${prop}=(?:"([^"]*)"|\\{([^}]*)\\})`).exec(attrs)
-    if (m === null) return undefined
-    return m[1] !== undefined ? { literal: m[1] } : { expr: m[2] ?? "" }
-  }
-
-  /** The `IconName` an icon-carrying prop resolves to, or `undefined` for one this cannot read. */
-  function iconAt(attrs: string, prop: string, fallback?: string): string | undefined {
-    const found = attrValue(attrs, prop)
-    if (found === undefined) return fallback
-    if ("literal" in found) return found.literal
-    const nested = /<Icon\s+name="([\w-]+)"/.exec(found.expr)
-    if (nested !== null) return nested[1]
-    // A way's mark is drawn by `Chevron` (`base.tsx`), which names its direction rather than the glyph.
-    const way = /<Chevron\s+dir="(left|right)"/.exec(found.expr)
-    return way === null ? undefined : `chevron-${way[1]}`
-  }
-
-  function wordAt(attrs: string, prop: string, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
-    const found = attrValue(attrs, prop)
-    if (found === undefined) return undefined
-    if ("literal" in found) return found.literal
-    const msgPath = resolvePath(assigns, found.expr, atIndex)
-    const value = msgPath === undefined ? undefined : getAt(ja, msgPath)
-    return typeof value === "string" ? value : undefined
-  }
-
-  /** A control's own word is its children — plain text, or a single `{t.x}` expression. */
-  function wordInChildren(children: string | null, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
-    const text = children?.trim()
-    if (text === undefined || text === "") return undefined
-    const braced = /^\{([^{}]*)\}$/.exec(text)
-    if (braced !== null) {
-      const msgPath = resolvePath(assigns, braced[1] ?? "", atIndex)
-      const value = msgPath === undefined ? undefined : getAt(ja, msgPath)
-      return typeof value === "string" ? value : undefined
-    }
-    // Anything else — a ternary, a nested tag, a function call — is a word this cannot read.
-    return /[{}<>]/.test(text) ? undefined : text
-  }
-
   const PRESSABLE = ["Submit", "Button", "ButtonLink", "Confirm", "Dialog", "IconButton"] as const
 
-  it("語の結びが決める操作の印と、渡している印が一致する", async () => {
-    const ja = messagesFor("ja")
-    const offenders: string[] = []
-    let matched = 0
+  interface Pressed { file: string, component: string, word: string | undefined, icon: string | undefined, iconless: boolean }
 
-    for (const name of await managementFiles()) {
+  /**
+   * Every pressable the given files draw, with its word and glyph where they
+   * can be read. **A glyph drawn by the part itself counts as the part's** —
+   * `Confirm` carries `trash` unless told otherwise, `ButtonLink newTab` draws
+   * `external`, and a way (`way`, `WayTo`) ends in a chevron.
+   */
+  async function pressables(files: readonly string[]): Promise<Pressed[]> {
+    const ja = messagesFor("ja")
+    const found: Pressed[] = []
+    for (const name of files) {
       const text = await readFile(path.join(ROOT, name), "utf8")
       const assigns = findAssignments(text)
-      for (const component of PRESSABLE) {
+      for (const component of [...PRESSABLE, "WayTo"] as const) {
         for (const usage of findUsages(text, component)) {
+          // A panel drawn open by its caller (`held`) has no way in to press.
+          if ((component === "Dialog" || component === "Confirm") && /\bheld=/.test(usage.attrs)) continue
           const atIndex = text.indexOf(usage.attrs)
           const word = component === "Confirm"
             ? wordAt(usage.attrs, "confirm", assigns, atIndex, ja)
             : component === "IconButton" || component === "Dialog"
               ? wordAt(usage.attrs, "label", assigns, atIndex, ja)
               : wordInChildren(usage.children, assigns, atIndex, ja)
-          if (word === undefined) continue // resolved from something dynamic — not counted
-          const action = actionFor(word)
-          if (action === undefined) continue // not one of the rule's endings
-
           const icon = component === "Confirm"
             ? iconAt(usage.attrs, "icon", "trash")
             : component === "IconButton"
               ? iconAt(usage.attrs, "name")
-              : iconAt(usage.attrs, "icon")
-          if (icon === undefined) continue // the icon itself is dynamic — not counted
-
-          matched += 1
-          const expected: string = ACTION_ICON[action]
-          if (icon !== expected) offenders.push(`${name} [${component}] "${word}": ${icon} (${expected} を待つ)`)
+              : component === "ButtonLink" && /\bnewTab\b/.test(usage.attrs)
+                ? "external"
+                : iconAt(usage.attrs, "icon")
+          const iconless = component !== "Confirm" && component !== "IconButton" && component !== "WayTo"
+            && !/\bicon=/.test(usage.attrs)
+            && !(component === "ButtonLink" && /\b(newTab|way)\b/.test(usage.attrs))
+          found.push({ file: name, component, word, icon, iconless })
         }
       }
+    }
+    return found
+  }
+
+  it("語の結びが決める操作の印と、渡している印が一致する", async () => {
+    const offenders: string[] = []
+    let matched = 0
+
+    for (const one of await pressables(await managementFiles())) {
+      // A way names the screen it leads to, not a deed (`WayTo`).
+      if (one.component === "WayTo") continue
+      if (one.word === undefined) continue // resolved from something dynamic — not counted
+      const action = actionFor(one.word)
+      if (action === undefined) continue // not one of the rule's endings
+      if (one.icon === undefined) continue // the icon itself is dynamic — not counted
+      matched += 1
+      const expected: string = ACTION_ICON[action]
+      if (one.icon !== expected) offenders.push(`${one.file} [${one.component}] "${one.word}": ${one.icon} (${expected} を待つ)`)
     }
 
     expect(offenders).toEqual([])
     // The rule has something to hold: this many admin controls carry a rule-covered word.
-    expect(matched).toBeGreaterThan(20)
+    expect(matched).toBeGreaterThan(40)
+  })
+
+  /**
+   * **The other way round: a deed's glyph is not borrowed.** A control wearing
+   * `lock` or `trash` says it withdraws or deletes before its word is read, so
+   * a word that is not one of those deeds under that glyph is the glyph lying
+   * — the merge that wore the resolve's tick, the reissue that wore the bin.
+   */
+  it("操作の印を着ているものの語は、その印の操作を言う", async () => {
+    const glyphs = new Set<string>(Object.values(ACTION_ICON))
+    const offenders: string[] = []
+    let matched = 0
+
+    for (const one of await pressables(await managementFiles())) {
+      if (one.component === "WayTo") continue
+      if (one.icon === undefined || !glyphs.has(one.icon)) continue
+      if (one.word === undefined) continue // resolved from something dynamic — not counted
+      matched += 1
+      const action = actionFor(one.word)
+      if (action === undefined || ACTION_ICON[action] !== one.icon) {
+        offenders.push(`${one.file} [${one.component}] "${one.word}": ${one.icon} は ${action ?? "(操作の語でない)"} の印ではない`)
+      }
+    }
+
+    expect(offenders).toEqual([])
+    expect(matched).toBeGreaterThan(40)
+  })
+
+  /**
+   * **Only the way out carries no glyph** (`docs/ui.md` の「押せるもの」の
+   * 「出る道は印を持たない」). A row of worded buttons where one is bare reads
+   * the bare one as another kind of thing; the one kind that should read so is
+   * the way out of a panel or a transfer, which does nothing but stop.
+   */
+  it("印を持たない押せるものは、キャンセル・中止・閉じるだけ", async () => {
+    const files = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+      .map(({ name }) => name)
+      .filter((name) => !name.includes("dev-ui") && name !== "components/base.tsx")
+    const ja = messagesFor("ja")
+    const en = messagesFor("en")
+    const OUT = new Set([ja.admin.cancel, ja.comment.close, en.comment.close])
+    const offenders: string[] = []
+    let bare = 0
+    for (const one of await pressables(files)) {
+      if (!one.iconless) continue
+      bare += 1
+      if (one.word === undefined || !OUT.has(one.word)) offenders.push(`${one.file} [${one.component}] "${one.word ?? "?"}"`)
+    }
+    expect(offenders).toEqual([])
+    // The rule has something to hold: the ways out it lets through are there.
+    expect(bare).toBeGreaterThan(0)
+  })
+
+  /**
+   * **A glyph goes where the part puts it, not among the words** (`icon`, or
+   * `way` for the chevron after a way's word). Written into the children, it
+   * sits wherever the caller happened to put it, outside the box the spinner
+   * turns in, and a word-reading rule sees a tag where the word should be.
+   */
+  it("押せるものの children に Icon / Chevron を置かない", async () => {
+    const files = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+      .filter(({ name }) => !name.includes("dev-ui"))
+    const offenders: string[] = []
+    let read = 0
+    for (const { name, text } of files) {
+      for (const component of PRESSABLE) {
+        for (const usage of findUsages(text, component)) {
+          if (usage.children === null) continue
+          read += 1
+          if (/<(?:Icon|Chevron)\b/.test(usage.children)) offenders.push(`${name} [${component}]`)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+    expect(read).toBeGreaterThan(100)
+  })
+})
+
+/**
+ * **A state is said by `Flag` or `Stated`, never as bare words** (`docs/ui.md`
+ * の「壊れるもの」). Written as text in a cell, "未発行" wears whatever colour
+ * the cell happens to have, and the same fact on the next screen is a badge;
+ * named by kind, it wears the one colour and glyph that kind has everywhere.
+ */
+describe("状態の語", () => {
+  const ja = messagesFor("ja")
+  const t = ja.admin
+  /**
+   * The words that name a state some row, field or job can be in. **「未公開」
+   * is not among them**: it is also the word a date that has not come yet is
+   * said by (a dataset's release date), which is a missing value rather than a
+   * state and stays a word.
+   */
+  const STATE_WORDS = new Set<string>([
+    t.detail.shared, t.detail.notShared, t.detail.shareExpired, t.review.shared, t.review.unshared, t.review.expired,
+    t.editor.untranslated, t.catalog.untranslated, t.templates.noHumLabel, t.research.unpinned,
+    ...Object.values(t.assistant.statuses),
+    t.contents.published, t.contents.scheduled,
+  ])
+
+  /** The element a child expression or text stands directly in, or null where it cannot be read. */
+  function parentTag(text: string, at: number): string | null {
+    const before = text.slice(Math.max(0, at - 600), at)
+    return /<([A-Z]?[\w.]+)\b[^<>]*>\s*$/.exec(before)?.[1] ?? null
+  }
+
+  it("状態の語は Flag か Stated の中でだけ描く", async () => {
+    const offenders: string[] = []
+    let named = 0
+    for (const file of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, file), "utf8")
+      const assigns = findAssignments(text)
+      const said = (at: number, word: string) => {
+        const parent = parentTag(text, at)
+        if (parent === null) return
+        if (parent === "Flag" || parent === "Stated") named += 1
+        else offenders.push(`${file}:${String(text.slice(0, at).split("\n").length)} <${parent}> ${word}`)
+      }
+      // A child expression: `{t.untranslated}`, or a word at the end of `{a ?? t.unpinned}`.
+      for (const brace of text.matchAll(/\{([^{}]*)\}/g)) {
+        for (const path of (brace[1] ?? "").matchAll(/(?<![\w.])([A-Za-z_]\w*(?:\.\w+)+)(?![\w.([])/g)) {
+          const resolved = resolvePath(assigns, path[1] ?? "", brace.index)
+          const value = resolved === undefined ? undefined : getAt(ja, resolved)
+          if (typeof value === "string" && STATE_WORDS.has(value)) said(brace.index, value)
+        }
+      }
+      // A word written straight into the markup.
+      for (const bare of text.matchAll(/>\s*([^<>{}\n]+?)\s*</g)) {
+        const word = bare[1] ?? ""
+        if (STATE_WORDS.has(word)) said(bare.index + 1, word)
+      }
+    }
+    expect(offenders).toEqual([])
+    // The rule has something to hold: the state words it knows are drawn, by kind.
+    expect(named).toBeGreaterThan(10)
+  })
+})
+
+/**
+ * **A chip and a count are parts** (`base.tsx` の `Chip` / `ValueChip` /
+ * `CountBubble`, `docs/ui.md` の「壊れるもの」). Drawn by hand, the value
+ * chip had its close glyph among the words and the count on a pane had a
+ * different padding from the one on the cart.
+ */
+describe("chip と件数の丸", () => {
+  it("chip と件数の丸の形を書くのは base.tsx だけ", async () => {
+    const offenders: string[] = []
+    let inBase = 0
+    for (const { name, text } of await everySource()) {
+      for (const list of classLists(text)) {
+        const one = list.split(/\s+/)
+        // A chip is a badge's box: small type, the badge's padding, an edge and a corner.
+        const chip = one.includes("text-xs") && one.includes("px-2") && one.includes("py-0.5")
+          && one.includes("border") && (one.includes("rounded") || one.includes("rounded-full"))
+        // A count is small white type on a filled disc.
+        const bubble = one.includes("rounded-full") && one.includes("text-white") && one.includes("text-xs")
+        if (!chip && !bubble) continue
+        if (name === "components/base.tsx") inBase += 1
+        else offenders.push(`${name}: ${list}`)
+      }
+    }
+    expect(offenders).toEqual([])
+    expect(inBase).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * **One way onto the clipboard** (`base.tsx` の `CopyButton`). The four copies
+ * each wrote their own, and answered the press two different ways.
+ */
+describe("クリップボード", () => {
+  it("clipboard.writeText を書くのは base.tsx だけ", async () => {
+    const writing = (await everySource())
+      .filter(({ text }) => text.includes("clipboard.writeText"))
+      .map(({ name }) => name)
+    expect(writing).toEqual(["components/base.tsx"])
   })
 })
 
@@ -1502,5 +1749,120 @@ describe("下書きの頭の区画と道具の行", () => {
 
     const contents = await readFile(path.join(ROOT, "components/contents.tsx"), "utf8")
     expect(contents.match(/\bsticky\b/g)?.length ?? 0).toBe(0)
+  })
+})
+
+/**
+ * **One part per shape** (`docs/ui.md` の「押せるもの」「壊れるもの」). Each of
+ * these was drawn by hand on several screens, and each copy drifted on its own
+ * — a listing that dropped its ordering after a search, a row's arrows dimmed
+ * by a box around them, a table swapped for a sentence when it was empty, an
+ * answer said four different ways.
+ */
+describe("部品への集約", () => {
+  const screens = async () => (await everySource()).filter(({ name }) => name !== "routes/dev-ui.tsx")
+
+  it("探す窓の薄い字と送る語は、どの一覧でも「キーワード検索」と「検索」", async () => {
+    const offenders: string[] = []
+    let boxes = 0
+    for (const { name, text } of await screens()) {
+      if (name === "components/search.tsx") continue
+      for (const { attrs } of findUsages(text, "SearchBox")) {
+        boxes += 1
+        if (!attrs.includes("placeholder={messages.search.boxHint}")) offenders.push(`${name}: placeholder`)
+        if (!attrs.includes("submit={messages.search.submit}")) offenders.push(`${name}: submit`)
+      }
+    }
+    expect(offenders).toEqual([])
+    expect(boxes).toBeGreaterThan(5)
+  })
+
+  it("行の上げ下げは ReorderButtons だけが描き、押せない姿は IconButton が自分で持つ", async () => {
+    const offenders: string[] = []
+    for (const { name, text } of await screens()) {
+      if (name === "components/base.tsx") continue
+      for (const { attrs } of findUsages(text, "IconButton")) {
+        if (/name="chevron-(up|down)"/.test(attrs)) offenders.push(`${name}: IconButton ${/chevron-\w+/.exec(attrs)?.[0] ?? ""}`)
+      }
+      // A faded box around a control is the hand-made pressed-out look.
+      if (/(?<![:\w-])opacity-50\b/.test(text) && name !== "components/form.tsx") offenders.push(`${name}: opacity-50`)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  // 管理画面の表。公開の研究のページの節 (提供者・助成金 …) は「節は空でも残り、無いことを 1 文で言う」
+  // (public-pages.md) 側の形で、ここでは見ない。
+  it("管理画面の空の一覧は表ごと差し替えず、Table の whenEmpty が 1 行で言う", async () => {
+    const offenders: string[] = []
+    for (const name of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, name), "utf8")
+      // `… ? <Empty>…</Empty> : (… <Table` — the table and its sentence as two alternatives.
+      if (/\?\s*(?:\(\s*)?<Empty>[^]{0,120}?<\/Empty>\s*(?:\)\s*)?:\s*\(?\s*(?:<>\s*)?<Table\b/.test(text)) offenders.push(name)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("識別子の頭の印 (book / database) を字の隣に置くのは IdMark だけ", async () => {
+    const offenders: string[] = []
+    for (const { name, text } of await screens()) {
+      if (name === "components/page.tsx") continue
+      for (const { attrs } of findUsages(text, "Icon")) {
+        if (/name="(book|database)"/.test(attrs) && attrs.includes("text-ink-muted")) offenders.push(`${name}: ${/name="\w+"/.exec(attrs)?.[0] ?? ""}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("操作の答えを箱に入れるのは Answer だけ — 画面は Answered も Result も直に描かない", async () => {
+    const writers = (await screens())
+      .filter(({ text }) => /<(Answered|Result)\b/.test(text))
+      .map(({ name }) => name)
+    expect(writers).toEqual(["components/form.tsx"])
+  })
+
+  it("確認の面はキャンセルの語を渡さず、意図は intent に載せる", async () => {
+    const offenders: string[] = []
+    let confirms = 0
+    for (const { name, text } of await screens()) {
+      for (const { attrs, children } of findUsages(text, "Confirm")) {
+        if (name === "components/base.tsx") continue
+        confirms += 1
+        if (/\bcancel=/.test(attrs)) offenders.push(`${name}: cancel`)
+        if (children?.includes("name=\"intent\"") === true) offenders.push(`${name}: hidden intent`)
+      }
+      for (const { attrs } of findUsages(text, "Dialog")) {
+        if (/\bdismiss=\{[\w.]*\.cancel\}/.test(attrs)) offenders.push(`${name}: Dialog dismiss`)
+      }
+    }
+    expect(offenders).toEqual([])
+    expect(confirms).toBeGreaterThan(15)
+  })
+
+  it("表の操作の列の名前を読むのは Table だけ", async () => {
+    const readers = (await screens())
+      .filter(({ text }) => /\.admin\.actions\b/.test(text))
+      .map(({ name }) => name)
+    expect(readers).toEqual(["components/page.tsx"])
+  })
+
+  it("名前と値の 2 列を手で組まない — Facts / Pairs が組む", async () => {
+    const offenders = (await screens())
+      .filter(({ name, text }) => name !== "components/page.tsx" && text.includes("grid-cols-[auto_1fr]"))
+      .map(({ name }) => name)
+    expect(offenders).toEqual([])
+  })
+
+  it("小さい見出し語の姿は PANE_LABEL を参照し、値を写さない", async () => {
+    const offenders = (await screens())
+      .filter(({ name, text }) => name !== "components/base.tsx" && text.includes("\"font-semibold text-ink-muted text-xs\""))
+      .map(({ name }) => name)
+    expect(offenders).toEqual([])
+  })
+
+  it("帯付きの箱は BandBox — 画面は Band を枠の箱に自分で敷かない", async () => {
+    const offenders = (await screens())
+      .filter(({ name, text }) => name !== "components/page.tsx" && /<Band\b/.test(text))
+      .map(({ name }) => name)
+    expect(offenders).toEqual([])
   })
 })

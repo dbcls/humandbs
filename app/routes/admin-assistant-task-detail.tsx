@@ -7,7 +7,8 @@ import { KeyValue, Pairs, Section } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import type { Status, TaskDetail } from "./admin-assistant-model"
+import type { TaskDetail } from "./admin-assistant-model"
+import { AssistantStatus, timeOf } from "./admin-assistant-task-list"
 
 interface AdminAssistantTaskDetailProps {
   detail: TaskDetail
@@ -24,7 +25,8 @@ export function AdminAssistantTaskDetail({
   onReanalyze,
   children,
 }: AdminAssistantTaskDetailProps) {
-  const words = messagesFor(locale).admin.assistant
+  const messages = messagesFor(locale)
+  const words = messages.admin.assistant
   const pdf
     = detail.filename === undefined
       ? null
@@ -38,15 +40,15 @@ export function AdminAssistantTaskDetail({
   return (
     <Section title={words.detailHeading(detail.task_id)}>
       <Stack gap="normal">
-        <p className={`${statusClass(detail.status)} text-sm`}>
-          {words.statuses[detail.status]}
+        <p className="text-sm">
+          <AssistantStatus status={detail.status} locale={locale} />
         </p>
         <Pairs>
           <KeyValue title={words.created}>
-            {formatTime(detail.created_at, locale)}
+            {timeOf(detail.created_at)}
           </KeyValue>
           <KeyValue title={words.updated}>
-            {formatTime(detail.updated_at, locale)}
+            {timeOf(detail.updated_at)}
           </KeyValue>
         </Pairs>
         {detail.message !== undefined && <Note>{detail.message}</Note>}
@@ -67,18 +69,13 @@ export function AdminAssistantTaskDetail({
             {words.reanalyze}
           </Button>
           {pdf !== null && (
-            <ButtonLink to={pdf} external newTab icon={<Icon name="eye" />}>
+            <ButtonLink to={pdf} external newTab newTabLabel={messages.newTab}>
               {words.openPdf}
             </ButtonLink>
           )}
           {detail.status === "completed" && (
             <>
-              <ButtonLink
-                to={handout}
-                external
-                newTab
-                icon={<Icon name="eye" />}
-              >
+              <ButtonLink to={handout} external newTab newTabLabel={messages.newTab}>
                 {words.handout}
               </ButtonLink>
               <ButtonLink to={word} external icon={<Icon name="download" />}>
@@ -91,19 +88,4 @@ export function AdminAssistantTaskDetail({
       </Stack>
     </Section>
   )
-}
-
-function formatTime(value: string | undefined, locale: Locale): string {
-  if (value === undefined) return "-"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleString(locale === "ja" ? "ja-JP" : "en-GB")
-}
-
-/** The same reading as the listing's (`admin-assistant-task-list.tsx`). */
-function statusClass(status: Status): string {
-  if (status === "error") return "text-danger"
-  if (status === "pending" || status === "processing") return "text-ink-muted"
-  return ""
 }

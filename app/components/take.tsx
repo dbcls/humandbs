@@ -44,10 +44,11 @@ import { messagesFor } from "~/i18n/messages"
 import { minuteInJst } from "~/dates"
 import { href, researchPath } from "~/public/urls"
 
-import { Button, ButtonLink, Chevron, Note, PANE_LABEL, Stack, Stated } from "./base"
-import { Flag } from "./flags"
+import { WayTo } from "./admin"
+import { Button, ButtonLink, Note, PANE_LABEL, Stack } from "./base"
+import { Flag, Stated } from "./flags"
 import { type Marks, PairField, SingleField } from "./fields"
-import { CONTROL, Submit } from "./form"
+import { Submit } from "./form"
 import { Icon } from "./icons"
 import { CompareTable, lineRows } from "./previous"
 import { Empty, ExternalLink, Section, Table, Td } from "./page"
@@ -283,22 +284,6 @@ function ListPlace({ locale, title, rows, nameOf, held, sourceLabel, onTick }: {
   )
 }
 
-/** A date, written as the dataset's own screen writes it. */
-export function DateField({ label, value, onChange }: { label: string, value: string, onChange: (next: string) => void }) {
-  return (
-    <Stack gap="tight">
-      <span className={PANE_LABEL}>{label}</span>
-      <input
-        type="date"
-        aria-label={label}
-        className={`${CONTROL} w-48 text-sm`}
-        value={value}
-        onChange={(event) => { onChange(event.target.value) }}
-      />
-    </Stack>
-  )
-}
-
 /** The research's parts: its places, its lists, and the form's controls. */
 export function researchParts(
   locale: Locale,
@@ -444,10 +429,9 @@ export function ApplicationDatasets({ locale, source }: {
                   {entry.heldBy !== null && (
                     <>
                       <span className="text-ink-muted text-xs">{t.taken}</span>
-                      <ButtonLink to={href(locale, adminResearchPath(entry.heldBy))} size="row">
+                      <WayTo to={href(locale, adminResearchPath(entry.heldBy))} size="row">
                         {t.openHolder}
-                        <Chevron dir="right" />
-                      </ButtonLink>
+                      </WayTo>
                     </>
                   )}
                 </li>
@@ -478,13 +462,13 @@ export function SourceTable({ rows, here, current, humLabel, locale }: {
   const detail = messages.admin.detail
   return (
     <Table
+      actions
       align="middle"
       headers={[
         detail.kind,
         detail.version,
         detail.updatedAt,
         detail.releaseDate,
-        <span key="actions" className="sr-only">{messages.admin.actions}</span>,
       ]}
       whenEmpty={messages.admin.take.noRows}
     >
@@ -541,13 +525,13 @@ function SourceRow({ row, to, humLabel, self, locale }: {
         {row.kind === "draft"
           ? (
               <span className="flex items-center gap-2 text-nowrap">
-                <Stated icon="edit">{detail.draft}</Stated>
+                <Stated kind="changed">{detail.draft}</Stated>
                 {self && <Flag kind="pointed">{messages.admin.take.thisDraft}</Flag>}
               </span>
             )
           : (
               <span className="flex items-center gap-2 text-nowrap">
-                <Stated icon="eye">{detail.published}</Stated>
+                <Stated kind="live">{detail.published}</Stated>
                 {row.update !== null && <Flag kind="changed">{detail.updating}</Flag>}
               </span>
             )}

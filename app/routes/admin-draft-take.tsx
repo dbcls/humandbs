@@ -5,7 +5,7 @@ import type { UpstreamBranchView } from "~/admin/templates.server"
 import { adminDraftPath, adminDraftTakePath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
 import { AdminBack, WayTo } from "~/components/admin"
 import { ButtonLink, Heading, Note, Stack } from "~/components/base"
-import { Answered, Field, Result, Submit } from "~/components/form"
+import { Answer, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section, Table, Td } from "~/components/page"
 import { ApplicationDatasets, ApplicationWarning, researchParts, sourceName, SourceTable, TakeFace } from "~/components/take"
@@ -62,10 +62,11 @@ export default function AdminDraftTake({ loaderData, actionData }: Route.Compone
   return (
     <Page>
       {/* Only a refusal is answered: taking it in leaves for the draft. */}
-      <Answered answer={actionData} locale={locale}>
-        {actionData?.status === "conflict" && <Result ok={false}>{messages.admin.templates.conflict}</Result>}
-        {actionData?.status === "taken" && <Result ok={false}>{messages.admin.templates.takenLabel}</Result>}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        said={(answer) => answer.status === "conflict" ? messages.admin.conflict : messages.admin.templates.takenLabel}
+      />
       <Card under={false}>
         <Stack gap="block">
           {chosen === null
@@ -154,7 +155,7 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                       research's; it is looked up in the listing and its ID
                       pasted into the box below. */}
                   <div>
-                    <WayTo to={href(locale, adminUpstreamResearchPath())} icon="clipboard">
+                    <WayTo to={href(locale, adminUpstreamResearchPath())} icon="inbox">
                       {templates.heading}
                     </WayTo>
                   </div>
@@ -180,6 +181,7 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                       research is here) — one branch drawn two ways would read
                       as two things. */}
                   <Table
+                    actions
                     stuck={1}
                     headers={[
                       templates.application,
@@ -187,7 +189,6 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                       templates.title,
                       templates.pi,
                       templates.registered,
-                      <span key="actions" className="sr-only">{messages.admin.actions}</span>,
                     ]}
                     whenEmpty={templates.noBranches}
                   >

@@ -10,11 +10,12 @@ import { messagesFor } from "~/i18n/messages"
 import { href, jgaEntryUrl } from "~/public/urls"
 import type { loader as branchLoader } from "~/routes/admin-upstream-branch"
 
-import { Clamped, Dialog, Excerpt, Note, Stack, Stated } from "./base"
+import { Dialog, Excerpt, Note, Stack } from "./base"
+import { Flag, type FlagKind, Stated } from "./flags"
 import { LanguageMark } from "./fields"
 import { Submit } from "./form"
-import { Icon, type IconName } from "./icons"
-import { Code, Empty, ExternalLink, KeyValue, Pairs, Section, Td } from "./page"
+import { Icon } from "./icons"
+import { Code, DatasetIds, Empty, Fact, Facts, IdMark, KeyValue, Pairs, Section, Td } from "./page"
 import { researchFieldLabel, SEEDED_PATH } from "./research-fields"
 
 /**
@@ -41,10 +42,10 @@ export function UpstreamNotConnected({ locale }: { locale: Locale }) {
  * glyphs differ from one another** — the glyph is what tells the states apart
  * at a glance, and the word says which it is.
  */
-export const STANDING_MARK: Record<BranchStanding, IconName> = {
-  held: "check",
-  absent: "circle-slash",
-  unlabelled: "help-circle",
+export const STANDING_MARK: Record<BranchStanding, FlagKind> = {
+  held: "resolved",
+  absent: "absent",
+  unlabelled: "unknown",
 }
 
 export function BranchStandingMark({ standing, locale }: {
@@ -52,7 +53,7 @@ export function BranchStandingMark({ standing, locale }: {
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.templates
-  return <Stated icon={STANDING_MARK[standing]}>{t.standings[standing]}</Stated>
+  return <Stated kind={STANDING_MARK[standing]}>{t.standings[standing]}</Stated>
 }
 
 /**
@@ -76,39 +77,13 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
     <Stack gap="normal">
       {choice.fields.length > 0 && (
         <Section title={t.fields}>
-          {/* **The two languages stand one above the other.** Side by side
-              they read as two values rather than one said twice, and a
-              statement of aims runs long enough that the second column would
-              begin where the first is still going.
-
-              **Which of the two it is, is said by a word.** Told apart by
-              colour alone the pair reads as one statement and a quieter
-              second one, and nothing on the screen says the quieter one is
-              the English — least of all to a reader who cannot see the
-              difference. With the word there, both take the colour of text. */}
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
+          <Facts>
             {choice.fields.map((field) => (
-              <div key={field.field} className="contents">
-                <dt className="text-ink-muted">{researchFieldLabel(SEEDED_PATH[field.field], locale) ?? field.field}</dt>
-                <dd className="flex flex-col gap-2">
-                  {field.ja === "" && field.en === ""
-                    ? <span className="text-ink-muted">{t.neither}</span>
-                    : (["ja", "en"] as const).map((language) => (
-                        field[language] === ""
-                          ? null
-                          : (
-                              <span key={language} className="flex gap-2">
-                                <span className="w-5 shrink-0 text-ink-muted text-sm" lang={language}>
-                                  {language}
-                                </span>
-                                <span lang={language}>{field[language]}</span>
-                              </span>
-                            )
-                      ))}
-                </dd>
-              </div>
+              <Fact key={field.field} name={researchFieldLabel(SEEDED_PATH[field.field], locale) ?? field.field}>
+                <SeededValue field={field} locale={locale} />
+              </Fact>
             ))}
-          </dl>
+          </Facts>
         </Section>
       )}
 
@@ -173,14 +148,11 @@ export function DroppedNote({ locale, dropped }: { locale: Locale, dropped: read
       <Note kind="warning">
         <Stack gap="tight">
           <p className="font-semibold text-ink">{t.droppedHeading(dropped.length)}</p>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-ink">
+          <Facts>
             {dropped.map((value) => (
-              <div key={`${value.keyCode} ${value.value}`} className="contents">
-                <dt className="text-ink-muted">{value.keyLabel}</dt>
-                <dd>{value.value}</dd>
-              </div>
+              <Fact key={`${value.keyCode} ${value.value}`} name={value.keyLabel}>{value.value}</Fact>
             ))}
-          </dl>
+          </Facts>
           <p className="text-ink-muted">{t.droppedSaid}</p>
         </Stack>
       </Note>
@@ -208,27 +180,40 @@ export function BranchPairs({ locale, branch, fields, applicationId }: {
         <KeyValue title={t.application}><Code>{applicationId}</Code></KeyValue>
       )}
       <KeyValue title={messagesFor(locale).research.researchId}>
-        {branch.humLabel ?? <span className="text-ink-muted">{t.noHumLabel}</span>}
+        {branch.humLabel ?? <Flag kind="short">{t.noHumLabel}</Flag>}
       </KeyValue>
       <KeyValue title={t.approvedOn}>{branch.approvedOn ?? ""}</KeyValue>
       {fields.map((field) => (
         <KeyValue key={field.field} title={researchFieldLabel(SEEDED_PATH[field.field], locale) ?? field.field}>
-          {field.ja === "" && field.en === ""
-            ? <span className="text-ink-muted">{t.neither}</span>
-            : (
-                <span className="flex flex-col gap-2">
-                  {(["ja", "en"] as const).map((language) => field[language] !== "" && (
-                    <span key={language} className="flex gap-2">
-                      {/* A fixed width, so the ja and en texts start at one edge. */}
-                      <span className="w-5 shrink-0"><LanguageMark language={language} /></span>
-                      <span lang={language}>{field[language]}</span>
-                    </span>
-                  ))}
-                </span>
-              )}
+          <SeededValue field={field} locale={locale} />
         </KeyValue>
       ))}
     </Pairs>
+  )
+}
+
+/**
+ * One value the application states, in both its languages.
+ *
+ * **The two languages stand one above the other**, each after its `ja` / `en`
+ * mark: side by side they read as two values rather than one said twice, and
+ * told apart by colour alone the pair reads as one statement and a quieter
+ * second one (`docs/ui.md` の「どちらの言語かは語が言う」).
+ */
+function SeededValue({ field, locale }: { field: SeededFieldView, locale: Locale }) {
+  if (field.ja === "" && field.en === "") {
+    return <span className="text-ink-muted">{messagesFor(locale).admin.templates.neither}</span>
+  }
+  return (
+    <span className="flex flex-col gap-2">
+      {(["ja", "en"] as const).map((language) => field[language] !== "" && (
+        <span key={language} className="flex gap-2">
+          {/* A fixed width, so the ja and en texts start at one edge. */}
+          <span className="w-5 shrink-0"><LanguageMark language={language} /></span>
+          <span lang={language}>{field[language]}</span>
+        </span>
+      ))}
+    </span>
   )
 }
 
@@ -256,21 +241,11 @@ export function BranchCells({ row, locale }: { row: UpstreamBranchView, locale: 
             often approved before the ones it registered are published, so the
             portal has nothing to show of them yet (`public/urls.ts` の
             `jgaEntryUrl`). */}
-        <Clamped
+        <DatasetIds
           shown={SHOWN_DATASETS}
-          more={(rest) => messages.search.andMore(rest)}
-          less={messages.search.showLess}
-          items={row.datasets.map((accession) => (
-            // **One row, one way of aligning.** The external link is a box that
-            // centres its contents, so the glyph beside it is centred with it
-            // rather than sat on the baseline; and the box sits by its top,
-            // because a box that centres takes its baseline from the words
-            // inside and would stretch the row past the table's line height.
-            <span key={accession} className="inline-flex items-center gap-1 align-top text-nowrap">
-              <Icon name="database" aria-hidden="true" className="text-ink-muted" />
-              <ExternalLink to={jgaEntryUrl(accession)} locale={locale}>{accession}</ExternalLink>
-            </span>
-          ))}
+          newTab
+          locale={locale}
+          items={row.datasets.map((accession) => ({ label: accession, to: jgaEntryUrl(accession) }))}
         />
       </Td>
     </>
@@ -368,10 +343,7 @@ export function BranchDatasets({ locale, datasets, sayHeld = false, bare = false
           {datasets.map((entry) => (
             <li key={entry.accession} className="flex flex-wrap items-center gap-2">
               {/* The mark and the way to the archive the listing's cell gives. */}
-              <span className="inline-flex items-center gap-1">
-                <Icon name="database" aria-hidden="true" className="text-ink-muted" />
-                <ExternalLink to={jgaEntryUrl(entry.accession)} locale={locale}>{entry.accession}</ExternalLink>
-              </span>
+              <IdMark kind="dataset" to={jgaEntryUrl(entry.accession)} newTab locale={locale}>{entry.accession}</IdMark>
               {entry.description !== "" && <span className="text-ink-muted">{entry.description}</span>}
               {sayHeld && entry.heldBy !== null && <span className="text-ink-muted text-xs">{t.taken}</span>}
             </li>

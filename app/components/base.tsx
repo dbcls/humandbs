@@ -18,7 +18,7 @@
  * Every part is drawn against real rows at `/dev/ui`.
  */
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { Link, useLocation } from "react-router"
 
 import { Icon, Spinner, type IconName } from "~/components/icons"
@@ -412,39 +412,6 @@ export function Badge({
   )
 }
 
-/**
- * A state as a glyph and a word, on a line.
- *
- * **What every row has is not a badge.** A badge is a box, and a box is for
- * what a reader has to pick out — the rows that carry a shortcoming, the one
- * revision the pointer names, the term being folded away. A state that every
- * row carries (published or not, shared or not, the type of a key) drawn in a
- * box gives every row a box, and then nothing is picked out: the rows that
- * need somebody look exactly like the rows that do not. The glyph is what tells
- * the states apart at a glance; the word is what says which it is once the
- * question is known (`docs/ui.md` の「壊れるもの」).
- *
- * **The same pair in the pane and down the table**, so the shape a curator
- * narrows by is the shape they then read in the rows.
- *
- * **It takes one line's height and sits at the top of it**, the box a badge
- * stands in (`Badge`). Left on the baseline, an inline-flex box is placed by
- * its first item's baseline, and a glyph has none — the browser takes the
- * bottom edge of the svg, which is 2.4px under the words' baseline. The line
- * box grows by that much to hold it and the pair sits at the top of the taller
- * line: measured, 1.9px above the words in the cells beside it, and every cell
- * of a top-aligned row moved up with it. Top-aligned in a box of its own
- * line's height, it has no baseline to be placed by.
- */
-export function Stated({ icon, children }: { icon: IconName, children: ReactNode }) {
-  return (
-    <span className="inline-flex h-[1lh] items-center align-top text-nowrap">
-      <Icon name={icon} aria-hidden="true" className="mr-1 text-ink-muted" />
-      {children}
-    </span>
-  )
-}
-
 /* ---------------------------------------------------------------- buttons */
 
 /**
@@ -690,54 +657,73 @@ export function Button({
  *
  * `external` is for an address no client-side navigation can answer — a file to
  * download, a redirect to the identity provider — where a `<Link>` would ask
- * the route for data instead of following it. `newTab` is separate from it,
- * because leaving in a new tab is something the words beside the control have
- * to say.
+ * the route for data instead of following it.
+ *
+ * **A new tab is said twice, and the part says both.** The glyph is `external`
+ * and the part draws it itself, in place of the one a caller would pick: a way
+ * that leaves the screen is that before it is anything else, and a caller
+ * choosing `eye` for "open the PDF" is how the same leaving came to wear three
+ * glyphs. The words are the caller's (`newTabLabel`, required by the type),
+ * since this layer holds none — the mark alone says nothing to anyone not
+ * looking at it (`docs/ui.md` の「壊れるもの」).
  */
-export function ButtonLink({
-  to,
-  variant = "secondary",
-  size = "sm",
-  listing = false,
-  onBand = false,
-  external = false,
-  newTab = false,
-  newTabLabel,
-  download = false,
-  icon,
-  className = "",
-  children,
-}: ButtonLook & {
+export function ButtonLink(props: Omit<ButtonLook, "icon"> & {
   to: string
   external?: boolean
-  newTab?: boolean
-  /** Said for anyone not looking at the mark. Required wherever `newTab` is. */
-  newTabLabel?: string
   /**
    * What the address answers with is saved rather than shown. For an `external`
    * address only: the browser decides what to do with a page of its own.
    */
   download?: boolean
+  /**
+   * **A way to another screen**: the chevron after the word, moving that way
+   * when pointed at (`Chevron`). The glyph before the word, if any, says what
+   * the screen is about; the one after says it is somewhere else.
+   */
+  way?: boolean
   children: ReactNode
-}) {
+} & (
+  | { newTab?: false, newTabLabel?: undefined, icon?: ReactNode }
+  | {
+    newTab: true
+    /** Said for anyone not looking at the mark. */
+    newTabLabel: string
+    icon?: undefined
+  }
+)) {
+  const {
+    to,
+    variant = "secondary",
+    size = "sm",
+    listing = false,
+    onBand = false,
+    external = false,
+    download = false,
+    way = false,
+    className = "",
+    children,
+  } = props
   const shape = buttonClass({ variant, size, listing, onBand, className })
+  // A new tab is announced rather than just opened, and `noreferrer` keeps the
+  // address of the page that opened it out of the other site's log.
+  if (props.newTab === true) {
+    return (
+      <a href={to} target="_blank" rel="noopener noreferrer" className={shape}>
+        <Icon name="external" aria-hidden="true" />
+        {children}
+        <span className="sr-only">{props.newTabLabel}</span>
+      </a>
+    )
+  }
   const inside = (
     <>
-      {icon}
+      {props.icon}
       {children}
+      {way && <Chevron dir="right" />}
     </>
   )
   if (!external) return <Link to={to} className={shape}>{inside}</Link>
-  // A new tab is announced rather than just opened, and `noreferrer` keeps the
-  // address of the page that opened it out of the other site's log.
-  return newTab
-    ? (
-        <a href={to} target="_blank" rel="noopener noreferrer" className={shape}>
-          {inside}
-          {newTabLabel !== undefined && <span className="sr-only">{newTabLabel}</span>}
-        </a>
-      )
-    : <a href={to} className={shape} download={download || undefined}>{inside}</a>
+  return <a href={to} className={shape} download={download || undefined}>{inside}</a>
 }
 
 /**
@@ -795,7 +781,7 @@ export function BigAction({ to, tone, icon, external = false, newTabLabel, child
  * text under it: without one the control announces as "button" and is
  * unusable by anybody not looking at it.
  */
-export function IconButton({ name, label, pressed, onClick, type = "button", ...rest }: {
+export function IconButton({ name, label, pressed, fill = false, titled = true, onClick, type = "button", ...rest }: {
   name: IconName
   label: string
   /**
@@ -813,23 +799,84 @@ export function IconButton({ name, label, pressed, onClick, type = "button", ...
    * `aria-pressed` rather than by a third shade.
    */
   pressed?: boolean | "mixed"
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">
+  /**
+   * Pressed, it is filled with the brand rather than drawn in the accent.
+   *
+   * **For a mark that sets a state away from the default** — a field's
+   * 未確定 / 該当なし. There the pressed mark is a choice made, and a chosen
+   * option is filled wherever the site draws one (`Choice`); a mark in a
+   * column of rows is not, and a fill there would be the loudest thing in the
+   * table.
+   */
+  fill?: boolean
+  /**
+   * Whether the name is also shown to a pointer as a `title`. Off where the
+   * control draws its own sentence over itself (`TOOLTIP`), which would
+   * otherwise be followed by the browser's.
+   */
+  titled?: boolean
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children" | "title">
 & React.RefAttributes<HTMLButtonElement>) {
-  const look = pressed === true || pressed === "mixed"
-    ? "text-accent hover:bg-surface-hover"
-    : "text-ink-muted hover:bg-surface-hover hover:text-ink"
+  const on = pressed === true || pressed === "mixed"
+  const look = on
+    ? fill ? "bg-brand text-white" : "text-accent enabled:hover:bg-surface-hover"
+    : "text-ink-muted enabled:hover:bg-surface-hover enabled:hover:text-ink"
+  // **A control that cannot be pressed says so itself**: it dims, keeps the
+  // arrow, and does not answer a pointer. A glyph has no face of its own to
+  // dim, so without this every caller wrapped the button in a faded box.
   return (
     <button
       type={type}
       onClick={onClick}
       aria-label={label}
-      title={label}
+      title={titled ? label : undefined}
       aria-pressed={pressed}
-      className={`inline-flex size-tap cursor-pointer items-center justify-center rounded transition-colors ${look}`}
+      className={`inline-flex size-tap shrink-0 cursor-pointer items-center justify-center rounded transition-colors disabled:cursor-default disabled:opacity-50 ${look}`}
       {...rest}
     >
       <Icon name={name} className="text-base" />
     </button>
+  )
+}
+
+/**
+ * Moving one row of a list up or down by one.
+ *
+ * **The two ends are the same pair on every list** — a row's own marks, a
+ * card's, a table's — and the end a row cannot move past is pressed-out rather
+ * than missing, so the pair stands in the same place on every row.
+ *
+ * **How a press travels is the caller's**: a list held in the page moves on
+ * `onMove`, a list the server holds wraps each button in its own form
+ * (`render`), because an `IconButton` spends its `name` on the glyph and two in
+ * one form have nothing left to tell the press apart by.
+ */
+export function ReorderButtons({ at, of, labels, onMove, render }: {
+  /** The row's place, from 0. */
+  at: number
+  /** How many rows the list holds. */
+  of: number
+  labels: { up: string, down: string }
+  onMove?: (by: -1 | 1) => void
+  render?: (by: -1 | 1, button: ReactNode) => ReactNode
+}) {
+  const one = (by: -1 | 1) => {
+    const button = (
+      <IconButton
+        name={by === -1 ? "chevron-up" : "chevron-down"}
+        label={by === -1 ? labels.up : labels.down}
+        type={render === undefined ? "button" : "submit"}
+        disabled={by === -1 ? at === 0 : at === of - 1}
+        onClick={onMove === undefined ? undefined : () => { onMove(by) }}
+      />
+    )
+    return <Fragment key={by}>{render === undefined ? button : render(by, button)}</Fragment>
+  }
+  return (
+    <>
+      {one(-1)}
+      {one(1)}
+    </>
   )
 }
 
@@ -923,22 +970,101 @@ export function Choice<T extends string>({ label, value, options, onChange, size
 }
 
 /**
- * The face of a `Button`, as a class, for the one element that cannot be one:
- * a `<summary>`, which opens what is behind it.
+ * A mark standing in a line of text that opens a panel — the comments on a
+ * field, the comparison with the published version.
  *
- * **Nothing else takes it.** A `<div>` wearing this is a button the keyboard
- * cannot reach, and the reason the rule is worth stating is that the place that
- * needed it had drawn a face of its own instead — an edge and a colour that
- * appear nowhere else on the site.
+ * **The face of a `row` button, the line's height, and a 36px reach.** What
+ * stands beside it is the heading or the value it acts on, and a box the size
+ * of an ordinary control would be larger than what it is about. So the box is
+ * drawn at the row's 24px and the reach is widened past it by a
+ * pseudo-element rather than by padding (`docs/ui.md` の「押せるものの大きさ」)
+ * — the line it stands in keeps its own height.
+ *
+ * **One part, because the two stand side by side.** Drawn apart they each
+ * spelled the same face and the same reach by hand, and the pair on one line is
+ * where a pixel of difference between them would show.
  */
-export function controlFace({
-  variant = "secondary",
-  size = "sm",
-  listing = false,
-  onBand = false,
-  className = "",
-}: Omit<ButtonLook, "icon"> = {}): string {
-  return buttonClass({ variant, size, listing, onBand, className })
+export function MarkButton({ icon, label, onClick, children }: {
+  icon: IconName
+  /** The name, where the words shown are not one (a bare count). */
+  label?: string
+  onClick: () => void
+  children?: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className={`${buttonClass({ variant: "secondary", size: "row", listing: false, onBand: false, className: "" })} relative after:absolute after:-inset-x-1 after:-inset-y-2 after:content-['']`}
+    >
+      <Icon name={icon} aria-hidden="true" />
+      {label !== undefined && <span className="sr-only">{label}</span>}
+      {children}
+    </button>
+  )
+}
+
+/**
+ * The way to put something on the clipboard.
+ *
+ * **Copying leaves nothing on the screen, so the control answers for it.** On
+ * the press the glyph turns to a tick and the name to the word saying it is
+ * done, and after the time a toast stays up (`TOAST_MS`) both go back. This is
+ * the one control that renames itself while it acts (`docs/ui.md` の
+ * 「壊れるもの」): what is copied goes somewhere off the screen, and a status
+ * set apart from the control is read as a second thing that happened.
+ *
+ * **It keeps its width.** The two words stand in one cell, so the control is
+ * as wide as the longer of them whichever it shows, and nothing beside it moves
+ * when it answers. **The answer is also said**, by a status beside it that is
+ * there from the start — a live region that appears holding its message may not
+ * be read at all.
+ *
+ * `text` may be a function for something that has to be fetched or built at
+ * the moment of copying (the rows of a search, an address made absolute).
+ */
+export function CopyButton({ text, label, done, size = "sm", listing = false, title }: {
+  text: string | (() => string | Promise<string>)
+  label: string
+  /** What the control says while the copy is fresh. */
+  done: string
+  size?: ButtonSize
+  listing?: boolean
+  /** What is copied, shown to a pointer — where it is not on the screen already. */
+  title?: string
+}) {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current)
+  }, [])
+  async function copy() {
+    await navigator.clipboard.writeText(typeof text === "string" ? text : await text())
+    setCopied(true)
+    if (timer.current !== null) window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      setCopied(false)
+    }, TOAST_MS)
+  }
+  return (
+    <>
+      <Button
+        type="button"
+        size={size}
+        listing={listing}
+        title={title}
+        icon={<Icon name={copied ? "check" : "copy"} aria-hidden="true" />}
+        onClick={() => { void copy() }}
+      >
+        <span className="grid">
+          <span aria-hidden={copied} className={`col-start-1 row-start-1 ${copied ? "invisible" : ""}`}>{label}</span>
+          <span aria-hidden={!copied} className={`col-start-1 row-start-1 ${copied ? "" : "invisible"}`}>{done}</span>
+        </span>
+      </Button>
+      <span role="status" className="sr-only">{copied ? done : ""}</span>
+    </>
+  )
 }
 
 /**
@@ -1090,6 +1216,72 @@ export function Chip({ field, value, to, remove }: {
   )
 }
 
+/**
+ * A value that has been picked, and the way to put it back.
+ *
+ * **The face of a badge** (`Badge`, muted) — it is a value standing in a field
+ * rather than something to press — **with the glyph that takes it out at its
+ * end**. The whole chip is the button, so the reach is the chip's rather than a
+ * 12px glyph's, and the name it announces is the caller's sentence saying what
+ * pressing it does, not the value alone.
+ *
+ * **The glyph is `close`, not `trash`**: what goes is the value from this
+ * field, and the value itself is still there to pick again.
+ */
+export function ValueChip({ remove, disabled = false, onRemove, children }: {
+  /** What pressing it does, said for anyone not looking at the glyph. */
+  remove: string
+  disabled?: boolean
+  onRemove: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onRemove}
+      className="inline-flex cursor-pointer items-center gap-1 rounded border border-line-strong bg-white px-2 py-0.5 text-ink-muted text-xs leading-3.5 transition-colors hover:bg-surface-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {children}
+      <Icon name="close" aria-hidden="true" />
+      <span className="sr-only">{remove}</span>
+    </button>
+  )
+}
+
+/**
+ * How many of something a control stands for — the datasets in the cart, the
+ * conditions a folded pane holds.
+ *
+ * **A filled disc of the white-text colours**, so it reads as a number riding
+ * on the control rather than as a second control. `floating` hangs it off the
+ * control's corner, where the control is a 36px circle with no room inside it;
+ * **whatever carries a floating one has to be `relative`** and has to say the
+ * number in its own name as well — a label replaces what is inside a control,
+ * and a number left in the markup alone is read by nobody who cannot see it.
+ */
+export function CountBubble({ count, tone = "accent", floating = false }: {
+  count: number
+  tone?: "accent" | "brand"
+  floating?: boolean
+}) {
+  if (count <= 0) return null
+  return (
+    <span
+      // **Keyed by the number**, so a new one is mounted whenever it changes and
+      // the animation runs again. Without that the bubble counts up in silence,
+      // a thousand pixels from wherever the press was.
+      key={count}
+      aria-hidden="true"
+      className={`inline-flex min-w-5 items-center justify-center rounded-full px-1 font-semibold text-white text-xs motion-safe:animate-bump ${
+        tone === "accent" ? "bg-accent" : "bg-brand"
+      } ${floating ? "-top-1 -right-1 absolute" : ""}`}
+    >
+      {count}
+    </span>
+  )
+}
+
 /* ---------------------------------------------------------- announcements */
 
 /**
@@ -1173,30 +1365,6 @@ export function LanguagePills({ label, options }: {
  * `filled` is for the one that starts something rather than showing something,
  * which in the header is signing in.
  */
-/**
- * The number riding on a round control, drawn only when there is one to draw.
- *
- * It sits outside the flow, so **whatever carries it has to be `relative`** and
- * has to say the number in its own name as well: a label replaces what is
- * inside a control, and a number left in the markup alone is read by nobody who
- * cannot see it.
- */
-function CountBadge({ count }: { count?: number }) {
-  if (count === undefined || count <= 0) return null
-  return (
-    <span
-      // **Keyed by the number**, so a new one is mounted whenever it changes and
-      // the animation runs again. Without that the badge counts up in silence,
-      // a thousand pixels from wherever the press was.
-      key={count}
-      aria-hidden="true"
-      className="-top-1 -right-1 absolute inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1 font-semibold text-white text-xs motion-safe:animate-bump"
-    >
-      {count}
-    </span>
-  )
-}
-
 export function RoundLink({ to, name, label, filled = false, external = false }: {
   to: string
   name: IconName
@@ -1951,8 +2119,12 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
    * whatever opened it is the way in.
    */
   held?: { open: boolean, close: () => void }
-  /** The word on the way out, which every panel has. */
-  dismiss: string
+  /**
+   * The word on the way out, which every panel has. **「キャンセル」 unless
+   * the panel has nothing to throw away**, in which case it is 「閉じる」 and
+   * the caller says so (`docs/admin-ui.md` の「止める語」).
+   */
+  dismiss?: string
   /**
    * The deed, at the right of the foot, handed the way to shut the panel for a
    * deed that is not a form being sent.
@@ -2066,7 +2238,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
                 disabled={holding}
                 onClick={close}
               >
-                {dismiss}
+                {dismiss ?? messagesFor("ja").admin.cancel}
               </Button>
               {action?.(close)}
             </span>
@@ -2120,7 +2292,8 @@ export function Confirm({
   /** Why the way in cannot be taken, when it cannot (`Dialog`). */
   disabled?: string
   confirm: string
-  cancel: string
+  /** The way out; 「キャンセル」 on every confirmation, so none passes it. */
+  cancel?: string
   /**
    * What the form is being asked to do, put on the button rather than into a
    * hidden field.
@@ -2401,7 +2574,7 @@ export function Menu({ label, icon = "more", glyph, round = false, filled = fals
         {value}
         {word && label}
         {value !== undefined && <Icon name="chevron-down" aria-hidden="true" />}
-        <CountBadge count={count} />
+        {count !== undefined && <CountBubble count={count} floating />}
       </summary>
       {/* **Over anything the page holds up on its own** — a stuck head card
           (`draft-tools.tsx`, z-20) or a table's stuck columns — and level with

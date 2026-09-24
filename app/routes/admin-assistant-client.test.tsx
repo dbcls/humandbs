@@ -49,9 +49,11 @@ describe("アシスタントの人物検証表示", () => {
       />,
     )
 
-    expect(html.match(/参考URL/g)).toHaveLength(1)
-    expect(html).toMatch(/>example\.ac\.jp<\/a><\/span><span>, <a/)
-    expect(html).toContain(">registry.example.go.jp</a>")
+    expect(html.match(/参考 URL/g)).toHaveLength(1)
+    // Each opens a new tab with the site's own mark and words for that (`page.tsx` の `ExternalLink`).
+    expect(html).toMatch(/>example\.ac\.jp<svg[^]*?\(新しいタブで開きます\)<\/span><\/a><\/span><span>, <a/)
+    expect(html).toContain(">registry.example.go.jp<svg")
+    expect(html).toContain("rel=\"noopener noreferrer\"")
   })
 
   it("正規化後の電話番号が元の番号と同じなら重複表示しない", () => {

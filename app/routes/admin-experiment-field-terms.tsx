@@ -1,4 +1,4 @@
-import { Form, Link } from "react-router"
+import { Form } from "react-router"
 
 import {
   TERM_SORT,
@@ -16,34 +16,29 @@ import { ICD10_SET_CODE } from "~/icd10/codes"
 import { AdminBack } from "~/components/admin"
 import {
   ButtonLink,
-  Chooser,
-  CHOOSER_SIDE,
   Confirm,
   Dialog,
   Heading,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
   Note,
   Stack,
 } from "~/components/base"
 import {
-  Answered,
+  Answer,
   Editing,
   Field,
-  Result,
+  LanguagePair,
   Submit,
   Unsaved,
 } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, Code, Empty, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
-import { RefinableList, SearchBox, usePaneOpen } from "~/components/search"
+import { Card, Code, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
+import { type ListingPaging, ListingPresented, ListingTools, type Presentation, type PresentedQuery, presentedQuery, RefinableList, SearchBox, usePaneOpen } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
 import { datasetsUsing, href } from "~/public/urls"
-import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-experiment-field-terms"
 import { Flag } from "~/components/flags"
@@ -98,18 +93,13 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
  * the box holds is carried through, because an order is a way of reading the
  * answer rather than a different question.
  */
-function at(view: VocabularyView, over: {
-  sort?: TermSortKey
-  order?: "asc" | "desc"
-  size?: PageSize
+function at(view: VocabularyView, over: Partial<PresentedQuery<TermSortKey>> & {
   page?: number
   /** The term a merge aims from; `null` puts the listing back to ordinary. */
   mergeFrom?: string | null
 }): string {
   const next = {
-    sort: view.sort,
-    order: view.order,
-    size: view.size,
+    ...presentedQuery(presentation(view)),
     page: 1,
     mergeFrom: view.mergeFrom?.id ?? null,
     ...over,
@@ -120,15 +110,31 @@ function at(view: VocabularyView, over: {
   // is reading this listing, and losing the aim on the second page would mean
   // starting over.
   if (next.mergeFrom !== null) search.set("mergeFrom", next.mergeFrom)
-  if (next.sort !== TERM_SORT) search.set("sort", next.sort)
-  if (next.order !== "asc") search.set("order", next.order)
-  if (next.size !== PAGE_SIZE) search.set("size", String(next.size))
+  if (next.sort !== null) search.set("sort", next.sort)
+  if (next.order !== null) search.set("order", next.order)
+  if (next.size !== null) search.set("size", String(next.size))
   if (next.page !== 1) search.set("page", String(next.page))
   const written = search.toString()
   return href(
     view.locale,
     adminExperimentFieldPath(view.field.code) + (written === "" ? "" : `?${written}`),
   )
+}
+
+/** How the terms are read: every key runs from A in the bare address. */
+function presentation(view: VocabularyView): Presentation<TermSortKey> {
+  const t = messagesFor(view.locale).admin.catalog
+  return {
+    sort: {
+      keys: TERM_SORT_KEYS,
+      current: view.sort,
+      order: view.order,
+      unwritten: TERM_SORT,
+      runs: () => "asc",
+      name: (key) => t.sortKeys[key],
+    },
+    size: view.size,
+  }
 }
 
 export default function AdminFieldTerms({ loaderData, actionData }: Route.ComponentProps) {
@@ -139,11 +145,6 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
   const set = view.set
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
-  const flipped = view.order === "asc" ? "desc" : "asc"
-  const turn = flipped === "asc"
-    ? messages.search.sort.toAscending
-    : messages.search.sort.toDescending
-
   /*
     How the terms are read, and which of them are on screen.
 
@@ -151,70 +152,31 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
     screens are one step apart, and a reader who learned the controls on the
     table should not have to find them again in what it opens.
   */
-  const pages = (
-    <Paging
-      locale={locale}
-      total={set.terms}
-      from={view.rangeFrom}
-      to={view.rangeTo}
-      page={view.page}
-      pageCount={view.pageCount}
-      at={(page) => at(view, { page })}
-    />
-  )
+  const paging: ListingPaging = {
+    total: set.terms,
+    from: view.rangeFrom,
+    to: view.rangeTo,
+    page: view.page,
+    pageCount: view.pageCount,
+    at: (page) => at(view, { page }),
+  }
+  const pages = <Paging locale={locale} {...paging} />
   const tools = (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
-      <Chooser
-        label={messages.search.sort.label}
-        value={t.sortKeys[view.sort]}
-        beside={(
-          <Link
-            to={at(view, { order: flipped })}
-            aria-label={turn}
-            title={turn}
-            className={CHOOSER_SIDE}
-          >
-            {/* The glyph says which way the list runs now, not where it goes. */}
-            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
-          </Link>
-        )}
-      >
-        {TERM_SORT_KEYS.map((option) => (
-          <Link
-            key={option}
-            to={at(view, { sort: option, order: "asc" })}
-            aria-current={option === view.sort ? "true" : undefined}
-            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {t.sortKeys[option]}
-          </Link>
-        ))}
-      </Chooser>
-      <Chooser label={messages.search.pageSize} value={String(view.size)}>
-        {PAGE_SIZES.map((option) => (
-          <Link
-            key={option}
-            to={at(view, { size: option })}
-            aria-current={option === view.size ? "true" : undefined}
-            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {option}
-          </Link>
-        ))}
-      </Chooser>
-      {pages}
-    </div>
+    <ListingTools
+      locale={locale}
+      presented={presentation(view)}
+      at={(presented) => at(view, presented)}
+      paging={paging}
+    />
   )
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        {actionData !== undefined && (
-          <Result ok={actionData.status === "ok"}>
-            {actionData.status === "ok" ? t.done[actionData.did] : t.problems[actionData.status]}
-          </Result>
-        )}
-      </Answered>
+      <Answer
+        answer={actionData}
+        locale={locale}
+        said={(answer) => answer.status === "ok" ? t.done[answer.did] : t.problems[answer.status]}
+      />
       <Card under={false}>
         <Stack gap="normal">
           {/* **The name says what these are, and the field stands beside it** —
@@ -254,7 +216,6 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                   label={t.addTerm}
                   title={t.addTerm}
                   icon={<Icon name="plus" />}
-                  dismiss={t.cancel}
                   action={() => (
                     <Submit intent="create-term" variant="primary" icon={<Icon name="plus" />}>
                       {t.create}
@@ -266,8 +227,10 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                       public side carries rather than a name to choose, and
                       asking for one asks the curator to know which characters
                       a query holds unquoted. */}
-                  <Field label={t.labelJa} name="labelJa" width="w-full" />
-                  <Field label={t.labelEn} name="labelEn" width="w-full" />
+                  <LanguagePair>
+                    <Field label={t.labelJa} name="labelJa" width="w-full" />
+                    <Field label={t.labelEn} name="labelEn" width="w-full" />
+                  </LanguagePair>
                 </Dialog>
               </Form>
             )}
@@ -283,11 +246,8 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
             <Note
               kind="warning"
               action={(
-                <ButtonLink
-                  to={at(view, { mergeFrom: null })}
-                  icon={<Icon name="close" aria-hidden="true" />}
-                >
-                  {t.mergeCancel}
+                <ButtonLink to={at(view, { mergeFrom: null })}>
+                  {messages.admin.cancel}
                 </ButtonLink>
               )}
             >
@@ -311,42 +271,36 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
             pages={pages}
             panel={null}
           >
-            {view.terms.length === 0
-              ? <Empty>{view.find === "" ? t.noTerm : t.noMatchingTerm}</Empty>
-              : (
-                  <Table
-                    align="middle"
-                    headers={[
-                      /* **The standard's own code leads the row** where the
-                         codes are ICD10's: it is what the value is known by,
-                         and its prefix is what tells a four-character term
-                         from the three-character one above it. Elsewhere a
-                         code is an address made from the English label, and
-                         nobody reads it. */
-                      ...(set.code === ICD10_SET_CODE ? [t.code] : []),
-                      t.labelJa,
-                      t.labelEn,
-                      t.usage,
-                      /* The column of things to press names itself for anyone
-                         reading the row aloud and nowhere else. */
-                      <span key="actions" className="sr-only">{messages.admin.actions}</span>,
-                    ]}
-                    whenEmpty={t.noMatchingTerm}
-                  >
-                    {view.terms.map((term) => (
-                      <Row
-                        key={term.id}
-                        term={term}
-                        field={view.field.code}
-                        showsCode={set.code === ICD10_SET_CODE}
-                        editable={view.editable}
-                        mergeFrom={view.mergeFrom}
-                        mergeAt={(termId) => at(view, { mergeFrom: termId })}
-                        locale={locale}
-                      />
-                    ))}
-                  </Table>
-                )}
+            <Table
+              actions
+              align="middle"
+              headers={[
+                /* **The standard's own code leads the row** where the
+                   codes are ICD10's: it is what the value is known by,
+                   and its prefix is what tells a four-character term
+                   from the three-character one above it. Elsewhere a
+                   code is an address made from the English label, and
+                   nobody reads it. */
+                ...(set.code === ICD10_SET_CODE ? [t.code] : []),
+                t.labelJa,
+                t.labelEn,
+                t.usage,
+              ]}
+              whenEmpty={view.find === "" ? t.noTerm : t.noMatchingTerm}
+            >
+              {view.terms.map((term) => (
+                <Row
+                  key={term.id}
+                  term={term}
+                  field={view.field.code}
+                  showsCode={set.code === ICD10_SET_CODE}
+                  editable={view.editable}
+                  mergeFrom={view.mergeFrom}
+                  mergeAt={(termId) => at(view, { mergeFrom: termId })}
+                  locale={locale}
+                />
+              ))}
+            </Table>
           </RefinableList>
         </Stack>
       </Card>
@@ -376,13 +330,12 @@ function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
       value={view.find}
       label={t.find}
       placeholder={messages.search.boxHint}
-      submit={t.find}
+      submit={messages.search.submit}
       size="compact"
       searchAsTyped
     >
-      {view.sort !== TERM_SORT && <input type="hidden" name="sort" value={view.sort} />}
-      {view.order !== "asc" && <input type="hidden" name="order" value={view.order} />}
-      {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
+      {view.mergeFrom !== null && <input type="hidden" name="mergeFrom" value={view.mergeFrom.id} />}
+      <ListingPresented presented={presentation(view)} />
     </SearchBox>
   )
 }
@@ -419,12 +372,12 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
   return (
     <tr>
       {showsCode && <Td nowrap><Code size="xs">{term.code}</Code></Td>}
-      {/* **A missing Japanese label is said, not dashed**: the English one is
-          always there, so what is missing is the translation, and that is a
+      {/* **A missing Japanese label is a mark, not a dash**: the English one
+          is always there, so what is missing is the translation, and that is a
           thing to fix rather than a blank in the row (docs/ui.md の
           「壊れるもの」). */}
       <Td floor="min-w-40">
-        {term.labelJa ?? <span className="text-ink-muted">{t.untranslated}</span>}
+        {term.labelJa ?? <Flag kind="short">{t.untranslated}</Flag>}
       </Td>
       <Td floor="min-w-40">{term.labelEn}</Td>
       {/* **How many published objects name it**, which is the one thing that
@@ -466,13 +419,11 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                           title={t.mergeTitle(catalogLabel(mergeFrom, locale), catalogLabel(term, locale))}
                           warning={t.mergeWarning}
                           confirm={t.mergeConfirm}
-                          cancel={t.cancel}
                           // Not the bin: what is pressed here keeps this row.
-                          icon="check"
+                          icon="merge"
                           size="row"
-                        >
-                          <input type="hidden" name="intent" value="merge-term" />
-                        </Confirm>
+                          intent="merge-term"
+                        />
                       </Form>
                     )
               )
@@ -491,7 +442,6 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                       title={t.editTermTitle}
                       size="row"
                       icon={<Icon name="edit" />}
-                      dismiss={t.cancel}
                       action={() => (
                         <>
                           <Submit intent="update-term" icon={<Icon name="save" />} saves>
@@ -501,8 +451,10 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                         </>
                       )}
                     >
-                      <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} width="w-full" />
-                      <Field label={t.labelEn} name="labelEn" value={term.labelEn} width="w-full" />
+                      <LanguagePair>
+                        <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} width="w-full" />
+                        <Field label={t.labelEn} name="labelEn" value={term.labelEn} width="w-full" />
+                      </LanguagePair>
                     </Dialog>
                   </Editing>
                   {/* **Folding is where a used term goes.** It is offered on
@@ -524,13 +476,10 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                       title={t.removeTitle(catalogLabel(term, locale))}
                       warning={t.removeTermWarning}
                       confirm={t.removeConfirm}
-                      cancel={t.cancel}
-                      icon="trash"
                       size="row"
                       disabled={term.inUse ? t.inUseTerm : undefined}
-                    >
-                      <input type="hidden" name="intent" value="delete-term" />
-                    </Confirm>
+                      intent="delete-term"
+                    />
                   </Form>
                 </span>
               )}

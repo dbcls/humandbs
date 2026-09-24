@@ -72,11 +72,13 @@ import {
   foldShown,
   IconButton,
   MENU_PANEL,
-  Note,
+  PANE_LABEL,
   PaneHeading,
+  ReorderButtons,
   Stack,
+  ValueChip,
 } from "~/components/base"
-import { Answered, CONTROL, Result, Select } from "~/components/form"
+import { Answer, CONTROL, Select } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
@@ -262,7 +264,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   /** What is worth knowing about an experiment while it is folded away. */
   function experimentNote(experiment: ExperimentInput): string {
     const count = t.valueCount(experiment.values.length)
-    return markedUnder(`experiments.${experiment.id}`) > 0 ? `${count} · ${editor.changed}` : count
+    return markedUnder(`experiments.${experiment.id}`) > 0 ? `${count} · ${editor.changedElsewhere}` : count
   }
 
   const formBody = (
@@ -414,7 +416,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                   </>
                 )}
               >
-                <Badge onBand>
+                <Badge onBand icon={<Icon name="edit" aria-hidden="true" />}>
                   {view.updating === null ? editor.draftBadge : editor.updatingBadge(`v${view.updating}`)}
                 </Badge>
               </PageHead>
@@ -635,7 +637,6 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
           newTab
           newTabLabel={messagesFor(locale).newTab}
           size="row"
-          icon={<Icon name="external" aria-hidden="true" />}
         >
           {messagesFor(locale).admin.catalog.heading}
         </ButtonLink>
@@ -845,7 +846,6 @@ export function ChoicesWay({ catalogKey: key, locale }: { catalogKey: EditableKe
       newTab
       newTabLabel={messages.newTab}
       size="row"
-      icon={<Icon name="external" aria-hidden="true" />}
     >
       {messages.admin.datasetEditor.choices}
     </ButtonLink>
@@ -1421,17 +1421,9 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
             <ul className="flex flex-wrap gap-2">
               {chosen.map((term) => (
                 <li key={term.id}>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="xs"
-                    disabled={disabled}
-                    onClick={() => { onRemove(term.id) }}
-                  >
+                  <ValueChip remove={t.removeTerm} disabled={disabled} onRemove={() => { onRemove(term.id) }}>
                     {catalogLabel(term, locale)}
-                    <Icon name="close" />
-                    <span className="sr-only">{t.removeTerm}</span>
-                  </Button>
+                  </ValueChip>
                 </li>
               ))}
             </ul>
@@ -1686,7 +1678,7 @@ function DatasetFacts({ view, locale }: {
     <Stack gap="tight">
       <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
         <span className="flex flex-wrap items-center gap-3">
-          <span className="font-semibold text-ink-muted text-xs">{t.idHeading}</span>
+          <span className={PANE_LABEL}>{t.idHeading}</span>
           {view.datasetLabel === null || view.datasetPinId === null
             ? (
                 <fetcher.Form method="post" className="flex flex-wrap items-center gap-3">
@@ -1703,7 +1695,6 @@ function DatasetFacts({ view, locale }: {
                       title={detail.unpinTitle(view.datasetLabel)}
                       warning={detail.unpinDatasetWarning(isNhaId(view.datasetLabel))}
                       confirm={detail.unpinConfirm}
-                      cancel={detail.cancel}
                       intent="unpin"
                       icon="close"
                       size="row"
@@ -1713,11 +1704,11 @@ function DatasetFacts({ view, locale }: {
               )}
         </span>
         <span className="flex items-center gap-3">
-          <span className="font-semibold text-ink-muted text-xs">{t.releaseDate}</span>
+          <span className={PANE_LABEL}>{t.releaseDate}</span>
           <span>{dates.datePublished ?? t.notYet}</span>
         </span>
         <span className="flex items-center gap-3">
-          <span className="font-semibold text-ink-muted text-xs">{t.dateModified}</span>
+          <span className={PANE_LABEL}>{t.dateModified}</span>
           <span>{dates.dateModified ?? t.notYet}</span>
         </span>
       </div>
@@ -1725,11 +1716,21 @@ function DatasetFacts({ view, locale }: {
         {view.portalIssued ? t.datesPortal : t.datesArchive}
         {t.idNote}
       </p>
-      <Answered answer={fetcher.data?.status === "issued" ? fetcher.data : null} locale={locale}>
-        {fetcher.data?.status === "issued" && <Result ok>{detail.issued(fetcher.data.label)}</Result>}
-      </Answered>
-      {fetcher.data?.status === "taken" && <Note kind="danger" live>{detail.pinTaken}</Note>}
-      {fetcher.data?.status === "reserved" && <Note kind="danger" live>{detail.pinReserved}</Note>}
+      {/* The ID's answer floats like every other: issued, or refused because
+          the label names something already or is spelled as an NHA id. */}
+      <Answer
+        answer={fetcher.data}
+        locale={locale}
+        ok={(answer) => answer.status === "issued"}
+        said={(answer) => {
+          switch (answer.status) {
+            case "issued": return detail.issued(answer.label)
+            case "taken": return detail.pinTaken
+            case "reserved": return detail.pinReserved
+            default: return null
+          }
+        }}
+      />
     </Stack>
   )
 }
@@ -1777,14 +1778,12 @@ function ExperimentCard({ locale, index, count, summary, note, open, onMove, onC
       </details>
       <div className="absolute top-0 right-2 flex h-12 items-center gap-1">
         <IconButton name="copy" label={t.datasetEditor.copyExperiment} onClick={onCopy} />
-        {/* A glyph carries no colour of its own to dim, so what says a move is
-            unavailable is put on the box around it. */}
-        <span className={index === 0 ? "opacity-50" : ""}>
-          <IconButton name="chevron-up" label={t.editor.moveUp} disabled={index === 0} onClick={() => { onMove(-1) }} />
-        </span>
-        <span className={index === count - 1 ? "opacity-50" : ""}>
-          <IconButton name="chevron-down" label={t.editor.moveDown} disabled={index === count - 1} onClick={() => { onMove(1) }} />
-        </span>
+        <ReorderButtons
+          at={index}
+          of={count}
+          labels={{ up: t.moveUp, down: t.moveDown }}
+          onMove={onMove}
+        />
         <IconButton name="trash" label={t.editor.remove} onClick={onRemove} />
       </div>
     </div>

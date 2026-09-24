@@ -46,7 +46,7 @@ describe("調べた結果の出し方", () => {
     expect(shownLookup({ found: "結果", looking: false, made: false })).toBe("結果")
   })
 
-  it("調べる前は「調べる」が押せ、待っている姿ではない", () => {
+  it("調べる前は「検索」が押せ、待っている姿ではない", () => {
     const button = /<button[^>]*type="submit"[^>]*>/.exec(draw())?.[0] ?? ""
     expect(button).not.toMatch(/disabled=""|aria-busy/)
   })

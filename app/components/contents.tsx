@@ -19,13 +19,13 @@ import { messagesFor } from "~/i18n/messages"
 import type { ArticleView } from "~/public/site.server"
 
 import { usePanes } from "./admin"
-import { Button, type ButtonSize, Dialog, Heading, Stack, Stated, Chevron } from "./base"
+import { Button, type ButtonSize, Dialog, Heading, Stack, Chevron } from "./base"
 import { useDrawn } from "./draft-tools"
-import { Editing, Field, MarkdownEditor, Result, Submit, Unsaved } from "./form"
-import { Icon, type IconName } from "./icons"
+import { Editing, Field, MarkdownEditor, Submit, Unsaved } from "./form"
+import { Icon } from "./icons"
 import { Markdown } from "./markdown"
 import { Card, Section } from "./page"
-import { Flag, type FlagKind } from "./flags"
+import { Flag, type FlagKind, KindMark, Stated } from "./flags"
 
 /**
  * What the last form did.
@@ -34,15 +34,11 @@ import { Flag, type FlagKind } from "./flags"
  * the box** (`BodyProblems`): the answer floats over the screen and goes, and
  * a line number read there is gone before the author has counted to it.
  */
-export function ResultLine({ result, locale }: {
-  result: ContentsResult | undefined
-  locale: Locale
-}) {
-  if (result === undefined) return null
+export function contentsSaid(result: ContentsResult, locale: Locale): string {
   const t = messagesFor(locale).admin.contents
-  if (result.status === "ok") return <Result ok>{t.done}</Result>
-  if (result.status === "body") return <Result ok={false}>{t.bodyRefused}</Result>
-  return <Result ok={false}>{t.problems[result.status]}</Result>
+  if (result.status === "ok") return t.done[result.done]
+  if (result.status === "body") return t.bodyRefused
+  return t.problems[result.status]
 }
 
 /**
@@ -57,22 +53,12 @@ export function ResultLine({ result, locale }: {
 export const SHOWING = "min-w-36"
 
 /**
- * The glyph a publish state is drawn by: an eye for what readers can see, a
- * lock for what they cannot, and a clock for what they will see once the
- * announcement's date comes.
- *
- * **The same set in the pane and down the table**, so that the shape a curator
- * narrows by is the shape they then read in the rows. It rides in front of the
- * word rather than standing alone: an eye or a lock is only obvious once you
- * know the question is who can see this.
+ * The kind a publish state is — an eye for what readers can see, a lock for
+ * what they cannot, and a clock for what they will see once the announcement's
+ * date comes — whether it heads a section as a mark or stands in a row as a
+ * glyph and a word (`flags.tsx`).
  */
-export function stateMark(state: NewsState): IconName {
-  if (state === "published") return "eye"
-  return state === "scheduled" ? "clock" : "lock"
-}
-
-/** The same states as marks on a box, where one state heads a section (`flags.tsx`). */
-const STATE_FLAG = {
+export const STATE_FLAG = {
   published: "live",
   scheduled: "scheduled",
   unpublished: "hidden",
@@ -92,7 +78,7 @@ export function newsStateOf(state: LocaleState, ahead: boolean): NewsState {
 
 /** The glyph on its own, for the pane's choice of state. */
 export function StateIcon({ state }: { state: NewsState }) {
-  return <Icon name={stateMark(state)} aria-hidden="true" className="mr-1 text-ink-muted" />
+  return <KindMark kind={STATE_FLAG[state]} />
 }
 
 /** The word for the pane's choice of state, beside its glyph. */
@@ -116,7 +102,7 @@ export function stateLabel(locale: Locale, state: NewsState): string {
  * languages to tell them apart, and the names then repeat down every row of the
  * listing; as two columns the heading says it once.
  *
- * **It is the part every row's state is drawn with** (`base.tsx` の `Stated`),
+ * **It is the part every row's state is drawn with** (`flags.tsx` の `Stated`),
  * not a copy of it: the part is what holds the pair in a box of one line's
  * height, and a copy left on the baseline moved every cell of the row 1.9px up.
  */
@@ -128,7 +114,7 @@ export function StateCell({ state, locale, ahead = false }: {
 }) {
   const shown = newsStateOf(state, ahead)
   return (
-    <Stated icon={stateMark(shown)}>
+    <Stated kind={STATE_FLAG[shown]}>
       {stateWord(locale, shown)}
     </Stated>
   )
@@ -176,7 +162,6 @@ export function SlugEditor({ locale, intent, name, value, hint, size, disabled }
       size={size}
       disabled={disabled}
       icon={<Icon name="edit" />}
-      dismiss={t.cancel}
       action={() => (
         <Submit variant="danger" icon={<Icon name="edit" />} intent={intent}>{t.renameConfirm}</Submit>
       )}
@@ -437,7 +422,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
                   className={SHOWING}
                   disabled={publishing?.dated === false ? t.news.publishUndated : undefined}
                 >
-                  {publishing?.ahead === true ? t.scheduled : t.publish}
+                  {publishing?.ahead === true ? t.schedule : t.publish}
                 </Submit>
               )}
           <Submit id={`${id}-save`} intent="save" saves icon={<Icon name="save" aria-hidden="true" />}>

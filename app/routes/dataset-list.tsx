@@ -1,11 +1,9 @@
 import { Fragment, type ReactNode } from "react"
-import { Link } from "react-router"
 
 import { Clamped } from "~/components/base"
 import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
-import { Icon } from "~/components/icons"
-import { AccessTypeBadge, Table, Td, Value } from "~/components/page"
+import { AccessTypeBadge, IdMark, Table, Td, Value } from "~/components/page"
 import { ListingScreen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -126,12 +124,10 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
           <tr key={row.label}>
             <Td stuck={0} holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
             <Td stuck={1} floor="min-w-32">
-              <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-              <Link to={href(locale, datasetPath(row.label))}>{wrappable(row.label)}</Link>
+              <IdMark kind="dataset" to={href(locale, datasetPath(row.label))}>{wrappable(row.label)}</IdMark>
             </Td>
             <Td nowrap>
-              <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
-              <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>
+              <IdMark kind="research" to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</IdMark>
             </Td>
             <Td floor="min-w-48">
               {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}

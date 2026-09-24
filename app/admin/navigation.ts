@@ -18,7 +18,7 @@
  * editing draws on, then the site around it, then the tools beside it.
  */
 
-import type { IconName } from "~/components/icons"
+import { ACTION_ICON, type IconName, SUBJECT_ICON } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
@@ -212,9 +212,10 @@ export const ADMIN_NAVBAR_MENU_STEP
  * has already given it.
  *
  * **A glyph rides in front of the word**, so that an entry is found by its shape
- * before it is read. **It says the subject, not the act** — a research is `book`
- * here and on the public side — and the one thing in the list that is not a
- * destination takes `plus`, which is the mark for adding everywhere else.
+ * before it is read. **It says the subject, not the act** (`SUBJECT_ICON`) — a
+ * research is `book` here and on the public side — and the one thing in the
+ * list that is not a destination takes the mark for creating everywhere else
+ * (`ACTION_ICON`).
  */
 export function adminTasks(locale: Locale): AdminTask[] {
   const words = messagesFor(locale).admin
@@ -223,28 +224,28 @@ export function adminTasks(locale: Locale): AdminTask[] {
     {
       title: tasks.research.title,
       links: [
-        { path: adminResearchListPath(), label: tasks.research.find, icon: "book" },
-        { path: adminUpstreamResearchPath(), label: tasks.research.fromUpstream, icon: "clipboard" },
+        { path: adminResearchListPath(), label: tasks.research.find, icon: SUBJECT_ICON.research },
+        { path: adminUpstreamResearchPath(), label: tasks.research.fromUpstream, icon: SUBJECT_ICON.application },
       ],
-      action: { to: adminResearchListPath(), label: tasks.research.create, icon: "plus" },
+      action: { to: adminResearchListPath(), label: tasks.research.create, icon: ACTION_ICON.create },
     },
     {
       title: tasks.contents.title,
       links: [
-        { path: adminContentsPath(), label: words.contents.heading, icon: "newspaper" },
-        { path: adminAlertPath(), label: words.contents.alert.heading, icon: "megaphone" },
-        { path: adminNewsListPath(), label: tasks.contents.news, icon: "bell" },
-        { path: adminContentFilesPath(), label: words.contents.files.heading, icon: "file" },
+        { path: adminContentsPath(), label: words.contents.heading, icon: SUBJECT_ICON.article },
+        { path: adminAlertPath(), label: words.contents.alert.heading, icon: SUBJECT_ICON.alert },
+        { path: adminNewsListPath(), label: tasks.contents.news, icon: SUBJECT_ICON.news },
+        { path: adminContentFilesPath(), label: words.contents.files.heading, icon: SUBJECT_ICON.staticFile },
       ],
     },
     {
       title: tasks.fields.title,
       note: tasks.fields.note,
-      links: [{ path: adminExperimentFieldsPath(), label: words.catalog.heading, icon: "filter" }],
+      links: [{ path: adminExperimentFieldsPath(), label: words.catalog.heading, icon: SUBJECT_ICON.catalog }],
     },
     {
       title: tasks.assistant.title,
-      links: [{ path: adminAssistantPath(), label: words.assistant.heading, icon: "tip" }],
+      links: [{ path: adminAssistantPath(), label: words.assistant.heading, icon: SUBJECT_ICON.assistant }],
     },
   ]
 }

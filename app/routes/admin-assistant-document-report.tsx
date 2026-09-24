@@ -10,7 +10,7 @@ import type {
 import {
   ChecklistStatus,
   display,
-  ExternalLink,
+  LinkedValue,
   joined,
   JudgmentText,
   splitDetail,
@@ -133,7 +133,7 @@ export function Papers({
             <Td>{paper.summary_jp}</Td>
             <Td>{joined(paper.icd10_code_list, ", ")}</Td>
             <Td>
-              <ExternalLink url={paper.url} words={words} />
+              <LinkedValue url={paper.url} words={words} />
             </Td>
             <Td>
               <Stack gap="tight">

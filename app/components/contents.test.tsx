@@ -9,7 +9,7 @@ import {
   articleFormId,
   leftLanguageOf,
   LocaleEditors,
-  ResultLine,
+  contentsSaid,
   SlugEditor,
   StateCell,
 } from "./contents"
@@ -128,7 +128,7 @@ describe("the lines a save refused", () => {
 
   it("mark nothing when the save went through", () => {
     const html = render(
-      <LocaleEditors editors={[editor("ja"), editor("en")]} locale="ja" remember="document:x" result={{ status: "ok" }} />,
+      <LocaleEditors editors={[editor("ja"), editor("en")]} locale="ja" remember="document:x" result={{ status: "ok", done: "saved" }} />,
     )
 
     expect(html).not.toContain("行目: ")
@@ -136,8 +136,18 @@ describe("the lines a save refused", () => {
     expect(html).not.toContain("aria-invalid")
   })
 
+  it("answer a form that went through with what it did, not with one word for every button", () => {
+    const said = (["saved", "published", "unpublished"] as const)
+      .map((done) => contentsSaid({ status: "ok", done }, "ja"))
+
+    expect(said[0]).toContain("本文を保存しました。")
+    expect(said[1]).toContain("本文を公開しました。")
+    expect(said[2]).toContain("本文を公開停止しました。")
+    expect(new Set(said).size).toBe(said.length)
+  })
+
   it("are answered above in one sentence rather than line by line", () => {
-    const html = render(<ResultLine result={refused} locale="ja" />)
+    const html = contentsSaid(refused, "ja")
 
     expect(html).toContain("本文に直すところがあるため、保存していません。")
     expect(html).not.toContain("3 行目")
@@ -267,7 +277,7 @@ describe("an announcement's date, seen from its languages' forms", () => {
     const html = render(
       <LocaleEditors editors={[editor("ja")]} locale="ja" remember="news:x" publishing={ahead} />,
     )
-    expect(html).toMatch(/公開予定<\/button>/)
+    expect(html).toMatch(/予約公開<\/button>/)
     expect(html).not.toMatch(/>公開<\/button>/)
     expect(html).not.toContain("公開日時が未入力")
   })

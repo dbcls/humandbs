@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 
 import type { CartNotice } from "~/cart/store"
 import { cartPressGathers, isCartable, useCart, useCartNotice } from "~/cart/store"
-import { Button, ButtonLink, IconButton, Menu, Note, Toast, TOAST_MS, Chevron } from "~/components/base"
+import { Button, ButtonLink, IconButton, Menu, Note, Toast, TOAST_MS } from "~/components/base"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import type { Messages } from "~/i18n/messages"
@@ -188,7 +188,7 @@ export function CartToast({ locale }: { locale: Locale }) {
                   {/* Outlined rather than bare: it is the one thing in the box
                       to press, and a word in the brand colour beside a sentence
                       reads as a link back to something. */}
-                  <Button type="button" variant="secondary" size="xs" onClick={undo}>
+                  <Button type="button" variant="secondary" size="xs" icon={<Icon name="undo" />} onClick={undo}>
                     {messages.cart.undo}
                   </Button>
                 </span>
@@ -242,7 +242,7 @@ export function CartMenu({ locale }: { locale: Locale }) {
                   <li key={id} className="flex items-center gap-2 py-0.5 pr-1 pl-4">
                     <span className="grow font-mono text-sm">{id}</span>
                     <IconButton
-                      name="trash"
+                      name="close"
                       label={messages.cart.removeOne(id)}
                       onClick={() => {
                         cart.remove([id])
@@ -275,6 +275,7 @@ export function CartMenu({ locale }: { locale: Locale }) {
             type="button"
             variant="secondary"
             size="sm"
+            icon={<Icon name="close" />}
             className="mr-auto"
             onClick={() => {
               cart.remove(cart.ids)
@@ -283,9 +284,8 @@ export function CartMenu({ locale }: { locale: Locale }) {
             {messages.cart.clear}
           </Button>
         )}
-        <ButtonLink to={href(locale, cartPath())} variant="secondary" size="sm">
+        <ButtonLink to={href(locale, cartPath())} variant="secondary" size="sm" way>
           {messages.cart.view}
-          <Chevron dir="right" />
         </ButtonLink>
       </div>
     </Menu>

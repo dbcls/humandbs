@@ -1,4 +1,4 @@
-import { Form, Link } from "react-router"
+import { Form } from "react-router"
 
 import { ADMIN_STATUSES, type AdminStatus } from "~/admin/listing"
 import { createResearchAction, researchListPage } from "~/admin/pages.server"
@@ -11,30 +11,24 @@ import {
 } from "~/admin/urls"
 import {
   ButtonLink,
-  Chooser,
-  CHOOSER_SIDE,
-  Clamped,
   Excerpt,
   Heading,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
   Stack,
-  Stated,
 } from "~/components/base"
+import { Flag, type FlagKind, KindMark, Stated } from "~/components/flags"
 import { Checkbox, Submit } from "~/components/form"
-import { Icon, type IconName } from "~/components/icons"
-import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
+import { Icon } from "~/components/icons"
+import { Card, DatasetIds, IdMark, Page, Paging, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/box"
 import { boxSummariesOf } from "~/files/listing.server"
-import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
 import { datasetPath, href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
-import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
-import { DEFAULT_SORT, defaultOrder, SORT_KEYS } from "~/search/sort"
+import { DEFAULT_SORT, defaultOrder, SORT_KEYS, type SortKey } from "~/search/sort"
 
 import type { Route } from "./+types/admin-research-list"
 
@@ -96,8 +90,15 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
   // next one, and the ordering and the page size would send them back to the top.
-  const tools = <Tools view={view} locale={locale} />
-  const pages = <Pages view={view} locale={locale} />
+  const tools = (
+    <ListingTools
+      locale={locale}
+      presented={presentation(view, locale)}
+      at={(presented) => listingAt(view, locale, presented)}
+      paging={paging(view, locale)}
+    />
+  )
+  const pages = <Paging locale={locale} {...paging(view, locale)} />
 
   return (
     <Page>
@@ -109,7 +110,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                 arriving from there should not have to match a name up. */}
             <ButtonLink
               to={href(locale, adminUpstreamResearchPath())}
-              icon={<Icon name="download" />}
+              icon={<Icon name="inbox" />}
             >
               {messages.admin.tasks.research.fromUpstream}
             </ButtonLink>
@@ -157,10 +158,9 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                       {/* The same glyph the public listings give the two, so
                           that a curator reads one shape for a research and
                           another for a dataset wherever they are. */}
-                      <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
-                      <Link to={href(locale, adminResearchPath(row.researchId))}>
-                        {row.humLabel ?? t.unpinned}
-                      </Link>
+                      <IdMark kind="research" to={href(locale, adminResearchPath(row.researchId))}>
+                        {row.humLabel ?? <Flag kind="short">{t.unpinned}</Flag>}
+                      </IdMark>
                     </Td>
                     <Td nowrap>
                       {/* **A published dataset opens its public page in a new
@@ -170,29 +170,14 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           loses their place if the page opens here. The mark and
                           the word are the ones every way out of the portal has
                           (`ExternalLink`). */}
-                      <Clamped
+                      <DatasetIds
                         shown={SHOWN_DATASETS}
-                        more={(rest) => messages.search.andMore(rest)}
-                        less={messages.search.showLess}
-                        items={row.datasets.map(({ label, published }) => (
-                          // **1 行の中で揃え方を 2 つ持たない。** 外部リンクは
-                          // 中身を中心で揃える箱なので、行ごと中心で揃え、字との
-                          // 距離はこの行の gap が持つ。箱の載せ方は `top` — 枝番の
-                          // 一覧の同じ列と同じ理由 (`admin-research-upstream.tsx`)。
-                          <span
-                            key={label}
-                            className="inline-flex items-center gap-1 align-top text-nowrap"
-                          >
-                            <Icon name="database" aria-hidden="true" className="text-ink-muted" />
-                            {published
-                              ? (
-                                  <ExternalLink to={href(locale, datasetPath(label))} locale={locale}>
-                                    {label}
-                                  </ExternalLink>
-                                )
-                              : label}
-                          </span>
-                        ))}
+                        newTab
+                        locale={locale}
+                        items={row.datasets.map(({ label, published }) => ({
+                          label,
+                          to: published ? href(locale, datasetPath(label)) : null,
+                        }))}
                       />
                     </Td>
                     <Td floor="min-w-64">
@@ -216,7 +201,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           draws that same glyph on the baseline two columns
                           over. The cell already refuses to wrap, so there is
                           nothing for a box to hold together. */}
-                      <Stated icon={STATUS_MARK[row.status]}>{t.statuses[row.status]}</Stated>
+                      <Stated kind={STATUS_MARK[row.status]}>{t.statuses[row.status]}</Stated>
                     </Td>
                     <Td>{row.publishedVersions}</Td>
                     <Td>{row.draftCount}</Td>
@@ -282,19 +267,19 @@ function Filters({ view, locale }: ViewProps) {
         {view.statuses.map((status) => (
           <input key={status} type="hidden" name="status" value={status} />
         ))}
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
       <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
         <input type="hidden" name="q" value={view.keyword} />
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
         <Stack gap="normal">
           <RefineAxis label={t.status}>
             {ADMIN_STATUSES.map((status: AdminStatus) => (
               <Checkbox
                 key={status}
                 label={t.statuses[status]}
-                icon={<Icon name={STATUS_MARK[status]} aria-hidden="true" className="mr-1 text-ink-muted" />}
+                icon={<KindMark kind={STATUS_MARK[status]} />}
                 name="status"
                 value={status}
                 checked={view.statuses.includes(status)}
@@ -312,26 +297,7 @@ function Filters({ view, locale }: ViewProps) {
  * The glyph a status is drawn by: the question is who can see this, and an
  * eye or a lock is only obvious once you know that is the question.
  */
-const STATUS_MARK: Record<AdminStatus, IconName> = { published: "eye", unpublished: "lock" }
-
-/**
- * How the result is presented, carried across a change of conditions.
- *
- * The ordering and the page size are the reader's rather than the listing's, and
- * dropping them on every tick would make either one unusable. **Only what
- * differs from the default is written**, so an unnarrowed listing is still the
- * bare address.
- */
-function Presented({ view }: { view: ViewProps["view"] }) {
-  return (
-    <>
-      {view.sort !== DEFAULT_SORT && <input type="hidden" name="sort" value={view.sort} />}
-      {view.order !== defaultOrder(view.sort)
-        && <input type="hidden" name="order" value={view.order} />}
-      {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
-    </>
-  )
-}
+const STATUS_MARK: Record<AdminStatus, FlagKind> = { published: "live", unpublished: "hidden" }
 
 /**
  * This listing under a different setting. Everything the reader chose is
@@ -342,91 +308,38 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Listin
     keyword: view.keyword,
     statuses: view.statuses,
     page: 1,
-    sort: view.sort === DEFAULT_SORT ? null : view.sort,
-    order: view.order === defaultOrder(view.sort) ? null : view.order,
-    size: view.size === PAGE_SIZE ? null : view.size,
+    ...presentedQuery(presentation(view, locale)),
     ...over,
   }))
 }
 
 /**
- * How the rows are presented, over the rows: the ordering, how many a page
- * holds, and the way through the pages.
- *
- * **Only what differs from the default is written into the addresses.** A
- * reader who asked for nothing is reading the default, and writing it out would
- * put a setting nobody chose into every link on the page.
+ * How the rows are presented: the public listings' three orderings, read the
+ * same way (`app/search/sort.ts`).
  */
-function Tools({ view, locale }: ViewProps) {
+function presentation(view: ViewProps["view"], locale: Locale): Presentation<SortKey> {
   const messages = messagesFor(locale)
-  const at = (over: Partial<ListingQuery>): string => listingAt(view, locale, over)
-
-  const flipped = view.order === "asc" ? "desc" : "asc"
-  const turn = flipped === "asc"
-    ? messages.search.sort.toAscending
-    : messages.search.sort.toDescending
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
-      <Chooser
-        label={messages.search.sort.label}
-        value={messages.search.sort[view.sort]}
-        beside={(
-          <Link
-            to={at({ order: flipped === defaultOrder(view.sort) ? null : flipped })}
-            aria-label={turn}
-            title={turn}
-            className={CHOOSER_SIDE}
-          >
-            {/* The glyph says which way the list runs now, not where it goes. */}
-            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
-          </Link>
-        )}
-      >
-        {SORT_KEYS.map((option) => (
-          <Link
-            key={option}
-            // A key arrives the way that key is read: newest first and the last
-            // identifier issued are not the same request.
-            to={at({ sort: option === DEFAULT_SORT ? null : option, order: null })}
-            aria-current={option === view.sort ? "true" : undefined}
-            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {messages.search.sort[option]}
-          </Link>
-        ))}
-      </Chooser>
-      <Chooser label={messages.search.pageSize} value={String(view.size)}>
-        {PAGE_SIZES.map((option) => (
-          <Link
-            key={option}
-            to={at({ size: option === PAGE_SIZE ? null : option })}
-            aria-current={option === view.size ? "true" : undefined}
-            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {option}
-          </Link>
-        ))}
-      </Chooser>
-      <Pages view={view} locale={locale} />
-    </div>
-  )
+  return {
+    sort: {
+      keys: SORT_KEYS,
+      current: view.sort,
+      order: view.order,
+      unwritten: DEFAULT_SORT,
+      runs: defaultOrder,
+      name: (key) => messages.search.sort[key],
+    },
+    size: view.size,
+  }
 }
 
-/**
- * The count and the way through the pages, which stand over the rows and again
- * under them.
- */
-function Pages({ view, locale }: ViewProps) {
-  return (
-    <Paging
-      locale={locale}
-      total={view.total}
-      from={view.rangeFrom}
-      to={view.rangeTo}
-      page={view.page}
-      pageCount={view.pageCount}
-      at={(page) => listingAt(view, locale, { page })}
-    />
-  )
+/** The count and the way through the pages, over the rows and again under them. */
+function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
+  return {
+    total: view.total,
+    from: view.rangeFrom,
+    to: view.rangeTo,
+    page: view.page,
+    pageCount: view.pageCount,
+    at: (page) => listingAt(view, locale, { page }),
+  }
 }

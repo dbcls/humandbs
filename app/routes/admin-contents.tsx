@@ -15,26 +15,18 @@ import {
   contentsQuery,
   type ContentsListingQuery,
 } from "~/admin/urls"
-import {
-  Chooser,
-  Dialog,
-  Heading,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
-  Stack,
-} from "~/components/base"
-import { ResultLine, StateCell, StateIcon } from "~/components/contents"
-import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
+import { Dialog, Heading, Note, Stack } from "~/components/base"
+import { contentsSaid, StateCell, StateIcon } from "~/components/contents"
+import { Answer, Checkbox, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Code, Page, Paging, Table, Td } from "~/components/page"
-import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
-import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-contents"
 
@@ -99,14 +91,19 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
   // next one, and the ordering and the page size would send them back to the top.
-  const tools = <Tools view={view} locale={locale} />
-  const pages = <Pages view={view} locale={locale} />
+  const tools = (
+    <ListingTools
+      locale={locale}
+      presented={presentation(view)}
+      at={(presented) => listingAt(view, locale, presented)}
+      paging={paging(view, locale)}
+    />
+  )
+  const pages = <Paging locale={locale} {...paging(view, locale)} />
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        <ResultLine result={actionData} locale={locale} />
-      </Answered>
+      <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Card under={false}>
         <Stack gap="normal">
           {/*
@@ -121,13 +118,11 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
           */}
           <Heading title={t.heading}>
             <Form method="post">
-              <input type="hidden" name="intent" value="create-document" />
               <Dialog
                 label={t.addDocument}
                 title={t.addDocument}
                 icon={<Icon name="plus" />}
-                dismiss={t.cancel}
-                action={() => <Submit variant="primary" icon={<Icon name="plus" />}>{t.create}</Submit>}
+                action={() => <Submit intent="create-document" variant="primary" icon={<Icon name="plus" />}>{t.create}</Submit>}
               >
                 <Field label={t.slug} name="slug" width="w-full" hint={t.slugHint} />
               </Dialog>
@@ -135,9 +130,9 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
           </Heading>
 
           {view.unanswered.map((one) => (
-            <Result key={one.slug} ok={false}>
+            <Note key={one.slug} kind="danger">
               {t.unanswered(one.slug, one.locales.map((each) => t.languages[each]).join(" / "))}
-            </Result>
+            </Note>
           ))}
 
           <RefinableList
@@ -250,12 +245,12 @@ function Filters({ view, locale }: ViewProps) {
         ))}
         {view.ja.map((one) => <input key={one} type="hidden" name="ja" value={one} />)}
         {view.en.map((one) => <input key={one} type="hidden" name="en" value={one} />)}
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view)} />
       </SearchBox>
 
       <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
         <input type="hidden" name="q" value={view.keyword} />
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view)} />
         <Stack gap="normal">
           <RefineAxis label={t.versions}>
             {VERSIONINGS.map((one) => (
@@ -294,16 +289,6 @@ function Filters({ view, locale }: ViewProps) {
 }
 
 /**
- * How the result is presented, carried across a change of conditions. **Only
- * what differs from the default is written**, so an unnarrowed listing is still
- * the bare address.
- */
-function Presented({ view }: { view: ViewProps["view"] }) {
-  if (view.size === PAGE_SIZE) return null
-  return <input type="hidden" name="size" value={String(view.size)} />
-}
-
-/**
  * This listing under a different setting. Everything the reader chose is
  * carried, and the page is the first one unless the page is what changes.
  */
@@ -314,56 +299,28 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Conten
     ja: view.ja,
     en: view.en,
     page: 1,
-    // The listing runs by slug and offers no other order, so there is nothing
-    // of the ordering to keep in the address.
-    sort: null,
-    order: null,
-    size: view.size === PAGE_SIZE ? null : view.size,
+    ...presentedQuery(presentation(view)),
     ...over,
   }))
 }
 
 /**
- * How the rows are presented, over the rows: how many a page holds, and the way
- * through the pages.
+ * How the rows are presented: only how many a page holds. **The listing runs by
+ * slug and offers no other order** — the order is the address space rather than
+ * a presentation of it.
  */
-function Tools({ view, locale }: ViewProps) {
-  const messages = messagesFor(locale)
-  const at = (over: Partial<ContentsListingQuery>): string => listingAt(view, locale, over)
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
-      <Chooser label={messages.search.pageSize} value={String(view.size)}>
-        {PAGE_SIZES.map((option) => (
-          <Link
-            key={option}
-            to={at({ size: option === PAGE_SIZE ? null : option })}
-            aria-current={option === view.size ? "true" : undefined}
-            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {option}
-          </Link>
-        ))}
-      </Chooser>
-      <Pages view={view} locale={locale} />
-    </div>
-  )
+function presentation(view: ViewProps["view"]): Presentation<string> {
+  return { size: view.size }
 }
 
-/**
- * The count and the way through the pages, which stand over the rows and again
- * under them.
- */
-function Pages({ view, locale }: ViewProps) {
-  return (
-    <Paging
-      locale={locale}
-      total={view.total}
-      from={view.rangeFrom}
-      to={view.rangeTo}
-      page={view.page}
-      pageCount={view.pageCount}
-      at={(page) => listingAt(view, locale, { page })}
-    />
-  )
+/** The count and the way through the pages, over the rows and again under them. */
+function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
+  return {
+    total: view.total,
+    from: view.rangeFrom,
+    to: view.rangeTo,
+    page: view.page,
+    pageCount: view.pageCount,
+    at: (page) => listingAt(view, locale, { page }),
+  }
 }

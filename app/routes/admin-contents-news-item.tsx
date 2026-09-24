@@ -3,9 +3,9 @@ import { Form } from "react-router"
 import { newsAction, newsPage } from "~/admin/contents.server"
 import { adminNewsListPath } from "~/admin/urls"
 import { Confirm, Stack } from "~/components/base"
-import { ResultLine, useArticlePanes } from "~/components/contents"
+import { contentsSaid, useArticlePanes } from "~/components/contents"
 import { DraftHead } from "~/components/draft-tools"
-import { Answered, Editing, Field, Submit, Unsaved } from "~/components/form"
+import { Answer, Editing, Field, Submit, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Page, Section } from "~/components/page"
 import { asLocalInput, dayOf, minuteOf } from "~/dates"
@@ -108,9 +108,7 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        <ResultLine result={actionData} locale={locale} />
-      </Answered>
+      <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Stack>
         {/* **The head is left for the announcement, and folds to its tools
             row while typing** (`draft-tools.tsx` の `DraftHead`). Its second
@@ -133,7 +131,6 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
                 title={t.news.removeTitle}
                 warning={t.news.removeWarning}
                 confirm={t.news.removeConfirm}
-                cancel={t.cancel}
                 intent="delete-news"
               />
             </Form>

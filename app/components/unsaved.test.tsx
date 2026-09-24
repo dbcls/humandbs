@@ -30,7 +30,7 @@ describe("the guard at the way off the screen", () => {
   it("draws nothing while no way off has been taken", () => {
     const Stub = createRoutesStub([{ path: "/*", Component: () => <LeaveGuard /> }])
     const html = renderToStaticMarkup(<Stub initialEntries={["/admin"]} />)
-    expect(html).not.toContain("未保存の変更")
-    expect(html).not.toContain("保存せずに移動")
+    expect(html).not.toContain("画面の移動")
+    expect(html).not.toContain("保存していない変更があります")
   })
 })

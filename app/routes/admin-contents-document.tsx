@@ -4,9 +4,9 @@ import { Form } from "react-router"
 import { documentAction, documentPage } from "~/admin/contents.server"
 import { adminContentsPath, adminSeriesPath } from "~/admin/urls"
 import { Confirm, Stack } from "~/components/base"
-import { ResultLine, SlugEditor, useArticlePanes } from "~/components/contents"
+import { contentsSaid, SlugEditor, useArticlePanes } from "~/components/contents"
 import { DraftHead } from "~/components/draft-tools"
-import { Answered, Field, Submit } from "~/components/form"
+import { Answer, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Empty, Page, Section } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
@@ -62,9 +62,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        <ResultLine result={actionData} locale={locale} />
-      </Answered>
+      <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Stack>
         {/* **The head is left for the article, and folds to its tools row
             while typing** (`draft-tools.tsx` の `DraftHead`, the same shape a
@@ -109,7 +107,6 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
                     title={t.removeDocumentTitle(slug)}
                     warning={t.removeDocumentWarning}
                     confirm={t.removeDocumentConfirm}
-                    cancel={t.cancel}
                     intent="delete-document"
                   />
                 </Form>

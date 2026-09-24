@@ -1,5 +1,5 @@
 import { Stack } from "~/components/base"
-import { Answered, Result } from "~/components/form"
+import { Answer } from "~/components/form"
 import type { Locale } from "~/i18n/locale"
 
 import { useAssistantController } from "./admin-assistant-controller"
@@ -15,11 +15,7 @@ export function AssistantContents({ locale }: { locale: Locale }) {
       {/* What the last request did, over the screen rather than in it: written
           into the page it would push the listing down by its own height
           (`docs/ui.md` の「管理画面の枠」). */}
-      <Answered answer={controller.notice} locale={locale}>
-        {controller.notice !== null && (
-          <Result ok={controller.notice.ok}>{controller.notice.text}</Result>
-        )}
-      </Answered>
+      <Answer answer={controller.notice} locale={locale} said={(notice) => notice.text} ok={(notice) => notice.ok} />
       <AdminAssistantUploadForm
         locale={locale}
         application={controller.application}

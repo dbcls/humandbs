@@ -5,6 +5,7 @@ import {
   BRANCH_SORT_KEYS,
   BRANCH_STANDINGS,
   branchOrder,
+  type BranchSortKey,
   branchStanding,
   type BranchStanding,
 } from "~/admin/listing"
@@ -17,17 +18,13 @@ import {
   type BranchListingQuery,
 } from "~/admin/urls"
 import {
-  Chooser,
-  CHOOSER_SIDE,
   Heading,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
   Stack,
 } from "~/components/base"
 import { Checkbox } from "~/components/form"
-import { Icon } from "~/components/icons"
-import { Card, Page, Paging, Table, Td } from "~/components/page"
-import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { Flag, KindMark } from "~/components/flags"
+import { Card, IdMark, Page, Paging, Table, Td } from "~/components/page"
+import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import { BranchCells, BranchStandingMark, STANDING_MARK, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -35,7 +32,6 @@ import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
-import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-research-upstream"
 
@@ -87,8 +83,15 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
   // next one, and the ordering and the page size would send them back to the top.
-  const tools = <Tools view={view} locale={locale} />
-  const pages = <Pages view={view} locale={locale} />
+  const tools = (
+    <ListingTools
+      locale={locale}
+      presented={presentation(view, locale)}
+      at={(presented) => listingAt(view, locale, presented)}
+      paging={paging(view, locale)}
+    />
+  )
+  const pages = <Paging locale={locale} {...paging(view, locale)} />
 
   return (
     <Page>
@@ -146,22 +149,11 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                                 reader who tries to press it. The glyph is the
                                 one every listing gives a research. */}
                             {row.humLabel === null
-                              ? <span className="text-ink-muted">{t.noHumLabel}</span>
+                              ? <Flag kind="short">{t.noHumLabel}</Flag>
                               : (
-                                  <>
-                                    <Icon
-                                      name="book"
-                                      aria-hidden="true"
-                                      className="mr-1 text-ink-muted"
-                                    />
-                                    {row.heldBy === null
-                                      ? row.humLabel
-                                      : (
-                                          <Link to={href(locale, adminResearchPath(row.heldBy))}>
-                                            {row.humLabel}
-                                          </Link>
-                                        )}
-                                  </>
+                                  <IdMark kind="research" to={row.heldBy === null ? null : href(locale, adminResearchPath(row.heldBy))}>
+                                    {row.humLabel}
+                                  </IdMark>
                                 )}
                           </Td>
                           <Td nowrap>
@@ -215,19 +207,19 @@ function Filters({ view, locale }: ViewProps) {
         {view.standings.map((standing) => (
           <input key={standing} type="hidden" name="standing" value={standing} />
         ))}
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
       <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
         <input type="hidden" name="q" value={view.keyword} />
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
         <Stack gap="normal">
           <RefineAxis label={t.standing}>
             {BRANCH_STANDINGS.map((standing: BranchStanding) => (
               <Checkbox
                 key={standing}
                 label={t.standings[standing]}
-                icon={<Icon name={STANDING_MARK[standing]} aria-hidden="true" className="mr-1 text-ink-muted" />}
+                icon={<KindMark kind={STANDING_MARK[standing]} />}
                 name="standing"
                 value={standing}
                 checked={view.standings.includes(standing)}
@@ -242,22 +234,6 @@ function Filters({ view, locale }: ViewProps) {
 }
 
 /**
- * How the result is presented, carried across a change of conditions. **Only
- * what differs from the default is written**, so an unnarrowed listing is still
- * the bare address.
- */
-function Presented({ view }: { view: ViewProps["view"] }) {
-  return (
-    <>
-      {view.sort !== BRANCH_SORT && <input type="hidden" name="sort" value={view.sort} />}
-      {view.order !== branchOrder(view.sort)
-        && <input type="hidden" name="order" value={view.order} />}
-      {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
-    </>
-  )
-}
-
-/**
  * This listing under a different setting. Everything the reader chose is
  * carried, and the page is the first one unless the page is what changes.
  */
@@ -266,88 +242,38 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Branch
     keyword: view.keyword,
     standings: view.standings,
     page: 1,
-    sort: view.sort === BRANCH_SORT ? null : view.sort,
-    order: view.order === branchOrder(view.sort) ? null : view.order,
-    size: view.size === PAGE_SIZE ? null : view.size,
+    ...presentedQuery(presentation(view, locale)),
     ...over,
   }))
 }
 
 /**
- * How the rows are presented, over the rows: the ordering, how many a page
- * holds, and the way through the pages.
+ * How the rows are presented. A key arrives the way that key is read: the
+ * newest approval and the first number issued are not the same request.
  */
-function Tools({ view, locale }: ViewProps) {
-  const messages = messagesFor(locale)
-  const t = messages.admin.templates
-  const at = (over: Partial<BranchListingQuery>): string => listingAt(view, locale, over)
-
-  const flipped = view.order === "asc" ? "desc" : "asc"
-  const turn = flipped === "asc"
-    ? messages.search.sort.toAscending
-    : messages.search.sort.toDescending
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
-      <Chooser
-        label={messages.search.sort.label}
-        value={t.sort[view.sort]}
-        beside={(
-          <Link
-            to={at({ order: flipped === branchOrder(view.sort) ? null : flipped })}
-            aria-label={turn}
-            title={turn}
-            className={CHOOSER_SIDE}
-          >
-            {/* The glyph says which way the list runs now, not where it goes. */}
-            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
-          </Link>
-        )}
-      >
-        {BRANCH_SORT_KEYS.map((option) => (
-          <Link
-            key={option}
-            // A key arrives the way that key is read: the newest approval and
-            // the first number issued are not the same request.
-            to={at({ sort: option === BRANCH_SORT ? null : option, order: null })}
-            aria-current={option === view.sort ? "true" : undefined}
-            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {t.sort[option]}
-          </Link>
-        ))}
-      </Chooser>
-      <Chooser label={messages.search.pageSize} value={String(view.size)}>
-        {PAGE_SIZES.map((option) => (
-          <Link
-            key={option}
-            to={at({ size: option === PAGE_SIZE ? null : option })}
-            aria-current={option === view.size ? "true" : undefined}
-            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {option}
-          </Link>
-        ))}
-      </Chooser>
-      <Pages view={view} locale={locale} />
-    </div>
-  )
+function presentation(view: ViewProps["view"], locale: Locale): Presentation<BranchSortKey> {
+  const t = messagesFor(locale).admin.templates
+  return {
+    sort: {
+      keys: BRANCH_SORT_KEYS,
+      current: view.sort,
+      order: view.order,
+      unwritten: BRANCH_SORT,
+      runs: branchOrder,
+      name: (key) => t.sort[key],
+    },
+    size: view.size,
+  }
 }
 
-/**
- * The count and the way through the pages, which stand over the rows and again
- * under them.
- */
-function Pages({ view, locale }: ViewProps) {
-  return (
-    <Paging
-      locale={locale}
-      total={view.total}
-      from={view.rangeFrom}
-      to={view.rangeTo}
-      page={view.page}
-      pageCount={view.pageCount}
-      at={(page) => listingAt(view, locale, { page })}
-    />
-  )
+/** The count and the way through the pages, over the rows and again under them. */
+function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
+  return {
+    total: view.total,
+    from: view.rangeFrom,
+    to: view.rangeTo,
+    page: view.page,
+    pageCount: view.pageCount,
+    at: (page) => listingAt(view, locale, { page }),
+  }
 }

@@ -1,5 +1,5 @@
 import { PaneHeading, Stack } from "~/components/base"
-import { Table, Td } from "~/components/page"
+import { ExternalLink, Table, Td } from "~/components/page"
 
 import type {
   AssistantWords,
@@ -122,7 +122,12 @@ export function ChecklistStatus({
   )
 }
 
-export function ExternalLink({
+/**
+ * An address the service reported, opened in a new tab with the site's own
+ * mark and words for that (`page.tsx` の `ExternalLink`); without one, its
+ * label or the word for a missing value.
+ */
+export function LinkedValue({
   url,
   words,
   label,
@@ -132,18 +137,10 @@ export function ExternalLink({
   label?: string | null
 }) {
   const trimmedLabel = label?.trim()
-  if (url === undefined || url === null || url.trim() === "")
-    return <>{trimmedLabel === undefined || trimmedLabel === "" ? words.missing : trimmedLabel}</>
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="break-all text-brand underline"
-    >
-      {trimmedLabel === undefined || trimmedLabel === "" ? url : trimmedLabel}
-    </a>
-  )
+  const shown = trimmedLabel === undefined || trimmedLabel === "" ? undefined : trimmedLabel
+  if (url === undefined || url === null || url.trim() === "") return <>{shown ?? words.missing}</>
+  // The management area is Japanese only, so the words for a new tab are too.
+  return <ExternalLink to={url} locale="ja">{shown ?? url}</ExternalLink>
 }
 
 export function domain(url: string): string {
@@ -185,7 +182,7 @@ export function VerificationRow({
       {evidence && (
         <>
           {" "}
-          <ExternalLink url={evidence} label={words.evidence} words={words} />
+          <LinkedValue url={evidence} label={words.evidence} words={words} />
         </>
       )}
     </div>
@@ -237,7 +234,7 @@ export function ValidationChecklist({
               {check.evidence && (
                 <>
                   {" "}
-                  <ExternalLink
+                  <LinkedValue
                     url={check.evidence}
                     label={words.evidence}
                     words={words}

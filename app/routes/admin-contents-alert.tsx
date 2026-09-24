@@ -3,8 +3,8 @@ import { Form } from "react-router"
 
 import { alertAction, alertsPage, type AlertRow } from "~/admin/contents.server"
 import { Confirm, Heading, Stack } from "~/components/base"
-import { ResultLine, SHOWING } from "~/components/contents"
-import { Answered, Editing, Submit, TextArea, Unsaved } from "~/components/form"
+import { contentsSaid, SHOWING } from "~/components/contents"
+import { Answer, Editing, LanguagePair, Submit, TextArea, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, Page } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
@@ -50,9 +50,7 @@ export default function AdminContentsAlert({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        <ResultLine result={actionData} locale={locale} />
-      </Answered>
+      <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       {/* **This screen has no sections**, so the distance under the heading is
           the one between a heading and what it heads rather than between two
           parts. What comes next is the first alert itself, which opens with its
@@ -159,14 +157,11 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           title={t.alert.removeTitle}
           warning={t.alert.removeWarning}
           confirm={t.alert.removeConfirm}
-          cancel={t.cancel}
           intent="delete-alert"
         />
       </div>
-      {/* **The two languages are one value**, so they sit at the distance a
-          label sits from what it labels — closer than the parts of the form are
-          to each other. */}
-      <div className="flex flex-col gap-2">
+      {/* **The two languages are one value.** */}
+      <LanguagePair>
         <TextArea
           label={t.languages.ja}
           name="ja"
@@ -183,7 +178,7 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           accepts={messages.admin.accepts.markdown}
           rows={2}
         />
-      </div>
+      </LanguagePair>
       <div className="flex flex-wrap items-center gap-3">
         {row.active
           ? (

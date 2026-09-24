@@ -206,7 +206,7 @@ function lookup<T>(byKey: Map<string, T>, value: string, noise?: RegExp): T | un
 
 /**
  * Upstream's country and state line as one name per language:
- * `アメリカ合衆国（マサチューセッツ州）` / `Massachusetts, United States`.
+ * `アメリカ合衆国 (マサチューセッツ州)` / `Massachusetts, United States`.
  * An empty or `N/A` country gives two empty strings.
  */
 export function countryName(country: string, region: string): Bilingual {
@@ -217,5 +217,5 @@ export function countryName(country: string, region: string): Bilingual {
   const regions = REGION_INDEX.get(name.code)
   const state = regions === undefined ? undefined : lookup(regions, region, REGION_NOISE)
   if (state === undefined) return { ja: name.ja, en: name.en }
-  return { ja: `${name.ja}（${state.ja}）`, en: `${state.en}, ${name.en}` }
+  return { ja: `${name.ja} (${state.ja})`, en: `${state.en}, ${name.en}` }
 }

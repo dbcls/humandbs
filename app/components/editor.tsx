@@ -586,7 +586,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   </>
                 )}
               >
-                <Badge onBand>
+                <Badge onBand icon={<Icon name="edit" aria-hidden="true" />}>
                   {view.updating === null ? t.draftBadge : t.updatingBadge(`v${view.updating}`)}
                 </Badge>
               </PageHead>

@@ -119,8 +119,8 @@ export default function News({ loaderData }: Route.ComponentProps) {
                 name="q"
                 value={find}
                 label={messages.news.find}
-                placeholder={messages.news.find}
-                submit={messages.news.find}
+                placeholder={messages.search.boxHint}
+                submit={messages.search.submit}
                 size="compact"
                 searchAsTyped
               />

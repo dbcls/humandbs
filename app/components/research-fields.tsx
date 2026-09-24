@@ -283,38 +283,6 @@ export function datasetName(row: ResearchDatasetRow, locale: Locale): string {
   return row.label ?? messagesFor(locale).admin.editor.unpinnedDataset
 }
 
-/** Which datasets a publication covers. A set, so there is no order to keep. */
-export function DatasetChecklist({ locale, datasets, selected, onChange }: {
-  locale: Locale
-  datasets: ResearchDatasetRow[]
-  selected: string[]
-  onChange: (next: string[]) => void
-}) {
-  const t = messagesFor(locale).admin.editor
-  if (datasets.length === 0) return <Empty>{t.noDatasets}</Empty>
-
-  return (
-    <ul className="flex flex-wrap gap-3 text-sm">
-      {datasets.map((row) => (
-        <li key={row.id}>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={selected.includes(row.id)}
-              onChange={(event) => {
-                onChange(event.target.checked
-                  ? [...selected, row.id]
-                  : selected.filter((id) => id !== row.id))
-              }}
-            />
-            {datasetName(row, locale)}
-          </label>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 /**
  * This research's datasets a publication can name, as the public page's
  * dataset table draws them, with a box to tick at the front of each row.

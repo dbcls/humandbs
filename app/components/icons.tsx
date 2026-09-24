@@ -63,6 +63,8 @@ export type IconName
     | "bell"
     | "megaphone"
     | "clipboard"
+    | "inbox"
+    | "pin"
     | "grip"
     | "more"
     | "menu"
@@ -395,6 +397,20 @@ const NODES: Record<IconName, ReactNode> = {
       <path d="M8 16h.01" />
     </>
   ),
+  /* A tray things arrive in: what a provider has sent the portal to act on. */
+  "inbox": (
+    <>
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </>
+  ),
+  /* A pin stuck through: the one a pointer holds to, among others like it. */
+  "pin": (
+    <>
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </>
+  ),
   "grip": (
     <>
       <circle cx="9" cy="5" r="1" />
@@ -477,7 +493,7 @@ const NODES: Record<IconName, ReactNode> = {
 export const ICON_NAMES = Object.keys(NODES) as IconName[]
 
 /**
- * What glyph a kind of deed takes, wherever the admin area presses one
+ * What glyph a kind of deed takes, wherever a control does one
  * (`docs/ui.md` の「押せるもの」).
  *
  * **The glyph says the kind of deed, not the screen.** A screen picks a
@@ -486,12 +502,18 @@ export const ICON_NAMES = Object.keys(NODES) as IconName[]
  * different ways. `create` covers both 作る and 追加: the two differ in what
  * is left after pressing (a new row saved, or a new row in the same form),
  * never in the glyph.
+ *
+ * **Taking something off the page is `lock`, whichever way it goes** — a
+ * version withdrawn and an article unpublished leave the same thing behind, a
+ * page nobody outside can read, and that is the glyph the state wears.
+ * Showing and hiding (`eye` / `eye-off`) is a switch that is pressed back.
  */
 export const ACTION_ICON = {
   create: "plus",
   save: "save",
   delete: "trash",
   publish: "upload",
+  withdraw: "lock",
   search: "search",
   takeIn: "download",
   assign: "link",
@@ -500,10 +522,38 @@ export const ACTION_ICON = {
   revert: "undo",
   resolve: "check",
   post: "send",
+  edit: "edit",
+  merge: "merge",
+  redo: "refresh",
+  copy: "copy",
+  chooseFile: "file",
   goTo: "chevron-right",
   reorderUp: "chevron-up",
   reorderDown: "chevron-down",
   remove: "close",
+} as const satisfies Record<string, IconName>
+
+/**
+ * What glyph a kind of thing takes, wherever it is named — the entries of the
+ * area's front page, the mark before an identifier, the way to a screen about
+ * it (`docs/ui.md` の「押せるもの」).
+ *
+ * **A thing is not a deed and not a state.** The three tables — this one,
+ * `ACTION_ICON` and the marks in `components/flags.tsx` — share a glyph only
+ * where the deed makes the state or acts on the thing, so a glyph seen in one
+ * place cannot mean something unrelated in another (`components/icons.test.ts`).
+ */
+export const SUBJECT_ICON = {
+  research: "book",
+  dataset: "database",
+  application: "inbox",
+  memo: "clipboard",
+  article: "newspaper",
+  alert: "megaphone",
+  news: "bell",
+  staticFile: "file",
+  catalog: "filter",
+  assistant: "tip",
 } as const satisfies Record<string, IconName>
 
 /**

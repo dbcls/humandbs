@@ -134,7 +134,7 @@ describe("the table in the panel", () => {
 
   it("says so when the window matches nothing, and the head's box cannot be pressed", () => {
     const html = picker([], "zzz")
-    expect(html).toContain("その名前のファイルはありません。")
+    expect(html).toContain("条件に合うファイルはありません。")
     expect(head(html)).toContain("disabled=\"\"")
   })
 })

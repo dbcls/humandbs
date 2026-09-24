@@ -240,7 +240,7 @@ describe("the record of who has used the controlled access data", () => {
     const html = renderWith({ cau: [] })
 
     expect(html).toContain("制限公開データの利用者一覧")
-    expect(html).toContain("制限公開データの利用実績はまだありません")
+    expect(html).toContain("制限公開データの利用実績はありません")
   })
 
   it("addresses each dataset it names, so a row leads to what was used", () => {

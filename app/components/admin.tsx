@@ -239,9 +239,8 @@ export function WayTo({ to, icon, size, children }: {
   children: ReactNode
 }) {
   return (
-    <ButtonLink to={to} size={size} icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}>
+    <ButtonLink to={to} size={size} way icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}>
       {children}
-      <Chevron dir="right" />
     </ButtonLink>
   )
 }

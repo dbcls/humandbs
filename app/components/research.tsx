@@ -13,16 +13,18 @@ import {
   researchPath,
   researchVersionsPath,
 } from "~/public/urls"
-import type { CitedDatasetView, DatasetRowView, FieldView, ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
+import type { DatasetRowView, FieldView, ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
 
 import { Downloads } from "./files"
 import {
   AccessTypeBadge,
   Card,
   Crumbs,
+  DatasetIds,
   Empty,
   ExternalLink,
   hasLinks,
+  IdMark,
   KeyValue,
   LinksValue,
   Page,
@@ -37,7 +39,6 @@ import {
   Value,
 } from "./page"
 
-const SHOWN_DATASETS = 3
 const SHOWN_PLATFORMS = 3
 
 /**
@@ -251,13 +252,18 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             // Only the query string changes, so the same links work from the
             // published address and from a preview without either being named.
             at={(to) => `?files=${to}`}
-            selectedBy={(file) => (
-              <SelectingDatasets
-                rows={file.datasets.map((at) => ({ at, row: view.datasets[at] }))}
-                linkTo={linkTo}
-                messages={messages}
-              />
-            )}
+            // The datasets are named and led to the way the dataset table above
+            // names them — a preview's dataset with no label yet is the same
+            // "データセット ID N" in both — and a file none selects has an
+            // empty cell.
+            selectedBy={(file) => {
+              const items = file.datasets.flatMap((at) => {
+                const row = view.datasets[at]
+                if (row === undefined) return []
+                return [{ label: row.label === "" ? `${messages.dataset.datasetId} ${at + 1}` : row.label, to: linkTo(row) }]
+              })
+              return items.length === 0 ? null : <DatasetIds locale={locale} items={items} />
+            }}
           />
         </Section>
       )}
@@ -364,10 +370,19 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                     </Td>
                     <Td>
                       <MarkedPlace at={`relatedPublications.${publication.id}.datasetIds`} name={messages.dataset.datasetId}>
-                        <CitedList
-                          cited={publication.datasets}
-                          linkTo={linkTo}
+                        {/* **Another research's dataset carries that research's ID
+                            after it**: the ID alone reads as one of this
+                            research's. **An ID the portal publishes nothing under
+                            is written as it was typed**, with nothing to press. */}
+                        <DatasetIds
                           locale={locale}
+                          items={publication.datasets.map((one) => ({
+                            label: one.label,
+                            to: one.known ? linkTo({ id: null, label: one.label }) : null,
+                            research: one.humLabel === null
+                              ? null
+                              : { label: one.humLabel, to: href(locale, researchPath(one.humLabel)) },
+                          }))}
                         />
                       </MarkedPlace>
                     </Td>
@@ -412,10 +427,12 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                           : null}
                       </Td>
                       <Td>
-                        <DatasetList
-                          labels={usage.datasetAccessions}
-                          linkTo={linkTo}
-                          messages={messages}
+                        {/* Every accession is the address of its dataset page;
+                            under a preview `linkTo` answers null, since a draft
+                            has no page to send anyone to. */}
+                        <DatasetIds
+                          locale={locale}
+                          items={usage.datasetAccessions.map((label) => ({ label, to: linkTo({ id: null, label }) }))}
                         />
                       </Td>
                     </tr>
@@ -460,12 +477,9 @@ export function DatasetCells({ row, name, to, newTab = false, locale }: {
   return (
     <>
       <Td nowrap>
-        <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-        {to === null
-          ? name
-          : newTab
-            ? <ExternalLink to={to} locale={locale}>{name}</ExternalLink>
-            : <Link to={to}>{name}</Link>}
+        {newTab && to !== null
+          ? <IdMark kind="dataset"><ExternalLink to={to} locale={locale}>{name}</ExternalLink></IdMark>
+          : <IdMark kind="dataset" to={to}>{name}</IdMark>}
       </Td>
       <Td>
         {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
@@ -488,113 +502,6 @@ export function runsLong(field: FieldView): boolean {
   if (field.state === "plain") return field.text.length >= SPLIT_FROM
   if (field.state === "rich") return toPlainText(field.text).length >= SPLIT_FROM
   return false
-}
-
-/**
- * The datasets that select one file of the download list, named and led to the
- * way the dataset table above names and leads to them — a dataset of a preview
- * with no label yet is the same "データセット ID N" in both. Cut short the way
- * `DatasetList` is; an empty cell where no dataset selects the file.
- */
-function SelectingDatasets({ rows, linkTo, messages }: {
-  rows: { at: number, row: DatasetRowView | undefined }[]
-  linkTo: (ref: { id: string | null, label: string }) => string | null
-  messages: ReturnType<typeof messagesFor>
-}) {
-  const named = rows.flatMap(({ at, row }) => row === undefined
-    ? []
-    : [{ row, name: row.label === "" ? `${messages.dataset.datasetId} ${at + 1}` : row.label }])
-  if (named.length === 0) return null
-  return (
-    <Clamped
-      shown={SHOWN_DATASETS}
-      more={(rest) => messages.search.andMore(rest)}
-      less={messages.search.showLess}
-      items={named.map(({ row, name }) => {
-        const to = linkTo(row)
-        return (
-          <span key={name} className="whitespace-nowrap">
-            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-            {to === null ? name : <Link to={to}>{name}</Link>}
-          </span>
-        )
-      })}
-    />
-  )
-}
-
-/**
- * The datasets one row of a table names.
- *
- * **Cut to a few with the rest a press away**, the way a listing cuts the same
- * column: one usage record can name sixty-seven accessions, and a row that
- * tall pushes every row under it off the screen — while the reader is reading
- * down a column of who used what, not reading one entry.
- *
- * **Every accession is the address of the dataset page.** A reader who has
- * found the row they wanted is one press from what was used; written as text
- * they would have to carry the identifier to the listing by hand. Under a
- * preview link `linkTo` answers null, which is right — an accession is a
- * published dataset, and a draft has no page to send anyone to.
- */
-function DatasetList({ labels, linkTo, messages }: {
-  labels: string[]
-  linkTo: (ref: { id: string | null, label: string }) => string | null
-  messages: ReturnType<typeof messagesFor>
-}) {
-  return (
-    <Clamped
-      more={(rest) => messages.search.andMore(rest)}
-      less={messages.search.showLess}
-      items={labels.map((label) => {
-        const to = linkTo({ id: null, label })
-        return (
-          <span key={label} className="whitespace-nowrap">
-            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-            {to === null ? label : <Link to={to}>{label}</Link>}
-          </span>
-        )
-      })}
-    />
-  )
-}
-
-/**
- * The datasets one publication names, cut short the way `DatasetList` is.
- *
- * **Another research's dataset carries that research's ID after it**, as a way
- * to its page: the ID alone reads as one of this research's datasets. **An ID
- * the portal publishes nothing under is written as it was typed**, with nothing
- * to press — a link would lead to a page that is not there.
- */
-function CitedList({ cited, linkTo, locale }: {
-  cited: CitedDatasetView[]
-  linkTo: (ref: { id: string | null, label: string }) => string | null
-  locale: Locale
-}) {
-  const messages = messagesFor(locale)
-  return (
-    <Clamped
-      more={(rest) => messages.search.andMore(rest)}
-      less={messages.search.showLess}
-      items={cited.map((one) => {
-        const to = one.known ? linkTo({ id: null, label: one.label }) : null
-        return (
-          <span key={one.label} className="whitespace-nowrap">
-            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-            {to === null ? one.label : <Link to={to}>{one.label}</Link>}
-            {one.humLabel !== null && (
-              <>
-                {" ("}
-                <Link to={href(locale, researchPath(one.humLabel))}>{one.humLabel}</Link>
-                )
-              </>
-            )}
-          </span>
-        )
-      })}
-    />
-  )
 }
 
 /**
@@ -644,13 +551,13 @@ export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: 
             <Td stuck={0} holds="mark"><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
           )}
           <Td stuck={id} nowrap floor="min-w-26">
-            <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
-            {preview
-              ? row.humLabel
-              : <Link to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</Link>}
+            <IdMark kind="research" to={preview ? null : href(locale, researchPath(row.humLabel))}>{row.humLabel}</IdMark>
           </Td>
           <Td floor="min-w-40">
-            <ListedDatasets labels={row.datasetLabels} locale={locale} linked={!preview} />
+            <DatasetIds
+              locale={locale}
+              items={row.datasetLabels.map((label) => ({ label, to: preview ? null : href(locale, datasetPath(label)) }))}
+            />
           </Td>
           <Td floor="min-w-72">
             <Prose messages={messages}><Value field={row.title} locale={locale} /></Prose>
@@ -702,27 +609,6 @@ function Prose({ messages, children }: {
     <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
       {children}
     </Excerpt>
-  )
-}
-
-function ListedDatasets({ labels, locale, linked }: {
-  labels: string[]
-  locale: Locale
-  linked: boolean
-}) {
-  const messages = messagesFor(locale)
-  return (
-    <Clamped
-      shown={SHOWN_DATASETS}
-      more={(rest) => messages.search.andMore(rest)}
-      less={messages.search.showLess}
-      items={labels.map((label) => (
-        <span key={label} className="whitespace-nowrap">
-          <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-          {linked ? <Link to={href(locale, datasetPath(label))}>{label}</Link> : label}
-        </span>
-      ))}
-    />
   )
 }
 

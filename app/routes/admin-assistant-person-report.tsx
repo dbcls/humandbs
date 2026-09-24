@@ -14,7 +14,7 @@ import type {
 import {
   display,
   domain,
-  ExternalLink,
+  LinkedValue,
   joinFields,
   joinText,
   JudgmentText,
@@ -200,7 +200,7 @@ function OrganizationVerification({
               {(verification.organization_legal_entity_urls ?? []).map((url, index) => (
                 <span key={url}>
                   {index > 0 && ", "}
-                  <ExternalLink url={url} label={domain(url)} words={words} />
+                  <LinkedValue url={url} label={domain(url)} words={words} />
                 </span>
               ))}
             </div>
@@ -229,7 +229,7 @@ function OrganizationVerification({
             :
             {" "}
           </span>
-          <ExternalLink url={verification.orcid_url} words={words} />
+          <LinkedValue url={verification.orcid_url} words={words} />
         </div>
       )}
     </Stack>
@@ -328,7 +328,7 @@ function PhoneVerificationDetails({
           {phone.researcher_phone_url && (
             <>
               {" "}
-              <ExternalLink
+              <LinkedValue
                 url={phone.researcher_phone_url}
                 words={words}
               />
@@ -394,7 +394,7 @@ function MapLinks({
         return (
           <span key={`${url}-${index}`}>
             {index > 0 && ", "}
-            <ExternalLink url={url} label={label} words={words} />
+            <LinkedValue url={url} label={label} words={words} />
           </span>
         )
       })}

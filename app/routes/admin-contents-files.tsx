@@ -1,4 +1,4 @@
-import { data, Form, Link } from "react-router"
+import { data, Form } from "react-router"
 
 import {
   adminContentFilesPath,
@@ -7,23 +7,18 @@ import {
   type FilesListingQuery,
 } from "~/admin/urls"
 import {
-  Chooser,
-  CHOOSER_SIDE,
   Confirm,
   Heading,
-  MENU_ITEM,
-  MENU_ITEM_HERE,
   Note,
   Stack,
 } from "~/components/base"
 import { SlugEditor } from "~/components/contents"
 import { CopyAddress, UploadPanel } from "~/components/files"
-import { Answered, Result } from "~/components/form"
-import { Icon } from "~/components/icons"
+import { Answer } from "~/components/form"
 import { Card, Code, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
-import { DateRange, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { DateRange, type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import { dayInJst } from "~/dates"
-import { BOX_SORT, BOX_SORT_KEYS, formatSize, type StoredNode } from "~/files/box"
+import { BOX_SORT, BOX_SORT_KEYS, type BoxSortKey, formatSize, type StoredNode } from "~/files/box"
 import {
   commonFilesAction,
   commonFilesPage,
@@ -34,7 +29,6 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
-import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 import { dateWindows } from "~/search/date-window"
 import { filePath, href, readLocale } from "~/public/urls"
 
@@ -107,9 +101,7 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
 
   return (
     <Page>
-      <Answered answer={actionData} locale={locale}>
-        {actionData !== undefined && <Result ok={false}>{refusal(actionData, locale)}</Result>}
-      </Answered>
+      <Answer answer={actionData} locale={locale} said={(answer) => refusal(answer, locale)} />
       {/* **節を 1 つも持たない画面なので、h1 の下は節と節の距離ではない**
           (`docs/ui.md` の「縦の間隔」)。下に来るのは upload の枠そのもので、枠は
           自分の余白を持つ — 32px を空けると字から字までが 48px になり、h1 だけが
@@ -141,21 +133,24 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
                   // stands under it whatever the reader has asked for.
                   refineHasMore
                   refine={<Filters view={view} locale={locale} />}
-                  tools={<Tools view={view} locale={locale} />}
-                  pages={<Pages view={view} locale={locale} />}
+                  tools={(
+                    <ListingTools
+                      locale={locale}
+                      presented={presentation(view, locale)}
+                      at={(presented) => at(view, presented)}
+                      paging={paging(view)}
+                    />
+                  )}
+                  pages={<Paging locale={locale} {...paging(view)} />}
                   panel={null}
                 >
                   <Table
+                    actions
                     align="middle"
                     headers={[
                       t.slug,
                       t.size,
                       t.updatedAt,
-                      /* The column of things to press names itself for anyone
-                         reading the row aloud and nowhere else: a word over a
-                         column of marks is a heading for something already
-                         said, and it drags the column off its own width. */
-                      <span key="actions" className="sr-only">{messages.admin.actions}</span>,
                     ]}
                     whenEmpty={inForce === 0 ? t.none : t.noMatch}
                   >
@@ -192,9 +187,7 @@ function at(view: CommonFilesView, over: Partial<FilesListingQuery>): string {
     from: view.from,
     to: view.to,
     page: 1,
-    sort: view.sort === BOX_SORT ? null : view.sort,
-    order: view.order === "asc" ? null : view.order,
-    size: view.size === PAGE_SIZE ? null : view.size,
+    ...presentedQuery(presentation(view, view.locale)),
     ...over,
   }))
 }
@@ -239,7 +232,7 @@ function Filters({ view, locale }: ViewProps) {
       >
         {view.from !== null && <input type="hidden" name="from" value={view.from} />}
         {view.to !== null && <input type="hidden" name="to" value={view.to} />}
-        <Presented view={view} />
+        <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
       {/* **The day is the one the column shows** — the JST day the file was
@@ -249,7 +242,7 @@ function Filters({ view, locale }: ViewProps) {
       <RefineAxis label={t.sortKeys.updated}>
         <DateRange locale={locale} action={to} windows={windows} from={view.from ?? ""} to={view.to ?? ""}>
           <input type="hidden" name="q" value={view.keyword} />
-          <Presented view={view} />
+          <ListingPresented presented={presentation(view, locale)} />
         </DateRange>
       </RefineAxis>
     </Stack>
@@ -257,102 +250,35 @@ function Filters({ view, locale }: ViewProps) {
 }
 
 /**
- * How the result is presented, carried across a change of conditions. **Only
- * what differs from the default is written**, so an unnarrowed box is still the
- * bare address.
+ * How the box is read: in what order and how much of it at a time — the same
+ * tools the research listing carries, in the same place and the same shape.
+ * Every key runs from its smallest end in the bare address.
  */
-function Presented({ view }: { view: CommonFilesView }) {
-  return (
-    <>
-      {view.sort !== BOX_SORT && <input type="hidden" name="sort" value={view.sort} />}
-      {view.order !== "asc" && <input type="hidden" name="order" value={view.order} />}
-      {view.size !== PAGE_SIZE && <input type="hidden" name="size" value={String(view.size)} />}
-    </>
-  )
+function presentation(view: CommonFilesView, locale: Locale): Presentation<BoxSortKey> {
+  const names = messagesFor(locale).admin.contents.files.sortKeys
+  return {
+    sort: {
+      keys: BOX_SORT_KEYS,
+      current: view.sort,
+      order: view.order,
+      unwritten: BOX_SORT,
+      runs: () => "asc",
+      name: (key) => names[key],
+    },
+    size: view.size,
+  }
 }
 
-/**
- * How the box is read: in what order, how much of it at a time, and which part
- * of it is on screen.
- *
- * **The same four the research listing carries**, in the same place and the
- * same shape — a box of files and a list of research are both listings, and a
- * reader who learned the controls on one should not have to find them again.
- */
-function Tools({ view, locale }: ViewProps) {
-  const messages = messagesFor(locale)
-  const t = messages.admin.contents.files
-  const flipped = view.order === "asc" ? "desc" : "asc"
-  const turn = flipped === "asc"
-    ? messages.search.sort.toAscending
-    : messages.search.sort.toDescending
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
-      <Chooser
-        label={messages.search.sort.label}
-        value={t.sortKeys[view.sort]}
-        beside={(
-          <Link
-            to={at(view, { order: flipped === "asc" ? null : flipped })}
-            aria-label={turn}
-            title={turn}
-            className={CHOOSER_SIDE}
-          >
-            {/* The glyph says which way the list runs now, not where it goes. */}
-            <Icon name={view.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
-          </Link>
-        )}
-      >
-        {BOX_SORT_KEYS.map((option) => (
-          <Link
-            key={option}
-            to={at(view, { sort: option === BOX_SORT ? null : option, order: null })}
-            aria-current={option === view.sort ? "true" : undefined}
-            className={option === view.sort ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {t.sortKeys[option]}
-          </Link>
-        ))}
-      </Chooser>
-      <Chooser label={messages.search.pageSize} value={String(view.size)}>
-        {PAGE_SIZES.map((option) => (
-          <Link
-            key={option}
-            to={at(view, { size: option === PAGE_SIZE ? null : option })}
-            aria-current={option === view.size ? "true" : undefined}
-            className={option === view.size ? MENU_ITEM_HERE : MENU_ITEM}
-          >
-            {option}
-          </Link>
-        ))}
-      </Chooser>
-      <Pages view={view} locale={locale} />
-    </div>
-  )
-}
-
-/**
- * The count and the way through the pages, which stand over the table and again
- * under it.
- *
- * **Only these stand under it.** A page of files is longer than the window, so
- * a reader who has decided against this page would otherwise have to climb back
- * over it to reach the next one — but the ordering and the page size send that
- * reader back to the top of page one, and have no business at the foot.
- */
-function Pages({ view, locale }: ViewProps) {
-  return (
-    <Paging
-      locale={locale}
-      total={view.total}
-      from={view.rangeFrom}
-      to={view.rangeTo}
-      page={view.page}
-      pageCount={view.pageCount}
-      at={(page) => at(view, { page })}
-    />
-  )
+/** The count and the way through the pages, over the table and again under it. */
+function paging(view: CommonFilesView): ListingPaging {
+  return {
+    total: view.total,
+    from: view.rangeFrom,
+    to: view.rangeTo,
+    page: view.page,
+    pageCount: view.pageCount,
+    at: (page) => at(view, { page }),
+  }
 }
 
 /**
@@ -408,14 +334,13 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
             />
           </Form>
           <Form method="post">
-            <input type="hidden" name="intent" value="delete" />
             <input type="hidden" name="name" value={row.name} />
             <Confirm
               label={t.removeFile}
               title={t.removeFileTitle(row.name)}
               warning={t.removeFileWarning}
               confirm={t.removeFileConfirm}
-              cancel={messages.admin.contents.cancel}
+              intent="delete"
               size="row"
             />
           </Form>

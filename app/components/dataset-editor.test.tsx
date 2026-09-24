@@ -865,7 +865,7 @@ describe("the parts of an experiment's card", () => {
     const card = html.slice(html.indexOf("<details"), html.indexOf("</details>"))
     const headings = [...card.matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((one) => one[1])
     expect(headings).toEqual(["解析手法", "項目", "項目の追加"])
-    expect(card).toContain("項目はまだありません。")
+    expect(card).toContain("項目はありません。")
     // The heading 「解析手法」 names the one box under it; no second name over the box.
     expect(card).not.toContain("表示ラベル")
   })

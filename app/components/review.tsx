@@ -8,7 +8,6 @@
  * memo is not among them: it is the editing screen's own note, not a question.
  */
 
-import { useState } from "react"
 import { Form } from "react-router"
 
 import {
@@ -20,16 +19,18 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import type { CommentAnchor } from "~/content/types"
 import { RESEARCH } from "~/review/anchors"
+import type { AcknowledgementView } from "~/review/comments.server"
 import type { ReviewPageView } from "~/review/review.server"
+import type { Locale } from "~/i18n/locale"
 
 import { AdminBack } from "./admin"
-import { Button, Confirm, Heading, Stack, TOAST_MS } from "./base"
-import { Author, groupedByPlace, PlaceGroup, type CommentContext } from "./comments"
+import { Confirm, CopyButton, Heading, PANE_LABEL, Stack } from "./base"
+import { Author, groupedByPlace, PlaceGroups, type CommentContext } from "./comments"
 import { SHOWING } from "./contents"
 import { Editing, Field, Submit, Unsaved } from "./form"
 import { Flag } from "./flags"
 import { Icon } from "./icons"
-import { Card, Empty, Page, Section, Table, Td } from "./page"
+import { Card, Page, Section, Table, Td } from "./page"
 import { researchFieldLabel } from "./research-fields"
 
 /**
@@ -39,6 +40,35 @@ import { researchFieldLabel } from "./research-fields"
  */
 export function firstSentence(words: string): string {
   return words.split(/。|\. /)[0] ?? words
+}
+
+/** 「「{印の 1 文目}」を押した人」 — the name the marks' tables go by, wherever they stand. */
+export function pressedTitle(kind: AcknowledgementView["kind"], locale: Locale): string {
+  const messages = messagesFor(locale)
+  return messages.preview.pressedBy(firstSentence(kind === "commented" ? messages.preview.commented : messages.preview.approved))
+}
+
+/**
+ * Who pressed one of the two marks: a row per person, with when they last
+ * pressed and how many times. **A reader presses again on each round**, so a
+ * row per press would be the same name over and over; and a name and a time
+ * squeezed into one chip leaves nowhere for the count (`docs/admin-ui.md` の
+ * 「レビューと共有の画面」). The review screen and the confirmation before
+ * publishing draw the same table.
+ */
+export function PressedBy({ rows, locale }: { rows: readonly AcknowledgementView[], locale: Locale }) {
+  const t = messagesFor(locale).admin.review
+  return (
+    <Table headers={[t.who, t.lastPressed, t.times]} whenEmpty={t.nobodyYet}>
+      {rows.map((row) => (
+        <tr key={`${row.bySignedIn ? "signed" : "typed"}-${row.name}`}>
+          <Td nowrap><Author locale={locale} name={row.name} bySignedIn={row.bySignedIn} /></Td>
+          <Td nowrap>{minuteInJst(row.createdAt)}</Td>
+          <Td nowrap>{t.timesCount(row.count)}</Td>
+        </tr>
+      ))}
+    </Table>
+  )
 }
 
 export function ReviewScreen({ view }: { view: ReviewPageView }) {
@@ -90,17 +120,7 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
               is written here and no way leads to the place — an answer belongs
               in the panel of the place it answers. */}
           <Section title={editor.openComments}>
-            {groups.length === 0
-              ? <Empty>{editor.openCommentsEmpty}</Empty>
-              : (
-                  <Stack as="ul" gap="normal">
-                    {groups.map((group) => (
-                      <li key={group.key}>
-                        <PlaceGroup context={context} group={group} />
-                      </li>
-                    ))}
-                  </Stack>
-                )}
+            <PlaceGroups context={context} groups={groups} />
           </Section>
 
           {/* **The two marks are two tables**, since they answer two different
@@ -108,27 +128,11 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
               A reader presses again on each round, so a row is a person, with
               when they last pressed and how many times; the same person can
               stand in both. */}
-          {(["commented", "approved"] as const).map((kind) => {
-            const rows = view.acknowledgements.filter((row) => row.kind === kind)
-            const button = firstSentence(kind === "commented" ? messages.preview.commented : messages.preview.approved)
-            return (
-              <Section key={kind} title={messages.preview.pressedBy(button)}>
-                {rows.length === 0
-                  ? <Empty>{t.nobodyYet}</Empty>
-                  : (
-                      <Table headers={[t.who, t.lastPressed, t.times]}>
-                        {rows.map((row) => (
-                          <tr key={`${row.bySignedIn ? "signed" : "typed"}-${row.name}`}>
-                            <Td nowrap><Author locale={locale} name={row.name} bySignedIn={row.bySignedIn} /></Td>
-                            <Td nowrap>{minuteInJst(row.createdAt)}</Td>
-                            <Td nowrap>{t.timesCount(row.count)}</Td>
-                          </tr>
-                        ))}
-                      </Table>
-                    )}
-              </Section>
-            )
-          })}
+          {(["commented", "approved"] as const).map((kind) => (
+            <Section key={kind} title={pressedTitle(kind, locale)}>
+              <PressedBy rows={view.acknowledgements.filter((row) => row.kind === kind)} locale={locale} />
+            </Section>
+          ))}
         </Stack>
       </Card>
     </Page>
@@ -157,8 +161,8 @@ function Share({ view }: { view: ReviewPageView }) {
       <Stack gap="normal">
         <p className="flex flex-wrap items-center gap-2 text-sm">
           {share.enabled
-            ? <Flag kind="live">{t.shared}</Flag>
-            : <Flag kind="off">{t.unshared}</Flag>}
+            ? <Flag kind="shared">{t.shared}</Flag>
+            : <Flag kind="hidden">{t.unshared}</Flag>}
           {share.expired && <Flag kind="short">{t.expired}</Flag>}
           {share.open ? t.shareOn : t.shareOff}
           {/* **What the expiry means is said as what it is now**, beside the
@@ -184,17 +188,20 @@ function Share({ view }: { view: ReviewPageView }) {
                 )
               : <span className="text-ink-muted">{share.url}</span>}
           </p>
-          <CopyLink url={share.url} words={{ copy: t.copy, copied: t.copied }} />
+          <CopyButton
+            text={() => new URL(share.url, window.location.href).href}
+            label={t.copy}
+            done={messages.copied}
+          />
           <Form method="post" className="ml-auto">
             <Confirm
               label={t.reissue}
               title={t.reissueTitle}
               warning={t.reissueWarning}
               confirm={t.reissueConfirm}
-              cancel={messages.admin.detail.cancel}
-            >
-              <input type="hidden" name="intent" value="reissue" />
-            </Confirm>
+              icon="refresh"
+              intent="reissue"
+            />
           </Form>
         </div>
 
@@ -214,7 +221,7 @@ function Share({ view }: { view: ReviewPageView }) {
             ? <Submit intent="share-off" icon={<Icon name="eye-off" />} className={SHOWING}>{t.stopSharing}</Submit>
             : <Submit intent="share-on" icon={<Icon name="eye" />} className={SHOWING}>{t.startSharing}</Submit>}
           <span className="ml-3 flex items-center gap-2">
-            <span aria-hidden="true" className="font-semibold text-ink-muted text-xs">{t.expiryDate}</span>
+            <span aria-hidden="true" className={PANE_LABEL}>{t.expiryDate}</span>
             <Field label={t.expiryDate} name="expiresOn" type="date" value={share.expiresOn ?? ""} hideLabel />
           </span>
           <Submit intent="share" icon={<Icon name="save" />} saves>{t.save}</Submit>
@@ -222,33 +229,5 @@ function Share({ view }: { view: ReviewPageView }) {
         </Editing>
       </Stack>
     </Section>
-  )
-}
-
-/**
- * Puts the link on the clipboard, and says so in its own words for as long as
- * an answer stays up. The two words share one cell, so the control keeps the
- * width of the longer whichever it is showing.
- */
-function CopyLink({ url, words }: { url: string, words: { copy: string, copied: string } }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <Button
-      type="button"
-      icon={<Icon name={copied ? "check" : "copy"} aria-hidden="true" />}
-      onClick={() => {
-        void navigator.clipboard.writeText(new URL(url, window.location.href).href).then(() => {
-          setCopied(true)
-          window.setTimeout(() => {
-            setCopied(false)
-          }, TOAST_MS)
-        })
-      }}
-    >
-      <span className="grid">
-        <span className={`col-start-1 row-start-1 ${copied ? "invisible" : ""}`}>{words.copy}</span>
-        <span className={`col-start-1 row-start-1 ${copied ? "" : "invisible"}`}>{words.copied}</span>
-      </span>
-    </Button>
   )
 }

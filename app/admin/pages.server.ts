@@ -142,9 +142,11 @@ import {
 } from "~/review/preview.server"
 import {
   draftReviewSummaries,
+  readShare,
   versionAgainst,
   type DraftReviewSummary,
 } from "~/review/queries.server"
+import { isShareExpired } from "~/review/share"
 
 export function notFound(): never {
   throw new Response(null, { status: 404, statusText: "Not Found" })
@@ -1162,6 +1164,8 @@ export interface PublishBlockView {
 /** What the review says, for the screen's advice: it never stops a publish. */
 export interface PublishReviewView {
   shared: boolean
+  /** Shared, but past the date the link stopped opening — said apart from never shared. */
+  expired: boolean
   unresolved: number
   acknowledgements: AcknowledgementView[]
   /** Every comment on the draft, for the panel the open ones are read and resolved in. */
@@ -1243,10 +1247,11 @@ export async function publishPage(
     ...preview.gate.blocks.flatMap((block) => block.kind === "dataset-id-missing" ? [block.datasetId] : []),
     ...preview.datasetChanges.map((change) => change.datasetId),
   ]
-  const [shown, acknowledgements, comments] = await Promise.all([
+  const [shown, acknowledgements, comments, share] = await Promise.all([
     draftDatasetRowViews(db, draftId, [...new Set(named)], locale),
     readAcknowledgements(db, draftId),
     readComments(db, draftId),
+    readShare(db, draftId),
   ])
 
   return {
@@ -1284,6 +1289,7 @@ export async function publishPage(
     datasetRows: Object.fromEntries(shown),
     review: {
       shared: steps.shared,
+      expired: share !== null && isShareExpired({ enabled: share.enabled, expiresAt: share.expiresAt }, new Date()),
       unresolved: steps.unresolved,
       acknowledgements,
       comments,

@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react"
-import { Link, useFetcher } from "react-router"
+import { useEffect, useRef } from "react"
+import { useFetcher } from "react-router"
 
 import { APPLICATION_FORM_URL, applicationPayload, useCart } from "~/cart/store"
-import { Button, ButtonLink, Fold, Heading, IconButton, Stack } from "~/components/base"
+import { Button, ButtonLink, CopyButton, Fold, Heading, IconButton, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
-import { AccessTypeBadge, Card, Crumbs, Page, Table, Td } from "~/components/page"
+import { AccessTypeBadge, Card, Crumbs, IdMark, Page, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
@@ -94,7 +94,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
               <Button
                 type="button"
                 size="sm"
-                icon={<Icon name="trash" />}
+                icon={<Icon name="close" />}
                 onClick={() => {
                   cart.remove(shown)
                 }}
@@ -113,11 +113,11 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
           <Table
             align="middle"
             whenEmpty={messages.cart.emptyRow}
+            actions={messages.cart.remove}
             headers={[
               messages.dataset.datasetId,
               messages.research.researchId,
               messages.dataset.accessType,
-              <span key="remove" className="sr-only">{messages.cart.remove}</span>,
             ]}
           >
             {shown.map((label) => {
@@ -125,14 +125,9 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
               return (
                 <tr key={label}>
                   <Td nowrap>
-                    <Icon
-                      name="database"
-                      aria-hidden="true"
-                      className="mr-1 text-ink-muted"
-                    />
-                    {row === undefined
-                      ? label
-                      : <Link to={href(locale, datasetPath(label))}>{label}</Link>}
+                    <IdMark kind="dataset" to={row === undefined ? null : href(locale, datasetPath(label))}>
+                      {label}
+                    </IdMark>
                   </Td>
                   {row === undefined
                     ? (
@@ -148,14 +143,9 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                     : (
                         <>
                           <Td nowrap>
-                            <Icon
-                              name="book"
-                              aria-hidden="true"
-                              className="mr-1 text-ink-muted"
-                            />
-                            <Link to={href(locale, researchPath(row.humLabel))}>
+                            <IdMark kind="research" to={href(locale, researchPath(row.humLabel))}>
                               {row.humLabel}
-                            </Link>
+                            </IdMark>
                           </Td>
                           <Td>
                             {row.accessType !== null && (
@@ -166,7 +156,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                       )}
                   <Td holds="mark">
                     <IconButton
-                      name="trash"
+                      name="close"
                       label={messages.cart.removeOne(label)}
                       onClick={() => { cart.remove([label]) }}
                     />
@@ -198,13 +188,6 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
  */
 function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale }) {
   const messages = messagesFor(locale)
-  // **What was copied, rather than that something was.** Take a dataset out
-  // after copying and the clipboard no longer holds what the table shows — the
-  // mark has to go, and holding the text itself is what makes it go without the
-  // screen having to notice the change and put it back.
-  const [onClipboard, setOnClipboard] = useState<string | null>(null)
-  const copied = onClipboard === payload
-
   return (
     <ol
       aria-label={messages.cart.steps}
@@ -214,29 +197,7 @@ function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale
         <Stack gap="tight">
           <span>{messages.cart.stepCopy}</span>
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              icon={<Icon name="copy" />}
-              onClick={() => {
-                void navigator.clipboard.writeText(payload).then(() => {
-                  setOnClipboard(payload)
-                })
-              }}
-            >
-              {messages.cart.copy}
-            </Button>
-            {/*
-              **Beside the button rather than in place of its name.** Renaming it
-              left the screen with nothing saying what the control does, and for
-              anyone listening the button itself changed its name — a status is
-              what changed, so a status is what says it.
-            */}
-            {copied && (
-              <span role="status" className="flex items-center gap-1 text-ink-muted text-sm">
-                <Icon name="check" aria-hidden="true" />
-                {messages.cart.copyDone}
-              </span>
-            )}
+            <CopyButton text={payload} label={messages.cart.copy} done={messages.copied} />
           </div>
           {/*
             The JSON is what the button copies, not something to read — it is
@@ -271,7 +232,6 @@ function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale
               newTab
               newTabLabel={messages.newTab}
               variant="primary"
-              icon={<Icon name="external" />}
             >
               {messages.cart.apply}
             </ButtonLink>

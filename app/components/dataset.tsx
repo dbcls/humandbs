@@ -1,6 +1,6 @@
-import { Link, useSearchParams } from "react-router"
+import { useSearchParams } from "react-router"
 
-import { Band, Stack } from "~/components/base"
+import { Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import { pageOfBox } from "~/files/box"
@@ -13,10 +13,12 @@ import { Downloads } from "./files"
 import {
   AccessTypeBadge,
   Annotation,
+  BandBox,
   Card,
   Crumbs,
   Empty,
   ExternalLink,
+  IdMark,
   KeyValue,
   Page,
   PageHead,
@@ -118,8 +120,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         <KeyValue title={t.research}>
           {/* The same mark the two listings put before a research id, so the
               thing being pointed at is recognised before the label is read. */}
-          <Icon name="book" aria-hidden="true" className="mr-1 text-ink-muted" />
-          <Link to={researchHref}>{view.humLabel}</Link>
+          <IdMark kind="research" to={researchHref}>{view.humLabel}</IdMark>
         </KeyValue>
         {/* A date the upstream archive has not given us is left out rather
             than drawn as an empty row: "there is no value" and "the label is
@@ -166,29 +167,30 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           : (
               <Stack gap="block">
                 {view.experiments.map((experiment) => (
-                  <section key={experiment.id} className="overflow-hidden rounded border border-line">
-                    <Band>
-                      <h3 className="flex flex-wrap items-center gap-2 font-semibold">
+                  <BandBox
+                    key={experiment.id}
+                    level={3}
+                    title={(
+                      <>
                         <Place at={`experiments.${experiment.id}.label`} onBand>
                           <Value field={experiment.label} locale={locale} />
                         </Place>
                         <Annotation at={`experiments.${experiment.id}.label`} name={t.experiments} />
-                      </h3>
-                    </Band>
-                    <div className="px-4 py-3">
-                      <Pairs>
-                        {experiment.values.map((value) => (
-                          <KeyValue
-                            key={value.keyId}
-                            title={value.label}
-                            at={`experiments.${experiment.id}.values.${value.keyId}`}
-                          >
-                            <Value field={value.field} locale={locale} />
-                          </KeyValue>
-                        ))}
-                      </Pairs>
-                    </div>
-                  </section>
+                      </>
+                    )}
+                  >
+                    <Pairs>
+                      {experiment.values.map((value) => (
+                        <KeyValue
+                          key={value.keyId}
+                          title={value.label}
+                          at={`experiments.${experiment.id}.values.${value.keyId}`}
+                        >
+                          <Value field={value.field} locale={locale} />
+                        </KeyValue>
+                      ))}
+                    </Pairs>
+                  </BandBox>
                 ))}
               </Stack>
             )}

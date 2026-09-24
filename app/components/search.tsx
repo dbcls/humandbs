@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, useSyncExternalStore, type ComponentProps, type ReactNode } from "react"
 import { Form, Link, useLocation } from "react-router"
 
 import { isAdminPath } from "~/admin/urls"
-import { BAND_FILL, Button, ButtonLink, Chip, Chooser, CHOOSER_SIDE, CLEAR, Heading, LISTING_CONTROL, MENU_ITEM, MENU_ITEM_HERE, MoreLink, Note, PALE, PANE_LABEL, PaneHeading, Stack, SwitchTabs, Chevron } from "~/components/base"
+import { BAND_FILL, Button, ButtonLink, Chip, Chooser, CHOOSER_SIDE, CLEAR, CopyButton, CountBubble, Heading, LISTING_CONTROL, MENU_ITEM, MENU_ITEM_HERE, MoreLink, Note, PALE, PANE_LABEL, PaneHeading, Stack, SwitchTabs, Chevron } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -470,11 +470,7 @@ function PaneUnfold({ locale, inForce, onToggle }: {
       className={`inline-flex min-h-tap min-w-tap cursor-pointer items-center justify-center gap-1 rounded px-2 hover:bg-surface-hover ${LISTING_CONTROL}`}
     >
       <Icon name="filter" aria-hidden="true" />
-      {inForce > 0 && (
-        <span className="rounded-full bg-brand px-1.5 font-semibold text-white text-xs">
-          {inForce}
-        </span>
-      )}
+      <CountBubble count={inForce} tone="brand" />
     </button>
   )
 }
@@ -695,6 +691,7 @@ export function SearchExamples({ locale }: { locale: Locale }) {
           to={href(locale, listPath("research") + searchQuery({ q: example, sort: null, page: 1 }))}
           variant="secondary"
           size="xs"
+          icon={<Icon name="search" />}
         >
           {example}
         </ButtonLink>
@@ -776,75 +773,110 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
 }
 
 /**
+ * How a listing's rows are presented: the key they are ordered by, which way,
+ * and how many a page holds.
+ *
+ * **Every listing that pages carries these three the same way**, public or
+ * management (`docs/ui.md` の「押せるもの」): only what differs from the bare
+ * address is written, choosing a key or a size goes back to the first page, and
+ * the form that narrows the listing carries them across (`ListingPresented`).
+ * A listing whose order is itself what it says (the articles, the table of
+ * fields) has no `sort`.
+ */
+export interface Presentation<K extends string> {
+  sort?: ListingSort<K>
+  size: number
+}
+
+export interface ListingSort<K extends string> {
+  keys: readonly K[]
+  current: K
+  order: SortOrder
+  /** The key the bare address means. */
+  unwritten: K
+  /** The direction the bare address means under a key. */
+  runs: (key: K) => SortOrder
+  /**
+   * The direction a key arrives in when it is chosen, where that is not the
+   * one the bare address means (the announcements run newest first under
+   * every key, and their title still opens at A).
+   */
+  opens?: (key: K) => SortOrder
+  /** What the key is called — the name of the column it orders by. */
+  name: (key: K) => string
+}
+
+/** The presentation as the address writes it: `null` for what is the default. */
+export interface PresentedQuery<K extends string> {
+  sort: K | null
+  order: SortOrder | null
+  size: number | null
+}
+
+export function presentedQuery<K extends string>({ sort, size }: Presentation<K>): PresentedQuery<K> {
+  return {
+    sort: sort === undefined || sort.current === sort.unwritten ? null : sort.current,
+    order: sort === undefined || sort.order === sort.runs(sort.current) ? null : sort.order,
+    size: size === PAGE_SIZE ? null : size,
+  }
+}
+
+/**
  * How the rows are ordered.
  *
  * **The key names itself and the direction is welded to it.** They are one
  * setting — a direction on its own says nothing — so they share an edge the way
- * v1 draws them. **Every key has two ends worth asking for** now that relevance
- * is not among them (`app/search/sort.ts`), so the welded half is always there.
+ * v1 draws them.
  *
  * **Choosing a key does not carry the direction over.** Newest first and the
  * last identifier issued are not the same request, so a key arrives the way
  * that key is read and the reader turns it around from there.
+ *
+ * **The ordering in force is not the ordering to write down.** A reader who
+ * asked for nothing is reading the default, and the bare address already says
+ * so — writing it out would put a setting nobody chose into every link on the
+ * page.
  */
-export function SortChooser({ locale, target, query, sort, order, rows }: {
+function SortChoice<K extends string>({ locale, sort, at }: {
   locale: Locale
-  target: "research" | "dataset"
-  query: string
-  sort: SortKey
-  order: SortOrder
-  /** The page size to keep, or `null` for the default. */
-  rows: number | null
+  sort: ListingSort<K>
+  /** The first page under an ordering, written as the address writes it. */
+  at: (sort: K | null, order: SortOrder | null) => string
 }) {
   const messages = messagesFor(locale)
-  const flipped = order === "asc" ? "desc" : "asc"
+  const written = sort.current === sort.unwritten ? null : sort.current
+  const flipped = sort.order === "asc" ? "desc" : "asc"
   const turn = flipped === "asc"
     ? messages.search.sort.toAscending
     : messages.search.sort.toDescending
-  // **The ordering in force is not the ordering to write down.** A reader who
-  // asked for nothing is reading the default, and the bare address already says
-  // so — writing it out would put a setting into every link on the page that
-  // nobody chose, which is the same reason the direction below is dropped when
-  // it is the one the key runs by.
-  const written = sort === DEFAULT_SORT ? null : sort
   const flip = (
     <Link
-      to={href(locale, listPath(target) + searchQuery({
-        q: query,
-        sort: written,
-        order: flipped === defaultOrder(sort) ? null : flipped,
-        page: 1,
-        size: rows,
-      }))}
+      to={at(written, flipped === sort.runs(sort.current) ? null : flipped)}
       preventScrollReset
       aria-label={turn}
       title={turn}
       className={CHOOSER_SIDE}
     >
       {/* The glyph says which way the list runs now, not where the link goes. */}
-      <Icon name={order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
+      <Icon name={sort.order === "asc" ? "sort-asc" : "sort-desc"} aria-hidden="true" />
     </Link>
   )
   return (
-    <Chooser label={messages.search.sort.label} value={messages.search.sort[sort]} beside={flip}>
-      {/* Every ordering is on offer whatever was asked for: what a listing can
-          be sorted by does not depend on the query (`app/search/sort.ts`). */}
-      {SORT_KEYS.map((option) => (
-        <Link
-          key={option}
-          to={href(locale, listPath(target) + searchQuery({
-            q: query,
-            sort: option === DEFAULT_SORT ? null : option,
-            page: 1,
-            size: rows,
-          }))}
-          preventScrollReset
-          aria-current={option === sort ? "true" : undefined}
-          className={option === sort ? MENU_ITEM_HERE : MENU_ITEM}
-        >
-          {messages.search.sort[option]}
-        </Link>
-      ))}
+    <Chooser label={messages.search.sort.label} value={sort.name(sort.current)} beside={flip}>
+      {sort.keys.map((option) => {
+        const opens = sort.opens?.(option) ?? sort.runs(option)
+        return (
+          <Link
+            key={option}
+            to={at(option === sort.unwritten ? null : option, opens === sort.runs(option) ? null : opens)}
+            preventScrollReset
+            aria-current={option === sort.current ? "true" : undefined}
+            className={option === sort.current ? MENU_ITEM_HERE : MENU_ITEM}
+          >
+            {sort.name(option)}
+          </Link>
+        )
+      })}
     </Chooser>
   )
 }
@@ -860,6 +892,130 @@ export function SortChooser({ locale, target, query, sort, order, rows }: {
  * at is at a different place in a differently sized listing, and the honest
  * answer to "show me a hundred at a time" is the first hundred.
  */
+function SizeChoice({ locale, size, at }: {
+  locale: Locale
+  size: number
+  at: (size: number | null) => string
+}) {
+  const messages = messagesFor(locale)
+  return (
+    <Chooser label={messages.search.pageSize} value={String(size)}>
+      {PAGE_SIZES.map((option) => (
+        <Link
+          key={option}
+          to={at(option === PAGE_SIZE ? null : option)}
+          preventScrollReset
+          aria-current={option === size ? "true" : undefined}
+          className={option === size ? MENU_ITEM_HERE : MENU_ITEM}
+        >
+          {option}
+        </Link>
+      ))}
+    </Chooser>
+  )
+}
+
+/**
+ * The row over a table: the four right-aligned in one line (`docs/ui.md` の
+ * 「行が並ぶ画面はどれも同じ道具を持ち」).
+ */
+const TOOLS_ROW = "flex flex-wrap items-center justify-end gap-x-6 gap-y-2"
+
+export type ListingPaging = Omit<ComponentProps<typeof Paging>, "locale">
+
+/**
+ * Everything about how the result is presented, in one row over the table:
+ * the ordering, how many rows a page holds, the count and the way through the
+ * pages. Under the table stands `Paging` alone, with the same `paging`.
+ *
+ * `at` answers the listing's own address under a presentation, on its first
+ * page; everything else the reader chose is the screen's to carry.
+ */
+export function ListingTools<K extends string>({ locale, presented, at, paging }: {
+  locale: Locale
+  presented: Presentation<K>
+  at: (over: PresentedQuery<K>) => string
+  paging: ListingPaging
+}) {
+  const written = presentedQuery(presented)
+  return (
+    <div className={TOOLS_ROW}>
+      {presented.sort !== undefined && (
+        <SortChoice
+          locale={locale}
+          sort={presented.sort}
+          at={(sort, order) => at({ ...written, sort, order })}
+        />
+      )}
+      <SizeChoice locale={locale} size={presented.size} at={(size) => at({ ...written, size })} />
+      <Paging locale={locale} {...paging} />
+    </div>
+  )
+}
+
+/**
+ * How the result is presented, carried across a change of conditions by the
+ * form that narrows the listing.
+ *
+ * **The ordering and the page size are the reader's rather than the
+ * listing's**, and dropping them on every search would re-sort and re-cut the
+ * listing under the reader. Only what differs from the default is written, so
+ * an unnarrowed listing is still the bare address.
+ */
+export function ListingPresented<K extends string>({ presented }: { presented: Presentation<K> }) {
+  const { sort, order, size } = presentedQuery(presented)
+  return (
+    <>
+      {sort !== null && <input type="hidden" name="sort" value={sort} />}
+      {order !== null && <input type="hidden" name="order" value={order} />}
+      {size !== null && <input type="hidden" name="size" value={String(size)} />}
+    </>
+  )
+}
+
+/** The public listings' ordering, read the way `app/search/sort.ts` reads it. */
+function publicSort(locale: Locale, sort: SortKey, order: SortOrder): ListingSort<SortKey> {
+  const messages = messagesFor(locale)
+  return {
+    keys: SORT_KEYS,
+    current: sort,
+    order,
+    unwritten: DEFAULT_SORT,
+    runs: defaultOrder,
+    name: (key) => messages.search.sort[key],
+  }
+}
+
+/**
+ * How a public listing's rows are ordered. Every ordering is on offer whatever
+ * was asked for: what a listing can be sorted by does not depend on the query
+ * (`app/search/sort.ts`).
+ */
+export function SortChooser({ locale, target, query, sort, order, rows }: {
+  locale: Locale
+  target: "research" | "dataset"
+  query: string
+  sort: SortKey
+  order: SortOrder
+  /** The page size to keep, or `null` for the default. */
+  rows: number | null
+}) {
+  return (
+    <SortChoice
+      locale={locale}
+      sort={publicSort(locale, sort, order)}
+      at={(key, turned) => href(locale, listPath(target) + searchQuery({
+        q: query,
+        sort: key,
+        order: turned,
+        page: 1,
+        size: rows,
+      }))}
+    />
+  )
+}
+
+/** How many rows a page of a public listing holds. */
 export function PageSizeChooser({ locale, target, query, sort, order, size }: {
   locale: Locale
   target: "research" | "dataset"
@@ -870,27 +1026,18 @@ export function PageSizeChooser({ locale, target, query, sort, order, size }: {
   order: string | null
   size: PageSize
 }) {
-  const messages = messagesFor(locale)
   return (
-    <Chooser label={messages.search.pageSize} value={String(size)}>
-      {PAGE_SIZES.map((option) => (
-        <Link
-          key={option}
-          to={href(locale, listPath(target) + searchQuery({
-            q: query,
-            sort,
-            order,
-            page: 1,
-            size: option === PAGE_SIZE ? null : option,
-          }))}
-          preventScrollReset
-          aria-current={option === size ? "true" : undefined}
-          className={option === size ? MENU_ITEM_HERE : MENU_ITEM}
-        >
-          {option}
-        </Link>
-      ))}
-    </Chooser>
+    <SizeChoice
+      locale={locale}
+      size={size}
+      at={(rows) => href(locale, listPath(target) + searchQuery({
+        q: query,
+        sort,
+        order,
+        page: 1,
+        size: rows,
+      }))}
+    />
   )
 }
 
@@ -956,7 +1103,8 @@ export function InvalidQuery({ locale, column }: { locale: Locale, column: numbe
  * would mean a dependency for a file every spreadsheet already reads.
  *
  * Copying needs a browser and the address bar cannot do it, so that one is a
- * control; the file is a link, and downloads without any script at all.
+ * control (`CopyButton`, which also says when it is done); the file is a link,
+ * and downloads without any script at all.
  */
 function ExportLinks({ locale, target, query, sort }: {
   locale: Locale
@@ -966,7 +1114,6 @@ function ExportLinks({ locale, target, query, sort }: {
   sort: string | null
 }) {
   const messages = messagesFor(locale)
-  const [copied, setCopied] = useState(false)
   // **The search is written the way the listing writes it.** Assembling the
   // pairs here instead would spell the same search a second way — an empty `q`
   // and an ordering nobody asked for both end up in the address — and the file
@@ -977,41 +1124,17 @@ function ExportLinks({ locale, target, query, sort }: {
     return `${href(locale, exportPath(target))}?${search.toString()}`
   }
 
-  async function copy() {
-    const answer = await fetch(at("copy"))
-    await navigator.clipboard.writeText(await answer.text())
-    setCopied(true)
-    window.setTimeout(() => {
-      setCopied(false)
-    }, 2000)
-  }
-
   return (
     <div className="flex items-center gap-2">
-      <Button
-        type="button"
+      <CopyButton
         listing
-        icon={<Icon name="copy" />}
-        onClick={() => { void copy() }}
-      >
-        {messages.search.exportCopy}
-      </Button>
+        text={async () => (await fetch(at("copy"))).text()}
+        label={messages.search.exportCopy}
+        done={messages.copied}
+      />
       <ButtonLink to={at("tsv")} external listing icon={<Icon name="download" />}>
         {messages.search.exportTsv}
       </ButtonLink>
-      {/*
-        **Beside the buttons rather than in place of a name.** Renaming the
-        control leaves the screen with nothing saying what it does, and for
-        anyone listening the button itself changed its name — what changed is a
-        status, so a status is what says it. **It stands last** so that saying
-        it does not move the other control out from under the pointer.
-      */}
-      {copied && (
-        <span role="status" className="flex items-center gap-1 text-ink-muted text-sm">
-          <Icon name="check" aria-hidden="true" />
-          {messages.search.exportCopied}
-        </span>
-      )}
     </div>
   )
 }
@@ -1143,7 +1266,7 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
     />
   )
   const tools = (
-    <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
+    <div className={TOOLS_ROW}>
       <SortChooser
         locale={locale}
         target={target}

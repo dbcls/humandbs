@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 import { Icon } from "~/components/icons"
 
-import { Field, landingPath, MarkdownEditor, SaveNews, Select, Submit, TextArea } from "./form"
+import { Answer, Field, landingPath, MarkdownEditor, SaveNews, Select, Submit, TextArea } from "./form"
 
 /** Rendered under a router, since a panel off a control watches the address to close. */
 function render(element: React.ReactNode): string {
@@ -187,5 +187,35 @@ describe("landingPath", () => {
     expect(landingPath("grants.g1.title", (candidate) => marked.has(candidate))).toBe("grants.g1")
     expect(landingPath("grants.g2.title", (candidate) => marked.has(candidate))).toBeNull()
     expect(landingPath("title", (candidate) => marked.has(candidate))).toBe("title")
+  })
+})
+
+describe("the answer to what was sent (Answer)", () => {
+  type Sent = { status: "ok", did: string } | { status: "taken" } | { status: "gone" }
+  const said = (answer: Sent) => answer.status === "ok" ? `${answer.did}しました。` : answer.status === "taken" ? "使われています。" : null
+
+  it("says what went through in one box that says it is done", () => {
+    const html = render(<Answer<Sent> answer={{ status: "ok", did: "key を作成" }} locale="ja" said={said} />)
+    expect(html).toContain("key を作成しました。")
+    expect(html).toContain("border-line-strong")
+    expect(html).not.toContain("border-danger")
+  })
+
+  it("says a refusal as a failure", () => {
+    const html = render(<Answer<Sent> answer={{ status: "taken" }} locale="ja" said={said} />)
+    expect(html).toContain("使われています。")
+    expect(html).toContain("border-danger")
+  })
+
+  it("raises nothing for an answer the screen does not speak to, nor for none", () => {
+    const quiet = render(<Answer<Sent> answer={{ status: "gone" }} locale="ja" said={said} />)
+    const none = render(<Answer<Sent> answer={undefined} locale="ja" said={said} />)
+    expect(quiet).toBe(none)
+    expect(quiet).not.toContain("role=\"status\"><div")
+  })
+
+  it("lets the screen say which answers went through", () => {
+    const html = render(<Answer answer={{ status: "issued" }} locale="ja" said={() => "NHA000001 を発行しました。"} ok={(answer) => answer.status === "issued"} />)
+    expect(html).not.toContain("border-danger")
   })
 })

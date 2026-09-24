@@ -19,36 +19,22 @@
  * (`docs/admin-ui.md` の「画面の名乗り」).
  */
 
-import { useEffect, useId, useSyncExternalStore } from "react"
+import { useEffect, useId } from "react"
 import { useBeforeUnload, useBlocker } from "react-router"
 
 import { Button, Chevron, Dialog } from "~/components/base"
 import { messagesFor } from "~/i18n/messages"
 
 const held = new Set<string>()
-const listeners = new Set<() => void>()
 
 /** What one form (or one editing screen) says about itself. Idempotent. */
 export function holdUnsaved(id: string, dirty: boolean): void {
-  const before = held.size > 0
   if (dirty) held.add(id)
   else held.delete(id)
-  if ((held.size > 0) !== before) for (const tell of listeners) tell()
 }
 
 export function anyUnsaved(): boolean {
   return held.size > 0
-}
-
-function subscribe(tell: () => void): () => void {
-  listeners.add(tell)
-  return () => {
-    listeners.delete(tell)
-  }
-}
-
-export function useAnyUnsaved(): boolean {
-  return useSyncExternalStore(subscribe, anyUnsaved, () => false)
 }
 
 /**
@@ -90,7 +76,6 @@ export function LeaveGuard() {
       title={t.title}
       note={t.leaveWarning}
       held={{ open: blocker.state === "blocked", close: () => { blocker.reset?.() } }}
-      dismiss={t.cancel}
       action={() => (
         <Button
           type="button"

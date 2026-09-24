@@ -294,13 +294,13 @@ describe("one comment in the panel", () => {
     expect(html).toContain("未解決")
     expect(html).toMatch(/解決<\/button>/)
     expect(html).toMatch(/削除<\/button>/)
-    expect(html).not.toContain("未解決に戻す")
+    expect(html).not.toContain("解決の取り消し")
   })
 
   it("offers to reopen what is resolved, rather than to resolve it again", () => {
     const html = render(<CommentRow context={CONTEXT} comment={comment(FIELD_ANCHOR, true)} />)
     expect(html).toContain("解決済み")
-    expect(html).toContain("未解決に戻す")
+    expect(html).toContain("解決の取り消し")
   })
 
   it("offers a reader of the share link nothing to press", () => {

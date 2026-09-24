@@ -1,11 +1,10 @@
 import { useState, type SyntheticEvent } from "react"
 
-import { Button, Confirm, Fold, Stack } from "~/components/base"
+import { Button, Confirm, Fold, PANE_LABEL, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Counted, Empty, KeyValue, Pairs, Section, Table, Td } from "~/components/page"
+import { Counted, KeyValue, Pairs, Section, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
-import { messagesFor } from "~/i18n/messages"
 
 import type {
   AssessmentData,
@@ -14,7 +13,7 @@ import type {
 } from "./admin-assistant-model"
 import {
   display,
-  ExternalLink,
+  LinkedValue,
   joined,
 } from "./admin-assistant-report-primitives"
 
@@ -41,7 +40,6 @@ function RemoveDataset({ datasetId, busy, onRemove, words }: {
       title={words.removeDatasetTitle(datasetId)}
       warning={words.removeDatasetWarning}
       confirm={words.removeDatasetConfirm}
-      cancel={words.cancel}
       size="row"
       onConfirm={() => { if (!busy) onRemove() }}
     />
@@ -106,7 +104,8 @@ export function Datasets({
         {canManage && (
           <form onSubmit={(event) => { void add(event) }} className="rounded border border-line p-4">
             <Stack gap="tight">
-              <label htmlFor="assistant-dataset-ids" className="block font-semibold text-sm">
+              {/* Named in the face every field's name takes (`Labelled`). */}
+              <label htmlFor="assistant-dataset-ids" className={`block ${PANE_LABEL}`}>
                 {words.addDatasets}
               </label>
               <div className="flex flex-wrap items-center gap-2">
@@ -141,61 +140,49 @@ export function Datasets({
           </form>
         )}
         <Counted locale={locale} total={datasets.length} />
-        {datasets.length === 0
-          ? (
-              <Empty>{words.noDatasets}</Empty>
-            )
-          : (
-              <>
-                <Table
-                  headers={[
-                    words.datasetId,
-                    words.humId,
-                    words.jgasId,
-                    words.icd10,
-                    words.researchIcd10,
-                    words.paperIcd10,
-                    words.analysis,
-                    // **操作の列は語を持たないが、名前は持つ。**見えるところに
-                    // 語を置くと列の幅が語なりになり、行を耳で読む人には
-                    // 名前が要る (`docs/ui.md` の「押せるものの大きさ」)。
-                    ...(canManage
-                      ? [<span key="remove" className="sr-only">{messagesFor(locale).admin.actions}</span>]
-                      : []),
-                  ]}
-                >
-                  {datasets.map((dataset) => (
-                    <DatasetRow
-                      key={dataset.id}
-                      dataset={dataset}
-                      canManage={canManage}
-                      busy={busy}
-                      onRemove={() => { onRemoveDataset(dataset.id) }}
-                      words={words}
-                    />
-                  ))}
-                </Table>
-                {datasets.map((dataset) => (
-                  <DatasetDetails
-                    key={`${dataset.id}-details`}
-                    dataset={dataset}
-                    requestedPurpose={
-                      requestedDatasets?.find(
-                        (requested) => requested.dataset_id === dataset.id,
-                      )?.purpose
-                    }
-                    applicationMethod={applicationMethod}
-                    paperMethods={paperMethods}
-                    abstractIcd10={abstractIcd10}
-                    paperIcd10={paperIcd10}
-                    policyTexts={policyGroups
-                      .filter((policy) => policy.dataset_ids.includes(dataset.id))
-                      .map((policy) => policy.policy_text)}
-                    words={words}
-                  />
-                ))}
-              </>
-            )}
+        <Table
+          headers={[
+            words.datasetId,
+            words.humId,
+            words.jgasId,
+            words.icd10,
+            words.researchIcd10,
+            words.paperIcd10,
+            words.analysis,
+          ]}
+          actions={canManage}
+          whenEmpty={words.noDatasets}
+        >
+          {datasets.map((dataset) => (
+            <DatasetRow
+              key={dataset.id}
+              dataset={dataset}
+              canManage={canManage}
+              busy={busy}
+              onRemove={() => { onRemoveDataset(dataset.id) }}
+              words={words}
+            />
+          ))}
+        </Table>
+        {datasets.map((dataset) => (
+          <DatasetDetails
+            key={`${dataset.id}-details`}
+            dataset={dataset}
+            requestedPurpose={
+              requestedDatasets?.find(
+                (requested) => requested.dataset_id === dataset.id,
+              )?.purpose
+            }
+            applicationMethod={applicationMethod}
+            paperMethods={paperMethods}
+            abstractIcd10={abstractIcd10}
+            paperIcd10={paperIcd10}
+            policyTexts={policyGroups
+              .filter((policy) => policy.dataset_ids.includes(dataset.id))
+              .map((policy) => policy.policy_text)}
+            words={words}
+          />
+        ))}
       </Stack>
     </Section>
   )
@@ -236,7 +223,7 @@ function DatasetRow({
   return (
     <tr>
       <Td>
-        <ExternalLink url={dataset.url} label={dataset.id} words={words} />
+        <LinkedValue url={dataset.url} label={dataset.id} words={words} />
       </Td>
       <Td>
         <SourceValue

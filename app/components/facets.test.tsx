@@ -308,7 +308,7 @@ describe("a facet the result carries no value for", () => {
   })
 
   it("opens on the reason it is empty rather than on nothing", () => {
-    expect(empty).toContain("絞り込める値がありません")
+    expect(empty).toContain("絞り込める値はありません")
   })
 
   it("draws no list and no box to narrow one", () => {

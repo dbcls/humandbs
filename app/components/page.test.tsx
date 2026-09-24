@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { AnnotationLayer, KeyValue, MarkedPlace, pageWindow, Paging, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
+import { AnnotationLayer, BandBox, DatasetIds, Fact, Facts, IdMark, KeyValue, MarkedPlace, pageWindow, Paging, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -458,5 +458,78 @@ describe("段に流す対", () => {
 
   it("split でもラベルと値の順は変わらない", () => {
     expect(pair(true).indexOf("研究方法")).toBeLessThan(pair(true).indexOf("長い"))
+  })
+})
+
+function routed(element: ReactNode): string {
+  const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
+  return renderToStaticMarkup(<Stub initialEntries={["/"]} />).replaceAll(" data-discover=\"true\"", "")
+}
+
+describe("a table's column of things to press (Table actions)", () => {
+  it("is named for a reader who hears the row, last, and not shown", () => {
+    const html = routed(
+      <Table headers={["名前"]} actions>
+        <tr>
+          <Td>a</Td>
+          <Td>b</Td>
+        </tr>
+      </Table>,
+    )
+    const heads = [...html.matchAll(/<th [^>]*>([^]*?)<\/th>/g)].map((match) => match[1])
+    expect(heads).toEqual(["名前", "<span class=\"sr-only\">操作</span>"])
+  })
+
+  it("takes a public table's own word, and draws no column when there is none", () => {
+    expect(routed(<Table headers={["ID"]} actions="カートから外す">{[]}</Table>)).toContain("<span class=\"sr-only\">カートから外す</span>")
+    expect(routed(<Table headers={["ID"]} actions={false}>{[]}</Table>).match(/<th /g)).toHaveLength(1)
+  })
+
+  it("spans the sentence of an empty table over every column, the column of actions too", () => {
+    const html = routed(<Table headers={["名前", "日"]} actions whenEmpty="ありません。">{[]}</Table>)
+    expect(html).toContain("colSpan=\"3\"")
+  })
+})
+
+describe("an identifier with its mark (IdMark)", () => {
+  it("chooses the mark by what the identifier names, muted and before it", () => {
+    expect(routed(<IdMark kind="research" to="/research/hum0001">hum0001</IdMark>)).toMatch(/^<svg[^>]*class="[^"]*mr-1 text-ink-muted[^"]*"[^]*<path[^]*<a href="\/research\/hum0001">hum0001<\/a>$/)
+    const dataset = routed(<IdMark kind="dataset">JGAD000001</IdMark>)
+    expect(dataset).toMatch(/JGAD000001$/)
+    expect(dataset).not.toContain("<a ")
+  })
+
+  it("opens a new tab with the site's words for it when asked, keeping the pair on one line", () => {
+    const html = routed(<IdMark kind="dataset" to="/dataset/JGAD000001" newTab locale="ja">JGAD000001</IdMark>)
+    expect(html).toContain("text-nowrap")
+    expect(html).toContain("target=\"_blank\"")
+    expect(html).toContain("(新しいタブで開きます)")
+  })
+})
+
+describe("a cell of dataset IDs (DatasetIds)", () => {
+  it("cuts to three and adds another research's ID after its dataset", () => {
+    const items = ["JGAD1", "JGAD2", "JGAD3", "JGAD4", "JGAD5"].map((label) => ({ label, to: null }))
+    const html = routed(<DatasetIds locale="ja" items={[...items, { label: "JGAD9", to: "/d/JGAD9", research: { label: "hum0009", to: "/r/hum0009" } }]} />)
+    expect(html).toContain("JGAD3")
+    expect(html).not.toContain("JGAD4<")
+    const cited = routed(<DatasetIds locale="ja" items={[{ label: "JGAD9", to: "/d/JGAD9", research: { label: "hum0009", to: "/r/hum0009" } }]} />)
+    expect(cited).toContain("<a href=\"/d/JGAD9\">JGAD9</a> (<a href=\"/r/hum0009\">hum0009</a>)")
+  })
+})
+
+describe("a short list of facts (Facts)", () => {
+  it("is a dl of names and values, the names muted", () => {
+    const html = renderToStaticMarkup(<Facts><Fact name="共有">共有中</Fact></Facts>)
+    expect(html).toMatch(/^<dl[^>]*><div class="contents"><dt class="text-ink-muted">共有<\/dt><dd[^>]*>共有中<\/dd><\/div><\/dl>$/)
+  })
+})
+
+describe("a box named on a band (BandBox)", () => {
+  it("clips the band with the box and names it at the level it is given", () => {
+    const html = renderToStaticMarkup(<BandBox as="li" level={2} title="v1" aside="2026-01-01">本文</BandBox>)
+    expect(html).toMatch(/^<li class="overflow-hidden rounded border border-line">/)
+    expect(html).toContain("<h2 class=\"flex flex-wrap items-center gap-2 font-semibold\">v1</h2>")
+    expect(html).toContain("2026-01-01")
   })
 })

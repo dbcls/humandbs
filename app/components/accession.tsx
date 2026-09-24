@@ -8,7 +8,7 @@ import { href } from "~/public/urls"
 import type { action as accessionAction, loader as accessionLoader } from "~/routes/admin-draft-dataset-upstream"
 
 import { Note, Stack } from "./base"
-import { Field, Result, Submit } from "./form"
+import { Answer, Field, Submit } from "./form"
 import { Icon } from "./icons"
 import { Section } from "./page"
 import { UpstreamChoice } from "./upstream"
@@ -87,8 +87,11 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
         </look.Form>
 
         {view?.unknown != null && <Note kind="warning">{t.unknown(view.unknown)}</Note>}
-        {refused?.status === "taken" && <Result ok={false}>{t.takenLabel}</Result>}
-        {refused?.status === "conflict" && <Result ok={false}>{t.conflict}</Result>}
+        <Answer
+          answer={refused}
+          locale={locale}
+          said={(answer) => answer.status === "taken" ? t.takenLabel : messages.admin.conflict}
+        />
 
         {view?.chosen != null && (
           <make.Form method="post" action={at}>

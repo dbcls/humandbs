@@ -1,8 +1,9 @@
+import fc from "fast-check"
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { AppliedConditions, DateRange, PageSizeChooser, Pagination, RefinableList, SearchForm, SortChooser } from "./search"
+import { AppliedConditions, DateRange, ListingPresented, ListingTools, PageSizeChooser, Pagination, type Presentation, presentedQuery, RefinableList, SearchForm, SortChooser } from "./search"
 
 /** Rendered at a given address, since the links are built relative to none. */
 function render(element: React.ReactNode): string {
@@ -554,5 +555,107 @@ describe("the fold of the refinement pane", () => {
     expect(fold(at("/en/research"))).not.toMatch(/\bborder\b/)
     // An address that only begins with the same letters is not the management area.
     expect(fold(at("/administration"))).not.toMatch(/\bborder\b/)
+  })
+})
+
+/*
+  The management listings' row of tools and what their narrowing forms carry.
+  The announcements are the awkward case: every key runs newest-first in the
+  bare address, and the title still opens at A.
+*/
+type NewsKey = "published" | "title"
+
+function news(current: NewsKey, order: "asc" | "desc", size = 20): Presentation<NewsKey> {
+  return {
+    sort: {
+      keys: ["published", "title"],
+      current,
+      order,
+      unwritten: "published",
+      runs: () => "desc",
+      opens: (key) => key === "title" ? "asc" : "desc",
+      name: (key) => key === "title" ? "タイトル" : "公開日時",
+    },
+    size,
+  }
+}
+
+/** The query each of the tools' links writes, as `at` received it. */
+function toolLinks(presented: Presentation<NewsKey>): string[] {
+  const html = render(
+    <ListingTools
+      locale="ja"
+      presented={presented}
+      at={({ sort, order, size }) => `/admin/news?sort=${sort}&order=${order}&size=${size}`}
+      paging={{ total: 30, from: 1, to: 20, page: 1, pageCount: 2, at: (page) => `/admin/news?page=${page}` }}
+    />,
+  )
+  return [...html.matchAll(/href="(\/admin\/news\?sort=[^"]*)"/g)].map((match) => (match[1] ?? "").replaceAll("&amp;", "&"))
+}
+
+describe("ListingPresented", () => {
+  it("carries the ordering a form would otherwise drop, not only the page size", () => {
+    const html = render(<ListingPresented presented={news("title", "asc", 50)} />)
+    expect(html).toContain("name=\"sort\" value=\"title\"")
+    expect(html).toContain("name=\"order\" value=\"asc\"")
+    expect(html).toContain("name=\"size\" value=\"50\"")
+  })
+
+  it("writes nothing for a listing read the default way", () => {
+    expect(render(<ListingPresented presented={news("published", "desc")} />)).toBe("")
+  })
+
+  it("carries exactly what presentedQuery writes, for any presentation", () => {
+    fc.assert(fc.property(
+      fc.constantFrom<NewsKey>("published", "title"),
+      fc.constantFrom<"asc" | "desc">("asc", "desc"),
+      fc.constantFrom(20, 50, 100),
+      (current, order, size) => {
+        const presented = news(current, order, size)
+        const written = presentedQuery(presented)
+        const html = render(<ListingPresented presented={presented} />)
+        for (const [name, value] of Object.entries(written)) {
+          if (value === null) expect(html).not.toContain(`name="${name}"`)
+          else expect(html).toContain(`name="${name}" value="${String(value)}"`)
+        }
+        // The default is never written: it is what the bare address means.
+        expect(written.sort).not.toBe("published")
+        expect(written.order).not.toBe("desc")
+        expect(written.size).not.toBe(20)
+      },
+    ))
+  })
+})
+
+describe("ListingTools", () => {
+  it("does not write the default direction when turning a key back to it", () => {
+    // Read by title A to Z; turning it round is the bare direction again.
+    const links = toolLinks(news("title", "asc"))
+    expect(links).toContain("/admin/news?sort=title&order=null&size=null")
+    expect(links.filter((link) => link.includes("order=desc"))).toEqual([])
+  })
+
+  it("opens a key in its own direction, and writes it only where it is not the bare one", () => {
+    const links = toolLinks(news("published", "desc"))
+    expect(links).toContain("/admin/news?sort=title&order=asc&size=null")
+    expect(links).toContain("/admin/news?sort=null&order=null&size=null")
+  })
+
+  it("keeps the ordering when the page size changes", () => {
+    const links = toolLinks(news("title", "asc"))
+    expect(links).toContain("/admin/news?sort=title&order=asc&size=50")
+  })
+
+  it("draws no ordering for a listing whose order is itself what it says", () => {
+    const html = render(
+      <ListingTools
+        locale="ja"
+        presented={{ size: 20 }}
+        at={() => "/admin/contents"}
+        paging={{ total: 3, from: 1, to: 3, page: 1, pageCount: 1, at: () => "/admin/contents" }}
+      />,
+    )
+    expect(html).not.toContain("並び替え")
+    expect(html).toContain("表示件数")
   })
 })
