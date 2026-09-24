@@ -6,10 +6,11 @@
  * see, which is what the audit trail is for — while writing a draft, renaming
  * a slug and moving a pointer are not.
  *
- * **Editing always writes the draft, and publishing moves it across.** One path
- * rather than two, so "what is published" is never something an edit can change
- * by accident. A locale that has never been published still has a draft; its
- * published body is an empty article nobody can reach.
+ * **Saving and publishing write the same row.** A locale keeps one body, with
+ * a `published` flag on it — there is no separate draft table for publishing
+ * to move content across from. Saving a locale that is already published
+ * changes what readers see the moment the write lands; a locale that has
+ * never been published keeps `published` false until publishing sets it.
  *
  * **A slug is an address and the space spans two tables**, so every write that
  * introduces or moves one checks both (`app/admin/contents.ts`).

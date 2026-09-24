@@ -1,7 +1,10 @@
 /**
- * What the proxy is allowed to show inline is decided by these: an image or a
- * PDF is shown, everything else is downloaded. SVG is deliberately absent —
- * it is markup, and an inline one would run on the portal's own origin.
+ * The Content-Type an object is stored with when nothing else supplies one
+ * (`scripts/common-assets.ts`, carrying in files that have no browser-guessed
+ * type of their own). The proxy reads that stored Content-Type back to decide
+ * inline display (`docker/nginx/default.conf`), which is why SVG is
+ * deliberately absent here — it is markup, and an inline one would run on the
+ * portal's own origin.
  */
 export const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
@@ -20,7 +23,7 @@ export const CONTENT_TYPES: Record<string, string> = {
   ".zip": "application/zip",
 }
 
-/** What a file is sent as, by its name. Anything unknown is downloaded. */
+/** What Content-Type to store a file under, by its name. Unknown names get the generic octet-stream type. */
 export function contentTypeOf(name: string): string {
   const dot = name.lastIndexOf(".")
   return (dot === -1 ? undefined : CONTENT_TYPES[name.slice(dot).toLowerCase()]) ?? "application/octet-stream"

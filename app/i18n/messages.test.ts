@@ -312,6 +312,44 @@ describe("言い換えた古い語", () => {
 })
 
 /**
+ * 画面の語は、提供者やキュレーターが普段使う語で書く。作り手の間だけで通じる比喩
+ * (「カートの印」「この面」「箱」「版」「DDBJ Search が答えない」など) は使わず、
+ * バッジ・ボタン・アイコン・バージョン・取り込み元・内容・経路・文字列・コピーなど
+ * 普通の語で言う。「画面」「矢印」「出版」のように一般の語の一部として現れる字は
+ * `ORDINARY` で除いてから数える。
+ */
+const COINED = [
+  "印", "箱", "版", "源", "器", "面", "姿", "道", "綴り", "台帳", "札", "帯", "写し",
+  "畳", "名乗", "答え", "立つ", "立っ", "倒れ", "区画", "張り替え",
+]
+const ORDINARY = /画面|表面|場面|書面|矢印|印刷|出版|情報源|都道府県|北海道/g
+
+function coinedIn(text: string): string[] {
+  const plain = text.replace(ORDINARY, "")
+  return COINED.filter((word) => plain.includes(word))
+}
+
+describe("作り手の間だけで通じる語", () => {
+  it("規則に掛かる件数が十分ある", () => {
+    expect(JA.length).toBeGreaterThan(500)
+  })
+
+  it("検査は比喩の語を見つけ、一般の語の中の字は通す", () => {
+    expect(coinedIn("研究一覧のカートの印から追加してください。")).toStrictEqual(["印"])
+    expect(coinedIn("この面に出すもの")).toStrictEqual(["面"])
+    expect(coinedIn("DDBJ Search が答えなかった")).toStrictEqual(["答え"])
+    expect(coinedIn("代表アドレスを張り替えました。")).toStrictEqual(["張り替え"])
+    expect(coinedIn("この画面を開いた後に、矢印キーで動かす")).toStrictEqual([])
+    expect(coinedIn("情報源間で不一致があります")).toStrictEqual([])
+  })
+
+  it("ja の語に比喩の語を含まない", () => {
+    const offenders = JA.flatMap(([path, text]) => coinedIn(text).map((word) => `${path}: ${word}`))
+    expect(offenders).toStrictEqual([])
+  })
+})
+
+/**
  * 解析手法の画面で選べるものは「値」で、「語」「語彙」「カタログ」とは呼ばない — 画面の語は
  * key / 値 / 選択肢の 3 つで、語彙は仕組みの名前であって画面の名前ではない。
  * 「日本語」「英語」の中の「語」は言語の名前なので数えない。

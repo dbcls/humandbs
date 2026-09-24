@@ -353,9 +353,10 @@ export interface DatasetContent {
    */
   releaseDate: string | null
   /**
-   * An ordered selection over the nodes the research's bucket lists. A note on
-   * top of that listing, not a claim that the files exist: the listing is the
-   * only source, so a selection pointing at something absent renders as nothing.
+   * A set of names selected from the nodes the research's bucket lists,
+   * written in the box's own order (by name). A note on top of that listing,
+   * not a claim that the files exist: the listing is the only source, so a
+   * selection pointing at something absent renders as nothing.
    */
   fileSelection: string[]
   /** Values under keys scoped to the dataset (access criteria, type of data). */

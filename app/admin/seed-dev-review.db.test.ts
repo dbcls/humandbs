@@ -90,7 +90,7 @@ describe("hum0127 のレビュー用 draft", () => {
     expect(rows.filter((row) => row.anchor.kind === "memo")).toHaveLength(2)
   })
 
-  it("commented と approved の印を別人から持つ", async () => {
+  it("commented と approved のマークを別人から持つ", async () => {
     await seedFixture()
 
     const result = await seedDevReviewData(db)
@@ -258,7 +258,7 @@ describe("hum0127 のレビュー用 draft が書き換える公開済みの dat
     return { hum0127, datasetId }
   }
 
-  it("公開版と違う値を持ち、dataset の編集画面に差の印が立つ", async () => {
+  it("公開バージョンと違う値を持ち、dataset の編集画面に差のマークが表示される", async () => {
     const { hum0127, datasetId } = await seedWithExperiment()
 
     const result = await seedDevReviewData(db)
@@ -292,7 +292,7 @@ describe("hum0127 のレビュー用 draft が書き換える公開済みの dat
 })
 
 describe("hum0127 の更新中の draft", () => {
-  it("目的 (ja) の 2 文目だけを書き換え、他の文は公開版のまま / 2 回流しても 1 回だけ", async () => {
+  it("目的 (ja) の 2 文目だけを書き換え、他の文は公開バージョンのまま / 2 回流しても 1 回だけ", async () => {
     await seedCatalog()
     const hum0127 = await seedResearch(db, "hum0127")
     await seedVersion(db, {

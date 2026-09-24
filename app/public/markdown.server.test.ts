@@ -107,8 +107,8 @@ describe("サイトコンテンツの markdown", () => {
     expect(html).toContain("id=\"概要-2\"")
   })
 
-  it("GitHub の 5 種の alert がそれぞれの器になる", () => {
-    // NOTE は印を持たない器で、残る 4 つは色と字形で種類を言う。
+  it("GitHub の 5 種の alert がそれぞれの枠になる", () => {
+    // NOTE はアイコンの無い枠で、残る 4 つは色と字形で種類を表す。
     expect(renderMarkdown("> [!NOTE]\n> 本文", "ja")).not.toContain("<svg")
     for (const [mark, edge] of [
       ["TIP", "border-brand"],
@@ -127,8 +127,8 @@ describe("サイトコンテンツの markdown", () => {
     expect(renderMarkdown("> [!WARNING]\n> 本文", "ja")).not.toContain("WARNING")
   })
 
-  it("印が行の途中にあるものは引用のまま", () => {
-    // GitHub と同じで、印は 1 行を占めていなければならない。
+  it("マーカーが行の途中にあるものは引用のまま", () => {
+    // GitHub と同じで、マーカーは 1 行を占めていなければならない。
     expect(renderMarkdown("> [!NOTE] 本文", "ja")).toContain("<blockquote>")
     expect(renderMarkdown("> 前置き\n> [!NOTE]", "ja")).toContain("<blockquote>")
   })
@@ -137,11 +137,11 @@ describe("サイトコンテンツの markdown", () => {
     expect(renderMarkdown("> [!HINT]\n> 本文", "ja")).toContain("<blockquote>")
   })
 
-  it("印の綴りは大文字小文字を問わない", () => {
+  it("マーカーの表記は大文字小文字を問わない", () => {
     expect(renderMarkdown("> [!note]\n> 本文", "ja")).not.toContain("blockquote")
   })
 
-  it("印だけの引用も器になる", () => {
+  it("マーカーだけの引用も枠になる", () => {
     const html = renderMarkdown("> [!TIP]", "ja")
     expect(html).not.toContain("blockquote")
     expect(html).toContain("<svg")
@@ -185,7 +185,7 @@ describe("一覧に出す本文の書き出し", () => {
     expect(leadingText("- 一つ目\n- 二つ目")).toBe("一つ目 二つ目")
   })
 
-  it("空白を 1 つに畳む", () => {
+  it("空白を 1 つにまとめる", () => {
     expect(leadingText("a  \n  b\n\n\n\nc")).toBe("a b c")
   })
 
@@ -198,7 +198,7 @@ describe("一覧に出す本文の書き出し", () => {
     expect(leadingText(long).length).toBeLessThanOrEqual(201)
   })
 
-  it("上限に足りない本文には印を付けない", () => {
+  it("上限に足りない本文には記号を付けない", () => {
     expect(leadingText("短い本文")).toBe("短い本文")
     expect(leadingText("ちょうど", 4)).toBe("ちょうど")
   })

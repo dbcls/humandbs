@@ -183,7 +183,7 @@ describe("the readers who pressed a mark", () => {
     const html = render(view())
     expect(html).toContain("「コメントを書き終えました」を押した人")
     expect(html).toContain("「修正の必要はありません」を押した人")
-    expect(html.split("印を押した人はいません。")).toHaveLength(3)
+    expect(html.split("押した人はいません。")).toHaveLength(3)
   })
 
   it("lists a reader once per mark, with when they last pressed it (JST, to the minute) and how many times", () => {

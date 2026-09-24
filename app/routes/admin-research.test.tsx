@@ -49,7 +49,7 @@ function reasonOf(html: string, label: string): string | null {
   return null
 }
 
-/** The ledger's row of one label. */
+/** The ID list's row of one label. */
 function rowOf(html: string, label: string): string {
   const row = html.split("<li").slice(1).map((part) => part.split("</li>")[0] ?? "").find((part) => part.includes(`>${label}<`))
   if (row === undefined) throw new Error(`no row for ${label}`)
@@ -57,7 +57,7 @@ function rowOf(html: string, label: string): string {
 }
 
 describe("研究の削除", () => {
-  it("ファイルが残っていれば押せず、理由とファイル一覧から削除する道を言う", () => {
+  it("ファイルが残っていれば押せず、理由とファイル一覧から削除する経路を示す", () => {
     const html = screen({ filesRemain: true })
     expect(reasonOf(html, t.deleteResearch)).toBe(t.deleteResearchFilesRemain)
     expect(t.deleteResearchFilesRemain).toContain(`「${t.openFiles}」`)
@@ -68,7 +68,7 @@ describe("研究の削除", () => {
     expect(reasonOf(screen({ filesRemain: false }), t.deleteResearch)).toBeNull()
   })
 
-  it("ストアが答えず分からないときは押せるまま (押した先の断りに任せる)", () => {
+  it("ストアが応答せず分からないときは押せるまま (押した先の断りに任せる)", () => {
     expect(reasonOf(screen({ filesRemain: null, box: null }), t.deleteResearch)).toBeNull()
   })
 })
@@ -81,37 +81,37 @@ describe("研究 ID の解除", () => {
     expect(html).not.toContain(t.movingFiles)
   })
 
-  it("primary の箱に公開中のファイルがあれば押せず、別の ID を primary にするよう言う", () => {
+  it("primary のフォルダに公開中のファイルがあれば押せず、別の ID を primary にするよう示す", () => {
     const html = screen({ labels: [{ ...NEW, holdsFiles: true }, OLD] })
     expect(reasonOf(rowOf(html, "hum0102"), t.unpin)).toBe(t.unpinHeld["holds-files"])
     expect(t.unpinHeld["holds-files"]).toContain("別の ID を primary に")
     expect(reasonOf(rowOf(html, "hum0101"), t.unpin)).toBeNull()
   })
 
-  it("付け替えの途中は、古い ID に移動中の印が立ち、解除は移動の終わりを待つよう言う", () => {
+  it("付け替えの途中は、古い ID に移動中のバッジが表示され、解除は移動の終わりを待つよう示す", () => {
     const html = screen({ labels: [NEW, { ...OLD, holdsFiles: true }], switching: true })
     const old = rowOf(html, "hum0101")
     expect(old).toContain(t.movingFiles)
     expect(reasonOf(old, t.unpin)).toBe(t.unpinHeld.moving)
-    // The new primary's box is empty, but a switch running may still land a file in it.
+    // The new primary's folder is empty, but a switch running may still land a file in it.
     expect(reasonOf(rowOf(html, "hum0102"), t.unpin)).toBe(t.unpinHeld.switching)
     expect(rowOf(html, "hum0102")).not.toContain(t.movingFiles)
   })
 
-  it("古い ID の箱に残ったファイルを動かすものが無ければ、印は立てず、移し直す手順を言う", () => {
+  it("古い ID のフォルダに残ったファイルを動かすものが無ければ、バッジは表示せず、移し直す手順を示す", () => {
     const html = screen({ labels: [NEW, { ...OLD, holdsFiles: true }] })
     const old = rowOf(html, "hum0101")
     expect(old).not.toContain(t.movingFiles)
     expect(reasonOf(old, t.unpin)).toBe(t.unpinHeld["left-behind"])
   })
 
-  it("箱が分からないときは、切り替えが無ければ押せるまま", () => {
+  it("フォルダが分からないときは、切り替えが無ければ押せるまま", () => {
     const html = screen({ labels: [{ ...NEW, holdsFiles: null }, { ...OLD, holdsFiles: null }], box: null, filesRemain: null })
     expect(reasonOf(rowOf(html, "hum0101"), t.unpin)).toBeNull()
     expect(reasonOf(rowOf(html, "hum0102"), t.unpin)).toBeNull()
   })
 
-  it("付け替えの 2 つの道 (ID の割り当てと primary への変更) が画面にある", () => {
+  it("付け替えの 2 つの経路 (ID の割り当てと primary への変更) が画面にある", () => {
     const html = screen({})
     expect(html).toContain(t.addLabel)
     expect(reasonOf(rowOf(html, "hum0101"), t.makePrimary)).toBeNull()

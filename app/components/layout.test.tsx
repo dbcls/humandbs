@@ -80,7 +80,7 @@ describe("サイトのヘッダ", () => {
     expect(header("ja", "/")).not.toContain("<div class=\"markdown")
   })
 
-  it("いま見ているページの項目に現在地の印が付く", () => {
+  it("いま見ているページの項目に現在地のマークが付く", () => {
     // バーと、幅が足りないときの行き先が入るメニューの両方に出る。
     expect(marked(header("ja", "/guidelines"))).toEqual(["/guidelines", "/guidelines"])
   })
@@ -106,7 +106,7 @@ describe("サイトのヘッダ", () => {
 })
 
 describe("サイトの告知", () => {
-  it("alert が無いときは器ごと出さない", () => {
+  it("alert が無いときは枠ごと出さない", () => {
     expect(announcements("ja", [])).toBe("")
   })
 
@@ -120,7 +120,7 @@ describe("サイトの告知", () => {
     expect(html).toContain("二つ目")
   })
 
-  it("読者の言語で書かれていない alert は、どの言語かを言う", () => {
+  it("読者の言語で書かれていない alert は、どの言語かを示す", () => {
     const html = announcements("ja", ["<p>Scheduled maintenance</p>"], true)
     expect(html).toContain("Scheduled maintenance")
     expect(html).toContain("英語のみ")
@@ -130,7 +130,7 @@ describe("サイトの告知", () => {
     expect(announcements("ja", ["<p>点検のお知らせ</p>"])).not.toContain("英語のみ")
   })
 
-  it("英語の読者には、日本語だけの alert であることを英語で言う", () => {
+  it("英語の読者には、日本語だけの alert であることを英語で示す", () => {
     expect(announcements("en", ["<p>点検のお知らせ</p>"], true)).toContain("Japanese only")
   })
 })
@@ -174,7 +174,7 @@ describe("ヘッダのログイン導線", () => {
     expect(header("en", "/en", admin)).not.toContain("href=\"/en/admin\"")
   })
 
-  it("管理画面では、その行き先が公開側へ向き直って Public を名乗る", () => {
+  it("管理画面では、その行き先が公開側へ向き直って Public と表示する", () => {
     const html = header("ja", "/admin/research", admin, true)
     expect(html).toContain("Public")
     expect(html).not.toContain(">Admin<")
@@ -195,7 +195,7 @@ describe("ヘッダのログイン導線", () => {
     expect(header("en", "/admin", admin, true)).toMatch(/<a[^>]*href="\/en"[^>]*>Public/)
   })
 
-  it("区画をまたぐ行は、押すと移ることを言う印を持つ。隣のログアウトは持たない", () => {
+  it("区画をまたぐ行は、押すと移ることを示すアイコンを持つ。隣のログアウトは持たない", () => {
     expect(header("ja", "/", admin)).toMatch(/<a[^>]*href="\/admin"[^>]*>Admin<svg/)
     expect(header("ja", "/admin", admin, true)).toMatch(/<a[^>]*href="\/"[^>]*>Public<svg/)
     expect(header("ja", "/", admin)).not.toMatch(/ログアウト<svg/)
@@ -229,7 +229,7 @@ describe("ヘッダのログイン導線", () => {
     expect(drawn).not.toContain("\ud835<")
   })
 
-  it("ログイン済みの丸は、ナビの畳みメニューとグリフを共有しない", () => {
+  it("ログイン済みの丸は、ナビの折りたたみメニューとグリフを共有しない", () => {
     expect(circle(header("ja", "/", signedIn), "someone")).not.toContain("<svg")
   })
 

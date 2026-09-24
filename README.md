@@ -1,28 +1,31 @@
 # HumanDBs
 
-NBDC ヒトデータベース (https://humandbs.dbcls.jp) のポータル。研究とそれに属するデータセットの記述を
-編集・公開し、公開ページ・公開検索・JSON API・データファイルの配信を提供する。
+NBDC ヒトデータベース (https://humandbs.dbcls.jp) のポータルである。研究とそれに属するデータセットの記述を admin が編集して公開し、公開ページ・検索・JSON API・データファイルの配信を提供する。
+
+## 動かし方
+
+手元で動かす手順は [docs/development.md](docs/development.md) にある。本番と staging の構成と手順は [docs/deployment.md](docs/deployment.md) にある。
 
 ## docs
 
-上から順に読めば、どこに何があり、何をしてはいけないかが分かる。
+上から順に読めば、どこに何があり、何をしてはいけないかが分かるように並べている。
 
-| ファイル | 中身 |
+| ファイル | 内容 |
 |---|---|
-| [docs/architecture.md](docs/architecture.md) | 全体像。部品の受け持ち、データの流れ、何がどこに書いてあるか、ディレクトリ |
-| [docs/data-model.md](docs/data-model.md) | 研究系のデータの持ち方。identity と label、版、言語と値の状態、文と数値、catalog と語彙、ICD10、公開表現、検索用の行、外部キャッシュ、日付 |
-| [docs/files.md](docs/files.md) | ファイル。2 つの bucket と公開状態、upload、切り替えの job、データセットのファイル選択 |
-| [docs/editing.md](docs/editing.md) | 書く側の不変条件。下書き、保存と同時編集、取り込み、申請から下書きを作る、レビューと共有リンク |
-| [docs/publishing.md](docs/publishing.md) | 出す側の不変条件。版番号と更新、公開ゲート、label の pin、取り下げと削除、証跡 |
-| [docs/site-content.md](docs/site-content.md) | 記事・お知らせ・アラート。持ち方、slug と版、公開日時、表示の条件 |
-| [docs/public-site.md](docs/public-site.md) | 公開サイトの約束。アドレスと言語、公開の判定、検索式と絞り込みの意味、書き出し、カート |
-| [docs/public-api.md](docs/public-api.md) | JSON API の外部契約。応答の形、検索と一括、エラー、DDBJ Search への供給 |
-| [docs/auth.md](docs/auth.md) | 認証と認可。capability、セッション、admin の付け外し |
+| [docs/overview.md](docs/overview.md) | 全体像。構成要素、データの流れ、コードのどこに何があるか、ディレクトリ |
+| [docs/concepts.md](docs/concepts.md) | 用語。研究・バージョン・下書き・データセット・ID などの意味と関係 |
+| [docs/data-model.md](docs/data-model.md) | DB の形と、それが守っている決まり。記述の持ち方、実体と ID、値の状態、項目定義と語彙、検索用の行 |
+| [docs/editing.md](docs/editing.md) | 下書きの編集。同時編集と保存、取り込み、申請から研究を作る、レビュー |
+| [docs/publishing.md](docs/publishing.md) | 公開。バージョン番号、公開前の確認、ID の割り当て、取り下げと削除、操作の記録 |
+| [docs/files.md](docs/files.md) | データファイル。2 つの bucket と研究のフォルダ、アップロード、公開と非公開の切り替え |
+| [docs/site-content.md](docs/site-content.md) | 記事・お知らせ・アラート。本文の持ち方、slug とバージョン、表示の条件 |
+| [docs/public-site.md](docs/public-site.md) | 公開サイトの約束。URL と言語、何が公開されるか、検索式と絞り込み、書き出し、カート |
+| [docs/public-api.md](docs/public-api.md) | 外部に約束している JSON API。応答の形、検索と一括取得、互換性、エラー、DDBJ Search への提供 |
+| [docs/auth.md](docs/auth.md) | ログインと権限。誰が何をできるか、セッション、admin の追加と削除 |
 | [docs/assistant.md](docs/assistant.md) | 申請支援アシスタントとポータルの境界 |
-| [docs/glossary.md](docs/glossary.md) | ドメインの語の ja / en の対。画面・API・facet が従う訳語 |
-| [docs/testing.md](docs/testing.md) | テストの方針。階層、何を test にするか、mock の境界、独立性、e2e |
-| [docs/development.md](docs/development.md) | 開発環境の手順。初回、日常のコマンド、DB、開発用データ、上流、ファイルストア、画面の規則の在処 |
-| [docs/deployment.md](docs/deployment.md) | 配信の構成と手順。image と service、`.env`、データの置き場、schema の migration、初回・更新・戻す、本番データの移行 |
+| [docs/development.md](docs/development.md) | 手元で動かす手順。初回、日常のコマンド、DB と schema の変更、開発用データ |
+| [docs/testing.md](docs/testing.md) | テストの書き方。種類、何をテストにするか、mock の境界、テスト同士の独立 |
+| [docs/deployment.md](docs/deployment.md) | 本番と staging を動かす手順。構成、`.env`、初回、更新、戻す、データを入れる |
 
 ## ライセンス
 

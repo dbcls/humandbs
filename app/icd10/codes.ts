@@ -1,11 +1,11 @@
 /**
  * ICD10 codes, and the two distributions the dictionary is built from.
  *
- * **A code is the key, not the label.** The disease vocabulary is an ordinary
- * editable vocabulary whose term codes happen to be ICD10 codes; the
- * classification itself is a dictionary beside it that seeds and checks those
- * terms without ever writing them. Everything here is pure — the fetching
- * and the rows are in `dictionary.server.ts`.
+ * **A code is the key, not the label.** The disease vocabulary is a settled,
+ * read-only vocabulary whose term codes are ICD10 codes; the classification
+ * itself is what seeds and checks those terms, and nothing an administrator
+ * does can edit them. Everything here is pure — the fetching and the rows
+ * are in `vocabulary.server.ts`.
  *
  * **The tree is derived from the code, not carried by the data.** A
  * four-character code belongs under the three-character one it starts with, so

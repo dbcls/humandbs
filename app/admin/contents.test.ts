@@ -59,21 +59,21 @@ describe("slug の検査", () => {
     expect(slugProblem("ja")).toBe("reserved-slug")
   })
 
-  it("先頭の語が違えば似た綴りは通る", () => {
+  it("先頭の語が違えば似た文字列は通る", () => {
     expect(slugProblem("newsletter")).toBeNull()
     expect(slugProblem("api-terms")).toBeNull()
   })
 })
 
-describe("版の slug", () => {
-  it("その base の版だけを数える", () => {
+describe("バージョンの slug", () => {
+  it("その base のバージョンだけを数える", () => {
     expect(versionNumberIn("x", "x/version/3")).toBe(3)
     expect(versionNumberIn("x", "y/version/3")).toBeNull()
     expect(versionNumberIn("x", "x")).toBeNull()
     expect(versionNumberIn("x", "x/version/0")).toBeNull()
   })
 
-  it("提案される次の版は、いちばん大きい番号の次になる", () => {
+  it("提案される次のバージョンは、いちばん大きい番号の次になる", () => {
     expect(nextVersionNumber("x", [])).toBe(1)
     expect(nextVersionNumber("x", ["x/version/1", "x/version/2"])).toBe(3)
   })
@@ -82,11 +82,11 @@ describe("版の slug", () => {
     expect(nextVersionNumber("x", ["x/version/1", "x/version/9"])).toBe(10)
   })
 
-  it("他の slug の版は数に入らない", () => {
+  it("他の slug のバージョンは数に入らない", () => {
     expect(nextVersionNumber("x", ["y/version/7"])).toBe(1)
   })
 
-  it("**版番号として通るのは 1 以上の整数だけ**", () => {
+  it("**バージョン番号として通るのは 1 以上の整数だけ**", () => {
     expect(parseVersionNumber("1")).toBe(1)
     expect(parseVersionNumber(" 12 ")).toBe(12)
     expect(parseVersionNumber("0")).toBeNull()
@@ -111,7 +111,7 @@ describe("木", () => {
     revisions: [v2, v1],
   }
 
-  it("版は series の下に畳まれ、行としては並ばない", () => {
+  it("バージョンは series の下にまとめられ、行としては並ばない", () => {
     const tree = siteTree([guidelines, v1, v2, faq], [series])
     expect(tree.map((entry) => entry.kind === "series" ? entry.series.slug : entry.document.slug))
       .toEqual(["faq", "guidelines", "guidelines/sharing"])
@@ -132,7 +132,7 @@ describe("木", () => {
     expect(entry?.kind === "series" && entry.current?.slug).toBe("guidelines/sharing/version/2")
   })
 
-  it("指し先が版の中に無ければ null になる", () => {
+  it("指し先がバージョンの中に無ければ null になる", () => {
     const [entry] = siteTree([v1], [{ ...series, currentId: "gone" }])
     expect(entry?.kind === "series" && entry.current).toBeNull()
   })
@@ -176,7 +176,7 @@ describe("一覧の絞り込み", () => {
     expect(found("   ")).toEqual(["faq", "guidelines/sharing", "nbdc-policy"])
   })
 
-  it("行として並んでいない版は引けない", () => {
+  it("行として並んでいないバージョンは引けない", () => {
     expect(found("version/2")).toEqual([])
   })
 
@@ -243,7 +243,7 @@ describe("一覧の軸", () => {
   })
 })
 
-describe("版なし slug が応答しない言語", () => {
+describe("バージョンなし slug が応答しない言語", () => {
   it("指し先が公開されていない言語を挙げる", () => {
     const current = document("v", "x/version/1", { ja: true, en: false })
     expect(unansweredLocales(current, ["ja", "en"])).toEqual(["en"])

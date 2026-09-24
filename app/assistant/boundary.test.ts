@@ -60,7 +60,7 @@ describe("アシスタントとの境界", () => {
    * is allowed to read whether the address is set at all — that is how it says
    * the assistant is not running — and nothing else may read it.
    */
-  it("サービスのアドレスを知っているのは proxy と、動いているかを言う画面だけ", async () => {
+  it("サービスのアドレスを知っているのは proxy と、動いているかを示す画面だけ", async () => {
     const readers = (await sources())
       .filter(({ text }) => text.includes("assistantOrigin"))
       .map(({ name }) => name)

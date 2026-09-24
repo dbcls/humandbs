@@ -4,10 +4,9 @@
  * The checks fall into two kinds and the difference is the whole design. **What
  * is structural stops the publish**: without a hum label and a dataset id there
  * is no address to publish at, and no amount of confirming makes one. Everything
- * else — unfinished content, a disagreement with the upstream system, a
- * colleague's edit this draft would write over — is **listed for the
- * administrator to pass explicitly**, and the fact that they passed it is
- * written to the trail.
+ * else — unfinished content, a disagreement with the upstream system — is
+ * **listed for the administrator to pass explicitly**, and the fact that they
+ * passed it is written to the trail.
  *
  * Nothing here is checked while a draft is being saved. A draft is expected to
  * be incomplete; that is what a draft is for.
@@ -62,9 +61,10 @@ export interface GateInput {
   /** The datasets this version carries, in the order it carries them. */
   datasets: readonly GateDataset[]
   /**
-   * Which hum label the application system holds for each JGA accession. The
-   * cache is built once and only ever gains rows, so an accession missing from
-   * it is upstream not knowing it rather than the portal not having looked.
+   * Which hum label the application system holds for each JGA accession. A
+   * refresh replaces the whole cache in one transaction, so an accession
+   * missing from it is upstream not knowing it rather than the portal not
+   * having looked.
    */
   upstream: ReadonlyMap<string, string>
   /**

@@ -134,7 +134,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
             panel={null}
           >
             <Stack gap="normal">
-              {/* 9 列あって窓に入り切らないので、行がどれの話かを言う列だけ残す。
+              {/* 9 列あって窓に入り切らないので、行がどれの話かを示す列だけ残す。
                   2 列目以降を固定できるのは 1 列目が mark のときだけ (`page.tsx`
                   の `STUCK`)。 */}
               <Table

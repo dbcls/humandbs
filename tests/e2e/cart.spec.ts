@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test"
  * taking something out can be undone — is only reachable here.
  */
 test.describe("P-ANON カート", () => {
-  test("S-CART-01: 一覧で印を押すとカートに入り、リロードしても残る", async ({ page }) => {
+  test("S-CART-01: 一覧でボタンを押すとカートに入り、リロードしても残る", async ({ page }) => {
     await page.goto("/research")
     const mark = page.getByRole("button", { name: "この研究のデータセットをカートに入れる／外す" }).first()
     await expect(mark).toHaveAttribute("aria-pressed", "false")
@@ -17,7 +17,7 @@ test.describe("P-ANON カート", () => {
     await mark.click()
     await expect(mark).not.toHaveAttribute("aria-pressed", "false")
 
-    // browser が持つので、ページを取り直しても同じことを言う
+    // browser に保存されるので、ページを取り直しても同じ状態になる
     await page.reload()
     const again = page.getByRole("button", { name: "この研究のデータセットをカートに入れる／外す" }).first()
     await expect(again).not.toHaveAttribute("aria-pressed", "false")
@@ -35,7 +35,7 @@ test.describe("P-ANON カート", () => {
     await expect(page.getByRole("row").filter({ hasText: /JGAD\d+/ }).first()).toBeVisible()
   })
 
-  test("S-CART-03: 押し直すと出ていき、カートの画面もそう言う", async ({ page }) => {
+  test("S-CART-03: 押し直すと出ていき、カートの画面にも反映される", async ({ page }) => {
     await page.goto("/research")
     const mark = page.getByRole("button", { name: "この研究のデータセットをカートに入れる／外す" }).first()
     await mark.click()
@@ -44,7 +44,7 @@ test.describe("P-ANON カート", () => {
     await page.goto("/cart")
     await expect(page.getByRole("row").filter({ hasText: /JGAD\d+/ }).first()).toBeVisible()
 
-    // 同じ印で出ていく。入ってきた道からしか出られないのでは困る
+    // 同じボタンで出ていく。入ってきた経路からしか出られないのでは困る
     await page.goto("/research")
     const back = page.getByRole("button", { name: "この研究のデータセットをカートに入れる／外す" }).first()
     await back.click()

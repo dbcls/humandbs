@@ -1,9 +1,11 @@
 """Guard against outbound requests reaching non-public network destinations (SSRF).
 
 The assistant fetches URLs supplied indirectly by applicants and by web search
-results, and it runs inside a network that can reach internal services (the
-object store, the database, the portal). Every outbound fetch of such a URL
-must go through this module.
+results. Its own network reaches the portal and nothing else internal - not
+the object store, not the database - but a crafted document can still name
+any address, so this module is what actually keeps a fetch off internal or
+non-routable destinations rather than relying on network placement alone.
+Every outbound fetch of such a URL must go through this module.
 
 The core rule: resolve the target hostname to IP addresses exactly once, and
 reject the URL unless every resolved address is globally routable. Checking a

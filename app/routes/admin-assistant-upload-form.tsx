@@ -68,7 +68,7 @@ export function AdminAssistantUploadForm({
           <div className="flex flex-wrap items-center gap-3">
             {/* **要る 1 つが選ばれるまで送れない。**隠した input に `required`
                 を置くと、browser がフォーカスできない相手を指して止まるので、
-                要求は画面の側が言う (`components/form.tsx` の `FileField`)。 */}
+                要求は画面の側で示す (`components/form.tsx` の `FileField`)。 */}
             <Button
               variant="primary"
               disabled={busy || application === null}

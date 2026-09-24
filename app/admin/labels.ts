@@ -5,8 +5,9 @@
  * across the whole portal. The format is specification rather than a default:
  * the administrator asks for the next number and cannot choose the spelling, so
  * the sequence cannot be broken by hand. The ids issued before this format start
- * with the hum label they belonged to (`hum0014.v1.freq.v1`), and they stay as
- * they are.
+ * with the hum label they belonged to (`hum0014.v1.freq.v1`); each of those was
+ * given an NHA id as its primary label during the migration, and kept as a
+ * secondary label so it still resolves.
  *
  * **Nothing past the prefix is read.** Every problem the old ids have comes from
  * a numbering scheme that was treated as a guarantee and then broken, so the

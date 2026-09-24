@@ -116,7 +116,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                   panel={null}
                 >
                   <Stack gap="normal">
-                    {/* **行がどれの話かを言う列だけ残して固定する。** 題目の列が
+                    {/* **行がどれの話かを示す列だけ残して固定する。** 題目の列が
                         窓を越えるまで広がるので、横に送ると先頭の ID が出ていって
                         しまう。固定できるのは先頭の列で (`page.tsx` の `STUCK`)、
                         それがこの表の主役でもある。 */}

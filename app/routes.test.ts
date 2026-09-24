@@ -139,7 +139,7 @@ const TALKED_TO = [
  * at. It cannot happen in Japanese, where the prefix is the empty string, which
  * is why the screens have to be read rather than opened.
  */
-describe("編集画面が叩く道", () => {
+describe("編集画面が叩く経路", () => {
   it("言語の接頭辞を付けて呼ばれていない", async () => {
     const wrapped = new RegExp(`href\\([^()]*,\\s*(?:${TALKED_TO.join("|")})\\(`)
     const offenders: string[] = []

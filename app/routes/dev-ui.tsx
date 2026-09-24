@@ -132,7 +132,7 @@ const PROSE = [
   "- 箇条書き\n- 2 つ目",
   "1. 順序つき\n2. 2 つ目",
   "> 名前を持たない引用は引用のまま。FAQ が個人情報保護法の条文を引くのがこの形。",
-  "> [!NOTE]\n> 名前を持つ引用は注記になる。NOTE は印を持たない一番簡素な器。",
+  "> [!NOTE]\n> 名前を持つ引用は注記になる。NOTE はマークが無い一番簡素な種類。",
   "> [!TIP]\n> TIP。",
   "> [!IMPORTANT]\n> IMPORTANT。",
   "> [!WARNING]\n> WARNING。",
@@ -153,10 +153,10 @@ const SECTIONS = [
   ["type", "文字"],
   ["rhythm", "間隔"],
   ["icon", "アイコン"],
-  ["band", "帯と見出し"],
+  ["band", "Band と見出し"],
   ["button", "ボタン"],
   ["big-action", "大きな導線"],
-  ["badge", "バッジと印"],
+  ["badge", "バッジとマーク"],
   ["note", "注記"],
   ["announcement", "アラート"],
   ["header-controls", "ヘッダの操作"],
@@ -176,15 +176,15 @@ const SECTIONS = [
 
 const COLOURS: [string, string, string][] = [
   ["brand", "bg-brand", "リンク・見出し・白地の上の線と字"],
-  ["brand-dark", "bg-brand-dark", "帯の左端"],
-  ["brand-light", "bg-brand-light", "帯の右端・添えものの塗り"],
+  ["brand-dark", "bg-brand-dark", "Band の左端"],
+  ["brand-light", "bg-brand-light", "Band の右端・添えものの塗り"],
   ["brand-lighter", "bg-brand-lighter", "入り口の右端"],
   ["accent", "bg-accent", "強調"],
-  ["accent-light", "bg-accent-light", "強調の帯の右端"],
+  ["accent-light", "bg-accent-light", "強調の Band の右端"],
   ["accent-lighter", "bg-accent-lighter", "入り口の右端"],
-  ["deep", "bg-deep", "主題の帯の左端"],
+  ["deep", "bg-deep", "主題の Band の左端"],
   ["ink", "bg-ink", "本文"],
-  ["ink-muted", "bg-ink-muted", "添え字・主題の帯の右端"],
+  ["ink-muted", "bg-ink-muted", "添え字・主題の Band の右端"],
   ["line", "bg-line", "罫線"],
   ["line-strong", "bg-line-strong", "入力欄と操作の枠"],
   ["surface", "bg-surface", "頁の地"],
@@ -260,8 +260,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
           <Section title="間隔">
             <Stack gap="block">
               <p id="rhythm" className="text-ink-muted text-sm">
-                縦の間隔は 3 つだけで、画面は margin を書かない。持っているのは Stack。
-                tight はラベルと値、normal は箱の中の要素どうし、block は節と節。
+                縦の間隔は 3 つだけで、画面は margin を書かない。間隔を管理するのは Stack。
+                tight はラベルと値、normal は枠の中の要素どうし、block は節と節。
               </p>
               {(["tight", "normal", "block"] as const).map((gap) => (
                 <Stack key={gap} gap="tight">
@@ -274,7 +274,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               ))}
               <p className="text-ink-muted text-sm">
                 押せるものでアイコンだけのものは 36px 四方 (@theme の tap)。
-                表の行の高さと同じなので、一覧の中の印も同じ大きさで置ける。
+                表の行の高さと同じなので、一覧の中のアイコンも同じ大きさで置ける。
               </p>
             </Stack>
           </Section>
@@ -290,11 +290,11 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             </div>
           </Section>
 
-          <Section title="帯と見出し">
+          <Section title="Band と見出し">
             <div id="band" className="flex flex-col gap-8">
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  帯は「名前を持つ 1 つのものについての頁」だけ。deep が主題、brand がその下の節と表。
+                  Band は「名前を持つ 1 つのものについての頁」だけ。deep が主題、brand がその下の節と表。
                 </p>
                 <Band tone="deep" className="rounded-t">
                   <div>
@@ -308,7 +308,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   <span className="text-sm">リリース情報</span>
                 </Band>
                 <div className="rounded-b bg-white px-5 py-4 text-sm">
-                  帯の下は白い箱。頁の地が薄いグレーなので、箱が箱として読める。
+                  Band の下は白い枠。頁の地が薄いグレーなので、枠が枠として読める。
                 </div>
               </div>
               <Band>
@@ -319,7 +319,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <span className="font-bold">accent — 頁が 1 つだけ持てる呼びかけ</span>
               </Band>
               <div>
-                <p className="mb-2 text-ink-muted text-sm">一覧と記事はこちら。帯を使わない。</p>
+                <p className="mb-2 text-ink-muted text-sm">一覧と記事はこちら。Band を使わない。</p>
                 <Heading title="研究一覧" aside={`全 ${String(TOTAL)} 件`}>
                   <Button type="button" listing icon={<Icon name="copy" />}>コピー</Button>
                   <Button type="button" listing icon={<Icon name="download" />}>TSV</Button>
@@ -328,10 +328,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  切り詰めた箱から全部へ出る道は 3 つで、同じ姿をしている。別の画面へ渡すのが
+                  切り詰めた枠から全部へ出る経路は 3 つで、同じ見た目をしている。別の画面へ渡すのが
                   MoreLink (見出しの右端)、一覧の残りをその場で開くのが Clamped、文を刈って
                   その場で開くのが Excerpt (どちらも表のセル、下の表)。その場で開く 2 つは、
-                  開いているあいだ chevron が向きを変えて「戻す」を言う。
+                  開いているあいだ chevron が向きを変えて「戻す」を示す。
                 </p>
                 <Heading level="h2" title="News">
                   <MoreLink to="/news">ニュース一覧</MoreLink>
@@ -343,9 +343,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  一段下の見出し (PaneHeading)。青い棒の立つ場所が 2 通り —
+                  一段下の見出し (PaneHeading)。青い棒の位置が 2 通り —
                   edge はカードの余白へ張り出して h1 の棒と同じ縦線に乗り、
-                  start は名指すものの開始地点に立つ。線はどちらも pane を張る。
+                  start は指定するものの開始位置に置かれる。線はどちらも pane に沿う。
                 </p>
                 <div className="flex flex-col gap-6">
                   <PaneHeading title="絞り込み (edge)">
@@ -358,8 +358,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  pane の中の群の名前 (PANE_LABEL)。PaneHeading が pane 自身を名指すのに対し、
-                  これはその中の 1 つの列を名指す — 効いている条件と、facet の箱それぞれ。
+                  pane の中の群の名前 (PANE_LABEL)。PaneHeading が pane 自身を示すのに対し、
+                  これはその中の 1 つの列を示す — 効いている条件と、facet の枠それぞれ。
                 </p>
                 <div className="flex flex-col gap-2">
                   <span className={PANE_LABEL}>適用中</span>
@@ -372,8 +372,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
           <Section title="ボタン">
             <div id="button" className="flex flex-col gap-4">
               <p className="text-ink-muted text-sm">
-                面を決めるのは「その画面がどれだけ押してほしいか」で、そこで何が似合うかではない。
-                塗りは画面に 1 つまで、枠が既定。字だけの面は持たない — 素の語は文の続きに
+                見た目を決めるのは「その画面がどれだけ押してほしいか」で、そこで何が似合うかではない。
+                塗りは画面に 1 つまで、枠が既定。字だけの見た目は無い — 素の語は文の続きに
                 読め、押せると分かるのが押したあとになる。
               </p>
               <div className="flex flex-wrap items-center gap-3">
@@ -382,24 +382,24 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 ))}
               </div>
               <p className="text-ink-muted text-sm">
-                塗りの隣に枠を置いた形。取り消しも枠の面で、実行との違いは並びの左右と色が言う。
+                塗りの隣に枠を置いた形。取り消しも枠の見た目で、実行との違いは並びの左右と色が表す。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" variant="primary" icon={<Icon name="save" />}>保存する</Button>
                 <Button type="button" variant="secondary">取り消す</Button>
               </div>
               <p className="text-ink-muted text-sm">
-                形も色も「どこに立っているか」で決まる。丸いのは一覧の上の操作の行にいる印
+                形も色も「どの場所にあるか」で決まる。丸いのは一覧の上の操作の行にあるボタン
                 (listing) で、好みで選ぶものではない。上の「研究一覧」の見出しに並んでいるのが
-                それ。同じ行でもページ送りの番号だけは 4px で、数字が箱を埋めないため。
+                それ。同じ行でもページ送りの番号だけは 4px で、数字が枠を埋めないため。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" listing icon={<Icon name="search" />}>listing — 一覧の行</Button>
                 <Button type="button" icon={<Icon name="search" />}>listing 無し — それ以外</Button>
               </div>
               <p className="text-ink-muted text-sm">
-                コピーは 1 つの部品。押すと印が ✓ に、語が「コピーしました」に入れ替わり、読み上げにも
-                届いて、数秒で戻る。2 つの語は同じ升に立つので、答えても幅は動かない。
+                コピーは 1 つの部品。押すとアイコンが ✓ に、語が「コピーしました」に入れ替わり、読み上げにも
+                届いて、数秒で戻る。2 つの語は同じ升に収まるので、切り替わっても幅は動かない。
               </p>
               <div id="copy" className="flex flex-wrap items-center gap-3">
                 <CopyButton listing text="hum0001" label="コピー" done={messages.copied} />
@@ -407,8 +407,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <CopyButton size="row" text="/common/example.pdf" label="アドレスのコピー" done={messages.copied} />
               </div>
               <p className="text-ink-muted text-sm">
-                文の行の中に立つ、面を開く印 (MarkButton)。行の背丈 24px で描き、押せる範囲だけを
-                36px に広げる。コメントの印と「変更あり」がこれ。
+                文の行の中にある、ダイアログを開くアイコン (MarkButton)。行の背丈 24px で描き、押せる範囲だけを
+                36px に広げる。コメントのアイコンと「変更あり」がこれ。
               </p>
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <span>研究題目</span>
@@ -416,13 +416,13 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <MarkButton icon="diff" onClick={() => undefined}><span className="text-accent">変更あり</span></MarkButton>
               </div>
               <p className="text-ink-muted text-sm">
-                選ぶことは押すことではないので、面を借りない。選択肢は 1 つの器を分け合い、
-                選ばれた区画だけが塗られる — 溶接された形が、単独で立つ塗りと読み分けさせる。
-                選択肢が多いか語が長いときは、器を持たず畳む (下の Chooser)。
+                選ぶことは押すことではないので、ボタンの見た目を借りない。選択肢は 1 つの枠を分け合い、
+                選ばれた区画だけが塗られる — 溶接された形が、単独である塗りと読み分けさせる。
+                選択肢が多いか語が長いときは、枠を置かず折りたたむ (下の Chooser)。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Choice
-                  label="表示する面"
+                  label="表示する側"
                   value={pane}
                   options={[
                     { id: "both", label: "両方" },
@@ -443,7 +443,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 />
               </div>
               <p className="text-ink-muted text-sm">
-                帯の上では面が裏返る (onBand)。ページの色はどれも帯の暗い側で 3:1 を割るので、
+                Band の上では見た目が反転する (onBand)。ページの色はどれも Band の暗い側で 3:1 を割るので、
                 残っているのは白だけになる。順位はそのままで、塗りが白に、枠が白い縁になる。
               </p>
               <Band>
@@ -483,14 +483,14 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             </div>
           </Section>
 
-          <Section title="バッジと印">
+          <Section title="バッジとマーク">
             <div id="badge" className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-2">
                 {TONES.map((tone) => <Badge key={tone} tone={tone}>{tone}</Badge>)}
               </div>
               <p className="text-ink-muted text-sm">
-                印の色と形は種類が決める (Flag)。一部の行だけが持つものはバッジ、どの行も持つ状態は
-                同じ種類の印 + 語 (Stated) で、色を持たない。
+                マークの色と形は種類が決める (Flag)。一部の行だけが持つものはバッジ、どの行も持つ状態は
+                同じ種類のマーク + 語 (Stated) で、色を持たない。
               </p>
               <div id="flag" className="flex flex-wrap items-center gap-2">
                 {FLAG_KINDS.map((kind) => <Flag key={kind} kind={kind}>{kind}</Flag>)}
@@ -500,7 +500,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <Band className="rounded">
                 <span className="flex items-center gap-2 text-sm">
-                  帯の上では
+                  Band の上では
                   <Badge onBand>白い輪郭</Badge>
                   <Badge onBand>下書き 1</Badge>
                 </span>
@@ -527,7 +527,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <Chip value="肺癌" to="/research" remove="肺癌 を解除" />
               </div>
               <p className="text-ink-muted text-sm">
-                選んだ値 (ValueChip)。バッジの面で、押すと欄から外れる。語彙の欄がこれを並べる。
+                選んだ値 (ValueChip)。バッジの見た目で、押すと欄から外れる。語彙の欄がこれを並べる。
               </p>
               <div id="value-chip" className="flex flex-wrap items-center gap-2">
                 <ValueChip remove="解除" onRemove={() => undefined}>肺癌</ValueChip>
@@ -549,9 +549,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 </Note>
               ))}
               {/*
-                隅の知らせ (`Toast`) の中身。器そのものは `fixed` なのでここには
-                置けない — カタログの隅に出しっぱなしになる。読み上げる器は
-                `Toast` の側に常駐していて、ここに出ているのは描く箱だけ。
+                隅の知らせ (`Toast`) の中身。`Toast` 自体は `fixed` なのでここには
+                置けない — カタログの隅に出しっぱなしになる。読み上げに使う実体は
+                `Toast` の側に常駐していて、ここに出ているのは見た目だけ。
               */}
               <div className="max-w-md shadow-lg">
                 <Note
@@ -576,7 +576,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 お待たせして大変申し訳ございませんが、何卒ご理解いただけますようお願い申し上げます。
               </Announcement>
               <Announcement dismiss="このお知らせを閉じる">
-                閉じる操作を持たない形。ページが読み込まれた直後の姿で、script が動くと × が付く。
+                閉じる操作がまだ無い形。ページが読み込まれた直後の見た目で、script が動くと × が付く。
               </Announcement>
             </div>
           </Section>
@@ -592,7 +592,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               />
               <RoundLink to="/research" name="search" label="キーワード検索" />
               <RoundLink to="/auth/login" name="log-in" label="ログイン" filled external />
-              {/* 件数の丸 (CountBubble)。丸い操作の角に浮くか、箱の中で語の隣に立つ */}
+              {/* 件数の丸 (CountBubble)。丸い操作の角に浮くか、枠の中で語の隣にある */}
               <CountBubble count={3} />
               <CountBubble count={12} tone="brand" />
               {/* 数を持つ丸は `Menu` の側。中身を開くものなのでリンクではない */}
@@ -631,8 +631,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="tabs" className="flex flex-col gap-8">
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  一覧の切り替え (公開側)。リンクなので共有できる。箱の右上に付き、右端は箱の右端と
-                  揃う。枠を持たず、面の色だけで前後を言う — 選ばれていない側は surface-light で、
+                  一覧の切り替え (公開側)。リンクなので共有できる。カードの右上に付き、右端はカードの右端と
+                  揃う。枠を持たず、色の違いだけで前後を示す — 選ばれていない側は surface-light で、
                   ページの地より明るい。
                 </p>
                 <SwitchTabs
@@ -808,7 +808,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div className="max-w-64">
                 <p className="mb-2 text-ink-muted text-sm">
-                  絞り込みの pane に立つ「適用中」。チップ全体が「その条件を外す」リンク。
+                  絞り込みの pane に表示される「適用中」。チップ全体が「その条件を外す」リンク。
                 </p>
                 <AppliedConditions
                   locale="ja"
@@ -823,7 +823,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  一覧の操作列。並び替え・表示件数・件数・ページ送りが 1 行で、表の上と下に同じものが立つ。
+                  一覧の操作列。並び替え・表示件数・件数・ページ送りが 1 行で、表の上と下に同じものがある。
                   並び替えは向きが welded で、どのキーにも両端があるので常に出る。
                 </p>
                 <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
@@ -857,7 +857,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
           <Section title="カート">
             <div id="cart" className="flex flex-col gap-4">
               <p className="text-ink-muted text-sm">
-                押すと本当に入る (このページの sessionStorage を触る)。JGAD 以外は印が出ない。
+                押すと本当に入る (このページの sessionStorage を触る)。JGAD 以外はアイコンが出ない。
               </p>
               {/* 上の `CartToggle` は本物のカートを読むので、状態を並べられるのはここだけ。
                   「一部だけ」は色を分けず、読み上げ (`aria-pressed`) だけが区別する */}
@@ -892,7 +892,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 </span>
               </div>
               <div className={`flex flex-wrap items-center gap-4 rounded p-3 ${BAND_FILL.deep}`}>
-                <span className="text-sm text-white">帯の上:</span>
+                <span className="text-sm text-white">Band の上:</span>
                 <AddToCartButton datasetLabel="JGAD000117" locale="ja" />
               </div>
             </div>
@@ -1030,7 +1030,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="admin-parts" className="flex flex-col gap-8">
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  管理画面の一覧の道具の行 (`ListingTools`)。並び替え・表示件数・件数・ページ送りが 1 行で、
+                  管理画面の一覧のツールの行 (`ListingTools`)。並び替え・表示件数・件数・ページ送りが 1 行で、
                   既定の並びと向きはアドレスに書かない。絞り込みの form は `ListingPresented` が並びと件数を運ぶ。
                 </p>
                 <ListingTools
@@ -1053,8 +1053,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  表の操作の列 (`Table` の `actions`、見出しは読み上げだけ)、行の上げ下げ (`ReorderButtons`、端は押せない姿)、
-                  識別子の頭の印 (`IdMark`)。
+                  表の操作の列 (`Table` の `actions`、見出しは読み上げだけ)、行の上げ下げ (`ReorderButtons`、端は押せない状態)、
+                  識別子の先頭のアイコン (`IdMark`)。
                 </p>
                 <Table actions align="middle" headers={["データセット ID", "研究 ID"]}>
                   {["JGAD000001", "JGAD000002", "JGAD000003"].map((label, at) => (
@@ -1086,7 +1086,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   </Facts>
                 </div>
                 <div>
-                  <p className="mb-2 text-ink-muted text-sm">同じ種類のものが並ぶ帯付きの箱 (`BandBox`)。</p>
+                  <p className="mb-2 text-ink-muted text-sm">同じ種類のものが並ぶ、Band 付きのカード (`BandBox`)。</p>
                   <BandBox level={3} title="解析手法 1" aside={<span className="text-sm">2026-09-24</span>}>
                     <span className="text-sm">本文</span>
                   </BandBox>

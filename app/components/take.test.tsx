@@ -43,8 +43,8 @@ function draw(mine: DraftInput, theirs: DraftInput): string {
   return renderToStaticMarkup(<RouterProvider router={router} />)
 }
 
-describe("取り込みの面の関連論文のデータセット", () => {
-  it("場所の名前はどの論文の欄かを言う", () => {
+describe("取り込みの画面の関連論文のデータセット", () => {
+  it("場所の名前はどの論文の欄かを示す", () => {
     const html = draw(draft([], []), draft(["d1"], []))
     expect(html).toContain("関連論文 肺がんの論文: ")
   })
@@ -57,7 +57,7 @@ describe("取り込みの面の関連論文のデータセット", () => {
     expect(html).not.toMatch(/>d1</)
   })
 
-  it("最終的な値の外部 ID の欄は源の外部 ID で開く", () => {
+  it("最終的な値の外部 ID の欄は取り込み元の外部 ID で開く", () => {
     const html = draw(draft([], ["JGAD000500"]), draft([], ["hum0001"]))
     const written = html.slice(html.indexOf("最終的な値"))
     expect(written).toContain("value=\"hum0001\"")
@@ -90,7 +90,7 @@ describe("取り込み元の表", () => {
   }
   const disabledCount = (html: string): number => html.match(/disabled=""/g)?.length ?? 0
 
-  it("取り込み先のこの下書きは表に立ち、「この下書き」と名乗り、押せない姿で理由を言う", () => {
+  it("取り込み先のこの下書きは表に載り、「この下書き」と表示され、押せない見た目で理由を示す", () => {
     const html = table()
     const self = rowOf(html, "2026-09-24 13:25")
     expect(self).toContain("この下書き")
@@ -99,7 +99,7 @@ describe("取り込み元の表", () => {
     expect(disabledCount(html)).toBe(1)
   })
 
-  it("他の下書きは選べ、「この下書き」を名乗らない", () => {
+  it("他の下書きは選べ、「この下書き」を表示しない", () => {
     const other = rowOf(table(), "2026-09-24 14:42")
     expect(other).toContain(`href="/take?draft=${OTHER}"`)
     expect(other).not.toContain("この下書き")
@@ -125,14 +125,14 @@ describe("取り込み元の表", () => {
     expect(v2).not.toMatch(/disabled=""/)
   })
 
-  it("更新されていないバージョンは、更新中を名乗らずに選べる", () => {
+  it("更新されていないバージョンは、更新中を表示せずに選べる", () => {
     const html = table()
     expect(rowOf(html, "2024-11-25")).toContain("href=\"/take?version=1\"")
     expect(rowOf(html, "2024-11-25")).not.toContain("更新中")
   })
 })
 
-describe("取り込みの面の一覧 (提供者など)", () => {
+describe("取り込みの画面の一覧 (提供者など)", () => {
   function withProviders(...names: [string, string][]): DraftInput {
     const empty = { state: "value" as const, text: "" }
     const base = researchContentInput(emptyResearchContent())
@@ -155,7 +155,7 @@ describe("取り込みの面の一覧 (提供者など)", () => {
     expect(html).not.toMatch(/<(del|ins)[^>]*>松原 誠</)
   })
 
-  it("残す要素は名前の付いた箱の列で、要素ごとにどちらの側にあるかを言う", () => {
+  it("残す要素は名前の付いた枠の列で、要素ごとにどちらの側にあるかを示す", () => {
     const html = draw(withProviders(["a", "山口 建"], ["b", "松原 誠"]), withProviders(["b", "松原 誠"], ["c", "鈴木 花子"]))
     expect(html).toContain("取り込み後に残す要素")
     const kept = html.slice(html.indexOf("取り込み後に残す要素"))
@@ -170,7 +170,7 @@ describe("取り込みの面の一覧 (提供者など)", () => {
 describe("取り込み元の名前", () => {
   const minute = (at: string): string => at.slice(0, 16).replace("T", " ")
 
-  it("下書きは更新日時で、バージョンを更新している下書きはそのバージョンで名乗る — 表の行と同じ", () => {
+  it("下書きは更新日時で、バージョンを更新している下書きはそのバージョンで示す — 表の行と同じ", () => {
     expect(sourceName({ kind: "draft", id: "d", updatedAt: "2026-09-24T04:25", updating: null }, "ja", minute))
       .toBe("下書き (2026-09-24 04:25)")
     expect(sourceName({ kind: "draft", id: "d", updatedAt: "2026-09-24T04:25", updating: 4 }, "ja", minute))

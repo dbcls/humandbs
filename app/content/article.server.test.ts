@@ -35,7 +35,7 @@ describe("本文の検査", () => {
     expect(checkArticleBody("段落\n\n<div>中身</div>")).toMatchObject([{ syntax: "html", line: 3 }])
   })
 
-  it("行の中のタグも弾き、開くタグと閉じるタグで同じ行を 2 度は言わない", () => {
+  it("行の中のタグも弾き、開くタグと閉じるタグで同じ行を 2 度は挙げない", () => {
     expect(checkArticleBody("これは <u>下線</u> です")).toEqual([{ syntax: "html", line: 1 }])
   })
 

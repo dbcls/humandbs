@@ -23,10 +23,11 @@ export const filePublishJobState = pgEnum("file_publish_job_state", [
  * state but an unfinished one, and a retry resolves it.
  *
  * Losing this table loses no correctness. Every file stays either public or
- * private, never something in between. If a file is ever found in both buckets
- * with no job to explain it, the public copy is kept and the private one
- * deleted — a withdrawal that is late is better than an exposure that was not
- * intended.
+ * private, never something in between. **Nothing here repairs a file ever
+ * found in both buckets with no job to explain it** — the public copy is the
+ * one a reader's request resolves to regardless, and the stray private copy
+ * sits until a job is next queued for that name, whose reconcile step clears
+ * every copy that is not the job's own destination.
  *
  * **One row per file.** A row is not a request to perform an action but the
  * bucket the file is meant to be in, so a second opinion overwrites the first

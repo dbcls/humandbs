@@ -97,8 +97,9 @@ export const contentValueType = pgEnum("content_value_type", [
  * the identity of a key: the label is display only, so renaming never touches
  * stored data.
  *
- * **The type is what makes a key a facet.** Keys typed `vocabulary` or `number`
- * are the source of the facets; every other key is free text. That is why
+ * **The type is what makes a key a facet.** Keys typed `vocabulary` or
+ * `disease` are always a source of facets; a `number` key is one only once it
+ * has been given a facet category; every other key is free text. That is why
  * changing a key's type is a development operation while adding, renaming and
  * reordering free-text keys is an admin one — the line is drawn where a change
  * would need an aggregation and an input control, not at whether a key exists.
@@ -139,11 +140,6 @@ export const contentKey = pgTable("content_key", {
    * control.
    */
   facetCategoryId: uuid().references(() => facetCategory.id, { onDelete: "set null" }),
-  /**
-   * Structured slots are facets by default and not shown on the public page.
-   * Keeping this in the catalog means the decision can be revisited without a
-   * migration.
-   */
 }, (t) => [
   index().on(t.scope, t.position),
 ])

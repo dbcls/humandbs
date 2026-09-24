@@ -10,13 +10,13 @@ import { QUERY_EXAMPLES } from "../../app/api/endpoints"
  * in it.
  */
 test.describe("public API", () => {
-  test("S-API-01: OpenAPI が出て、載っている道が実際に答える", async ({ request }) => {
+  test("S-API-01: OpenAPI が出て、載っている経路が実際に応答する", async ({ request }) => {
     const answer = await request.get("/api/openapi.json")
     expect(answer.status()).toBe(200)
     const spec = await answer.json() as { openapi: string, paths: Record<string, unknown> }
     expect(spec.openapi).toMatch(/^3\./)
 
-    // 書いてあるものが答えないなら、書いてあることに意味が無い
+    // 書いてあるものが応答しないなら、書いてあることに意味が無い
     const named = Object.keys(spec.paths)
     expect(named).toContain("/api/research")
     expect(named).toContain("/api/dataset")
@@ -33,7 +33,7 @@ test.describe("public API", () => {
     expect(first.pageCount).toBeGreaterThan(1)
     expect(first.hits.length).toBeGreaterThan(0)
 
-    // **画面の表示件数は機械が読む面に効かない。** 一つの形だけを出すことが
+    // **画面の表示件数は機械が読む窓口に効かない。** 一つの形だけを出すことが
     // 呼ぶ側の予測を保つので、`size` は読まれずに落ちる
     const asked = await (await request.get("/api/research?size=1")).json() as {
       hits: { id: string }[]
@@ -69,7 +69,7 @@ test.describe("public API", () => {
     expect(listed).not.toBeNull()
   })
 
-  test("S-API-05: 読めない検索式は 422 を返し、その理由を言う", async ({ request }) => {
+  test("S-API-05: 読めない検索式は 422 を返し、その理由を示す", async ({ request }) => {
     const answer = await request.get("/api/research?q=%28unclosed")
     expect(answer.status()).toBe(422)
     expect(answer.headers()["content-type"]).toContain("problem+json")

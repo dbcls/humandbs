@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test"
  * staging — and a research id written here would tie them to one set of rows.
  */
 test.describe("P-ANON", () => {
-  test("S-PUB-01: 一覧から研究・版の一覧・データセットまで辿れる", async ({ page }) => {
+  test("S-PUB-01: 一覧から研究・バージョンの一覧・データセットまで辿れる", async ({ page }) => {
     await page.goto("/research")
     await expect(page.getByRole("heading", { level: 1, name: "研究一覧" })).toBeVisible()
 
@@ -18,7 +18,7 @@ test.describe("P-ANON", () => {
     await expect(page).toHaveURL(new RegExp(`/research/${humLabel}$`))
     await expect(page.getByRole("heading", { level: 1 })).toContainText(humLabel)
 
-    // 版の一覧はこの画面から行ける
+    // バージョンの一覧はこの画面から行ける
     await page.locator(`a[href="/research/${humLabel}/versions"]`).first().click()
     await expect(page).toHaveURL(new RegExp(`/research/${humLabel}/versions$`))
     const version = page.locator(`a[href^="/research/${humLabel}/v"]`).first()
@@ -35,7 +35,7 @@ test.describe("P-ANON", () => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText(datasetLabel)
   })
 
-  test("S-PUB-02: 版を書かない研究のアドレスが最新の公開版を出す", async ({ page, request }) => {
+  test("S-PUB-02: バージョンを書かない研究のアドレスが最新の公開バージョンを出す", async ({ page, request }) => {
     const listing = await (await request.get("/api/research?size=1")).json() as {
       hits: { id: string }[]
     }
@@ -49,11 +49,11 @@ test.describe("P-ANON", () => {
     }
     const newest = Math.max(...bare.versions.map((one) => one.version))
     expect(bare.version).toBe(newest)
-    // 答えが名乗るアドレスは版を書いたほう。裸のアドレスは入口であって、
+    // 応答が示すアドレスはバージョンを書いたほう。裸のアドレスは入口であって、
     // 機械に渡すときの名前ではない
     expect(new URL(bare.url).pathname).toBe(`/research/${humLabel}/v${newest}`)
 
-    // 画面も同じ版を出す — 見出しが名乗るのは解決した先の版
+    // 画面も同じバージョンを出す — 見出しが示すのは解決した先のバージョン
     await page.goto(`/research/${humLabel}`)
     await expect(page.getByRole("heading", { level: 1 }))
       .toContainText(`${humLabel}-v${newest}`)
@@ -79,7 +79,7 @@ test.describe("P-ANON", () => {
     }
   })
 
-  test("S-PUB-05: 版番号を持たない document の slug が応答する", async ({ page }) => {
+  test("S-PUB-05: バージョン番号を持たない document の slug が応答する", async ({ page }) => {
     await page.goto("/")
     const slug = await page.locator("a[href=\"/aim\"]").first().getAttribute("href")
     expect(slug).toBe("/aim")

@@ -167,10 +167,9 @@ export async function setCommentResolved(
 }
 
 /**
- * Taking a comment away. **There is no way to press it back**, which is why
- * the screen asks first; and there is no soft state to keep — what was asked
- * and answered is not history, and a draft's comments do not outlive the
- * draft either.
+ * Taking a comment away. **There is no way to press it back**, and there is
+ * no soft state to keep — what was asked and answered is not history, and a
+ * draft's comments do not outlive the draft either.
  */
 export async function deleteComment(
   db: Executor,

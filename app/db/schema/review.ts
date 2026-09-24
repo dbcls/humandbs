@@ -34,8 +34,10 @@ import { researchDraft } from "./research"
  * requiring an account would put the whole review out of reach.
  *
  * Comments outlive the share link: they are read by admins in the management
- * screen, so the link's expiry has nothing to do with their lifetime. They are
- * deleted only when the draft is discarded.
+ * screen, so the link's expiry has nothing to do with their lifetime. They
+ * are deleted whenever the draft row goes away — discarding it, publishing it
+ * (which consumes the draft the same way), or deleting the dataset the draft
+ * belongs to all remove the draft and cascade the comments with it.
  */
 export const comment = pgTable("comment", {
   id: primaryId(),

@@ -284,7 +284,7 @@ const ja = {
     // The two of them as one line, for the row that stands where the rows would
     // be: a table cell is a line, and a second sentence under it would push the
     // one column name a reader still needs off the top of their eye.
-    emptyRow: "カートに入れたデータセットはありません。研究一覧やデータセット一覧のカートの印から追加してください。",
+    emptyRow: "カートに入れたデータセットはありません。研究一覧やデータセット一覧のカートのボタンから追加してください。",
     steps: "申請の手順",
     stepCopy: "カートの内容をコピーする",
     stepApply: "申請システムに移って貼り付ける",
@@ -358,8 +358,8 @@ const ja = {
       /** Around the account's name, which the page sets as code: it is an identifier, not a sentence. */
       signedIn: { before: "DDBJ アカウント ", after: " でログインしています。コメントには、このお名前が表示されます。" },
       read: "下の研究情報は、公開時と同じ形で表示しています。内容をお読みください。",
-      changed: "「変更あり」の印は、公開中の内容から変わった項目です。押すと、変更の前後を比べられます。",
-      unsettled: "赤い「ご教示ください」の印が付いた項目は、事務局で内容を確定できていないものです。"
+      changed: "「変更あり」と表示された項目は、公開中の内容から変わった項目です。「変更あり」を押すと、変更の前後を比べられます。",
+      unsettled: "赤い「ご教示ください」が表示された項目は、事務局で内容を確定できていないものです。"
         + "項目名の横の吹き出しのボタンを押し、正しい内容や、お分かりになる範囲のことをお書きください。",
       other: "そのほかの項目でも、誤りやお気づきの点があれば、同じく吹き出しのボタンからお書きください。"
         + "研究全体については、下の「全体へのコメント」にお書きください。",
@@ -438,7 +438,7 @@ const ja = {
       both: "両方",
       left: "左だけ",
       right: "右だけ",
-      holds: "この面に出すもの",
+      holds: "この pane に表示する内容",
     },
     // 欄が受け取る記法の名前。無印の欄は打った文字がそのまま値になる。
     accepts: {
@@ -820,7 +820,7 @@ const ja = {
       reissueTitle: "共有リンクの再発行",
       reissueWarning: "配ってあるリンクは開けなくなります。元に戻せません。",
       reissueConfirm: "再発行",
-      nobodyYet: "印を押した人はいません。",
+      nobodyYet: "押した人はいません。",
       who: "名前",
       lastPressed: "最後に押した日時",
       times: "回数",
@@ -1020,7 +1020,7 @@ const ja = {
       /** The comment left on a field, written as the curator who made the dataset; the values come quoted. */
       droppedComment: (quoted: string) => `申請・登録情報の値${quoted}は選択肢に無いため、反映していません。`,
       allHeld: "研究に登録済みのため、作成できません。",
-      unreachable: (count: number) => `DDBJ Search が答えなかった解析手法が ${count} 件あります。`,
+      unreachable: (count: number) => `DDBJ Search から取得できなかった解析手法が ${count} 件あります。`,
       createFor: (hum: string) => `${hum} の作成を開始`,
       createUnlabelled: "研究の作成を開始",
       creating: "研究の作成",
@@ -1091,7 +1091,6 @@ const ja = {
       reviewNote: "提供者とのやり取りの状態。公開を止めるものではなく、公開してよいかを判断する材料である。",
       share: "共有リンク",
       unresolved: "未解決のコメント",
-      acknowledged: "閲覧者の印",
       newDataset: "新しく公開",
       submit: "公開",
       gone: "この下書きは見つかりません。",
@@ -1225,7 +1224,7 @@ const ja = {
         "unpublished": "本文を公開停止しました。",
         "renamed": "slug を変更しました。",
         "cut": "バージョンに切り出しました。",
-        "repointed": "代表アドレスを張り替えました。",
+        "repointed": "代表アドレスにバージョンを割り当てました。",
         "alert-created": "アラートを作成しました。",
         "alert-saved": "アラートを保存しました。",
         "alert-shown": "アラートを表示しました。",
@@ -1249,11 +1248,11 @@ const ja = {
       noRevision: "バージョンはありません。",
       representative: "代表アドレス",
       representativeNote: (slug: string) =>
-        `この記事はバージョン管理されている。読者が代表アドレス ${slug} を開くと、ここで選んだバージョンの本文が返る。張り替えは手で行う。バージョンを公開しても自動では動かない。`,
+        `この記事はバージョン管理されている。読者が代表アドレス ${slug} を開くと、ここで選んだバージョンの本文が表示される。代表アドレスへの割り当ては手で行い、バージョンを公開しても自動では変わらない。`,
       pointed: "代表アドレスが指すバージョン",
       noCurrent: "代表のバージョンは未選択",
       isCurrent: "代表",
-      repoint: "張り替え",
+      repoint: "割り当て",
       addVersion: "次のバージョンの作成",
       removeSeries: "系列の削除",
       removeSeriesTitle: (slug: string) => `${slug} の削除`,
@@ -1332,19 +1331,19 @@ const ja = {
         html: "HTML のタグは書けません",
         link: "このリンクの行き先は開けません",
       },
-      bodyRefused: "本文に直すところがあるため、保存していません。欄の下に行を出しています。",
+      bodyRefused: "本文に直すところがあるため、保存していません。問題のある行を欄の下に表示しています。",
       lineProblem: (line: number, what: string) => `${line} 行目: ${what}`,
       goToLine: "その行へ",
       problems: {
         "undated": "公開日時が未入力のため公開できません。先に公開日時を入力してください。",
         "dated-while-published": "公開中の言語があるため、公開日時を空にできません。先に公開停止してください。",
         "malformed-slug": "slug は英小文字・数字・ハイフン・スラッシュで書きます。",
-        "reserved-slug": "その先頭の語は画面が持っているため、document からは使えません。",
+        "reserved-slug": "その先頭の語はポータルの画面のアドレスに使われているため、document からは使えません。",
         "duplicate-slug": "その slug は既に使われています。",
         "missing-title": "タイトルを入れてください。",
         "missing-translation": "アラートは全ページに表示されるため、日本語と英語の両方が必要です。",
         "stale": CONFLICT,
-        "in-use": "代表アドレスが指すバージョンのため削除できません。先に張り替えてください。",
+        "in-use": "代表アドレスが指すバージョンのため削除できません。先に別のバージョンを代表アドレスに割り当ててください。",
         "not-a-revision": "この操作の対象になりません。",
         "malformed-version": "バージョン番号は 1 以上の整数で書きます。",
         "unknown-target": "対象が見つかりません。",
@@ -1599,7 +1598,7 @@ const en: Messages = {
     toggleRow: "Put this research's datasets in the cart",
     openWithCount: (count: number) => `Cart (${count})`,
     empty: "No datasets in the cart.",
-    emptyRow: "No datasets in the cart. Add datasets from the cart marks in the research or dataset listing.",
+    emptyRow: "No datasets in the cart. Add datasets with the cart buttons in the research or dataset listing.",
     steps: "How to apply",
     stepCopy: "Copy what the cart holds",
     stepApply: "Paste it into the application system",
@@ -1651,8 +1650,8 @@ const en: Messages = {
       who: "First, please enter your name under \"Your name\" below, or log in with a DDBJ account. Your comments will be shown with that name.",
       signedIn: { before: "You are logged in with the DDBJ account ", after: ". Your comments will be shown with this name." },
       read: "The information below is shown as it will appear once published. Please read it through.",
-      changed: "A \"Changed\" mark shows an item that differs from the published version. Press it to compare the text before and after the change.",
-      unsettled: "An item marked \"Please let us know\" in red is one the office has not been able to settle. "
+      changed: "An item showing \"Changed\" differs from the published version. Press \"Changed\" to compare the text before and after the change.",
+      unsettled: "An item showing \"Please let us know\" in red is one the office has not been able to settle. "
         + "Please press the speech-bubble button beside the item's name and write the correct content, or whatever you know about it.",
       other: "If you notice a mistake or anything else in other items, please write it in the same way from the speech-bubble button. "
         + "For the research as a whole, please use \"Comments on the whole\" below.",

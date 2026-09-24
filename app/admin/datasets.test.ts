@@ -14,13 +14,13 @@ describe("下書きが公開するデータセット", () => {
     expect(ids(draftDatasets(rows, "draft-1", ["c", "a", "b"]))).toEqual(["c", "a", "b"])
   })
 
-  it("順が名指していないものは、渡された順のまま末尾に付く", () => {
+  it("順が指定していないものは、渡された順のまま末尾に付く", () => {
     const rows = [published("a"), published("b"), published("c")]
 
     expect(ids(draftDatasets(rows, "draft-1", ["c"]))).toEqual(["c", "a", "b"])
   })
 
-  it("順が名指していても、研究が持たないものは落ちる", () => {
+  it("順が指定していても、研究が持たないものは落ちる", () => {
     const rows = [published("a")]
 
     expect(ids(draftDatasets(rows, "draft-1", ["gone", "a"]))).toEqual(["a"])
@@ -38,7 +38,7 @@ describe("下書きが公開するデータセット", () => {
     expect(ids(draftDatasets(rows, "draft-1", []))).toEqual(["a", "mine"])
   })
 
-  it("他の下書きのものは、順が名指していても出ない", () => {
+  it("他の下書きのものは、順が指定していても出ない", () => {
     const rows = [madeBy("theirs", "draft-2"), published("a")]
 
     expect(ids(draftDatasets(rows, "draft-1", ["theirs", "a"]))).toEqual(["a"])

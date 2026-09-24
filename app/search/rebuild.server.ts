@@ -8,8 +8,7 @@
  * derived again and they are not in it.
  *
  * The text is derived from the **public projection** rather than from the
- * content, so a value the catalog hides and a value nobody has settled cannot
- * be found by searching for it.
+ * content, so a value nobody has settled cannot be found by searching for it.
  *
  * A research row carries the text and the facet values of its datasets as well
  * as its own. A dataset belongs to exactly one research, so this duplicates

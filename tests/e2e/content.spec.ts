@@ -12,7 +12,7 @@ test.describe("P-ANON 記事とお知らせ", () => {
   test("S-DOC-01: 記事の見出しはそれぞれのアドレスを持ち、そこへ飛べる", async ({ page }) => {
     await page.goto("/aim")
 
-    // 見出しの脇に立つリンクが、その見出しの id を渡す
+    // 見出しの脇に表示されるリンクが、その見出しの id を渡す
     const anchor = page.locator("main a[href^=\"#\"]").first()
     const target = (await anchor.getAttribute("href") ?? "").slice(1)
     expect(target).not.toBe("")

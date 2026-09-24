@@ -353,7 +353,7 @@ describe("アシスタントレポートのレイアウト", () => {
 })
 
 describe("アシスタント API のセッション切れ", () => {
-  it("リダイレクト応答は安全なログイン経路へ倒す", async () => {
+  it("リダイレクト応答は安全なログイン経路へフォールバックする", async () => {
     const response = new Response("{}", {
       headers: { "content-type": "application/json" },
     })
@@ -371,7 +371,7 @@ describe("アシスタント API のセッション切れ", () => {
     )
   })
 
-  it("JSON を期待する要求の非 JSON 応答もログインへ倒す", async () => {
+  it("JSON を期待する要求の非 JSON 応答もログインへフォールバックする", async () => {
     const signIn = vi.fn()
     const response = new Response("<!doctype html><title>Sign in</title>", {
       headers: { "content-type": "text/html; charset=utf-8" },

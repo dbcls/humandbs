@@ -90,12 +90,12 @@ describe("adminWindowTitle", () => {
 })
 
 describe("adminArea", () => {
-  it("区画はメニューの語ではなく区画の一覧が名乗る語で呼ぶ", () => {
+  it("区画はメニューの語ではなく区画の一覧が示す語で呼ぶ", () => {
     expect(adminArea(messages.admin, "/admin/research/r1")).toBe(messages.admin.research.heading)
     expect(adminArea(messages.admin, "/admin/research/r1")).not.toBe(messages.admin.tasks.research.find)
   })
 
-  it("下に別の区画を持つ区画は、その下を名乗らない", () => {
+  it("下に別の区画を持つ区画は、その下を表示しない", () => {
     expect(adminArea(messages.admin, "/admin/research/upstream")).toBe(messages.admin.templates.heading)
   })
 

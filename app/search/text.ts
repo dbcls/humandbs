@@ -2,10 +2,10 @@
  * Flattening the public projection into the two strings the full-text index is
  * built on.
  *
- * The input is the **public projection**, not the content: a key the catalog
- * hides and a value nobody has settled are already gone by the time the walk
- * sees them. That is what makes "a row cannot be found by text that never
- * appears in its public projection" true rather than merely intended.
+ * The input is the **public projection**, not the content: a value nobody has
+ * settled is already gone by the time the walk sees it. That is what makes "a
+ * row cannot be found by text that never appears in its public projection"
+ * true rather than merely intended.
  *
  * Within the projection the rule is opt-out: everything is searchable unless it
  * is listed below. Opting out is for values that are not read as text —

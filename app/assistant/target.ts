@@ -105,10 +105,10 @@ export function carriesBody(method: string): boolean {
  * **The framework asks this of every page's action and cannot ask it here.**
  * React Router refuses a mutation whose `Origin` names another site, but only
  * for the routes that render something; a route answering with data alone
- * never reaches that check. Everywhere else that is covered by the session
- * cookie being `SameSite=Lax` and by each write having a shape the portal
- * knows. Here the shape is the assistant's and none
- * of it is known, so the guard the portal can still apply is applied.
+ * never reaches that check. The root middleware now closes that gap for every
+ * non-GET write before any route sees it (`auth/csrf.ts`). This is a second,
+ * narrower check kept on this one route, which hands a body on to a service
+ * whose own endpoints the portal knows nothing about.
  *
  * **A missing header is not a foreign one.** A browser leaves `Origin` off a
  * plain read, and `null` is what a sandboxed document sends; neither names a

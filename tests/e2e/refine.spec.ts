@@ -12,7 +12,7 @@ test.describe("P-ANON 絞り込みと持ち出し", () => {
     await page.goto("/research")
     const pane = page.getByLabel("絞り込み")
 
-    // 軸は畳まれた状態で並ぶので、開いてから値を選ぶ
+    // 軸は折りたたまれた状態で並ぶので、開いてから値を選ぶ
     const axis = pane.locator("details").first()
     await axis.locator("summary").first().click()
     const value = axis.getByRole("link").filter({ hasNotText: "すべて" }).first()
@@ -23,7 +23,7 @@ test.describe("P-ANON 絞り込みと持ち出し", () => {
     await expect(page.getByRole("table")).toBeVisible()
     await expect(pane).toBeVisible()
 
-    // 外す道が同じ場所にある
+    // 外す経路が同じ場所にある
     const all = pane.getByRole("link", { name: "すべて" }).first()
     await expect(all).toBeVisible()
     await all.click()

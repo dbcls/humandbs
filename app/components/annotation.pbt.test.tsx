@@ -125,7 +125,7 @@ function populated(): ResearchContent {
   return {
     ...emptyResearchContent(),
     title: pair("題目"),
-    releaseNote: prose("この版で変えたこと"),
+    releaseNote: prose("このバージョンで変えたこと"),
     summary: {
       aims: prose("目的"),
       methods: prose("方法"),

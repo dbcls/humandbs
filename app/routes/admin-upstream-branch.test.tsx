@@ -31,11 +31,11 @@ describe("枝番 1 本の申請の内容", () => {
     expect(draw()).not.toContain("研究代表者")
   })
 
-  it("公開ページと同じ列挙の器 (Pairs) で描く", () => {
+  it("公開ページと同じ列挙の形 (Pairs) で描く", () => {
     expect(draw()).toMatch(/^<dl class="[^"]*sm:columns-2/)
   })
 
-  it("空の言語は描かず、両方空なら未入力と言う", () => {
+  it("空の言語は描かず、両方空なら未入力と示す", () => {
     const html = draw()
     const aims = html.slice(html.indexOf(">目的<"), html.indexOf("研究方法"))
     expect(aims).toContain(">ja<")
@@ -44,7 +44,7 @@ describe("枝番 1 本の申請の内容", () => {
     expect(methods).toContain("未入力")
   })
 
-  it("研究 ID が無い枝番は未発行と言う", () => {
+  it("研究 ID が無い枝番は未発行と示す", () => {
     expect(draw(null)).toContain("未発行")
   })
 })
@@ -84,7 +84,7 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     return renderToStaticMarkup(<Stub initialEntries={["/admin/research/upstream/J-DS000597-001"]} />)
   }
 
-  it("研究が無ければ、研究の作成の節で作るものと反映されない値を並べ、研究 ID を名指して作成を始める", () => {
+  it("研究が無ければ、研究の作成の節で作るものと反映されない値を並べ、研究 ID を指定して作成を始める", () => {
     const html = screen({})
     // The datasets are read under the application's values, before the section that makes the research.
     const registered = html.indexOf(`>${t.registered}</h2>`)
@@ -97,13 +97,13 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>[\s\S]*hum0597 の作成を開始/)
   })
 
-  it("研究 ID が未発行なら、名指さずに作成を始める", () => {
+  it("研究 ID が未発行なら、指定せずに作成を始める", () => {
     const html = screen({ branch: { ...branch, humLabel: null } })
     expect(html).toContain(t.createUnlabelled)
     expect(html).not.toMatch(/hum\d{4} の作成を開始/)
   })
 
-  it("研究があれば何も作らず、登録されたデータセットは読ませ、作成済みの研究の節に説明とその研究への道を持つ", () => {
+  it("研究があれば何も作らず、登録されたデータセットは読ませ、作成済みの研究の節に説明とその研究への経路を持つ", () => {
     const html = screen({ holder: { researchId: "r-597", humLabel: "hum0597" } })
     expect(html).not.toContain(t.creating)
     expect(html).not.toContain("DNBSEQ-T7")

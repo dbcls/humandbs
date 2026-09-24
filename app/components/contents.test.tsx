@@ -47,7 +47,7 @@ describe("SlugEditor", () => {
     <SlugEditor locale="ja" intent="rename" name="slug" value="committee-1" hint="規則" />,
   )
 
-  it("入口は警告の面を着た 1 つのボタンで、slug の編集を名乗る", () => {
+  it("入口は警告の見た目の 1 つのボタンで、ラベルは「slug の編集」", () => {
     expect(drawn.match(/<button/g)?.length).toBe(1)
     expect(drawn).toContain("slug の編集")
     expect(drawn).toMatch(/<button[^>]*class="[^"]*danger/)
@@ -177,7 +177,7 @@ describe("the languages' forms", () => {
     expect(html).toContain("公開中")
   })
 
-  it("の保存は、打つまで押せず、打つと accent を着る — form の外に立つものではないので form 自身の答えを読む", () => {
+  it("の保存は、打つまで押せず、打つと accent になる — form の外にあるものではないので form 自身の状態を読む", () => {
     const html = render(<LocaleEditors editors={[editor("ja")]} locale="ja" remember="document:x" />)
     const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"))
     const save = form.slice(form.indexOf("value=\"save\"") - 400, form.indexOf("value=\"save\""))
@@ -200,7 +200,7 @@ describe("the languages' forms", () => {
     expect(unpublished).toContain("value=\"publish\"")
   })
 
-  it("タイトルの欄だけ必須の印を持ち、HTML の required は置かない — 断るのは server", () => {
+  it("タイトルの欄だけ必須のマークを持ち、HTML の required は置かない — 断るのは server", () => {
     const html = render(<LocaleEditors editors={[editor("ja")]} locale="ja" remember="document:x" />)
 
     const title = html.slice(html.indexOf("タイトル"), html.indexOf("</label>"))

@@ -42,7 +42,7 @@ export function firstSentence(words: string): string {
   return words.split(/。|\. /)[0] ?? words
 }
 
-/** 「「{印の 1 文目}」を押した人」 — the name the marks' tables go by, wherever they stand. */
+/** 「「{マークの 1 文目}」を押した人」 — the name the marks' tables go by, wherever they stand. */
 export function pressedTitle(kind: AcknowledgementView["kind"], locale: Locale): string {
   const messages = messagesFor(locale)
   return messages.preview.pressedBy(firstSentence(kind === "commented" ? messages.preview.commented : messages.preview.approved))

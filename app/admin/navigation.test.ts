@@ -75,7 +75,7 @@ describe("管理のナビ", () => {
   /**
    * **濃くなるのはいつも 1 つ。** 行き先が別の行き先の下にあるとき — 提供申請の
    * 取り込みは研究一覧の下にある — 前方一致だけで決めると 2 つ濃くなり、バーが
-   * 読者の居場所を 2 か所だと言うことになる。深いほうが勝つ。
+   * 読者の居場所を 2 か所だと示すことになる。深いほうが勝つ。
    *
    * **下の階層が親を濃くすること自体は正しい。** 研究 1 件や下書きの中から
    * 「研究一覧」が濃くなるのがそれで、そこは一致する行き先がもともと 1 つしかない。
@@ -93,7 +93,7 @@ describe("管理のナビ", () => {
     expect(lit("/admin/research/01a0/draft/9f/dataset/upstream")).toEqual(["/admin/research"])
     expect(lit("/admin/documents/01a0")).toEqual(["/admin/documents"])
 
-    // 行き先そのものと、その 1 つ下。どこに立っても 2 つは濃くならない。
+    // 行き先そのものと、その 1 つ下。どこにいても 2 つは濃くならない。
     for (const entry of bar) {
       expect(lit(entry.path), entry.path).toHaveLength(1)
       if (entry.path !== adminPath()) {
@@ -107,7 +107,7 @@ describe("管理のナビ", () => {
    * 一方からしか辿れないか、名前が 2 つある画面になる。順まで見るのは、片方で
    * 覚えた位置がもう片方でも同じところにあるようにするため。
    */
-  it("バーはトップと同じ行き先を同じ順で、トップ自身を先頭にして持つ", () => {
+  it("バーはトップと同じ行き先を同じ順で、トップ自身を先頭にして並べる", () => {
     for (const locale of LOCALES) {
       const bar = adminNavbar(locale).map((entry) => entry.path)
       expect(bar).toEqual([adminPath(), ...everyLink(locale).map((entry) => entry.path)])

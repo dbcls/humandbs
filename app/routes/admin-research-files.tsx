@@ -95,7 +95,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
         }}
       />
       {/* **節を 1 つも持たない画面なので、h1 の下は節と節の距離ではない**
-          — `common/` の箱と同じ。 */}
+          — `common/` の枠と同じ。 */}
       <Card under={false}>
         <Stack gap="normal">
           <Heading title={t.heading} aside={view.humLabel ?? undefined} note={t.note}>

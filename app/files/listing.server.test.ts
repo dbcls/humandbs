@@ -103,7 +103,7 @@ describe("boxSummariesOf", () => {
     expect(mockedListPrefix).toHaveBeenCalledTimes(1)
   })
 
-  it("答えなかった行だけが null で、他の行は残る", async () => {
+  it("応答しなかった行だけが null で、他の行は残る", async () => {
     mockedListPrefix.mockImplementation((_bucket, prefix) => {
       if (prefix === publicPrefix("hum0002")) return Promise.reject(new Error("ECONNREFUSED"))
       return Promise.resolve([node("a.zip", 4)])

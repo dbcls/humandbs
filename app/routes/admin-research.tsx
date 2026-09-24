@@ -183,16 +183,16 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                     /*
                       **ID は縦に読み、3 つの列で揃える。**1 行に流すと 2 本目の
                       ID が 1 本目の操作の隣に来て、どの操作がどの ID のものか
-                      読めなくなる。**列にするのは印の幅が揃わないため** —
+                      読めなくなる。**列にするのはバッジの幅が揃わないため** —
                       「primary」と「secondary」は 11px 違うので、行ごとに流すと
                       ID の頭がその差だけ食い違う。
 
-                      **どちらの ID かは ID の前に立つ。**読むのは ID のほうで、
-                      primary か secondary かはその ID をどう読むかを先に言う印
+                      **どちらの ID かは ID の前に置く。**読むのは ID のほうで、
+                      primary か secondary かはその ID をどう読むかを先に示すバッジ
                       なので、後ろに置くと目を戻すことになる。
 
                       **操作は 1 段離す。**同じ空きで 3 つ並べると、読むもので
-                      ある ID が、その両脇を飾る 2 つと同じ重さで立つ。
+                      ある ID が、その両脇を飾る 2 つと同じ重さで並ぶ。
                     */
                     <ul className="grid grid-cols-[auto_auto_auto] justify-start items-center gap-x-4 gap-y-2 text-sm">
                       {view.labels.map((label) => (

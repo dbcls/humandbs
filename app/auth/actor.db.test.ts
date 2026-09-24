@@ -72,7 +72,7 @@ describe("要求ごとの主体の導出", () => {
     expect(actor?.capabilities.size).toBe(CAPABILITIES.length)
   })
 
-  it("主体は自分のセッションを名指しできる", async () => {
+  it("主体は自分のセッションを識別できる", async () => {
     const token = await createSession(db, PERSON)
 
     const actor = await readActor(requestFor(token))
@@ -92,7 +92,7 @@ describe("要求ごとの主体の導出", () => {
   })
 })
 
-describe("認可の 3 つの答え", () => {
+describe("認可の 3 通りの応答", () => {
   it("未ログインはログインへ送り、いま見ていたアドレスを戻り先に持たせる", async () => {
     const response = await thrownBy(() => requireActor(requestFor(null, "/admin?tab=drafts")))
 
@@ -101,14 +101,14 @@ describe("認可の 3 つの答え", () => {
       .toBe("/auth/login?redirect=%2Fadmin%3Ftab%3Ddrafts")
   })
 
-  it("画面の中の移動で来た問い合わせでも、戻り先はアドレスそのもので .data を持たない", async () => {
+  it("画面の中の移動で来た問い合わせでも、戻り先はアドレスそのもので .data を含まない", async () => {
     const response = await thrownBy(() => requireActor(requestFor(null, "/admin/research.data?page=2")))
 
     expect(response.headers.get("location"))
       .toBe("/auth/login?redirect=%2Fadmin%2Fresearch%3Fpage%3D2")
   })
 
-  it("ログイン済みで権限が無ければ 403。ログインし直しても答えは変わらない", async () => {
+  it("ログイン済みで権限が無ければ 403。ログインし直しても応答は変わらない", async () => {
     const token = await createSession(db, PERSON)
 
     const response = await thrownBy(() => requireCapability(requestFor(token), "publish"))

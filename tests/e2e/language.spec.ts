@@ -15,7 +15,7 @@ test.describe("P-ANON 言語", () => {
     await expect(page).toHaveURL(/\/en\/research$/)
     await expect(page.getByRole("heading", { level: 1, name: "Research list" })).toBeVisible()
 
-    // 戻る道も同じ形をしている
+    // 戻る経路も同じ形をしている
     await page.getByLabel(/言語|Language/).getByRole("link", { name: "JA" }).click()
     await expect(page).toHaveURL(/\/research$/)
     await expect(page.getByRole("heading", { level: 1, name: "研究一覧" })).toBeVisible()
@@ -34,7 +34,7 @@ test.describe("P-ANON 言語", () => {
     await expect(page).toHaveURL(/\/en\/research\?.*q=/)
   })
 
-  test("S-LANG-03: 文書は両方の言語で応答し、lang を名乗る", async ({ page }) => {
+  test("S-LANG-03: 文書は両方の言語で応答し、lang を指定する", async ({ page }) => {
     await page.goto("/aim")
     await expect(page.locator("html")).toHaveAttribute("lang", "ja")
 

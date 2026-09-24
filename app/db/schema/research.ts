@@ -91,7 +91,6 @@ export const researchDraft = pgTable("research_draft", {
   id: primaryId(),
   researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
   content: jsonb().$type<ResearchContent>().notNull(),
-  /** Free text for admins only. It never reaches the preview. */
   /**
    * The published version this draft is the update of, when it is one.
    *

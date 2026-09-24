@@ -71,7 +71,7 @@ describe("語彙値の統合", () => {
   })
 
   it("両方を指していた値は、統合先を 1 つだけ持つ", () => {
-    // ここを畳まないと、facet が同じ値を 2 度数える。
+    // ここをまとめないと、facet が同じ値を 2 度数える。
     const merged = datasetWithTermMerged(dataset([vocabulary(["a", "b"])]), "a", "b")
     expect(chosenOf(nth(merged.values, 0))).toEqual(["b"])
   })
@@ -112,7 +112,7 @@ describe("語彙値の統合", () => {
     expect(datasetWithTermMerged(before, "a", "b").values[0]).toBe(before.values[0])
   })
 
-  it("版は、並べている dataset すべてに効く", () => {
+  it("バージョンは、並べている dataset すべてに効く", () => {
     const content = {
       datasets: [
         { datasetId: "one", ...dataset([vocabulary(["a"])]) },
@@ -163,7 +163,7 @@ describe("語彙値の統合 (性質)", () => {
       for (const slot of slots) {
         const value = slot.value
         // 疾患は 1 つの slot に複数の疾患を持てて、別の疾患が同じ語を指すのは
-        // 重複ではない。畳むのは 1 つの疾患の中だけ。
+        // 重複ではない。まとめるのは 1 つの疾患の中だけ。
         if (value.kind === "disease" && value.diseases.state === "value") {
           for (const one of value.diseases.value) {
             expect(new Set(one.termIds).size).toBe(one.termIds.length)

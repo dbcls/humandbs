@@ -114,7 +114,7 @@ function AbstractPanel({
               key={sentence.id}
               data-abstract-pair-id={sentence.id}
               tabIndex={0}
-              // **選ばれている 1 文だけが面を持つ。**焦点の輪郭は `app.css` の
+              // **選ばれている 1 文だけが背景を持つ。**焦点の輪郭は `app.css` の
               // `:focus-visible` が site に 1 つ持っているので、ここで消して
               // 引き直さない。
               className={`mr-1 rounded px-1 transition-colors ${

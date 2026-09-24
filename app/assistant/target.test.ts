@@ -16,7 +16,7 @@ describe("転送先", () => {
     expect(assistantTarget(ORIGIN, "", "")).toBe(`${ORIGIN}/api/`)
   })
 
-  it("道のりをそのまま API の下に置く", () => {
+  it("経路をそのまま API の下に置く", () => {
     expect(assistantTarget(ORIGIN, "applications/abc123", ""))
       .toBe(`${ORIGIN}/api/applications/abc123`)
   })
@@ -53,7 +53,7 @@ describe("転送先", () => {
     expect(new URL(target ?? "").host).toBe("assistant-api:8000")
   })
 
-  it("受け入れた道のりは、どれも API の下から出ない", () => {
+  it("受け入れた経路は、どれも API の下から出ない", () => {
     fc.assert(fc.property(fc.string(), fc.string(), (rest, search) => {
       const target = assistantTarget(ORIGIN, rest, search)
       if (target === null) return
@@ -90,7 +90,7 @@ describe("行きの header", () => {
   })
 
   /** `Headers` lower-cases its names, so a header cannot hide behind its spelling. */
-  it("綴りの大小によらず落とす", () => {
+  it("表記の大小によらず落とす", () => {
     const kept = forwardedRequestHeaders(new Headers({ Cookie: "humandbs_session=secret" }))
     expect([...kept.keys()]).toEqual([])
   })
@@ -121,7 +121,7 @@ describe("body を持つ method", () => {
     expect(carriesBody("HEAD")).toBe(false)
   })
 
-  it("綴りが小文字でも読み取りは読み取り", () => {
+  it("表記が小文字でも読み取りは読み取り", () => {
     expect(carriesBody("get")).toBe(false)
     expect(carriesBody("head")).toBe(false)
   })
@@ -148,12 +148,12 @@ describe("よそのサイトから来た要求", () => {
   })
 
   /** A browser leaves the header off a plain read; there is nothing to compare. */
-  it("名乗っていないものは通す", () => {
+  it("何も示していないものは通す", () => {
     expect(fromSameSite(asking(null))).toBe(true)
   })
 
   /** What a sandboxed document sends. It names no site either. */
-  it("`null` と名乗るものは通す", () => {
+  it("`null` と示すものは通す", () => {
     expect(fromSameSite(asking("null"))).toBe(true)
   })
 
@@ -168,7 +168,7 @@ describe("よそのサイトから来た要求", () => {
     expect(fromSameSite(asking("https://localhost:8080"))).toBe(true)
   })
 
-  it("URL として読めない名乗りは通さない", () => {
+  it("URL として読めない値は通さない", () => {
     expect(fromSameSite(asking("not a url"))).toBe(false)
   })
 })

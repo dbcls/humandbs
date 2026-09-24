@@ -6,10 +6,10 @@
  * published, and a catalog entry is a definition rather than a publication.
  *
  * **Every write rebuilds the search rows.** Some catalog changes reach them and
- * some do not — hiding a key changes the text a row is derived from, renaming a
- * term does not, because labels are joined at query time — but working out
- * which is which at each call site is how the two would come apart. A full
- * rebuild is a few seconds on this corpus and is meant to be ordinary.
+ * some do not — renaming a term does not, because labels are joined at query
+ * time — but working out which is which at each call site is how the two
+ * would come apart. A full rebuild is a few seconds on this corpus and is
+ * meant to be ordinary.
  *
  * **What is in use cannot be removed.** A key is in use when a dataset holds a
  * value under it, published or in a draft; a term is in use when a value names

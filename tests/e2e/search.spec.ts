@@ -43,7 +43,7 @@ test.describe("P-ANON 絞り込み", () => {
     await box.press("Enter")
 
     await expect(page).toHaveURL(/[?&]q=/)
-    // 表は姿を消さない。列の名前が「何を探していたか」を言う
+    // 表は消えない。列の名前が「何を探していたか」を示す
     await expect(page.getByRole("table")).toBeVisible()
     await expect(page.getByRole("columnheader", { name: "研究 ID" })).toBeVisible()
     await expect(page.getByLabel("絞り込み")).toBeVisible()
@@ -67,7 +67,7 @@ test.describe("P-ANON 絞り込み", () => {
    * **並び替えと表示件数は表の上だけ、件数とページ送りは上と下。** 表の下端に着いた読者が探すのは次の
    * ページで、そこに 1 ページ目へ戻す操作を置かない。両方の一覧が同じ部品を通るので両方で見る。
    */
-  test("S-SEARCH-06: 並び替えと表示件数は表の上にだけ立ち、ページ送りは上と下に立つ", async ({ page }) => {
+  test("S-SEARCH-06: 並び替えと表示件数は表の上にだけ表示され、ページ送りは上と下に表示される", async ({ page }) => {
     for (const path of ["/research", "/dataset"]) {
       await page.goto(path)
       const main = page.getByRole("main")

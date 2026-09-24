@@ -18,8 +18,6 @@
  *   first use of a share link is asking a provider to fill exactly those in;
  *   showing the published face would hide the question. `not-applicable` is
  *   settled information and survives either way
- * - value slots under a catalog key that is not shown on the public page, and
- *   under a key the catalog does not know at all
  * - file selections naming something the listing does not contain. The listing
  *   is the only source for what exists, so a stale selection renders as nothing
  *
@@ -225,11 +223,6 @@ function publicValue(value: ContentValue, options: PublicOptions): ContentValue 
   return state === "unknown" ? null : value
 }
 
-/**
- * A slot under a key the catalog does not know is dropped: without the catalog
- * there is nothing that says it may be shown, and the safe reading of an
- * unknown key is that it may not.
- */
 /**
  * **Every key a dataset carries is drawn.** What a reader may see is decided by
  * the state of each value rather than by the key it stands under — a key the

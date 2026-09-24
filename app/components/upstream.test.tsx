@@ -16,13 +16,13 @@ function routed(element: ReactNode): string {
   return renderToStaticMarkup(<Stub initialEntries={["/admin/research/upstream/J-DS000001-001"]} />)
 }
 
-describe("枝番の一覧のポータル側の答え", () => {
-  it("3 つの状態は印だけで見分けられる", () => {
+describe("枝番の一覧のポータル側の判定", () => {
+  it("3 つの状態はマークだけで見分けられる", () => {
     const marks = new Set(BRANCH_STANDINGS.map((standing) => STANDING_MARK[standing]))
     expect(marks.size).toBe(BRANCH_STANDINGS.length)
   })
 
-  it("行に出る語はペインの軸の語と同じで、印は読み上げない", () => {
+  it("行に出る語はペインの軸の語と同じで、マークは読み上げない", () => {
     const t = messagesFor("ja").admin.templates
     for (const standing of BRANCH_STANDINGS) {
       const html = renderToStaticMarkup(<BranchStandingMark standing={standing} locale="ja" />)
@@ -56,14 +56,14 @@ describe("申請から作るものの一覧", () => {
     expect(submitOf(html)).not.toMatch(/disabled=""/)
   })
 
-  it("1 つのアクセッションを調べた答えとして並べ、「登録されたデータセット」の見出しを立てない", () => {
+  it("1 つのアクセッションを調べた結果として並べ、「登録されたデータセット」の見出しを出さない", () => {
     const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
     const html = routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one] })} submit={t.add} />)
     expect(html).toContain("JGAD000001")
     expect(html).not.toContain(t.registered)
   })
 
-  it("作成は見つけたデータセットと同じ行に、枠の面・行の高さで立つ", () => {
+  it("作成は見つけたデータセットと同じ行に、枠の見た目・行の高さで表示する", () => {
     const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
     const html = routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one] })} submit={t.add} />)
     const row = /<div class="flex flex-wrap items-center gap-3">([\s\S]*?)<\/button>/.exec(html)?.[1] ?? ""
@@ -73,12 +73,12 @@ describe("申請から作るものの一覧", () => {
     expect(submitOf(html)).toContain("min-h-6")
   })
 
-  it("押すものが無い読むだけの姿は、何も送らない", () => {
+  it("押すものが無い読むだけの表示では、何も送らない", () => {
     const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
     expect(routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one] })} />)).not.toContain("name=\"accession\"")
   })
 
-  it("作るものとして並べる姿では、研究に登録済みのものは作らない理由を言い、研究への道は持たず、解析手法の件数を出さない", () => {
+  it("作るものとして並べる表示では、研究に登録済みのものは作らない理由を示し、研究への経路は無く、解析手法の件数を出さない", () => {
     const held = { accession: "JGAD000002", description: "WES", experiments: 3, heldBy: "r-1" }
     const html = routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [held] })} submit={t.add} />)
     expect(html).toContain(t.taken)
@@ -114,7 +114,7 @@ describe("枝番の表の行", () => {
     expect(html).toContain("A study")
   })
 
-  it("提供申請 ID は押せるもので、押すまで面は開かず、他の画面へは渡らない", () => {
+  it("提供申請 ID は押せるもので、押すまでダイアログは開かず、他の画面へは渡らない", () => {
     const html = routed(<BranchDialog applicationId="J-DS000137-010" locale="ja" />)
     expect(html).toMatch(/<button type="button"[^>]*>[\s\S]*J-DS000137-010/)
     expect(html).not.toContain("href=\"/admin/research/upstream/J-DS000137-010\"")
@@ -122,8 +122,8 @@ describe("枝番の表の行", () => {
   })
 })
 
-describe("面の中の申請の内容", () => {
-  it("面では提供申請 ID を最初の値として言い、枝番の画面では言わない (隣に立つため)", () => {
+describe("ダイアログの中の申請の内容", () => {
+  it("ダイアログでは提供申請 ID を最初の値として表示し、枝番の画面では表示しない (隣にあるため)", () => {
     const inPanel = renderToStaticMarkup(
       <BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08" }} fields={[]} applicationId="J-DS000137-010" />,
     )
@@ -141,7 +141,7 @@ describe("研究の作成の節", () => {
   const draw = (over: Partial<UpstreamChoiceView> = {}): string =>
     routed(<BranchCreate locale="ja" choice={choice(over)} submit="hum0597 の作成を開始" />)
 
-  it("見出しと何が起きるかの説明を持ち、押すものはその後に立つ", () => {
+  it("見出しと何が起きるかの説明があり、押すものはその後に続く", () => {
     const html = draw({ datasets: [free] })
     const heading = html.indexOf(`>${t.creating}</h2>`)
     const note = html.indexOf(t.createNote[0] ?? "")
@@ -161,7 +161,7 @@ describe("研究の作成の節", () => {
     expect(submitOf(draw())).not.toMatch(/disabled=""/)
   })
 
-  it("選択肢に無い値は 1 つの枠で、名前と件数・欄の名前と値の対・作るとどうなるか の順に言い、表への道を持たず、無ければ何も言わない", () => {
+  it("選択肢に無い値は 1 つの枠で、名前と件数・欄の名前と値の対・作るとどうなるか の順に示し、表への経路は無く、無ければ何も示さない", () => {
     const drop = (keyLabel: string, value: string) => ({ keyCode: keyLabel, keyLabel, value, at: null })
     const html = draw({ dropped: [drop("実験方法", "Exome sequencing"), drop("プラットフォーム", "Illumina Genome Analyzer")] })
     const named = html.indexOf(t.droppedHeading(2))
@@ -178,7 +178,7 @@ describe("登録されたデータセットの節", () => {
   const free = { accession: "JGAD000958", description: "Whole genome sequencing", experiments: 1, heldBy: null }
   const held = { accession: "JGAD000959", description: "WES", experiments: 1, heldBy: "r-9" }
 
-  it("ID はアーカイブを新しいタブで開き、説明を添え、選ぶ印を持たない", () => {
+  it("ID はアーカイブを新しいタブで開き、説明を添え、チェックボックスは無い", () => {
     const html = routed(<BranchDatasets locale="ja" datasets={[free]} />)
     expect(html).toContain(`>${t.registered}</h2>`)
     expect(html).toMatch(/<a[^>]*target="_blank"[^>]*>[\s\S]*?JGAD000958/)
@@ -186,7 +186,7 @@ describe("登録されたデータセットの節", () => {
     expect(html).not.toContain("type=\"checkbox\"")
   })
 
-  it("どの行もデータセットの印を ID の前に持ち、研究に登録済みかどうかで姿を変えない", () => {
+  it("どの行にもデータセットのアイコンが ID の前にあり、研究に登録済みかどうかで見た目を変えない", () => {
     const html = routed(<BranchDatasets locale="ja" datasets={[free, held]} />)
     const rows = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)].map((match) => match[1] ?? "")
     expect(rows).toHaveLength(2)
@@ -195,7 +195,7 @@ describe("登録されたデータセットの節", () => {
     expect(html).not.toContain("href=\"/admin/research/r-9\"")
   })
 
-  it("無ければ無いと言う", () => {
+  it("無ければ無いと表示する", () => {
     expect(routed(<BranchDatasets locale="ja" datasets={[]} />)).toContain(t.noDatasets)
   })
 })

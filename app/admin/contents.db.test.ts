@@ -168,7 +168,7 @@ describe("slug", () => {
     expect(await slugOf(id)).toBe("faq")
   })
 
-  it("版の slug は打ち直せない — 系列の下にある document の rename は撥ねる", async () => {
+  it("バージョンの slug は打ち直せない — 系列の下にある document の rename は撥ねる", async () => {
     const token = await signIn(CURATOR, true)
     const revision = await makeDocument("x/version/1")
     await db.insert(s.documentSeries).values({ slug: "x", currentId: revision })
@@ -349,8 +349,8 @@ describe("本文と公開", () => {
   })
 })
 
-describe("版", () => {
-  it("**切り出しは移動で、コピーではない。** base の slug は答え続ける", async () => {
+describe("バージョン", () => {
+  it("**切り出しは移動で、コピーではない。** base の slug は使えたままになる", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("guidelines/sharing")
     await publishSide(id, "ja", "ガイドラインの本文")
@@ -368,7 +368,7 @@ describe("版", () => {
       .toContain("ガイドラインの本文")
   })
 
-  it("版を 2 度は切り出せない", async () => {
+  it("バージョンを 2 度は切り出せない", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
@@ -380,7 +380,7 @@ describe("版", () => {
     expect(again.status).toBe("not-a-revision")
   })
 
-  it("**版番号は打った番号がそのまま入る**", async () => {
+  it("**バージョン番号は打った番号がそのまま入る**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "9" }), id)
@@ -396,7 +396,7 @@ describe("版", () => {
     expect(slugs.sort()).toEqual(["x/version/10", "x/version/9"])
   })
 
-  it("既に使われている版番号は弾かれる", async () => {
+  it("既に使われているバージョン番号は弾かれる", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "3" }), id)
@@ -410,7 +410,7 @@ describe("版", () => {
     expect(await db.select().from(s.document)).toHaveLength(1)
   })
 
-  it("整数でない版番号は弾かれる", async () => {
+  it("整数でないバージョン番号は弾かれる", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
 
@@ -422,7 +422,7 @@ describe("版", () => {
     expect(await db.select().from(s.documentSeries)).toHaveLength(0)
   })
 
-  it("**指し先になれるのは自分の版だけ**", async () => {
+  it("**指し先になれるのは自分のバージョンだけ**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
@@ -436,7 +436,7 @@ describe("版", () => {
     expect(result.status).toBe("not-a-revision")
   })
 
-  it("張り替えると、版なし slug は新しい指し先の本文を出す", async () => {
+  it("張り替えると、バージョンなし slug は新しい指し先の本文を出す", async () => {
     const token = await signIn(CURATOR, true)
     const first = await makeDocument("x")
     await publishSide(first, "ja", "一つ目")
@@ -453,7 +453,7 @@ describe("版", () => {
     expect((await findDocument("x", "ja"))?.html).toContain("二つ目")
   })
 
-  it("**指し先が公開されていない言語では、版なし slug も 404 になる**", async () => {
+  it("**指し先が公開されていない言語では、バージョンなし slug も 404 になる**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await publishSide(id, "ja")
@@ -505,7 +505,7 @@ describe("版", () => {
     expect(removals[0]?.detail).toMatchObject({ slug: "x", deleted: true, locales: ["ja", "en"] })
   })
 
-  it("**版を消すと、その系列の画面へ送られる** — 一覧には版の行が無い", async () => {
+  it("**バージョンを消すと、その系列の画面へ送られる** — 一覧にはバージョンの行が無い", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
@@ -557,7 +557,7 @@ describe("版", () => {
     expect(await db.select().from(s.event).where(eq(s.event.subjectType, "document"))).toEqual([])
   })
 
-  it("**系列を消すと、版なし slug と配下の版が一緒に消える**", async () => {
+  it("**系列を消すと、バージョンなし slug と配下のバージョンが一緒に消える**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await publishSide(id, "ja", "一つ目")
@@ -578,7 +578,7 @@ describe("版", () => {
     expect(await findDocument("x/version/2", "ja")).toBeNull()
   })
 
-  it("系列を消すと、公開されていた版ごとに証跡が残る", async () => {
+  it("系列を消すと、公開されていたバージョンごとに証跡が残る", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await publishSide(id, "ja", "一つ目")
@@ -680,7 +680,7 @@ describe("お知らせ", () => {
     expect(only(await db.select().from(s.news)).publishedAt).toBe("2026-03-01 09:30:00")
   })
 
-  it("一覧は、日時がまだ来ていない行だけを予約として印す", async () => {
+  it("一覧は、日時がまだ来ていない行だけを予約として扱う", async () => {
     const token = await signIn(CURATOR, true)
     await db.insert(s.news).values([
       { publishedAt: "2020-01-01 09:00:00" },
@@ -1000,7 +1000,7 @@ describe("アラート", () => {
 })
 
 describe("画面", () => {
-  it("document の画面は、自分がどの版かを言う", async () => {
+  it("document の画面は、自分がどのバージョンかを表示する", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
@@ -1015,7 +1015,7 @@ describe("画面", () => {
     expect(await seriesPage(get(token, adminSeriesPath("not-a-uuid")), "not-a-uuid")).toBeNull()
   })
 
-  it("系列の画面は、その系列の版だけを新しい順に持つ", async () => {
+  it("系列の画面は、その系列のバージョンだけを新しい順に並べる", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
@@ -1057,7 +1057,7 @@ describe("画面", () => {
     expect(view.rows.map((row) => row.kind === "document" ? row.document.slug : "")).toEqual(["aim"])
   })
 
-  it("バージョンの軸は、版を持つ記事だけを残す", async () => {
+  it("バージョンの軸は、バージョンのある記事だけを残す", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
@@ -1098,7 +1098,7 @@ describe("画面", () => {
     expect(view.counts.ja).toEqual({ published: 1, unpublished: 1 })
   })
 
-  it("フォームには保存した本文が入り、隣に描く姿も同じ本文から出る", async () => {
+  it("フォームには保存した本文が入り、隣に描くプレビューも同じ本文から出る", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("faq")
     await publishSide(id, "ja", "公開分")
@@ -1121,7 +1121,7 @@ describe("画面", () => {
   })
 })
 
-describe("隣に描く姿", () => {
+describe("隣に描くプレビュー", () => {
   function postJson(token: string, payload: unknown): Request {
     return new Request("http://localhost:8080/admin/documents/preview", {
       method: "POST",
@@ -1213,7 +1213,7 @@ describe("お知らせの公開日時と公開", () => {
 })
 
 /**
- * `updated_at` は「最後に変わった時刻」を名乗る列なので、書き換えるたびに動く。
+ * `updated_at` は「最後に変わった時刻」を表す列なので、書き換えるたびに動く。
  * 作った時刻のまま残ると、いつか「最終更新」に使った画面が黙って誤る。
  */
 describe("最終更新の時刻", () => {

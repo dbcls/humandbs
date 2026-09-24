@@ -17,7 +17,7 @@ function panel(locale: Locale, at: string): string {
 }
 
 describe("ヘッダのカート", () => {
-  it("何も入っていなくても、カートの画面への道を持つ", () => {
+  it("何も入っていなくても、カートの画面への経路を持つ", () => {
     const html = panel("ja", "/research")
     expect(html).toContain("カートに入れたデータセットはありません。")
     expect(html).toContain("href=\"/cart\"")
@@ -28,7 +28,7 @@ describe("ヘッダのカート", () => {
     expect(panel("ja", "/research")).not.toContain("すべて外す")
   })
 
-  it("英語の読者は英語の面から、/en の下のカートへ行く", () => {
+  it("英語の読者は英語のページから、/en の下のカートへ行く", () => {
     const html = panel("en", "/en/research")
     expect(html).toContain("href=\"/en/cart\"")
     expect(html).toContain("Go to the cart")

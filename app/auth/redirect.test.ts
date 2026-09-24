@@ -20,18 +20,18 @@ describe("ログイン後の戻り先", () => {
     expect(safeRedirectPath("")).toBe("/")
   })
 
-  it("スキームを持つアドレスは外に出るのでトップに倒す", () => {
+  it("スキームを持つアドレスは外に出るのでトップに戻す", () => {
     expect(safeRedirectPath("https://evil.example/")).toBe("/")
     expect(safeRedirectPath("javascript:alert(1)")).toBe("/")
     expect(safeRedirectPath("data:text/html,x")).toBe("/")
   })
 
-  it("スラッシュ 2 つで始まるものは別のホストを指すのでトップに倒す", () => {
+  it("スラッシュ 2 つで始まるものは別のホストを指すのでトップに戻す", () => {
     expect(safeRedirectPath("//evil.example/")).toBe("/")
     expect(safeRedirectPath("//evil.example")).toBe("/")
   })
 
-  it("バックスラッシュはブラウザが区切りに読むのでトップに倒す", () => {
+  it("バックスラッシュはブラウザが区切りに読むのでトップに戻す", () => {
     expect(safeRedirectPath("/\\evil.example")).toBe("/")
     expect(safeRedirectPath("/\\/evil.example")).toBe("/")
   })
@@ -46,11 +46,11 @@ describe("ログイン後の戻り先", () => {
     expect(safeRedirectPath("\n/admin")).toBe("/admin")
   })
 
-  it("パスの途中の .. は URL 解決で畳まれる", () => {
+  it("パスの途中の .. は URL 解決でまとめられる", () => {
     expect(safeRedirectPath("/research/../admin")).toBe("/admin")
   })
 
-  it(".. で畳んだ結果がホスト指定になるものもトップに倒す", () => {
+  it(".. でまとめた結果がホスト指定になるものもトップに戻す", () => {
     expect(safeRedirectPath("/..//evil.example")).toBe("/")
     expect(safeRedirectPath("/research/../..//evil.example")).toBe("/")
     expect(safeRedirectPath("/..//")).toBe("/")

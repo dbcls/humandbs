@@ -50,14 +50,14 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 
-  test("S-ADMIN-02: 管理画面はパンくずを持たず、1 段ずつ親へ戻る", async ({ page }) => {
-    // バーが開ける画面は、区画の中の位置を自分では言わない。
+  test("S-ADMIN-02: 管理画面はパンくずが無く、1 段ずつ親へ戻る", async ({ page }) => {
+    // バーが開ける画面は、区画の中の位置を自分では示さない。
     for (const path of [...STANDALONE, "/admin"]) {
       await page.goto(path)
       await expect(page.getByRole("navigation", { name: "現在地" }), path).toHaveCount(0)
     }
 
-    // いちばん深いところからは、1 段ずつ親へ。下書きの面はどれも研究の画面が親で、
+    // いちばん深いところからは、1 段ずつ親へ。下書きのどの画面も研究の画面が親で、
     // 研究の内容 → 研究の編集 → 研究一覧。データセットの一覧からも同じ 1 本。
     const draft = await openADraft(page)
     const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
@@ -68,7 +68,7 @@ test.describe("P-ADMIN", () => {
 
     await page.goto(draft)
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究の内容/)
-    // 戻る道の語は行き先の h1 に「へ」を付けたもの。語だけ直して h1 を直さない (または逆) と、ここで割れる。
+    // 戻る経路の語は行き先の h1 に「へ」を付けたもの。語だけ直して h1 を直さない (または逆) と、ここで割れる。
     await page.getByRole("link", { name: "研究の編集へ" }).click()
     await expect(page).toHaveURL(research)
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究の編集/)
@@ -78,13 +78,13 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究$/)
   })
 
-  test("S-ADMIN-03: 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ器に立つ", async ({ page }) => {
+  test("S-ADMIN-03: 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ枠の中にある", async ({ page }) => {
     for (const path of ["/admin/research", "/admin/news"]) {
       await page.goto(path)
       const counted = page.getByText(/^\d+–\d+ \/ \d+ 件$/)
       await expect(counted.first(), path).toBeVisible()
 
-      // ページ送りは件数と同じ器の中。離れて立つと、どちらがどの表のものか読めない。
+      // ページ送りは件数と同じ枠の中。離れた位置にあると、どちらがどの表のものか読めない。
       const box = counted.first().locator("..")
       await expect(box.getByRole("navigation", { name: /ページ|Pagination/ }), path).toBeVisible()
     }
@@ -95,21 +95,21 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("table")).toBeVisible()
     // 列の名前が残っているから、何を探していたのかが分かる。
     await expect(page.getByRole("columnheader").first()).toBeVisible()
-    // 件数は表の上と下に 1 つずつ立つので、見るのは先に来るほう。
+    // 件数は表の上と下に 1 つずつ置かれるので、見るのは先に来るほう。
     await expect(page.getByText("0 件").first()).toBeVisible()
   })
 
   /**
-   * **表の上には道具の行が 1 本、表の下には件数とページ送りだけ。** 表の下端まで読んだ人が探すのは
+   * **表の上にはツールバーが 1 本、表の下には件数とページ送りだけ。** 表の下端まで読んだ人が探すのは
    * 次のページで、並び替えと表示件数は押すと 1 ページ目の頭に戻す — 下に置くと、読み終えた位置に
-   * 先頭へ飛ぶ操作が 2 つ並ぶ。上だけに立てると下端で行き止まりになる。
+   * 先頭へ飛ぶ操作が 2 つ並ぶ。上だけに置くと下端で行き止まりになる。
    *
-   * **ページに切る一覧はどれも表示件数を持ち、記事を除いて並び替えも持つ。** 記事だけは slug 順に
-   * 並ぶことで木になるので、並びを選ばせない。研究の箱は識別子を要るので、下書きから辿った研究で見る。
-   * データ提供申請の枝番は申請管理システムに繋がっていない環境で表を持たないので、ここでは数えない
+   * **ページに切る一覧はどれも表示件数があり、記事を除いて並び替えもある。** 記事だけは slug 順に
+   * 並ぶことで木になるので、並びを選ばせない。研究は識別子を要るので、下書きから辿った研究で見る。
+   * データ提供申請の枝番は申請管理システムに繋がっていない環境では表が無いので、ここでは数えない
    * (同じ `RefinableList` を通る)。
    */
-  test("S-ADMIN-06: ページに切る一覧は、並び替えと表示件数を表の上に 1 つずつ、件数を上下に持つ", async ({ page }) => {
+  test("S-ADMIN-06: ページに切る一覧は、並び替えと表示件数を表の上に 1 つずつ、件数を上下に備える", async ({ page }) => {
     const draft = await openADraft(page)
     const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
     const BOTH = ["並び替え", "表示件数"]
@@ -136,7 +136,7 @@ test.describe("P-ADMIN", () => {
           .toBeLessThanOrEqual(table?.y ?? 0)
       }
 
-      // 件数は 1 ページに収まる一覧でも立つので、ページ送りの番号ではなくこちらを数える。
+      // 件数は 1 ページに収まる一覧でも表示されるので、ページ送りの番号ではなくこちらを数える。
       const counted = main.getByText(/^(\d+–\d+ \/ \d+ 件|0 件)$/)
       await expect(counted, path).toHaveCount(2)
       const under = await counted.last().boundingBox()
@@ -170,13 +170,13 @@ test.describe("P-ADMIN", () => {
     await expect(page).toHaveURL(new RegExp(`${draft}/dataset/[0-9a-f-]{36}$`))
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
 
-    // 研究の箱、文書 1 件、お知らせ 1 件、key の値 1 つ。どれも一覧から辿る。
+    // 研究、文書 1 件、お知らせ 1 件、key の値 1 つ。どれも一覧から辿る。
     const research = draft.replace(/\/draft\/.*$/, "")
     await page.goto(research)
     await page.locator(`a[href="${research}/files"]`).first().click()
     await expect(page).toHaveURL(new RegExp(`${research}/files$`))
 
-    // 版を持たない記事は identity がそのままアドレスなので、その prefix は
+    // バージョンの無い記事は identity がそのままアドレスなので、その prefix は
     // 系列のものも拾う。系列のほうを除いて選ぶ。
     for (const [listing, prefix, apart] of [
       ["/admin/documents", "/admin/documents/", ":not([href*='/series/'])"],

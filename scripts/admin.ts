@@ -1,9 +1,10 @@
 /**
  * Granting and revoking administrator access from the command line.
  *
- * This is the only way the first administrator can exist: access is granted by
- * `sub` from the management area, and reaching that area needs access. The same
- * path seeds a fresh development database and the real one at cutover.
+ * This is the only way an administrator can be granted: nothing in the app
+ * itself adds or removes one, so a fresh database has none until this is run
+ * against it by `sub`. The same path seeds a fresh development database and
+ * the real one at cutover.
  *
  * Whoever runs this has the database credentials, so there is nobody to
  * authorise. The events it writes carry the reserved bootstrap actor, because no

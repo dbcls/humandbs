@@ -266,7 +266,7 @@ describe("the publish screen", () => {
     expect(review).toContain(">最後に押した日時</th>")
     expect(review).toContain("2026-09-20 10:00")
     expect(review).toContain("3 回")
-    expect(review).toContain("印を押した人はいません。")
+    expect(review).toContain("押した人はいません。")
   })
 
   it("says a link past its date as expired, apart from a draft never shared", () => {

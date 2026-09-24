@@ -219,8 +219,8 @@ describe("the head of a preview", () => {
   })
 
   it("explains the changed mark only on a draft that updates a published version", () => {
-    expect(head({ publishedNumber: 3 })).toContain("「変更あり」の印は")
-    expect(head({ publishedNumber: null })).not.toContain("「変更あり」の印は")
+    expect(head({ publishedNumber: 3 })).toContain("「変更あり」と表示された項目は")
+    expect(head({ publishedNumber: null })).not.toContain("「変更あり」と表示された項目は")
   })
 
   it("names each button in its own step, commenting before the final confirmation, by the button's own word", () => {
