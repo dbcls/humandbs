@@ -198,7 +198,7 @@ interface RawHtmlNode {
   value: string
 }
 
-function parseFragment(source: string): Root {
+export function parseFragment(source: string): Root {
   const raw: RawHtmlNode = { type: "raw", value: source }
   const root = { type: "root", children: [raw] } as unknown as Root
   return unified().use(rehypeRaw).runSync(root)

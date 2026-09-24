@@ -6,7 +6,9 @@
  * they list — and it corrects what v1 lost or merged on the way:
  *
  * - the line breaks and links v1's extracted text dropped are recovered from
- *   the HTML it was extracted from, where the two still agree (`richtext-html.ts`);
+ *   the HTML it was extracted from, where the two still agree (`richtext-html.ts`),
+ *   and elsewhere from the old portal's articles, where a one-line value says
+ *   the same as a block the articles showed on several lines (`line-breaks.ts`);
  * - the research v1 never took in are added, and a test research is left out
  *   (`prepare.ts`);
  * - cells v1 read wrongly out of the articles are put right by hand
@@ -114,6 +116,7 @@ import {
   splitSharedExperiments,
   type KeyRule,
 } from "./prepare"
+import { lineDictionary, restoreLineBreaksIn, type LineDictionary } from "./line-breaks"
 import { readRelinks, relink, type Relink } from "./links"
 import { assignNhaIds, MISSPELT } from "./nha"
 import { requestComments, settleRequests } from "./requests"
@@ -236,6 +239,19 @@ function articleAliases(): Map<string, string> {
     aliases.set(String(article.id), article.alias)
   }
   return aliases
+}
+
+/** The blocks the old portal's articles, published and draft, showed on several lines. */
+function articleLines(): LineDictionary {
+  const bodies: string[] = []
+  for (const site of ["prod", "staging"]) {
+    const raw = readFileSync(join(INPUT, "joomla", `${site}.ndjson`), "utf8")
+    for (const line of raw.split("\n")) {
+      if (line.trim() === "") continue
+      bodies.push((JSON.parse(line) as { introtext: string }).introtext)
+    }
+  }
+  return lineDictionary(bodies)
 }
 
 interface Recovery {
@@ -488,9 +504,13 @@ async function load() {
   const cms = siteContent()
   const moved = relinks()
   const followed = new Set<string>()
+  const lineBreaks = articleLines()
+  let lineBreaksRestored = 0
   let notApplicable = 0
   const linked = <T>(content: T): T => {
-    const result = relink(content, moved)
+    const cut = restoreLineBreaksIn(content, lineBreaks)
+    lineBreaksRestored += cut.restored
+    const result = relink(cut.content, moved)
     for (const url of result.used) followed.add(url)
     const marked = markNotApplicable(result.content)
     notApplicable += marked.marked
@@ -722,10 +742,10 @@ async function load() {
   })
 
   const unfollowed = [...moved.keys()].filter((url) => !followed.has(url))
-  return { counts, selection, drafts, review, prose, notApplicable, relinked: { followed: followed.size, unfollowed } }
+  return { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, relinked: { followed: followed.size, unfollowed } }
 }
 
-const { counts, selection, drafts, review, prose, notApplicable, relinked } = await load()
+const { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, relinked } = await load()
 
 mkdirSync(OUT, { recursive: true })
 const written = (name: string, value: unknown) => {
@@ -749,6 +769,7 @@ console.log("prose read from    ", prose.counts)
 console.log("unread number lines", counts.unread.length, written("unread-numbers.json", counts.unread))
 console.log("cells to divide    ", review.length, written("inversion-review.json", review))
 console.log("prose notes        ", prose.notes.length, written("prose-notes.json", prose.notes))
+console.log("line breaks from the articles", lineBreaksRestored, "paragraphs")
 console.log("NA made not-applicable", notApplicable)
 console.log("dead links followed", relinked.followed, "not found in content", relinked.unfollowed.length,
   written("relinks-not-found.json", relinked.unfollowed))
