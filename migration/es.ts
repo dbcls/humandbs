@@ -161,8 +161,8 @@ export interface EsDataset {
 
 const INPUT_DIR = join(import.meta.dirname, "input")
 
-function readDump<T>(name: string): T[] {
-  const path = join(INPUT_DIR, `${name}.json`)
+function readDump<T>(name: string, dir: string): T[] {
+  const path = join(dir, `${name}.json`)
   const raw = readFileSync(path, "utf8")
   const parsed = JSON.parse(raw) as { hits: { hits: { _source: T }[] } }
   return parsed.hits.hits.map((h) => h._source)
@@ -181,6 +181,8 @@ export interface Dump {
   latestVersion: Map<string, EsResearchVersion>
   /** Every dataset document, keyed by `datasetId` and version. */
   datasetsByKey: Map<string, EsDataset>
+  /** Every research version, published or not, in the order of the dump. */
+  versions: EsResearchVersion[]
 }
 
 export function datasetKey(datasetId: string, version: string): string {
@@ -218,15 +220,18 @@ export function selectPublishedVersions(
   return { publishedVersions, latestVersion }
 }
 
-export function loadDump(): Dump {
-  const research = new Map(readDump<EsResearch>("research").map((r) => [r.humId, r]))
-  const datasets = readDump<EsDataset>("dataset")
+/** Reads the three index dumps from `dir`, which defaults to the development input. */
+export function loadDump(dir: string = INPUT_DIR): Dump {
+  const research = new Map(readDump<EsResearch>("research", dir).map((r) => [r.humId, r]))
+  const datasets = readDump<EsDataset>("dataset", dir)
   const datasetsByKey = new Map(datasets.map((d) => [datasetKey(d.datasetId, d.version), d]))
+  const versions = readDump<EsResearchVersion>("research-version", dir)
 
   return {
     research,
-    ...selectPublishedVersions(research, readDump<EsResearchVersion>("research-version")),
+    ...selectPublishedVersions(research, versions),
     datasetsByKey,
+    versions,
   }
 }
 

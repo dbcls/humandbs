@@ -73,6 +73,11 @@ export function loadHumAccessions(): HumAccessionRow[] {
   )
 }
 
+/** The JGA dataset → study edges, as `[dataset, study]`. */
+export function loadDatasetStudies(): [string, string][] {
+  return readColumns(STUDY_FILE)
+}
+
 /**
  * The rows the two correspondences make together, with the edge attached.
  *

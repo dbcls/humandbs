@@ -76,8 +76,9 @@ export const SCREEN_SLUGS = ["data-submission", "data-use", "contact-us"]
 
 const INPUT = join(process.cwd(), "migration", "input")
 
-export function loadCms(): CmsDump {
-  return JSON.parse(readFileSync(join(INPUT, "cms.json"), "utf8")) as CmsDump
+/** Reads `cms.json` from `dir`, which defaults to the development input. */
+export function loadCms(dir: string = INPUT): CmsDump {
+  return JSON.parse(readFileSync(join(dir, "cms.json"), "utf8")) as CmsDump
 }
 
 const LOCALES = ["ja", "en"] as const

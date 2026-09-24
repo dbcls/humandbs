@@ -37,6 +37,7 @@ function dump(
     research: byHum,
     ...selectPublishedVersions(byHum, versions),
     datasetsByKey: new Map(datasets.map((d) => [datasetKey(d.datasetId, d.version), d])),
+    versions,
   }
 }
 

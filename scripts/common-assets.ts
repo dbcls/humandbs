@@ -26,11 +26,12 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { sql } from "drizzle-orm"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, extname, join } from "node:path"
+import { dirname, join } from "node:path"
 
 import { loadConfig } from "~/config.server"
 import { closePools, getDb } from "~/db/client.server"
 import { COMMON_BOX, PUBLIC_BUCKET } from "~/files/box"
+import { contentTypeOf } from "~/files/content-types"
 
 /** Where the portal these files still live on serves them from. */
 const ORIGIN = process.env.HUMANDBS_LEGACY_ORIGIN ?? "https://humandbs.dbcls.jp"
@@ -38,28 +39,6 @@ const LEGACY_PREFIX = "/public-files/"
 
 /** Kept beside the other inputs the development data is built from. */
 const LOCAL_ROOT = join(import.meta.dirname, "..", "migration", "input", "public-files")
-
-/**
- * What the proxy is allowed to show inline is decided by these: an image or a
- * PDF is shown, everything else is downloaded. SVG is deliberately absent —
- * it is markup, and an inline one would run on the portal's own origin.
- */
-const CONTENT_TYPES: Record<string, string> = {
-  ".pdf": "application/pdf",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".doc": "application/msword",
-  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ".xls": "application/vnd.ms-excel",
-  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  ".ppt": "application/vnd.ms-powerpoint",
-  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  ".csv": "text/csv",
-  ".txt": "text/plain",
-  ".zip": "application/zip",
-}
 
 const { store } = loadConfig(process.env)
 
@@ -122,7 +101,7 @@ for (const name of names) {
       Bucket: PUBLIC_BUCKET,
       Key: `${COMMON_BOX}/${name}`,
       Body: body,
-      ContentType: CONTENT_TYPES[extname(name).toLowerCase()] ?? "application/octet-stream",
+      ContentType: contentTypeOf(name),
     }))
     carried += 1
     console.log(`  ${name} (${body.byteLength} B)`)

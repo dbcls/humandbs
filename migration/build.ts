@@ -36,6 +36,7 @@ import type {
   RelatedPublication,
   ResearchContent,
   ResearchProject,
+  RichText,
   Slot,
   TranslatedRichText,
   TranslatedText,
@@ -49,6 +50,7 @@ import type {
   EsControlledAccessUser,
   EsLink,
   EsResearchVersion,
+  EsRichText,
   EsSummaryShort,
   PublishedDataset,
 } from "./es"
@@ -67,11 +69,19 @@ function held<T>(value: T): Slot<T> {
   return { state: "value", value }
 }
 
-/** v1's extracted text is markdown; the HTML it came from is left behind. */
-function prose(value: EsBilingualRich | null | undefined): TranslatedRichText {
+/**
+ * How one language of a v1 rich value becomes prose. The default reads v1's
+ * extracted text, which is markdown, and leaves the HTML it came from behind;
+ * a load that recovers what the extraction lost passes its own.
+ */
+export type ProseReader = (value: EsRichText | null | undefined, lang: "ja" | "en") => RichText
+
+export const proseFromText: ProseReader = (value) => richTextFromMarkdown(value?.text ?? "")
+
+function prose(value: EsBilingualRich | null | undefined, read: ProseReader): TranslatedRichText {
   return {
-    ja: held(richTextFromMarkdown(value?.ja?.text ?? "")),
-    en: held(richTextFromMarkdown(value?.en?.text ?? "")),
+    ja: held(read(value?.ja, "ja")),
+    en: held(read(value?.en, "en")),
   }
 }
 
@@ -171,10 +181,12 @@ export interface ResearchContentInput {
    * every dataset in `datasetIdByLabel` counts as this research's.
    */
   humOfLabel?: ReadonlyMap<string, string>
+  readProse?: ProseReader
 }
 
 export function buildResearchContent(input: ResearchContentInput): ResearchContent {
   const { version: rv, listingSummary, datasetIdByLabel, humOfLabel } = input
+  const read = input.readProse ?? proseFromText
   const own = (label: string): boolean => humOfLabel === undefined || humOfLabel.get(label) === rv.humId
 
   const dataProviders: DataProvider[] = (rv.dataProvider ?? []).map((p, i) => ({
@@ -208,15 +220,15 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
   return {
     title: plainText(rv.title),
     summary: {
-      aims: prose(rv.summary?.aims),
-      methods: prose(rv.summary?.methods),
-      targets: prose(rv.summary?.targets),
+      aims: prose(rv.summary?.aims, read),
+      methods: prose(rv.summary?.methods, read),
+      targets: prose(rv.summary?.targets, read),
       url: localizedLinks(rv.summary?.url?.ja ?? [], rv.summary?.url?.en ?? [], "summary-url"),
     },
     listingSummary: {
-      methods: prose(listingSummary?.methods),
-      targets: prose(listingSummary?.targets),
-      typeOfData: prose(listingSummary?.typeOfData),
+      methods: prose(listingSummary?.methods, read),
+      targets: prose(listingSummary?.targets, read),
+      typeOfData: prose(listingSummary?.typeOfData, read),
       // Empty, which is what makes the listing read the research's own
       // providers. v1 draws the column from the same names, so a table built
       // this way says what v1's says; a copy taken here would instead be a
@@ -224,7 +236,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
       // correction made to the first.
       dataProviders: [],
     },
-    releaseNote: prose(rv.releaseNote),
+    releaseNote: prose(rv.releaseNote, read),
     dataProviders,
     researchProjects,
     grants,
@@ -294,15 +306,24 @@ function topLevelColon(line: string): number {
   return -1
 }
 
-/** Every line each dataset says about itself, which is what makes a copy a copy. */
-export function ownLines(datasets: readonly PublishedDataset[]): ReadonlySet<string> {
+/** The lines of a value as the reader sees them, as plain strings. */
+function plainLines(value: EsRichText | null | undefined, lang: Language, read: ProseReader | undefined): string[] {
+  if (read === undefined) return (value?.text ?? "").split("\n")
+  return read(value, lang).map((line) => line.map((span) => span.text).join(""))
+}
+
+/**
+ * Every line each dataset says about itself, which is what makes a copy a copy.
+ * Given the reader the load builds prose with, the lines are the ones it reads.
+ */
+export function ownLines(datasets: readonly PublishedDataset[], read?: ProseReader): ReadonlySet<string> {
   const labels = new Set(datasets.map((one) => one.label))
   const marks = new Set<string>()
   for (const one of datasets) {
     for (const experiment of one.doc.experiments ?? []) {
       for (const [sourceKey, value] of Object.entries(experiment.data ?? {})) {
         for (const lang of LANGUAGES) {
-          for (const line of (value[lang]?.text ?? "").split("\n")) {
+          for (const line of plainLines(value[lang], lang, read)) {
             const { said, about } = readLine(line, labels)
             if (about.includes(one.label)) marks.add(lineMark(one.label, sourceKey, lang, said))
           }
@@ -337,23 +358,43 @@ export interface DatasetContentInput {
   unread: { dataset: string, sourceKey: string, line: string }[]
   /** The lines somebody read by hand (`numbers.ts` の `byHand`). */
   byHand: ReadonlyMap<string, ReadNumber[]>
+  /** The same reader `ownLines` was given, if any. */
+  readProse?: ProseReader
 }
 
 export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
   const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode, knownCode } = input
   const doc = dataset.doc
 
-  /** A cell with the lines about other datasets taken out (`ownLines`). */
+  /** Whether a line of a cell stays, or is about another dataset (`ownLines`). */
+  const stays = (sourceKey: string, lang: Language, line: string): boolean => {
+    const { said, about } = readLine(line, input.datasetLabels)
+    if (about.length === 0 || about.includes(dataset.label)) return true
+    // Only where every dataset it names says the same thing itself. Anything
+    // else is the one copy of that value, wherever it happens to sit.
+    return !about.every((label) => input.ownLines.has(lineMark(label, sourceKey, lang, said)))
+  }
+
+  /** A cell with the lines about other datasets taken out. */
   const kept = (sourceKey: string, lang: Language, text: string): string => {
     const lines = text.split("\n")
-    const staying = lines.filter((line) => {
-      const { said, about } = readLine(line, input.datasetLabels)
-      if (about.length === 0 || about.includes(dataset.label)) return true
-      // Only where every dataset it names says the same thing itself. Anything
-      // else is the one copy of that value, wherever it happens to sit.
-      return !about.every((label) => input.ownLines.has(lineMark(label, sourceKey, lang, said)))
-    })
+    const staying = lines.filter((line) => stays(sourceKey, lang, line))
     return staying.length === lines.length ? text : staying.join("\n")
+  }
+
+  /** The same, for a cell read as prose by the load's reader. */
+  const keptProse = (sourceKey: string, lang: Language, value: EsRichText | null | undefined): RichText => {
+    if (input.readProse === undefined) return richTextFromMarkdown(kept(sourceKey, lang, value?.text ?? ""))
+    const staying = input.readProse(value, lang)
+      .filter((line) => stays(sourceKey, lang, line.map((span) => span.text).join("")))
+    // A dropped line can leave two paragraph breaks side by side, or one at an
+    // edge; neither says anything.
+    const joined: RichText = []
+    for (const line of staying) {
+      if (line.length > 0 || (joined.at(-1)?.length ?? 0) > 0) joined.push(line)
+    }
+    if (joined.at(-1)?.length === 0) joined.pop()
+    return joined
   }
 
   /**
@@ -440,6 +481,12 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           const one = raw.label === dataset.label ? { ...raw, label: null } : raw
           if (canonical === null) return [storedNumber(one, one.value, one.unit, one.high)]
           const converted = one.unit === canonical ? one.value : convert(one.value, one.unit, canonical)
+          // A number in a sibling key's unit is that key's to store: a depth
+          // read by the breadth half of a split cell is not residue.
+          if (converted === null && results.some((other) => other.key !== key && other.key.canonicalUnit !== null
+            && (one.unit === other.key.canonicalUnit || convert(one.value, one.unit, other.key.canonicalUnit) !== null))) {
+            return []
+          }
           if (converted === null) {
             input.unread.push({
               dataset: dataset.label,
@@ -470,8 +517,8 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           // A key that is a facet now holds the typed value instead of the prose
           // it was read out of; one key cannot carry both.
           if (RETYPED_CODES.has(code) || numbers.has(code)) return []
-          const ja = richTextFromMarkdown(kept(sourceKey, "ja", value.ja?.text ?? ""))
-          const en = richTextFromMarkdown(kept(sourceKey, "en", value.en?.text ?? ""))
+          const ja = keptProse(sourceKey, "ja", value.ja)
+          const en = keptProse(sourceKey, "en", value.en)
           if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
           return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
         }),

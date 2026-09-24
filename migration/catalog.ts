@@ -100,7 +100,14 @@ function freeText(seed: {
  * neither label is an error rather than something to register on the fly.
  * Accepting unknown keys silently is how the v1 catalog drifted from the data.
  */
-export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Map<string, string> } {
+/**
+ * The catalog, in the order `ordered` gives: each entry is a v1 key as
+ * `[English, Japanese]`, and its index is its position. The development load
+ * takes v1's own order.
+ */
+export function contentKeySeeds(
+  ordered: readonly (readonly [string, string])[] = defaults,
+): { keys: ContentKeySeed[], codeBySourceKey: Map<string, string> } {
   const codeBySourceKey = new Map<string, string>()
   const vocabularyByCode = new Map(VOCABULARY_FACETS.map((facet) => [facet.code, facet]))
   const numberByCode = new Map(NUMBER_FACETS.map((facet) => [facet.code, facet]))
@@ -129,7 +136,7 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
 
   const textNumberBySource = new Map(TEXT_NUMBERS.map((one) => [one.source, one]))
 
-  defaults.forEach(([labelEn, labelJa], index) => {
+  ordered.forEach(([labelEn, labelJa], index) => {
     // A cell that is the same key under another name registers its spelling and
     // makes no key: its numbers join the one it names (`facets.ts`).
     const merged = MERGED_SOURCES.get(labelEn)
@@ -269,7 +276,7 @@ export function contentKeySeeds(): { keys: ContentKeySeed[], codeBySourceKey: Ma
   newKeys
     .toSorted((a, b) => NEW_KEY_ORDER.indexOf(a.code) - NEW_KEY_ORDER.indexOf(b.code))
     .forEach((key, index) => {
-      keys.push({ ...key, position: defaults.length + index })
+      keys.push({ ...key, position: ordered.length + index })
     })
 
   return { keys, codeBySourceKey }

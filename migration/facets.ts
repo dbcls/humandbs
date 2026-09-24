@@ -670,6 +670,16 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
     inputUnits: null,
     read: counts(["probes", "probe", "プローブ"]),
   },
+  {
+    source: "Peak Number",
+    code: "peak-number",
+    labelJa: "ピーク数",
+    labelEn: "Peak number",
+    categoryCode: null,
+    canonicalUnit: null,
+    inputUnits: null,
+    read: counts(["peaks", "peak", "ピーク"]),
+  },
 ]
 
 /**

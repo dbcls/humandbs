@@ -4,8 +4,11 @@ import { isPortalIssuedId } from "~/admin/labels"
 import { filled } from "~/content/empty"
 import type { Slot } from "~/content/types"
 
-import { buildCauRows, buildDatasetContent, buildResearchContent, ownLines } from "./build"
+import { buildCauRows, buildDatasetContent, buildResearchContent, ownLines, type ProseReader } from "./build"
 import type { EsDataset, EsResearchVersion, PublishedDataset } from "./es"
+import { byHand, type ReadNumber } from "./numbers"
+
+interface UnreadLine { dataset: string, sourceKey: string, line: string }
 
 function version(overrides: Partial<EsResearchVersion> = {}): EsResearchVersion {
   return {
@@ -56,7 +59,13 @@ function dataset(doc: Partial<EsDataset>, label = "JGAD000001", firstListedOn: s
 }
 
 /** The whole set, since a cell may hold lines about the others. */
-function datasetOf(all: readonly PublishedDataset[], label: string) {
+function datasetOf(
+  all: readonly PublishedDataset[],
+  label: string,
+  readProse?: ProseReader,
+  unread: UnreadLine[] = [],
+  hand: ReadonlyMap<string, ReadNumber[]> = new Map(),
+) {
   const one = all.find((row) => row.label === label)
   if (one === undefined) throw new Error(`no dataset ${label}`)
   return buildDatasetContent({
@@ -68,9 +77,10 @@ function datasetOf(all: readonly PublishedDataset[], label: string) {
     accessCriteriaKeyCode: "access-criteria",
     typeOfDataKeyCode: "type-of-data",
     datasetLabels: new Set(all.map((row) => row.label)),
-    ownLines: ownLines(all),
-    unread: [],
-    byHand: new Map(),
+    ownLines: ownLines(all, readProse),
+    unread,
+    byHand: hand,
+    readProse,
   })
 }
 
@@ -275,6 +285,24 @@ describe("buildDatasetContent", () => {
     })
   })
 
+  it("does not count a number in one half's unit as residue of the other half", () => {
+    // A bare number read by hand as a depth reaches both halves of the cell.
+    const hand = byHand([{ sourceKey: "Coverage", line: "46", read: [{ label: null, value: 46, unit: "x", high: null, note: null }], why: "" }])
+    const unread: UnreadLine[] = []
+    const content = datasetOf([dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "46" } } } }] }, "JGAD000001", null)], "JGAD000001", undefined, unread, hand)
+
+    expect(unread).toEqual([])
+    expect(new Map(first(content.experiments).values.map((v) => [v.keyId, v.value])).get("key-coverage-depth"))
+      .toMatchObject({ values: { state: "value", value: [{ value: 46, unit: "x" }] } })
+  })
+
+  it("still counts a number in neither half's unit as residue", () => {
+    const unread: UnreadLine[] = []
+    datasetOf([dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "5 GB" } } } }] }, "JGAD000001", null)], "JGAD000001", undefined, unread)
+
+    expect(unread.length).toBeGreaterThan(0)
+  })
+
   it("reads a width as a value with an upper end, both converted to the canonical unit", () => {
     const content = dataset({
       experiments: [{ data: { "Total Data Volume": { ja: { text: "0.9-1.3 TB" } } } }],
@@ -384,5 +412,50 @@ describe("a cell holding a table about several datasets", () => {
       dumpRow(volume("JGAD000002: 88 GB"), "JGAD000002", null),
     ]
     expect(said(datasetOf(bracketed, "JGAD000001"))).toContain("hg19")
+  })
+})
+
+/**
+ * A reader that recovers line breaks v1's text lost: here, each `|` of the
+ * stored text is a break the source had, and a `~` a paragraph break.
+ */
+const recovering: ProseReader = (value) => (value?.text ?? "")
+  .split(/[|\n]/)
+  .map((line) => (line === "~" ? [] : [{ text: line }]))
+
+describe("a cell read by the load's own reader", () => {
+  const cell = (text: string) => ({
+    experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }],
+  })
+  const lines = (content: ReturnType<typeof datasetOf>) => {
+    const held = first(first(content.experiments).values).value
+    if (held.kind !== "text") throw new Error("expected text")
+    return value(held.text.ja).map((line) => line.map((span) => span.text).join(""))
+  }
+
+  it("keeps the breaks the reader finds", () => {
+    const one = [dumpRow(cell("healthy adults|Japanese"), "JGAD000001", null)]
+    expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["healthy adults", "Japanese"])
+  })
+
+  it("drops a line about a sibling when the sibling says it, reading both through the reader", () => {
+    const table = "JGAD000001: 88 GB|JGAD000002: 32 GB"
+    const siblings = [dumpRow(cell(table), "JGAD000001", null), dumpRow(cell(table), "JGAD000002", null)]
+    expect(lines(datasetOf(siblings, "JGAD000001", recovering))).toEqual(["JGAD000001: 88 GB"])
+    expect(lines(datasetOf(siblings, "JGAD000002", recovering))).toEqual(["JGAD000002: 32 GB"])
+  })
+
+  it("leaves no paragraph break doubled or at an edge after a line is dropped", () => {
+    const table = "~|JGAD000002: 32 GB|~|JGAD000001: 88 GB|~|~|JGAD000002: 1 GB|~"
+    const siblings = [
+      dumpRow(cell(table), "JGAD000001", null),
+      dumpRow(cell("JGAD000002: 32 GB|JGAD000002: 1 GB"), "JGAD000002", null),
+    ]
+    expect(lines(datasetOf(siblings, "JGAD000001", recovering))).toEqual(["JGAD000001: 88 GB"])
+  })
+
+  it("keeps a paragraph break between two lines that stay", () => {
+    const one = [dumpRow(cell("first|~|second"), "JGAD000001", null)]
+    expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["first", "", "second"])
   })
 })
