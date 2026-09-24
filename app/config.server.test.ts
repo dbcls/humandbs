@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { ConfigError, cookiesAreSecure, loadConfig } from "~/config.server"
+import { ConfigError, cookiesAreSecure, loadConfig, loadOwnerDatabaseUrl } from "~/config.server"
 
 const VALID = {
   HUMANDBS_DATABASE_URL: "postgres://humandbs_app:secret@db:5432/humandbs",
-  HUMANDBS_OWNER_DATABASE_URL: "postgres://humandbs:secret@db:5432/humandbs",
   HUMANDBS_AUTH_ISSUER_URL: "https://idp-staging.ddbj.nig.ac.jp/realms/master",
   HUMANDBS_AUTH_CLIENT_ID: "humandbs-dev",
   HUMANDBS_AUTH_REDIRECT_URI: "http://localhost:8080/auth/callback",
@@ -23,7 +22,6 @@ describe("loadConfig", () => {
   it("returns every configured value unchanged", () => {
     expect(loadConfig(VALID)).toEqual({
       databaseUrl: VALID.HUMANDBS_DATABASE_URL,
-      ownerDatabaseUrl: VALID.HUMANDBS_OWNER_DATABASE_URL,
       auth: {
         issuerUrl: VALID.HUMANDBS_AUTH_ISSUER_URL,
         clientId: VALID.HUMANDBS_AUTH_CLIENT_ID,
@@ -43,8 +41,7 @@ describe("loadConfig", () => {
 /**
  * The one connection that is allowed to be absent. Outside production the JGA
  * application system is not reachable at all, so an environment without it has
- * to start — the sources that read it are skipped instead
- * (docs/data-model.md の「外部キャッシュ」).
+ * to start — the sources that read it are skipped instead.
  */
 describe("loadConfig と申請管理システムの接続", () => {
   const withDb = (extra: Record<string, string | undefined>) => ({ ...VALID, ...extra })
@@ -53,7 +50,7 @@ describe("loadConfig と申請管理システムの接続", () => {
     expect(loadConfig(VALID).applicationDb).toBeNull()
   })
 
-  it("is absent when the variable is present but empty, which is how .env.example ships", () => {
+  it("is absent when the variable is present but empty, which is how the env templates ship", () => {
     expect(loadConfig(withDb({ HUMANDBS_JGA_DATABASE_URL: "  " })).applicationDb).toBeNull()
   })
 
@@ -129,6 +126,35 @@ describe("loadConfig と申請管理システムの接続", () => {
   })
 })
 
+/**
+ * The served application is given only the role that cannot alter the event
+ * log, so the owner's URL is read on its own and only by what needs it.
+ */
+describe("loadOwnerDatabaseUrl", () => {
+  const OWNER = "postgres://humandbs:secret@db:5432/humandbs"
+
+  it("lets the application start without the owner's URL", () => {
+    expect(() => loadConfig(VALID)).not.toThrow()
+    expect(Object.values(loadConfig({ ...VALID, HUMANDBS_OWNER_DATABASE_URL: OWNER })))
+      .not.toContain(OWNER)
+  })
+
+  it("returns the owner's URL to the jobs that ask for it", () => {
+    expect(loadOwnerDatabaseUrl({ HUMANDBS_OWNER_DATABASE_URL: `  ${OWNER}\n` })).toBe(OWNER)
+  })
+
+  it("rejects an absent or blank value", () => {
+    expect(() => loadOwnerDatabaseUrl({})).toThrow("HUMANDBS_OWNER_DATABASE_URL is required")
+    expect(() => loadOwnerDatabaseUrl({ HUMANDBS_OWNER_DATABASE_URL: " " }))
+      .toThrow("HUMANDBS_OWNER_DATABASE_URL is required")
+  })
+
+  it("rejects a connection that is not postgres", () => {
+    expect(() => loadOwnerDatabaseUrl({ HUMANDBS_OWNER_DATABASE_URL: "http://db:5432/humandbs" }))
+      .toThrow("HUMANDBS_OWNER_DATABASE_URL must use one of: postgres:, postgresql:")
+  })
+})
+
 describe("cookiesAreSecure", () => {
   it("is false when the site is served over http, or no cookie would ever be sent", () => {
     expect(cookiesAreSecure(loadConfig(VALID).auth)).toBe(false)
@@ -155,7 +181,7 @@ describe("loadConfig とアシスタント", () => {
     expect(loadConfig(VALID).assistantOrigin).toBeNull()
   })
 
-  it("is absent when the variable is present but empty, which is how .env.example ships", () => {
+  it("is absent when the variable is present but empty, which is how the env templates ship", () => {
     expect(loadConfig(withAssistant("  ")).assistantOrigin).toBeNull()
   })
 

@@ -6,7 +6,7 @@
  * dozen requests, and a worker service would need its own configuration, its
  * own health check and its own place in the deployment to buy nothing. Several
  * processes may run this loop — the claim is a single statement, so only one of
- * them fetches (docs/data-model.md の「外部キャッシュ」).
+ * them fetches.
  *
  * The loop looks often and acts rarely. Nothing here is urgent: a source is due
  * a day after it last succeeded, and looking every few minutes is only so that

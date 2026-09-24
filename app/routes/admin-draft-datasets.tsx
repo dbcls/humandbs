@@ -24,15 +24,15 @@ import type { Route } from "./+types/admin-draft-datasets"
 /**
  * The datasets of a research, as one draft sees them.
  *
- * **Everything about datasets is decided here** (docs/editing.md の「編集
- * フォーム」): the three ways of adding one, the order they go out in, taking
+ * **Everything about datasets is decided here**: the three ways of adding
+ * one, the order they go out in, taking
  * one out of the research, and the way to each one's description. The
  * research's own form holds none of it, so that a dataset has one screen to be
  * found on rather than two that each show half.
  *
  * **The draft does not choose which of them the version carries** — they
- * belong to the research, so every one of them goes out with the next publish
- * (docs/data-model.md の「research / experiment / dataset」). What the draft
+ * belong to the research, so every one of them goes out with the next
+ * publish. What the draft
  * decides is the order. The two marks are separate facts: one can be published
  * and never touched here, or made here and already written.
  */
@@ -162,9 +162,9 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
         locale={locale}
       />
       {/* **Every row is published or not, so that is a mark and a word; only
-          some rows are edited here, so that is the box** (docs/ui.md の
-          「壊れるもの」). A dataset this draft made is the one kind that is not
-          published, so "not published" says it without a word of its own. */}
+          some rows are edited here, so that is the box**. A dataset this
+          draft made is the one kind that is not published, so "not
+          published" says it without a word of its own. */}
       <Td>
         <span className="flex flex-wrap items-center gap-2">
           {row.published
@@ -195,8 +195,7 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
       </Td>
       {/* **Every row can go, published or not** — a dataset belongs to the
           research, so taking it out is the one operation there is and the
-          warning says what a published one loses (docs/data-model.md の
-          「research / experiment / dataset」). */}
+          warning says what a published one loses. */}
       <Td nowrap holds="control">
         <Form method="post">
           <input type="hidden" name="datasetId" value={row.id} />

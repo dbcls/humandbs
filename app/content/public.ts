@@ -64,8 +64,7 @@ export const PUBLISHED: PublicOptions = { keepUnsettled: false }
  * languages are whatever upstream has, so it is never counted as untranslated.
  *
  * **The usage project it came from is not here** — that is how the cached row
- * is matched to upstream, not something the portal publishes
- * (docs/data-model.md の「外部キャッシュ」).
+ * is matched to upstream, not something the portal publishes.
  */
 export interface CauUsage {
   principalInvestigator: Bilingual
@@ -235,7 +234,7 @@ function publicValue(value: ContentValue, options: PublicOptions): ContentValue 
  * **Every key a dataset carries is drawn.** What a reader may see is decided by
  * the state of each value rather than by the key it stands under — a key the
  * public page had no place for would be a key nothing in the portal could act
- * on (`docs/data-model.md` の「値と文」).
+ * on.
  */
 function publicValues(values: ValueSlot[], options: PublicOptions): ValueSlot[] {
   return values.flatMap((slot) => {

@@ -36,8 +36,7 @@ describe("the state switch", () => {
 
   /**
    * **Both marks are always on the screen**, since either changes what the
-   * page shows; a switch that only appeared once used was one nobody used
-   * (`docs/admin-ui.md` の「欄の状態」).
+   * page shows; a switch that only appeared once used was one nobody used.
    */
   it("shows both marks by name, with the one in force pressed and filled", () => {
     const html = render(

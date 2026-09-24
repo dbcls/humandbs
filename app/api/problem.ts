@@ -7,10 +7,9 @@
  *
  * **A 404 says nothing about what was asked for.** The detail is fixed per kind
  * of resource and never repeats the label, because the public side does not
- * distinguish "not published" from "no such label"
- * (docs/public-pages.md の「何を根拠に『公開されている』と言うか」) and a detail
- * quoting the label back would give that distinction away in the body even
- * though the status hides it.
+ * distinguish "not published" from "no such label", and a detail quoting the
+ * label back would give that distinction away in the body even though the
+ * status hides it.
  *
  * A validation failure answers 422 rather than 400: what went wrong is the shape
  * of a parameter, and the query a caller wrote is their own input, so quoting it

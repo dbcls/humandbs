@@ -31,7 +31,7 @@ import type { Route } from "./+types/admin-contents-news"
  *
  * **It is presented the way the articles are** — the conditions in a pane at
  * the left, the page size over the rows — because the two screens are the same
- * job on different bodies (docs/editing.md の「サイトコンテンツ」). **Unlike the
+ * job on different bodies. **Unlike the
  * articles it can be ordered**, by the day and by the title: an editor looking
  * for one they wrote does not always know its date.
  */

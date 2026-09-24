@@ -44,7 +44,7 @@ export default function ResearchList({ loaderData }: Route.ComponentProps) {
           locale={locale}
           target="research"
           query={view.query}
-          sort={view.requestedSort}
+          presented={{ sort: view.requestedSort, order: view.requestedOrder, size: view.requestedSize }}
           panel={view.facets}
         />
       )}

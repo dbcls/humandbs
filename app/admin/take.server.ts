@@ -1,6 +1,6 @@
 /**
  * The take-in screen: a source chosen, then the three-row face that settles
- * what goes into the draft (`docs/editing.md` の「取り込み」).
+ * what goes into the draft.
  *
  * **Every source arrives as the draft's own shape** — a version and another
  * draft already are one, and an application is laid over this draft

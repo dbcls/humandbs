@@ -64,8 +64,8 @@ export interface NumberRow {
 
 /**
  * Whether a row's typed upper end sits below its typed lower end — the one
- * shape a width refuses (`docs/data-model.md` の「値と文」). **Shared rather
- * than checked twice**: the editor uses it to mark the upper-end box wrong as
+ * shape a width refuses. **Shared rather than checked twice**: the editor
+ * uses it to mark the upper-end box wrong as
  * it is typed, and the save path refuses a request shaped this way outright,
  * because the screen that draws this field never produces one
  * (`app/admin/dataset-form.server.ts`).
@@ -79,7 +79,7 @@ export function highBelowValue(row: NumberRow): boolean {
 
 /**
  * Labels a key's numbers are usually given, offered on the label box as
- * suggestions a curator can still type past (`docs/data-model.md` の「値と文」).
+ * suggestions a curator can still type past.
  * **Keyed by the catalog's own `code`**, which is the smallest way to reach
  * this from the editing screen: the catalog has no column for it
  * (`content_key` carries only what an admin can change), and the full set this
@@ -100,8 +100,7 @@ export function labelCandidatesFor(code: string): readonly string[] {
  * The names are empty strings rather than nulls for the same reason the number
  * rows hold strings — that is what a text box carries — and become nulls on the
  * way in. **A row naming no term is an ordinary row**: a disease no
- * classification holds is one somebody still has to be able to write
- * (`docs/data-model.md` の「ICD10」).
+ * classification holds is one somebody still has to be able to write.
  */
 export interface DiseaseRow {
   termIds: string[]

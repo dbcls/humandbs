@@ -43,12 +43,12 @@ import type { Route } from "./+types/admin-contents"
  * pane at the left, the page size over the rows — because a curator moves
  * between the two all day. **There is no ordering to choose**: articles are
  * listed by slug and nothing else, which is the address space rather than a
- * presentation of it (docs/editing.md の「サイトコンテンツ」).
+ * presentation of it.
  *
  * **A version-less address whose current revision is not published in some
  * language is reported above the listing.** That address is baked into
  * submission metadata held elsewhere and has to keep answering, and the pointer
- * is the one way it can stop (docs/editing.md の「サイトコンテンツ」).
+ * is the one way it can stop.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   return contentsPage(request)

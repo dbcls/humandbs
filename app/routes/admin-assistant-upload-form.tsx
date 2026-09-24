@@ -64,8 +64,7 @@ export function AdminAssistantUploadForm({
             />
           </div>
           {/* **The button keeps its name while it works.** How far it has got
-              is said beside it, where a live region can announce the change
-              (`docs/ui.md` の「壊れるもの」). */}
+              is said beside it, where a live region can announce the change. */}
           <div className="flex flex-wrap items-center gap-3">
             {/* **要る 1 つが選ばれるまで送れない。**隠した input に `required`
                 を置くと、browser がフォーカスできない相手を指して止まるので、

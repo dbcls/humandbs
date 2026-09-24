@@ -48,8 +48,8 @@ import {
   research,
   researchDraft,
   researchVersion,
-  searchDoc,
 } from "~/db/schema"
+import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { draftDatasets } from "./datasets"
 import type { DroppedValue } from "./templates"
@@ -107,7 +107,7 @@ function one<T>(rows: T[]): T {
  * column is part of the draft rather than of a table of links: turning sharing
  * off and on again has to give back the same address.
  */
-function newShareToken(): string {
+export function newShareToken(): string {
   return randomBytes(SHARE_TOKEN_BYTES).toString("base64url")
 }
 
@@ -217,7 +217,7 @@ function pinRequests(
 
 /**
  * A research written from what an upstream system already says about it, with
- * its datasets in the same breath (docs/editing.md の「下書きを外から作る」).
+ * its datasets in the same breath.
  *
  * **The labels are pinned as the identities are made.** A draft holding two
  * hundred datasets that are told apart only by an internal identity is a draft
@@ -304,9 +304,9 @@ export async function addDatasetsFromUpstream(
  *
  * **The content arrives already decided.** What the application said and what
  * the draft said were put side by side on the screen and the curator wrote the
- * answer, so nothing is merged here (`docs/editing.md` の「既存の下書きに
- * 取り込む」). The dataset ids are the exception: they are the draft's own, and
- * the new ones are appended rather than replacing what is there.
+ * answer, so nothing is merged here. The dataset ids are the exception: they
+ * are the draft's own, and the new ones are appended rather than replacing
+ * what is there.
  */
 export async function applyUpstreamToDraft(
   db: Database,
@@ -407,7 +407,7 @@ export function droppedComments(
 /**
  * An empty draft of an existing research. Nothing is copied into it: what it
  * comes to hold is taken in afterwards — from a version, an application or an
- * accession — or typed (docs/editing.md の「draft」).
+ * accession — or typed.
  */
 export async function createEmptyDraft(db: Database, researchId: string): Promise<string> {
   const draft = one(await db
@@ -424,8 +424,7 @@ export async function createEmptyDraft(db: Database, researchId: string): Promis
 /**
  * A new draft holding what a version holds. **A draft and nothing more**: it
  * does not remember which version it came from, and which number it will be
- * published under is asked when it is published (docs/editing.md の「draft」).
- * Pressed twice, it makes two.
+ * published under is asked when it is published. Pressed twice, it makes two.
  *
  * Null for a number no version of the research holds.
  */
@@ -455,9 +454,9 @@ export type UpdatingOutcome
  *
  * **The version is not touched.** It stays out while the draft is written, and
  * publishing the draft is what puts it in the version's place, under the same
- * number (docs/publishing.md の「版番号」). **One per version**, which the row
- * lock is for: two presses find the same draft rather than racing the unique
- * constraint. Gone for a version the research does not hold.
+ * number. **One per version**, which the row lock is for: two presses find the
+ * same draft rather than racing the unique constraint. Gone for a version the
+ * research does not hold.
  */
 export async function draftUpdating(
   db: Database,
@@ -665,11 +664,10 @@ export type ListingOutcome
  * The order the datasets go out in, changed by one step.
  *
  * **The order is all a draft decides about datasets** — which of them the
- * version carries is the research's answer, not the draft's
- * (docs/data-model.md の「research / experiment / dataset」). The order is
+ * version carries is the research's answer, not the draft's. The order is
  * research content, so it moves the draft's revision like a save does; it is
  * changed here rather than by the editor's save because the datasets are
- * decided on their own screen (docs/editing.md の「編集フォーム」).
+ * decided on their own screen.
  *
  * A step that changes nothing (moving the first row up) still moves the
  * revision: the draft was written to, and the next save is checked against
@@ -726,19 +724,27 @@ export function listingAfter(listed: readonly string[], change: ListingChange): 
 /**
  * Taking a dataset out of its research.
  *
- * **A dataset belongs to the research, so this is the one way it goes**
- * (docs/data-model.md の「research / experiment / dataset」): there is no
- * taking it off a version, because a version does not choose. A published one
- * can go too, and it goes at once — the published row goes with it, so the
- * pages, the listings and the search stop showing it without waiting for the
- * next publish. The versions that described it keep their description; what
- * they lose is the dataset to lead to.
+ * **A dataset belongs to the research, so this is the one way it goes**:
+ * there is no taking it off a version, because a version does not choose.
+ * A published one can go too, and it goes at once — the published row goes
+ * with it, so the pages, the listings and the search stop showing it without
+ * waiting for the next publish. The versions that described it keep their
+ * description; what they lose is the dataset to lead to.
  *
  * **What another draft made is not this draft's to destroy.** It has never
  * been out, and it belongs to the draft that made it.
  *
  * The entries and the pins go by cascade, which is what frees the accession to
  * be pinned again. The trail keeps the row's name, because nothing else will.
+ *
+ * **The research's search rows are derived again, not only the dataset's
+ * dropped.** The research's row carries the text and the facet values of its
+ * datasets, so it would otherwise still be found by what only this one said.
+ *
+ * **The comments on it go too, in every draft.** A comment's place is JSON
+ * that no cascade reaches, and one left behind would point at nothing a screen
+ * draws while being counted as unresolved. Comments go with what they are
+ * about, the way they go with a discarded draft.
  */
 export async function deleteResearchDataset(
   db: Database,
@@ -780,12 +786,17 @@ export async function deleteResearchDataset(
       .returning({ revision: researchDraft.revision })
     if (rows[0] === undefined) return { status: "conflict" }
 
-    // The published row is not reached by any cascade: nothing in the search
-    // rows points at a dataset by foreign key (`schema/search.ts`).
-    await tx
-      .delete(searchDoc)
-      .where(and(eq(searchDoc.targetType, "dataset"), eq(searchDoc.targetId, datasetId)))
     await tx.delete(dataset).where(eq(dataset.id, datasetId))
+    await tx
+      .delete(comment)
+      .where(and(
+        sql`${comment.anchor}->>'kind' = 'dataset-field'`,
+        sql`${comment.anchor}->>'datasetId' = ${datasetId}`,
+      ))
+    // Nothing in the search rows points at a dataset by foreign key
+    // (`schema/search.ts`). With the pin gone the dataset has no label, and the
+    // derivation leaves out a dataset without one.
+    await rebuildSearchDocs(tx, { researchIds: [researchId] })
     await recordEvent(tx, {
       actor,
       action: "delete-dataset",
@@ -922,21 +933,24 @@ export async function mergeTermInDrafts(
   from: string,
   into: string,
 ): Promise<void> {
+  // Held until the merge commits. A save that was writing a row when this read
+  // it is waited for, and the row is read as that save left it; a save after
+  // this is refused by the revision moved here.
   const entries = await db
     .select({
       id: draftDatasetEntry.id,
       content: draftDatasetEntry.content,
-      revision: draftDatasetEntry.revision,
     })
     .from(draftDatasetEntry)
     .where(pointing)
+    .for("update")
 
   for (const entry of entries) {
     await db
       .update(draftDatasetEntry)
       .set({
         content: datasetWithTermMerged(entry.content, from, into),
-        revision: entry.revision + 1,
+        revision: sql`${draftDatasetEntry.revision} + 1`,
       })
       .where(eq(draftDatasetEntry.id, entry.id))
   }

@@ -1,15 +1,23 @@
 import { eq } from "drizzle-orm"
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { seedVersion } from "~/db/seed"
 import { PUBLIC_BUCKET, publicPrefix } from "~/files/box"
-import { clearPrefix, putTestObject } from "~/files/_store"
+import { clearPrefix, keysUnder, putTestObject } from "~/files/_store"
+import { runOneJob } from "~/files/jobs.server"
+import { listPrefix } from "~/files/store.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
-import { issueNhaId, nextNhaId, pinLabel, unpinLabel } from "./labels.server"
+import { issueNhaId, nextNhaId, pinLabel, promotePin, unpinLabel } from "./labels.server"
+
+// The store is the boundary: it passes through, and a test can make one listing fail.
+vi.mock("~/files/store.server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("~/files/store.server")>()
+  return { ...actual, listPrefix: vi.fn(actual.listPrefix) }
+})
 
 /**
  * The pin ledger, against the development database.
@@ -372,6 +380,85 @@ describe("renumbering a research", () => {
     const queued = await db.select().from(s.filePublishJob)
     expect(queued.map((row) => row.fileName).toSorted()).toEqual(["a.zip", "b.zip"])
     expect(queued.every((row) => row.action === "publish")).toBe(true)
+  })
+
+  /**
+   * The move is part of the pin. Committed apart, a store that did not answer
+   * left the new label in place with the files in the old box, and pinning
+   * again answered "taken" — nothing could queue the move any more.
+   */
+  it("pins nothing when the store does not answer, so pinning again still moves the box", async () => {
+    const researchId = await createResearch()
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
+    vi.mocked(listPrefix).mockRejectedValueOnce(new Error("the store did not answer"))
+
+    await expect(pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR))
+      .rejects.toThrow()
+    expect(await pins()).toEqual([{ label: OLD, isPrimary: true }])
+    expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
+
+    expect(await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR))
+      .toEqual({ status: "pinned" })
+    expect(only(await db.select().from(s.filePublishJob)).fileName).toBe("a.zip")
+  })
+
+  it("promotes nothing when the store does not answer, so promoting again still moves the box", async () => {
+    const researchId = await createResearch()
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+    await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: false }, CURATOR)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
+    const pinId = only(await db.select().from(s.labelPin).where(eq(s.labelPin.label, NEW))).id
+    vi.mocked(listPrefix).mockRejectedValueOnce(new Error("the store did not answer"))
+
+    await expect(promotePin(db, pinId, CURATOR)).rejects.toThrow()
+    expect(await pins()).toEqual([{ label: OLD, isPrimary: true }, { label: NEW, isPrimary: false }])
+    expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
+
+    expect(await promotePin(db, pinId, CURATOR)).toEqual({ status: "promoted" })
+    expect(only(await db.select().from(s.filePublishJob)).fileName).toBe("a.zip")
+  })
+
+  /**
+   * Unpinned first and a new number pinned after, the old box is in the ledger
+   * no more: nothing moved it, the new box stayed empty, and the old address
+   * kept answering — for whichever research was given that number next.
+   */
+  it("refuses to take away a hum label whose public box still holds files", async () => {
+    const researchId = await createResearch()
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
+    const pin = only(await db.select().from(s.labelPin))
+
+    expect(await unpinLabel(db, pin.id, CURATOR)).toEqual({ status: "holds-files" })
+    expect(await pins()).toEqual([{ label: OLD, isPrimary: true }])
+    expect((await db.select().from(s.event)).map((row) => row.action)).toEqual(["pin-label"])
+  })
+
+  it("takes the retired label away once the move has emptied its box", async () => {
+    const researchId = await createResearch()
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
+    await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
+    const retired = only(await db.select().from(s.labelPin).where(eq(s.labelPin.label, OLD)))
+
+    // Still moving: the box is not empty yet.
+    expect(await unpinLabel(db, retired.id, CURATOR)).toEqual({ status: "holds-files" })
+
+    while (await runOneJob(db)) { /* until the move is done */ }
+    expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(NEW))).toEqual([`${publicPrefix(NEW)}a.zip`])
+    expect(await unpinLabel(db, retired.id, CURATOR)).toEqual({ status: "unpinned" })
+    expect(await pins()).toEqual([{ label: NEW, isPrimary: true }])
+  })
+
+  it("refuses to take away a hum label while a file of the research is still switching", async () => {
+    const researchId = await createResearch()
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+    await db.insert(s.filePublishJob).values({ researchId, fileName: "a.zip", action: "publish" })
+    const pin = only(await db.select().from(s.labelPin))
+
+    expect(await unpinLabel(db, pin.id, CURATOR)).toEqual({ status: "holds-files" })
+    expect(await pins()).toEqual([{ label: OLD, isPrimary: true }])
   })
 
   it("queues nothing when the label being attached is not taking over from another", async () => {

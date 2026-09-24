@@ -40,13 +40,13 @@ import type { Route } from "./+types/admin-contents-files"
  * **There is no private side and nothing to switch.** This box belongs to no
  * research, and a file put here is fetchable from that moment — which is why
  * both putting one in and taking one out are written into the audit trail,
- * unlike an upload into a research's box (docs/publishing.md の「証跡」).
+ * unlike an upload into a research's box.
  *
  * **The screen is the way in and the box.** A heading over a single upload
  * panel, and under it the one table with the pane the other listings carry: the
  * box is looked through by the slug a body links and by the day a file was
- * written, which are the two things a row says that a curator can have in mind
- * (docs/files.md の「画面」).
+ * written, which are the two things a row says that a curator can have in
+ * mind.
  *
  * A body links to a file by writing its address, and nothing keeps that link
  * alive: deleting a file — or giving it a different slug — leaves whatever
@@ -102,10 +102,9 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
   return (
     <Page>
       <Answer answer={actionData} locale={locale} said={(answer) => refusal(answer, locale)} />
-      {/* **節を 1 つも持たない画面なので、h1 の下は節と節の距離ではない**
-          (`docs/ui.md` の「縦の間隔」)。下に来るのは upload の枠そのもので、枠は
-          自分の余白を持つ — 32px を空けると字から字までが 48px になり、h1 だけが
-          浮いて見える。 */}
+      {/* **節を 1 つも持たない画面なので、h1 の下は節と節の距離ではない**。
+          下に来るのは upload の枠そのもので、枠は自分の余白を持つ — 32px を空けると
+          字から字までが 48px になり、h1 だけが浮いて見える。 */}
       <Card under={false}>
         <Stack gap="normal">
           <Heading title={t.heading} note={t.note} />
@@ -317,7 +316,7 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
           <Form method="post">
             <input type="hidden" name="from" value={row.name} />
             {/* Everything standing in a row is the row's size, not the
-                page's (`docs/ui.md` の「押せるものの大きさ」). */}
+                page's. */}
             {/* **Moving the address is the break deleting it makes.** The
                 object does not move within the bucket: the file is copied to
                 the new key and the old one is deleted, and the trail writes it

@@ -34,7 +34,7 @@ import { Flag, Stated } from "./flags"
  * One row is one node of a listed bucket. **A reader's list and a preview's are
  * the same component** — the difference is which bucket the caller listed, and a
  * line that is not public yet is shown by name with the address it will have,
- * never as something to fetch (docs/editing.md の「レビュー」).
+ * never as something to fetch.
  */
 
 export interface DownloadRow {
@@ -162,8 +162,7 @@ function NotPublicYet({ locale, humLabel, name }: {
  * **Nothing is chosen and then acted on from the foot of the table.** A press
  * that names nothing, over rows that have scrolled, is the way to switch or
  * delete the wrong file; the one place several files are made public at once
- * is the publish confirmation, which sends its own list
- * (docs/files.md の「画面」).
+ * is the publish confirmation, which sends its own list.
  *
  * **The name is not pressed.** A public file opens as a download, and a fetch
  * that starts because a name was read is not one the reader decided on; the
@@ -221,8 +220,8 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
  * file is on, the row already says; the control says where a press would
  * take it. **While a switch runs it says so and cannot be pressed** — the
  * bytes are being copied and a second wish in the meantime would only be
- * queued behind the first (docs/files.md の「切り替えの job」). Renaming waits
- * for the same reason: which side to rename on is not settled.
+ * queued behind the first. Renaming waits for the same reason: which side to
+ * rename on is not settled.
  *
  * **Renaming a public file moves its address**, which is the break deleting it
  * makes, so the way in wears the same face and the same panel every slug is
@@ -311,6 +310,7 @@ function BoxRow({ row, humLabel, locale, selectedBy }: {
               confirm={t.deleteConfirm}
               intent="delete"
               size="row"
+              disabled={running ? t.deleteSwitching : undefined}
             />
           </Form>
         </span>
@@ -326,8 +326,8 @@ function BoxRow({ row, humLabel, locale, selectedBy }: {
  */
 function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
   const t = messagesFor(locale).admin.files
-  // Every row has a side, so the side is a mark and a word rather than a box
-  // (docs/ui.md の「壊れるもの」); only a failure is a box.
+  // Every row has a side, so the side is a mark and a word rather than a box;
+  // only a failure is a box.
   const side = entry.isPublic
     ? <Stated kind="live">{t.isPublic}</Stated>
     : <Stated kind="hidden">{t.isPrivate}</Stated>

@@ -21,7 +21,7 @@ import { primaryId } from "./common"
  * vocabularies the portal's own structure fixes, and ICD10 — the classification
  * put in whole, whose headings are the standard's to word — are read here and
  * written by nothing an administrator presses (`admin/catalog.ts` の
- * `SETTLED_VOCABULARIES`, docs/data-model.md の「ICD10」).
+ * `SETTLED_VOCABULARIES`).
  */
 export const vocabularySet = pgTable("vocabulary_set", {
   id: primaryId(),

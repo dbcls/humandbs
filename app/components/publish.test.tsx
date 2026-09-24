@@ -30,6 +30,7 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
     researchFields: 0,
     datasetChanges: [],
+    reordered: false,
     comparedWith: 1,
     updatingReleaseDate: null,
     datasetRows: {},
@@ -306,6 +307,15 @@ describe("the publish screen", () => {
 
     const changed = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01", researchFields: 1 }))
     expect(changed).not.toMatch(/disabled=""/)
+  })
+
+  /** The public page lists the datasets in the version's order, so moving them is a change. */
+  it("updates a version whose only change is the order of its datasets, and says so", () => {
+    const html = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01", reordered: true }))
+
+    expect(html).not.toMatch(/disabled=""/)
+    expect(html).toContain("データセットの並び順の変更")
+    expect(html).not.toContain("記述の変更はありません。")
   })
 
   it("reads in the order it is wanted: changes, what stops it, review, what to confirm, the press", () => {

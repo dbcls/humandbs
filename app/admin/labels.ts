@@ -61,7 +61,7 @@ export function nhaNumber(label: string): number | null {
  * **Only the primary is asked**, and a dataset with none pinned yet answers no:
  * there is no spelling to read. That is the safe side, because the answer
  * decides whether a file selection can be made at all, and the datasets that
- * must not carry one are the archive's (docs/files.md).
+ * must not carry one are the archive's.
  *
  * **The NHA prefix is matched whole** — `NHA` and six digits, not a start of
  * `NHA` — so that an archive's accession that happens to begin the same way is
@@ -70,4 +70,38 @@ export function nhaNumber(label: string): number | null {
 export function isPortalIssuedId(primaryLabel: string | null): boolean {
   if (primaryLabel === null) return false
   return isNhaId(primaryLabel) || primaryLabel.startsWith("hum")
+}
+
+/**
+ * Why a research's hum label cannot be taken away now, or null when it can.
+ *
+ * The same two facts the refusal on unpinning reads (`unpinLabel`): whether
+ * the label's public box holds a file, and whether a switch of one of the
+ * research's files has not finished. **They are told apart by what the reader
+ * does next**, which is not the same for each:
+ *
+ * - `holds-files` — the primary's box holds files. Another label is made
+ *   primary, and that moves them.
+ * - `moving` — a retired label's box still holds files while a switch runs:
+ *   the move making another label primary queued. Waiting is all it takes.
+ * - `left-behind` — a retired label's box holds files and nothing is moving
+ *   them. Only making a label primary queues a move, and it moves the box of
+ *   the label that was primary, so this one is made primary again first.
+ * - `switching` — the box is empty (or unknown) but a switch runs, which may
+ *   still land a file in it.
+ *
+ * **What is unknown does not close it** — a store that did not answer says
+ * nothing about the box, and the refusal on pressing is what stands.
+ */
+export type UnpinHold = "holds-files" | "moving" | "left-behind" | "switching"
+
+export function unpinHold(
+  label: { isPrimary: boolean, holdsFiles: boolean | null },
+  switching: boolean,
+): UnpinHold | null {
+  if (label.holdsFiles === true) {
+    if (label.isPrimary) return "holds-files"
+    return switching ? "moving" : "left-behind"
+  }
+  return switching ? "switching" : null
 }

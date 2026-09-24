@@ -6,10 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
  * The store is the mock-able boundary here, not the orchestration in this
  * module: `listPrefix` is replaced so that the rest of `listing.server.ts`
  * runs for real. What every case below checks is the fallback two callers
- * depend on — the public page leaves the download section out
- * (docs/public-pages.md の「list が取れなければ節ごと出さない」) and the JSON
- * API answers with an empty box rather than failing the whole response
- * (docs/public-api.md の「ストアが答えなければ箱は空として返す」).
+ * depend on — the public page leaves the download section out and the JSON
+ * API answers with an empty box rather than failing the whole response.
  */
 
 vi.mock("./store.server", () => ({ listPrefix: vi.fn() }))

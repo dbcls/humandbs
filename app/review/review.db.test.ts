@@ -160,7 +160,8 @@ describe("what the review screen does", () => {
     )
     const shared = await readShare(db, created.draftId)
     expect(shared?.enabled).toBe(true)
-    expect(shared?.expiresAt?.toISOString().slice(0, 10)).toBe("2026-12-31")
+    // The last moment of the day in JST, which is still that day in UTC.
+    expect(shared?.expiresAt?.toISOString()).toBe("2026-12-31T14:59:59.999Z")
 
     await reviewAction(postForm(token, { intent: "share" }), "ja", created, "redirect")
     const closed = await readShare(db, created.draftId)

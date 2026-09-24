@@ -38,7 +38,7 @@ import type { Route } from "./+types/admin"
  * **How the fetches from outside are going is here too**, for readers who may
  * see unpublished state. A failed fetch deliberately leaves the previous values
  * in place, so without a screen a refresh that stopped a week ago looks exactly
- * like one that ran this morning (docs/editing.md の「管理画面」).
+ * like one that ran this morning.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const actor = await requireActor(request)
@@ -133,7 +133,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                       <Td nowrap>{row.rowCount}</Td>
                       {/* **Every row has one of the three, so a fetch that
                           worked or has not run is a mark and a word; only a
-                          failure is a box** (docs/ui.md の「壊れるもの」). The
+                          failure is a box.** The
                           reason it gave is a sentence rather than a state, so
                           it stands under the box. */}
                       <Td>

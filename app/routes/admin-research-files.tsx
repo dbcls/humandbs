@@ -35,8 +35,7 @@ import type { Route } from "./+types/admin-research-files"
  *
  * **It is not under a draft.** The box belongs to the research, holds no
  * versions, and making a file public is a separate operation from publishing a
- * version — putting it inside a draft would say the two happen together
- * (docs/files.md の「画面」).
+ * version — putting it inside a draft would say the two happen together.
  *
  * **It reads the way the `common/` box reads**: the way in over the table, the
  * pane beside it, the tools over it and the pages under it, and every act on
@@ -90,12 +89,13 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
             case "malformed-name": return t.malformedName
             case "name-taken": return t.nameTaken
             case "switching": return t.renameSwitching
+            case "delete-switching": return t.deleteSwitching
             default: return null
           }
         }}
       />
       {/* **節を 1 つも持たない画面なので、h1 の下は節と節の距離ではない**
-          (`docs/ui.md` の「縦の間隔」) — `common/` の箱と同じ。 */}
+          — `common/` の箱と同じ。 */}
       <Card under={false}>
         <Stack gap="normal">
           <Heading title={t.heading} aside={view.humLabel ?? undefined} note={t.note}>
@@ -107,7 +107,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
           </Heading>
 
           {/* Not an answer but a standing fact about this research: it stays on
-              the screen (`docs/ui.md` の「管理画面の枠」). */}
+              the screen. */}
           {view.humLabel === null && <Note kind="warning">{t.noBox}</Note>}
 
           <UploadPanel

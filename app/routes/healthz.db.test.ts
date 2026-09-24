@@ -5,10 +5,9 @@ import { emptyDatabase } from "~/db/empty.server"
 import { PRIVATE_BUCKET, PUBLIC_BUCKET } from "~/files/box"
 
 /**
- * `/healthz` against the real database, with only the S3 client faked
- * (docs/testing.md の mock の境界). The database probe is left real: what is
- * under test here is the storage side and the wiring between the two
- * (docs/development.md の「1 つでも落ちていれば 503」).
+ * `/healthz` against the real database, with only the S3 client faked. The
+ * database probe is left real: what is under test here is the storage side
+ * and the wiring between the two.
  */
 
 const seenBuckets: string[] = []

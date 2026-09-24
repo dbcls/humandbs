@@ -50,9 +50,21 @@ export type CommentProblem = "name-required" | "body-required" | "too-long"
  * becoming a way to write into the database at length.
  */
 export function checkComment(fields: { name: string, body: string }): CommentProblem | null {
-  if (fields.name.trim() === "") return "name-required"
+  const name = checkName(fields.name)
+  if (name === "name-required") return name
   if (fields.body.trim() === "") return "body-required"
-  if (fields.name.length > NAME_LIMIT || fields.body.length > BODY_LIMIT) return "too-long"
+  if (name !== null || fields.body.length > BODY_LIMIT) return "too-long"
+  return null
+}
+
+/**
+ * The name alone, for what a reader writes without a body — a mark. It is held
+ * to the same limit: anyone holding the link can press a mark as often as they
+ * like, and each press is a row.
+ */
+export function checkName(name: string): "name-required" | "too-long" | null {
+  if (name.trim() === "") return "name-required"
+  if (name.length > NAME_LIMIT) return "too-long"
   return null
 }
 

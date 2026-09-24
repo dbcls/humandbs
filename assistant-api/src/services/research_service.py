@@ -1,9 +1,6 @@
-import asyncio
-import ipaddress
 import json
 import logging
 import re
-import socket
 import xml.etree.ElementTree as ET
 from typing import Any, Literal
 from urllib.parse import urljoin, urlparse
@@ -12,6 +9,7 @@ import aiohttp
 from aiohttp_retry import ExponentialRetry, RetryClient
 from pydantic import BaseModel, Field
 
+from src import url_guard
 from src.models import PaperInfoExtractionResult, ResearchInfo, ResearchInfoSuggestionResult
 from src.prompts import load_prompt
 from src.services.google_genai_service import extract_output_from_genai, extract_structured_output
@@ -155,31 +153,20 @@ def _normalized_http_url(url: str | None) -> str | None:
     return parsed._replace(fragment="").geturl()
 
 
-async def _hostname_has_only_public_ips(hostname: str) -> bool:
-    try:
-        infos = await asyncio.to_thread(socket.getaddrinfo, hostname, None, type=socket.SOCK_STREAM)
-    except socket.gaierror:
-        return False
-
-    addresses = {
-        ipaddress.ip_address(info[4][0])
-        for info in infos
-        if isinstance(info, tuple) and len(info) > 4 and info[4]
-    }
-    return bool(addresses) and all(address.is_global for address in addresses)
-
-
 async def _is_safe_public_url(url: str) -> bool:
+    """Whether ``url`` is a plain http(s) URL that resolves only to public addresses.
+
+    Delegates to url_guard, which is the single place that decides whether an
+    outbound request is safe to make.
+    """
     normalized_url = _normalized_http_url(url)
     if normalized_url is None:
         return False
-    hostname = urlparse(normalized_url).hostname
-    if not hostname or hostname.casefold() == "localhost":
-        return False
     try:
-        return ipaddress.ip_address(hostname).is_global
-    except ValueError:
-        return await _hostname_has_only_public_ips(hostname)
+        await url_guard.validate_public_url_async(normalized_url)
+    except url_guard.UnsafeURLError:
+        return False
+    return True
 
 
 async def _resolve_safe_grounded_url(
@@ -197,8 +184,14 @@ async def _resolve_safe_grounded_url(
 
     current_url = normalized_source_url
     timeout = aiohttp.ClientTimeout(total=10)
+    # The resolver re-validates and pins the address on every connection this
+    # session makes, so a hostname cannot resolve differently between the
+    # _is_safe_public_url check below and the actual connection (DNS
+    # rebinding). It does not help with bare IP-literal URLs, which is why
+    # the explicit check below still runs first.
+    connector = aiohttp.TCPConnector(resolver=url_guard.GuardedResolver())
     try:
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
             for _ in range(5):
                 if not await _is_safe_public_url(current_url):
                     task_logger.error("Rejected unsafe paper URL: %s", current_url)

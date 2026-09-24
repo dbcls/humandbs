@@ -490,7 +490,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
             {/* **The listing's row is not on the page**, so its fields stand
                 after everything that is, under the name of the pane that shows
-                them (`docs/editing.md` の「フォームの隣に立つ公開ページ」). */}
+                them. */}
             <Section id="listingSummary" title={t.paneRow}>
               {(["methods", "targets", "typeOfData"] as const).map((field) => (
                 <PairField

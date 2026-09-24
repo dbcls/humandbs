@@ -151,7 +151,7 @@
    * already were, and every other icon control is held to it rather than
    * shrinking to fit its own drawing. **In a table it is what a one-line row is
    * as tall as** — the line and its padding come to 34.4px — so a mark in a
-   * listing costs a row 1.6px and nothing else (`docs/ui.md`).
+   * listing costs a row 1.6px and nothing else.
    */
   --spacing-tap: 2.25rem;
 

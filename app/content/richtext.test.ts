@@ -94,6 +94,22 @@ describe("linkHref", () => {
     expect(linkHref("vbscript:msgbox(1)")).toBeNull()
   })
 
+  it("refuses a site path a browser would read as another host", () => {
+    // A browser reads `\\` as `/` in an http(s) URL and drops tabs and
+    // newlines, so each of these is `//evil.example` once it is followed.
+    expect(linkHref("/\\evil.example/")).toBeNull()
+    expect(linkHref("/\t/evil.example/x")).toBeNull()
+    expect(linkHref("/\n/evil.example")).toBeNull()
+    expect(linkHref("/\r\n/evil.example")).toBeNull()
+    expect(linkHref("\\\\evil.example")).toBeNull()
+    expect(linkHref("/%5Cevil.example")).toBe("/%5Cevil.example")
+  })
+
+  it("refuses an http(s) destination written so a browser reads it differently", () => {
+    expect(linkHref("https:\\\\evil.example")).toBeNull()
+    expect(linkHref("https://")).toBeNull()
+  })
+
   it("refuses a destination with no scheme, which names a host and not a path", () => {
     expect(linkHref("//example.com/")).toBeNull()
     expect(linkHref("example.com")).toBeNull()

@@ -3,15 +3,14 @@
  *
  * **One set for the public facets and the management panes**, so a reader who
  * learned the windows over one range of days finds the same four over every
- * other (`docs/ui.md` の「行が並ぶ画面」). Apart from any screen for the reason the
- * page sizes are (`./page-size.ts`): the server works out which window is in
- * force and the screen draws it, and the two have to agree on what a window is.
+ * other. Apart from any screen for the reason the page sizes are
+ * (`./page-size.ts`): the server works out which window is in force and the
+ * screen draws it, and the two have to agree on what a window is.
  *
  * **What the address carries is the absolute day**, so a link that is shared or
  * bookmarked keeps meaning what it meant when it was made. Which window is in
  * force is worked back out from that day against today, so a bookmark read on
- * another day matches none of them — it still holds the same rows
- * (`docs/public-pages.md` の「絞り込み」).
+ * another day matches none of them — it still holds the same rows.
  */
 
 /** How far back the windows reach, in the order drawn. */

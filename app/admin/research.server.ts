@@ -8,10 +8,16 @@
  * as well, so there is nothing to rebuild — the research simply stops being
  * anywhere.
  *
- * **What survives is the event**, which is why it carries no foreign key
- * ([publishing.md](../../docs/publishing.md) の「証跡」). The labels are written
- * into its detail before the rows go: afterwards nothing else can say which hum
- * this was.
+ * **What survives is the event**, which is why it carries no foreign key. The
+ * labels are written into its detail before the rows go: afterwards nothing
+ * else can say which hum this was.
+ *
+ * **A research whose boxes hold files is not deleted.** The files live in the
+ * store, which no cascade reaches: the public ones would keep answering at
+ * `/files/hum…/`, and whichever research is given that number next would list
+ * them as its own. Each file is deleted from the box screen first, where
+ * deleting one is confirmed on its own. The boxes are read before the
+ * transaction opens, so a store that does not answer deletes nothing.
  */
 
 import { eq } from "drizzle-orm"
@@ -19,9 +25,12 @@ import { eq } from "drizzle-orm"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import type { Executor } from "~/db/client.server"
 import { labelPin, research, researchVersion } from "~/db/schema"
+import { researchHoldsFiles } from "~/files/jobs.server"
 
 export type DeleteResearchResult
   = | { status: "deleted" }
+    /** A box of the research still holds a file. */
+    | { status: "files-remain" }
     | { status: "gone" }
 
 export async function deleteResearch(
@@ -29,7 +38,8 @@ export async function deleteResearch(
   researchId: string,
   actor: EventActor,
 ): Promise<DeleteResearchResult> {
-  return db.transaction(async (tx) => {
+  if (await researchHoldsFiles(db, researchId)) return { status: "files-remain" }
+  return db.transaction(async (tx): Promise<DeleteResearchResult> => {
     const [held] = await tx
       .select({ id: research.id })
       .from(research)

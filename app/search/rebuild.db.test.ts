@@ -547,8 +547,7 @@ describe("which number keys become facet rows", () => {
 
   /**
    * `subject-count` and `read-length` are the two axes the panel narrows by;
-   * every other number key is shown on the dataset page and nowhere else
-   * (`docs/public-pages.md` の「絞り込み」).
+   * every other number key is shown on the dataset page and nowhere else.
    */
   it("makes no facet row for a number key that has been given no category", async () => {
     const displayOnly = await key("gene-number", null)

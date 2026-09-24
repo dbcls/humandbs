@@ -5,6 +5,7 @@ import { Card, Crumbs, Empty, Page, Paging } from "~/components/page"
 import { SearchBox } from "~/components/search"
 import { NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
+import { parsePageNumber } from "~/paging"
 import { windowTitle } from "~/i18n/title"
 import { newsList } from "~/public/site.server"
 import { askedPath, href, newsPath, readLocale } from "~/public/urls"
@@ -40,8 +41,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw redirect(`${askedPath(url.pathname)}${query === "" ? "" : `?${query}`}`)
   }
 
-  const asked = Number(given.get("page") ?? "1")
-  const page = Number.isInteger(asked) && asked >= 1 ? asked : 1
+  const page = parsePageNumber(given.get("page")) ?? 1
   const find = given.get("q") ?? ""
   return { locale, find, ...await newsList(locale, page, undefined, find) }
 }
@@ -100,9 +100,9 @@ export default function News({ loaderData }: Route.ComponentProps) {
             is the only one of them the reader acts on first.
 
             The box is a GET form, so the search is in the address and can be
-            linked to. It is not the public search (`docs/public-pages.md`):
-            announcements are not indexed, and this is one `ILIKE` over 682
-            rows. It is drawn as the same box all the same — which index answers
+            linked to. It is not the public search: announcements are not
+            indexed, and this is one `ILIKE` over 682 rows. It is drawn as the
+            same box all the same — which index answers
             is not something a reader can see. **It searches as the words are
             typed**, and clearing the box is what lifts the search.
           */}

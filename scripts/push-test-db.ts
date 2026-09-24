@@ -12,17 +12,18 @@ import { join } from "node:path"
 
 import { Client } from "pg"
 
-import { loadConfig } from "~/config.server"
+import { loadConfig, loadOwnerDatabaseUrl } from "~/config.server"
 import { databaseName, testDatabaseUrl } from "~/db/test-database"
 
 const config = loadConfig(process.env)
-const ownerUrl = testDatabaseUrl(config.ownerDatabaseUrl)
+const developmentOwnerUrl = loadOwnerDatabaseUrl(process.env)
+const ownerUrl = testDatabaseUrl(developmentOwnerUrl)
 const appUrl = testDatabaseUrl(config.databaseUrl)
 const name = databaseName(ownerUrl)
 
 // CREATE DATABASE cannot run inside a transaction and cannot run on the
 // database it creates, so the connection for it is the development one.
-const admin = new Client({ connectionString: config.ownerDatabaseUrl })
+const admin = new Client({ connectionString: developmentOwnerUrl })
 await admin.connect()
 const existing = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [name])
 if (existing.rowCount === 0) {

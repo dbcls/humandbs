@@ -11,7 +11,7 @@
  * **The comments at one place are a flat timeline**: oldest first, one box to
  * write the next one under them, and each resolved on its own. There is no
  * reply — at a place the size of a field, a second conversation would only ask
- * which one to write in (docs/editing.md の「レビュー」).
+ * which one to write in.
  *
  * **A comment is signed.** Signing in fills the name from the account; a reader
  * who has not signed in types one, and it is kept in `sessionStorage` rather
@@ -19,8 +19,8 @@
  * previous one's name.
  *
  * **The words on the controls follow the reader.** In the management area what
- * can be pressed is named by a noun (docs/ui.md の「押せるもの」); the preview
- * is written for a provider and says 「投稿する」. Which side a panel is on is
+ * can be pressed is named by a noun; the preview is written for a provider and
+ * says 「投稿する」. Which side a panel is on is
  * what `canResolve` already tells it.
  */
 
@@ -151,14 +151,14 @@ export function problemText(locale: Locale, problem: string): string {
 /**
  * The mark beside a place: how many people have said something about it
  * (coloured if any of it is unresolved), and the way to open the panel that
- * reads, writes and resolves it (`docs/admin-ui.md` の「コメントの面」).
+ * reads, writes and resolves it.
  *
  * **Drawn at the height of a line of text, with the 36px target kept out of
  * sight.** What stands beside it is a heading or a value — the thing it is
  * about — and a box the size of its subject reads as the larger of the two.
  * The face is `row` (22px); what a finger has to find is widened past the
  * face by a pseudo-element, so the line the mark stands in keeps its own
- * height (`docs/ui.md` の「押せるものの大きさ」).
+ * height.
  */
 export function CommentSpot({ context, at, comments, fieldLabel }: {
   context: CommentContext
@@ -304,8 +304,8 @@ export function CommentRow({ context, comment, at, fetcher }: {
                 </Button>
               </post.Form>
               {/* The buttons keep their names while the row works; what is
-                  happening is said beside them, out of sight (`Submit` does the
-                  same, docs/ui.md の「壊れるもの」). */}
+                  happening is said beside them, out of sight (`Submit` does
+                  the same). */}
               <span role="status" className="sr-only">{acting ? messagesFor(context.locale).admin.busy : ""}</span>
             </span>
           )}
@@ -460,7 +460,7 @@ export function CommentForm({ context, at, fetcher, placeholder }: {
           />
           {/* **The button keeps its name while it works.** What it is doing is
               said beside it, where assistive tech hears it as news rather than as
-              the control changing identity (`docs/ui.md` の「壊れるもの」). */}
+              the control changing identity. */}
           <Button type="submit" icon={<Icon name="send" aria-hidden="true" />} disabled={busy}>{post}</Button>
           <span role="status" className="self-center text-ink-muted text-xs">{busy ? t.posting : ""}</span>
         </div>
@@ -482,9 +482,8 @@ export function CommentForm({ context, at, fetcher, placeholder }: {
  * these lines nor accepts one — what the provider is asked about is attached
  * to the field it is about, or said to the draft as a whole (`WholeNote`).
  *
- * **The entry is a `Button`; what it opens is a panel** (`docs/admin-ui.md` の
- * 「コメントの面」) — the same panel a field's own mark opens, so reading,
- * writing and resolving are learned once.
+ * **The entry is a `Button`; what it opens is a panel** — the same panel a
+ * field's own mark opens, so reading, writing and resolving are learned once.
  */
 export function DraftNote({ context, comments }: {
   context: CommentContext
@@ -541,8 +540,8 @@ export interface WholeWords {
  * about the research and the office's answer stand in one place for both.
  *
  * **The entry is a `Button`; what it opens is a panel**, the same one
- * `DraftNote`'s does (`docs/admin-ui.md` の「コメントの面」). **Only the words
- * and the size differ**: the share link speaks to a provider, and its entry
+ * `DraftNote`'s does. **Only the words and the size differ**: the share
+ * link speaks to a provider, and its entry
  * stands with the two marks at full size rather than in a tool row.
  */
 export function WholeNote({ context, comments, words, size = "xs" }: {
@@ -598,10 +597,10 @@ export function WholeNote({ context, comments, words, size = "xs" }: {
  * one panel, each under the way to the place it is about.
  *
  * **The entry stands with the memo and the whole**, the three panels a curator
- * reads while typing (`docs/admin-ui.md` の「コメントの面」). **The rows are the
- * rows the places' own panels draw** (`CommentRow`), so resolving here is the
- * same press as resolving there. **Nothing is written here** — an answer
- * belongs at the place it answers, and the way there stands over each row.
+ * reads while typing. **The rows are the rows the places' own panels draw**
+ * (`CommentRow`), so resolving here is the same press as resolving there.
+ * **Nothing is written here** — an answer belongs at the place it answers,
+ * and the way there stands over each row.
  * A memo line is never open: it is a note, not a question.
  */
 export function OpenComments({ context, comments, nameOf, perField = false }: {
@@ -646,8 +645,7 @@ export function OpenComments({ context, comments, nameOf, perField = false }: {
 
 /**
  * The open comments, one box per place — the same list in the panel and on the
- * review screen (`docs/admin-ui.md` の「レビューと共有の画面」), so the two say
- * "nothing open" the same way too.
+ * review screen, so the two say "nothing open" the same way too.
  */
 export function PlaceGroups({ context, groups, fetcher }: {
   context: CommentContext

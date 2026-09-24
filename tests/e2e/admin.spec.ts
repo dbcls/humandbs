@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * What the management area answers to somebody who is not signed in
- * (`docs/testing.md` の P-ANON).
+ * What the management area answers to somebody who is not signed in.
  *
  * **This runs with no session at all**, which is the point: the screens under
  * `/admin` are exactly the ones a signed-in scenario could make pass by

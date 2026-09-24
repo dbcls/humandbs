@@ -9,8 +9,7 @@
  * experiment per library — a submission has dozens to hundreds of them — while
  * an experiment here is one table of an article, and a published dataset carries
  * one of those four times out of five. The strategy is what the article's tables
- * are divided by, so it is what these are divided by
- * (docs/editing.md の「下書きを外から作る」).
+ * are divided by, so it is what these are divided by.
  */
 
 import type { SraEntry } from "./ddbj-search.server"

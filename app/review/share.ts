@@ -8,6 +8,8 @@
  * kills it, and the only one that does.
  */
 
+import { dayFromInput, dayInJst } from "~/dates"
+
 export interface SharePolicy {
   enabled: boolean
   expiresAt: Date | null
@@ -21,4 +23,19 @@ export function isShareOpen(policy: SharePolicy, now: Date): boolean {
 /** Enabled, but the date has gone by — a different thing to say than "private". */
 export function isShareExpired(policy: SharePolicy, now: Date): boolean {
   return policy.enabled && !isShareOpen(policy, now)
+}
+
+/**
+ * The instant a link given this day as its expiry stops opening: the end of
+ * the day in JST, the clock every day on screen is cut by. Null for anything
+ * that is not a day.
+ */
+export function shareExpiryOf(typed: string): Date | null {
+  const day = dayFromInput(typed)
+  return day === null ? null : new Date(`${day}T23:59:59.999+09:00`)
+}
+
+/** The day an expiry is shown as, which is the day it was typed as. */
+export function shareExpiryDay(expiresAt: Date): string {
+  return dayInJst(expiresAt.toISOString())
 }

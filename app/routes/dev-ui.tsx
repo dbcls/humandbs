@@ -779,7 +779,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="panel" className="grid gap-8 lg:grid-cols-2">
               <div>
                 <p className="mb-2 text-ink-muted text-sm">何も選んでいないとき。</p>
-                <FacetPanel locale={LOCALE} target="research" query="" sort={null} panel={FACETS} />
+                <FacetPanel locale={LOCALE} target="research" query="" presented={{ sort: null, order: null, size: null }} panel={FACETS} />
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
@@ -789,7 +789,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   locale={LOCALE}
                   target="research"
                   query="access-criteria:controlled-access-type-1"
-                  sort={null}
+                  presented={{ sort: null, order: null, size: null }}
                   panel={REFINED_FACETS}
                 />
               </div>

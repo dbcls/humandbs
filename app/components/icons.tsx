@@ -493,8 +493,7 @@ const NODES: Record<IconName, ReactNode> = {
 export const ICON_NAMES = Object.keys(NODES) as IconName[]
 
 /**
- * What glyph a kind of deed takes, wherever a control does one
- * (`docs/ui.md` の「押せるもの」).
+ * What glyph a kind of deed takes, wherever a control does one.
  *
  * **The glyph says the kind of deed, not the screen.** A screen picks a
  * `key` for what its control does and gets the glyph for free, rather than
@@ -536,7 +535,7 @@ export const ACTION_ICON = {
 /**
  * What glyph a kind of thing takes, wherever it is named — the entries of the
  * area's front page, the mark before an identifier, the way to a screen about
- * it (`docs/ui.md` の「押せるもの」).
+ * it.
  *
  * **A thing is not a deed and not a state.** The three tables — this one,
  * `ACTION_ICON` and the marks in `components/flags.tsx` — share a glyph only
@@ -582,8 +581,7 @@ export function Icon({ name, className = "" }: { name: IconName, className?: str
  *
  * **It is drawn in the box the control's own icon stands in**, so nothing
  * around the control moves while it waits: the name stays, the width stays,
- * and the only thing that changes is inside a box that was already there
- * (`docs/ui.md` の「壊れるもの」).
+ * and the only thing that changes is inside a box that was already there.
  */
 export function Spinner({ className = "" }: { className?: string }) {
   return <Icon name="spinner" className={`animate-spin ${className}`} />

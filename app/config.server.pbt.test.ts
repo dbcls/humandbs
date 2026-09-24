@@ -1,11 +1,10 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { ConfigError, loadConfig } from "~/config.server"
+import { ConfigError, loadConfig, loadOwnerDatabaseUrl } from "~/config.server"
 
 const VALID = {
   HUMANDBS_DATABASE_URL: "postgres://humandbs_app:secret@db:5432/humandbs",
-  HUMANDBS_OWNER_DATABASE_URL: "postgres://humandbs:secret@db:5432/humandbs",
   HUMANDBS_AUTH_ISSUER_URL: "https://idp-staging.ddbj.nig.ac.jp/realms/master",
   HUMANDBS_AUTH_CLIENT_ID: "humandbs-dev",
   HUMANDBS_AUTH_REDIRECT_URI: "http://localhost:8080/auth/callback",
@@ -45,6 +44,27 @@ describe("loadConfig", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(ConfigError)
         expect(allowedMessages(name)).toContain((error as ConfigError).message)
+      }
+    }))
+  })
+})
+
+describe("loadOwnerDatabaseUrl", () => {
+  const NAME = "HUMANDBS_OWNER_DATABASE_URL"
+
+  it("rejects a value that holds only whitespace", () => {
+    fc.assert(fc.property(whitespace, (value) => {
+      expect(() => loadOwnerDatabaseUrl({ [NAME]: value })).toThrow(`${NAME} is required`)
+    }))
+  })
+
+  it("never lets the value into the error message", () => {
+    fc.assert(fc.property(fc.string(), (value) => {
+      try {
+        loadOwnerDatabaseUrl({ [NAME]: value })
+      } catch (error) {
+        expect(error).toBeInstanceOf(ConfigError)
+        expect(allowedMessages(NAME)).toContain((error as ConfigError).message)
       }
     }))
   })

@@ -13,7 +13,7 @@
  * of a link added later. The controls in `components/search.tsx` are a mixture
  * on purpose — the front page's box goes to another screen, and arriving there
  * part-way down would be arriving in the middle — so they are read one at a time
- * rather than by a rule (`docs/public-pages.md` の「一覧と検索」).
+ * rather than by a rule.
  *
  * **The second rule is about leaving the site.** A link that opens a tab says so
  * twice — a mark for the eye and a word for anyone not using one — because a tab

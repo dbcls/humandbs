@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * The two languages the portal publishes in (`docs/public-pages.md`).
+ * The two languages the portal publishes in.
  *
  * **The language is in the address**, so switching is a link rather than a
  * setting — which is what makes a page in either language something to share.

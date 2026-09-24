@@ -19,3 +19,23 @@ export function pageRange(page: number, perPage: number, total: number): PageRan
   if (total === 0) return { rangeFrom: 0, rangeTo: 0 }
   return { rangeFrom: (page - 1) * perPage + 1, rangeTo: Math.min(page * perPage, total) }
 }
+
+/**
+ * The largest page an address may ask for. Nine digits is past any listing
+ * the site has and far inside a safe integer, so the page answered is the page
+ * asked for.
+ */
+export const MAX_PAGE = 999_999_999
+
+/**
+ * A page number as an address writes it: plain decimal, no leading zero, from
+ * 1 to `MAX_PAGE`. Absent is the first page. **Anything else is null** — a
+ * caller that must say why refuses it, and one that must not falls back to the
+ * first page. `Number()` would read `0x10` as page 16 and a twenty-digit value
+ * as a float the answer could not echo back.
+ */
+export function parsePageNumber(value: string | null): number | null {
+  if (value === null) return 1
+  if (!/^[1-9][0-9]{0,8}$/.test(value)) return null
+  return Number(value)
+}

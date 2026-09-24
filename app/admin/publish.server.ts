@@ -22,7 +22,7 @@
  * out; taking somebody else's work in is an edit, made before publishing.
  */
 
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm"
+import { and, desc, eq, inArray, isNotNull, or } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyDatasetContent } from "~/content/empty"
@@ -39,11 +39,13 @@ import {
   draftDatasetEntry,
   humAccession,
   labelPin,
+  research,
   researchDraft,
   researchVersion,
 } from "~/db/schema"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
+import { orderChanged } from "./changes"
 import { diffDatasetInput } from "./dataset-diff"
 import { datasetContentInput } from "./dataset-form"
 import { draftDatasets } from "./datasets"
@@ -127,6 +129,14 @@ interface DatasetRow {
  * after those writes would commit them; holding the row means the revision read
  * here is still the revision at the end, so the check can happen before
  * anything is written. It also serialises two publishes of the same draft.
+ *
+ * **So is the research row, and the labels the gate reads.** Two drafts of one
+ * research are two rows, so the draft's lock does not keep them apart: holding
+ * the research makes the second publish read the versions after the first has
+ * committed, and a number the first took is refused as unavailable rather than
+ * failing on the unique index. The labels are held shared: taking one away
+ * waits for the publish to finish, and one taken away just before is not seen
+ * here — the gate never passes a dataset whose id is on its way out.
  */
 interface Ground {
   draft: DraftRow
@@ -161,6 +171,35 @@ async function readGround(
     .limit(1)
   const [draft] = await (lock ? held.for("update") : held)
   if (draft === undefined) return null
+
+  if (lock) {
+    // `no key update` rather than `update`: the rows that point at the research
+    // take a key-share lock on it, and nothing here changes its key.
+    await tx
+      .select({ id: research.id })
+      .from(research)
+      .where(eq(research.id, draft.researchId))
+      .for("no key update")
+    // The datasets before their labels: deleting a dataset takes its label
+    // with it, so it has to wait here rather than hold the dataset while
+    // waiting for a label this publish holds.
+    await tx
+      .select({ id: dataset.id })
+      .from(dataset)
+      .where(eq(dataset.researchId, draft.researchId))
+      .for("key share")
+    await tx
+      .select({ id: labelPin.id })
+      .from(labelPin)
+      .where(or(
+        eq(labelPin.researchId, draft.researchId),
+        inArray(
+          labelPin.datasetId,
+          tx.select({ id: dataset.id }).from(dataset).where(eq(dataset.researchId, draft.researchId)),
+        ),
+      ))
+      .for("share")
+  }
 
   // **One at a time.** A transaction is a single connection, so asking for the
   // five at once wins no time and asks the driver to start a query on a client
@@ -270,9 +309,8 @@ function nextNumber(versions: readonly VersionRow[]): number {
  * Whether a draft of its own may be published under this number: any whole
  * number from one that no version holds now. **A held number is never taken
  * over this way** — the one road under a held number is the update, and only
- * the draft opened for that version travels it (docs/publishing.md の
- * 「版番号」). A number nothing ever carried is allowed; the sequence is not
- * promised to be unbroken.
+ * the draft opened for that version travels it. A number nothing ever
+ * carried is allowed; the sequence is not promised to be unbroken.
  */
 function isFreeNumber(ground: Ground, number: number): boolean {
   return Number.isInteger(number)
@@ -340,6 +378,11 @@ export interface PublishPreview {
   /** Fields of the research that differ from what this publish stands in front of. */
   researchFields: number | null
   datasetChanges: DatasetChange[]
+  /**
+   * The datasets both versions list stand in another order. The public page
+   * lists them in the version's order, so this is a change on its own.
+   */
+  reordered: boolean
   listingAdded: string[]
   listingRemoved: string[]
   /** Every dataset of the research, so the screen can name what it lists. */
@@ -377,6 +420,7 @@ export async function publishPreview(
         ? null
         : researchFieldsChanged(previous.content, ground.draft.content),
       datasetChanges: changesOf(previous, datasets),
+      reordered: previous !== undefined && orderChanged(datasetIdsOf(previous), listedIds),
       listingAdded: listedIds.filter((id) => !before.has(id)),
       listingRemoved: [...before].filter((id) => !listedIds.includes(id)),
       datasetLabels: [...ground.datasets.values()].map((row) => ({
@@ -391,10 +435,9 @@ export async function publishPreview(
  * The gate as it stands for a draft, read without a lock and without writing.
  *
  * **Every screen of the draft says how the gate stands**, not only the
- * confirmation (docs/editing.md の「draft」): the step strip counts what would
- * stop a publish and what would have to be confirmed. It is advice, the same
- * as the confirmation screen's — what a publish is allowed to do is decided
- * under the lock.
+ * confirmation: the step strip counts what would stop a publish and what
+ * would have to be confirmed. It is advice, the same as the confirmation
+ * screen's — what a publish is allowed to do is decided under the lock.
  */
 export async function draftGate(
   db: Database,

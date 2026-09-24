@@ -172,6 +172,33 @@ describe("the three ways of reaching one object", () => {
   })
 })
 
+describe("the spelling of an address", () => {
+  it("answers a label written in another case under the pinned spelling", async () => {
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await publish(researchId, 1, [datasetId])
+    await rebuildSearchDocs(db)
+
+    const research = await researchEntry(get("/x"), "HUM0001", "latest")
+    expect(research.status).toBe(200)
+    expect(await body(research)).toEqual(await body(await researchEntry(get("/x"), "hum0001", "latest")))
+    const dataset = await datasetEntry(get("/x"), "jgad000001")
+    expect(dataset.status).toBe(200)
+    expect((await body(dataset) as { id: string }).id).toBe("JGAD000001")
+  })
+
+  it("names a version only the way the page does, without a leading zero", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+
+    expect((await researchVersionEntry(get("/x"), "hum0001", "v1")).status).toBe(200)
+    for (const spelled of ["v01", "v0001", "v0", "V1", "v1.0", "v99999999999999999999"]) {
+      expect((await researchVersionEntry(get("/x"), "hum0001", spelled)).status, spelled).toBe(404)
+    }
+  })
+})
+
 describe("every answer", () => {
   it("is open to any origin", async () => {
     const researchId = await createResearch("hum0001")
@@ -262,6 +289,24 @@ describe("what apiSearch answers about its own parameters", () => {
     expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-query")
   })
 
+  it("refuses a page written in another notation or past the bound with 422", async () => {
+    await rebuildSearchDocs(db)
+    for (const page of ["0x10", "1e1", "02", "99999999999999999999"]) {
+      const answer = await apiSearch(get(`/api/research?page=${page}`), "research")
+      expect((await problemType(answer)).status, page).toBe(422)
+    }
+  })
+
+  it("refuses a day the database cannot hold with 422 rather than failing", async () => {
+    await rebuildSearchDocs(db)
+    for (const q of ["date_published:0000-01-01", "date_published:[0000-01-01 TO *]", "date_modified:[* TO 0000-12-31]"]) {
+      const answer = await apiSearch(get(`/api/dataset?q=${encodeURIComponent(q)}`), "dataset")
+      const { status, type } = await problemType(answer)
+      expect(status, q).toBe(422)
+      expect(type).toBe("https://humandbs.dbcls.jp/problems/invalid-query")
+    }
+  })
+
   it("accepts a ?q= it can parse as a query with 200", async () => {
     await rebuildSearchDocs(db)
     const answer = await apiSearch(get("/api/research?q=title:cancer"), "research")
@@ -341,10 +386,9 @@ describe("what apiSearch answers about its own parameters", () => {
 
 /**
  * The usage records are a cache of an upstream table, and the key that matches
- * a cached row to that table is the one column in it no reader may see
- * (docs/data-model.md の「外部キャッシュ」). Types cannot hold that: the column
- * is there and the projection simply has to not carry it, so this is what says
- * it does not.
+ * a cached row to that table is the one column in it no reader may see.
+ * Types cannot hold that: the column is there and the projection simply has
+ * to not carry it, so this is what says it does not.
  */
 describe("the usage project a cached usage record came from", () => {
   it("appears in no answer, though the row it came from carries it", async () => {

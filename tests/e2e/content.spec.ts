@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * The site's own writing (`docs/public-pages.md` の「サイトコンテンツ」).
+ * The site's own writing.
  *
  * **A guideline is 16,000px tall**, so what a reader shares is a section
  * rather than the document. The ids come from the words of the heading, which

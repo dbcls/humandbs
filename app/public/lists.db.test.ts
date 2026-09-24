@@ -335,6 +335,28 @@ describe("a search submitted from the box", () => {
     expect(answer?.headers.get("location")).toBe("/dataset?q=read-length%3A%5B100+TO+*%5D")
   })
 
+  it("holds an end the database cannot take open instead of failing", async () => {
+    const answer = await canonicalRedirect(
+      new URL("http://localhost/dataset?q=cancer&rangeKey=date_published&rangeFrom=0000-01-01&rangeTo="),
+      "dataset",
+      "ja",
+    )
+    expect(answer?.headers.get("location")).toBe("/dataset?q=cancer")
+  })
+
+  it("keeps the ordering and the page size a range was submitted under", async () => {
+    const answer = await canonicalRedirect(
+      new URL("http://localhost/dataset?sort=id&order=asc&size=50&rangeKey=date_published&rangeFrom=2020-01-01&rangeTo="),
+      "dataset",
+      "ja",
+    )
+    const location = new URL(answer?.headers.get("location") ?? "", "http://localhost")
+    expect(location.searchParams.get("q")).toBe("date_published:[2020-01-01 TO *]")
+    expect(location.searchParams.get("sort")).toBe("id")
+    expect(location.searchParams.get("order")).toBe("asc")
+    expect(location.searchParams.get("size")).toBe("50")
+  })
+
   it("leaves the search alone when the range names something that is not a facet", async () => {
     const answer = await canonicalRedirect(
       new URL("http://localhost/dataset?q=cancer&rangeKey=not-a-facet&rangeFrom=1&rangeTo=2"),
@@ -451,6 +473,23 @@ describe("refining a listing", () => {
     const chosen = facetOf(view, "disease").values.find((value) => value.selected)
     expect(chosen?.code).toBe("C34")
     expect(chosen?.href).toBe("/dataset")
+  })
+
+  it("matches a disease code written in lower case or with its point", async () => {
+    await withDiseases()
+
+    for (const q of ["disease:c34", "disease:C34.9", "disease:c349"]) {
+      const view = await datasetListPage(request(`/dataset?q=${encodeURIComponent(q)}`))
+      expect(view.rows.map((row) => row.label), q).toEqual(["JGAD000001"])
+    }
+  })
+
+  it("answers a listing asked for with year 0000 with the failure rather than failing", async () => {
+    await withDiseases()
+
+    const view = await datasetListPage(request(`/dataset?q=${encodeURIComponent("date_published:[0000-01-01 TO *]")}`))
+
+    expect(view.parseError?.code).toBe("invalid-date-format")
   })
 
   it("refines the research listing by the values of the datasets below it", async () => {

@@ -1,10 +1,9 @@
 /**
  * Which datasets a draft publishes, and in what order.
  *
- * **A dataset belongs to the research, not to a version**
- * ([data-model.md](../../docs/data-model.md) の「research / experiment / dataset」):
- * a draft does not choose which of them the next version carries. It carries
- * every dataset the research has, and all the draft decides is the order.
+ * **A dataset belongs to the research, not to a version**: a draft does not
+ * choose which of them the next version carries. It carries every dataset the
+ * research has, and all the draft decides is the order.
  *
  * **What another draft made is not among them.** It has never been out, so it
  * belongs to the draft that made it and goes out with that draft or not at all.

@@ -208,8 +208,7 @@ describe("publishing a draft", () => {
 
 /**
  * The one date the portal is master of. An NHA ID has no archive to ask, and
- * the day the version goes out is the only day this publish knows
- * ([data-model.md](../../docs/data-model.md) の「日付」).
+ * the day the version goes out is the only day this publish knows.
  */
 describe("the release date an NHA dataset is given", () => {
   it("is the day the version goes out, when the dataset has none of its own", async () => {
@@ -291,7 +290,7 @@ describe("a publish that is refused", () => {
 
   /**
    * Any free number will do, gap or not: the sequence is not promised to be
-   * unbroken (docs/publishing.md の「版番号」).
+   * unbroken.
    */
   it("publishes under a number nothing ever carried", async () => {
     const ground = await ready()
@@ -377,6 +376,84 @@ describe("publishing under a number a version already holds", () => {
     // One event, from the publish that first described it: the second publish
     // wrote the same description the first one did.
     expect(about).toHaveLength(1)
+  })
+})
+
+/**
+ * Two administrators at the same moment. Each of these holds the other side's
+ * transaction open at the point that matters, so that what the publish reads
+ * is decided by locks rather than by which query happened to run first.
+ */
+describe("a publish racing another administrator", () => {
+  const pause = (ms: number) => new Promise<"waiting">((resolve) => {
+    setTimeout(() => {
+      resolve("waiting")
+    }, ms)
+  })
+
+  function gate() {
+    let open = (): void => undefined
+    const opened = new Promise<void>((resolve) => {
+      open = resolve
+    })
+    return { open, opened }
+  }
+
+  it("refuses the same free number to the second of two drafts rather than failing", async () => {
+    const ground = await ready()
+    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const first = await copied(ground.researchId)
+    const second = await copied(ground.researchId)
+
+    // The first publish is held after it has written its version and before it
+    // commits: the search rows it rebuilds are locked here.
+    const held = gate()
+    const locked = gate()
+    const holding = db.transaction(async (tx) => {
+      await tx.select().from(s.searchDoc).where(eq(s.searchDoc.researchId, ground.researchId)).for("update")
+      locked.open()
+      await held.opened
+    })
+    await locked.opened
+    const publishingFirst = publish({ draftId: first, revision: 1 }, 2)
+    await pause(200)
+    const publishingSecond = publish({ draftId: second, revision: 1 }, 2).then(
+      (outcome) => outcome,
+      (error: unknown) => ({ status: "failed", error }),
+    )
+    await pause(200)
+    held.open()
+    await holding
+
+    expect(await publishingFirst).toEqual({ status: "published", versionNumber: 2 })
+    expect(await publishingSecond).toEqual({ status: "number-unavailable" })
+    expect((await db.select().from(s.researchVersion)).map((row) => row.number).toSorted()).toEqual([1, 2])
+    expect(await readDraft(db, second)).not.toBeNull()
+  })
+
+  it("does not publish a dataset whose id is taken away while the gate is being checked", async () => {
+    const ground = await ready()
+    const pin = only(await db.select().from(s.labelPin).where(eq(s.labelPin.datasetId, ground.datasetId)))
+
+    // The id is being taken away and has not been committed yet.
+    const held = gate()
+    const deleted = gate()
+    const unpinning = db.transaction(async (tx) => {
+      await tx.delete(s.labelPin).where(eq(s.labelPin.id, pin.id))
+      deleted.open()
+      await held.opened
+    })
+    await deleted.opened
+    const publishing = publish({ draftId: ground.draftId, revision: ground.revision })
+    await Promise.race([publishing, pause(200)])
+    held.open()
+    await unpinning
+
+    expect(await publishing).toEqual({
+      status: "blocked",
+      blocks: [{ kind: "dataset-id-missing", datasetId: ground.datasetId }],
+    })
+    expect(await db.select().from(s.researchVersion)).toHaveLength(0)
   })
 })
 
@@ -624,6 +701,29 @@ describe("looking a publish over first", () => {
     expect(preview?.listingRemoved).toEqual([])
     expect(preview?.datasetChanges).toEqual([])
     expect(preview?.gate.findings).toEqual([])
+  })
+
+  it("counts a new order of the same datasets as a change", async () => {
+    const ground = await ready()
+    const made = await createDatasetInDraft(db, { draftId: ground.draftId, revision: ground.revision }, ground.researchId)
+    if (made.status !== "created") throw new Error(made.status)
+    await pinDataset(made.datasetId, "hum0001-NHA002")
+    await publish({ draftId: ground.draftId, revision: ground.revision + 1 })
+    const draftId = await copied(ground.researchId)
+    const draft = await readDraft(db, draftId)
+    if (draft === null) throw new Error("no copy")
+    expect(draft.content.datasetIds).toEqual([ground.datasetId, made.datasetId])
+
+    expect((await publishPreview(db, draftId, NO_PRIVATE_FILES))?.reordered).toBe(false)
+
+    await saveDraftContent(db, { draftId, revision: draft.revision }, {
+      content: { ...draft.content, datasetIds: [made.datasetId, ground.datasetId] },
+    })
+    const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
+
+    expect(preview?.reordered).toBe(true)
+    expect(preview?.researchFields).toBe(0)
+    expect(preview?.datasetChanges).toEqual([])
   })
 
   /**

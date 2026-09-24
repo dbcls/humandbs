@@ -5,7 +5,7 @@
  * `templates.server.ts`; this is the part that decides what of their answer a
  * curator is handed, and it is the part worth testing on its own.
  *
- * Two rules shape all of it (docs/editing.md の「下書きを外から作る」):
+ * Two rules shape all of it:
  *
  * - **Only what a public page shows.** The application form holds addresses,
  *   telephone numbers and every collaborator, and the content has no place
@@ -272,12 +272,11 @@ function diseasesOf(branch: DsBranchDetail | null, catalog: CatalogWithTerms): B
  *
  * **The tail of a code is dropped until the vocabulary answers.** The field
  * holds ICD-10-CM, which WHO's classification cannot spell — `K75.81` is NASH —
- * and `K758` is what stands for it (`docs/data-model.md` の「ICD10」). A code
- * that answers at no length is named as not written rather than minted.
+ * and `K758` is what stands for it. A code that answers at no length is named
+ * as not written rather than minted.
  *
  * **What is written is codes and no names.** The application form holds no word
- * for the disease, so the curator writes them
- * (`docs/editing.md` の「下書きを外から作る」).
+ * for the disease, so the curator writes them.
  */
 function disease(catalog: CatalogWithTerms, codes: readonly string[]): Built {
   const key = keyOf(catalog, DISEASE_KEY, "experiment")

@@ -181,8 +181,8 @@ export interface ResearchDatasetRow {
   published: boolean
   /**
    * Whether the portal issued the id, read off its spelling. Only these may
-   * carry a file selection: an archive's dataset is distributed by the archive
-   * (docs/files.md).
+   * carry a file selection: an archive's dataset is distributed by the
+   * archive.
    */
   portalIssued: boolean
   /** The draft that made it, until a publish adopts it. Null once it is out. */
@@ -232,7 +232,7 @@ export interface AdminVersionRow {
   /**
    * The draft this version is being updated in, while it is. It is the update's
    * vessel and not a draft of its own, so it is carried here and not among the
-   * drafts (docs/editing.md の「draft」).
+   * drafts.
    */
   updating: AdminDraftRow | null
 }
@@ -321,7 +321,7 @@ export interface DraftRecord {
   /**
    * The version this draft is the update of, when it is one. Every screen of
    * the draft measures against that version rather than the newest, and names
-   * the draft after it (docs/editing.md の「draft」).
+   * the draft after it.
    */
   updating: { versionId: string, number: number } | null
 }
@@ -668,7 +668,7 @@ export async function findTerms(
  * vocabulary answers**. What the articles and the application forms write is
  * partly ICD-10-CM, which WHO's classification cannot spell: `K75.81` is NASH
  * and `K758` is what stands for it, so typing the longer code offers the
- * shorter one rather than nothing (docs/editing.md の「編集フォーム」).
+ * shorter one rather than nothing.
  *
  * Anything not shaped like a code is a word, and words are looked for as they
  * are typed.

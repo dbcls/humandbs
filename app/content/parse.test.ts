@@ -63,7 +63,7 @@ describe("parseRichText", () => {
 /**
  * What prose cannot hold is not refused and not flattened into the words it
  * wraps: it stays as the characters typed, so the page beside the form shows
- * the author that the dialect did not read it (`docs/editing.md` の「文の保存」).
+ * the author that the dialect did not read it.
  */
 describe("parseRichText keeps what prose cannot hold as the characters typed", () => {
   it("keeps a heading, however it is written", () => {

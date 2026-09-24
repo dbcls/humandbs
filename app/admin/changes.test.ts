@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
@@ -8,6 +9,7 @@ import {
   changedFromPublished,
   describeAt,
   describeInput,
+  orderChanged,
 } from "./changes"
 import { researchContentInput } from "./form"
 
@@ -121,5 +123,37 @@ describe("showing what the published version says at a path", () => {
   it("gives nothing for a list of elements, where the difference is the membership", () => {
     expect(describeAt(published, "grants")).toBe(null)
     expect(describeAt(published, "nowhere")).toBe(null)
+  })
+})
+
+describe("whether the datasets were put in another order", () => {
+  it("is false for the same order, and for none at all", () => {
+    expect(orderChanged(["a", "b", "c"], ["a", "b", "c"])).toBe(false)
+    expect(orderChanged([], [])).toBe(false)
+    expect(orderChanged(["a"], ["a"])).toBe(false)
+  })
+
+  it("is true when the same datasets stand in another order", () => {
+    expect(orderChanged(["a", "b"], ["b", "a"])).toBe(true)
+    expect(orderChanged(["a", "b", "c"], ["a", "c", "b"])).toBe(true)
+  })
+
+  /** What came on or went off is reported on its own; only what stayed can have moved. */
+  it("leaves a dataset added or taken off out of the comparison", () => {
+    expect(orderChanged(["a", "b"], ["a", "x", "b"])).toBe(false)
+    expect(orderChanged(["a", "x", "b"], ["a", "b"])).toBe(false)
+    expect(orderChanged(["a", "b"], ["c"])).toBe(false)
+    expect(orderChanged(["a", "x", "b"], ["b", "y", "a"])).toBe(true)
+  })
+
+  it("is false exactly when the ones kept on both sides stand in the same order", () => {
+    const ids = fc.uniqueArray(fc.constantFrom("a", "b", "c", "d", "e", "f"), { maxLength: 6 })
+    fc.assert(fc.property(ids, ids, (before, after) => {
+      const kept = before.filter((id) => after.includes(id))
+      const same = kept.join() === after.filter((id) => before.includes(id)).join()
+      expect(orderChanged(before, after)).toBe(!same)
+      expect(orderChanged(before, before)).toBe(false)
+      expect(orderChanged(before, after)).toBe(orderChanged(after, before))
+    }))
   })
 })

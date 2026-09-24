@@ -20,10 +20,17 @@
  *
  * **Renumbering a research moves its box.** The public key carries the hum
  * label, so the files a reader can already fetch would otherwise stay at the
- * retired address and disappear from the new one. The move is queued after the
- * pin is committed: it is a rename inside one bucket rather than a copy of the
- * bytes, and holding the ledger's rows while talking to the store would be
- * paying for that with a lock.
+ * retired address and disappear from the new one. The box is listed before the
+ * transaction opens — holding the ledger's rows while talking to the store
+ * would be paying for it with a lock — and the move is queued inside it, so the
+ * new primary and the move commit together or not at all.
+ *
+ * **A hum label whose box holds anything is not unpinned.** The ledger is how a
+ * switch finds the copies it has to move, so a box whose label left it is out
+ * of every switch's reach: its files would keep answering at the old address,
+ * and appear in the listing of whichever research is given the number next.
+ * Renumbering is pinning the new label as primary; the old one can go once the
+ * move has emptied its box.
  *
  * Visibility follows from the search rows, so every change here derives them
  * again for the research it touched. A dataset whose id was taken away has no
@@ -37,7 +44,14 @@ import { and, eq, inArray, sql } from "drizzle-orm"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import type { Database, Executor, Transaction } from "~/db/client.server"
 import { dataset, event, labelPin } from "~/db/schema"
-import { requestBoxMove } from "~/files/jobs.server"
+import {
+  boxesOf,
+  boxMoveOf,
+  pendingSwitches,
+  publicBoxHoldsFiles,
+  requestSwitch,
+  type SwitchRequest,
+} from "~/files/jobs.server"
 import { wakeFileRunner } from "~/files/runner.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
@@ -67,6 +81,8 @@ export type IssueOutcome
 
 export type UnpinOutcome
   = | { status: "unpinned" }
+    /** A hum label whose public box still holds files, or whose research has a switch unfinished. */
+    | { status: "holds-files" }
     | { status: "gone" }
 
 export type PromoteOutcome
@@ -117,34 +133,60 @@ export async function pinLabel(
   // way an NHA id comes into being is being issued.
   if (isNhaId(label)) return { status: "reserved" }
 
+  // Only a hum label addresses a box, and only a new primary moves it.
+  const planned = request.kind === "hum" && request.isPrimary
+    ? await plannedMove(db, request.subjectId)
+    : null
+
   const done = await db.transaction(async (tx) => {
     const researchId = await researchOf(tx, request)
-    if (researchId === null) return { outcome: { status: "gone" } as PinOutcome }
+    if (researchId === null) return { outcome: { status: "gone" } as PinOutcome, moved: false }
 
     const [held] = await tx
       .select({ id: labelPin.id })
       .from(labelPin)
       .where(and(eq(labelPin.kind, request.kind), eq(labelPin.label, label)))
       .limit(1)
-    if (held !== undefined) return { outcome: { status: "taken" } as PinOutcome }
+    if (held !== undefined) return { outcome: { status: "taken" } as PinOutcome, moved: false }
 
     const demoted = request.isPrimary ? await demote(tx, request) : null
 
     await writePin(tx, request, label, actor)
+    const moved = request.kind === "hum" && demoted !== null
+      && await queueMove(tx, researchId, demoted, planned)
     await rebuildSearchDocs(tx, { researchIds: [researchId] })
-    return {
-      outcome: { status: "pinned" } as PinOutcome,
-      // Only a hum label addresses a box, and only a new primary moves it.
-      movedFrom: request.kind === "hum" ? demoted : null,
-      researchId,
-    }
+    return { outcome: { status: "pinned" } as PinOutcome, moved }
   })
 
-  if (done.movedFrom != null) {
-    await requestBoxMove(db, done.researchId, done.movedFrom)
-    wakeFileRunner()
-  }
+  if (done.moved) wakeFileRunner()
   return done.outcome
+}
+
+interface PlannedMove {
+  from: string
+  moves: SwitchRequest[]
+}
+
+/** The box a research's hum label moves away from, listed before anything is locked. */
+async function plannedMove(db: Database, researchId: string): Promise<PlannedMove | null> {
+  const { primary } = await boxesOf(db, researchId)
+  return primary === null ? null : { from: primary, moves: await boxMoveOf(researchId, primary) }
+}
+
+/**
+ * Queue the move away from the label that was just demoted, in the transaction
+ * that demoted it. The listing made beforehand is used when it was of that
+ * label; another pin landing in between is rare enough to list again here.
+ */
+async function queueMove(
+  tx: Transaction,
+  researchId: string,
+  demoted: string,
+  planned: PlannedMove | null,
+): Promise<boolean> {
+  const moves = planned?.from === demoted ? planned.moves : await boxMoveOf(researchId, demoted)
+  await requestSwitch(tx, moves)
+  return moves.length > 0
 }
 
 /**
@@ -223,8 +265,7 @@ export type PinManyOutcome
  *
  * Seeding a draft from an approved application pins a hum label and one
  * accession per dataset, and a research can arrive carrying two hundred of them
- * — so the ledger is checked once for the whole set rather than once per label
- * (docs/editing.md の「下書きを外から作る」).
+ * — so the ledger is checked once for the whole set rather than once per label.
  *
  * **Nothing here demotes and nothing derives the search rows.** The identities
  * being labelled were made a moment ago and hold no earlier label, and nothing
@@ -256,9 +297,9 @@ export async function pinLabelsIn(
 
 /**
  * Making a label the primary one. The one that was primary becomes secondary,
- * so it keeps resolving — moving a label is not taking it away
- * (docs/publishing.md の「ラベルを pin する」). A hum label moving is what moves
- * the research's public box, the same as pinning a new primary does.
+ * so it keeps resolving — moving a label is not taking it away. A hum label
+ * moving is what moves the research's public box, the same as pinning a new
+ * primary does.
  *
  * Already primary, nothing is written: there is no move to record.
  */
@@ -267,23 +308,18 @@ export async function promotePin(
   pinId: string,
   actor: EventActor,
 ): Promise<PromoteOutcome> {
+  const seen = await readPin(db, pinId)
+  const planned = seen?.kind === "hum" && !seen.isPrimary && seen.researchId !== null
+    ? await plannedMove(db, seen.researchId)
+    : null
+
   const done = await db.transaction(async (tx) => {
-    const [pin] = await tx
-      .select({
-        kind: labelPin.kind,
-        label: labelPin.label,
-        researchId: labelPin.researchId,
-        datasetId: labelPin.datasetId,
-        isPrimary: labelPin.isPrimary,
-      })
-      .from(labelPin)
-      .where(eq(labelPin.id, pinId))
-      .limit(1)
-    if (pin === undefined) return null
+    const pin = await readPin(tx, pinId)
+    if (pin === null) return null
     const subjectId = pin.researchId ?? pin.datasetId
     if (subjectId === null) return null
     const researchId = pin.researchId ?? await researchOfDataset(tx, pin.datasetId)
-    if (pin.isPrimary) return { movedFrom: null, researchId }
+    if (pin.isPrimary) return { moved: false }
 
     const request: PinRequest = { kind: pin.kind, label: pin.label, subjectId, isPrimary: true }
     const demoted = await demote(tx, request)
@@ -295,23 +331,46 @@ export async function promotePin(
       subjectId: pin.label,
       detail: { kind: pin.kind, subject: subjectId, isPrimary: true, promoted: true },
     })
+    const moved = pin.kind === "hum" && demoted !== null && pin.researchId !== null
+      && await queueMove(tx, pin.researchId, demoted, planned)
     if (researchId !== null) await rebuildSearchDocs(tx, { researchIds: [researchId] })
-    return { movedFrom: pin.kind === "hum" ? demoted : null, researchId }
+    return { moved }
   })
 
   if (done === null) return { status: "gone" }
-  if (done.movedFrom != null && done.researchId !== null) {
-    await requestBoxMove(db, done.researchId, done.movedFrom)
-    wakeFileRunner()
-  }
+  if (done.moved) wakeFileRunner()
   return { status: "promoted" }
 }
 
+async function readPin(executor: Executor, pinId: string) {
+  const [pin] = await executor
+    .select({
+      kind: labelPin.kind,
+      label: labelPin.label,
+      researchId: labelPin.researchId,
+      datasetId: labelPin.datasetId,
+      isPrimary: labelPin.isPrimary,
+    })
+    .from(labelPin)
+    .where(eq(labelPin.id, pinId))
+    .limit(1)
+  return pin ?? null
+}
+
+/**
+ * Taking a label off. **A hum label is kept while its public box holds files**
+ * or a file of the research is still switching — see the head of this module.
+ */
 export async function unpinLabel(
   db: Database,
   pinId: string,
   actor: EventActor,
 ): Promise<UnpinOutcome> {
+  // The store is asked before the ledger is locked; a switch queued meanwhile
+  // is caught below, under the lock.
+  const seen = await readPin(db, pinId)
+  if (seen?.kind === "hum" && await publicBoxHoldsFiles(seen.label)) return { status: "holds-files" }
+
   return db.transaction(async (tx): Promise<UnpinOutcome> => {
     const [pin] = await tx
       .select({
@@ -323,7 +382,14 @@ export async function unpinLabel(
       .from(labelPin)
       .where(eq(labelPin.id, pinId))
       .limit(1)
+      .for("update")
     if (pin === undefined) return { status: "gone" }
+    if (pin.kind === "hum" && pin.researchId !== null) {
+      // A switch still running may yet put a file into this box, or be about
+      // to find its copy there.
+      const switching = await pendingSwitches(tx, pin.researchId)
+      if (switching.some((row) => !row.failed)) return { status: "holds-files" }
+    }
 
     const researchId = pin.researchId ?? await researchOfDataset(tx, pin.datasetId)
     await tx.delete(labelPin).where(eq(labelPin.id, pinId))

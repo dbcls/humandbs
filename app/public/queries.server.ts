@@ -40,6 +40,18 @@ export interface ResolvedLabel {
   primaryLabel: string
 }
 
+/**
+ * **A label is found whatever case it is written in**, and the page it names is
+ * then addressed by the pinned spelling — the same as a secondary label, the
+ * page redirects and the API answers under the pinned one. Readers copy
+ * `JGAD000001` and `hum0001` out of papers in whatever case the paper used, and
+ * the search already matches `id:` without regard to case.
+ *
+ * The exact spelling wins when it is pinned. A spelling that only matches in
+ * another case is taken when it matches one pin and no more; the pin table is
+ * unique on the exact spelling, so two pins differing only in case name no
+ * page rather than one picked arbitrarily.
+ */
 async function resolveLabel(
   db: Executor,
   kind: "hum" | "dataset",
@@ -47,14 +59,16 @@ async function resolveLabel(
 ): Promise<ResolvedLabel | null> {
   const subject = kind === "hum" ? labelPin.researchId : labelPin.datasetId
 
-  const [pin] = await db
-    .select({ subject, isPrimary: labelPin.isPrimary })
+  const pins = await db
+    .select({ subject, label: labelPin.label, isPrimary: labelPin.isPrimary })
     .from(labelPin)
-    .where(and(eq(labelPin.kind, kind), eq(labelPin.label, label)))
-    .limit(1)
+    .where(and(eq(labelPin.kind, kind), sql`lower(${labelPin.label}) = lower(${label})`))
+    .limit(3)
+  const exact = pins.find((one) => one.label === label)
+  const pin = exact ?? (pins.length === 1 ? pins[0] : undefined)
   const subjectId = pin?.subject
   if (subjectId === undefined || subjectId === null) return null
-  if (pin?.isPrimary === true) return { id: subjectId, primaryLabel: label }
+  if (pin?.isPrimary === true) return { id: subjectId, primaryLabel: pin.label }
 
   const [primary] = await db
     .select({ label: labelPin.label })
@@ -279,8 +293,7 @@ export async function citedDatasets(
  * The usage records of one research, in the order upstream's project numbering
  * puts them. `applicationId` orders the rows and never leaves this function:
  * the column exists to match a cached row to upstream, and the pages and the
- * JSON API show what a reader is meant to see (docs/data-model.md の
- * 「外部キャッシュ」).
+ * JSON API show what a reader is meant to see.
  */
 export async function controlledAccessUsers(db: Executor, humLabel: string): Promise<CauUsage[]> {
   const rows = await db

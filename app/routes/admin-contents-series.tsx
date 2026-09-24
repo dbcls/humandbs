@@ -23,7 +23,7 @@ import { Flag } from "~/components/flags"
  * **The pointer is moved by hand.** Publishing a revision does not move it — a
  * body is written and published over several sittings, and an address that
  * followed the newest published revision would change under readers halfway
- * through (docs/editing.md の「サイトコンテンツ」).
+ * through.
  *
  * **Retiring takes the pointer and every revision at once.** The revision the
  * pointer names cannot be deleted on its own, so one at a time would leave the

@@ -5,7 +5,7 @@
  * the application database being unreachable says nothing about DDBJ Search, and
  * a refresh that treated the two as one unit would leave the JGA dates stale
  * whenever the other one was slow. Two of them share `accession_date` and are
- * told apart by its `source` column (docs/data-model.md の「外部キャッシュ」).
+ * told apart by its `source` column.
  */
 export const UPSTREAM_SOURCES = [
   "cau",

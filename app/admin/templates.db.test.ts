@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 
-/** The two systems outside v2, which docs/testing.md allows replacing. */
+/** The two systems outside the portal's own boundary, the only ones a test may mock. */
 vi.mock("~/upstream/application-db.server", () => ({
   openApplicationDb: vi.fn(() => ({ end: vi.fn(() => Promise.resolve()) })),
   searchDsBranches: vi.fn(),
@@ -52,8 +52,7 @@ import { takeAction, takePage } from "./take.server"
  *
  * The point of these is what must not happen: a label somebody else holds has to
  * leave nothing behind at all, because the identities and the pins are made
- * together and a half-made research is one nobody could find or finish
- * (docs/editing.md の「下書きを外から作る」).
+ * together and a half-made research is one nobody could find or finish.
  */
 const db = getDb()
 

@@ -3,8 +3,7 @@ import { expect, test, type Page } from "@playwright/test"
 import { SIGNED_IN } from "../../playwright.config"
 
 /**
- * The management area as a curator moves through it (`docs/testing.md` の
- * P-ADMIN).
+ * The management area as a curator moves through it.
  *
  * **These read; they do not publish.** The instance holds one set of rows and a
  * scenario that put a version out would change what every other scenario is

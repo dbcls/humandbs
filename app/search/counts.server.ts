@@ -16,7 +16,7 @@
  * ancestors, so the root of a term is the term; a hierarchical one rolls its
  * children up, which is what puts one bucket per 3-character ICD10 code in a
  * panel instead of six hundred. **The level below a root is never counted** —
- * the panel has no way of asking for it (docs/public-pages.md の「絞り込み」).
+ * the panel has no way of asking for it.
  */
 
 import { sql, type SQL } from "drizzle-orm"

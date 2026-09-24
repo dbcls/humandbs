@@ -11,6 +11,7 @@ import {
 
 import { isAdminPath } from "~/admin/urls"
 import { readActor } from "~/auth/actor.server"
+import { crossSiteRefusal, refusedAsCrossSite } from "~/auth/csrf"
 import { CartToast } from "~/components/cart"
 import { Announcements, SiteFooter, SiteHeader } from "~/components/layout"
 import { Page } from "~/components/page"
@@ -25,6 +26,19 @@ import { startUpstreamRunner } from "~/upstream/runner.server"
 import type { Route } from "./+types/root"
 
 import "./app.css"
+
+/**
+ * **Every write passes the cross-site check here, before any route sees it.**
+ * The root is the parent of every route, pages and data-only routes alike, so
+ * this is the one place a check reaches all of them — React Router's own check
+ * skips a route without a page (`auth/csrf.ts`).
+ */
+export const middleware: Route.MiddlewareFunction[] = [
+  async ({ request }, next) => {
+    if (refusedAsCrossSite(request)) return crossSiteRefusal()
+    return next()
+  },
+]
 
 /**
  * The language is read from the address rather than from a header or a cookie,

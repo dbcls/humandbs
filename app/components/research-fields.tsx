@@ -5,8 +5,7 @@
  *
  * **Two screens write these**: the research's own form and the take-in face,
  * which writes the one value it is deciding with the same control the form
- * uses (docs/editing.md の「取り込み」). A second copy would be a second place
- * for the two to drift apart.
+ * uses. A second copy would be a second place for the two to drift apart.
  */
 
 import type { LinkInput, LinksPairInput } from "~/admin/form"
@@ -99,9 +98,9 @@ export const PROSE_PATHS: readonly string[] = [
  * A URL pair. The two languages are different resources rather than two
  * renderings of one, so nothing here is ever untranslated.
  *
- * **The two languages stand one above the other, as every pair does**
- * (`docs/ui.md` の「1 つの値の 2 つの言語は上下に積む」): side by side, each
- * link's address and text had half a panel's width between them and the pair
+ * **The two languages stand one above the other, as every pair does**: side
+ * by side, each link's address and text had half a panel's width between them
+ * and the pair
  * read as two columns of a table rather than as one value written twice.
  */
 export function LinksField({ label, value, marks, locale, onChange }: {

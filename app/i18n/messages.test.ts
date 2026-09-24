@@ -37,7 +37,7 @@ describe("面の文", () => {
     expect(admin.filter(([, text]) => /消[えせさす]/.test(text)).map(([path]) => path)).toStrictEqual([])
   })
 
-  it("research の版は「バージョン」で、「版」の字は出さない (docs/glossary.md)", () => {
+  it("research の版は「バージョン」で、「版」の字は出さない", () => {
     const admin = warnings(messagesFor("ja").admin, "admin")
     expect(admin.filter(([, text]) => /(?<!出)版/.test(text)).map(([path]) => path)).toStrictEqual([])
   })
@@ -64,7 +64,7 @@ const NOTE_OR_HINT_EXCEPTIONS = new Set([
 
 /**
  * h1 の下・節の説明 (note) と欄の下の説明 (hint) は常体で言い切る — 画面が読者に
- * 話しかける敬体と、事実を言うだけの常体を混ぜない (`docs/ui.md`、`decisions.md` の「語」)。
+ * 話しかける敬体と、事実を言うだけの常体を混ぜない (`decisions.md` の「語」)。
  */
 describe("note と hint の文体", () => {
   const isNoteOrHint = (key: string): boolean =>
@@ -120,7 +120,7 @@ function cramped(text: string): boolean {
 
 /**
  * 括弧は ja でも全部半角 `( )` で、前後に半角の空白を置く (行頭・行末・句読点の隣を除く)。
- * 区切りの全角スラッシュ「／」も使わない (`docs/admin-ui.md` の「語と文」)。
+ * 区切りの全角スラッシュ「／」も使わない。
  */
 describe("括弧と区切り", () => {
   // A search example is a value typed into the box as it is, not a sentence.
@@ -150,7 +150,7 @@ describe("括弧と区切り", () => {
 })
 
 /**
- * 公開側の news は「お知らせ」で、admin と同じ 1 つの名前で呼ぶ (`docs/glossary.md`)。
+ * 公開側の news は「お知らせ」で、admin と同じ 1 つの名前で呼ぶ。
  * en は News のまま。
  */
 describe("news の語", () => {
@@ -253,7 +253,7 @@ describe("衝突の答え", () => {
 })
 
 /**
- * 面の文・断り・操作の答えは敬体で結ぶ (`docs/admin-ui.md` の「語と文」)。常体で終わるのは
+ * 面の文・断り・操作の答えは敬体で結ぶ。常体で終わるのは
  * 画面の説明と欄の下の説明 (note / hint) だけで、読む人に話しかける文には混ぜない。
  * 公開側の文はどれも読者に話しかけるものなので、全部が敬体。
  */
@@ -300,7 +300,7 @@ describe("話しかける文の文体", () => {
 /**
  * 「破棄」「外す」「未記載」「未割り当て」「English」「併合」はそれぞれ「削除」「解除」「未入力」
  * 「未発行」「英語」「統合」に言い換えた古い語で、1 つの概念を 2 つの語で言う状態に戻さない
- * (`decisions.md` の「語」、`docs/admin-ui.md` の「語と文」)。
+ * (`decisions.md` の「語」)。
  */
 describe("言い換えた古い語", () => {
   const admin = warnings(messagesFor("ja").admin, "admin")
@@ -313,8 +313,8 @@ describe("言い換えた古い語", () => {
 
 /**
  * 解析手法の画面で選べるものは「値」で、「語」「語彙」「カタログ」とは呼ばない — 画面の語は
- * key / 値 / 選択肢の 3 つで、語彙は仕組みの名前であって画面の名前ではない (`docs/admin-ui.md` の
- * 「語と文」)。「日本語」「英語」の中の「語」は言語の名前なので数えない。
+ * key / 値 / 選択肢の 3 つで、語彙は仕組みの名前であって画面の名前ではない。
+ * 「日本語」「英語」の中の「語」は言語の名前なので数えない。
  */
 describe("解析手法の画面の語", () => {
   const catalog = warnings(messagesFor("ja").admin.catalog, "admin.catalog")
@@ -367,7 +367,7 @@ describe("列見出しの日付語", () => {
 })
 
 /**
- * 押せるものの語は名詞で終わる (`docs/ui.md` の「押せるもの」)。よく使う動作の語
+ * 押せるものの語は名詞で終わる。よく使う動作の語
  * (create/delete/save/add/remove) と、確かめる面の中で実行するボタン (`〜Confirm`)
  * は「〜する」で終わらない、というよくある崩れをここで止める。
  */
@@ -388,7 +388,7 @@ describe("button の語は動詞止めにしない", () => {
 })
 
 /**
- * 押せるものの語は名詞で終わり、動詞の終止形で終わらない (`docs/ui.md` の「押せるもの」)。
+ * 押せるものの語は名詞で終わり、動詞の終止形で終わらない。
  * 押せるものかどうかは key の名前で見分ける — 動作の語で始まり、説明・見出し・状態の語尾を
  * 持たない key。**例外は「閉じる」1 つ**で、捨てるものを持たない面の出口の語として決まっている。
  */
@@ -445,7 +445,7 @@ describe("押せるものの語は名詞で終わる", () => {
  * What can be pressed in the admin area is named by a noun, and "〜を追加" is
  * not one: it is "追加する" with the verb cut short, so it reads as a verb even
  * though the last characters are a noun. The object is joined with "の"
- * instead — 「リンクの追加」 (`docs/ui.md` の「押せるもの」).
+ * instead — 「リンクの追加」.
  */
 describe("押せるものの語", () => {
   const admin = warnings(messagesFor("ja").admin, "admin")
@@ -460,7 +460,7 @@ describe("押せるものの語", () => {
 /**
  * A word standing where a value would be is not wrapped in parentheses: the
  * quieter colour already says it is not the value, and a bracketed word says
- * the same thing twice (`docs/ui.md` の「壊れるもの」).
+ * the same thing twice.
  */
 describe("値が無いことを言う語", () => {
   const admin = warnings(messagesFor("ja").admin, "admin")
@@ -477,7 +477,7 @@ describe("値が無いことを言う語", () => {
 /**
  * The sentence the site says at the top of every page is an alert, and it is
  * called that in both areas: 「お知らせ」 is what news is called, and 「告知」 is
- * a third word for the same thing (`docs/glossary.md`).
+ * a third word for the same thing.
  */
 describe("全ページの上部に出る 1 文の語", () => {
   const ja = warnings(messagesFor("ja"), "ja")

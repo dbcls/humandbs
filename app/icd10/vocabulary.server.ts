@@ -2,24 +2,25 @@
  * The ICD10 classification as the disease vocabulary: putting it in, and
  * reading it back by code.
  *
- * **The classification is the vocabulary, all of it** (docs/data-model.md の
- * 「ICD10」): every three- and four-character code goes in whether or not any
- * dataset names it, so that a code typed into a disease's box is either in the
- * classification or not, with nothing to add in between. **An import upserts by
- * code** — a code already held keeps its identity, so nothing that points at it
- * moves, and takes the classification's titles again; nobody rewords these by
- * hand, so overwriting loses nothing.
+ * **The classification is the vocabulary, all of it**: every three- and
+ * four-character code goes in whether or not any dataset names it, so that a
+ * code typed into a disease's box is either in the classification or not,
+ * with nothing to add in between. **An import upserts by code** — a code
+ * already held keeps its identity, so nothing that points at it moves, and
+ * takes the classification's titles again; nobody rewords these by hand, so
+ * overwriting loses nothing.
  *
  * Three-character codes are roots and four-character ones hang under them
- * (`vocabularySet.hierarchical`); anything longer is not a term (「ICD10」の
- * 規則 7). A four-character code whose root neither distribution names gets a
- * root named by its code, so that the facet still counts it by three characters.
+ * (`vocabularySet.hierarchical`); anything longer is not a term. A
+ * four-character code whose root neither distribution names gets a root
+ * named by its code, so that the facet still counts it by three characters.
  */
 
 import { eq, sql } from "drizzle-orm"
 
 import type { Executor } from "~/db/client.server"
 import { vocabularySet, vocabularyTerm } from "~/db/schema"
+import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { ICD10_SET_CODE, ICD10_SET_LABELS, icd10Parent, type Icd10Entry } from "./codes"
 
@@ -50,6 +51,10 @@ export async function importIcd10Terms(
     ...labelsOf(entry),
     parentId: ids.get(icd10Parent(entry.code) ?? "") ?? null,
   })))
+  // A search row carries the titles of the codes its content points at, so a
+  // newer distribution that renames a code would otherwise leave the old name
+  // findable and the new one not.
+  await rebuildSearchDocs(db)
   return { roots: roots.length, children: children.length }
 }
 

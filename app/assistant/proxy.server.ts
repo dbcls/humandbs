@@ -15,7 +15,7 @@ import {
  * the guard in front of this call is the only one there is — and the two
  * invariants that keeps are worth saying plainly: the route asks for
  * `use-assistant` before calling this, and nothing else in the portal calls the
- * service at all (`docs/assistant.md`).
+ * service at all.
  *
  * **Nothing about the API is known here.** Paths, methods, bodies and status
  * codes are passed through, so the service can grow an endpoint without the
@@ -59,9 +59,9 @@ export async function forwardToAssistant(request: Request, rest: string): Promis
     })
   } catch {
     // The service is configured but not answering, or took longer than the
-    // runtime waits for a first byte (five minutes — `docs/assistant.md` の
-    // 「上限」). Said apart from 503 above: that one means nobody deployed it,
-    // this one means it did not answer.
+    // runtime waits for a first byte (five minutes). Said apart from 503
+    // above: that one means nobody deployed it, this one means it did not
+    // answer.
     throw new Response(null, { status: 502, statusText: "Assistant did not answer" })
   }
 

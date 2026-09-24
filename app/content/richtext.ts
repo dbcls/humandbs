@@ -35,20 +35,54 @@ export function toPlainText(rich: RichText): string {
  * protocol-relative `//host` — renders as its text with no link at all, so a
  * destination written by hand cannot execute on the portal's origin.
  */
-const LINK_SCHEMES = ["http://", "https://", "mailto:"]
+const LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"])
 
+/**
+ * Characters a browser strips or reinterprets before it follows a link: it
+ * drops tabs and newlines anywhere in the address and reads `\` as `/` in an
+ * http(s) one, so `/\evil.example` and `/<TAB>/evil.example` are both
+ * `//evil.example` — another host — by the time they are followed. No
+ * destination the text needs holds one, so a link holding one is not a link.
+ */
+// eslint-disable-next-line no-control-regex
+const REINTERPRETED = /[\u0000-\u001f\u007f\\]/
+
+/** Any origin will do; a site path is checked by whether it keeps it. */
+const SITE = "https://site.invalid"
+
+/**
+ * The destination as the page may render it, or null when it may not be one.
+ *
+ * **What is checked is where a browser would go**, not what the string starts
+ * with: the value is resolved the way the browser resolves it (WHATWG URL) and
+ * the answer is judged. A site path has to resolve on the site's own origin
+ * and to a path that is not itself a host (`//…`).
+ */
 export function linkHref(href: string): string | null {
   const trimmed = href.trim()
-  const lowered = trimmed.toLowerCase()
-  if (LINK_SCHEMES.some((scheme) => lowered.startsWith(scheme))) return trimmed
-  // A site-absolute path, which is how the articles link to policies and files.
-  // `//` is not one: it is a URL on another host with the scheme left out.
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed
+  if (trimmed === "" || REINTERPRETED.test(trimmed)) return null
   // A place on the page itself. The long articles open with a contents list
   // that points at their own headings, and the headings answer at those
   // addresses (`public/markdown.server.ts`).
   if (trimmed.startsWith("#")) return trimmed
-  return null
+  let url: URL
+  try {
+    url = new URL(trimmed, SITE)
+  } catch {
+    return null
+  }
+  // A site-absolute path, which is how the articles link to policies and files.
+  // `//` is not one: it is a URL on another host with the scheme left out.
+  if (trimmed.startsWith("/")) {
+    const sameSite = url.origin === SITE && !trimmed.startsWith("//") && !url.pathname.startsWith("//")
+    return sameSite ? trimmed : null
+  }
+  // Anything else has to name its scheme: a bare `example.com` is a relative
+  // path whose meaning changes with the page it is on.
+  const written = /^[a-z][a-z0-9+.-]*:/i.exec(trimmed)?.[0].toLowerCase()
+  if (written === undefined || written !== url.protocol || !LINK_PROTOCOLS.has(url.protocol)) return null
+  if (url.protocol !== "mailto:" && (url.hostname === "" || !/^https?:\/\//i.test(trimmed))) return null
+  return trimmed
 }
 
 /**

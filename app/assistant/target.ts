@@ -33,7 +33,7 @@ export function assistantTarget(origin: string, rest: string, search: string): s
  * The headers a request keeps on its way in.
  *
  * **The portal's own credentials do not travel.** The session cookie is the
- * whole of a session here (`docs/auth.md`), and the assistant has no use for
+ * whole of a session here, and the assistant has no use for
  * one: it is reached only through a route that has already decided the reader
  * may reach it. Forwarding either would make the service a second place where
  * the portal's authentication can be read or replayed.
@@ -106,8 +106,8 @@ export function carriesBody(method: string): boolean {
  * React Router refuses a mutation whose `Origin` names another site, but only
  * for the routes that render something; a route answering with data alone
  * never reaches that check. Everywhere else that is covered by the session
- * cookie being `SameSite=Lax` ([auth.md](../../docs/auth.md)) and by each write
- * having a shape the portal knows. Here the shape is the assistant's and none
+ * cookie being `SameSite=Lax` and by each write having a shape the portal
+ * knows. Here the shape is the assistant's and none
  * of it is known, so the guard the portal can still apply is applied.
  *
  * **A missing header is not a foreign one.** A browser leaves `Origin` off a

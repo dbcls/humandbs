@@ -5,11 +5,12 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
-import type { DatasetContent, ResearchContent } from "~/content/types"
+import type { CommentAnchor, DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { seedVersion } from "~/db/seed"
+import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
   changeListing,
@@ -633,6 +634,74 @@ describe("a dataset a draft adds", () => {
     const [event] = await db.select().from(s.event).where(eq(s.event.action, "delete-dataset"))
     expect(event?.subjectId).toBe(created.datasetId)
     expect(event?.detail).toEqual({ researchId, label: "JGAD000999" })
+  })
+
+  /** A published one whose research is found by what it says, and a dataset of it nothing else says. */
+  async function publishedPair() {
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await db.insert(s.labelPin).values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
+    const ids: string[] = []
+    for (const label of ["JGAD000901", "JGAD000902"]) {
+      const row = only(await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id }))
+      await db.insert(s.labelPin).values({ kind: "dataset", label, datasetId: row.id, isPrimary: true })
+      ids.push(row.id)
+    }
+    const [going = "", staying = ""] = ids
+    await seedVersion(db, {
+      researchId,
+      number: 1,
+      datasets: [
+        { datasetId: going, content: described("消える側だけの語") },
+        { datasetId: staying, content: described("残る側の語") },
+      ],
+    })
+    await rebuildSearchDocs(db, { researchIds: [researchId] })
+    const researchRow = async () => only(await db.select().from(s.searchDoc)
+      .where(eq(s.searchDoc.targetType, "research")))
+    return { researchId, draftId, going, staying, researchRow }
+  }
+
+  /**
+   * The research's row carries the text of its datasets. Dropping the dataset's
+   * own row alone left the research found by what only the deleted dataset
+   * said, until something else rebuilt it.
+   */
+  it("rebuilds the research's search row, so it is no longer found by the deleted dataset", async () => {
+    const { researchId, draftId, going, researchRow } = await publishedPair()
+    expect((await researchRow()).textJa).toContain("消える側だけの語")
+
+    expect(await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, going, CURATOR))
+      .toEqual({ status: "deleted" })
+
+    const row = await researchRow()
+    expect(row.textJa).not.toContain("消える側だけの語")
+    expect(row.textJa).toContain("残る側の語")
+    const datasets = await db.select({ id: s.searchDoc.targetId }).from(s.searchDoc)
+      .where(eq(s.searchDoc.targetType, "dataset"))
+    expect(datasets.map((one) => one.id)).not.toContain(going)
+  })
+
+  /**
+   * A comment is anchored in JSON, so no cascade reaches it: left behind, it
+   * pointed at a place no screen draws and was counted as unresolved for good.
+   */
+  it("takes the comments on it away, in every draft, and leaves the others", async () => {
+    const { researchId, draftId, going, staying } = await publishedPair()
+    const otherDraftId = await createEmptyDraft(db, researchId)
+    const on = (draft: string, anchor: CommentAnchor) =>
+      db.insert(s.comment).values({ draftId: draft, anchor, authorName: "提供者", body: "…" })
+    await on(draftId, { kind: "dataset-field", datasetId: going, path: "values.type-of-data" })
+    await on(otherDraftId, { kind: "dataset-field", datasetId: going, path: "values.type-of-data" })
+    await on(draftId, { kind: "dataset-field", datasetId: staying, path: "values.type-of-data" })
+    await on(draftId, { kind: "draft" })
+
+    await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, going, CURATOR)
+
+    const left = await db.select({ anchor: s.comment.anchor }).from(s.comment)
+    expect(left.map((one) => one.anchor).toSorted((a, b) => a.kind.localeCompare(b.kind))).toEqual([
+      { kind: "dataset-field", datasetId: staying, path: "values.type-of-data" },
+      { kind: "draft" },
+    ])
   })
 
   it("cannot take out one that belongs to another draft", async () => {

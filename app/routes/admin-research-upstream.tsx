@@ -40,8 +40,7 @@ import type { Route } from "./+types/admin-research-upstream"
  *
  * The application system already holds the study's title, its aims, its methods,
  * the people it is about and the accessions it registered, so a research begins
- * from those rather than from an empty form
- * (docs/editing.md の「下書きを外から作る」).
+ * from those rather than from an empty form.
  *
  * **This screen only finds the branch.** What taking it in would bring, and
  * which draft it goes into, are answered one screen on — that answer depends on

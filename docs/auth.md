@@ -1,86 +1,68 @@
 # 認証と認可
 
-誰がサインインでき、何を許され、その状態がどこにあるか。何ができるかを使う側の話は
-[editing.md](editing.md) と [publishing.md](publishing.md) にある。
+誰がサインインでき、何を許され、その状態がどこにあるか。**公開ページは認証を要求せず、サインインしても
+見えるものは変わらない。** 共有リンクの閲覧者もアカウントを持たない ([editing.md](editing.md))。
 
 ## 誰が何をできるか
 
-認証は Keycloak (DDBJ 所管)。**1 人 1 アカウントとし、共有アカウントは持ち込まない** — 共有
-アカウントを許すと証跡の解像度がそこで失われる。
+認証は Keycloak (DDBJ 所管)。**1 人 1 アカウントで、共有アカウントを持ち込まない** — 証跡の解像度が
+そこで失われる。
 
-- **人と結び付ける key は Keycloak の `sub`。** 名前は表示と証跡の記録にだけ使う。変わりうる値を
-  key にすると、改名で権限と証跡の主体が切れる
-- **画面に出す名前は本名 (`name`)。** コメント・preview の印・証跡を読む人が知りたいのは誰だったかで、
-  アカウント ID (`preferred_username`、例 `ts-suecharo`) はそれを言わない。realm が `name` を持たない
-  アカウントだけ `preferred_username`、それも無ければ `sub` で代える。名前はサインインの時点で session に
-  写すので、realm で名前を変えた人は次のサインインから新しい名前になり、それまでに書いたものは書いた時の
-  名前のまま残る
-- **admin かどうかは v2 側が持つ。** Keycloak の role には寄せない。realm が他組織の所管なので、role の
-  付与が依頼になり担当者の交代に即応できない。Postgres に状態だけを持ち、CLI から付け外しする
-- **認可は要求ごとに server 側で導出し、cookie に焼かない。** admin を外せば次の要求から効く
-- **役割は admin ひとつ。** 認可のコードは capability で書き、admin は全 capability を持つ唯一の役割
+- **人と結び付ける key は Keycloak の `sub`。** 名前は表示と証跡にだけ使う。変わりうる値を key にすると、
+  改名で権限と証跡の主体が切れる
+- **画面と証跡に出す名前は本名 (`name`)。** 無ければ `preferred_username`、それも無ければ `sub`。名前は
+  サインインの時点で session に写すので、名前を変えた人は次のサインインから新しい名前になり、書いた
+  記録は書いた時の名前のまま残る
+- **admin かどうかはポータルが Postgres に持つ。** Keycloak の role には寄せない — realm が他組織の所管で、
+  付与が依頼になり交代に即応できない
+- **認可は要求ごとに server で導出し、cookie に焼かない。** admin を外せば次の要求から効く
+- **役割は admin ひとつで、認可のコードは capability で書く。** admin は全 capability を持ち、ログイン
+  済みで admin でない主体は 1 つも持たない。capability の一覧は `app/auth/capabilities.ts`
+- **要求する capability は操作の名前で書く。** 読むだけの画面は `view-unpublished`、書く画面は
+  `edit-content` のように。今は答えが変わらなくても、役割を足すときに call site を読み直さずに済む
 
-| capability | 何を許すか |
-|---|---|
-| `view-unpublished` | 管理画面で未公開を読む |
-| `edit-content` | draft の作成・編集・破棄、共有リンクの管理、コメントの解決 |
-| `publish` | 版の公開と更新 |
-| `withdraw` | 版の取り下げ (draft に戻す) |
-| `manage-labels` | hum ラベルと dataset id の pin と解除 |
-| `manage-files` | ファイルの upload と公開状態の切り替え |
-| `manage-catalog` | catalog のキーと語彙 |
-| `manage-site-content` | document / news / alert の編集と公開、指し先の張り替え、`common/` の箱 |
-| `use-assistant` | 申請支援アシスタントを使う ([assistant.md](assistant.md)) |
-| `manage-admins` | admin の付け外し |
-| `delete-research` | research の削除 |
-
-**ログイン済みで admin でない主体は capability を 1 つも持たない。** 導出を「主体 → capability の集合」の
-形にしてあるので、後から一般利用者向けの操作を足すときに認可の形を触らずに済む。
-
-**要求する capability は操作の名前で書く。** admin が全部を持つので実際の答えは変わらないが、読み取り
-だけの画面は `view-unpublished` を、書き込みと編集画面は `edit-content` を通る。後から役割を足すときに
-call site を読み直さずに済む。
-
-**認可が返す答えは 3 つだけ。** 未ログインはサインインへ送って元の場所に戻す。ログイン済みで capability が
-無ければ 403 — サインインし直しても答えは変わらないので、redirect にしない。あれば主体を返す。
+**capability の検査は、対象が存在するかを調べるより先に行う。** 先に調べると、サインインしていない人に
+何が存在するかを答えることになる。**認可の答えは 3 つ。** 未ログインはサインインへ送って元の場所に戻す。ログイン済みで capability が無ければ
+403 (サインインし直しても変わらないので redirect にしない)。あれば主体を返す。
 
 ## セッション
 
-**cookie に入れるのは推測不能な値 1 つで、セッションの中身は Postgres の行が持つ。** cookie の中身が
-認可の根拠になる余地を構造的に消すためで、「認可を cookie に焼かない」を cookie の形の側からも守る。
+**cookie に入れるのは推測できない値 1 つで、中身は Postgres の行が持つ。** cookie の中身が認可の根拠に
+なる余地を形の側から消す。
 
-- **行は cookie の値の hash を持つ。** 行を読めることと、その人になりすませられることを別にする
-- **ログアウトは行を消すこと**なので server 側で即座に効く。cookie を消すだけにしない
-- **期限は 2 本** — 最終アクセスから 7 日と、発行から 30 日。cookie の寿命を後者にして前者は読み取りの
-  ときに判定する。最終アクセス時刻の更新は値が 1 時間より古いときだけで、**ページを読むことが書き込みに
-  ならない**。期限切れの行の掃除はログインのときに行う
-- **Keycloak の token は保存しない。** public API に認証が無く、token を付けて転送する先も無い。例外は
-  id_token だけで、Keycloak 側のセッションを終わらせる `id_token_hint` に要る
-- **client は public client + PKCE (S256)。** 長期の credential を 1 つも持たないので、client secret が
-  守る対象が無い。`state` と PKCE の verifier と戻り先は 10 分の cookie に置く
-- **戻り先はサイト内のパスに限る。検査は結果の側で行う** — `/..//example.com` は「このサイトのパス」として
-  parse できてしまい、`Location` に入った瞬間に別のホストになる
-- **session の行は失ってよい。** 失えば全員が再ログインするだけなので、backup も移行の対象にならない
+- **行は cookie の値の hash を持つ。** 行を読めることと、その人になりすませることを別にする
+- **ログアウトは行を消すこと**で、server 側で即座に効く。ログアウトは POST で受ける (他人が置いたリンクや
+  画像でセッションを終わらせない)。Keycloak 側のセッションも終わらせる
+- **期限は 2 本** — 最終アクセスから 7 日と、発行から 30 日。最終アクセスの更新は 1 時間より古いときだけで、
+  ページを読むことが書き込みにならない
+- **Keycloak の token は保存しない。** 送る先が無い。例外は Keycloak のセッションを終わらせる
+  `id_token_hint` のための id_token だけ
+- **client は public client + PKCE (S256)** で、長期の credential を持たない
+- **戻り先はサイト内のパスに限り、検査は組み立てた結果の側で行う。** `/..//example.com` はパスとして
+  parse できても `Location` に入ると別のホストになる
+- **cookie の `Secure` は redirect URI の scheme から決まる。** 別の設定を持たないので、本番で付け忘れる
+  余地が無い
+- **session の行は失ってよい。** 全員が再ログインするだけで、backup も移行の対象でもない
+
+**書き込みは同じ origin から来たものだけを受ける。** GET / HEAD / OPTIONS 以外の要求は、
+`Sec-Fetch-Site` が `same-origin` か `none` で、`Origin` を送るならそれがこのホストを名指すときだけ通し、
+それ以外 (別のホスト・`null`・どちらの header も無い) は理由を言わずに 403。検査は root の middleware
+(`app/auth/csrf.ts`) が全 route に 1 か所でかける — React Router 自身の検査は画面を持つ route にしか
+効かず、`SameSite=Lax` の cookie は同じ登録ドメインの別のサブドメインからの POST にも載るため。
 
 ## admin の付け外し
 
-**CLI 1 本で行い、管理画面には付け外しの画面を持たない。** 付け外しは `sub` を指定して行う稀な操作で、
-実行するのは DB の資格情報を持つ人なので、HTTP 経由の認可を新たに持つ理由が無い。最初の admin も以降の
-付け外しもこれで入れる。CLI 由来の event の actor は人ではないので、予約された値を焼く。
-
-**`sub` を見せるのは管理画面の入口。** ここはセッションだけを要求し、開いた人自身の `sub` を見せる。
-見せるのは本人の identity だけで、ポータルのデータは capability の要る画面の側にある。
-
-**`manage-admins` を要求する `requireCapability` の呼び出しは無い。** 付け外しが CLI に閉じているので
-HTTP の認可を通らない。それでも capability として名前を持つのは、event の action に対応する操作をすべて
-capability の形で名指すため。
+**CLI (`npm run admin:grant` / `admin:revoke`) で行い、管理画面に付け外しの画面を持たない。** 稀な操作で、
+打つのは DB の資格情報を持つ人なので、HTTP の認可を新たに持つ理由が無い。CLI 由来の event の actor は
+予約された値を焼く。**自分の `sub` は `/admin` を開けば出る** — この入口はセッションだけを要求し、見せる
+のは本人の identity だけ。
 
 ## 意図的にやっていないこと
 
 | やらないこと | 理由 |
 |---|---|
-| admin 以外の役割 | 実績が無い。Joomla は 6 段の編集役割を持ちながら 3 つが在籍 0 人だった |
-| admin を管理画面から付け外しすること | 稀な操作で、`sub` を得るには結局管理画面を開いてもらうことになる。CLI で足りる |
-| Keycloak の role で権限を表すこと | realm が他組織の所管で、付与が依頼になり交代に即応できない |
-| session に access / refresh token を持つこと | 送る先が無い。public API に認証が無く、resource server も無い |
-| 提供者を認可主体にすること | 認可を capability ベースにし、上流 DB からの ownership 導出を無くす |
+| admin 以外の役割 | 要る実績が無い。capability で書いてあるので、足すときも形は変わらない |
+| admin を管理画面から付け外しすること | 稀で、CLI で足りる |
+| Keycloak の role で権限を表すこと | realm が他組織の所管 |
+| session に access / refresh token を持つこと | 送る先が無い |
+| 提供者を認可の主体にすること | 認可を capability に閉じ、上流 DB からの ownership 導出を持たない |

@@ -15,8 +15,7 @@
  * **Only researches the portal has published appear.** An edge to an
  * unpublished hum would be a link that answers 404, and it would also give away
  * that the label exists at all — which is exactly what answering 404 for
- * "unpublished" and "no such label" alike is there to prevent
- * (docs/public-pages.md).
+ * "unpublished" and "no such label" alike is there to prevent.
  *
  * **Nothing found is 200 with an empty list.** An accession nobody has heard of
  * and an accession whose research is not published therefore answer the same,

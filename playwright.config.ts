@@ -8,7 +8,7 @@ import { SESSION_COOKIE } from "./app/auth/cookie"
  * **What is being driven is a deployment, not this source.** Nothing here
  * builds or starts the application: the address comes from the environment, so
  * the same scenarios run against the compose in this repo and against staging
- * without being written twice (`docs/testing.md`).
+ * without being written twice.
  *
  * **The two projects are the two kinds of reader.** A file named `.user.spec.ts`
  * needs somebody signed in and carries the stored session; everything else is

@@ -13,13 +13,12 @@ import type { Route } from "./+types/admin-version-datasets"
 /**
  * The datasets a published version lists, in its order — read and not written.
  *
- * A version is what a reader sees now, and nothing on it is edited in place
- * (docs/publishing.md): correcting one is done in the update draft the
+ * A version is what a reader sees now, and nothing on it is edited in place:
+ * correcting one is done in the update draft the
  * version's "編集" opens, and that draft's own dataset screen is where the
  * list is changed. This screen answers the other question the research's
  * table raises — which ones are these — so that the count beside a version
- * is a way somewhere, as the count beside a draft is (docs/editing.md の
- * 「draft」).
+ * is a way somewhere, as the count beside a draft is.
  *
  * **Each id leads to the dataset's public page, in a new tab.** The reader is
  * here to work, and the page is what they are checking — the same way the

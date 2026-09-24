@@ -182,8 +182,7 @@ describe("the dataset column of the download list", () => {
 
 /**
  * A URL carries the same four states as any other value on its way to a
- * screen (docs/data-model.md's table of value states): settled information,
- * an open question, or an answer with content.
+ * screen: settled information, an open question, or an answer with content.
  */
 describe("the state a links value carries to the page", () => {
   it("draws a not-applicable URL as the not-applicable notice on the public page", () => {
@@ -342,7 +341,7 @@ describe("the row of the research listing", () => {
 /**
  * The editing pane draws the body beside the form, and only what the form
  * writes: a section with no field beside it would show the writer places
- * nothing they type reaches (docs/editing.md の「フォームの隣に立つ公開ページ」).
+ * nothing they type reaches.
  */
 describe("the body beside the form", () => {
   const FILES: ResearchFileListView = {
@@ -381,7 +380,7 @@ describe("the body beside the form", () => {
 /**
  * A section stands whether or not the research has anything to put in it: once
  * it is gone a reader cannot tell "none" from "no such section", and every
- * research reads in the same order (docs/public-pages.md の「research の版」).
+ * research reads in the same order.
  */
 describe("a section with nothing in it", () => {
   const t = messagesFor("ja").research

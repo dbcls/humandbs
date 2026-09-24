@@ -18,7 +18,9 @@
  * Renumbering a research is not a third kind of work. The public key carries
  * the hum label, so moving the box is asking for every file in it to be public
  * again — and the label it is moving away from is still in the ledger as a
- * secondary pin, which is how the copy that has to move is found.
+ * secondary pin, which is how the copy that has to move is found. That is why a
+ * hum label is not unpinned while its box holds anything (`unpinLabel`): out of
+ * the ledger, the box is out of reach of every switch.
  */
 
 import { and, asc, eq, inArray, lt, sql } from "drizzle-orm"
@@ -117,24 +119,50 @@ export async function switchFiles(
  * Every file in the old box has to become public again under the new label.
  * Nothing crosses buckets, so each of these finishes as a rename inside the
  * public bucket rather than as a copy of the bytes.
+ *
+ * **This only lists; queueing is `requestSwitch`, in the transaction that
+ * moves the label.** The listing talks to the store, so it is done before that
+ * transaction opens, and the label and the move then commit together — a store
+ * that does not answer leaves the label where it was, and pressing again moves
+ * the box. Committed apart, the label would move and the files would not, with
+ * nothing left to press that queues them.
  */
-export async function requestBoxMove(
-  executor: Executor,
-  researchId: string,
-  fromHumLabel: string,
-): Promise<void> {
+export async function boxMoveOf(researchId: string, fromHumLabel: string): Promise<SwitchRequest[]> {
   const nodes = await listPrefix(PUBLIC_BUCKET, publicPrefix(fromHumLabel))
-  await requestSwitch(
-    executor,
-    nodes.map((node) => ({ researchId, fileName: node.name, action: "publish" as const })),
-  )
+  return nodes.map((node) => ({ researchId, fileName: node.name, action: "publish" as const }))
 }
 
+/**
+ * Whether any box the research has — the private one and the public one of
+ * every hum label in the ledger — holds a file.
+ */
+export async function researchHoldsFiles(executor: Executor, researchId: string): Promise<boolean> {
+  const boxes = await boxesOf(executor, researchId)
+  const labels = [...(boxes.primary === null ? [] : [boxes.primary]), ...boxes.others]
+  if ((await listPrefix(PRIVATE_BUCKET, privatePrefix(researchId))).length > 0) return true
+  for (const label of labels) {
+    if (await publicBoxHoldsFiles(label)) return true
+  }
+  return false
+}
+
+/** Whether anything answers under this hum label's public address. */
+export async function publicBoxHoldsFiles(humLabel: string): Promise<boolean> {
+  return (await listPrefix(PUBLIC_BUCKET, publicPrefix(humLabel))).length > 0
+}
+
+/**
+ * The switches of a research that have not been settled. `names` narrows them
+ * to those files; `lock` holds their rows until the caller's transaction ends,
+ * which keeps the runner from claiming one of them in the meantime (the claim
+ * skips a locked row).
+ */
 export async function pendingSwitches(
   executor: Executor,
   researchId: string,
+  only: { names?: readonly string[], lock?: boolean } = {},
 ): Promise<PendingSwitch[]> {
-  const rows = await executor
+  const query = executor
     .select({
       fileName: filePublishJob.fileName,
       action: filePublishJob.action,
@@ -142,7 +170,11 @@ export async function pendingSwitches(
       lastError: filePublishJob.lastError,
     })
     .from(filePublishJob)
-    .where(eq(filePublishJob.researchId, researchId))
+    .where(and(
+      eq(filePublishJob.researchId, researchId),
+      only.names === undefined ? undefined : inArray(filePublishJob.fileName, [...only.names]),
+    ))
+  const rows = await (only.lock === true ? query.for("update") : query)
   return rows.map((row) => ({
     fileName: row.fileName,
     action: row.action,

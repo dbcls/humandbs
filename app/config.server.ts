@@ -17,8 +17,7 @@ export interface AuthConfig {
  *
  * These are root credentials, and every signature a browser is handed is made
  * with them. The store cannot see who is asking — the application decides that
- * from `admin_user` and then signs on their behalf (docs/data-model.md の
- * 「ファイル」).
+ * from `admin_user` and then signs on their behalf.
  *
  * The endpoint is the address inside the compose network, and **not** the
  * address a download is served from: that is the front proxy, which adds the
@@ -38,7 +37,7 @@ export interface StoreConfig {
  * rather than trusting the queries. It is optional because the database is not
  * reachable outside production: an environment without it is a normal
  * environment, and the sources that read it are skipped rather than treated as
- * broken (docs/data-model.md の「外部キャッシュ」).
+ * broken.
  *
  * The schema name is configured because it differs between the deployments of
  * the upstream system.
@@ -55,16 +54,11 @@ export interface ApplicationDbConfig {
  * beside the portal inside the compose network and is not published, so an
  * environment without it is a normal environment and the screen says so rather
  * than failing. The path is the service's own; the portal only knows the
- * address it lives at (docs/assistant.md).
+ * address it lives at.
  */
 export interface AppConfig {
   /** What the application connects as. It cannot alter or erase the event log. */
   databaseUrl: string
-  /**
-   * What owns the schema. `drizzle-kit push`, the grant script and the reset in
-   * the database tests use it; nothing that serves a request does.
-   */
-  ownerDatabaseUrl: string
   auth: AuthConfig
   store: StoreConfig
   applicationDb: ApplicationDbConfig | null
@@ -85,7 +79,6 @@ const POSTGRES_PROTOCOLS = ["postgres:", "postgresql:"]
 export function loadConfig(env: Env): AppConfig {
   return {
     databaseUrl: readUrl(env, "HUMANDBS_DATABASE_URL", POSTGRES_PROTOCOLS),
-    ownerDatabaseUrl: readUrl(env, "HUMANDBS_OWNER_DATABASE_URL", POSTGRES_PROTOCOLS),
     auth: {
       issuerUrl: readUrl(env, "HUMANDBS_AUTH_ISSUER_URL", ["https:"]),
       clientId: readRequired(env, "HUMANDBS_AUTH_CLIENT_ID"),
@@ -99,6 +92,20 @@ export function loadConfig(env: Env): AppConfig {
     applicationDb: readApplicationDb(env),
     assistantOrigin: readAssistantOrigin(env),
   }
+}
+
+/**
+ * What owns the schema. The schema migrations, the grant script, the data
+ * migration and the reset in the database tests use it; nothing that serves a
+ * request does.
+ *
+ * **Read apart from `loadConfig`, so that the served application starts
+ * without it.** A deployment gives the owner's password only to the one-shot
+ * jobs that change the schema, and a process that answers requests and could
+ * alter or erase the event log would undo what the application role is for.
+ */
+export function loadOwnerDatabaseUrl(env: Env): string {
+  return readUrl(env, "HUMANDBS_OWNER_DATABASE_URL", POSTGRES_PROTOCOLS)
 }
 
 function readAssistantOrigin(env: Env): string | null {

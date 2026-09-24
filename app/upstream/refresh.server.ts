@@ -13,8 +13,7 @@
  * keeps that rebuild to a single pass.
  *
  * A source with no connection to reach is skipped, not failed, and leaves no
- * record: the table answers how the last fetch went, and no fetch was made
- * (docs/data-model.md の「外部キャッシュ」).
+ * record: the table answers how the last fetch went, and no fetch was made.
  */
 
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm"

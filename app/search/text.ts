@@ -125,10 +125,10 @@ export function searchTextOf(projection: unknown, extra: string[] = []): SearchT
  * The vocabulary values a row carries, as text.
  *
  * The projection holds the identity of a term and not its label — resolving
- * labels is the renderer's job, not the projection's (docs/data-model.md の
- * 「公開表現」) — so the walk above cannot see the words a reader will see. This
- * is where they are put back, for the slots that survived the projection and
- * therefore for the keys the catalog shows.
+ * labels is the renderer's job, not the projection's — so the walk above
+ * cannot see the words a reader will see. This is where they are put back,
+ * for the slots that survived the projection and therefore for the keys the
+ * catalog shows.
  *
  * **The code goes into both languages.** It is what an ICD10 term is looked up
  * by, and it is not a word in either language.

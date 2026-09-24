@@ -4,11 +4,10 @@
  * **The portal is a reader of this database and nothing else.** It belongs to
  * another project, so the connection forces `default_transaction_read_only`
  * rather than trusting every query here to stay a `SELECT`, and the schema name
- * is configured because it differs between that system's deployments
- * (docs/development.md の「上流のキャッシュを更新する」).
+ * is configured because it differs between that system's deployments.
  *
  * The queries answer three of the four cached sources, and the reads that seed a
- * draft from an approved application (docs/editing.md の「下書きを外から作る」).
+ * draft from an approved application.
  * The cached three are written as one statement each because the joins that
  * resolve a hum label are expensive enough — a full pass over the accession
  * history and the current entries' 24 million relations — that pulling the
@@ -19,7 +18,7 @@
  * addresses, telephone numbers, the head of institution and every collaborator;
  * of all that, only the country and the state line of the investigator's
  * address are read, and the state survives only where a state is a
- * jurisdiction of its own (docs/data-model.md の「外部キャッシュ」).
+ * jurisdiction of its own.
  *
  * The reads that seed a draft answer a screen rather than a nightly batch, so
  * they are shaped around what this database is fast at. Three things decide it:
@@ -178,7 +177,7 @@ function humResolutionCte(schema: string): string {
  * Public only, because both readers are about published things: the endpoint
  * that supplies the relation to DDBJ Search may not name an unpublished study,
  * and the publish gate compares a version's pins against what upstream says is
- * out (docs/public-api.md, docs/publishing.md).
+ * out.
  *
  * **The edge to a study is held to the same line.** The relation upstream draws
  * covers everything registered, so a published dataset can point at a study
@@ -222,7 +221,7 @@ export async function fetchHumAccessions(
  * the one on show. The history only reaches back to 2020-09, which puts every
  * accession published before that on the day it was recorded in bulk; that
  * value is passed on as it is, because deciding where the bulk record ends
- * would be the portal guessing (docs/data-model.md の「外部キャッシュ」).
+ * would be the portal guessing.
  *
  * Every public dataset is taken, not only the ones the portal has pinned: this
  * is a cache of upstream's table, and a date already held is one less thing
@@ -534,8 +533,7 @@ const DETAIL_KEYS = [
  * The keys of the application form a draft reads. **Naming them is what makes
  * the pivot cheap**, and it is also the whole of what leaves the upstream
  * system: the connection can reach the addresses and the telephone numbers, and
- * this list is where it is decided that it does not
- * (docs/editing.md の「下書きを外から作る」).
+ * this list is where it is decided that it does not.
  */
 const FORM_KEYS = [...ROW_KEYS, ...DETAIL_KEYS] as const
 

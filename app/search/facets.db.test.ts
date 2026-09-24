@@ -183,6 +183,13 @@ describe("filtering by a facet", () => {
     expect(await labels("disease:C34 assay:wgs")).toEqual(["JGAD000001"])
   })
 
+  it("matches a vocabulary code whatever case it is written in", async () => {
+    // The ICD10 set here is reached through a plain vocabulary key, whose codes
+    // are not lower case — matching has to ignore case rather than assume it.
+    expect(await labels("assay:WGS")).toEqual(await labels("assay:wgs"))
+    expect(await labels("disease:c34")).toEqual(["JGAD000001", "JGAD000002"])
+  })
+
   it("matches nothing for a value the vocabulary does not hold", async () => {
     expect(await labels("disease:Z99")).toEqual([])
   })
@@ -321,7 +328,7 @@ describe("the values a query may name", () => {
 /**
  * A vocabulary or a disease key is always a facet; a number key is one only
  * where the catalog has given it a category — today `subject-count` and
- * `read-length` (`docs/public-pages.md` の「絞り込み」).
+ * `read-length`.
  */
 describe("which keys the panel offers", () => {
   it("excludes a number key that has been given no category, and keeps everything else", async () => {

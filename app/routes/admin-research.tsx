@@ -1,6 +1,6 @@
 import { data, Form } from "react-router"
 
-import { HUM_LABEL_PATTERN } from "~/admin/labels"
+import { HUM_LABEL_PATTERN, unpinHold, type UnpinHold } from "~/admin/labels"
 import type { AdminDraftReviewRow, AdminResearchVersionRow } from "~/admin/pages.server"
 import { researchDetailAction, researchDetailPage } from "~/admin/pages.server"
 import type { AdminDraftRow } from "~/admin/queries.server"
@@ -38,8 +38,8 @@ import { Flag, Stated } from "~/components/flags"
  *
  * **Versions and drafts stand in one list.** Publishing turns a draft into a
  * version and withdrawing turns a version back into a draft; a row moves and
- * nothing is added or taken away (docs/publishing.md の「破棄と削除」). Two
- * sections would draw the same row in two places and leave the reader to work
+ * nothing is added or taken away. Two sections would draw the same row in two
+ * places and leave the reader to work
  * out that they are one thing.
  *
  * **The ledger is managed here rather than at publish time.** A label is
@@ -88,6 +88,8 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             case "updating": return t.withdrawUpdating
             case "taken": return t.pinTaken
             case "malformed": return t.pinMalformed
+            case "holds-files": return t.unpinHoldsFiles
+            case "files-remain": return t.deleteResearchFilesRemain
             default: return null
           }
         }}
@@ -110,6 +112,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 warning={t.deleteResearchWarning}
                 confirm={t.deleteResearchConfirm}
                 intent="delete-research"
+                disabled={view.filesRemain === true ? t.deleteResearchFilesRemain : undefined}
               />
             </Form>
           </Heading>
@@ -197,7 +200,15 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                           <Flag kind={label.isPrimary ? "pointed" : "secondary"}>
                             {label.isPrimary ? t.primary : t.secondary}
                           </Flag>
-                          <span>{label.label}</span>
+                          <span className="flex items-center gap-2">
+                            {label.label}
+                            {/* The files leaving a retired label's box for the
+                                primary's: the job that moves them is queued or
+                                running, and the label cannot go until it ends. */}
+                            {unpinHold(label, view.switching) === "moving" && (
+                              <Flag kind="waiting">{t.movingFiles}</Flag>
+                            )}
+                          </span>
                           <span className="flex items-center gap-1">
                             {/* Moving a label is not taking it away: the one
                                 that was primary stays, as secondary. */}
@@ -209,7 +220,12 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                                 </Submit>
                               </Form>
                             )}
-                            <Unpin pinId={label.id} subject={label.label} locale={locale} />
+                            <Unpin
+                              pinId={label.id}
+                              subject={label.label}
+                              held={unpinHold(label, view.switching)}
+                              locale={locale}
+                            />
                           </span>
                         </li>
                       ))}
@@ -252,14 +268,13 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
           </Section>
 
           {/* The box is not a draft's and not a version's, so it is reached
-              from here and not from either (docs/files.md の「画面」). The name
-              does not say what is in it, which is why this one section has a
-              line under its name. */}
+              from here and not from either. The name does not say what is in
+              it, which is why this one section has a line under its name. */}
           <Section title={messages.admin.files.heading} note={t.filesNote}>
             {/* **The way in is a control, and says it goes somewhere.** The one
                 thing this section has leads to another screen, so it wears the
-                face of the way out (`AdminBack`) with the mark after the word
-                (docs/admin-ui.md の「区画の枠」) — a bare link under a name
+                face of the way out (`AdminBack`) with the mark after the word —
+                a bare link under a name
                 reads as a caption, and an outlined button with no mark reads as
                 something done here. What the box holds stands beside it. */}
             <p className="flex flex-wrap items-center gap-3 text-sm">
@@ -282,11 +297,11 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 /**
  * A draft: when it was last written to, what its steps say, and the four
  * things done to one. **A draft is a draft** — it does not say which version
- * it came from, because it does not know (docs/editing.md の「draft」).
+ * it came from, because it does not know.
  *
  * **Its dataset count is the way to the dataset listing**; the review and the
  * publish confirmation are offered as things to press (`DraftWays`), since
- * nothing in the row counts what they hold (docs/editing.md の「draft」).
+ * nothing in the row counts what they hold.
  *
  * Discarding asks twice. It takes the whole draft with it and cannot be undone,
  * and the revision travels with the request so a draft somebody has edited in
@@ -360,8 +375,8 @@ function Datasets({ count, to, locale }: { count: number, to: string, locale: Lo
 }
 
 /*
-  **Whether a draft is shared is a mark and a word**, every draft answers it
-  (docs/ui.md の「壊れるもの」). What the review holds is read on the review
+  **Whether a draft is shared is a mark and a word**, every draft answers it.
+  What the review holds is read on the review
   screen, which the row's own "レビュー" opens. A version being updated shows its
   draft's in the cell a version leaves empty.
 */
@@ -400,7 +415,7 @@ function DraftWays({ researchId, draftId, locale }: { researchId: string, draftI
  *
  * **Editing one does not take it out.** It opens the draft the version is
  * updated in — made now if none is open — and the version stays as it is until
- * that draft is published in its place (docs/editing.md の「draft」). **Its
+ * that draft is published in its place. **Its
  * dataset count leads to the screen that reads what it lists** — a version is
  * not edited in place, so that screen has nothing to press. **The
  * update is a state of this row, not a row of its own**: while it is on, the
@@ -465,8 +480,8 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
       </Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
-          {/* The same order as the name row (docs/admin-ui.md の「画面の名乗り」):
-              what leaves nothing behind first, what cannot be undone last.
+          {/* The same order as the name row: what leaves nothing behind first,
+              what cannot be undone last.
               Stopping an update throws a draft away, so it stands with
               withdrawing at the end and not beside the way into that draft. */}
           {updating === null
@@ -528,7 +543,17 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
   )
 }
 
-function Unpin({ pinId, subject, locale }: { pinId: string, subject: string, locale: Locale }) {
+/**
+ * Taking a hum label away. **Closed, and saying why and what to do, while the
+ * label's box holds files or a switch runs** — the same facts the refusal on
+ * pressing reads, which stays for a screen opened before they changed.
+ */
+function Unpin({ pinId, subject, held, locale }: {
+  pinId: string
+  subject: string
+  held: UnpinHold | null
+  locale: Locale
+}) {
   const t = messagesFor(locale).admin.detail
   return (
     <Form method="post">
@@ -541,6 +566,9 @@ function Unpin({ pinId, subject, locale }: { pinId: string, subject: string, loc
         intent="unpin"
         icon="close"
         size="row"
+        disabled={held === null ? undefined : t.unpinHeld[held]}
+        // The ledger stands at the left of the card, with the room to its right.
+        reasonAt="left"
       />
     </Form>
   )

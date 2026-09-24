@@ -36,9 +36,9 @@ import { convertible } from "~/content/units"
 import type { DatasetContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb, type Executor } from "~/db/client.server"
-import type { BoxEntry } from "~/files/box"
-import { adminBox } from "~/files/listing.server"
-import { privateNames, switchFiles } from "~/files/jobs.server"
+import { isUploadableName, type BoxEntry } from "~/files/box"
+import { adminBox, publicBox } from "~/files/listing.server"
+import { pendingSwitches, privateNames, switchFiles } from "~/files/jobs.server"
 import { wakeFileRunner } from "~/files/runner.server"
 import { resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -314,13 +314,26 @@ export interface AdminResearchPageView {
   locale: Locale
   researchId: string
   humLabel: string | null
-  labels: { id: string, label: string, isPrimary: boolean }[]
+  /**
+   * The ledger's hum labels, each with whether its public box holds anything —
+   * null when the store did not answer for it.
+   */
+  labels: { id: string, label: string, isPrimary: boolean, holdsFiles: boolean | null }[]
   versions: AdminResearchVersionRow[]
   drafts: AdminDraftRow[]
   /** Whether a link is out there for each draft, what is unanswered, and what its gate says. */
   reviews: AdminDraftReviewRow[]
   /** What the box holds. Null when the store did not answer. */
   box: { count: number, bytes: number } | null
+  /**
+   * Whether any box of the research holds a file — the private one and the
+   * public one of every hum label in the ledger, the boxes deleting the
+   * research is refused over. Null when the store did not answer for one of
+   * them and none that did held anything.
+   */
+  filesRemain: boolean | null
+  /** Whether a switch of one of its files has not finished (a failed one has). */
+  switching: boolean
 }
 
 export async function researchDetailPage(
@@ -338,19 +351,39 @@ export async function researchDetailPage(
   const humLabel = view.labels.find((label) => label.isPrimary)?.label ?? null
 
   // A version being updated carries its draft's row rather than one of its
-  // own (docs/editing.md の「draft」), so the table's facts for it come from
-  // the same draft this gathers for every other one.
+  // own, so the table's facts for it come from the same draft this gathers
+  // for every other one.
   const draftIds = [
     ...view.drafts.map((row) => row.id),
     ...view.versions.flatMap((row) => row.updating === null ? [] : [row.updating.id]),
   ]
 
-  const [box, reviews, draftRecords, versionContents] = await Promise.all([
+  // **Each box is listed once.** The private box and the primary's public one
+  // are what `adminBox` lists for the summary, so what they hold is read off
+  // it; only the retired labels' boxes are listed on their own. A store that
+  // does not answer leaves a fact unknown rather than the page lost — the
+  // controls it would close stay open, and the refusal on pressing them is
+  // what stands.
+  const retired = view.labels.filter((label) => !label.isPrimary)
+  const [box, retiredBoxes, pending, reviews, draftRecords, versionContents] = await Promise.all([
     adminBox(db, id, humLabel),
+    Promise.all(retired.map((label) => publicBox(label.label))),
+    pendingSwitches(db, id),
     draftReviewSummaries(db, id),
     Promise.all(draftIds.map((draftId) => readDraft(db, draftId))),
     Promise.all(view.versions.map((row) => comparableVersion(db, id, row.number))),
   ])
+  const retiredHolds = new Map(retired.map((label, at) => {
+    const nodes = retiredBoxes[at] ?? null
+    return [label.id, nodes === null ? null : nodes.length > 0]
+  }))
+  const labels = view.labels.map((label) => ({
+    ...label,
+    holdsFiles: label.isPrimary
+      ? box === null ? null : box.some((entry) => entry.isPublic)
+      : retiredHolds.get(label.id) ?? null,
+  }))
+  const holds = [box === null ? null : box.length > 0, ...retiredHolds.values()]
 
   const drafts = draftRecords.flatMap((record) =>
     record === null ? [] : [{ id: record.id, content: record.content }])
@@ -367,7 +400,9 @@ export async function researchDetailPage(
       ? null
       : { count: box.length, bytes: box.reduce((sum, entry) => sum + entry.size, 0) },
     humLabel,
-    labels: view.labels,
+    labels,
+    filesRemain: holds.includes(true) ? true : holds.includes(null) ? null : false,
+    switching: pending.some((row) => !row.failed),
     versions: view.versions.map((row, at) => ({
       ...row,
       datasets: versionContents[at]?.content.datasetIds.length ?? 0,
@@ -390,8 +425,8 @@ export interface VersionDatasetListView {
 
 /**
  * What a published version lists, for reading. **Nothing on a version is
- * written in place** (docs/publishing.md), so this has no action: the list is
- * changed in the draft the version's "編集" opens.
+ * written in place**, so this has no action: the list is changed in the draft
+ * the version's "編集" opens.
  *
  * The labels are the ledger's now rather than the version's then — a dataset
  * is known by its primary id, and correcting a label is not a new version.
@@ -475,7 +510,7 @@ export interface AdminDraftPageView {
   /**
    * The number of the version this draft is the update of, when it is one.
    * The screen names the draft after it and offers the update where a draft
-   * of its own is offered the publish (docs/editing.md の「draft」).
+   * of its own is offered the publish.
    */
   updating: number | null
   /** Where the draft stands on each of its steps (`DraftSteps`). */
@@ -712,10 +747,9 @@ export interface DatasetEditorView {
    */
   box: BoxEntry[] | null
   /**
-   * Whether this dataset may carry a file selection at all, read off its id
-   * (docs/files.md). An archive's dataset is distributed by
-   * the archive, so the screen does not offer the picker and the save refuses
-   * a selection.
+   * Whether this dataset may carry a file selection at all, read off its id.
+   * An archive's dataset is distributed by the archive, so the screen does
+   * not offer the picker and the save refuses a selection.
    */
   portalIssued: boolean
 }
@@ -894,10 +928,9 @@ export type DatasetLabelResult
  * Attaching a dataset's id, or taking it off, from the screen the dataset is
  * written on. **A form post beside a JSON save**: the id is not part of the
  * description and goes into the ledger the moment it is pinned, so it neither
- * waits for a save nor moves the entry's revision
- * (docs/publishing.md の「ラベルを pin する」). **Nothing is redirected** — the
- * screen posts through a fetcher so that what is typed around the id is not
- * lost, and reads its listing again once the ledger has moved.
+ * waits for a save nor moves the entry's revision. **Nothing is redirected** —
+ * the screen posts through a fetcher so that what is typed around the id is
+ * not lost, and reads its listing again once the ledger has moved.
  */
 export async function datasetLabelAction(
   request: Request,
@@ -1025,6 +1058,10 @@ export type ResearchDetailResult
     | { status: "taken" }
     /** A research ID was typed in a shape no address could be made from. */
     | { status: "malformed" }
+    /** The research ID's public address still holds files, or a file is switching. */
+    | { status: "holds-files" }
+    /** The research being deleted still has files. */
+    | { status: "files-remain" }
 
 /**
  * Everything the research screen does: open an empty draft or a copy of a
@@ -1032,14 +1069,18 @@ export type ResearchDetailResult
  * or remove a research ID. They are ordinary form posts told apart by what
  * the form says it is.
  *
- * The capability is asked for per operation rather than once at the top, so
- * that what each one requires is written where it is done.
+ * The capability is asked for per operation, so that what each one requires
+ * is written where it is done. **Reading that the research exists is asked for
+ * first**: a research that was never published is itself unpublished, and
+ * answering "not found" before "forbidden" would tell whoever asks which
+ * identities are real.
  */
 export async function researchDetailAction(
   request: Request,
   locale: Locale,
   researchId: string | undefined,
 ): Promise<Response | ResearchDetailResult> {
+  await requireCapability(request, "view-unpublished")
   const id = identity(researchId)
   const db = getDb()
   if (await adminResearch(db, id) === null) notFound()
@@ -1065,6 +1106,7 @@ export async function researchDetailAction(
     if (intent === "unpin") {
       const outcome = await unpinLabel(db, identity(readString(form, "pinId")), actorOf(actor))
       if (outcome.status === "gone") notFound()
+      if (outcome.status === "holds-files") return outcome
       return back
     }
     if (intent === "make-primary") {
@@ -1090,6 +1132,7 @@ export async function researchDetailAction(
     const actor = await requireCapability(request, "delete-research")
     const outcome = await deleteResearch(db, id, actorOf(actor))
     if (outcome.status === "gone") notFound()
+    if (outcome.status === "files-remain") return outcome
     return redirect(href(locale, adminResearchListPath()))
   }
 
@@ -1101,15 +1144,14 @@ export async function researchDetailAction(
   }
 
   // Editing a version is opening the draft it is updated in, made now if none
-  // is open. The version itself is not touched (docs/editing.md の「draft」).
+  // is open. The version itself is not touched.
   if (intent === "edit-version") {
     const outcome = await draftUpdating(db, id, identity(readString(form, "versionId")))
     if (outcome.status === "gone") notFound()
     return redirect(href(locale, adminDraftPath(id, outcome.draftId)))
   }
 
-  // A copy of a version: a draft like any other, opened for editing
-  // (docs/editing.md の「draft」).
+  // A copy of a version: a draft like any other, opened for editing.
   if (intent === "copy-version") {
     const number = Number(form.get("number"))
     if (!Number.isInteger(number)) badRequest()
@@ -1210,6 +1252,8 @@ export interface PublishPageView {
   findingCount: number
   researchFields: number | null
   datasetChanges: PublishDatasetChangeView[]
+  /** The datasets stand in another order than in the version compared with. */
+  reordered: boolean
   /** The version the changes are measured against: the one updated, or the newest. Null before any. */
   comparedWith: number | null
   /** The day the updated version went out, which an update may leave as it is. */
@@ -1279,6 +1323,7 @@ export async function publishPage(
     findingCount: preview.gate.findings.length,
     steps,
     researchFields: preview.researchFields,
+    reordered: preview.reordered,
     datasetChanges: preview.datasetChanges.map((change) => ({
       ...change,
       label: labelOf.get(change.datasetId) ?? null,
@@ -1453,6 +1498,9 @@ export async function publishAction(
     await requireCapability(request, "manage-files")
     const names = form.getAll("fileName")
       .flatMap((value) => typeof value === "string" ? [value] : [])
+    // The list only offers files of the box; any other name would become a key
+    // naming the box itself or somewhere outside it.
+    if (!names.every(isUploadableName)) badRequest()
     await switchFiles(
       db,
       names.map((fileName) => ({ researchId, fileName, action: "publish" as const })),
@@ -1481,6 +1529,7 @@ export async function publishAction(
   if (preview?.updating != null
     && preview.researchFields === 0
     && preview.datasetChanges.length === 0
+    && !preview.reordered
     && releaseDate === preview.updating.releaseDate) {
     return { status: "unchanged" }
   }

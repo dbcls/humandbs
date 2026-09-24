@@ -13,13 +13,16 @@ import { EDGE_SHADE } from "./base"
 import { FacetPanel } from "./facets"
 
 /** Rendered at a given address, since the links are built relative to none. */
-function render(categories: FacetCategoryView[]): string {
+function render(
+  categories: FacetCategoryView[],
+  presented: { sort: string | null, order: string | null, size: number | null } = { sort: null, order: null, size: null },
+): string {
   const element = (
     <FacetPanel
       locale="ja"
       target="research"
       query=""
-      sort={null}
+      presented={presented}
       panel={{ categories, target: "research" }}
     />
   )
@@ -206,6 +209,22 @@ describe("the refinement panel", () => {
 
     expect(html).not.toContain("<button")
     expect(html).toContain("type=\"date\"")
+  })
+
+  it("carries the ordering, its direction and the page size across a range", () => {
+    const html = render([{ code: null, label: null, facets: [DATES] }], { sort: "id", order: "asc", size: 50 })
+
+    expect(html).toContain("name=\"sort\" value=\"id\"")
+    expect(html).toContain("name=\"order\" value=\"asc\"")
+    expect(html).toContain("name=\"size\" value=\"50\"")
+  })
+
+  it("writes nothing for a presentation left at its defaults", () => {
+    const html = render([{ code: null, label: null, facets: [DATES] }])
+
+    expect(html).not.toContain("name=\"sort\"")
+    expect(html).not.toContain("name=\"order\"")
+    expect(html).not.toContain("name=\"size\"")
   })
 
   it("names the facet the range writes into, so the form says which one it is", () => {

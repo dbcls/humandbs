@@ -362,7 +362,7 @@ describe("the terms of a vocabulary", () => {
     const before = only(await db.select().from(s.vocabularyTerm))
 
     // A code filed under the wrong disease is corrected on the value that names
-    // it, not by renaming the classification (docs/data-model.md の「ICD10」).
+    // it, not by renaming the classification.
     expect(await catalogAction(post(token, {
       intent: "update-term",
       termId,
@@ -689,6 +689,62 @@ describe("folding one term into another", () => {
     )
     expect(stale).toEqual({ status: "conflict" })
     expect(chosenIn(only(await db.select().from(s.draftDatasetEntry)).content)).toEqual([into])
+  })
+
+  /**
+   * The merge read a row, folded it and wrote it back by id. A save committed in
+   * between was written over with what the merge had read, and its revision
+   * came out as the one the editor already held — so nothing refused the
+   * editor's next save either.
+   */
+  it("folds a save that lands while it runs rather than writing over it", async () => {
+    const token = await signIn(CURATOR, true)
+    const { keyId, from, into } = await twoSpellings()
+    const { id: researchId } = only(await db.insert(s.research).values({})
+      .returning({ id: s.research.id }))
+    const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
+      .returning({ id: s.dataset.id }))
+    const { id: draftId } = only(await db.insert(s.researchDraft)
+      .values({ researchId, content: emptyResearchContent(), shareToken: `share-${researchId}` })
+      .returning({ id: s.researchDraft.id }))
+    const pointing = {
+      ...emptyDatasetContent(),
+      values: [{ keyId, value: { kind: "vocabulary" as const, termIds: filled([from]) } }],
+    }
+    const opened = await saveDatasetEntry(db, { draftId, datasetId, revision: null }, pointing)
+    if (opened.status !== "saved") throw new Error("expected the first save to land")
+
+    // The editor's save, written and not yet committed: it adds a value.
+    const edited = {
+      ...pointing,
+      values: [...pointing.values, { keyId: "note", value: { kind: "text" as const, text: { ja: filled([[{ text: "足した" }]]), en: filled([[{ text: "added" }]]) } } }],
+    }
+    let commit = (): void => undefined
+    const committing = new Promise<void>((resolve) => {
+      commit = resolve
+    })
+    let written = (): void => undefined
+    const isWritten = new Promise<void>((resolve) => {
+      written = resolve
+    })
+    const saving = db.transaction(async (tx) => {
+      await tx.update(s.draftDatasetEntry)
+        .set({ content: edited, revision: opened.revision + 1 })
+        .where(eq(s.draftDatasetEntry.draftId, draftId))
+      written()
+      await committing
+    })
+    await isWritten
+    const merging = catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into }))
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    commit()
+    await saving
+    await merging
+
+    const entry = only(await db.select().from(s.draftDatasetEntry))
+    expect(entry.content.values.map((one) => one.keyId)).toEqual([keyId, "note"])
+    expect(chosenIn(entry.content)).toEqual([into])
+    expect(entry.revision).toBe(opened.revision + 2)
   })
 
   it("leaves one identity where a description named both spellings", async () => {

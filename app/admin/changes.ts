@@ -19,6 +19,21 @@ import { readAt } from "./paths"
 
 import type { DatasetContent, ResearchContent } from "~/content/types"
 
+/**
+ * Whether the datasets both lists hold stand in a different order. A dataset on
+ * one side only is not compared: coming on or going off is a change of its own,
+ * and says nothing about the order of the rest. **The order is what a reader
+ * sees** — the public page lists a version's datasets as the version holds them
+ * — so a draft that only moves rows still changes the page.
+ */
+export function orderChanged(before: readonly string[], after: readonly string[]): boolean {
+  const inAfter = new Set(after)
+  const inBefore = new Set(before)
+  const kept = before.filter((id) => inAfter.has(id))
+  const now = after.filter((id) => inBefore.has(id))
+  return kept.some((id, at) => now[at] !== id)
+}
+
 export function changedFromPublished(
   published: ResearchContent,
   draft: ResearchContent,

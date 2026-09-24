@@ -96,8 +96,8 @@ describe("a submit that cannot be pressed", () => {
 })
 
 /**
- * A submit waits in place once pressed (`docs/ui.md` の「壊れるもの」): until
- * then it is an ordinary button, with its own icon and nothing said beside it.
+ * A submit waits in place once pressed: until then it is an ordinary button,
+ * with its own icon and nothing said beside it.
  */
 describe("a submit that has not been pressed", () => {
   it("keeps its icon, can be pressed, and has no spinner and nothing read out", () => {

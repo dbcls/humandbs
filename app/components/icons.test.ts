@@ -4,7 +4,7 @@ import { FLAG, type FlagKind } from "./flags"
 import { ACTION_ICON, ICON_NAMES, SUBJECT_ICON } from "./icons"
 
 /**
- * **A glyph means one thing** (`docs/ui.md` の「押せるもの」). There are three
+ * **A glyph means one thing.** There are three
  * tables — what a control does (`ACTION_ICON`), what a thing is
  * (`SUBJECT_ICON`) and what state it is in (`FLAG`) — and a glyph standing in
  * two of them is read in both senses at once. The only overlaps allowed are

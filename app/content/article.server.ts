@@ -4,7 +4,7 @@
  * Site content keeps a wider dialect than research prose does — headings,
  * numbered clauses and tables are the structure of a guideline rather than
  * decoration — so it stays a markdown string and the allowed set is "whatever
- * CommonMark and GFM tables can say" (`docs/data-model.md` の「サイトコンテンツ」).
+ * CommonMark and GFM tables can say".
  *
  * Two things are outside it, and both are refused here rather than dropped at
  * render time:

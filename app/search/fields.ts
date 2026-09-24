@@ -73,8 +73,7 @@ export interface FacetField {
   /**
    * **A disease is a term field too**: it is counted by the vocabulary terms it
    * points at, and a query names it the same way. The kind is kept apart from
-   * `vocabulary` because the panel draws the two differently
-   * (`docs/public-pages.md` の「絞り込み」).
+   * `vocabulary` because the panel draws the two differently.
    */
   kind: "vocabulary" | "number" | "disease"
   /** The set a term value is resolved in. Null for a number. */

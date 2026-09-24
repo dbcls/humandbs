@@ -23,7 +23,7 @@ import type { Route } from "./+types/admin-upstream-branch"
  * **Two states only.** The hum is not in the portal, and the one thing to do
  * is start a research from what the branch states; or it already names one,
  * and this screen offers no form at all — taking the branch in is done from
- * that research's own draft (docs/editing.md の「行き先」).
+ * that research's own draft.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale

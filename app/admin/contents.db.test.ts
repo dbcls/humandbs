@@ -1211,3 +1211,62 @@ describe("お知らせの公開日時と公開", () => {
     expect(narrowed.rows.map((row) => row.id)).toEqual([id])
   })
 })
+
+/**
+ * `updated_at` は「最後に変わった時刻」を名乗る列なので、書き換えるたびに動く。
+ * 作った時刻のまま残ると、いつか「最終更新」に使った画面が黙って誤る。
+ */
+describe("最終更新の時刻", () => {
+  const LONG_AGO = new Date("2020-01-01T00:00:00Z")
+  const moved = (at: Date) => at.getTime() > LONG_AGO.getTime()
+
+  it("本文の保存と公開で、その言語の行が動く", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("faq")
+    await db.insert(s.documentContent).values({
+      documentId: id, locale: "ja", content: { title: "題", body: "本文" }, updatedAt: LONG_AGO,
+    })
+    const newsId = only(await db.insert(s.news).values({ publishedAt: "2026-01-01 09:00:00" })
+      .returning({ id: s.news.id })).id
+    await db.insert(s.newsContent).values({
+      newsId, locale: "ja", content: { title: "題", body: "本文" }, updatedAt: LONG_AGO,
+    })
+
+    expect((await documentAction(post(token, adminDocumentPath(id), {
+      intent: "save", locale: "ja", revision: "1", title: "直した題", body: "本文",
+    }), id)).status).toBe("ok")
+    expect((await newsAction(post(token, adminNewsPath(newsId), {
+      intent: "publish", locale: "ja", revision: "1", title: "題", body: "本文",
+    }), newsId)).status).toBe("ok")
+
+    expect(moved(only(await db.select().from(s.documentContent)).updatedAt)).toBe(true)
+    expect(moved(only(await db.select().from(s.newsContent)).updatedAt)).toBe(true)
+  })
+
+  it("slug の変更・系列の張り替え・お知らせの日時・アラートの本文で、その行が動く", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = only(await db.insert(s.document).values({ slug: "faq", updatedAt: LONG_AGO })
+      .returning({ id: s.document.id })).id
+    await documentAction(post(token, adminDocumentPath(id), { intent: "rename", slug: "faq2" }), id)
+    expect(moved(only(await db.select().from(s.document).where(eq(s.document.id, id))).updatedAt)).toBe(true)
+
+    const first = await makeDocument("x")
+    await publishSide(first, "ja", "一つ目")
+    await documentAction(post(token, adminDocumentPath(first), { intent: "cut-into-version", number: "1" }), first)
+    const series = only(await db.select().from(s.documentSeries))
+    await db.update(s.documentSeries).set({ updatedAt: LONG_AGO })
+    const second = await makeDocument("x/version/2")
+    await seriesAction(post(token, adminSeriesPath(series.id), { intent: "repoint-series", documentId: second }), series.id)
+    expect(moved(only(await db.select().from(s.documentSeries)).updatedAt)).toBe(true)
+
+    const newsId = only(await db.insert(s.news).values({ updatedAt: LONG_AGO }).returning({ id: s.news.id })).id
+    await newsAction(post(token, adminNewsPath(newsId), { intent: "set-date", publishedAt: "2026-03-01T09:30" }), newsId)
+    expect(moved(only(await db.select().from(s.news)).updatedAt)).toBe(true)
+
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+    await db.update(s.alert).set({ updatedAt: LONG_AGO })
+    await alertAction(post(token, adminAlertPath(), { intent: "update-alert", alertId: alert.id, ja: "直した", en: "fixed" }))
+    expect(moved(only(await db.select().from(s.alert)).updatedAt)).toBe(true)
+  })
+})

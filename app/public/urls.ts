@@ -295,13 +295,14 @@ export const SCREEN_PATHS = [
  * The `v{n}` segment of a version address.
  *
  * Leading zeros are rejected rather than accepted and normalised: one version
- * has one address, and `v01` would be a second one for the same page.
+ * has one address, and `v01` would be a second one for the same page. **The
+ * page and the JSON API both read the segment here**, so the two name a
+ * version the same way. Nine digits is past any version a research will have
+ * and inside what the database's integer holds.
  */
 export function parseVersionSegment(segment: string): number | null {
-  const match = /^v(0|[1-9][0-9]*)$/.exec(segment)
-  if (match === null) return null
-  const number = Number(match[1])
-  return number >= 1 ? number : null
+  const match = /^v([1-9][0-9]{0,8})$/.exec(segment)
+  return match === null ? null : Number(match[1])
 }
 
 /** The hum label a pattern captured, lowercased, or null if it did not match. */

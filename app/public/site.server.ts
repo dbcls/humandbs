@@ -103,10 +103,10 @@ const NEWS_PER_PAGE = 20
  * Announcements, newest first, optionally narrowed by a word.
  *
  * **The word is matched against the title and the body with `ILIKE`, not
- * through the search index.** Announcements are not part of the public search
- * (`docs/public-pages.md`), and at 682 rows a scan is the whole cost — putting
- * them into the index would mean maintaining a second kind of row for a
- * listing that is read by date.
+ * through the search index.** Announcements are not part of the public
+ * search, and at 682 rows a scan is the whole cost — putting them into the
+ * index would mean maintaining a second kind of row for a listing that is
+ * read by date.
  */
 /**
  * The half of "is this readable" that the announcement itself answers: it is

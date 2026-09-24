@@ -1,5 +1,7 @@
+import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
+import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -114,5 +116,64 @@ describe("putting the classification in", () => {
 
     expect((await terms()).map((one) => one.code).sort()).toEqual(["C34", "wgs"])
     expect(await icd10TermIds(db)).toEqual(new Map([["C34", expect.any(String)]]))
+  })
+})
+
+describe("taking a newer distribution", () => {
+  /** A published dataset whose disease is the given code, so its words reach a search row. */
+  async function publishedDatasetWith(code: string): Promise<void> {
+    const ids = await icd10TermIds(db)
+    const [set] = await db.select({ id: s.vocabularySet.id }).from(s.vocabularySet)
+      .where(eq(s.vocabularySet.code, "icd10"))
+    const [key] = await db.insert(s.contentKey)
+      .values({ code: "disease", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: set?.id ?? "" })
+      .returning({ id: s.contentKey.id })
+    const [research] = await db.insert(s.research).values({}).returning({ id: s.research.id })
+    const researchId = research?.id ?? ""
+    await db.insert(s.labelPin).values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
+    const [dataset] = await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id })
+    const datasetId = dataset?.id ?? ""
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "JGAD000001", datasetId, isPrimary: true })
+    const { datasetIds: listed, ...body } = emptyResearchContent()
+    void listed
+    await db.insert(s.researchVersion).values({
+      researchId,
+      number: 1,
+      releaseDate: "2020-01-01",
+      content: {
+        ...body,
+        datasets: [{
+          datasetId,
+          ...emptyDatasetContent(),
+          experiments: [{
+            id: "experiment-1",
+            label: filled("WGS"),
+            values: [{ keyId: key?.id ?? "", value: { kind: "vocabulary", termIds: filled([ids.get(code) ?? ""]) } }],
+          }],
+        }],
+      },
+    })
+  }
+
+  async function datasetText() {
+    const [row] = await db.select({ ja: s.searchDoc.textJa, en: s.searchDoc.textEn })
+      .from(s.searchDoc)
+      .where(eq(s.searchDoc.targetType, "dataset"))
+    return row
+  }
+
+  it("puts the new titles into the search rows, so a renamed code is found by its new name and not its old one", async () => {
+    await importIcd10Terms(db, [C34, C349])
+    await publishedDatasetWith("C349")
+    await importIcd10Terms(db, [C34, C349])
+    expect((await datasetText())?.en).toContain("Bronchus or lung, unspecified")
+
+    await importIcd10Terms(db, [C34, { ...C349, titleEn: "Lung, site unspecified", titleJa: "肺，部位不明" }])
+
+    const text = await datasetText()
+    expect(text?.en).toContain("Lung, site unspecified")
+    expect(text?.en).not.toContain("Bronchus or lung, unspecified")
+    expect(text?.ja).toContain("肺，部位不明")
+    expect(text?.ja).not.toContain("気管支又は肺，部位不明")
   })
 })

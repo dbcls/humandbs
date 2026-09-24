@@ -44,7 +44,7 @@ export function AdminAssistantTaskList({
           </Button>
         </div>
         {/* **The table stays when there is nothing in it**: the column names
-            say what would have been here (`docs/ui.md` の「壊れるもの」). */}
+            say what would have been here. */}
         <Counted locale={locale} total={tasks.length} />
         <Table
           headers={[

@@ -154,7 +154,7 @@ describe("the palette", () => {
  *
  * There are two ways past that, and both had been taken. Tailwind still ships
  * its own ramp, so `text-green-700` draws a green nothing here chose and the
- * page ends up with two systems for the same job (`docs/ui.md` の「色」). And a
+ * page ends up with two systems for the same job. And a
  * name the theme does not hold — `border-border`, which is what another design
  * system calls the same idea — produces no utility at all: the border stays,
  * takes `currentColor`, and comes out the colour of the words rather than the

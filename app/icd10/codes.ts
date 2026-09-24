@@ -4,8 +4,8 @@
  * **A code is the key, not the label.** The disease vocabulary is an ordinary
  * editable vocabulary whose term codes happen to be ICD10 codes; the
  * classification itself is a dictionary beside it that seeds and checks those
- * terms without ever writing them (docs/data-model.md の「ICD10」). Everything
- * here is pure — the fetching and the rows are in `dictionary.server.ts`.
+ * terms without ever writing them. Everything here is pure — the fetching
+ * and the rows are in `dictionary.server.ts`.
  *
  * **The tree is derived from the code, not carried by the data.** A
  * four-character code belongs under the three-character one it starts with, so
@@ -101,8 +101,7 @@ export function icd10CodesIn(raw: string): string[] {
  * **The five-character codes in the data are not typos.** They are ICD-10-CM,
  * which names diseases WHO's ICD-10 cannot — `K75.81` is NASH, `I45.81` is long
  * QT syndrome. Rounding them loses the distinction the code carried, but not
- * the disease: the value keeps the name the article wrote (`docs/data-model.md`
- * の「ICD10」).
+ * the disease: the value keeps the name the article wrote.
  */
 export function icd10Resolve(written: string, known: (code: string) => boolean): string | null {
   const code = icd10Code(written)

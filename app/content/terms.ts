@@ -6,8 +6,7 @@
  * The term a value points at is the description's reference rather than part of
  * what the description says, so two names for one thing have no reason to
  * survive in the stored content — the same line that lets a label be renamed
- * and have every version read the new one (`docs/data-model.md` の「catalog と
- * 語彙」).
+ * and have every version read the new one.
  *
  * Nothing here reaches the database. The caller picks the rows that point at
  * the term, hands each content over, and writes back what comes out.

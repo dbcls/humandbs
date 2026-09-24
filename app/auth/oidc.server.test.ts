@@ -1,7 +1,7 @@
 /**
  * `beginLogin` / `completeLogin` / `endSessionUrl` against a stubbed Keycloak.
  *
- * Keycloak is the mock-able boundary (docs/testing.md), so `openid-client`'s
+ * Keycloak is the mock-able boundary, so `openid-client`'s
  * two functions that reach the network — `discovery` and
  * `authorizationCodeGrant` — are replaced. Everything else (`buildAuthorizationUrl`,
  * `calculatePKCECodeChallenge`, `buildEndSessionUrl`, `Configuration`) runs for

@@ -4,8 +4,7 @@
  * **The bytes of an upload never pass through here.** A browser is handed a URL
  * this module signed and puts straight to the store, which is why the size and
  * the content type are part of the signature: that is the whole of what can be
- * imposed on a transfer the application does not see (docs/data-model.md の
- * 「ファイル」).
+ * imposed on a transfer the application does not see.
  *
  * Two clients rather than one. The SDK writes a checksum of an empty body into
  * a presigned URL by default, and a PUT against it then fails with `BadDigest`

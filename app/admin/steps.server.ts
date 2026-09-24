@@ -1,6 +1,6 @@
 /**
  * Where a draft stands on each of its steps, for the strip every screen of a
- * draft carries (docs/editing.md の「draft」).
+ * draft carries.
  *
  * **The states are facts the screens already know how to find**, gathered in
  * one place so that the four screens say the same thing: the listing's

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * Narrowing a listing, and getting back out of it (`docs/testing.md` の P-ANON).
+ * Narrowing a listing, and getting back out of it.
  *
  * **Every condition has to reach the address.** A narrowed listing that cannot
  * be shared or bookmarked is the thing these scenarios are here to catch, so

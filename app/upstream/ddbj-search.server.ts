@@ -6,7 +6,7 @@
  * null for an accession DDBJ Search does not hold and throws for anything else,
  * which is the difference between "upstream does not know this" and "upstream
  * did not answer": the first drops a row, the second fails the source and leaves
- * every previous row in place (docs/data-model.md の「外部キャッシュ」).
+ * every previous row in place.
  */
 
 const BASE_URL = "https://ddbj.nig.ac.jp/search/api"

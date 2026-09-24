@@ -51,7 +51,7 @@ export function adminResearchPath(researchId: string): string {
 /**
  * The research's box. It sits outside any draft: the box belongs to the
  * research, holds no versions, and switching a file is a separate operation
- * from publishing one (docs/files.md の「画面」).
+ * from publishing one.
  */
 export function adminResearchFilesPath(researchId: string): string {
   return `${adminResearchPath(researchId)}/files`
@@ -69,7 +69,7 @@ export function fileUploadPath(researchId: string): string {
 /**
  * What a published version lists, for reading. A version is addressed by its
  * number rather than its row: updating one puts a new row under the same
- * number, and the address should still open (docs/publishing.md の「版番号」).
+ * number, and the address should still open.
  */
 export function adminVersionDatasetsPath(researchId: string, number: number): string {
   return `${adminResearchPath(researchId)}/version/${number}/dataset`
@@ -79,7 +79,7 @@ export function adminDraftPath(researchId: string, draftId: string): string {
   return `${adminResearchPath(researchId)}/draft/${draftId}`
 }
 
-/** Where a source is chosen and taken into the draft (docs/editing.md の「取り込み」). */
+/** Where a source is chosen and taken into the draft. */
 export function adminDraftTakePath(researchId: string, draftId: string): string {
   return `${adminDraftPath(researchId, draftId)}/take`
 }
@@ -227,8 +227,7 @@ export function branchListingQuery(query: BranchListingQuery): string {
  * keeps revisions, and what each of the two languages is up to.
  *
  * **It carries no ordering.** Articles are listed by slug and nothing else —
- * the order is the address space rather than a presentation of it
- * (docs/editing.md の「サイトコンテンツ」).
+ * the order is the address space rather than a presentation of it.
  */
 export interface ContentsListingQuery extends ListingPresentation {
   versioning: readonly string[]
@@ -296,9 +295,8 @@ export function boxQuery(query: BoxListingQuery): string {
  * rather than off a research: a field belongs to the portal, not to one study.
  *
  * **The two fields a dataset carries are not here.** What they may hold is
- * settled by what the portal is rather than by what arrives in the data, so the
- * migration puts them in and nothing edits them afterwards (docs/data-model.md
- * の「catalog と語彙」).
+ * settled by what the portal is rather than by what arrives in the data, so
+ * the migration puts them in and nothing edits them afterwards.
  */
 export function adminExperimentFieldsPath(): string {
   return "/admin/experiment-fields"
@@ -394,7 +392,7 @@ export function termsPath(): string {
 /**
  * The assistant that helps read an application. **The screens are here and the
  * service is not** — it runs beside the portal, holds no authorisation of its
- * own, and is only reachable through the address below (docs/assistant.md).
+ * own, and is only reachable through the address below.
  */
 export function adminAssistantPath(): string {
   return `${adminPath()}/assistant`

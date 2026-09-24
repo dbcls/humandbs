@@ -178,7 +178,7 @@ const management = [
     /**
      * The assistant. **The screen is registered here and the service it talks
      * to is not registered at all** — it answers under the proxy below, which
-     * is the only address that reaches it (`docs/assistant.md`).
+     * is the only address that reaches it.
      */
     route("admin/assistant", "routes/admin-assistant.tsx", { id: "admin-assistant" }),
   ]),
@@ -201,9 +201,9 @@ const editing = [
   route("admin/files/upload", "routes/admin-contents-files-upload.ts"),
   /**
    * The assistant's API, handed on unchanged to a service that holds no
-   * authorisation of its own (`docs/assistant.md`). **Registered once**, beside
-   * the others here: what it answers with is the service's, not interface text,
-   * so a language prefix has nothing to change about it.
+   * authorisation of its own. **Registered once**, beside the others here:
+   * what it answers with is the service's, not interface text, so a language
+   * prefix has nothing to change about it.
    */
   route("admin/assistant/api/*", "routes/admin-assistant-api.ts"),
 ]

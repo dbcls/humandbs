@@ -27,7 +27,7 @@ import {
   previewResearchPage,
 } from "./preview.server"
 import { anchorOf, RESEARCH } from "./anchors"
-import { unresolvedCount } from "./comments"
+import { NAME_LIMIT, unresolvedCount } from "./comments"
 import { postAboutDraft, readComments, setCommentResolved } from "./comments.server"
 
 /**
@@ -377,9 +377,8 @@ describe("the listing row a draft is drawn with", () => {
 describe("the comments a preview shows", () => {
   /**
    * This draft beside another draft of the same research. **A dataset another
-   * draft made is not this one's** (docs/data-model.md の「research /
-   * experiment / dataset」): it could be commented on from that draft's editor,
-   * but no version and no preview page here draws it.
+   * draft made is not this one's**: it could be commented on from that draft's
+   * editor, but no version and no preview page here draws it.
    */
   async function withAnotherDraftsDataset(): Promise<{
     draftId: string
@@ -592,6 +591,19 @@ describe("writing from a share link", () => {
 
     expect(outcome).toBeInstanceOf(Response)
     expect((outcome as Response).headers.get("location")).toBe(`/en/preview/${token}#summary.aims`)
+  })
+
+  /** A mark is written by anyone holding the link, as often as they like, so its name is held to a comment's limit. */
+  it("refuses a mark under a name longer than a comment's, and writes nothing", async () => {
+    const { draftId, token } = await sharedDraft()
+
+    expect(await previewAction(post({ intent: "acknowledge", kind: "approved", name: "名".repeat(NAME_LIMIT + 1) }), token, RESEARCH))
+      .toEqual({ status: "invalid", problem: "too-long" })
+    expect(await db.select().from(s.reviewAcknowledgement).where(eq(s.reviewAcknowledgement.draftId, draftId)))
+      .toEqual([])
+
+    expect(await previewAction(post({ intent: "acknowledge", kind: "approved", name: "名".repeat(NAME_LIMIT) }), token, RESEARCH))
+      .toEqual({ status: "acknowledged", kind: "approved" })
   })
 
   it("refuses a mark of a kind it does not know, and writes nothing", async () => {

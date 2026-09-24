@@ -28,7 +28,9 @@
  * it was typed.
  */
 
-import { operatorFor, type QueryFields, type ValueKind } from "./fields"
+import { icd10Code } from "~/icd10/codes"
+
+import { operatorFor, type FacetField, type QueryFields, type ValueKind } from "./fields"
 
 /** The two ends of a range. `*` is an end that is not there. */
 export interface DslRange {
@@ -190,11 +192,32 @@ function tokenize(input: string): Token[] {
   return tokens
 }
 
-/** A day the calendar has, written the one way the address writes days. */
+/**
+ * A day the calendar has, written the one way the address writes days.
+ *
+ * **Year 0000 is not a day.** JavaScript's calendar has a year zero and
+ * PostgreSQL's `date` does not, so a value passed here has to be one the
+ * database casts without failing — the parser refuses it as a malformed date
+ * rather than letting the query fail on the way in.
+ */
 export function isRealDate(value: string): boolean {
-  if (!DATE_TOKEN.test(value)) return false
+  if (!DATE_TOKEN.test(value) || value.startsWith("0000")) return false
   const date = new Date(`${value}T00:00:00Z`)
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
+const DECIMAL = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/
+
+/**
+ * A number in the one notation the address writes numbers in: plain decimal,
+ * no sign on a positive, no leading zero, no exponent and no other base.
+ * `Number()` reads `0x10` and `1e3` too, which would put a value in the
+ * query whose written form is not the one read back. **The magnitude stays
+ * within what a double holds exactly**, so the value compared is the value
+ * written.
+ */
+export function isDecimalNumber(value: string): boolean {
+  return DECIMAL.test(value) && Math.abs(Number(value)) <= Number.MAX_SAFE_INTEGER
 }
 
 /**
@@ -207,10 +230,6 @@ function checkWildcard(value: string, column: number): void {
   if (at < 2) fail("invalid-operator-for-field", column, value)
 }
 
-function isNumber(value: string): boolean {
-  return value.trim() !== "" && Number.isFinite(Number(value))
-}
-
 /**
  * One end of a range, checked against what the field's type admits.
  *
@@ -221,7 +240,7 @@ function isNumber(value: string): boolean {
 function checkBound(type: "date" | "number", value: string, column: number): void {
   if (value === OPEN_BOUND) return
   if (type === "date" && !isRealDate(value)) fail("invalid-date-format", column)
-  if (type === "number" && !isNumber(value)) fail("invalid-number-format", column)
+  if (type === "number" && !isDecimalNumber(value)) fail("invalid-number-format", column)
 }
 
 function fieldClause(field: string, token: Token, column: number, fields: QueryFields): FieldNode {
@@ -247,9 +266,25 @@ function fieldClause(field: string, token: Token, column: number, fields: QueryF
   if (operatorFor(type, kind) === null) fail("invalid-operator-for-field", column, field)
   if (kind === "wildcard") checkWildcard(value, token.column)
   if (type === "date" && !isRealDate(value)) fail("invalid-date-format", token.column)
-  if (type === "number" && !isNumber(value)) fail("invalid-number-format", token.column)
+  if (type === "number" && !isDecimalNumber(value)) fail("invalid-number-format", token.column)
 
-  return { op: "field", field, valueKind: kind, value }
+  return { op: "field", field, valueKind: kind, value: termCode(fields.facet(field), value) }
+}
+
+/**
+ * The code a disease condition names, in the spelling the vocabulary stores.
+ *
+ * **Case and the point belong to whoever wrote the address**, the same as in
+ * the panel's find box: an ICD10 code is stored upper case without its point
+ * (`C349`). Normalising here rather than when matching means the address
+ * written back, and the value the panel marks as chosen, are the code that was
+ * matched. A value not shaped like a code is left as written and matches
+ * nothing. Every other vocabulary's code is compared without regard to case
+ * where the query is compiled (`query.server.ts`).
+ */
+function termCode(facet: FacetField | undefined, value: string): string {
+  if (facet?.kind === "disease") return icd10Code(value) ?? value
+  return value
 }
 
 /**

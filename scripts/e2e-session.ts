@@ -6,7 +6,7 @@
  * one thing it cannot do from there is sign in: the identity provider is a
  * third party with its own login page, and a scenario that typed into it would
  * be testing that page. So the session is made here, where the database is, and
- * handed to the browser as a cookie (`docs/testing.md` の「e2e」).
+ * handed to the browser as a cookie.
  *
  *   npm run e2e:session          # prints the cookie value
  *   npm run e2e:session -- clean # takes the session and the access back out

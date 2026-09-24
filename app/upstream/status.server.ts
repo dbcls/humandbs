@@ -5,7 +5,7 @@
  * the answer people need is "is anything stalled" and a source missing from the
  * list would read as one fewer thing to worry about. A failure keeps the last
  * success beside it: the cache still holds that fetch's rows, and how old they
- * are is the whole point of showing this (docs/editing.md の「管理画面」).
+ * are is the whole point of showing this.
  */
 
 import type { Executor } from "~/db/client.server"

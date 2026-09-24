@@ -11,7 +11,7 @@
  * it stands in rather than being cut short with a way to the rest. What a way
  * to the rest would cost is either an address that says something other than
  * the conditions in force, or a reader without script who cannot reach past
- * the cut; scrolling costs neither (`docs/public-pages.md` の「絞り込み」).
+ * the cut; scrolling costs neither.
  * **The box that narrows the list is drawn in the browser** over the values
  * already sent (`facet-find.ts`), so it asks nothing of this module.
  *
@@ -72,8 +72,7 @@ export interface FacetView {
    * A date takes the same pair of inputs as a number and a different keyboard,
    * which is the whole of the difference to the screen. **A disease draws like
    * a vocabulary**; it is named apart because it is counted at the root of the
-   * classification and the level below is never offered (`docs/public-pages.md`
-   * の「絞り込み」).
+   * classification and the level below is never offered.
    */
   kind: "vocabulary" | "number" | "date" | "disease"
   /** Every value the result carries under this key, the chosen ones first. */
@@ -285,9 +284,8 @@ export async function facetPanel(
  * **A date the result never carries keeps its box and loses its inputs.** Two
  * empty boxes over a span that does not exist are a control that cannot do
  * anything — the modification dates are exactly that until the application
- * system is reachable ([development.md](../../docs/development.md) の
- * 「上流のキャッシュを更新する」) — but taking the whole dimension away says
- * instead that the listing cannot be narrowed by it at all. **The box stands
+ * system is reachable — but taking the whole dimension away says instead
+ * that the listing cannot be narrowed by it at all. **The box stands
  * and opens on the reason it is empty**, which is what every other dimension
  * with no values does (`categorise`).
  */

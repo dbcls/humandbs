@@ -72,8 +72,7 @@ import type { Route } from "./+types/admin-experiment-fields"
  * vocabulary or a number is what a refinement is made of, and a refinement
  * needs an aggregation, an input control and a decision about how the existing
  * prose becomes terms — so typing one is a development change, while adding,
- * renaming, reordering and removing free-text fields is administration
- * (docs/data-model.md の「catalog と語彙」).
+ * renaming, reordering and removing free-text fields is administration.
  *
  * **What a dataset is described under is not here.** Access type and type of
  * data hold what the portal is rather than what the data brings, and the
@@ -345,10 +344,10 @@ function Row({ entry, ordered, at, of, locale }: {
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={isDragging ? "opacity-60" : undefined}
     >
-      {/* **A name's column starts at 144px, a sentence's at 160** (docs/ui.md の
-          「列の下限は測って決める」): a label of a few words falls to a second
-          line and stays readable, and the two of them beside five columns that
-          cannot fold are what has to give for the table to fit a 1280px window. */}
+      {/* **A name's column starts at 144px, a sentence's at 160**: a label of
+          a few words falls to a second line and stays readable, and the two
+          of them beside five columns that cannot fold are what has to give
+          for the table to fit a 1280px window. */}
       <Td floor="min-w-36">{entry.labelJa}</Td>
       <Td floor="min-w-36">{entry.labelEn}</Td>
       <Td nowrap>
@@ -436,7 +435,7 @@ function Row({ entry, ordered, at, of, locale }: {
             {/* **The panel is named by what kind of thing is in it, not by the
                 row.** The boxes hold the row's labels and change as they are
                 typed into, so a title that repeated them would be the same
-                words twice and then the wrong words (docs/ui.md の「押せるもの」). */}
+                words twice and then the wrong words. */}
             <Dialog
               label={t.edit}
               title={t.editKeyTitle}
@@ -445,14 +444,12 @@ function Row({ entry, ordered, at, of, locale }: {
               action={() => (
                 <>
                   {/* **The filled face belongs to the screen's own act**, which
-                      is making a field; a row's save is the ordinary one
-                      (docs/ui.md の「押せるもの」). */}
+                      is making a field; a row's save is the ordinary one. */}
                   <Submit intent="update-key" icon={<Icon name="save" />} saves>
                     {t.save}
                   </Submit>
                   {/* The face says there is something to send to whoever is
-                      looking at it; this says it to whoever is not
-                      (docs/ui.md の「管理画面の枠」). */}
+                      looking at it; this says it to whoever is not. */}
                   <Unsaved locale={locale} />
                 </>
               )}

@@ -11,8 +11,8 @@
  * checked against it: a key added here without an English counterpart does not
  * build, and neither does a key that exists only in English.
  *
- * **Domain words are not decided here.** Their translations live in
- * `docs/glossary.md`, because the same word appears in a heading, in an API
+ * **Domain words are not decided here.** Their translations are fixed in one
+ * shared place, because the same word appears in a heading, in an API
  * value, in a facet label and in a vocabulary label. This file follows it.
  */
 
@@ -405,7 +405,7 @@ const ja = {
     bodyRequired: "コメントを入れてください。",
     tooLong: "長すぎます。",
     closed: "この共有リンクは使えなくなっています。",
-    /** The panel's own way out, for a panel with nothing else to press (`docs/ui.md` の「押せるもの」). */
+    /** The panel's own way out, for a panel with nothing else to press. */
     close: "閉じる",
   },
   admin: {
@@ -703,6 +703,15 @@ const ja = {
       unpinTitle: (label: string) => `${label} の解除`,
       unpinConfirm: "解除",
       unpinWarning: "この ID は未発行になり、この ID のアドレスは開けなくなります。同じ ID をもう一度割り当てれば、アドレスはまた開けます。",
+      unpinHoldsFiles: "この ID のアドレスに公開中のファイルがあるか、ファイルの切り替え中のため解除できません。別の ID を primary にすると、ファイルはそちらへ移ります。",
+      /** Why a hum label's "解除" cannot be pressed (`unpinHold`), with what to do about it. */
+      unpinHeld: {
+        "holds-files": "この ID のアドレスに公開中のファイルがあるため解除できません。先に別の ID を primary にしてください。ファイルがそちらへ移り終わると解除できます。",
+        "moving": "ファイルを primary ID のアドレスへ移動中のため解除できません。移動が終わると解除できます。",
+        "left-behind": "この ID のアドレスにファイルが残っているため解除できません。この ID を primary に戻してから別の ID を primary にし直すと、ファイルはそちらへ移ります。",
+        "switching": "ファイルの切り替え中のため解除できません。切り替えが終わると解除できます。",
+      },
+      movingFiles: "ファイルの移動中",
       /** An NHA id is issued once and cannot be typed back, so its warning says so. */
       unpinDatasetWarning: (nha: boolean) => nha
         ? "この ID は未発行になり、この ID のアドレスは開けなくなります。NHA ID の番号は再び発行されないため、同じ ID には戻せません。"
@@ -711,6 +720,7 @@ const ja = {
       deleteResearchTitle: (label: string) => `${label} の削除`,
       deleteResearchConfirm: "削除",
       deleteResearchWarning: "公開バージョン・データセット・下書き・ID の割り当てがまとめて削除され、操作の記録だけが残ります。元に戻せません。",
+      deleteResearchFilesRemain: "研究のファイルが残っているため削除できません。先に「ファイル一覧」からファイルを削除してください。",
     },
     draft: {
       /** The research editor's own h1 — the hub above it is named "研究の編集". */
@@ -1075,6 +1085,7 @@ const ja = {
       changesNoteFirst: "最初のバージョンのため、すべてが新しく公開される。",
       researchChanged: (count: number) => `${count} 項目の変更`,
       nothingChanges: "記述の変更はありません。",
+      reordered: "データセットの並び順の変更",
       datasetFields: (count: number) => `${count} 項目の変更`,
       review: "レビュー",
       reviewNote: "提供者とのやり取りの状態。公開を止めるものではなく、公開してよいかを判断する材料である。",
@@ -1371,6 +1382,7 @@ const ja = {
       deleteWarning: "このファイルが削除されます。公開中のものは外部から参照されていることがあります。元に戻せません。",
       renameHint: "公開したときのアドレスは /files/研究 ID/ファイル名 になる。/ は書けない。",
       renameSwitching: "切り替え中は名前を変えられません。",
+      deleteSwitching: "切り替え中は削除できません。",
       malformedName: "その名前は使えません。/ は書けません。",
       nameTaken: "その名前のファイルは既にあります。",
       deleteConfirm: "削除",

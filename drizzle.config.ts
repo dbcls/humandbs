@@ -1,6 +1,6 @@
 import { defineConfig } from "drizzle-kit"
 
-import { loadConfig } from "./app/config.server"
+import { loadOwnerDatabaseUrl } from "./app/config.server"
 
 /**
  * `casing: "snake_case"` is what lets the table definitions leave column names
@@ -10,10 +10,16 @@ import { loadConfig } from "./app/config.server"
  * The push runs as the owner. The role the application connects as cannot
  * create tables, and deliberately cannot erase the event log either
  * (`app/db/grants.server.ts`), so `db:push` chains the grant script behind it.
+ *
+ * `out` is where `drizzle-kit generate` writes the versioned migrations a
+ * deployment applies (`scripts/migrate.ts`). Development pushes instead, so a
+ * schema change is pushed while it is being written and generated once it is
+ * settled.
  */
 export default defineConfig({
   schema: "./app/db/schema/index.ts",
   dialect: "postgresql",
   casing: "snake_case",
-  dbCredentials: { url: loadConfig(process.env).ownerDatabaseUrl },
+  out: "./drizzle",
+  dbCredentials: { url: loadOwnerDatabaseUrl(process.env) },
 })

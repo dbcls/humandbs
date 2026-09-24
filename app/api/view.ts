@@ -18,7 +18,7 @@
  * - **A list is always there, empty if need be**, so that a reader can take its
  *   length without asking whether the key exists. This is ddbj-search-api's
  *   convention and consumers of both should not have to remember which is which
- * - **Prose comes out as plain text** (docs/data-model.md の「値と文」). The tree
+ * - **Prose comes out as plain text.** The tree
  *   is how the portal stores a sentence; putting it on the wire would tie the
  *   answer to that and make every change to a node a breaking one. Links inside
  *   prose lose their destination, which is why the references a machine needs —
@@ -201,7 +201,7 @@ function valueOf(slot: ValueSlot, catalog: CatalogView): ApiValue | undefined {
  * calls it, `name` what the article called it, and neither replaces the other:
  * a reader looking for `NASH` will not find `その他の明示された炎症性肝疾患`,
  * and a client counting diseases needs the code. **The terms may be empty**, so
- * a code cannot be assumed (`docs/public-api.md`).
+ * a code cannot be assumed.
  */
 function diseasesOf(
   slot: Slot<DiseaseValue[]>,

@@ -139,6 +139,17 @@ describe("a research page", () => {
     expect(redirect.headers.get("location")).toBe("/research/hum0001/v3")
   })
 
+  it("redirects a hum label written in another case to the address of the pinned one", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+
+    const redirect = await caught(() => researchPage({ ...ja, humId: "HUM0001", wanted: 1 }))
+
+    expect(redirect.status).toBe(302)
+    expect(redirect.headers.get("location")).toBe("/research/hum0001/v1")
+  })
+
   it("keeps the language of the address when it redirects", async () => {
     const researchId = await createResearch("hum0001")
     await db.insert(s.labelPin)
@@ -215,6 +226,18 @@ describe("a dataset page", () => {
     await rebuildSearchDocs(db)
 
     expect((await caught(() => datasetPage({ ...ja, datasetId: "JGAD000001" }))).status).toBe(404)
+  })
+
+  it("redirects a dataset id written in another case to the pinned spelling", async () => {
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await publish(researchId, 1, [datasetId])
+    await rebuildSearchDocs(db)
+
+    const redirect = await caught(() => datasetPage({ ...ja, datasetId: "jgad000001" }))
+
+    expect(redirect.status).toBe(302)
+    expect(redirect.headers.get("location")).toBe("/dataset/JGAD000001")
   })
 
   it("redirects a superseded dataset id to the one that is current", async () => {

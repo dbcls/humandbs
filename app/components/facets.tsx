@@ -45,12 +45,24 @@ import type { SearchTarget } from "~/search/query.server"
  * facet holding a condition is open, because a filter in force that cannot be
  * seen is a listing that lies about itself.
  */
-export function FacetPanel({ locale, target, query, sort, panel }: {
+/**
+ * How the listing is presented, as the address wrote it: `null` for what is
+ * the default. **A range form carries all three**, the same as every link the
+ * panel builds (`facets.server.ts`), so narrowing by a range does not reorder
+ * the result or resize its pages.
+ */
+export interface CarriedPresentation {
+  sort: string | null
+  order: string | null
+  size: number | null
+}
+
+export function FacetPanel({ locale, target, query, presented, panel }: {
   locale: Locale
   target: SearchTarget
   /** The current query, which the range form has to carry unchanged. */
   query: string
-  sort: string | null
+  presented: CarriedPresentation
   panel: FacetPanelView | null
 }) {
   const messages = messagesFor(locale).search.refine
@@ -73,7 +85,7 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
                   locale={locale}
                   target={target}
                   query={query}
-                  sort={sort}
+                  presented={presented}
                   facet={facet}
                   // **A facet is opened by a reason, not by where it sits.** A
                   // condition in force that cannot be seen is a listing that
@@ -93,11 +105,11 @@ export function FacetPanel({ locale, target, query, sort, panel }: {
   )
 }
 
-function Facet({ locale, target, query, sort, facet, open }: {
+function Facet({ locale, target, query, presented, facet, open }: {
   locale: Locale
   target: SearchTarget
   query: string
-  sort: string | null
+  presented: CarriedPresentation
   facet: FacetView
   open: boolean
 }) {
@@ -129,7 +141,7 @@ function Facet({ locale, target, query, sort, facet, open }: {
                   to={facet.range.to}
                   names={{ from: "rangeFrom", to: "rangeTo" }}
                 >
-                  <Carried query={query} sort={sort} />
+                  <Carried query={query} presented={presented} />
                   <input type="hidden" name="rangeKey" value={facet.code} />
                 </DateRange>
               )
@@ -141,7 +153,7 @@ function Facet({ locale, target, query, sort, facet, open }: {
                   preventScrollReset
                 >
                   <Stack gap="tight">
-                    <Carried query={query} sort={sort} />
+                    <Carried query={query} presented={presented} />
                     <input type="hidden" name="rangeKey" value={facet.code} />
                     <div className="flex items-center gap-1">
                       <Bound name="rangeFrom" label={messages.from} value={facet.range.from} ask={ask} />
@@ -182,7 +194,7 @@ const VALUES_IN_BOX = 9
  * **The list scrolls rather than being cut short.** The widest facet carries
  * 389 values; cutting it and offering a way to the rest costs either an address
  * that says something other than the conditions in force, or a reader without
- * script who cannot reach past the cut (`docs/public-pages.md` の「絞り込み」).
+ * script who cannot reach past the cut.
  *
  * **The box narrows what is already on the page**, so it asks the server for
  * nothing and what it was given does not go into the address — it changes what
@@ -284,14 +296,17 @@ function RefineLink(props: ComponentProps<typeof Link>) {
  * What a form has to hand back untouched: a GET form replaces the whole query
  * string, so anything it does not carry is dropped from the address.
  */
-function Carried({ query, sort }: {
+function Carried({ query, presented }: {
   query: string
-  sort: string | null
+  presented: CarriedPresentation
 }) {
+  const { sort, order, size } = presented
   return (
     <>
       <input type="hidden" name="q" value={query} />
       {sort !== null && <input type="hidden" name="sort" value={sort} />}
+      {order !== null && <input type="hidden" name="order" value={order} />}
+      {size !== null && <input type="hidden" name="size" value={String(size)} />}
     </>
   )
 }

@@ -185,8 +185,7 @@ export interface NumberValue {
  * **The name belongs to the value, not to the term.** The same code is written
  * differently by different studies, and the difference is not a spelling
  * variant — `Colorectal cancer with liver metastasis` states which patients a
- * study took. Hanging the name on the term would collapse them
- * (`docs/data-model.md` の「ICD10」).
+ * study took. Hanging the name on the term would collapse them.
  *
  * **The terms may be none, and may span sets.** A disease no classification
  * names is an ordinary value with a name only, and a rare disease can carry

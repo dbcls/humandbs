@@ -177,7 +177,7 @@ function facetValuesOf(
     }
     // A disease is counted by the terms it points at, so one naming none is in
     // no facet at all. It stays findable through the full text, which holds the
-    // name the article wrote (`docs/data-model.md` の「ICD10」).
+    // name the article wrote.
     if (value.kind === "disease" && value.diseases.state === "value") {
       for (const one of value.diseases.value) {
         for (const termId of one.termIds) {

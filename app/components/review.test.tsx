@@ -43,7 +43,7 @@ describe("the head", () => {
     expect(html).toContain(`href="/admin/research/${RESEARCH_ID}"`)
     expect(html).toContain("研究の編集へ")
     // Not to the draft — this screen's parent is the research, the same as
-    // every other face of a draft (`docs/admin-ui.md` の「画面の名乗り」).
+    // every other face of a draft.
     expect(html).not.toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}"`)
   })
 

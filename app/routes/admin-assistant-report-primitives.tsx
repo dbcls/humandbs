@@ -88,7 +88,7 @@ export function joinText(
  * **Only what did not pass carries a colour.** A report is read to find the
  * things to look at, and a page where every answer is coloured has nothing
  * standing out on it — which is also why the site keeps no colour for "this is
- * fine" (`docs/ui.md` の「押せるもの」の既定の状態の段).
+ * fine".
  */
 export function StatusText({
   result,

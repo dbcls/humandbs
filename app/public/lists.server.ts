@@ -24,6 +24,7 @@ import { messagesFor, type Messages } from "~/i18n/messages"
 import { loadFacetDefinitions } from "~/search/catalog.server"
 import {
   group,
+  isDecimalNumber,
   isRealDate,
   OPEN_BOUND,
   parseQuery,
@@ -32,7 +33,7 @@ import {
   type QueryNode,
 } from "~/search/dsl"
 import { isDateFacet, queryFields, type QueryFields } from "~/search/fields"
-import { pageRange } from "~/paging"
+import { pageRange, parsePageNumber } from "~/paging"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
 import type { ExportTable } from "~/search/export"
 import {
@@ -140,8 +141,7 @@ export interface DatasetListView extends ListShell {
 }
 
 function readPage(value: string | null): number {
-  const page = Number(value ?? "1")
-  return Number.isInteger(page) && page >= 1 ? page : 1
+  return parsePageNumber(value) ?? 1
 }
 
 /**
@@ -217,7 +217,7 @@ export async function canonicalRedirect(
 function bound(value: string | null, kind: "number" | "date"): string {
   const written = value?.trim() ?? ""
   if (written === "") return OPEN_BOUND
-  const real = kind === "date" ? isRealDate(written) : Number.isFinite(Number(written))
+  const real = kind === "date" ? isRealDate(written) : isDecimalNumber(written)
   return real ? written : OPEN_BOUND
 }
 

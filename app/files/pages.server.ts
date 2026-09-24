@@ -4,7 +4,7 @@
  * **The bytes never come through here.** An upload asks which of its names the
  * box already holds, asks for a signature, puts straight to the store and says
  * nothing afterwards: the bucket a file sits in is the whole of its state, so
- * there is nothing to write down when one arrives (docs/files.md).
+ * there is nothing to write down when one arrives.
  *
  * Switching and deleting are ordinary form posts, and both take several files
  * at once — a switch is a copy of the actual bytes and is therefore queued, so
@@ -137,8 +137,7 @@ export interface FilesPageView {
   states: BoxState[]
   /**
    * How many files stand on each side, counted with the side condition off and
-   * the others on — the way every listing counts its values
-   * (docs/editing.md の「管理画面」).
+   * the others on — the way every listing counts its values.
    */
   counts: Record<BoxState, number>
   sort: BoxSortKey
@@ -240,6 +239,12 @@ export type FilesActionResult
     | { status: "name-taken" }
     /** The file's switch has not finished, so which side it is renamed on is not settled. */
     | { status: "switching" }
+    /**
+     * A file sent for deleting has a switch that has not finished. The runner
+     * would otherwise finish its copy after the delete and leave the file
+     * public; nothing is deleted, including the other files sent with it.
+     */
+    | { status: "delete-switching" }
 
 /**
  * What is done to a file of the box from its row: switched, deleted, renamed.
@@ -264,6 +269,10 @@ export async function filesAction(
 
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
   if (names.length === 0) return { status: "nothing-selected" }
+  // Every name becomes a key, so one that is not a single file of the box
+  // would address the box itself or somewhere outside it. The rows only send
+  // names the box listed.
+  if (!names.every(isUploadableName)) badRequest()
 
   if (intent === "publish" || intent === "unpublish") {
     // Nowhere to put a public copy. Refused here rather than left to fail in
@@ -280,8 +289,8 @@ export async function filesAction(
   }
 
   if (intent !== "delete") badRequest()
-  await deleteFiles(id, names, actorOf(actor))
-  return back
+  const deleted = await deleteFiles(id, names, actorOf(actor))
+  return deleted ? back : { status: "delete-switching" }
 }
 
 function actorOf(actor: { sub: string, name: string }): EventActor {
@@ -300,7 +309,7 @@ function actorOf(actor: { sub: string, name: string }): EventActor {
  * **Only the public side is written down.** Readers can fetch what is there,
  * and for them one address starts answering and another stops — the same two
  * things deleting and publishing write. Moving the private copy changes
- * nothing anybody can fetch (docs/publishing.md の「証跡」).
+ * nothing anybody can fetch.
  */
 async function renameResearchFile(
   db: ReturnType<typeof getDb>,
@@ -370,13 +379,28 @@ async function renameResearchFile(
  * Take the file away, wherever it is. Every box the research has ever held is
  * cleared, because a copy left in a retired one would still answer at its old
  * address.
+ *
+ * **A file whose switch has not finished is not deleted**, the way it is not
+ * renamed. The runner copies before it deletes, so a copy it is making lands
+ * after this delete and the file would stay public with the trail saying it
+ * was deleted. The switch's row is held while this is decided, so the runner
+ * cannot take it up in between; a switch that gave up moves nothing and is
+ * forgotten with the file. False means nothing was deleted.
  */
 async function deleteFiles(
   researchId: string,
   names: readonly string[],
   actor: EventActor,
-): Promise<void> {
+): Promise<boolean> {
   const db = getDb()
+  const free = await db.transaction(async (tx) => {
+    const switches = await pendingSwitches(tx, researchId, { names, lock: true })
+    if (switches.some((row) => !row.failed)) return false
+    await forgetSwitches(tx, researchId, names)
+    return true
+  })
+  if (!free) return false
+
   const boxes = await boxesOf(db, researchId)
   const labels = [...(boxes.primary === null ? [] : [boxes.primary]), ...boxes.others]
 
@@ -392,7 +416,6 @@ async function deleteFiles(
   }
 
   await db.transaction(async (tx) => {
-    await forgetSwitches(tx, researchId, names)
     for (const name of names) {
       await recordEvent(tx, {
         actor,
@@ -403,6 +426,7 @@ async function deleteFiles(
       })
     }
   })
+  return true
 }
 
 /**
@@ -415,7 +439,7 @@ async function deleteFiles(
  * **The first question names the files and nothing else.** A name is the key,
  * so sending one the box already holds replaces what is there; the screen asks
  * which of its names would, before it asks for any signature, and puts the
- * question to the reader (docs/files.md の「upload」).
+ * question to the reader.
  */
 const uploadRequest = z.discriminatedUnion("kind", [
   z.object({
@@ -636,6 +660,9 @@ export async function commonFilesAction(
 
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
   if (names.length === 0) return { status: "nothing-selected" }
+  // A slug is a key under the box; one that is not a file's would address the
+  // box itself or somewhere outside it.
+  if (!names.every(isFileSlug)) badRequest()
 
   for (const name of names) {
     await deleteObject({ bucket: PUBLIC_BUCKET, key: commonPrefix() + name })
@@ -666,8 +693,7 @@ export async function commonFilesAction(
  * rename onto an occupied slug destroys something the reader did not name.
  *
  * **The address the file used to answer at stops answering**, which is the same
- * break deleting one makes, so it is written down the same way
- * (docs/publishing.md の「証跡」).
+ * break deleting one makes, so it is written down the same way.
  */
 async function renameCommonFile(
   request: Request,
@@ -690,8 +716,7 @@ async function renameCommonFile(
   await deleteObject(at(from))
   // **The move is written as the two things it does to a reader**: one address
   // starts answering and the other stops. What the trail records is what can be
-  // fetched (docs/publishing.md の「証跡」), and those are exactly the two events
-  // there are names for.
+  // fetched, and those are exactly the two events there are names for.
   await getDb().transaction(async (tx) => {
     await recordEvent(tx, {
       actor: actorOf(actor),
@@ -717,8 +742,7 @@ async function renameCommonFile(
  * readers can fetch — and it is written down. The record is made where the
  * portal last takes part: when a single PUT is signed, and when a multipart
  * upload is completed. Nothing later reports back, so a signature that was
- * never used leaves a record of an intent rather than of an object
- * (docs/publishing.md の「証跡」).
+ * never used leaves a record of an intent rather than of an object.
  */
 export async function commonUploadAction(request: Request): Promise<UploadAnswer> {
   const actor = await requireCapability(request, "manage-site-content")

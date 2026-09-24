@@ -84,7 +84,7 @@ describe("the editing form", () => {
   /**
    * The form is read beside the page, so it runs in the page's order and under
    * the page's names; the listing's row, which the page does not show, comes
-   * last (`docs/editing.md` の「編集フォーム」).
+   * last.
    */
   it("runs its sections in the order the page does, the listing's row last", () => {
     const html = render(view())
@@ -188,7 +188,7 @@ describe("the rows of a list", () => {
    * **A row's controls carry marks.** Taking a row away is a glyph with the
    * word as its label, the way the repeated elements' rows draw it, and adding
    * one is a word with the glyph for adding beside it; a bare word beside a
-   * box reads as part of the row (`docs/ui.md` の「押せるもの」).
+   * box reads as part of the row.
    */
   it("draws taking a row away as a glyph, and adding one with a glyph beside the word", () => {
     // The grant numbers are written inside a panel and are not drawn shut, so
@@ -272,9 +272,8 @@ describe("the head", () => {
 describe("the tools row", () => {
   /**
    * **Left to right: save, its status, the memo, the whole, what is still
-   * open, then the pane switch at the far end** (`docs/admin-ui.md` の
-   * 「編集画面」の「道具の行」). The unsaved notice stands to save's own right
-   * (`docs/ui.md` の「押せるもの」).
+   * open, then the pane switch at the far end.** The unsaved notice stands
+   * to save's own right.
    */
   it("keeps one order: save, its status, memo, whole, open comments, the pane switch", () => {
     const html = render(view())
@@ -294,8 +293,7 @@ describe("the tools row", () => {
 
   /**
    * **Save stands alone at the left; the panels' entries stand with the switch
-   * at the right end** — none of them changes the draft (`docs/admin-ui.md` の
-   * 「道具の行」).
+   * at the right end** — none of them changes the draft.
    */
   it("pushes the panels' entries to the right end, together with the pane switch, and leaves save alone on the left", () => {
     const html = render(view())
@@ -399,7 +397,7 @@ describe("a section of one prose field", () => {
 /**
  * The version's differences stand over the form once, as the take-in's own
  * list with each place as the way there; nothing else of the review stands
- * there (`docs/editing.md` の「他の版や draft と比べる」).
+ * there.
  */
 describe("the form against the published version", () => {
   it("offers no take-in and marks no field, however much the page differs from the version", () => {

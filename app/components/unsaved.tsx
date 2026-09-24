@@ -15,8 +15,7 @@
  *
  * **Two ways off, two askers.** A way inside the area is a router navigation
  * and gets the site's own panel; reloading and closing the window are the
- * browser's, and only its own question can stand in their way
- * (`docs/admin-ui.md` の「画面の名乗り」).
+ * browser's, and only its own question can stand in their way.
  */
 
 import { useEffect, useId } from "react"

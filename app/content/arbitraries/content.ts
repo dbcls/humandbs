@@ -144,7 +144,7 @@ const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
 /**
  * One disease. **Terms and names are drawn independently**, because a value
  * with no term and one with no name in a language are both ordinary states the
- * projections have to answer for (`docs/data-model.md` の「ICD10」).
+ * projections have to answer for.
  */
 const diseaseValueArb: fc.Arbitrary<DiseaseValue> = fc.record({
   termIds: fc.array(idArb, { maxLength: 2 }),

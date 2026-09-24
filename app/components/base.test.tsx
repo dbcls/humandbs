@@ -65,7 +65,7 @@ function visible(html: string): string {
  * A glyph has no baseline, so a box placed by its first item's baseline is
  * placed by the glyph's bottom edge and stretches the line it stands in. The
  * pair takes a box of one line's height and sits at the top of it instead, the
- * way a badge does (`docs/ui.md` の「壊れるもの」).
+ * way a badge does.
  */
 describe("a state every row carries", () => {
   it("takes one line's height and sits at the top of it, so it has no baseline to be placed by", () => {

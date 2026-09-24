@@ -8,8 +8,7 @@
  *
  * **An experiment that does not answer is named rather than dropped silently.**
  * A draft seeded from a submission whose libraries were half unreachable would
- * otherwise look like a submission with half as many libraries
- * (docs/editing.md の「下書きを外から作る」).
+ * otherwise look like a submission with half as many libraries.
  */
 
 import { mapConcurrently } from "~/concurrency"

@@ -1,6 +1,6 @@
 /**
  * The take-in face: the draft and a source, place by place, with the value
- * that will be written under them (docs/editing.md の「取り込み」).
+ * that will be written under them.
  *
  * **The two readings are read-only and the third is not.** What goes in is
  * often neither — a curator rewrites a title the application states awkwardly —
@@ -387,8 +387,7 @@ export function ApplicationWarning({ locale, source, humLabel }: {
   const t = messagesFor(locale).admin.templates
   // **Nothing here stops the take-in.** The branch's own research ID
   // disagreeing with the draft's is stated rather than refused — a version
-  // bump can be approved under a corrected ID before the ledger catches up
-  // (docs/editing.md の「行き先」).
+  // bump can be approved under a corrected ID before the ledger catches up.
   if (source.branch.humLabel === null || humLabel === null || source.branch.humLabel === humLabel) return null
   return <Note kind="warning">{t.humDiffers(source.branch.humLabel, humLabel)}</Note>
 }

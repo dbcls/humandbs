@@ -6,6 +6,7 @@ import {
   NAME_LIMIT,
   byAttention,
   checkComment,
+  checkName,
   commentsByPath,
   commentsForPage,
   memoComments,
@@ -41,6 +42,15 @@ describe("what makes a comment acceptable", () => {
     expect(checkComment({ name: "n".repeat(NAME_LIMIT), body: "text" })).toBe(null)
     expect(checkComment({ name: "n".repeat(NAME_LIMIT + 1), body: "text" })).toBe("too-long")
     expect(checkComment({ name: "n", body: "b".repeat(BODY_LIMIT + 1) })).toBe("too-long")
+  })
+})
+
+describe("what makes a reader's name acceptable on its own", () => {
+  it("insists on one, and holds it to the limit a comment's name has", () => {
+    expect(checkName(" \t")).toBe("name-required")
+    expect(checkName("provider")).toBe(null)
+    expect(checkName("n".repeat(NAME_LIMIT))).toBe(null)
+    expect(checkName("n".repeat(NAME_LIMIT + 1))).toBe("too-long")
   })
 })
 

@@ -23,7 +23,7 @@ import { researchFieldLabel, SEEDED_PATH } from "./research-fields"
  *
  * They show the same thing in the same order — what is coming, what is not, and
  * why — because the two differ only in whether a research is made along with the
- * datasets (docs/editing.md の「下書きを外から作る」).
+ * datasets.
  */
 
 export function UpstreamNotConnected({ locale }: { locale: Locale }) {
@@ -100,7 +100,7 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
               <input key={entry.accession} type="hidden" name="accession" value={entry.accession} />
             ))}
             {/* **The mark says what the press does, and this one makes
-                something** (`docs/ui.md` の「押せるもの」). */}
+                something.** */}
             {/* **Row height**: it is pressed for the one row it stands in,
                 beside that row's words, and at full height it would stand
                 over the row it belongs to (`BUTTON_SIZE` の `row`). */}
@@ -130,8 +130,7 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
  * What upstream stated that has no choice to stand on, said in one sentence
  * before it is made. **Nothing to do here and nowhere to go**: the field is
  * made unsettled and the value is left on it as a comment, so it is settled in
- * the dataset's own form, where the choices are (`docs/editing.md` の「下書きを
- * 外から作る」).
+ * the dataset's own form, where the choices are.
  */
 export function DroppedNote({ locale, dropped }: { locale: Locale, dropped: readonly DroppedValue[] }) {
   const t = messagesFor(locale).admin.templates
@@ -198,7 +197,7 @@ export function BranchPairs({ locale, branch, fields, applicationId }: {
  * **The two languages stand one above the other**, each after its `ja` / `en`
  * mark: side by side they read as two values rather than one said twice, and
  * told apart by colour alone the pair reads as one statement and a quieter
- * second one (`docs/ui.md` の「どちらの言語かは語が言う」).
+ * second one.
  */
 function SeededValue({ field, locale }: { field: SeededFieldView, locale: Locale }) {
   if (field.ja === "" && field.en === "") {

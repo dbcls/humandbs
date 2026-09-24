@@ -246,9 +246,8 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
   aside?: string
   /**
    * A mark beside the identifier that names the screen's own state rather
-   * than what it is — an updating draft's "v3 を更新中"
-   * (`docs/admin-ui.md` の「画面の名乗り」). Not part of the name, so it
-   * stands beside `aside` rather than inside `title`.
+   * than what it is — an updating draft's "v3 を更新中". Not part of the
+   * name, so it stands beside `aside` rather than inside `title`.
    */
   badge?: ReactNode
   /**
@@ -500,9 +499,8 @@ const BUTTON_SIZE = {
    *
    * **It is shorter than the line it stands in.** What is beside it is the
    * subject, and a control the same size as its subject reads as the larger of
-   * the two (`docs/ui.md` の「押せるもの」の「入口は小さいほうを取る」). Left at
-   * `sm` it is 36.4px against a 22.4px line, and the row it sits in grows by
-   * half again to hold it.
+   * the two. Left at `sm` it is 36.4px against a 22.4px line, and the row it
+   * sits in grows by half again to hold it.
    *
    * **A word keeps no 36px floor** — that belongs to a control which is only a
    * glyph. What a word may not go under is 24px, and this is 24 — **with or
@@ -587,9 +585,8 @@ export function Button({
    *
    * **A control that cannot be pressed stays on the screen and says why.**
    * Taken away, it is looked for among the other controls; left pressable, it
-   * is pressed only to be refused (`docs/ui.md` の「押せるもの」). The sentence
-   * is drawn over the control while the pointer is on it or it has focus, and
-   * read out with it.
+   * is pressed only to be refused. The sentence is drawn over the control
+   * while the pointer is on it or it has focus, and read out with it.
    *
    * **The reason is drawn, not left to the browser.** A `title` shows late,
    * only to a pointer, and not at all over a disabled button, which raises no
@@ -665,7 +662,7 @@ export function Button({
  * choosing `eye` for "open the PDF" is how the same leaving came to wear three
  * glyphs. The words are the caller's (`newTabLabel`, required by the type),
  * since this layer holds none — the mark alone says nothing to anyone not
- * looking at it (`docs/ui.md` の「壊れるもの」).
+ * looking at it.
  */
 export function ButtonLink(props: Omit<ButtonLook, "icon"> & {
   to: string
@@ -897,8 +894,7 @@ export function ReorderButtons({ at, of, labels, onMove, render }: {
  * pixel apart draw a 2px line between them, so each option after the first is
  * pulled back onto the one before. **The box itself carries no edge** — carrying
  * one, it would take a pixel off the top and bottom of everything inside it,
- * and what can be pressed is the option rather than the box (`docs/ui.md` の
- * 「溶接された操作の押せる範囲」).
+ * and what can be pressed is the option rather than the box.
  *
  * **The corner is the box's**, and the options are clipped by it: an option
  * rounding itself would be a pixel rounder than the corner it sits in.
@@ -914,7 +910,7 @@ export function ReorderButtons({ at, of, labels, onMove, render }: {
  * but not filled. An editor asks the same three-way question of every box it
  * holds, and nearly every box gives the ordinary answer — filled, that answer
  * would put a brand fill on every field and the one that saves would be lost
- * among them (`docs/ui.md` の「押せるもの」).
+ * among them.
  */
 export function Choice<T extends string>({ label, value, options, onChange, size = "sm", pill = false, quiet }: {
   /** What the options are answers to, said for anyone not looking at them. */
@@ -977,8 +973,8 @@ export function Choice<T extends string>({ label, value, options, onChange, size
  * stands beside it is the heading or the value it acts on, and a box the size
  * of an ordinary control would be larger than what it is about. So the box is
  * drawn at the row's 24px and the reach is widened past it by a
- * pseudo-element rather than by padding (`docs/ui.md` の「押せるものの大きさ」)
- * — the line it stands in keeps its own height.
+ * pseudo-element rather than by padding — the line it stands in keeps its own
+ * height.
  *
  * **One part, because the two stand side by side.** Drawn apart they each
  * spelled the same face and the same reach by hand, and the pair on one line is
@@ -1011,9 +1007,9 @@ export function MarkButton({ icon, label, onClick, children }: {
  * **Copying leaves nothing on the screen, so the control answers for it.** On
  * the press the glyph turns to a tick and the name to the word saying it is
  * done, and after the time a toast stays up (`TOAST_MS`) both go back. This is
- * the one control that renames itself while it acts (`docs/ui.md` の
- * 「壊れるもの」): what is copied goes somewhere off the screen, and a status
- * set apart from the control is read as a second thing that happened.
+ * the one control that renames itself while it acts: what is copied goes
+ * somewhere off the screen, and a status set apart from the control is read
+ * as a second thing that happened.
  *
  * **It keeps its width.** The two words stand in one cell, so the control is
  * as wide as the longer of them whichever it shows, and nothing beside it moves
@@ -1146,8 +1142,8 @@ export function MoreLink({ to, children }: { to: string, children: ReactNode }) 
  * pointed at or focused.
  *
  * **The motion is what tells a way from a deed.** A way out and a way in wear
- * the face every other control wears (`docs/admin-ui.md` の「区画の枠」), so
- * the chevron alone says "elsewhere"; one that answers the pointer says it
+ * the face every other control wears, so the chevron alone says "elsewhere";
+ * one that answers the pointer says it
  * again, in the one place the reader is already looking. **Half a step, and
  * only for those who allow motion.** A chevron that turns to open and close
  * something in place is not this: it is drawn as an `Icon` where it turns.
@@ -1532,7 +1528,7 @@ export function SwitchTabs({ label, tabs }: {
  * A form under these tabs must not use the browser's own validation: a required
  * field inside a hidden panel cannot be focused, so submitting does nothing at
  * all and says nothing about why. Validate on the server, which is where the
- * rules are (`docs/editing.md`).
+ * rules are.
  */
 /**
  * What a tab and its panel are named.
@@ -1554,7 +1550,7 @@ export function SectionTabs({ label, tabs, current, onSelect, scope, aside }: {
   /**
    * What stands at the far end of the strip, outside the tabs: a pane's way of
    * arranging itself, which is about the box and so belongs on the box's own
-   * top edge rather than on a bar above it (`docs/ui.md` の「編集画面の 2 ペイン」).
+   * top edge rather than on a bar above it.
    */
   aside?: ReactNode
 }) {
@@ -1730,8 +1726,7 @@ export function Fold({ summary, note, open = false, children }: {
   // **The padding is on the summary rather than on the `<details>`.** It draws
   // the same distances either way, but only one of them is inside the thing
   // that gets pressed: on the outside it left a 22.4px target — the line of
-  // words and nothing else — under 8px of margin nobody could press
-  // (`docs/ui.md` の「押せるものの大きさ」).
+  // words and nothing else — under 8px of margin nobody could press.
   return (
     <details
       open={shown}
@@ -2037,7 +2032,7 @@ export function Toast({ label, announce, at = "band", children }: {
  * **Every panel is built the same way, and the panel builds it.** Its name,
  * then the one sentence it has to say, then what is written in it, then the
  * row at the foot with the way out on the left and the deed on the right — the
- * order a screen's own name row keeps (`docs/ui.md` の「押せるもの」). A screen
+ * order a screen's own name row keeps. A screen
  * hands over the fields and the deed and nothing else: a sentence a screen
  * wrote itself stood wherever the screen put it, and two panels came to say
  * the same kind of thing in two places.
@@ -2075,7 +2070,7 @@ export function Toast({ label, announce, at = "band", children }: {
  * halves the width it is given, and at 672px each side is a column of a few
  * words.
  */
-export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, children, disabled, wide = false }: {
+export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, children, disabled, reasonAt, wide = false }: {
   /** The way in, when the panel has one of its own. */
   label?: string
   /**
@@ -2087,6 +2082,8 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
    * it has focus, and read out with the button (`Button` の `disabled`).
    */
   disabled?: string
+  /** Which edge of the way in the reason hangs from (`Button` の `reasonAt`). */
+  reasonAt?: "left" | "right"
   /**
    * What the panel is about, standing at the top of it.
    *
@@ -2122,7 +2119,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
   /**
    * The word on the way out, which every panel has. **「キャンセル」 unless
    * the panel has nothing to throw away**, in which case it is 「閉じる」 and
-   * the caller says so (`docs/admin-ui.md` の「止める語」).
+   * the caller says so.
    */
   dismiss?: string
   /**
@@ -2151,7 +2148,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
     out taken then would leave the reader on the page with no sign of a deed
     that is still going to land. The deed's own button says it is waiting; the
     three ways out — the foot, Escape and the dark outside — are shut until
-    the sending has ended (`docs/ui.md` の「壊れるもの」).
+    the sending has ended.
   */
   const submitting = useSubmitting()
   const holding = open && submitting
@@ -2159,7 +2156,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
   /*
     **The way out that costs nothing to find.** A panel over the page is shut by
     Escape and by whatever its own contents offer, and pressing the dark outside
-    it is the third — the same three a `Menu` has (`docs/ui.md` の「部品」).
+    it is the third — the same three a `Menu` has.
 
     **Outside is measured against the panel's own rectangle**, not by asking
     whether the press landed on the `<dialog>` element: the element is the
@@ -2198,6 +2195,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
           size={size}
           icon={icon}
           disabled={disabled}
+          reasonAt={reasonAt}
           onClick={() => { setOwnOpen(true) }}
         >
           {label}
@@ -2283,6 +2281,7 @@ export function Confirm({
   onConfirm,
   children,
   disabled,
+  reasonAt,
 }: {
   /** The way in. Absent when the panel is `held` open from outside, which draws none. */
   label?: string
@@ -2291,6 +2290,8 @@ export function Confirm({
   warning: string
   /** Why the way in cannot be taken, when it cannot (`Dialog`). */
   disabled?: string
+  /** Which edge of the way in the reason hangs from (`Button` の `reasonAt`). */
+  reasonAt?: "left" | "right"
   confirm: string
   /** The way out; 「キャンセル」 on every confirmation, so none passes it. */
   cancel?: string
@@ -2363,6 +2364,7 @@ export function Confirm({
       held={held}
       dismiss={cancel}
       disabled={disabled}
+      reasonAt={reasonAt}
       action={(close) => (
         <>
           <ShutWhenSent pending={pending} close={close} />
@@ -2396,8 +2398,7 @@ export function Confirm({
  * **An 8px corner rather than the site's 4px.** It is a sheet lying over the
  * page rather than a box set into one, and the shadow that says so thickens its
  * outline enough to swallow a 4px arc — the same reading as the management
- * area's drawer, which is the only other thing here drawn on top of a screen
- * (`docs/ui.md` の「角丸」).
+ * area's drawer, which is the only other thing here drawn on top of a screen.
  *
  * The padding above and below is what keeps a line inside it off the curve, so
  * nothing has to be clipped — and clipping would take the focus ring of the
@@ -2557,7 +2558,7 @@ export function Menu({ label, icon = "more", glyph, round = false, filled = fals
         className={`relative inline-flex cursor-pointer list-none items-center justify-center gap-1.5 marker:content-none hover:bg-surface-hover ${
           value !== undefined
             // A control naming a choice is a step shallower than a button, and a
-            // step narrower on the side the caret is (`docs/ui.md`): the row it
+            // step narrower on the side the caret is: the row it
             // shares already stands 36px squares in it, and a caret carries
             // whitespace of its own the way a letter does not.
             ? `whitespace-nowrap py-1 pr-2 pl-3 text-sm ${MENU_CORNER[corner]}`
@@ -2637,7 +2638,7 @@ export function Chooser({ label, value, beside, children }: {
  * only the caller knows where it goes.
  *
  * **It is the height of what it is welded to, not the tap size.** A glyph on
- * its own is 36px square everywhere else (`docs/ui.md`), but this one shares an
+ * its own is 36px square everywhere else, but this one shares an
  * edge with a control sized by its word — held to 36 it would stand the pair
  * over the rest of the row. **The press is 36px all the same**: the
  * pseudo-element names that height and sits centred on the box, so what can be

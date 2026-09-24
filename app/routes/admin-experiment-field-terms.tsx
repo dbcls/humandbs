@@ -54,7 +54,7 @@ import { Flag } from "~/components/flags"
  * **What the data brings in is editable; what is settled is read.** The
  * vocabularies the portal's structure fixes, and ICD10 — the classification put
  * in whole — open here with nothing to press (`admin/catalog.ts` の
- * `SETTLED_VOCABULARIES`, docs/data-model.md の「ICD10」).
+ * `SETTLED_VOCABULARIES`).
  *
  * **A term in use is merged rather than deleted.** Merging rewrites every
  * value that names the term so it names another term of the same vocabulary,
@@ -189,8 +189,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
           {/* The line under the name says what can be done to these values —
               deleting and merging — or, for a settled vocabulary, why nothing
               can: the portal's own vocabularies are fixed by what the portal
-              is, ICD10 by being a standard put in whole (docs/data-model.md の
-              「ICD10」). It is the same line every screen with a note has, so
+              is, ICD10 by being a standard put in whole. It is the same line every screen with a note has, so
               the reason is read where the screen's name is. */}
           <Heading
             title={t.termsHeading}
@@ -241,7 +240,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
               every row's control is now "keep this one" rather than "edit
               this one". The way out stands in the same band as the way in,
               and wears the outlined face: a bare word at the end of the
-              sentence reads as its last clause (`docs/ui.md` の「押せるもの」). */}
+              sentence reads as its last clause. */}
           {view.mergeFrom !== null && (
             <Note
               kind="warning"
@@ -348,8 +347,8 @@ function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
  * a reader recognises which code that is.
  *
  * **What can be pressed is at the end, and what it opens is a panel rather than
- * the row** — the same shape the table of fields uses (`docs/editing.md` の
- * 「解析手法の表」). A row is opened to read it as often as to change it, and
+ * the row** — the same shape the table of fields uses. A row is opened to
+ * read it as often as to change it, and
  * one that grows to hold a form leaves the listing a column of boxes of
  * different heights.
  */
@@ -374,8 +373,7 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
       {showsCode && <Td nowrap><Code size="xs">{term.code}</Code></Td>}
       {/* **A missing Japanese label is a mark, not a dash**: the English one
           is always there, so what is missing is the translation, and that is a
-          thing to fix rather than a blank in the row (docs/ui.md の
-          「壊れるもの」). */}
+          thing to fix rather than a blank in the row. */}
       <Td floor="min-w-40">
         {term.labelJa ?? <Flag kind="short">{t.untranslated}</Flag>}
       </Td>
@@ -435,8 +433,7 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                   <Editing method="post">
                     <input type="hidden" name="termId" value={term.id} />
                     {/* **Named by the kind of thing in it, not by the row**:
-                        the boxes hold the labels and change as typed into
-                        (docs/ui.md の「押せるもの」). */}
+                        the boxes hold the labels and change as typed into. */}
                     <Dialog
                       label={t.edit}
                       title={t.editTermTitle}

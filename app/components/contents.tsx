@@ -135,8 +135,7 @@ export function StateCell({ state, locale, ahead = false }: {
  * stops answering, which is the break deleting it makes.
  *
  * **The panel does not name the slug in its title.** The box inside carries it,
- * and a title would disagree with the box the moment anything is typed
- * (`docs/ui.md` の「押せるもの」).
+ * and a title would disagree with the box the moment anything is typed.
  */
 export function SlugEditor({ locale, intent, name, value, hint, size, disabled }: {
   locale: Locale
@@ -217,8 +216,7 @@ function goToLine(form: HTMLFormElement | null, line: number): void {
  * error wears, and is not counted above — the list is the count.
  *
  * **The way there is a control in a line of text**, so it takes the row size
- * and the outlined face every such control takes (`docs/ui.md` の「押せるものの
- * 大きさ」).
+ * and the outlined face every such control takes.
  */
 function BodyProblems({ id, problems, locale, goTo }: {
   id: string
@@ -354,7 +352,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
         revision under a series. **A language's words are never taken away
         on their own**: a language that must not be read is taken down, which
         keeps the words, and what takes words away is the item's own
-        deletion, beside its name (`docs/editing.md` の「サイトコンテンツ」).
+        deletion, beside its name.
 
         **The publish state is one control rather than two.** It has two
         values, so a pair of buttons would always leave one of them naming
@@ -367,8 +365,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
         **An announcement's date decides what the control is.** With no date
         there is nothing to publish under, so the control stays shut and says
         why when pointed at; with a date still ahead, pressing it schedules
-        rather than publishes, and the word says so before it is pressed
-        (docs/editing.md の「サイトコンテンツ」).
+        rather than publishes, and the word says so before it is pressed.
       */}
       <Editing
         id={id}
@@ -381,9 +378,8 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
         <input type="hidden" name="revision" value={editor.revision ?? ""} />
         {/* **The mark says what publishing would refuse**, not what saving
             does — a title-less body still saves, and only the switch below
-            can turn it into a published page (`docs/admin-ui.md` の「画面の
-            名乗り」). The server is what refuses it; the box carries no HTML
-            `required`. */}
+            can turn it into a published page. The server is what refuses it;
+            the box carries no HTML `required`. */}
         <Field label={t.title} name="title" value={editor.title} width="w-full" required={messages.admin.required} />
         {/* The box and the lines it was refused for are one part of the form:
             the list stands under the box at an error's distance (8px), not at
@@ -460,8 +456,7 @@ function ArticlePage({ language, drawn, dated }: {
         {drawn !== null && (
           <Stack gap="normal">
             {/* **Not the screen's name** — the page is drawn inside the
-                editing screen, whose name is the bar above (`docs/ui.md` の
-                「編集画面の 2 ペイン」). */}
+                editing screen, whose name is the bar above. */}
             <Heading level="h2" look="h1" title={drawn.title} />
             {dated !== null && <p className="text-ink-muted text-sm">{dated}</p>}
             <Markdown html={drawn.html} />
@@ -537,8 +532,8 @@ export function ArticleTools({ panesControl, leftFormId }: {
  * **The page is drawn by the server from what the form holds**, a pause after
  * the last key (`useDrawn`), through the function the public page runs — so the
  * pane never disagrees with what a save would publish, and there is no second
- * reading of the markdown to keep in step (docs/editing.md の「サイトコンテンツ」).
- * Each language is drawn on its own, since each is its own form.
+ * reading of the markdown to keep in step. Each language is drawn on its own,
+ * since each is its own form.
  */
 export function useArticlePanes({ locale, remember, editors, result, dated = null, publishing }: {
   locale: Locale

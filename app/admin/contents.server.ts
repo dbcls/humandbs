@@ -3,8 +3,8 @@
  *
  * Everything here asks for `manage-site-content`. What is written down is the
  * publishing — a guideline going out or coming down is a change to what readers
- * see, which is what the audit trail is for (`docs/publishing.md` の「証跡」) —
- * while writing a draft, renaming a slug and moving a pointer are not.
+ * see, which is what the audit trail is for — while writing a draft, renaming
+ * a slug and moving a pointer are not.
  *
  * **Editing always writes the draft, and publishing moves it across.** One path
  * rather than two, so "what is published" is never something an edit can change
@@ -855,7 +855,7 @@ async function repointSeries(
 
   await tx
     .update(documentSeries)
-    .set({ currentId: target.id })
+    .set({ currentId: target.id, updatedAt: sql`now()` })
     .where(eq(documentSeries.id, series.id))
   return { status: "ok", done: "repointed" }
 }
@@ -974,7 +974,7 @@ async function updateAlert(
 
   await tx
     .update(alert)
-    .set({ content: { body: { ja, en } }, active })
+    .set({ content: { body: { ja, en } }, active, updatedAt: sql`now()` })
     .where(eq(alert.id, before.id))
   if (active !== before.active) {
     await recordEvent(tx, {
@@ -1071,6 +1071,7 @@ function localeSet(revision: number, update: LocaleUpdate) {
     ...update.content === undefined ? {} : { content: update.content },
     ...update.published === undefined ? {} : { published: update.published },
     revision: revision + 1,
+    updatedAt: sql`now()`,
   }
 }
 
@@ -1118,9 +1119,8 @@ async function updateLocale(
 
 /**
  * Saving writes the one body there is. **A published page changes the moment
- * it is saved** — there is no draft to hold the words back (docs/editing.md の
- * 「サイトコンテンツ」); a rewrite that must not be read on the way is a new
- * revision under a series.
+ * it is saved** — there is no draft to hold the words back; a rewrite that
+ * must not be read on the way is a new revision under a series.
  */
 async function saveLocale(
   tx: Executor,
@@ -1324,7 +1324,7 @@ async function renameDocument(
   if (slug === target.slug) return { status: "ok", done: "renamed" }
   const problem = await guardSlug(tx, slug, target.id)
   if (problem !== null) return { status: problem }
-  await tx.update(document).set({ slug }).where(eq(document.id, target.id))
+  await tx.update(document).set({ slug, updatedAt: sql`now()` }).where(eq(document.id, target.id))
   return { status: "ok", done: "renamed" }
 }
 
@@ -1358,7 +1358,7 @@ async function cutIntoVersion(
   const slug = versionSlug(target.slug, number)
   if (await slugTaken(tx, slug)) return { status: "duplicate-slug" }
 
-  await tx.update(document).set({ slug }).where(eq(document.id, target.id))
+  await tx.update(document).set({ slug, updatedAt: sql`now()` }).where(eq(document.id, target.id))
   await tx.insert(documentSeries).values({ slug: target.slug, currentId: target.id })
   return { status: "ok", done: "cut" }
 }
@@ -1441,7 +1441,7 @@ async function setNewsDate(tx: Executor, id: string, form: FormData): Promise<Co
       .limit(1)
     if (up !== undefined) return { status: "dated-while-published" }
   }
-  await tx.update(news).set({ publishedAt: stamp }).where(eq(news.id, id))
+  await tx.update(news).set({ publishedAt: stamp, updatedAt: sql`now()` }).where(eq(news.id, id))
   return { status: "ok", done: "dated" }
 }
 

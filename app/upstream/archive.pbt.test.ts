@@ -5,8 +5,8 @@ import { calendarDayOf } from "./archive"
 
 /**
  * Upstream answers dates in more than one shape and the portal stores one:
- * a calendar day cut in JST (docs/data-model.md の「日付」). These are the laws
- * that says holds whatever the instant.
+ * a calendar day cut in JST. These are the laws that says holds whatever the
+ * instant.
  */
 const instants = fc.date({
   min: new Date("1990-01-01T00:00:00Z"),

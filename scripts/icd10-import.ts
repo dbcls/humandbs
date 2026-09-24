@@ -6,8 +6,7 @@
  * run reads the files and does not go out, and the dev data load reads the same
  * files (`migration/icd10-input.ts`). **English comes from WHO and Japanese
  * from the Japanese statistical classification.** They follow different
- * versions, so a code held by only one of them keeps the title it has
- * (docs/development.md の「ICD10 の語彙を入れる」).
+ * versions, so a code held by only one of them keeps the title it has.
  *
  * Run at setup, and again to take a newer distribution: the import upserts by
  * code, so what the data points at stays where it is.

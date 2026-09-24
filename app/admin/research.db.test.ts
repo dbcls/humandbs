@@ -1,13 +1,15 @@
 import { randomUUID } from "node:crypto"
 
 import { eq } from "drizzle-orm"
-import { afterAll, beforeEach, describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/files/box"
+import { clearPrefix, keysUnder, putTestObject } from "~/files/_store"
 
 import { createDatasetInDraft, createResearchWithDraft, saveDatasetEntry, saveDraftContent } from "./drafts.server"
 import { publishDraft } from "./publish.server"
@@ -16,9 +18,9 @@ import { deleteResearch } from "./research.server"
 /**
  * Deleting a research, against the development database.
  *
- * The point of these is the invariants in docs/publishing.md の「破棄と削除」: what
- * composition takes with it, what the pin ledger frees, and what the event
- * outlives — even though the research it names no longer exists.
+ * The point of these is the invariants around it: what composition takes with
+ * it, what the pin ledger frees, and what the event outlives — even though
+ * the research it names no longer exists.
  */
 const db = getDb()
 
@@ -86,7 +88,7 @@ async function publish(ground: Awaited<ReturnType<typeof ready>>): Promise<void>
 
 describe("deleting a research", () => {
   it("takes its datasets, its drafts and their change entries with it", async () => {
-    const ground = await ready("hum0002")
+    const ground = await ready("hum5202")
 
     expect(await deleteResearch(db, ground.researchId, CURATOR)).toEqual({ status: "deleted" })
 
@@ -97,7 +99,7 @@ describe("deleting a research", () => {
   })
 
   it("takes its published versions, their snapshots and the dataset content too", async () => {
-    const ground = await ready("hum0003")
+    const ground = await ready("hum5203")
     await publish(ground)
 
     await deleteResearch(db, ground.researchId, CURATOR)
@@ -107,7 +109,7 @@ describe("deleting a research", () => {
   })
 
   it("frees both the hum label and the dataset id to be pinned again", async () => {
-    const ground = await ready("hum0004")
+    const ground = await ready("hum5204")
 
     await deleteResearch(db, ground.researchId, CURATOR)
 
@@ -117,12 +119,12 @@ describe("deleting a research", () => {
     const another = await createResearchWithDraft(db)
     const other = await createDatasetInDraft(db, { draftId: another.draftId, revision: 1 }, another.researchId)
     if (other.status !== "created") throw new Error(other.status)
-    await expect(pinHum(another.researchId, "hum0004")).resolves.toBeUndefined()
-    await expect(pinDataset(other.datasetId, "hum0004-NHA001")).resolves.toBeUndefined()
+    await expect(pinHum(another.researchId, "hum5204")).resolves.toBeUndefined()
+    await expect(pinDataset(other.datasetId, "hum5204-NHA001")).resolves.toBeUndefined()
   })
 
   it("takes the search rows with it, so it leaves the public side at the same moment", async () => {
-    const ground = await ready("hum0005")
+    const ground = await ready("hum5205")
     await publish(ground)
     expect(await db.select().from(s.searchDoc)).not.toHaveLength(0)
 
@@ -132,7 +134,7 @@ describe("deleting a research", () => {
   })
 
   it("leaves the event behind, carrying the hum label the research had", async () => {
-    const ground = await ready("hum0006")
+    const ground = await ready("hum5206")
 
     await deleteResearch(db, ground.researchId, CURATOR)
 
@@ -142,7 +144,58 @@ describe("deleting a research", () => {
     expect(events).toHaveLength(1)
     expect(events[0]?.subjectType).toBe("research")
     expect(events[0]?.subjectId).toBe(ground.researchId)
-    expect(events[0]?.detail).toMatchObject({ humLabels: ["hum0006"] })
+    expect(events[0]?.detail).toMatchObject({ humLabels: ["hum5206"] })
+  })
+
+  describe("with files in its boxes", () => {
+    const LABEL = "hum5101"
+    const RETIRED = "hum5102"
+    let researchId = ""
+
+    afterEach(async () => {
+      for (const label of [LABEL, RETIRED]) await clearPrefix(PUBLIC_BUCKET, publicPrefix(label))
+      if (researchId !== "") await clearPrefix(PRIVATE_BUCKET, privatePrefix(researchId))
+      researchId = ""
+    })
+
+    /**
+     * The rows go and the objects would not: the public ones kept answering at
+     * `/files/hum…/`, and the research given that number next listed them as
+     * its own.
+     */
+    it("refuses while a public box, the current one or a retired one, holds a file, and changes nothing", async () => {
+      const ground = await ready(LABEL)
+      researchId = ground.researchId
+      await db.insert(s.labelPin).values({ kind: "hum", label: RETIRED, researchId, isPrimary: false })
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(RETIRED)}a.zip`)
+
+      expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "files-remain" })
+
+      expect(await db.select().from(s.research)).toHaveLength(1)
+      expect(await db.select().from(s.labelPin)).toHaveLength(3)
+      expect(await db.select().from(s.event).where(eq(s.event.action, "delete-research"))).toHaveLength(0)
+      expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(RETIRED))).toEqual([`${publicPrefix(RETIRED)}a.zip`])
+    })
+
+    it("refuses while the private box holds a file", async () => {
+      const ground = await ready(LABEL)
+      researchId = ground.researchId
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "files-remain" })
+      expect(await db.select().from(s.research)).toHaveLength(1)
+    })
+
+    it("deletes once the files are gone", async () => {
+      const ground = await ready(LABEL)
+      researchId = ground.researchId
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(LABEL)}a.zip`)
+      expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "files-remain" })
+
+      await clearPrefix(PUBLIC_BUCKET, publicPrefix(LABEL))
+
+      expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "deleted" })
+    })
   })
 
   it("answers gone for a research that is not there, and writes no event", async () => {

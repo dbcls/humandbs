@@ -36,6 +36,33 @@ describe("toMarkdown", () => {
   })
 })
 
+/** The characters a browser reads specially in the front of an address. */
+const hostileHref = fc.array(
+  fc.constantFrom("/", "\\", "\t", "\n", "\r", " ", "\u0000", "\u001f", ".", "..", "evil.example", "@", ":", "%2f", "%5c", "#", "?", "a"),
+  { maxLength: 8 },
+).map((parts) => parts.join(""))
+
+const ORIGIN = "https://humandbs.dbcls.jp"
+
+describe("linkHref against the way a browser resolves a link", () => {
+  it("never hands back a site path that leaves the site", () => {
+    fc.assert(fc.property(hostileHref, (href) => {
+      const resolved = linkHref(href)
+      if (!resolved?.startsWith("/")) return
+      expect(new URL(resolved, ORIGIN).origin, JSON.stringify(href)).toBe(ORIGIN)
+    }))
+  })
+
+  it("never hands back a link with a character the browser would strip or reinterpret", () => {
+    fc.assert(fc.property(fc.oneof(hostileHref, fc.string()), (href) => {
+      const resolved = linkHref(href)
+      if (resolved === null) return
+      // eslint-disable-next-line no-control-regex
+      expect(/[\u0000-\u001f\u007f\\]/.test(resolved), JSON.stringify(href)).toBe(false)
+    }))
+  })
+})
+
 describe("linkHref", () => {
   it("hands back only a destination the page may follow", () => {
     fc.assert(fc.property(fc.string(), (href) => {

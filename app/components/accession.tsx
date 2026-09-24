@@ -28,9 +28,8 @@ import { UpstreamChoice } from "./upstream"
  * refused.
  *
  * **An application is not chosen here.** A branch's datasets come in through
- * the take-in screen's table of this research's branches (docs/editing.md の
- * 「行き先」); a second place to choose a branch would be a second listing of
- * them.
+ * the take-in screen's table of this research's branches; a second place to
+ * choose a branch would be a second listing of them.
  */
 export function AccessionSection({ locale, researchId, draftId, revision }: {
   locale: Locale

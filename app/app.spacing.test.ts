@@ -5,7 +5,7 @@
  * check by looking at one screen, held by something that reads the source. What
  * is here is the pair of rules that kept slipping — the screens each carrying
  * their own margins, and the same box being drawn with a different corner in
- * every file (`docs/ui.md`).
+ * every file.
  */
 
 import { readdir, readFile } from "node:fs/promises"
@@ -201,7 +201,7 @@ describe("管理画面の幅", () => {
 })
 
 /**
- * The corners a box may have (`docs/ui.md`). `rounded` and `rounded-full` are
+ * The corners a box may have. `rounded` and `rounded-full` are
  * the two anything may take; `rounded-lg` belongs to what a 4px corner
  * disappears on — the ways in on the front page, and the listing tabs, which
  * carry no edge and sit against a face barely lighter than their own — so it is
@@ -306,13 +306,13 @@ describe("文字の大きさ", () => {
  * where a shadow asked for on a cell never reaches the screen. **Nothing about
  * that shows up anywhere it can be seen from**: the computed style still
  * carries the shadow, so the only way to notice is to measure the colour of the
- * pixels that should have been shaded (`docs/ui.md`).
+ * pixels that should have been shaded.
  */
 /**
  * A column's floor belongs to `Td`'s own prop, not to the class list beside it.
  * Two `min-w-*` rules of equal weight are settled by whichever Tailwind emitted
  * last, so writing one in `className` beside the default made widening a column
- * appear to work and narrowing one do nothing at all (`docs/ui.md`).
+ * appear to work and narrowing one do nothing at all.
  */
 describe("列の下限", () => {
   it("セルが className で min-width を書かない", async () => {
@@ -358,7 +358,7 @@ describe("表そのもの", () => {
  * What can be pressed on the control welded to a `Chooser` is stated, not
  * measured off the box it sits in. Written as an inset it followed the pill
  * silently: a step of padding off the value beside it and the 36px this has to
- * reach became 34.4, with nothing on the screen to say so (`docs/ui.md`).
+ * reach became 34.4, with nothing on the screen to say so.
  */
 describe("溶接された操作の押せる範囲", () => {
   it("器の高さから引き算せず、36px を名乗る", async () => {
@@ -376,7 +376,7 @@ describe("溶接された操作の押せる範囲", () => {
  * be one height. The pills, the cart and the account are 36px; a destination
  * left on its own line box came to 38.4 and made the header 2.4px taller
  * wherever the navigation was drawn, carrying the wordmark, its name and the
- * controls 1.2px with it (`docs/ui.md`). **Two and a half pixels are not
+ * controls 1.2px with it. **Two and a half pixels are not
  * something looking at it finds**, which is why the height is read out of the
  * source instead.
  */
@@ -395,8 +395,8 @@ describe("ヘッダの行の高さ", () => {
 
 /**
  * A part of a page and a part of an article are named by the same level of
- * heading, so a reader moving between them meets one h2 rather than two
- * (`docs/ui.md`). **The size and the mark are what they share; the colour is
+ * heading, so a reader moving between them meets one h2 rather than two.
+ * **The size and the mark are what they share; the colour is
  * not.** The pair is written in two files — one a component, one a
  * stylesheet — which is the only reason it can drift.
  */
@@ -452,7 +452,7 @@ describe("タブの斜辺", () => {
 
 /**
  * **件数とページ送りは 1 つのまとまり。** どちらも「いま何ページ目の何件を見ているか」に答えるので、
- * 同じ器に立つ (`docs/public-pages.md` の「並びと件数」)。**それを守らせる方法は「近くに書く」ではなく
+ * 同じ器に立つ。**それを守らせる方法は「近くに書く」ではなく
  * 「1 か所でしか書けないようにする」** — 件数を各画面が書いていた間、5 つの管理画面が 5 通りの
  * 出し方をしていて、うち 2 つは何も出していなかった。
  */
@@ -506,8 +506,8 @@ describe("一覧の件数とページ送り", () => {
 })
 
 /**
- * **畳んで開くパネルが閉じる 3 通り (Escape・外を押す・遷移) は `base.tsx` の `useDismissible` だけが持つ**
- * (`docs/ui.md` の「畳んで開くパネルは `Menu` から作る」)。パネルごとに書くと、どれか 1 つだけが閉じ方を
+ * **畳んで開くパネルが閉じる 3 通り (Escape・外を押す・遷移) は `base.tsx` の `useDismissible` だけが持つ**。
+ * パネルごとに書くと、どれか 1 つだけが閉じ方を
  * 1 つ欠いても、他のパネルと見比べるまで誰も気づかない。
  */
 describe("パネルの閉じ方", () => {
@@ -625,7 +625,7 @@ describe("ボタンの面と形", () => {
 describe("名前の行の並び", () => {
   /**
    * The kinds of thing that stand to the right of a screen's name, in the one
-   * order they keep (`docs/ui.md` の「管理画面の枠」): the way out, the ways
+   * order they keep: the way out, the ways
    * elsewhere, what acts on the screen, and last what cannot be undone.
    * `Dialog` is counted as an act because the only ones on a name row open a
    * form that makes something.
@@ -728,7 +728,7 @@ describe("名前の行の並び", () => {
 
   /**
    * The draft's two rows keep their own order in one row each, instead of a
-   * `Heading`'s children (`docs/ui.md` の「管理画面の枠」). Neither is a
+   * `Heading`'s children. Neither is a
    * `nameRows` row — the head's own `Heading` is self-closing, and the tools
    * row is not a `Heading` at all — so both are checked here by where each
    * part sits in `draft-tools.tsx`'s own markup.
@@ -835,7 +835,7 @@ describe("名前の行の並び", () => {
 /**
  * `Dialog` and `Confirm` build the panel themselves — the name, the panel's
  * own sentence, the fields, the foot — at one width, whatever screen opens
- * one (`docs/ui.md` の「押せるもの」). What follows reads the source for the
+ * one. What follows reads the source for the
  * ways a screen could still take that back: choosing its own width, writing
  * `<dialog>` by hand, naming the panel after a bare value instead of a word,
  * or a sentence that does not close the way one does.
@@ -889,7 +889,7 @@ describe("面の幅・文・見出し", () => {
    * Every screen and part that could open one, minus the two places this rule
    * does not reach: `base.tsx` draws the one panel there is, and `fields.tsx`'s
    * `ItemList` names a repeated element by what kind of thing it is, not by an
-   * object and an act on it (`docs/ui.md` の「押せるもの」の「繰り返しの要素」) —
+   * object and an act on it —
    * its title is the list's own word for an empty element, or the element's own
    * summary once one is typed, neither of which is a bare identifier.
    */
@@ -1177,8 +1177,7 @@ function wordInChildren(children: string | null, assigns: Assign[], atIndex: num
 }
 
 /**
- * **The glyph on a pressable control names the kind of deed, not the screen**
- * (`docs/ui.md` の「押せるもの」の「印が言うのは操作の種類で、画面が選ぶものではない」)。
+ * **The glyph on a pressable control names the kind of deed, not the screen**.
  * A word ending in one of the endings below is naming one of the kinds
  * `components/icons.tsx` の `ACTION_ICON` has a fixed glyph for, so the glyph
  * the control carries has exactly one right answer once the word is read.
@@ -1322,8 +1321,7 @@ describe("押せるものの印", () => {
   })
 
   /**
-   * **Only the way out carries no glyph** (`docs/ui.md` の「押せるもの」の
-   * 「出る道は印を持たない」). A row of worded buttons where one is bare reads
+   * **Only the way out carries no glyph**. A row of worded buttons where one is bare reads
    * the bare one as another kind of thing; the one kind that should read so is
    * the way out of a panel or a transfer, which does nothing but stop.
    */
@@ -1372,8 +1370,7 @@ describe("押せるものの印", () => {
 })
 
 /**
- * **A state is said by `Flag` or `Stated`, never as bare words** (`docs/ui.md`
- * の「壊れるもの」). Written as text in a cell, "未発行" wears whatever colour
+ * **A state is said by `Flag` or `Stated`, never as bare words**. Written as text in a cell, "未発行" wears whatever colour
  * the cell happens to have, and the same fact on the next screen is a badge;
  * named by kind, it wears the one colour and glyph that kind has everywhere.
  */
@@ -1433,7 +1430,7 @@ describe("状態の語", () => {
 
 /**
  * **A chip and a count are parts** (`base.tsx` の `Chip` / `ValueChip` /
- * `CountBubble`, `docs/ui.md` の「壊れるもの」). Drawn by hand, the value
+ * `CountBubble`). Drawn by hand, the value
  * chip had its close glyph among the words and the count on a pane had a
  * different padding from the one on the cart.
  */
@@ -1473,8 +1470,7 @@ describe("クリップボード", () => {
 })
 
 /**
- * A way's mark moves the way it points (`base.tsx` の `Chevron`, `docs/ui.md` の
- * 「押せるもの」). A screen drawing the glyph itself would draw one that stands
+ * A way's mark moves the way it points (`base.tsx` の `Chevron`). A screen drawing the glyph itself would draw one that stands
  * still beside ones that move, and the motion would stop saying anything.
  */
 describe("向きのある印", () => {
@@ -1488,8 +1484,7 @@ describe("向きのある印", () => {
   })
 
   /**
-   * **A way to another screen wears the bordered face** (`docs/ui.md` の
-   * 「押せるもの」, `docs/admin-ui.md` の「区画の枠」): `WayTo`, `AdminBack` or a
+   * **A way to another screen wears the bordered face**: `WayTo`, `AdminBack` or a
    * `ButtonLink`, all of which are the group the chevron moves with. A screen
    * that names the group by hand is dressing a bare word as a way — the word
    * reads as the note beside it and is found by pressing it.
@@ -1506,7 +1501,7 @@ describe("向きのある印", () => {
 
 /**
  * **A mark on some rows takes its colour and glyph from its kind**
- * (`components/flags.tsx`, `docs/ui.md` の「壊れるもの」). A screen that
+ * (`components/flags.tsx`). A screen that
  * chose them itself would give the same fact a second look on the next screen.
  * What is left to `Badge` is not a mark of that sort: a label on a band, a
  * value drawn round (`pill`), a count beside its own glyph, and the key's type,
@@ -1534,7 +1529,7 @@ describe("印のバッジ", () => {
 })
 
 /**
- * **The management area has no bare words to press** (`docs/ui.md` の「押せるもの」).
+ * **The management area has no bare words to press**.
  * A word set beside a button in the link colour reads as a note on that button,
  * and is found to be a way only by pressing it. A way to another screen wears
  * the bordered face (`WayTo`, `AdminBack`, `ButtonLink`); a link stays bare only
@@ -1597,8 +1592,7 @@ describe("札の group", () => {
 
 describe("メニューの 1 行", () => {
   /**
-   * **`MENU_ITEM` is a line inside an opened panel and nothing else** (`docs/ui.md`
-   * の「押せるもの」). Drawn anywhere else it is a bare word that grows a box
+   * **`MENU_ITEM` is a line inside an opened panel and nothing else**. Drawn anywhere else it is a bare word that grows a box
    * on hover — a control the reader finds by pressing it. The panels are the
    * two parts that open one, `Menu` and `Chooser`, and the `<details>` a part
    * draws its own panel with (`form.tsx` の `Select`).
@@ -1633,8 +1627,8 @@ describe("メニューの 1 行", () => {
 
 describe("送信中の印", () => {
   /**
-   * **A control that sent a deed waits in place, and the parts draw that**
-   * (`docs/ui.md` の「壊れるもの」): the spinner turns in the icon's box of the
+   * **A control that sent a deed waits in place, and the parts draw that**:
+   * the spinner turns in the icon's box of the
    * pressed `Submit` or `Confirm`, and a screen that drew one of its own would
    * be a second way of saying the same thing — or a way of saying it in a
    * place that moves.
@@ -1687,7 +1681,7 @@ describe("送信中の印", () => {
 
 /**
  * **A draft's five screens read from the same three-section shape**
- * (`docs/admin-ui.md` の「編集画面」) rather than from a strip of steps: the
+ * rather than from a strip of steps: the
  * head names the screen and — for the research editor only — this draft's
  * other faces as facts, and the tools row is the one thing that stays while
  * typing.
@@ -1753,7 +1747,7 @@ describe("下書きの頭の区画と道具の行", () => {
 })
 
 /**
- * **One part per shape** (`docs/ui.md` の「押せるもの」「壊れるもの」). Each of
+ * **One part per shape**. Each of
  * these was drawn by hand on several screens, and each copy drifted on its own
  * — a listing that dropped its ordering after a search, a row's arrows dimmed
  * by a box around them, a table swapped for a sentence when it was empty, an
@@ -1791,7 +1785,7 @@ describe("部品への集約", () => {
   })
 
   // 管理画面の表。公開の研究のページの節 (提供者・助成金 …) は「節は空でも残り、無いことを 1 文で言う」
-  // (public-pages.md) 側の形で、ここでは見ない。
+  // 側の形で、ここでは見ない。
   it("管理画面の空の一覧は表ごと差し替えず、Table の whenEmpty が 1 行で言う", async () => {
     const offenders: string[] = []
     for (const name of await managementFiles()) {

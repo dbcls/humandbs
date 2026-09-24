@@ -8,8 +8,8 @@
  * list, a table, emphasis, raw HTML — none of them is refused, and none is
  * flattened into the words it wraps: `**bold**` is stored as `**bold**`, so
  * the page beside the form shows the asterisks and the author sees that the
- * dialect does not read them (`docs/editing.md` の「文の保存」). Nothing is
- * lost and nothing is executed — raw HTML is text, and text is drawn escaped.
+ * dialect does not read them. Nothing is lost and nothing is executed — raw
+ * HTML is text, and text is drawn escaped.
  *
  * **A single newline is a line**, as it is on the way out, so a value that lists
  * things one per line survives the round trip. A blank line is a blank line in

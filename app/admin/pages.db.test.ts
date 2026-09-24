@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm"
-import { afterAll, beforeEach, describe, expect, it } from "vitest"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { grantAdmin } from "~/auth/admins.server"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
@@ -36,6 +36,18 @@ import {
 import { pinLabel } from "./labels.server"
 import { readDraft } from "./queries.server"
 import { fieldText } from "~/public/view.server"
+import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/files/box"
+import { clearPrefix, putTestObject } from "~/files/_store"
+import { runOneJob } from "~/files/jobs.server"
+import { listPrefix } from "~/files/store.server"
+
+import { unpinHold } from "./labels"
+
+// The store is the boundary: it passes through, and a test can make a listing fail.
+vi.mock("~/files/store.server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("~/files/store.server")>()
+  return { ...actual, listPrefix: vi.fn(actual.listPrefix) }
+})
 
 /**
  * The management screens with their guards on, against the development
@@ -434,6 +446,26 @@ describe("the research screen's forms", () => {
     expect(drafts).toHaveLength(1)
   })
 
+  /**
+   * Whether a research exists is itself unpublished: a draft-only research is
+   * nowhere on the public side. A 404 for one id and a 403 for another would
+   * tell a signed-in stranger which ids are real.
+   */
+  it("refuses somebody without a capability the same way whether the research exists or not", async () => {
+    const token = await signIn(READER, false)
+    const { researchId } = await createResearchWithDraft(db)
+
+    for (const id of [researchId, "00000000-0000-4000-8000-000000000000"]) {
+      const refusal = await thrown(() => researchDetailAction(
+        postForm(token, "/x", { intent: "create-draft" }),
+        "ja",
+        id,
+      ))
+      expect(refusal.status, id).toBe(403)
+    }
+    expect(await db.select().from(s.researchDraft)).toHaveLength(1)
+  })
+
   it("opens an empty draft whatever is published, and sends the browser to it", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId } = await createResearchWithDraft(db)
@@ -669,6 +701,125 @@ describe("the research screen's table", () => {
     // draft's is, not stored a second time on the version.
     expect(view.versions.find((row) => row.id === versionId)?.datasets).toBe(2)
     expect(view.reviews.find((row) => row.draftId === updating.id)?.datasets).toBe(3)
+  })
+})
+
+/**
+ * What the research screen closes "研究の削除" and a label's "解除" over: the
+ * same boxes and switches the refusals read, listed once per page.
+ */
+describe("what the research screen knows of its boxes", () => {
+  // Numbers the development data does not use: the store is shared with it.
+  const OLD = "hum5301"
+  const NEW = "hum5302"
+  const created: string[] = []
+
+  afterEach(async () => {
+    vi.mocked(listPrefix).mockReset()
+    const actual = await vi.importActual<typeof import("~/files/store.server")>("~/files/store.server")
+    vi.mocked(listPrefix).mockImplementation(actual.listPrefix)
+    for (const label of [OLD, NEW]) await clearPrefix(PUBLIC_BUCKET, publicPrefix(label))
+    for (const researchId of created.splice(0)) await clearPrefix(PRIVATE_BUCKET, privatePrefix(researchId))
+  })
+
+  async function research(): Promise<{ token: string, researchId: string }> {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    created.push(researchId)
+    await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
+    return { token, researchId }
+  }
+
+  function labelOf(view: Awaited<ReturnType<typeof researchDetailPage>>, label: string) {
+    const found = view.labels.find((row) => row.label === label)
+    if (found === undefined) throw new Error(`no ${label}`)
+    return found
+  }
+
+  it("says nothing remains when every box is empty", async () => {
+    const { token, researchId } = await research()
+    const view = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(view.filesRemain).toBe(false)
+    expect(view.switching).toBe(false)
+    expect(labelOf(view, OLD).holdsFiles).toBe(false)
+  })
+
+  it("counts a file on the private side as remaining, without putting it in the label's box", async () => {
+    const { token, researchId } = await research()
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    const view = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(view.filesRemain).toBe(true)
+    expect(labelOf(view, OLD).holdsFiles).toBe(false)
+  })
+
+  it("follows a renumbering: the retired box holds files while the move runs, then the new one does", async () => {
+    const { token, researchId } = await research()
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
+    const before = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(labelOf(before, OLD).holdsFiles).toBe(true)
+    expect(unpinHold(labelOf(before, OLD), before.switching)).toBe("holds-files")
+
+    await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
+    const moving = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(moving.switching).toBe(true)
+    expect(moving.filesRemain).toBe(true)
+    expect(labelOf(moving, OLD)).toMatchObject({ isPrimary: false, holdsFiles: true })
+    expect(labelOf(moving, NEW)).toMatchObject({ isPrimary: true, holdsFiles: false })
+    expect(unpinHold(labelOf(moving, OLD), moving.switching)).toBe("moving")
+
+    while (await runOneJob(db)) { /* until the move is done */ }
+    const moved = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(moved.switching).toBe(false)
+    expect(labelOf(moved, OLD).holdsFiles).toBe(false)
+    expect(labelOf(moved, NEW).holdsFiles).toBe(true)
+    expect(unpinHold(labelOf(moved, OLD), moved.switching)).toBeNull()
+  })
+
+  it("does not count a failed switch as one still running", async () => {
+    const { token, researchId } = await research()
+    await db.insert(s.filePublishJob).values({ researchId, fileName: "a.zip", action: "publish", state: "failed" })
+    expect((await researchDetailPage(get(token, "/x"), "ja", researchId)).switching).toBe(false)
+
+    await db.insert(s.filePublishJob).values({ researchId, fileName: "b.zip", action: "publish" })
+    expect((await researchDetailPage(get(token, "/x"), "ja", researchId)).switching).toBe(true)
+  })
+
+  it("lists each label's public box once per page", async () => {
+    const { token, researchId } = await research()
+    await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
+    vi.mocked(listPrefix).mockClear()
+    await researchDetailPage(get(token, "/x"), "ja", researchId)
+    const prefixes = vi.mocked(listPrefix).mock.calls
+      .filter(([bucket]) => bucket === PUBLIC_BUCKET)
+      .map(([, prefix]) => prefix)
+    expect(prefixes.toSorted()).toEqual([publicPrefix(NEW), publicPrefix(OLD)].toSorted())
+  })
+
+  it("leaves what the store did not answer unknown and still draws the page", async () => {
+    const { token, researchId } = await research()
+    await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
+    vi.mocked(listPrefix).mockRejectedValue(new Error("the store did not answer"))
+    const view = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(view.box).toBeNull()
+    expect(view.filesRemain).toBeNull()
+    expect(view.labels.map((row) => row.holdsFiles)).toEqual([null, null])
+    // The switches are the database's, which did answer.
+    expect(view.switching).toBe(false)
+  })
+
+  it("says files remain when a box that answered holds one, though another did not answer", async () => {
+    const { token, researchId } = await research()
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
+    await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
+    const actual = await vi.importActual<typeof import("~/files/store.server")>("~/files/store.server")
+    vi.mocked(listPrefix).mockImplementation(async (bucket, prefix) => {
+      if (prefix === publicPrefix(OLD)) return actual.listPrefix(bucket, prefix)
+      throw new Error("the store did not answer")
+    })
+    const view = await researchDetailPage(get(token, "/x"), "ja", researchId)
+    expect(view.filesRemain).toBe(true)
+    expect(labelOf(view, OLD).holdsFiles).toBe(true)
+    expect(labelOf(view, NEW).holdsFiles).toBeNull()
   })
 })
 
@@ -1259,6 +1410,22 @@ describe("making the files a version needs public", () => {
     expect(await db.select().from(s.researchVersion)).toHaveLength(0)
   })
 
+  it("refuses a name that is not one file of the box, and queues none of those sent with it", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+
+    for (const name of ["", "..", "x/a.zip"]) {
+      const refusal = await thrown(() => publishAction(
+        postForm(token, "/x", { intent: "publish-files" }, ["a.zip", name]),
+        "ja",
+        { researchId, draftId },
+      ))
+      expect(refusal.status, JSON.stringify(name)).toBe(400)
+    }
+
+    expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
+  })
+
   it("is refused to somebody who may edit but not manage files", async () => {
     const token = await signIn(READER, false)
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -1324,5 +1491,54 @@ describe("the publish screen", () => {
       at,
     )
     expect(moved).not.toEqual({ status: "unchanged" })
+  })
+
+  /** The public page lists the datasets in the draft's order, so a new order is a change. */
+  it("lets an update through whose only change is the order of the datasets", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await db.insert(s.labelPin).values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
+    const datasetIds: string[] = []
+    for (const label of ["NHA000001", "NHA000002"]) {
+      const [row] = await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id })
+      if (row === undefined) throw new Error("no dataset")
+      await db.insert(s.labelPin).values({ kind: "dataset", label, datasetId: row.id, isPrimary: true })
+      datasetIds.push(row.id)
+    }
+    const versionId = await seedVersion(db, {
+      researchId,
+      number: 1,
+      releaseDate: "2024-05-01",
+      datasets: datasetIds.map((datasetId) => ({ datasetId })),
+    })
+    await researchDetailAction(postForm(token, "/x", { intent: "edit-version", versionId }), "ja", researchId)
+    const [update] = await db
+      .select({ id: s.researchDraft.id, content: s.researchDraft.content, revision: s.researchDraft.revision })
+      .from(s.researchDraft)
+      .where(eq(s.researchDraft.replacesVersionId, versionId))
+    if (update === undefined) throw new Error("no update was opened")
+    const reversed = datasetIds.toReversed()
+    const saved = await saveDraftContent(db, { draftId: update.id, revision: update.revision }, {
+      content: { ...update.content, datasetIds: reversed },
+    })
+    if (saved.status !== "saved") throw new Error(saved.status)
+    const at = { researchId, draftId: update.id }
+
+    const view = await publishPage(get(token, "/x"), "ja", at)
+    expect(view.reordered).toBe(true)
+
+    const answer = await publishAction(
+      postForm(token, "/x", {
+        intent: "publish",
+        revision: String(saved.revision),
+        releaseDate: "2024-05-01",
+        acknowledged: "on",
+      }),
+      "ja",
+      at,
+    )
+    expect(answer).toBeInstanceOf(Response)
+    const [version] = await db.select({ content: s.researchVersion.content }).from(s.researchVersion)
+    expect(version?.content.datasets.map((row) => row.datasetId)).toEqual(reversed)
   })
 })

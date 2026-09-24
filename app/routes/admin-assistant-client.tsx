@@ -13,8 +13,7 @@ export function AssistantContents({ locale }: { locale: Locale }) {
   return (
     <Stack gap="block">
       {/* What the last request did, over the screen rather than in it: written
-          into the page it would push the listing down by its own height
-          (`docs/ui.md` の「管理画面の枠」). */}
+          into the page it would push the listing down by its own height. */}
       <Answer answer={controller.notice} locale={locale} said={(notice) => notice.text} ok={(notice) => notice.ok} />
       <AdminAssistantUploadForm
         locale={locale}

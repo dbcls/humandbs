@@ -113,7 +113,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
           locale={locale}
           target="dataset"
           query={view.query}
-          sort={view.requestedSort}
+          presented={{ sort: view.requestedSort, order: view.requestedOrder, size: view.requestedSize }}
           panel={view.facets}
         />
       )}

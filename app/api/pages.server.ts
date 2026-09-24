@@ -14,7 +14,7 @@
  * drops its download section when the store is silent, but an answer whose
  * shape depended on whether an unrelated system replied would be worse than one
  * that says the listing is empty — and the listing is not what the API promises
- * to be complete (docs/public-api.md).
+ * to be complete.
  */
 
 import { loadConfig, publicOrigin } from "~/config.server"
@@ -27,6 +27,7 @@ import {
 } from "~/content/public"
 import { getDb } from "~/db/client.server"
 import { everyPublicBox, publicBoxesOf } from "~/files/listing.server"
+import { parsePageNumber } from "~/paging"
 import {
   loadCatalog,
   publishedDatasetLabels,
@@ -34,6 +35,7 @@ import {
   resolveDatasetLabel,
   resolveHumLabel,
 } from "~/public/queries.server"
+import { parseVersionSegment } from "~/public/urls"
 import { findVersion, latestOf } from "~/public/versions"
 import { loadFacetDefinitions, publishedFacetValues } from "~/search/catalog.server"
 import { parseQuery, serializeQuery } from "~/search/dsl"
@@ -178,9 +180,9 @@ export async function researchVersionEntry(
   humId: string,
   version: string,
 ): Promise<Response> {
-  const [, digits] = /^v(\d+)$/.exec(version) ?? []
-  if (digits === undefined) return problemResponse(notFound(request, "research-version"))
-  return researchEntry(request, humId, Number(digits))
+  const number = parseVersionSegment(version)
+  if (number === null) return problemResponse(notFound(request, "research-version"))
+  return researchEntry(request, humId, number)
 }
 
 async function researchObjects(
@@ -283,8 +285,8 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
     return problemResponse(invalidOrder(request, wanted, SORT_ORDERS))
   }
 
-  const page = Number(url.searchParams.get("page") ?? "1")
-  if (!Number.isInteger(page) || page < 1) {
+  const page = parsePageNumber(url.searchParams.get("page"))
+  if (page === null) {
     return problemResponse(invalidParameter(request, "page", "page must be a positive integer."))
   }
 
@@ -330,7 +332,7 @@ function inOrder<T extends { id: string }>(objects: readonly T[], order: readonl
  * vocabulary defines, so a value taken from here always matches something. The
  * keys whose values are prose are not fields: the search row keeps their text
  * but not which key it came from, so their words are reachable as free text and
- * not as `key:word` (`docs/data-model.md` の「検索用の行」).
+ * not as `key:word`.
  *
  */
 export async function searchFields(): Promise<Response> {

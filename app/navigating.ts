@@ -70,7 +70,7 @@ export function useSubmitting(): boolean {
  * **Only the control that was pressed says it is waiting.** Every submit on
  * the page could read the same navigation, and every one would then dim
  * together; what the reader pressed is what has to answer, and the press is
- * the one thing each control knows about itself (`docs/ui.md` の「壊れるもの」).
+ * the one thing each control knows about itself.
  *
  * **The press is remembered until a sending has ended**, not until the next
  * render: the press and the router's first word about it can land in different

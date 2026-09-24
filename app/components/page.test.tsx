@@ -304,9 +304,9 @@ describe("where a cell sits in a row taller than it is", () => {
   })
 
   /*
-    **The choice is about the cells, not the band.** A column name does not wrap
-    (`docs/ui.md` の「幅」), so the header row is one line whatever the rows under
-    it do — and the same 1px the cells had was there between the words (17.0) and
+    **The choice is about the cells, not the band.** A column name does not wrap,
+    so the header row is one line whatever the rows under it do — and the same
+    1px the cells had was there between the words (17.0) and
     the mark that sets the row's height (18.0).
   */
   /*

@@ -5,8 +5,7 @@ import { Icon, type IconName } from "~/components/icons"
 
 /**
  * The marks a management screen puts on some of its rows, each with the one
- * colour and the one glyph it wears wherever it stands (`docs/ui.md` の
- * 「壊れるもの」).
+ * colour and the one glyph it wears wherever it stands.
  *
  * **The colour says what the reader does about it, and there are four
  * answers.** `danger` — it stops something, deal with it first. `warning` — it
@@ -90,8 +89,7 @@ export function KindMark({ kind }: { kind: FlagKind }) {
  * row carries (published or not, shared or not) drawn in a box gives every row
  * a box, and then nothing is picked out: the rows that need somebody look
  * exactly like the rows that do not. The glyph is what tells the states apart
- * at a glance; the word is what says which it is once the question is known
- * (`docs/ui.md` の「壊れるもの」).
+ * at a glance; the word is what says which it is once the question is known.
  *
  * **The glyph is the kind's, and the colour is left out.** A state named here
  * wears the glyph the same state wears as a badge on the next screen, so the

@@ -448,7 +448,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       <Stack>
         {/* The way out is the list this dataset is in. A dataset is a part of
             the draft rather than a face of its own, so the head carries no
-            second line (`docs/admin-ui.md` の「編集画面」). */}
+            second line. */}
         <DraftHead
           locale={locale}
           title={t.heading}
@@ -655,8 +655,8 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
         if (key === undefined) return null
         const at = `${path}.${value.keyId}`
         // **At the field name's own row, the same place every other row's
-        // delete stands** (`docs/admin-ui.md` の「編集画面」) — not a control of
-        // its own set apart from the field it acts on.
+        // delete stands** — not a control of its own set apart from the field
+        // it acts on.
         const remove = leading.includes(value.keyId)
           ? undefined
           : {
@@ -985,11 +985,10 @@ function AddValue({ locale, keys, catalogWay, onAdd }: {
  * **A row's upper end shares the lower end's unit and box.** Typed after the
  * separator, it is what makes the row a width (`0.9〜1.3 GB`) rather than a bare
  * number — a second unit for the same row would say the two ends could be
- * measured differently, which they cannot (`docs/data-model.md` の「値と文」).
- * A typed upper end below the lower end is a shape the save path refuses
- * outright (`app/admin/dataset-form.server.ts`), so the box marks itself
- * wrong the moment it is typed rather than waiting for that refusal
- * (`docs/ui.md` の「壊れるもの」の「欄の誤りは、その欄が名乗る」).
+ * measured differently, which they cannot. A typed upper end below the lower
+ * end is a shape the save path refuses outright
+ * (`app/admin/dataset-form.server.ts`), so the box marks itself wrong the
+ * moment it is typed rather than waiting for that refusal.
  */
 function NumberField({ label, named: drawsName = true, locale, marks, units, labelCandidates, state, rows, remove, onChange }: {
   label: string
@@ -1187,7 +1186,7 @@ function VocabularyField({
         {/* **The two marks stand beside the search box**, the way a
             translated field's stand beside its box (`fields.tsx` の
             `SlotEditor`) — this field has one box, language-less, and the
-            search box is it (`docs/admin-ui.md` の「欄の状態」). */}
+            search box is it. */}
         <TermPicker
           locale={locale}
           setId={setId}
@@ -1214,8 +1213,7 @@ function VocabularyField({
  * **A row is one disease: which classifications name it, and what it is
  * called.** The two answer different questions — the terms are what a listing
  * counts it by, the name is what a reader reads — and neither stands in for the
- * other. `NASH` is what an article writes and `K758` is where it is filed
- * (`docs/data-model.md` の「ICD10」).
+ * other. `NASH` is what an article writes and `K758` is where it is filed.
  *
  * **A row naming no term is an ordinary row.** Diseases no classification holds
  * are in the articles, and a form that refused them would be a portal that
@@ -1224,8 +1222,7 @@ function VocabularyField({
  *
  * **The names get no candidates.** The field holds what an article wrote, so
  * there is nothing to align it to; offering the spellings already in would pull
- * a curator away from the source they are copying
- * (`docs/editing.md` の「編集フォーム」).
+ * a curator away from the source they are copying.
  */
 function DiseaseField({ label, named = true, way, locale, marks, setId, known, state, diseases, remove, onChange }: {
   label: string
@@ -1649,14 +1646,14 @@ export function comboKey(
  * **It is not part of the description.** The id goes into the ledger the moment
  * it is pinned — it neither waits for a save nor moves the entry's revision —
  * so it is posted as a form of its own beside the JSON save, and through a
- * fetcher so that what is typed in the form around it survives the answer
- * (docs/publishing.md の「ラベルを pin する」). Nothing is redirected: the
- * listing under the screen is read again once the ledger has moved.
+ * fetcher so that what is typed in the form around it survives the answer.
+ * Nothing is redirected: the listing under the screen is read again once the
+ * ledger has moved.
  *
  * **Two ways to give it one**: an archive's accession is typed, and the portal's
  * own id is issued — the next NHA number, which nobody types, so the numbering
- * cannot be broken by hand (docs/publishing.md の「ラベルを pin する」). Both
- * are settled by the same「割り当て」(`IdForm`), at the row's height — the line
+ * cannot be broken by hand. Both are settled by the same「割り当て」(`IdForm`),
+ * at the row's height — the line
  * is a line of facts, and a 36px box among them stands taller than the words.
  *
  * **The dates are read, never typed.** An archive's accession is dated by the
@@ -1738,7 +1735,7 @@ function DatasetFacts({ view, locale }: {
 /**
  * One experiment, folded to **a single line**: its name, how many values it
  * carries, and what can be done to the whole of it — copy, move, delete — on
- * the same line (`docs/admin-ui.md` の「編集画面」).
+ * the same line.
  *
  * **The controls stand over the line rather than inside the part that folds.**
  * A button inside a `<summary>` is a control within a control: pressing it

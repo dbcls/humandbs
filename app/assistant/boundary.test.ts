@@ -1,5 +1,6 @@
 /**
- * The two invariants `docs/assistant.md` names, held by reading the source.
+ * The two invariants the assistant route depends on, held by reading the
+ * source.
  *
  * The assistant answers to anybody who can reach it — it holds no
  * authorisation of its own and reads no token — so who may reach it is decided

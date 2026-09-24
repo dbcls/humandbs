@@ -225,8 +225,8 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
  *
  * **The face of the way out, with the mark after the word** (`AdminBack`
  * turned around): an outlined button with no mark reads as something done
- * here, and a bare link reads as a caption (`docs/admin-ui.md` の「区画の枠」).
- * The mark before the word says what the screen is about; the chevron after
+ * here, and a bare link reads as a caption. The mark before the word says
+ * what the screen is about; the chevron after
  * it says it is somewhere else, and moves that way when pointed at
  * (`base.tsx` の `Chevron`).
  */

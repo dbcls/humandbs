@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * What an anonymous reader can reach (`docs/testing.md` の P-ANON).
+ * What an anonymous reader can reach.
  *
  * **The scenarios take the labels from the instance rather than naming them.**
  * These run against whatever is deployed — the compose in this repo, or

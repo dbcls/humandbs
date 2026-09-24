@@ -3,7 +3,7 @@
  *
  * Two systems answer here and they are read directly rather than through the
  * caches: those hold what is public, and a draft is written for something that
- * is not published yet (docs/data-model.md の「外部キャッシュ」).
+ * is not published yet.
  *
  * **The connection is opened for the request and closed with it.** The daily
  * refresh does the same; holding a connection into another project's production
@@ -174,7 +174,7 @@ export interface UpstreamHolderView {
  * One branch: what taking it would bring, and — where the hum already names a
  * research — the way there. **Only a new research is written from here**;
  * taking the branch into a research that exists is done from that research's
- * own draft (`docs/editing.md` の「行き先」).
+ * own draft.
  */
 export interface UpstreamBranchPageView {
   locale: Locale
@@ -473,7 +473,7 @@ export async function upstreamBranchPage(
  *
  * **The only thing written here.** Where the hum already names a research,
  * this screen offers no form at all — taking the branch into that research's
- * own draft is done from there (docs/editing.md の「行き先」).
+ * own draft is done from there.
  */
 export async function upstreamBranchAction(
   request: Request,
@@ -644,8 +644,7 @@ export async function upstreamDatasetAction(
 
 /**
  * This research's own branches, newest approval first, for the take-in
- * screen's table (`docs/editing.md` の「行き先」). Null where the application
- * system cannot be reached.
+ * screen's table. Null where the application system cannot be reached.
  */
 export async function applicationBranches(
   db: Executor,

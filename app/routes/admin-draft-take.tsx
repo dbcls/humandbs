@@ -22,8 +22,8 @@ import type { Route } from "./+types/admin-draft-take"
 /** How many registered datasets a row opens with before it counts the rest. */
 
 /**
- * Taking values into a draft from a version, another draft or an application
- * (docs/editing.md の「取り込み」).
+ * Taking values into a draft from a version, another draft or an
+ * application.
  *
  * **Without a source chosen, this is the table of sources**: the research's
  * versions and drafts in the one table the research's own screen draws them in,

@@ -1,6 +1,6 @@
 # HumanDBs Assistant API
 
-開発用のサイドカーとして申請書 PDF を処理し、ポータルの proxy から呼ばれる API を提供する。構造化抽出と確認には Google GenAI、検索には Custom Search、OCR には Document AI、データセットのメタデータには公開 HumanDBs API を使う。
+ポータルのサイドカーとして申請書 PDF を処理し、ポータルの proxy から呼ばれる API を提供する。構造化抽出と確認には Google GenAI、検索には Custom Search、OCR には Document AI、データセットのメタデータには公開 HumanDBs API を使う。
 
 ## テスト
 
@@ -36,4 +36,5 @@ cp <service-account-key.json> assistant-api/gcp-credentials.json
 compose はこのファイルを container 内の `/app/gcp-credentials.json` として読む。`gcp-credentials.json` は `.gitignore` により Git 管理から除外される。鍵の内容を `.env` や Git に置かない。
 
 ## Docker
-Dockerfile は compose による開発環境を対象としている。compose はこのディレクトリを `/app` へ bind mount するため、配布用イメージは別途ビルド・設定する。
+
+Dockerfile がコード・テンプレート・データを焼き込んだイメージを作り、配信ではそのイメージで動く。開発では `compose.dev.yml` が `src/`・`templates/`・`data/`・`tests/` を bind mount するので、コードの変更はイメージを作り直さず `docker compose restart assistant-api` で反映される。依存 (`pyproject.toml` / `uv.lock`) を変えたときは `docker compose build assistant-api` で作り直す。

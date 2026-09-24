@@ -23,7 +23,7 @@ import {
  * **It asks first, in the site's own panel.** What goes with it is the analysis
  * the service ran for that dataset, so it is not a press to make by accident —
  * and the browser's own dialog is neither in the reader's language nor in any
- * of the site's faces (`docs/ui.md` の「押せるもの」).
+ * of the site's faces.
  */
 function RemoveDataset({ datasetId, busy, onRemove, words }: {
   datasetId: string
@@ -112,8 +112,7 @@ export function Datasets({
                 {/* **The box and the button beside it take the site's one
                     face** (`form.tsx` の `CONTROL`): the edge of something that
                     can be typed into has to carry 3:1, and a face written out
-                    here would be the one that stopped matching
-                    (`docs/ui.md` の「壊れるもの」). */}
+                    here would be the one that stopped matching. */}
                 <input
                   id="assistant-dataset-ids"
                   value={newDatasetIds}

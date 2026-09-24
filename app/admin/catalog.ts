@@ -6,8 +6,7 @@
  * input control and a way of reading the existing prose into terms — none of
  * which an administrator can supply from a form. So the line is drawn there:
  * adding, renaming, reordering and removing free-text keys is administration,
- * and changing what a key holds is development
- * (docs/data-model.md の「catalog と語彙」).
+ * and changing what a key holds is development.
  *
  * A code is an identity. It never appears to a reader, but it does appear in
  * the address of a refined search, so it has to be readable and it has to keep
@@ -97,17 +96,14 @@ export function freeKeyCode(wanted: string, held: Iterable<string>): string {
  * five of them share the same 「混在」. Nothing a new study brings can add to
  * one: a study does not arrive with a fourth sex or a second way of being
  * unrestricted. So the migration puts them in and no screen edits them
- * afterwards — which is what the glossary already said about the access types,
- * that they are settled by the structure and must not be reworded
- * (docs/glossary.md).
+ * afterwards — the same as the access types, which are settled by the
+ * structure and must not be reworded.
  *
  * **ICD10 is settled for a different reason**: it is an external standard put
- * in whole, and its headings are the standard's to word, not the portal's
- * (docs/data-model.md の「ICD10」).
+ * in whole, and its headings are the standard's to word, not the portal's.
  *
  * **The other eleven grow with the data** — platform, library prep kit, tissue
- * and the rest — and those are the ones an administrator keeps
- * (docs/data-model.md の「catalog と語彙」).
+ * and the rest — and those are the ones an administrator keeps.
  *
  * The label of the *field* one of these belongs to is not settled by this: what
  * a refinement is called is the administrator's to write, and only what it may

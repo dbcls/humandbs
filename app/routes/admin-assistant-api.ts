@@ -11,7 +11,7 @@ import type { Route } from "./+types/admin-assistant-api"
  * outside the compose network and does not read a token, so being reachable
  * here is what decides who may use it — which is why the check is the first
  * thing either handler does, and why nothing else in the portal is allowed to
- * call the service (`docs/assistant.md`).
+ * call the service.
  *
  * **The second check is the one the framework cannot make.** React Router turns
  * away a mutation sent from another site, but not on a route that answers with

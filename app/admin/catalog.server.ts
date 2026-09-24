@@ -3,21 +3,18 @@
  *
  * Everything here asks for `manage-catalog`. Nothing here is written to the
  * event log — what that records is the operations that changed what is
- * published (docs/publishing.md の「証跡」), and a catalog entry is a definition
- * rather than a publication.
+ * published, and a catalog entry is a definition rather than a publication.
  *
  * **Every write rebuilds the search rows.** Some catalog changes reach them and
  * some do not — hiding a key changes the text a row is derived from, renaming a
  * term does not, because labels are joined at query time — but working out
  * which is which at each call site is how the two would come apart. A full
- * rebuild is a few seconds on this corpus and is meant to be ordinary
- * (docs/data-model.md の「検索用の行」).
+ * rebuild is a few seconds on this corpus and is meant to be ordinary.
  *
  * **What is in use cannot be removed.** A key is in use when a dataset holds a
  * value under it, published or in a draft; a term is in use when a value names
  * it. A term that has served its purpose is merged into another instead, which
- * rewrites everything that names it and then removes it (docs/data-model.md の
- * 「catalog と語彙」).
+ * rewrites everything that names it and then removes it.
  */
 
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
@@ -98,8 +95,7 @@ export interface VocabularyRow {
  *
  * **Only the fields an analysis method carries are here.** The two a dataset
  * carries hold what the portal is rather than what the data brings, so the
- * migration puts them in and nothing edits them afterwards
- * (docs/data-model.md の「catalog と語彙」).
+ * migration puts them in and nothing edits them afterwards.
  *
  * **The vocabularies are not a list of their own.** Each belongs to exactly one
  * field, so the field's row carries how many terms it draws from and the way to
@@ -154,8 +150,8 @@ export interface VocabularyView {
   find: string
   /**
    * Whether this vocabulary is the administrator's to change. A settled one is
-   * read here and edited nowhere (`docs/data-model.md` の「catalog と語彙」), so
-   * the screen opens with nothing to press rather than refusing to open.
+   * read here and edited nowhere, so the screen opens with nothing to press
+   * rather than refusing to open.
    */
   editable: boolean
   /**
@@ -561,8 +557,7 @@ async function nextPosition(db: Executor, scope: "dataset" | "experiment"): Prom
 /**
  * **The catalogue is written and the search rows are made again.** Which change
  * could reach a row is not worked out operation by operation — doing that is
- * how the one that does reach a row ends up not saying so
- * (`docs/data-model.md` の「catalog と語彙」).
+ * how the one that does reach a row ends up not saying so.
  *
  * **Where a key stands is the exception.** The refinement panel is ordered by
  * `position` as each page is asked for, so rebuilding every document to move
@@ -606,8 +601,7 @@ async function apply(tx: Executor, intent: CatalogIntent, form: FormData): Promi
       return deleteKey(tx, form)
     // The facet categories are not here. What the refinement panel groups its
     // axes into is settled by what the portal is, so the migration puts the
-    // groups in and nothing edits them afterwards
-    // (docs/data-model.md の「catalog と語彙」).
+    // groups in and nothing edits them afterwards.
     case "create-term":
       return createTerm(tx, form)
     case "update-term":
@@ -675,7 +669,7 @@ async function updateKey(db: Executor, form: FormData): Promise<Outcome> {
     **Which box a field's facet sits in is not edited here.** The panel's groups
     are part of what the portal is rather than of what the data brings, so the
     catalogue carries the placement and no screen offers it — a form that does
-    not hand it over cannot be made to (`docs/editing.md` の「編集フォーム」).
+    not hand it over cannot be made to.
   */
   const updated = await db
     .update(contentKey)
@@ -874,8 +868,7 @@ async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
  *
  * **This is what answers "still used, but should not be chosen again".**
  * Turning a term off says only that it will not be offered; a merge also says
- * what to read instead, which is the half the data needs
- * (`docs/data-model.md` の「catalog と語彙」).
+ * what to read instead, which is the half the data needs.
  *
  * **Only within one vocabulary.** Two terms of different sets are values of
  * different axes, and folding across would change what a refinement means
@@ -883,8 +876,7 @@ async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
  *
  * **The draft rows move their revision on.** An editor holding one open is
  * looking at a description that no longer says what the row says, so the next
- * save has to be refused the way any other outside change refuses it
- * (`docs/editing.md` の「サイトコンテンツ」の revision 照合と同じ線).
+ * save has to be refused the same way any other outside change refuses it.
  */
 async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
   const from = text(form, "termId")

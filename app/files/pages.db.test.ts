@@ -26,6 +26,7 @@ import {
   filesPage,
   fileUploadAction,
 } from "./pages.server"
+import { claimJob, reconcile, settleJob } from "./jobs.server"
 import { clearPrefix, keysUnder, putThroughProxy, putTestObject } from "./_store"
 
 /**
@@ -340,13 +341,85 @@ describe("the box screen", () => {
     const token = await signIn(CURATOR, true)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}a.zip`)
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
-    await db.insert(s.filePublishJob).values({ researchId, fileName: "a.zip", action: "publish" })
+    // A switch that gave up is not moving anything, so it does not hold the file.
+    await db.insert(s.filePublishJob)
+      .values({ researchId, fileName: "a.zip", action: "publish", state: "failed" })
 
     await filesAction(postForm(token, [["intent", "delete"], ["name", "a.zip"]]), JA, researchId)
 
     expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(humLabel))).toEqual([])
     expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([])
     expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
+  })
+
+  /**
+   * The copy a running switch is making lands after the delete otherwise: the
+   * runner copies to the public side, finds the private one already gone, and
+   * the file a curator deleted is left for anyone to fetch.
+   */
+  it("refuses to delete a file whose switch is running, and leaves it and its switch as they are", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await filesAction(postForm(token, [["intent", "publish"], ["name", "a.zip"]]), JA, researchId)
+    const job = await claimJob(db)
+    if (job === null) throw new Error("expected the switch to be claimed")
+
+    const answer = await filesAction(
+      postForm(token, [["intent", "delete"], ["name", "a.zip"]]),
+      JA,
+      researchId,
+    )
+
+    expect(answer).toEqual({ status: "delete-switching" })
+    expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}a.zip`])
+    expect(only(await db.select().from(s.filePublishJob)).state).toBe("running")
+    const events = (await db.select().from(s.event)).filter((row) => row.action === "delete-file")
+    expect(events).toEqual([])
+
+    // The runner finishes where it was going, which is what the curator last asked for.
+    await reconcile(db, job)
+    await settleJob(db, job)
+    expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(humLabel))).toEqual([`${publicPrefix(humLabel)}a.zip`])
+  })
+
+  it("refuses to delete a file whose switch is queued, and deletes none of the others sent with it", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+    await db.insert(s.filePublishJob).values({ researchId, fileName: "a.zip", action: "publish" })
+
+    const answer = await filesAction(
+      postForm(token, [["intent", "delete"], ["name", "b.zip"], ["name", "a.zip"]]),
+      JA,
+      researchId,
+    )
+
+    expect(answer).toEqual({ status: "delete-switching" })
+    expect((await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toSorted())
+      .toEqual([`${privatePrefix(researchId)}a.zip`, `${privatePrefix(researchId)}b.zip`])
+    expect(only(await db.select().from(s.filePublishJob)).state).toBe("pending")
+  })
+
+  it("refuses a name that is not one file of the box, and sends no delete to the store", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}b.zip`)
+
+    for (const name of ["", "..", "../a.zip", "x/a.zip", "a\\b", "a\u0000b", "x".repeat(256)]) {
+      for (const intent of ["delete", "publish", "unpublish"]) {
+        const refused = await thrown(() =>
+          filesAction(postForm(token, [["intent", intent], ["name", name]]), JA, researchId))
+        expect(refused.status, `${intent} ${JSON.stringify(name)}`).toBe(400)
+      }
+    }
+
+    expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}a.zip`])
+    expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(humLabel))).toEqual([`${publicPrefix(humLabel)}b.zip`])
+    expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
+    expect((await db.select().from(s.event)).filter((row) => row.subjectType === "file")).toEqual([])
   })
 
   it("records a deletion in the trail", async () => {
@@ -860,6 +933,21 @@ describe("the article assets", () => {
       expect(answer, to).toEqual({ status: "malformed-slug" })
     }
     expect(await held()).toEqual([at(from)])
+  })
+
+  it("refuses a slug that is not one file of the box, and sends no delete to the store", async () => {
+    const token = await signIn(CURATOR, true)
+    const staying = mine("a.png")
+    await putTestObject(PUBLIC_BUCKET, at(staying))
+
+    for (const name of ["", "/", "..", "x/../a.png", "x//a.png", "a\\b"]) {
+      const refused = await thrown(() =>
+        commonFilesAction(postCommon(token, [["intent", "delete"], ["name", name]]), JA))
+      expect(refused.status, JSON.stringify(name)).toBe(400)
+    }
+
+    expect(await held()).toEqual([at(staying)])
+    expect((await db.select().from(s.event)).filter((row) => row.subjectType === "file")).toEqual([])
   })
 
   it("takes the file named by the row away, and only that one", async () => {

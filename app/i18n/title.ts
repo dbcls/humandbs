@@ -41,7 +41,7 @@ export function windowTitle(
  * The management area has no breadcrumb, so the bar's area stands in for the
  * steps above the screen. **The steps between are left out** — a dataset
  * under a draft under a research would otherwise run to seven steps, which no
- * tab shows (`docs/admin-ui.md` の「画面の名乗り」).
+ * tab shows.
  */
 export function adminWindowTitle(
   messages: Messages,

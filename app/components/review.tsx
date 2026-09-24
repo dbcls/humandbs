@@ -52,9 +52,8 @@ export function pressedTitle(kind: AcknowledgementView["kind"], locale: Locale):
  * Who pressed one of the two marks: a row per person, with when they last
  * pressed and how many times. **A reader presses again on each round**, so a
  * row per press would be the same name over and over; and a name and a time
- * squeezed into one chip leaves nowhere for the count (`docs/admin-ui.md` の
- * 「レビューと共有の画面」). The review screen and the confirmation before
- * publishing draw the same table.
+ * squeezed into one chip leaves nowhere for the count. The review screen and
+ * the confirmation before publishing draw the same table.
  */
 export function PressedBy({ rows, locale }: { rows: readonly AcknowledgementView[], locale: Locale }) {
   const t = messagesFor(locale).admin.review
@@ -146,7 +145,7 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
  * opens, the link itself with what can be done with it, and the settings that
  * decide whether it opens. **The link's row reads in the order of a name row**
  * — the address, copying it, then reissuing it at the far end, the one press
- * that cannot be taken back (`docs/admin-ui.md` の「画面の名乗り」). Private and
+ * that cannot be taken back. Private and
  * an expiry can both be undone, so neither of them retires an address that has
  * got out; reissuing does.
  */

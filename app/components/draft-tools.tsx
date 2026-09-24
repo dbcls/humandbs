@@ -29,15 +29,14 @@ import { Flag } from "./flags"
  * the role, the identifier beside it, and the way out on the right. An
  * updating draft wears its version as a badge beside the identifier rather
  * than folding it into the name, because it is a fact about the draft's
- * state and not part of what the screen is called
- * (`docs/admin-ui.md` の「画面の名乗り」).
+ * state and not part of what the screen is called.
  *
  * **The second line is what this draft is, read once.** Its other three
  * faces, the memo, the comments about the whole of it, and the way to take in
  * a data-providing application — read on the way in and not needed again
  * while typing, which is why it folds away with the name. A dataset is a part
  * of the draft rather than a face of its own, so its screen carries no second
- * line (`docs/admin-ui.md` の「編集画面」).
+ * line.
  *
  * **The last row is the tools row, and it is the one row that stays.** The
  * card sticks to the top of the window; once it is held there, the name and
@@ -65,9 +64,8 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
   back: { to: string, label: string, icon: IconName }
   /**
    * What else stands in the name row after the way out — a document's slug
-   * editor, the container's own delete
-   * (`docs/admin-ui.md` の「画面の名乗り」の「名前の右に並ぶものの順」). The
-   * research editor has neither, so its own call leaves this out.
+   * editor, the container's own delete. The research editor has neither, so
+   * its own call leaves this out.
    */
   headExtra?: ReactNode
   /** This draft's other faces and its memo — the research editor's own. */
@@ -237,8 +235,7 @@ export function DraftTools({
           control that renames itself while it works is a control the reader
           cannot find again, and the three things this says — there is
           unsaved work, it is being written, it is written — are one piece
-          of news that assistive tech should hear as it changes
-          (`docs/ui.md` の「壊れるもの」).
+          of news that assistive tech should hear as it changes.
         */}
         <SaveNews
           words={[t.editor.saving, t.editor.unsaved, t.editor.saved]}
@@ -432,7 +429,7 @@ export function useDraftEditing<T>({
    * A field is marked when a refused save says somebody else moved it, and
    * offers their value. **Only a refusal marks the form**: a difference from a
    * version or another draft is taken in on its own screen, and read on the
-   * page beside the form (docs/editing.md の「取り込み」).
+   * page beside the form.
    */
   function marksFor(path: string): Marks {
     const theirs = conflict?.changed.includes(path) === true ? conflict.theirs : undefined

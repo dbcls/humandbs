@@ -24,9 +24,9 @@ import { PressedBy, pressedTitle } from "./review"
 /**
  * The last screen before a draft becomes a version.
  *
- * **What is wanted before pressing, in the order it is wanted** (docs/publishing.md
- * の「公開前の確認の画面」): what changes, what stops it, what the review says,
- * what to look at, and last the press with what it does. Every section names
+ * **What is wanted before pressing, in the order it is wanted**: what changes,
+ * what stops it, what the review says, what to look at, and last the press
+ * with what it does. Every section names
  * itself with a noun and says in one sentence what it is for; the one thing to
  * press stands at the end, after everything read.
  *
@@ -112,7 +112,7 @@ const FILES_FORM = "publish-files"
 
 /** Whether anything this publish writes differs from the version it is measured against. */
 function changesNothing(view: PublishPageView): boolean {
-  return view.researchFields === 0 && view.datasetChanges.length === 0
+  return view.researchFields === 0 && view.datasetChanges.length === 0 && !view.reordered
 }
 
 /**
@@ -142,6 +142,7 @@ function Changes({ view }: { view: PublishPageView }) {
                   </WayTo>
                 </p>
               )}
+              {view.reordered && <p className="text-sm">{t.reordered}</p>}
               {view.datasetChanges.length > 0 && (
                 <Table align="middle" headers={[...datasetColumns(locale), t.changes]}>
                   {view.datasetChanges.map((change) => (
@@ -243,7 +244,7 @@ function Blocked({ view }: { view: PublishPageView }) {
 /**
  * A missing label, given from its row. A research ID is typed; a dataset's id
  * is typed as an archive's accession or issued as the next NHA id, and either
- * is settled by「割り当て」(`IdForm`, docs/publishing.md の「ラベルを pin する」).
+ * is settled by「割り当て」(`IdForm`).
  */
 function PinForm({ block, locale, nextNhaId, onIssuing }: {
   block: PublishBlockView
@@ -287,7 +288,7 @@ function PinForm({ block, locale, nextNhaId, onIssuing }: {
 /**
  * What the review says: whether the link is out, what is still asked, and who
  * has pressed which mark. **Advice only** — publishing is the administrator's
- * call, and this is what it is made on (docs/editing.md の「レビュー」).
+ * call, and this is what it is made on.
  *
  * **The open questions are the panel the editing screen opens**
  * (`OpenComments`) — read and resolved here without leaving for the review
@@ -444,7 +445,7 @@ function FindingRow({ group, locale }: { group: PublishGroupView, locale: Publis
  * three steps, and a hint under each box pushes the button off the boxes'
  * line. **The release date says it is not a schedule** — a day in the future
  * is written onto the version as it is, and the version is out the moment the
- * button is pressed (docs/publishing.md の「意図的にやっていないこと」).
+ * button is pressed.
  */
 function Publish({ view }: { view: PublishPageView }) {
   const locale = view.locale
@@ -472,7 +473,7 @@ function Publish({ view }: { view: PublishPageView }) {
           {updating === null && (
             /* **The number is typed, not chosen from a list.** Any free whole
                number will do — the next one is offered first, and the server
-               refuses one a version holds (docs/publishing.md の「版番号」). */
+               refuses one a version holds. */
             <Field
               label={t.number}
               name="number"

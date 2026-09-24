@@ -144,9 +144,8 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
    * pane does: the dataset table, the downloads and the controlled-access
    * users have no field beside them — the datasets are decided on their own
    * screen, the box is the research's, the users come from upstream — and a
-   * pane that draws them shows the writer places nothing they type reaches
-   * (docs/editing.md の「フォームの隣に立つ公開ページ」). The page and the
-   * share preview draw everything.
+   * pane that draws them shows the writer places nothing they type reaches.
+   * The page and the share preview draw everything.
    */
   writtenOnly?: boolean
   /**

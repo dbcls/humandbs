@@ -7,20 +7,44 @@ WORKDIR /app
 RUN mkdir -p /app/node_modules && chown -R node:node /app
 USER node
 
+# Development: the sources are bind-mounted over /app and the modules are
+# installed into the named volume, so the image carries neither.
 FROM base AS dev
 CMD ["npm", "run", "dev"]
 
 FROM base AS deps
 COPY --chown=node:node package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
-FROM deps AS build
+FROM deps AS source
 COPY --chown=node:node . .
+
+FROM source AS build
 RUN npm run build
 
-FROM base AS prod
+# The one-shot jobs of a deployment: the schema migrations with the grants, and
+# the scripts under scripts/ and migration/. They run TypeScript through tsx and
+# so need the development dependencies, which the served image does not carry.
+FROM source AS tools
 ENV NODE_ENV=production
+CMD ["npm", "run", "db:migrate"]
+
+# What is served: the build output and the production dependencies, nothing
+# else. The server is started without npm in between so that the stop signal
+# reaches node, which npm does not pass on.
+FROM base AS runtime
+ENV NODE_ENV=production \
+    PORT=5173 \
+    PATH=/app/node_modules/.bin:$PATH
 COPY --chown=node:node package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build --chown=node:node /app/build ./build
-CMD ["npm", "run", "start"]
+EXPOSE 5173
+CMD ["react-router-serve", "./build/server/index.js"]
+
+# The front proxy, carrying the client half of the same build. It answers the
+# static files itself and hands everything else to the application; the
+# application keeps its own copy, so a file this image lacks is still served.
+FROM docker.io/library/nginx:1.29-alpine AS proxy
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build/client /srv/client

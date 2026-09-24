@@ -37,14 +37,14 @@ import { Card, Code, Crumbs, Page, Paging } from "./page"
  * announcements screen used to draw its own field with an outlined pill button
  * and a word on it, which read as a different kind of thing entirely.
  *
- * **This is the one control drawn without an edge** (`docs/ui.md`): a filled
+ * **This is the one control drawn without an edge**: a filled
  * pill with a coloured button in it is not mistakable for anything else on the
  * page, and the rule that asks for a visible edge is there for the fields that
  * look like nothing until you find them.
  */
 /**
- * Three depths of field, and **the press is the same 36px in all of them**
- * (`docs/ui.md`). That is what sets the floor: `compact` is 38.4px, which is
+ * Three depths of field, and **the press is the same 36px in all of them**.
+ * That is what sets the floor: `compact` is 38.4px, which is
  * the tap size plus the little the field can hold it in, and there is nothing
  * below it that does not make the one control smaller than a control may be.
  */
@@ -63,7 +63,7 @@ const SEARCH_FIELD = {
  * a box holding a button and becomes a rim around one. Measured: the disc
  * leaves 6px of field above and below it at `large` and 1.2px at `compact`.
  *
- * **The press stays 36px everywhere** (`docs/ui.md`): where the disc is smaller
+ * **The press stays 36px everywhere**: where the disc is smaller
  * than that, a pseudo-element carries the target out to it. So what changes
  * with the field is the paint, and the one thing a rule is written about — how
  * small a control may be — does not change at all.
@@ -377,8 +377,7 @@ export function RefinableList({
             has to already know a control is there.
 
             **In the management area it wears the bordered face**, which has no
-            bare words to press (`docs/ui.md` の「押せるもの」); the public
-            listings keep the word.
+            bare words to press; the public listings keep the word.
           */}
           {managing
             ? (
@@ -447,7 +446,7 @@ export function RefinableList({
  * for both are in the name it announces with.
  *
  * **4px rather than a circle**, for the reason the page numbers beside it keep
- * theirs (`docs/ui.md`): a glyph of 16px in a box of 36 does not fill it, and a
+ * theirs: a glyph of 16px in a box of 36 does not fill it, and a
  * round box around something that leaves that much air reads as a disc with a
  * mark on it rather than as one of the controls in the row.
  */
@@ -505,9 +504,8 @@ export function RefineAxis({ label, children }: { label: string, children: React
 /**
  * A range of days: the windows offered as one press, and the two ends to type.
  *
- * **One piece for the public facets and the management panes** (`docs/ui.md` の
- * 「行が並ぶ画面」): a reader who learned it over the publication dates finds the
- * same thing over the files. The windows are links, so choosing one is going
+ * **One piece for the public facets and the management panes**: a reader who
+ * learned it over the publication dates finds the same thing over the files. The windows are links, so choosing one is going
  * to the address it names — which window is lit is settled where the address
  * was made (`~/search/date-window`). The ends are a GET form that asks the
  * moment either holds a day, and **the form carries what the listing holds
@@ -566,7 +564,7 @@ export function DateRange({ locale, action, windows, from, to, names = { from: "
 /**
  * One end of a range of days.
  *
- * **It asks the moment it holds a day** (`docs/public-pages.md` の「絞り込み」): a
+ * **It asks the moment it holds a day**: a
  * date field hands over a whole day or nothing, and most readers hand it over
  * in one press on the picker, so there is nothing to wait for. Clearing it asks
  * too, since an empty end is the end left open.
@@ -717,8 +715,7 @@ export function SearchExamples({ locale }: { locale: Locale }) {
  * lifts all of it — the box included**.
  *
  * **No count.** The chips are the count, and a figure here would be the fourth
- * kind of number on a screen that has already been down to three
- * (`docs/public-pages.md` の「一覧」).
+ * kind of number on a screen that has already been down to three.
  */
 export function AppliedConditions({ conditions, clearHref, locale }: {
   conditions: ConditionChip[]
@@ -777,7 +774,7 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
  * and how many a page holds.
  *
  * **Every listing that pages carries these three the same way**, public or
- * management (`docs/ui.md` の「押せるもの」): only what differs from the bare
+ * management: only what differs from the bare
  * address is written, choosing a key or a size goes back to the first page, and
  * the form that narrows the listing carries them across (`ListingPresented`).
  * A listing whose order is itself what it says (the articles, the table of
@@ -916,8 +913,7 @@ function SizeChoice({ locale, size, at }: {
 }
 
 /**
- * The row over a table: the four right-aligned in one line (`docs/ui.md` の
- * 「行が並ぶ画面はどれも同じ道具を持ち」).
+ * The row over a table: the four right-aligned in one line.
  */
 const TOOLS_ROW = "flex flex-wrap items-center justify-end gap-x-6 gap-y-2"
 

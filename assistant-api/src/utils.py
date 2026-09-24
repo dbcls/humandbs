@@ -6,7 +6,6 @@ import logging
 import os
 import pickle
 import re
-import ssl
 import time
 from functools import lru_cache
 from pathlib import Path
@@ -15,10 +14,12 @@ from urllib.parse import quote
 import fitz  # PyMuPDF
 import html2text
 import pymupdf4llm
+import requests
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 from playwright.async_api import async_playwright
 
+from src import url_guard
 from src.models import ApplicationData, EthicsDocumentInfo
 from src.prompts import load_prompt
 
@@ -384,85 +385,70 @@ async def fetch_with_playwright(url: str, convert_to_markdown: bool, task_id: st
 async def _fetch_with_playwright_impl(
     url: str, convert_to_markdown: bool, task_logger: logging.Logger, task_id: str = None
 ) -> str | None:
+    try:
+        resolved = await url_guard.validate_public_url_async(url)
+    except url_guard.UnsafeURLError as exc:
+        task_logger.warning("Refusing to fetch a non-public URL %s: %s", url, exc)
+        return None
+
     # Check if URL is a PDF
     if url.lower().endswith(".pdf") or "pdf" in url.lower():
         try:
             task_logger.info(f"Processing PDF from URL: {url}")
+            import tempfile
 
-            # Handle remote PDF URLs with requests
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Accept": "application/pdf,application/octet-stream,*/*",
+                "Accept-Language": "en-US,en;q=0.9,ja;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+            }
+
             try:
-                import tempfile
+                # Each redirect hop is validated and pinned to its resolved
+                # address; see url_guard for why a plain requests.get(url)
+                # is not safe here.
+                response = await asyncio.to_thread(url_guard.open_pinned_response, url, headers=headers, timeout=20)
+            except (url_guard.UnsafeURLError, requests.exceptions.RequestException):
+                task_logger.exception("Error downloading PDF")
+                return None
 
-                import requests
-
-                task_logger.info("Downloading PDF with requests")
-
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                    "Accept": "application/pdf,application/octet-stream,*/*",
-                    "Accept-Language": "en-US,en;q=0.9,ja;q=0.8",
-                    "Accept-Encoding": "gzip, deflate, br",
-                    "Connection": "keep-alive",
-                    "Upgrade-Insecure-Requests": "1",
-                }
-
-                # Create custom SSL context to handle SSL handshake issues
-                try:
-                    ssl_context = ssl.create_default_context()
-                    ssl_context.set_ciphers("DEFAULT:!aNULL:!eNULL:!MD5:!3DES:!DES:!RC4:!IDEA:!SEED:!aDSS:!SRP:!PSK")
-
-                    session = requests.session()
-                    adapter = requests.adapters.HTTPAdapter()
-                    adapter.init_poolmanager(1, 1, ssl_context=ssl_context)
-                    session.adapters.pop("https://", None)
-                    session.mount("https://", adapter)
-
-                    task_logger.info("Using custom SSL context for HTTPS connection")
-                    response = await asyncio.to_thread(session.get, url, headers=headers, timeout=20, stream=True)
-
-                except Exception as ssl_error:
-                    task_logger.warning(f"Custom SSL context failed: {ssl_error}, trying default requests")
-                    # Fallback to default requests if custom SSL fails
-                    response = await asyncio.to_thread(requests.get, url, headers=headers, timeout=20, stream=True)
-
+            try:
                 response.raise_for_status()
-
-                if len(response.content) == 0:
-                    task_logger.error("Received empty PDF content")
-                    return None
-
-                task_logger.info(f"Successfully downloaded PDF ({len(response.content)} bytes)")
-
-                # Save temporarily to process with pymupdf4llm
-                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-                    temp_file.write(response.content)
-                    temp_path = temp_file.name
-
-                # Skip if too large to process
-                if os.path.getsize(temp_path) > 2 * 1024 * 1024:  # 2 MB
-                    task_logger.warning("PDF file is too large to process")
-                    os.unlink(temp_path)
-                    return None
-
-                try:
-                    # Extract text from PDF with 30 second timeout
-                    markdown_content = await asyncio.wait_for(extract_text_from_pdf(temp_path, task_id), timeout=30.0)
-
-                    task_logger.info("Successfully extracted content from PDF (%s chars)", len(markdown_content))
-                    return markdown_content
-                except asyncio.TimeoutError:
-                    task_logger.error("PDF extraction timed out after 30 seconds")
-                    return None
-                finally:
-                    # Clean up temporary file
-                    os.unlink(temp_path)
-
-            except requests.exceptions.RequestException:
-                task_logger.exception("Error downloading PDF with requests")
+                content = await asyncio.to_thread(
+                    url_guard.read_response_with_limit, response, url_guard.DEFAULT_MAX_RESPONSE_BYTES
+                )
+            except (requests.exceptions.RequestException, url_guard.UnsafeURLError):
+                task_logger.exception("Error downloading PDF")
                 return None
-            except Exception:
-                task_logger.exception("Error processing PDF")
+            finally:
+                response.close()
+
+            if len(content) == 0:
+                task_logger.error("Received empty PDF content")
                 return None
+
+            task_logger.info(f"Successfully downloaded PDF ({len(content)} bytes)")
+
+            # Save temporarily to process with pymupdf4llm
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
+                temp_file.write(content)
+                temp_path = temp_file.name
+
+            try:
+                # Extract text from PDF with 30 second timeout
+                markdown_content = await asyncio.wait_for(extract_text_from_pdf(temp_path, task_id), timeout=30.0)
+
+                task_logger.info("Successfully extracted content from PDF (%s chars)", len(markdown_content))
+                return markdown_content
+            except asyncio.TimeoutError:
+                task_logger.error("PDF extraction timed out after 30 seconds")
+                return None
+            finally:
+                # Clean up temporary file
+                os.unlink(temp_path)
 
         except Exception:
             task_logger.exception("An error occurred while processing PDF")
@@ -490,10 +476,21 @@ async def _fetch_with_playwright_impl(
                 "--disable-blink-features=AutomationControlled",
                 "--disable-features=VizDisplayCompositor",
                 f"--user-agent={user_agent}",
+                # Pin the top-level host to the address already validated
+                # above so Chromium's own DNS resolution cannot return a
+                # different (e.g. internal) address for it later. This only
+                # covers this one host; other hosts reached while loading
+                # the page (redirects to a different host, iframes,
+                # subresources) are not pinned and rely solely on the
+                # per-request check in url_guard.ssrf_route_guard below,
+                # which re-resolves in Python before Chromium connects and so
+                # has its own, smaller DNS-rebinding window.
+                f"--host-resolver-rules=MAP {resolved.hostname} {resolved.pinned_address}",
             ],
         )
         try:
-            context = await browser.new_context()
+            context = await browser.new_context(service_workers="block")
+            await context.route("**/*", url_guard.ssrf_route_guard)
             page = await context.new_page()
             task_logger.info(f"Navigating to URL: {url}")
 

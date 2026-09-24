@@ -109,14 +109,18 @@ function likePattern(value: string): string {
  * condition nobody can satisfy.
  */
 function termPredicate(facet: FacetField, code: string): SQL {
-  const chosen = sql`(
+  // **The code is compared without regard to case**, because a reader writes
+  // the address by hand and the panel's find box already ignores case. Codes
+  // are unique within a set only as spelled, so the lookup may name more than
+  // one term and is matched as a set.
+  const chosen = sql`ARRAY(
     SELECT vt.id FROM vocabulary_term vt
-    WHERE vt.set_id = ${facet.setId}::uuid AND vt.code = ${code}
+    WHERE vt.set_id = ${facet.setId}::uuid AND lower(vt.code) = lower(${code})
   )`
   return sql`EXISTS (
     SELECT 1 FROM search_facet_term f
     WHERE f.doc_id = s.id AND f.key_id = ${facet.keyId}::uuid
-      AND (f.term_id = ${chosen} OR ${chosen} = ANY(f.ancestor_ids))
+      AND (f.term_id = ANY(${chosen}) OR f.ancestor_ids && ${chosen})
   )`
 }
 

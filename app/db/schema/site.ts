@@ -43,9 +43,8 @@ export const document = pgTable("document", {
  *
  * **There is no draft beside the body.** A save changes the one body there is,
  * public or not; a rewrite that must not be read while it is being written is
- * a new revision under a series (docs/data-model.md の「サイトコンテンツ」).
- * None of the machinery a research draft needs applies — there is no version
- * to compare against and no second editor.
+ * a new revision under a series. None of the machinery a research draft needs
+ * applies — there is no version to compare against and no second editor.
  */
 export const documentContent = pgTable("document_content", {
   documentId: uuid().notNull().references(() => document.id, { onDelete: "cascade" }),

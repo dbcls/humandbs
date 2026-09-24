@@ -16,7 +16,7 @@
  * held in React state, so the inputs are controlled where `form.tsx` builds
  * uncontrolled ones — but what they look like is the same `CONTROL`, the same
  * `Button` and the same `Note` the rest of the site is drawn from, and the
- * distances between them are `Stack`'s three (`docs/ui.md`).
+ * distances between them are `Stack`'s three.
  */
 
 import type { LinksPairInput, SlotState, TextInput, TextPairInput } from "~/admin/form"
@@ -36,8 +36,8 @@ import { Flag } from "./flags"
  *
  * **At the size of the words it stands beside** (14px). Drawn smaller it reads
  * as an annotation to skim past, where it is the one thing that tells the two
- * boxes of a field apart (`docs/ui.md` の「幅」の言語の項). **Written once**, so
- * the editor's own rows and the read-only listings say it the same way.
+ * boxes of a field apart. **Written once**, so the editor's own rows and the
+ * read-only listings say it the same way.
  */
 export function LanguageMark({ language, tall = false }: {
   language: Locale
@@ -171,7 +171,7 @@ export function Section({ id, title, accepts, flags, remove, children }: {
  *
  * **A field that is the only one in its section has no name of its own** — the
  * section's heading is its name, and a second line saying the same word under
- * it is the word read twice (`docs/editing.md` の「編集フォーム」). **Such a
+ * it is the word read twice. **Such a
  * field draws no line at all**: its dialect badge and its flags stand on the
  * heading's line instead (`Section` の `accepts` と `flags`) — a row holding
  * only flags names nothing, and pushes the box a line down from its name.
@@ -260,9 +260,9 @@ export function toggledState(state: SlotState, mark: "unknown" | "not-applicable
  * the question does not apply.
  *
  * **Pressed, it takes the brand fill** (`IconButton` の `fill`) that elsewhere
- * means "this is what the screen is asking for" (`docs/ui.md` の「押せるもの」)
- * — the one exception the rule names for itself, because here the fill is
- * reporting what the field already holds rather than asking for anything.
+ * means "this is what the screen is asking for" — the one exception the rule
+ * names for itself, because here the fill is reporting what the field already
+ * holds rather than asking for anything.
  *
  * **What pressing it does is drawn over it** while it is pointed at or holds
  * focus (`base.tsx` の `TOOLTIP`) — "未確定にする", or "未確定の解除" once it
@@ -307,7 +307,7 @@ function StateMark({ icon, label, does, pressed, onClick }: {
  * slot wears at most one of the two at a time. **The ordinary answer, a
  * value, wears neither** — there is a pair of these per language of every
  * field, so a screen holds dozens, and filling one for the ordinary answer
- * too would bury the one control that saves (`docs/ui.md` の「押せるもの」).
+ * too would bury the one control that saves.
  */
 export function StateSwitch({ state, onChange, locale }: {
   state: SlotState
@@ -342,8 +342,8 @@ const FOLDED_SLOT = "flex h-9 items-center rounded border border-line bg-surface
  * One language of one field. The text stays in state whatever the state says,
  * so switching to "unsettled" and back gives the half-written value back.
  *
- * **Marked with a state, the box folds** (`docs/admin-ui.md` の「欄の状態」) —
- * in its place stands one line naming the state. The box leaves the DOM, but
+ * **Marked with a state, the box folds** — in its place stands one line
+ * naming the state. The box leaves the DOM, but
  * `value.text` does not: it is state held by the caller, untouched until the
  * mark is pressed again or the field is saved.
  */
@@ -449,7 +449,7 @@ export function PairField({ label, value, multiline, marks, locale, onChange, re
           reads as two columns of a table rather than as one value written
           twice. **They keep the distance a label has to its value** — what
           separates one field from the next is the section's own, which is
-          wider (`docs/ui.md` の「縦の間隔」). */}
+          wider. */}
       <div className="flex flex-col gap-2">
         {(["ja", "en"] as const).map((language) => (
           <SlotEditor
@@ -482,7 +482,7 @@ export function SingleField({ label, value, marks, locale, wide = false, hint, o
   locale: Locale
   /** Whether the box takes the whole row: a title, an address. */
   wide?: boolean
-  /** What to put in the box and how, said under it (`docs/admin-ui.md` の「語と文」). */
+  /** What to put in the box and how, said under it. */
   hint?: string
   onChange: (next: TextInput) => void
 }) {
@@ -520,9 +520,9 @@ export interface ItemColumn<T> {
  * written in has the width of a panel rather than the width left over beside
  * its neighbours.
  *
- * **The columns are the ones the public page gives the same list**
- * (`docs/ui.md` の「繰り返しの要素」), so the table reads against the page
- * beside it and two elements with alike names are told apart by the rest.
+ * **The columns are the ones the public page gives the same list**, so the
+ * table reads against the page beside it and two elements with alike names
+ * are told apart by the rest.
  * A row that boxed one name in a card's edge said no more than a table row
  * and could not be compared. **Values wrap** the way the page's do — cut
  * short, what tells two rows apart is what goes. The first column names the

@@ -210,7 +210,7 @@ export interface PublishedVersion {
  * The version a draft is measured against: the one it is the update of, when
  * it is one, and otherwise the one a reader sees now. The marks, the comparison
  * and the confirmation all take this answer, so that "what changes" means one
- * thing on every screen of the draft (docs/editing.md の「draft」).
+ * thing on every screen of the draft.
  */
 export async function versionAgainst(
   db: Executor,

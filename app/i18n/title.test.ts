@@ -3,7 +3,7 @@
  *
  * The order is a rule a reader notices only across screens — two windows open
  * on the same area, named front to back — so it is held here rather than left
- * to each `meta` (`docs/public-pages.md` の「窓の名前」).
+ * to each `meta`.
  */
 
 import { readdir, readFile } from "node:fs/promises"

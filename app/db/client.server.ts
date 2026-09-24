@@ -1,7 +1,7 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
 import { Pool } from "pg"
 
-import { loadConfig } from "~/config.server"
+import { loadConfig, loadOwnerDatabaseUrl } from "~/config.server"
 
 import * as schema from "./schema"
 
@@ -32,7 +32,7 @@ export function getPool(): Pool {
  */
 export function getOwnerPool(): Pool {
   globalForDb.humandbsOwnerPool ??= new Pool({
-    connectionString: loadConfig(process.env).ownerDatabaseUrl,
+    connectionString: loadOwnerDatabaseUrl(process.env),
   })
   return globalForDb.humandbsOwnerPool
 }

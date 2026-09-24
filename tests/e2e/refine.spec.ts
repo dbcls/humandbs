@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * Narrowing by a facet, and carrying the result out (`docs/public-pages.md`).
+ * Narrowing by a facet, and carrying the result out.
  *
  * **A condition that cannot be undone is a dead end**, and one that does not
  * reach the export is a file that is not what the reader is looking at. Both

@@ -36,7 +36,7 @@ import {
   type AcknowledgementView,
 } from "./comments.server"
 import { readShare } from "./queries.server"
-import { isShareExpired, isShareOpen } from "./share"
+import { isShareExpired, isShareOpen, shareExpiryDay, shareExpiryOf } from "./share"
 import { draftSteps, type DraftStepsView } from "~/admin/steps.server"
 import { previewPath } from "./urls"
 
@@ -152,7 +152,7 @@ function shareView(
     enabled: share.enabled,
     open: isShareOpen(policy, now),
     expired: isShareExpired(policy, now),
-    expiresOn: share.expiresAt === null ? null : share.expiresAt.toISOString().slice(0, 10),
+    expiresOn: share.expiresAt === null ? null : shareExpiryDay(share.expiresAt),
   }
 }
 
@@ -189,8 +189,8 @@ export async function reviewAction(
   if (intent === "share" || intent === "share-on" || intent === "share-off") {
     const enabled = intent === "share" ? form.get("enabled") === "on" : intent === "share-on"
     const on = readString(form, "expiresOn")
-    const expiresAt = on === "" ? null : new Date(`${on}T23:59:59Z`)
-    if (expiresAt !== null && Number.isNaN(expiresAt.getTime())) badRequest()
+    const expiresAt = on === "" ? null : shareExpiryOf(on)
+    if (on !== "" && expiresAt === null) badRequest()
     const outcome = await setDraftSharing(db, draftId, { enabled, expiresAt })
     if (outcome.status === "gone") notFound()
     return back()

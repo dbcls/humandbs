@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * The collection a reader builds before applying (`docs/testing.md` の P-ANON).
+ * The collection a reader builds before applying.
  *
  * **This is the one part of the portal whose state lives in the browser.** The
  * unit tests run without a window, so the store's own reading and writing —

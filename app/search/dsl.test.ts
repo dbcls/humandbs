@@ -188,3 +188,63 @@ describe("the fields the catalog adds", () => {
     expect(refused("platform:hiseq*").code).toBe("invalid-operator-for-field")
   })
 })
+
+describe("values the database cannot take", () => {
+  const withNumber = queryFields([
+    { code: "read-length", keyId: "key-read-length", kind: "number", setId: null },
+  ])
+
+  function refused(input: string) {
+    const parsed = parseQuery(input, withNumber)
+    if (parsed.ok) throw new Error(`expected ${input} to be refused`)
+    return parsed.error.code
+  }
+
+  it("refuses year 0000 in a single day and at either end of a range", () => {
+    expect(refused("date_published:0000-01-01")).toBe("invalid-date-format")
+    expect(refused("date_published:[0000-01-01 TO *]")).toBe("invalid-date-format")
+    expect(refused("date_modified:[* TO 0000-12-31]")).toBe("invalid-date-format")
+  })
+
+  it("refuses a number written in another base, in exponent form or past a double", () => {
+    expect(refused("read-length:[0x10 TO *]")).toBe("invalid-number-format")
+    expect(refused("read-length:1e3")).toBe("invalid-number-format")
+    expect(refused("read-length:[* TO 99999999999999999999]")).toBe("invalid-number-format")
+    expect(parseQuery("read-length:[100.5 TO 150]", withNumber).ok).toBe(true)
+  })
+})
+
+describe("the code a vocabulary condition names", () => {
+  const withTerms = queryFields([
+    { code: "platform", keyId: "key-platform", kind: "vocabulary", setId: "set-platform" },
+    { code: "disease", keyId: "key-disease", kind: "disease", setId: "set-icd10" },
+  ])
+
+  function valueOf(input: string): string | undefined {
+    const parsed = parseQuery(input, withTerms)
+    if (!parsed.ok || parsed.ast?.op !== "field" || typeof parsed.ast.value !== "string") {
+      throw new Error(`expected ${input} to read as one condition`)
+    }
+    return parsed.ast.value
+  }
+
+  it("reads an ICD10 code in the one spelling the vocabulary stores, whatever its case and point", () => {
+    expect(valueOf("disease:c34")).toBe("C34")
+    expect(valueOf("disease:C34.9")).toBe("C349")
+    expect(valueOf("disease:c34.9")).toBe("C349")
+    expect(valueOf("disease:C349")).toBe("C349")
+  })
+
+  it("leaves a disease value that is not shaped like a code as it was written", () => {
+    expect(valueOf("disease:nash")).toBe("nash")
+  })
+
+  it("leaves any other vocabulary's code as written, for the match to compare without case", () => {
+    expect(valueOf("platform:HiSeq-2500")).toBe("HiSeq-2500")
+  })
+
+  it("writes the normalised ICD10 code back, so the address names what was matched", () => {
+    const parsed = parseQuery("disease:c34.9 AND platform:hiseq", withTerms)
+    expect(parsed.ok && serializeQuery(parsed.ast)).toBe("disease:C349 AND platform:hiseq")
+  })
+})

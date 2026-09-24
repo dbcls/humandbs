@@ -17,8 +17,7 @@ import { primaryId } from "./common"
  * **Only values that appear on a public page are cached.** The application
  * system holds names, addresses, telephone numbers and the head of institution;
  * none of that is brought over. The one exception is the key a row is matched to
- * upstream by, which is stored but never projected (docs/data-model.md の
- * 「外部キャッシュ」).
+ * upstream by, which is stored but never projected.
  */
 
 /**

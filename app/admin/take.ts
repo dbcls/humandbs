@@ -206,7 +206,7 @@ export const RESEARCH_TAKE: TakeShape<DraftInput> = {
   diff: diffDraftInput,
   keysOf: (path) => ["content", ...path.split(".")],
   // Which datasets a version lists is the research's to say, and the draft
-  // holds only their order (docs/editing.md の「データセットを足す・消す」).
+  // holds only their order.
   skip: ["datasetIds"],
   // A publication's datasets are one place in two lists: the research's own,
   // chosen, and the ones typed (`diff.ts` の `takeField`).

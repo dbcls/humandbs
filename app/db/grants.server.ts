@@ -15,6 +15,8 @@
 
 import { sql } from "drizzle-orm"
 
+import { loadOwnerDatabaseUrl } from "~/config.server"
+
 import type { Executor } from "./client.server"
 
 export interface Connection {
@@ -99,4 +101,21 @@ export async function applyGrants(owner: Executor, statements: string[]): Promis
   for (const statement of statements) {
     await owner.execute(sql.raw(statement))
   }
+}
+
+/**
+ * The grants for the two roles the environment names. Read from the connection
+ * URLs alone, because the jobs that apply them are given nothing else.
+ */
+export async function applyGrantsFromEnv(
+  owner: Executor,
+  env: Record<string, string | undefined>,
+): Promise<Connection> {
+  const appUrl = env.HUMANDBS_DATABASE_URL?.trim()
+  if (appUrl === undefined || appUrl === "") {
+    throw new Error("HUMANDBS_DATABASE_URL is required")
+  }
+  const app = parseConnection(appUrl)
+  await applyGrants(owner, grantStatements(app, parseConnection(loadOwnerDatabaseUrl(env))))
+  return app
 }

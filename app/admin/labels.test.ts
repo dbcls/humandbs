@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { isNhaId, isPortalIssuedId, nhaId, nhaNumber } from "./labels"
+import { isNhaId, isPortalIssuedId, nhaId, nhaNumber, unpinHold } from "./labels"
 
 /**
- * Whether a dataset may carry a file selection turns on this alone
- * (docs/data-model.md's section on files).
+ * Whether a dataset's primary id is portal-issued is what decides whether it
+ * may carry a file selection at all: an external-archive dataset never gets
+ * one, even before its primary id is pinned.
  */
 describe("whether an id is one the portal issued", () => {
   it("calls an NHA id portal-issued", () => {
@@ -62,5 +63,38 @@ describe("the spelling of an NHA id", () => {
     expect(nhaNumber("JGAD000001")).toBeNull()
     expect(nhaNumber("hum0014-NHA001")).toBeNull()
     expect(nhaNumber("NHA000001 ")).toBeNull()
+  })
+})
+
+describe("why a hum label cannot be taken away", () => {
+  const facts = fc.record({
+    isPrimary: fc.boolean(),
+    holdsFiles: fc.constantFrom(true, false, null),
+  })
+
+  it("lets it go only when its box is known empty or unknown and nothing is switching", () => {
+    fc.assert(fc.property(facts, fc.boolean(), (label, switching) => {
+      const held = unpinHold(label, switching)
+      expect(held === null).toBe(label.holdsFiles !== true && !switching)
+    }))
+  })
+
+  it("sends the primary holding files to making another primary, whether or not something is switching", () => {
+    expect(unpinHold({ isPrimary: true, holdsFiles: true }, false)).toBe("holds-files")
+    expect(unpinHold({ isPrimary: true, holdsFiles: true }, true)).toBe("holds-files")
+  })
+
+  it("calls a retired label holding files moving while a switch runs, and left behind when none does", () => {
+    expect(unpinHold({ isPrimary: false, holdsFiles: true }, true)).toBe("moving")
+    expect(unpinHold({ isPrimary: false, holdsFiles: true }, false)).toBe("left-behind")
+  })
+
+  it("holds an empty or unknown box while a switch runs, since the switch may still land a file in it", () => {
+    for (const holdsFiles of [false, null]) {
+      for (const isPrimary of [true, false]) {
+        expect(unpinHold({ isPrimary, holdsFiles }, true)).toBe("switching")
+        expect(unpinHold({ isPrimary, holdsFiles }, false)).toBeNull()
+      }
+    }
   })
 })

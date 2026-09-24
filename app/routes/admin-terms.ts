@@ -9,8 +9,7 @@ import type { Route } from "./+types/admin-terms"
  *
  * It exists so that the weight of an editing screen does not follow the size of
  * the catalog: a vocabulary holds anything from three values to several
- * hundred, and only the handful that match is ever needed at once
- * (docs/editing.md の「編集フォーム」).
+ * hundred, and only the handful that match is ever needed at once.
  *
  * **A disease's box asks the same question of a different reader.** What is
  * typed there is a classification code as often as a word, so it is normalised

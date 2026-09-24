@@ -7,13 +7,13 @@ import * as s from "~/db/schema"
 
 import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "./box"
 import {
+  boxMoveOf,
   claimJob,
   forgetSwitches,
   pendingSwitches,
   privateNames,
   reconcile,
   recoverAbandoned,
-  requestBoxMove,
   requestSwitch,
   runOneJob,
   settleJob,
@@ -301,7 +301,7 @@ describe("renumbering a research", () => {
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}a.zip`)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}b.zip`)
 
-    await requestBoxMove(db, researchId, humLabel)
+    await requestSwitch(db, await boxMoveOf(researchId, humLabel))
 
     expect((await jobs()).map((row) => row.fileName).toSorted()).toEqual(["a.zip", "b.zip"])
   })
@@ -319,7 +319,7 @@ describe("renumbering a research", () => {
     await db.insert(s.labelPin)
       .values({ kind: "hum", label: moved, researchId, isPrimary: true })
 
-    await requestBoxMove(db, researchId, old)
+    await requestSwitch(db, await boxMoveOf(researchId, old))
     await runOneJob(db)
 
     expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(moved)))

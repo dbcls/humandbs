@@ -14,7 +14,7 @@ import type { Route } from "./+types/admin-assistant"
  * The assistant's screen.
  *
  * **The portal owns the address and the frame; the assistant owns what is drawn
- * inside them** (`docs/assistant.md`). What is here is the frame: the
+ * inside them**. What is here is the frame: the
  * capability the area is reached by, the language, and whether the service is
  * deployed at all. The work of reading an application belongs to the service
  * and to the screen that talks to it, which is built with the parts in

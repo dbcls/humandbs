@@ -6,10 +6,10 @@
  * otherwise have to agree through a module that reaches the database.
  *
  * **The first of these is the size unless something asks for another, and it is
- * the only size the JSON API answers in** (`docs/public-api.md`). What that API
- * promises is the shape of an answer; a reader who wants everything at once has
- * the bulk address. A screen carries the choice in its address, the way it
- * carries the sort and the page.
+ * the only size the JSON API answers in.** What that API promises is the shape
+ * of an answer; a reader who wants everything at once has the bulk address. A
+ * screen carries the choice in its address, the way it carries the sort and
+ * the page.
  *
  * Three sizes rather than a number to type: what the choice is for is a page
  * tall enough to scan without paging, and the difference between 50 and 60 is

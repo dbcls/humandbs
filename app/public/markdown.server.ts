@@ -4,7 +4,7 @@
  * Site content keeps a wider dialect than research prose does: a guideline's
  * headings, numbered clauses and tables are the structure of the document
  * rather than decoration, so they are written in CommonMark plus GFM tables and
- * stored as a markdown string (`docs/data-model.md`, "サイトコンテンツ").
+ * stored as a markdown string.
  *
  * **Raw HTML is not parsed.** `remark-rehype` is not given
  * `allowDangerousHtml`, so an HTML node never reaches the tree and there is

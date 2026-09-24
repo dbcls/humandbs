@@ -60,6 +60,7 @@ import { sharedDraftByToken, type SharedDraft } from "./access.server"
 import { isAnchorPath, type AnchorSubject } from "./anchors"
 import {
   checkComment,
+  checkName,
   commentsForPage,
   type CommentProblem,
   type CommentView,
@@ -471,7 +472,7 @@ export async function drawDatasetDraft(
     label: row.label ?? "",
     humLabel: humLabel ?? "",
     // A preview reads no upstream cache: what it is showing is a draft, and the
-    // cache holds published accessions only (docs/data-model.md の「外部キャッシュ」).
+    // cache holds published accessions only.
     studyAccession: null,
     content: dataset.content,
     datePublished: dataset.dates.datePublished,
@@ -585,7 +586,8 @@ export async function previewAction(
   if (intent === "acknowledge") {
     const kind = form.get("kind")
     if (kind !== "commented" && kind !== "approved") badRequest()
-    if (author.name === "") return { status: "invalid", problem: "name-required" }
+    const problem = checkName(author.name)
+    if (problem !== null) return { status: "invalid", problem }
     await acknowledgeDraft(db, { draftId: draft.draftId, kind, actor: author })
     return { status: "acknowledged", kind }
   }

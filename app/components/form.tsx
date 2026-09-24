@@ -54,7 +54,7 @@ import { Flag } from "./flags"
  *
  * **The edge is a requirement rather than a preference**: the border of
  * something you can type into has to reach 3:1 against the page, which is why
- * it is `line-strong` and not `line` ([ui.md](../../docs/ui.md)). A screen that
+ * it is `line-strong` and not `line`. A screen that
  * writes its own input class gets that wrong by one word and nothing catches it
  * — so the screens that cannot use `Field` (a refinement panel names its boxes
  * with `aria-label` rather than a visible label) take this string instead.
@@ -75,9 +75,9 @@ const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
  * reads as misaligned rather than as one control. Over the edge it is one line.
  *
  * **The depth is the one a button stands at.** A field and the button that
- * submits it share a row, and a row is one height (`docs/ui.md` の「押せるものの
- * 大きさ」): at 4px of padding the field sat 32.4px against the button's 36.4px
- * and the pair read as a step rather than as a row.
+ * submits it share a row, and a row is one height: at 4px of padding the field
+ * sat 32.4px against the button's 36.4px and the pair read as a step rather
+ * than as a row.
  */
 export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outline-offset-1 data-landed:bg-warning-surface`
 
@@ -104,7 +104,7 @@ export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs 
  * `CONTROL`) until the caret leaves. The ring alone did not: it is the same ring
  * every box wears when the caret arrives by Tab, so a jump from the other pane
  * landed without anything on the form saying where. The ring keeps its one
- * colour (`docs/ui.md` の「色」), and the ground is what differs.
+ * colour, and the ground is what differs.
  *
  * Only the pane scrolls, and only up and down (`scroll.ts`).
  */
@@ -488,7 +488,7 @@ export function TextArea({
  *
  * **Not a native `<select>`.** The one part of a select the page can reach is
  * the closed box; the list it opens is drawn outside the page and matches
- * nothing else on it (`docs/ui.md` の「押せるもの」). What that costs is carried
+ * nothing else on it. What that costs is carried
  * here: ↑ / ↓ / Home / End walk the choices, Enter and Space choose, Escape
  * closes and hands focus back to the box. **No type-ahead** — a list long
  * enough to search is a picker with a box of its own, not a select.
@@ -625,7 +625,7 @@ export function Select({
  * of lines and a save that refuses one of them names it by number, so the box
  * has to show line numbers, wrap at its own edge, draw the markdown's marks
  * apart from the words, and put the caret on a line by its number — none of
- * which a textarea gives (docs/ui.md の「編集画面の 2 ペイン」).
+ * which a textarea gives.
  *
  * **The form still carries the body in the textarea.** The editor is mounted
  * over it once the page has script (`codemirror.client.ts`), and every change
@@ -834,21 +834,20 @@ export function RadioGroup({ label, name, value, options, hint, disabled }: {
  * Choosing a file to send.
  *
  * The bytes never pass through the application — the browser puts them into the
- * store with a signed URL — so this is a chooser and nothing else
- * (`docs/data-model.md` の「ファイル」).
+ * store with a signed URL — so this is a chooser and nothing else.
  *
  * **The browser's own control is put away and a button drives it.** Left as it
  * comes, a file input draws a button the page cannot reach — its face has to be
  * spelled a second time through `file:` pseudo-elements, and beside it the
  * browser writes its own words in its own language ("選択されていません"), which
  * says nothing about which file this field wants. Hidden, the input keeps doing
- * the work and the page says what was chosen (`docs/ui.md` の「押せるもの」).
+ * the work and the page says what was chosen.
  *
  * **It asks for nothing through the browser's validation.** A hidden control
  * cannot be focused, so a `required` on it refuses the form with nowhere to put
- * the reader — the same trap a required field inside a folded panel is
- * (`docs/ui.md` の「壊れるもの」). A field that has to be filled is said by the
- * screen: the send stays disabled until it is.
+ * the reader — the same trap a required field inside a folded panel is. A
+ * field that has to be filled is said by the screen: the send stays disabled
+ * until it is.
  */
 export function FileField({
   label,
@@ -912,8 +911,7 @@ export function FileField({
 
 /**
  * One value's two languages, **one above the other, at the distance a label
- * sits from its value** (`docs/ui.md` の「1 つの値の 2 つの言語は上下に積む」
- * 「言語どうしは 8px」). Side by side they read as two columns of a table
+ * sits from its value**. Side by side they read as two columns of a table
  * rather than one thing said twice; at the 16px between fields they read as
  * two fields.
  */
@@ -1007,8 +1005,7 @@ export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: Compo
   /**
    * Told whenever this form's own answer to "has this been typed into"
    * changes — for a save standing outside the form it sends, which cannot
-   * read `Changed` because it is not inside the form's own tree
-   * (`docs/admin-ui.md` の「道具の行」).
+   * read `Changed` because it is not inside the form's own tree.
    */
   onDirty?: (dirty: boolean) => void
 }) {
@@ -1080,8 +1077,7 @@ export function Unsaved({ locale, dirty }: {
   locale: Locale
   /**
    * The "has this been typed into" answer to use in place of `Changed`, for a
-   * report standing beside a save that is outside the form it is about
-   * (`docs/admin-ui.md` の「道具の行」).
+   * report standing beside a save that is outside the form it is about.
    */
   dirty?: boolean
 }) {
@@ -1174,12 +1170,12 @@ export function Submit({
   /**
    * The "has this been typed into" answer to use in place of `Changed`, for a
    * save that stands outside the form it sends and so cannot read a context
-   * provided inside that form's own tree (`docs/admin-ui.md` の「道具の行」).
+   * provided inside that form's own tree.
    */
   dirty?: boolean
   /** Passed on to `Button`: the form this control sends, when it is not the one it stands in. */
   form?: string
-  /** Passed on to `Button`, for a control another one has to find by id (`docs/admin-ui.md` の「道具の行」の Ctrl+S). */
+  /** Passed on to `Button`, for a control another one has to find by id when Ctrl+S sends the form it stands in. */
   id?: string
   /**
    * A wait the press cannot see for itself: a lookup sent through a fetcher
@@ -1196,7 +1192,7 @@ export function Submit({
     place.** It cannot be pressed again, its icon's box holds the spinner, and
     its name and width stay exactly as they were — a control that renamed
     itself or grew would move whatever stands beside it at the moment the
-    reader is watching it (`docs/ui.md` の「壊れるもの」). What is read out is
+    reader is watching it. What is read out is
     beside it, out of sight: the admin screens are Japanese only, which is why
     the word needs no locale.
   */
@@ -1267,7 +1263,7 @@ export function Result({ ok, also, children }: {
 /**
  * The answer to what was just sent, said the one way every screen says it:
  * over the screen (`Answered`), in one box (`Result`), in the words `said`
- * gives for it (`docs/admin-ui.md` の「操作の答えは画面の上に浮く」).
+ * gives for it.
  *
  * **A screen gives the table from answer to sentence and nothing else** — not
  * a row of boxes one per refusal, not a box of its own. An answer the screen
@@ -1381,10 +1377,10 @@ export function Answered({ answer, locale, label, dismiss, children }: {
               <Dismiss.Provider
                 value={(
                   // **The way out is 36px to press and 24px tall in the box.**
-                  // An icon-only control is 36px square (`docs/ui.md` の
-                  // 「押せるものの大きさ」), and left to itself it is the tallest
-                  // thing here — taller than the glyph and half again the line
-                  // of text — so the box stood 54px for a sentence needing 40.
+                  // An icon-only control is 36px square, and left to itself it
+                  // is the tallest thing here — taller than the glyph and half
+                  // again the line of text — so the box stood 54px for a
+                  // sentence needing 40.
                   // **It is given the glyph's height and lets its target hang
                   // over**, rather than a negative margin: the management
                   // screens write no margins at all (`app.spacing.test.ts`), and

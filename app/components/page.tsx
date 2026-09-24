@@ -94,7 +94,7 @@ export function MarkedPlace({ at, name, children }: {
  * the caret is in the field writing this place, the value is tinted and brought
  * to the middle of the pane; a mark beside the heading was a 36px point that
  * left the paragraph being written looking like every other, and the two panes
- * read as unrelated (`docs/editing.md` の「フォームの隣に立つ公開ページ」).
+ * read as unrelated.
  *
  * **Pressing the value goes to its field.** Nothing is written here — a second
  * box for the same value would leave two answers to what is written — and the
@@ -427,7 +427,7 @@ export function Pairs({ children }: { children: ReactNode }) {
 
 /**
  * An identifier with the mark of what it names before it — `book` for a
- * research, `database` for a dataset (`docs/ui.md` の「識別子の頭のアイコン」).
+ * research, `database` for a dataset.
  *
  * **The mark is chosen by what the identifier points at, never by where it
  * stands**: the same ID stands in a listing, a table of a page and a table of
@@ -520,9 +520,8 @@ export function DatasetIds({ items, shown, newTab = false, locale }: {
  *
  * **The band is what separates them**: a grey strip is the weakest thing on a
  * page whose whole job is to tell these apart. The box clips the band rather
- * than rounding it (`docs/ui.md` の「線を持つ箱に帯を敷くときは、帯を丸めず箱の
- * 側で切る」), and the name and the body keep one weight and one inset whatever
- * the page.
+ * than rounding it, and the name and the body keep one weight and one inset
+ * whatever the page.
  */
 export function BandBox({ as: Box = "section", level, title, aside, children }: {
   as?: "section" | "li"
@@ -754,7 +753,7 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
    * The rows end in a column of things to press, **named for anyone hearing the
    * row read aloud and nowhere else** — a word over a column of marks is a
    * heading for something already said, and it drags the column off its own
-   * width (`docs/ui.md` の「押せるものの大きさ」). `true` names it 「操作」; a
+   * width. `true` names it 「操作」; a
    * public table gives its own word.
    */
   actions?: boolean | string
@@ -986,8 +985,8 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
    * **Neither kind keeps room above and below.** A cell that padded its control
    * would make the row half as tall again and leave the control sitting below
    * the words beside it; without the padding the row is as tall as its text and
-   * the control rides inside it (`docs/ui.md` の「押せるものの大きさ」). **In a
-   * table set to the top, a control is lowered onto the first line** — the
+   * the control rides inside it. **In a table set to the top, a control is
+   * lowered onto the first line** — the
    * text below its neighbours' 6px starts lower than a control flush with the
    * row's top, and a 24px control centred on a 22.4px line sits 5px down.
    *
@@ -1239,8 +1238,8 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
   // the table above it and the whole page below it as a reader narrows a search
   // (measured on the research listing: the tools row 36 → 32.4px, the table's
   // head 204 → 199px, the run under it 36 → 22.4px). This is the rule the top
-  // bar keeps for the same reason (`docs/ui.md` の「押せるものの大きさ」): what
-  // stands in a row settles that row's height once, for every state it has.
+  // bar keeps for the same reason: what stands in a row settles that row's
+  // height once, for every state it has.
   return (
     <div className="flex min-h-tap flex-wrap items-center gap-2">
       <p className="text-ink-muted text-sm">
@@ -1317,7 +1316,7 @@ function Prose({ text }: { text: RichText }) {
  * frame it is: the question is what the reader is being shown, and a blank
  * would look like a value nobody thought worth filling in. **The frame asks
  * rather than names a state** — the reader is a provider, and what the office
- * wants from them at this slot is the value (docs/editing.md の「レビュー」).
+ * wants from them at this slot is the value.
  */
 export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
   if (field.state === "not-applicable") {

@@ -9,8 +9,7 @@
  * than about the text: it has to be shaped like a path, it must not be one a
  * route already owns (a document behind a route is unreachable, not shadowed),
  * and it must not be taken by a document or by a series — the two share one
- * space and no single constraint can span them
- * (`docs/data-model.md` の「サイトコンテンツ」).
+ * space and no single constraint can span them.
  */
 
 import type { Locale } from "~/i18n/locale"
@@ -288,8 +287,7 @@ export function filterEntries(
 /**
  * The languages in which a version-less slug does not answer. The address is
  * baked into submission metadata held elsewhere, so this is the one way the
- * promise that it keeps answering can break (`docs/editing.md` の
- * 「サイトコンテンツ」).
+ * promise that it keeps answering can break.
  */
 export function unansweredLocales(
   current: DocumentRow | null,

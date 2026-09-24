@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 import { QUERY_EXAMPLES } from "../../app/api/endpoints"
 
 /**
- * The JSON a machine reads (`docs/public-api.md`).
+ * The JSON a machine reads.
  *
  * **This is a contract with readers outside the portal**, DDBJ Search among
  * them, so what these check is the shape of the answer rather than the words

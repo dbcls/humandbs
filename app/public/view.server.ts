@@ -290,7 +290,7 @@ function plainOf(slot: Slot<string>): FieldView {
  * classification, because a name written in one language only is what the
  * article had — dropping to the heading would put a word on the page that
  * nobody wrote. **No code means no brackets**: a disease no classification
- * names is an ordinary value (`docs/public-pages.md` の「dataset」).
+ * names is an ordinary value.
  */
 function writtenDisease(disease: DiseaseValue, locale: Locale, catalog: CatalogView): string {
   const terms = disease.termIds

@@ -1,9 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
- * The contract `docs/data-model.md` の「外部キャッシュ」 states, exercised against
- * the real database with the two upstreams replaced — they are outside v2 and
- * are the boundary `docs/testing.md` allows mocking.
+ * Exercises the external-cache refresh contract against the real database,
+ * with the two upstreams replaced — they are outside v2, which is the only
+ * boundary this suite mocks.
  *
  * What is being checked is not that rows arrive. It is what happens when they
  * do not: a source that fails has to leave every one of its rows exactly as

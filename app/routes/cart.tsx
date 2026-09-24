@@ -82,8 +82,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
             at the left with the errand 1,024px away from it. The row centres
             what it holds rather than sitting it on the title's baseline: a
             36px control and a 14px word have no shared baseline, and the small
-            one comes out 5.7px low ([ui.md](../../docs/ui.md) の「押せるものの
-            大きさ」).
+            one comes out 5.7px low.
 
             **Emptying is not asked about**: the notice it raises holds the way
             back (`cart/store.ts`).
