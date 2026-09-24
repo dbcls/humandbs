@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from "react"
+import { useRef, useState, type DragEvent, type ReactNode } from "react"
 import { Form } from "react-router"
 
 import { mapConcurrently } from "~/concurrency"
@@ -11,14 +11,13 @@ import {
 } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { filePath } from "~/public/urls"
+import { datasetPath, filePath, href } from "~/public/urls"
 
 import {
   Button,
   ButtonLink,
+  Clamped,
   Confirm,
-  Fold,
-  IconButton,
   Note,
   Progress,
   Stack,
@@ -26,9 +25,9 @@ import {
   TOAST_MS,
 } from "./base"
 import { SlugEditor } from "./contents"
-import { CONTROL, Submit } from "./form"
+import { Submit } from "./form"
 import { Icon } from "./icons"
-import { Empty, Paging, Table, Td } from "./page"
+import { ExternalLink, Paging, Table, Td } from "./page"
 import { Flag } from "./flags"
 
 /**
@@ -46,11 +45,22 @@ export interface DownloadRow {
   isPublic: boolean
 }
 
-export function Downloads({ locale, humLabel, rows, total, rangeFrom, rangeTo, page, pageCount, at }: {
+export function Downloads<Row extends DownloadRow>({
+  locale,
+  humLabel,
+  rows,
+  total,
+  rangeFrom,
+  rangeTo,
+  page,
+  pageCount,
+  at,
+  selectedBy,
+}: {
   locale: Locale
   /** Null while nothing has been pinned, which is only ever the case in a preview. */
   humLabel: string | null
-  rows: readonly DownloadRow[]
+  rows: readonly Row[]
   total: number
   /** 1-based positions of the shown rows within the whole box. */
   rangeFrom: number
@@ -58,36 +68,63 @@ export function Downloads({ locale, humLabel, rows, total, rangeFrom, rangeTo, p
   page: number
   pageCount: number
   at: (page: number) => string
+  /**
+   * The datasets that select a file, as the cell of its own column. Left out
+   * where the list is one dataset's selection already — every row would name
+   * the page it is on.
+   */
+  selectedBy?: (row: Row) => ReactNode
 }) {
-  const t = messagesFor(locale).research
+  const messages = messagesFor(locale)
+  const t = messages.research
 
   return (
     <Stack gap="tight">
       {/* `whenEmpty` は要らない — 配布するものが無い研究では、この節ごと描かれない
           (`research.tsx` / `dataset.tsx`)。 */}
-      <Table headers={[t.downloadName, t.downloadSize]}>
+      <Table headers={[
+        t.downloadName,
+        ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
+        { text: t.downloadSize, align: "right" },
+      ]}
+      >
         {rows.map((row) => (
           <tr key={row.name}>
             <Td className="break-all">
+              {/* **A name that fetches wears the download mark** — pressing it
+                  starts a download rather than opening a page, and the mark says
+                  so before the press. A name not public yet fetches nothing and
+                  goes without. */}
               {row.isPublic && humLabel !== null
-                ? <a href={filePath(humLabel, row.name)}>{row.name}</a>
+                ? (
+                    <a href={filePath(humLabel, row.name)}>
+                      <Icon name="download" aria-hidden="true" className="mr-1" />
+                      {row.name}
+                    </a>
+                  )
                 : <NotPublicYet locale={locale} humLabel={humLabel} name={row.name} />}
             </Td>
-            <Td className="whitespace-nowrap text-right">{formatSize(row.size)}</Td>
+            {selectedBy !== undefined && <Td nowrap>{selectedBy(row)}</Td>}
+            <Td nowrap className="text-right tabular-nums">{formatSize(row.size)}</Td>
           </tr>
         ))}
       </Table>
-      <div className="flex justify-end">
-        <Paging
-          locale={locale}
-          total={total}
-          from={rangeFrom}
-          to={rangeTo}
-          page={page}
-          pageCount={pageCount}
-          at={at}
-        />
-      </div>
+      {/* **One page is not paged, and not counted.** The table holds few
+          enough rows to count at a glance (most boxes hold five or fewer),
+          and a count under it reads as a listing's tools on a page's section. */}
+      {pageCount > 1 && (
+        <div className="flex justify-end">
+          <Paging
+            locale={locale}
+            total={total}
+            from={rangeFrom}
+            to={rangeTo}
+            page={page}
+            pageCount={pageCount}
+            at={at}
+          />
+        </div>
+      )}
     </Stack>
   )
 }
@@ -135,12 +172,17 @@ function NotPublicYet({ locale, humLabel, name }: {
  * download stands beside the name as an act of its own, and a file nobody
  * outside can reach offers neither it nor its address.
  */
-export function BoxTable({ locale, rows, humLabel, whenEmpty }: {
+export function BoxTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
   locale: Locale
   rows: readonly BoxEntry[]
   humLabel: string | null
   /** What to say in place of the rows when there are none. The box's own word by default. */
   whenEmpty?: string
+  /**
+   * The published datasets that select each file, by its name — the column the
+   * research's public download list has. Left out, the table has no such column.
+   */
+  selectedBy?: Readonly<Record<string, readonly string[]>>
 }) {
   const messages = messagesFor(locale)
   const t = messages.admin.files
@@ -152,6 +194,7 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty }: {
       align="middle"
       headers={[
         t.name,
+        ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
         { text: t.size, align: "right" },
         t.updatedAt,
         t.state,
@@ -162,7 +205,13 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty }: {
       whenEmpty={whenEmpty ?? t.empty}
     >
       {rows.map((row) => (
-        <BoxRow key={row.name} row={row} humLabel={humLabel} locale={locale} />
+        <BoxRow
+          key={row.name}
+          row={row}
+          humLabel={humLabel}
+          locale={locale}
+          selectedBy={selectedBy === undefined ? undefined : (selectedBy[row.name] ?? [])}
+        />
       ))}
     </Table>
   )
@@ -183,12 +232,14 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty }: {
  * makes, so the way in wears the same face and the same panel every slug is
  * changed in (`SlugEditor`).
  */
-function BoxRow({ row, humLabel, locale }: {
+function BoxRow({ row, humLabel, locale, selectedBy }: {
   row: BoxEntry
   humLabel: string | null
   locale: Locale
+  selectedBy: readonly string[] | undefined
 }) {
-  const t = messagesFor(locale).admin.files
+  const messages = messagesFor(locale)
+  const t = messages.admin.files
   const address = humLabel === null ? null : filePath(humLabel, row.name)
   const reachable = row.isPublic && address !== null
   const running = row.pending !== null && !row.pending.failed
@@ -198,7 +249,26 @@ function BoxRow({ row, humLabel, locale }: {
 
   return (
     <tr>
-      <Td className="break-all">{row.name}</Td>
+      <Td className="break-all" floor="min-w-56">{row.name}</Td>
+      {selectedBy !== undefined && (
+        <Td nowrap>
+          {/* A published dataset has a public page, and it opens in a new tab
+              the way the research listing's dataset IDs do: the curator is
+              working down this box and would lose the row. */}
+          {selectedBy.length > 0 && (
+            <Clamped
+              more={(rest) => messages.search.andMore(rest)}
+              less={messages.search.showLess}
+              items={selectedBy.map((label) => (
+                <span key={label} className="inline-flex items-center gap-1 align-top text-nowrap">
+                  <Icon name="database" aria-hidden="true" className="text-ink-muted" />
+                  <ExternalLink to={href(locale, datasetPath(label))} locale={locale}>{label}</ExternalLink>
+                </span>
+              ))}
+            />
+          )}
+        </Td>
+      )}
       <Td nowrap className="text-right tabular-nums">{formatSize(row.size)}</Td>
       <Td nowrap>{dayInJst(row.updatedAt)}</Td>
       <Td nowrap>
@@ -799,126 +869,4 @@ async function ask(
     return { kind: "begin", uploadId: answer.uploadId, urls: answer.urls }
   }
   return { kind: "done" }
-}
-
-/**
- * Choosing which of the research's files a dataset points at.
- *
- * **The selection is ordered**, so what is chosen is listed in that order and
- * moved by hand; the picker is a second list because a box can hold ten
- * thousand names, and a filter over one long list of checkboxes could not be
- * put in an order at all.
- *
- * What is offered is the merged listing — at draft time nothing is public yet,
- * and offering only the public side would leave a curator nothing to choose.
- */
-export function FileSelection({ locale, listing, selected, onChange }: {
-  locale: Locale
-  /** Null when the store did not answer, which offers nothing rather than nothing existing. */
-  listing: readonly BoxEntry[] | null
-  selected: readonly string[]
-  onChange: (selection: string[]) => void
-}) {
-  const t = messagesFor(locale).admin.datasetEditor
-  const files = messagesFor(locale).admin.files
-  const [filter, setFilter] = useState("")
-
-  if (listing === null) return <Empty>{t.filesUnavailable}</Empty>
-
-  const held = new Set(selected)
-  const offered = listing.filter((entry) =>
-    !held.has(entry.name) && entry.name.toLowerCase().includes(filter.trim().toLowerCase()))
-  const known = new Map(listing.map((entry) => [entry.name, entry]))
-
-  const move = (at: number, by: number) => {
-    const next = [...selected]
-    const other = at + by
-    const here = next[at]
-    const there = next[other]
-    if (here === undefined || there === undefined) return
-    next[at] = there
-    next[other] = here
-    onChange(next)
-  }
-
-  return (
-    <Stack gap="normal">
-      <p className="text-ink-muted text-xs">{t.filesHint}</p>
-
-      {selected.length > 0 && (
-        <ol className="flex flex-col gap-1 text-sm">
-          {selected.map((name, at) => {
-            const entry = known.get(name)
-            return (
-              <li key={name} className="flex flex-wrap items-center gap-2">
-                <span className="break-all">{name}</span>
-                {entry !== undefined && (
-                  <span className="text-ink-muted text-xs">{formatSize(entry.size)}</span>
-                )}
-                {entry?.isPublic === true
-                  ? <Stated icon="eye">{files.isPublic}</Stated>
-                  : <Stated icon="lock">{files.isPrivate}</Stated>}
-                <IconButton
-                  name="chevron-up"
-                  label={files.moveUp}
-                  disabled={at === 0}
-                  onClick={() => { move(at, -1) }}
-                />
-                <IconButton
-                  name="chevron-down"
-                  label={files.moveDown}
-                  disabled={at === selected.length - 1}
-                  onClick={() => { move(at, 1) }}
-                />
-                <IconButton
-                  name="close"
-                  label={t.removeFile}
-                  onClick={() => { onChange(selected.filter((held) => held !== name)) }}
-                />
-              </li>
-            )
-          })}
-        </ol>
-      )}
-
-      {listing.length === 0
-        ? <Empty>{t.filesEmpty}</Empty>
-        : (
-            <Fold summary={t.addFile}>
-              <Stack gap="normal">
-                {/*
-                  A plain, controlled input rather than `Field`: `Field` only ever
-                  posts a `defaultValue`, and this one has to filter the picker on
-                  every keystroke. `CONTROL` is the edge `Field` itself draws with
-                  (form.tsx の CONTROL), taken directly for the same reason the
-                  search box in the refinement panel does.
-                */}
-                <label className="flex flex-col gap-1 text-sm">
-                  <span className="font-semibold text-ink-muted text-xs">{t.filterFiles}</span>
-                  <input
-                    type="search"
-                    value={filter}
-                    onChange={(event) => { setFilter(event.target.value) }}
-                    className={`${CONTROL} w-64`}
-                  />
-                </label>
-                <p className="text-ink-muted text-xs">{t.shownOf(offered.length, listing.length)}</p>
-                <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto text-sm">
-                  {offered.map((entry) => (
-                    <li key={entry.name} className="flex flex-wrap items-center gap-2">
-                      <IconButton
-                        name="plus"
-                        label={t.addFile}
-                        onClick={() => { onChange([...selected, entry.name]) }}
-                      />
-                      <span className="break-all">{entry.name}</span>
-                      <span className="text-ink-muted text-xs">{formatSize(entry.size)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Stack>
-            </Fold>
-          )}
-    </Stack>
-  )
 }

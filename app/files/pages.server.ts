@@ -26,6 +26,7 @@ import { href } from "~/public/urls"
 
 import { adminContentFilesPath, adminResearchFilesPath } from "~/admin/urls"
 import { humLabelOf } from "~/admin/queries.server"
+import { publishedFileSelections } from "~/public/queries.server"
 
 import {
   BOX_SORT,
@@ -119,6 +120,12 @@ export interface FilesPageView {
   humLabel: string | null
   /** Null when the store did not answer; the screen says so and offers nothing. */
   rows: BoxEntry[] | null
+  /**
+   * The published datasets that select each file on the page, by the file's
+   * name — what the research's public page says of the same file. A file no
+   * dataset selects is not a key.
+   */
+  selectedBy: Record<string, string[]>
   /** The words looked for in the name, as typed. Empty when none were. */
   keyword: string
   /** The first and the last day kept, each `null` when that end is open. */
@@ -190,12 +197,17 @@ export async function filesPage(
     ? bySide
     : bySide.filter((entry) => states.includes(stateOf(entry)))
   const page = pageOfBox(sortedBox(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, size)
+  const selections = await publishedFileSelections(db, id)
 
   return {
     locale,
     researchId: id,
     humLabel,
     rows: box === null ? null : page.rows,
+    selectedBy: Object.fromEntries(page.rows.flatMap((row) => {
+      const labels = selections.get(row.name)
+      return labels === undefined ? [] : [[row.name, labels]]
+    })),
     keyword,
     from,
     to,

@@ -48,6 +48,32 @@ function entry(over: Partial<BoxEntry> = {}): BoxEntry {
 }
 
 describe("the download list", () => {
+  it("draws neither a count nor page steps while every file fits on one page", () => {
+    const html = downloads([{ name: "a.zip", size: 1, isPublic: true }, { name: "b.zip", size: 2, isPublic: true }])
+
+    expect(html).not.toContain("1–2 / 2")
+    expect(html).not.toContain("?files=")
+  })
+
+  it("counts and pages once the files run past one page", () => {
+    const html = render(
+      <Downloads
+        locale="ja"
+        humLabel="hum0009"
+        rows={[{ name: "a.zip", size: 1, isPublic: true }]}
+        total={101}
+        rangeFrom={1}
+        rangeTo={100}
+        page={1}
+        pageCount={2}
+        at={(to) => `?files=${to}`}
+      />,
+    )
+
+    expect(html).toContain("1–100 / 101")
+    expect(html).toContain("?files=2")
+  })
+
   it("links a public file at the address the proxy serves it from", () => {
     const html = downloads([{ name: "hum0009.v1.CpG.v1.zip", size: 1000, isPublic: true }])
 
@@ -58,6 +84,18 @@ describe("the download list", () => {
     const html = downloads([{ name: "dac/DAC summary (1).pdf", size: 1, isPublic: true }])
 
     expect(html).toContain("href=\"/files/hum0009/dac/DAC%20summary%20(1).pdf\"")
+  })
+
+  it("marks a name that downloads with the download mark, and a name not public yet with none", () => {
+    const html = downloads([
+      { name: "open.zip", size: 1, isPublic: true },
+      { name: "closed.zip", size: 1, isPublic: false },
+    ])
+
+    const mark = /<a href="\/files\/hum0009\/open\.zip">(<svg[^>]*aria-hidden="true"[\s\S]*?<\/svg>)/.exec(html)?.[1] ?? ""
+    expect(mark).not.toBe("")
+    const closed = /<td[^>]*>(?:(?!<\/td>)[\s\S])*closed\.zip(?:(?!<\/td>)[\s\S])*<\/td>/.exec(html)?.[0] ?? ""
+    expect(closed).not.toContain(mark)
   })
 
   it("names a file that is not public yet without linking to it", () => {
@@ -82,9 +120,65 @@ describe("the download list", () => {
   it("shows sizes the way a browser reports them", () => {
     expect(downloads([{ name: "a.zip", size: 78_895_250, isPublic: true }])).toContain("78.9 MB")
   })
+
+  it("puts the size heading on the right, where the digits of the column end", () => {
+    const html = downloads([{ name: "a.zip", size: 1000, isPublic: true }])
+    const heading = /<th[^>]*class="([^"]*)"[^>]*>サイズ<\/th>/.exec(html)
+
+    expect(heading?.[1]).toContain("text-right")
+  })
+
+  it("sets the sizes in figures of one width, so that the digits line up down the column", () => {
+    const html = downloads([{ name: "a.zip", size: 1000, isPublic: true }])
+    const cell = /<td[^>]*class="([^"]*)"[^>]*>1\.0 KB<\/td>/.exec(html)
+
+    expect(cell?.[1]).toContain("tabular-nums")
+  })
 })
 
 describe("the box", () => {
+  describe("the dataset column", () => {
+    function box(selectedBy?: Record<string, string[]>): string {
+      return render(
+        <BoxTable
+          locale="ja"
+          humLabel="hum0009"
+          rows={[entry({ name: "a.zip" }), entry({ name: "b.zip", isPublic: false })]}
+          selectedBy={selectedBy}
+        />,
+      )
+    }
+
+    /** The cells of each row, in order. */
+    function cells(html: string): string[][] {
+      const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? ""
+      return [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((tr) =>
+        [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
+    }
+
+    it("stands between the name and the size, under the name the public list gives it", () => {
+      const heads = [...box({}).matchAll(/<th[^>]*>([^<]*)<\/th>/g)].slice(0, 3).map((th) => th[1])
+
+      expect(heads).toEqual(["ファイル名", "データセット ID", "サイズ"])
+    })
+
+    it("leads to each dataset's public page in a new tab", () => {
+      const cell = cells(box({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[1] ?? ""
+
+      expect(cell).toContain("href=\"/dataset/NHA000001\"")
+      expect(cell).toContain("href=\"/dataset/NHA000002\"")
+      expect(cell).toContain("target=\"_blank\"")
+    })
+
+    it("leaves the cell empty for a file no dataset selects", () => {
+      expect(cells(box({ "a.zip": ["NHA000001"] }))[1]?.[1]).toBe("")
+    })
+
+    it("is not there at all when nothing was said about selections", () => {
+      expect(box()).not.toContain("データセット ID")
+    })
+  })
+
   it("offers to copy the address of a public file, and of no other", () => {
     const html = render(
       <BoxTable

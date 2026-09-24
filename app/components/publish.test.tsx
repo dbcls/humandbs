@@ -20,6 +20,7 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     humLabel: "hum0001",
     revision: 3,
     nextNumber: 2,
+    nextNhaId: null,
     heldNumbers: [1],
     releaseDate: "2026-08-10",
     updating: null,
@@ -46,21 +47,33 @@ function render(page: PublishPageView, result: PublishResult | null = null): str
 }
 
 describe("the publish screen", () => {
-  it("offers the next number in a box, names the held ones, and dates it today", () => {
+  it("offers the next number in a box and dates it today, on one line with the press", () => {
     const html = render(view({ nextNumber: 4, heldNumbers: [3, 1] }))
+    const section = html.slice(html.indexOf(">公開</h2>"))
+    const line = section.slice(section.indexOf("items-end"), section.indexOf("</button>"))
 
-    expect(html).toContain("type=\"number\"")
-    expect(html).toContain("value=\"4\"")
-    expect(html).toContain("公開中の番号は選べません: v3, v1")
-    expect(html).toContain("type=\"date\"")
-    expect(html).toContain("value=\"2026-08-10\"")
+    expect(line).toContain("type=\"number\"")
+    expect(line).toContain("value=\"4\"")
+    expect(line).toContain("type=\"date\"")
+    expect(line).toContain("value=\"2026-08-10\"")
+    expect(line).toMatch(/<button[^>]*>[\s\S]*公開$/)
+    // The held numbers are not listed: the server refuses them, and the next free one is offered.
+    expect(section).not.toContain("v3, v1")
   })
 
-  it("says it is the first version while none is held", () => {
-    const html = render(view({ nextNumber: 1, heldNumbers: [] }))
+  it("says under the line that the release date is not a schedule", () => {
+    const section = (html: string): string => html.slice(html.indexOf(">公開</h2>"))
+    for (const html of [render(view()), render(view({ updating: { number: 3 }, heldNumbers: [3] }))]) {
+      const under = section(html).slice(section(html).indexOf("</button>"))
+      expect(under).toContain("予約にはならない")
+    }
+  })
 
-    expect(html).toContain("最初のバージョンです")
-    expect(html).not.toContain("選べません")
+  it("does not tell that the draft is deleted — publishing it is what it is for", () => {
+    const html = render(view())
+    const updated = render(view({ updating: { number: 3 }, heldNumbers: [3] }))
+    expect(html).not.toContain("下書きは削除される")
+    expect(updated).not.toContain("下書きは削除される")
   })
 
   it("asks for no number for an update, says what the update does, and dates it the day it went out", () => {
@@ -73,10 +86,10 @@ describe("the publish screen", () => {
     }))
 
     expect(html).toContain("更新前の確認")
-    expect(html).toContain("公開中の v3 の内容がこの下書きの内容に置き換わり")
+    expect(html).toContain("公開中の v3 の内容がこの下書きの内容に置き換わる")
     expect(html).toContain("v3 の更新")
     expect(html).not.toContain("type=\"number\"")
-    expect(html).not.toContain("選べません")
+    expect(html).not.toContain("バージョン番号は")
     expect(html).toContain("value=\"2024-05-01\"")
   })
 
@@ -89,25 +102,36 @@ describe("the publish screen", () => {
   it("will not let the publish be pressed while something structural is missing", () => {
     const html = render(view({
       humLabel: null,
-      blocks: [{ kind: "hum-label-missing", datasetId: null, suggestion: null }],
+      blocks: [{ kind: "hum-label-missing", datasetId: null }],
     }))
 
     expect(html).toContain(">公開できない理由</h2>")
-    expect(html).toContain("研究 ID が割り当てられていません")
+    // Said the way the research's own screen says it — a quiet sentence, not a line in red.
+    expect(html).toContain("研究 ID がまだ割り当てられていません。")
+    expect(html).not.toContain("text-danger")
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?公開<\/button>/)
     expect(html).toContain("公開できない理由が残っているため、公開できません。")
   })
 
-  it("puts the id it proposes into the field rather than only describing it", () => {
+  it("offers a dataset with no id both ways to get one: typing an accession, and issuing an NHA id", () => {
     const html = render(view({
-      blocks: [{
-        kind: "dataset-id-missing",
-        datasetId: "00000000-0000-0000-0000-0000000000d1",
-        suggestion: "hum0001-NHA001",
-      }],
+      blocks: [{ kind: "dataset-id-missing", datasetId: "00000000-0000-0000-0000-0000000000d1" }],
     }))
 
-    expect(html).toContain("value=\"hum0001-NHA001\"")
+    const row = /<tr>(?:(?!<\/tr>)[\s\S])*d1(?:(?!<\/tr>)[\s\S])*<\/tr>/.exec(html)?.[0] ?? ""
+    expect(row).toContain("NHA ID の発行")
+    expect(row).toContain("割り当て")
+    // The box and the buttons take the row's height.
+    expect(row).toMatch(/<input[^>]*min-h-6/)
+  })
+
+  it("does not offer issuing for a missing research ID, which is typed", () => {
+    const html = render(view({
+      humLabel: null,
+      blocks: [{ kind: "hum-label-missing", datasetId: null }],
+    }))
+
+    expect(html).not.toContain("NHA ID の発行")
   })
 
   /** Two rows reading the same sentence would not say which dataset each is about. */
@@ -116,8 +140,8 @@ describe("the publish screen", () => {
     const d2 = "00000000-0000-0000-0000-0000000000d2"
     const html = render(view({
       blocks: [
-        { kind: "dataset-id-missing", datasetId: d1, suggestion: "hum0001-NHA001" },
-        { kind: "dataset-id-missing", datasetId: d2, suggestion: "hum0001-NHA002" },
+        { kind: "dataset-id-missing", datasetId: d1 },
+        { kind: "dataset-id-missing", datasetId: d2 },
       ],
       datasetRows: {
         [d1]: { id: d1, label: "", typeOfData: { state: "plain", text: "WES", untranslated: false }, accessType: null, datePublished: null },
@@ -125,10 +149,12 @@ describe("the publish screen", () => {
       },
     }))
 
-    expect(html).toContain("value=\"hum0001-NHA001\"")
-    expect(html).toContain("value=\"hum0001-NHA002\"")
+    expect(html).toContain(`name="datasetId" value="${d1}"`)
+    expect(html).toContain(`name="datasetId" value="${d2}"`)
     expect(html).not.toContain(`>${d1}<`)
     expect(html.match(/ID 未発行/g)?.length).toBe(2)
+    // The table alone: the section's sentence says why they are listed.
+    expect(html).not.toContain("text-danger")
     expect(html).toContain(">割り当てる ID<")
     expect(html).not.toContain(">研究 ID<")
     // What kind of data each holds is what tells the two apart.
@@ -160,7 +186,10 @@ describe("the publish screen", () => {
       ],
     }))
 
-    expect(html).toContain("未確定の値 12")
+    // One row to a kind, read at a glance: no fold to open first.
+    expect(html).toContain(">公開前に確かめるもの</h2>")
+    expect(html).not.toContain("<details")
+    expect(html).toMatch(/<td[^>]*>未確定の値<\/td><td[^>]*>12 件<\/td>/)
     expect(html).toContain("JGAD000001")
     expect(html).toContain("上の 13 件を確認しました")
     expect(html).toContain("type=\"checkbox\"")
@@ -246,11 +275,11 @@ describe("the publish screen", () => {
 
   it("reads in the order it is wanted: changes, what stops it, review, what to confirm, the press", () => {
     const html = render(view({
-      blocks: [{ kind: "hum-label-missing", datasetId: null, suggestion: null }],
+      blocks: [{ kind: "hum-label-missing", datasetId: null }],
       findingCount: 1,
       groups: [{ kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の記述", href: "/x", count: 1, note: null }] }],
     }))
-    const order = ["変更点", "公開できない理由", "レビュー", "確認事項", "公開"].map((title) => html.indexOf(`>${title}</h2>`))
+    const order = ["変更点", "公開できない理由", "レビュー", "公開前に確かめるもの", "公開"].map((title) => html.indexOf(`>${title}</h2>`))
     expect(order.every((at) => at > -1)).toBe(true)
     expect(order).toEqual([...order].sort((a, b) => a - b))
   })
@@ -258,6 +287,16 @@ describe("the publish screen", () => {
   it("names its sections with nouns, not questions", () => {
     const html = render(view({ findingCount: 1, groups: [{ kind: "unsettled", count: 1, fileNames: [], places: [] }] }))
     expect(html).not.toMatch(/<h2[^>]*>[^<]*か<\/h2>/)
+  })
+
+  /** A section there only when something is wrong leaves a clean draft unable to say it was checked. */
+  it("keeps both checks on the screen when they find nothing, and says so", () => {
+    const html = render(view())
+    expect(html).toContain(">公開できない理由</h2>")
+    expect(html).toContain("公開を止めるものはありません。")
+    expect(html).toContain(">公開前に確かめるもの</h2>")
+    expect(html).toContain("公開前に確かめるものはありません。")
+    expect(html).not.toContain("type=\"checkbox\"")
   })
 
   it("says so when there is nothing to change at all", () => {
@@ -281,5 +320,21 @@ describe("the publish screen", () => {
 
   it("carries no strip of steps of its own — the head names the screen and nothing more", () => {
     expect(render(view())).not.toContain("aria-label=\"下書きの段\"")
+  })
+
+  it("offers to publish the private files from their own row, and only there", () => {
+    const html = render(view({
+      findingCount: 2,
+      groups: [
+        { kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の記述", href: "/x", count: 1, note: null }] },
+        { kind: "private-file", count: 1, fileNames: ["a.zip"], places: [{ label: "JGAD000001", href: "/y", count: 1, note: null }] },
+      ],
+    }))
+    const row = (kind: string): string => {
+      const at = html.indexOf(`>${kind}</td>`)
+      return html.slice(html.lastIndexOf("<tr", at), html.indexOf("</tr>", at))
+    }
+    expect(row("データセットが選択している未公開のファイル")).toMatch(/form="publish-files"[\s\S]*?まとめて公開 \(1\)/)
+    expect(row("未確定の値")).not.toContain("まとめて公開")
   })
 })

@@ -86,8 +86,8 @@ import {
   type GateFinding,
   type GateFindingKind,
 } from "./gate"
-import { isHumLabel, proposeDatasetId } from "./labels"
-import { pinLabel, promotePin, unpinLabel } from "./labels.server"
+import { isHumLabel } from "./labels"
+import { issueNhaId, nextNhaId, pinLabel, promotePin, unpinLabel } from "./labels.server"
 import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
 import { draftSteps, researchDraftSteps, type DraftStepsView } from "./steps.server"
 import {
@@ -112,17 +112,13 @@ import {
   type ResearchDatasetRow,
 } from "./queries.server"
 import {
-  ADMIN_FLAG_KEYS,
   ADMIN_STATUSES,
   axisCounts,
   filterResearchRows,
-  isAdminFlagKey,
   isAdminStatus,
   pageOf,
   sortResearchRows,
   type AdminDatasetRef,
-  type AdminFlagKey,
-  type AdminFlags,
   type AdminStatus,
 } from "./listing"
 import { deleteResearch } from "./research.server"
@@ -179,7 +175,6 @@ export interface AdminListRowView {
   status: AdminStatus
   publishedVersions: number
   draftCount: number
-  flags: AdminFlags
   /** The day of the most recent change; the hour is noise in a listing. */
   updatedOn: string
   /** The day the latest version that is out was released, or `null`. */
@@ -192,14 +187,12 @@ export interface AdminListRowView {
  */
 export interface AdminListCounts {
   statuses: Record<AdminStatus, number>
-  flags: Record<AdminFlagKey, number>
 }
 
 export interface AdminListView {
   locale: Locale
   keyword: string
   statuses: AdminStatus[]
-  flags: AdminFlagKey[]
   counts: AdminListCounts
   sort: SortKey
   order: SortOrder
@@ -229,7 +222,6 @@ export async function researchListPage(
   const filter = {
     keyword: url.searchParams.get("q") ?? "",
     statuses: url.searchParams.getAll("status").filter(isAdminStatus),
-    flags: url.searchParams.getAll("flag").filter(isAdminFlagKey),
   }
 
   // An ordering or a size that is not one of the offered ones is read as none
@@ -257,18 +249,12 @@ export async function researchListPage(
       ADMIN_STATUSES,
       (row, status) => row.status === status,
     ),
-    flags: axisCounts(
-      filterResearchRows(all, { ...filter, flags: [] }),
-      ADMIN_FLAG_KEYS,
-      (row, flag) => row.flags[flag],
-    ),
   }
 
   return {
     locale,
     keyword: filter.keyword,
     statuses: filter.statuses,
-    flags: filter.flags,
     counts,
     sort,
     order,
@@ -286,7 +272,6 @@ export async function researchListPage(
       status: row.status,
       publishedVersions: row.publishedVersions,
       draftCount: row.draftCount,
-      flags: row.flags,
       updatedOn: row.updatedAt.slice(0, 10),
       publishedOn: row.publishedOn,
     })),
@@ -691,8 +676,11 @@ export interface DatasetEditorView {
   datasetLabel: string | null
   /** The ledger row behind the label, which is what unpinning names. */
   datasetPinId: string | null
-  /** What the portal would propose as its id, while it has none. */
-  datasetIdSuggestion: string | null
+  /**
+   * The NHA id an issue would give now, shown in the box before it is pinned.
+   * Null once the dataset has an id.
+   */
+  nextNhaId: string | null
   published: boolean
   /** The number of the version this draft is the update of, when it is one. */
   updating: number | null
@@ -789,9 +777,7 @@ export async function datasetEditorPage(
     humLabel,
     datasetLabel: row.label,
     datasetPinId: row.pinId,
-    datasetIdSuggestion: humLabel === null || row.label !== null
-      ? null
-      : proposeDatasetId(humLabel, rows.flatMap((one) => one.label === null ? [] : [one.label])),
+    nextNhaId: row.pinId === null ? await nextNhaId(db) : null,
     published: row.published,
     updating: draft.updating?.number ?? null,
     steps,
@@ -897,9 +883,10 @@ async function catalogAccepts(
 }
 
 /** What pinning a dataset's id answers. */
-export interface DatasetLabelResult {
-  status: "pinned" | "unpinned" | "taken"
-}
+export type DatasetLabelResult
+  = | { status: "pinned" | "unpinned" | "taken" | "reserved" }
+    /** The id is read by the issue itself, so it is said: another issue may have taken the one shown. */
+    | { status: "issued", label: string }
 
 /**
  * Attaching a dataset's id, or taking it off, from the screen the dataset is
@@ -939,6 +926,14 @@ export async function datasetLabelAction(
     return { status: "unpinned" }
   }
 
+  if (intent === "issue") {
+    const outcome = await issueNhaId(db, datasetId, actorOf(actor))
+    if (outcome.status === "gone") notFound()
+    // The screen offers issuing only to a dataset with no id.
+    if (outcome.status === "held") badRequest()
+    return { status: "issued", label: outcome.label }
+  }
+
   if (intent !== "pin") badRequest()
   const label = form.get("label")
   if (typeof label !== "string") badRequest()
@@ -948,7 +943,8 @@ export async function datasetLabelAction(
     actorOf(actor),
   )
   if (outcome.status === "gone") notFound()
-  return { status: outcome.status === "taken" ? "taken" : "pinned" }
+  if (outcome.status === "taken" || outcome.status === "reserved") return { status: outcome.status }
+  return { status: "pinned" }
 }
 
 export async function saveDatasetAction(
@@ -1159,14 +1155,8 @@ export interface PublishGroupView {
 
 export interface PublishBlockView {
   kind: GateBlock["kind"]
-  /** Set for a missing dataset id, which is pinned from this screen. */
+  /** Set for a missing dataset id, which is pinned or issued from this screen. */
   datasetId: string | null
-  /**
-   * What the pin form starts with, when the portal has something to propose.
-   * **One number to a row**: the same proposal on two rows would be refused on
-   * the second as soon as the first was pinned.
-   */
-  suggestion: string | null
 }
 
 /** What the review says, for the screen's advice: it never stops a publish. */
@@ -1200,6 +1190,11 @@ export interface PublishPageView {
   revision: number
   /** The number offered first: one past the highest a version holds. */
   nextNumber: number
+  /**
+   * The NHA id the first issue from this screen would give; a second row shown
+   * issuing counts on from it. Null when no dataset is missing its id.
+   */
+  nextNhaId: string | null
   /** The numbers versions hold now, newest first — the ones the field refuses. */
   heldNumbers: number[]
   /** The day offered as the release date: today, or for an update the day its version went out. */
@@ -1244,15 +1239,6 @@ export async function publishPage(
   const datasetHref = (datasetId: string): string =>
     href(locale, adminDraftDatasetPath(researchId, draftId, datasetId))
 
-  const taken = preview.datasetLabels.flatMap((row) => row.label === null ? [] : [row.label])
-  // Each proposal counts the ones made before it, so no two rows offer the same id.
-  const proposed: string[] = []
-  const propose = (): string | null => {
-    if (preview.humLabel === null) return null
-    const next = proposeDatasetId(preview.humLabel, [...taken, ...proposed])
-    proposed.push(next)
-    return next
-  }
   const named = [
     ...preview.gate.blocks.flatMap((block) => block.kind === "dataset-id-missing" ? [block.datasetId] : []),
     ...preview.datasetChanges.map((change) => change.datasetId),
@@ -1273,10 +1259,12 @@ export async function publishPage(
     heldNumbers: preview.heldNumbers,
     releaseDate: preview.updating?.releaseDate ?? today(),
     updating: preview.updating === null ? null : { number: preview.updating.number },
+    nextNhaId: preview.gate.blocks.some((block) => block.kind === "dataset-id-missing")
+      ? await nextNhaId(db)
+      : null,
     blocks: preview.gate.blocks.map((block) => ({
       kind: block.kind,
       datasetId: block.kind === "dataset-id-missing" ? block.datasetId : null,
-      suggestion: block.kind === "dataset-id-missing" ? propose() : null,
     })),
     groups: groupFindings(preview.gate.findings, locale, {
       researchHref: href(locale, adminDraftPath(researchId, draftId)),
@@ -1410,6 +1398,10 @@ export type PublishResult
     | { status: "unchanged" }
     /** A pin was refused because the label already names something. */
     | { status: "taken" }
+    /** A label spelled as an NHA id was typed; those are only issued. */
+    | { status: "reserved" }
+    /** An NHA id was issued, and this is the one — not always the one the screen showed. */
+    | { status: "issued", label: string }
     /** A research ID was typed in a shape no address could be made from. */
     | { status: "malformed" }
 
@@ -1439,8 +1431,16 @@ export async function publishAction(
 
     const outcome = await pinLabel(db, { kind, label, subjectId, isPrimary: true }, actorOf(actor))
     if (outcome.status === "gone") notFound()
-    if (outcome.status === "taken") return { status: "taken" }
+    if (outcome.status === "taken" || outcome.status === "reserved") return { status: outcome.status }
     return redirect(href(locale, adminDraftPublishPath(researchId, draftId)))
+  }
+
+  if (intent === "issue") {
+    await requireCapability(request, "manage-labels")
+    const outcome = await issueNhaId(db, identity(readString(form, "datasetId")), actorOf(actor))
+    if (outcome.status === "gone") notFound()
+    if (outcome.status === "held") badRequest()
+    return { status: "issued", label: outcome.label }
   }
 
   if (intent === "publish-files") {

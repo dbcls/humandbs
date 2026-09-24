@@ -40,6 +40,7 @@ function acceptable(catalog: CatalogWithTerms, scope: string, slot: ValueSlot): 
   if (key?.scope !== scope) return false
   if (key.valueType !== slot.value.kind) return false
   if (slot.value.kind === "disease") {
+    if (slot.value.diseases.state === "unknown") return true
     if (slot.value.diseases.state !== "value") return false
     const rows = slot.value.diseases.value
     if (!key.multiple && rows.length > 1) return false
@@ -47,6 +48,7 @@ function acceptable(catalog: CatalogWithTerms, scope: string, slot: ValueSlot): 
       one.termIds.every((id) => TERM_BY_ID.get(id)?.setId === key.vocabularySetId))
   }
   if (slot.value.kind !== "vocabulary") return true
+  if (slot.value.termIds.state === "unknown") return true
   if (slot.value.termIds.state !== "value") return false
   const chosen = slot.value.termIds.value
   if (!key.multiple && chosen.length > 1) return false
@@ -105,9 +107,25 @@ describe("what a seeded draft writes", () => {
     }))
   })
 
-  it("never marks a value as unsettled, which is a mark a curator makes", () => {
+  it("marks a field unsettled only where upstream stated a value that fits no choice, and names that value against it", () => {
     fc.assert(fc.property(seedArb, dsBranchArb, ({ seed }, branch) => {
-      expect(statesOf(seed.content).every((state) => state === "value")).toBe(true)
+      const named = new Set(seed.dropped.flatMap((value) => value.at === null ? [] : [value.at]))
+      const places = [
+        ...seed.content.values.map((slot) => ({ at: `values.${slot.keyId}`, slot })),
+        ...seed.content.experiments.flatMap((one) =>
+          one.values.map((slot) => ({ at: `experiments.${one.id}.values.${slot.keyId}`, slot }))),
+      ]
+      for (const { at, slot } of places) {
+        const state = slot.value.kind === "vocabulary"
+          ? slot.value.termIds.state
+          : slot.value.kind === "disease" ? slot.value.diseases.state : "value"
+        if (state !== "value") {
+          expect(state).toBe("unknown")
+          expect(named.has(at)).toBe(true)
+        }
+      }
+      // Every value named against a field names one that is there.
+      for (const at of named) expect(places.some((place) => place.at === at)).toBe(true)
       expect(statesOf(researchContentFrom(branch)).every((state) => state === "value")).toBe(true)
     }))
   })

@@ -34,6 +34,7 @@
 
 import type { CauUsage, StoredFile } from "~/content/public"
 import { toPlainText } from "~/content/richtext"
+import { inBoxOrder } from "~/files/selection"
 import type {
   DatasetContent,
   DiseaseValue,
@@ -331,7 +332,7 @@ export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset
       label: held(experiment.label),
       values: valuesOf(experiment.values, context.catalog),
     })),
-    files: input.content.fileSelection.flatMap((name) => {
+    files: inBoxOrder(input.content.fileSelection).flatMap((name) => {
       const size = sizeOf.get(name)
       return size === undefined
         ? []

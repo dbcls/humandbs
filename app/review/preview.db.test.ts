@@ -185,6 +185,34 @@ describe("what a preview marks", () => {
     })
   })
 
+  it("holds a section of elements as the page's table, every column of every row, on both sides", async () => {
+    const grant = (id: string, title: string, grantIds: string[]) => ({
+      id,
+      title: { ja: filled(title), en: filled("") },
+      agency: { name: { ja: filled("科研費"), en: filled("") } },
+      grantIds,
+    })
+    const { researchId, token } = await sharedDraft({ ...titled("題目"), grants: [grant("g2", "新しい課題", ["B-2"])] })
+    await publish(researchId, 1, { ...titled("題目"), grants: [grant("g1", "前の課題", ["A-1", "A-2"])] })
+
+    const view = await previewResearchPage(get(), "ja", token)
+    expect(view.changed).toContain("grants")
+    expect(view.previous.grants).toEqual({
+      kind: "rows",
+      rows: {
+        columns: ["科研費・助成金名", "研究課題名", "研究課題番号"],
+        rows: [{ id: "g1", cells: ["科研費", "前の課題", "A-1\nA-2"] }],
+      },
+    })
+    expect(view.current.grants).toEqual({
+      kind: "rows",
+      rows: {
+        columns: ["科研費・助成金名", "研究課題名", "研究課題番号"],
+        rows: [{ id: "g2", cells: ["科研費", "新しい課題", "B-2"] }],
+      },
+    })
+  })
+
   /**
    * The memo never reaches a preview and the short summary is not drawn there,
    * so neither can be a place the reader is told to look at.
@@ -620,8 +648,8 @@ describe("the download list a share link shows", () => {
     const view = await previewResearchPage(get(), "ja", shared.token)
 
     expect(view.view.files.rows).toEqual([
-      { name: "closed.zip", size: 1, isPublic: false },
-      { name: "open.zip", size: 2, isPublic: true },
+      { name: "closed.zip", size: 1, isPublic: false, datasets: [] },
+      { name: "open.zip", size: 2, isPublic: true, datasets: [] },
     ])
   })
 

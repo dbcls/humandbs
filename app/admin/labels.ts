@@ -1,20 +1,19 @@
 /**
- * Dataset ids: the one thing read out of them, and what the portal proposes.
+ * Dataset ids: the one thing read out of them, and the spelling the portal issues.
  *
- * **Only the prefix is specification.** An id the portal issued starts with the
- * hum label it belongs to; every external archive's accession starts with
- * something else. Everything past that — the numbering, the tokens — is a
- * default the administrator may take, change or replace, and nothing downstream
- * reads it. Keeping the rest out of the specification is deliberate: every
- * problem the current ids have comes from a numbering scheme that was treated
- * as a guarantee and then broken.
+ * **What the portal issues is `NHA` and six digits** (`NHA000001`), numbered
+ * across the whole portal. The format is specification rather than a default:
+ * the administrator asks for the next number and cannot choose the spelling, so
+ * the sequence cannot be broken by hand. The ids issued before this format start
+ * with the hum label they belonged to (`hum0014.v1.freq.v1`), and they stay as
+ * they are.
  *
- * The hum label is in the string because the id is the only thing that says
- * which research the data belongs to: article prose names ids without naming
- * the hum beside them, and nothing upstream links the two.
+ * **Nothing past the prefix is read.** Every problem the old ids have comes from
+ * a numbering scheme that was treated as a guarantee and then broken, so the
+ * number says which dataset and nothing about the research or the version.
  */
 
-const WIDTH = 3
+const NHA_WIDTH = 6
 
 /**
  * The shape of a research ID: `hum` and four digits.
@@ -35,25 +34,40 @@ export function isHumLabel(label: string): boolean {
 }
 
 /**
+ * The shape of an id the portal issues. Written unanchored, like the hum label's.
+ */
+export const NHA_ID_PATTERN = `NHA\\d{${NHA_WIDTH}}`
+
+export function isNhaId(label: string): boolean {
+  return new RegExp(`^${NHA_ID_PATTERN}$`).test(label)
+}
+
+/** The id carrying this number. */
+export function nhaId(number: number): string {
+  if (!Number.isInteger(number) || number < 1 || number >= 10 ** NHA_WIDTH) {
+    throw new RangeError(`no NHA id carries ${number}`)
+  }
+  return `NHA${String(number).padStart(NHA_WIDTH, "0")}`
+}
+
+/** The number an id carries, or null for any other spelling. */
+export function nhaNumber(label: string): number | null {
+  return isNhaId(label) ? Number(label.slice(3)) : null
+}
+
+/**
  * Whether an id is one the portal issued.
  *
  * **Only the primary is asked**, and a dataset with none pinned yet answers no:
  * there is no spelling to read. That is the safe side, because the answer
  * decides whether a file selection can be made at all, and the datasets that
  * must not carry one are the archive's (docs/files.md).
+ *
+ * **The NHA prefix is matched whole** — `NHA` and six digits, not a start of
+ * `NHA` — so that an archive's accession that happens to begin the same way is
+ * not taken for the portal's.
  */
 export function isPortalIssuedId(primaryLabel: string | null): boolean {
-  return primaryLabel?.startsWith("hum") ?? false
-}
-
-export function proposeDatasetId(humLabel: string, taken: readonly string[]): string {
-  // Only the ids under this hum are counted. Another research's numbering says
-  // nothing about this one, which is the whole reason the hum is in the string.
-  const under = new RegExp(`^${humLabel.replaceAll(/[^\w-]/g, "")}-NHA(\\d+)$`)
-  const used = taken.flatMap((label) => {
-    const found = under.exec(label)
-    return found?.[1] === undefined ? [] : [Number(found[1])]
-  })
-  const next = used.reduce((highest, number) => Math.max(highest, number), 0) + 1
-  return `${humLabel}-NHA${String(next).padStart(WIDTH, "0")}`
+  if (primaryLabel === null) return false
+  return isNhaId(primaryLabel) || primaryLabel.startsWith("hum")
 }

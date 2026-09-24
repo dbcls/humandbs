@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { CompareTable, lineRows } from "./previous"
+import { CompareTable, lineRows, RowsCompare } from "./previous"
 
 const draw = (element: React.ReactNode) => renderToStaticMarkup(element)
 
@@ -162,5 +162,68 @@ describe("selecting one side of a comparison", () => {
     expect(language).toContain("select-none")
     const heading = /<span class="([^"]*)">公開中の v4<\/span>/.exec(html)?.[1] ?? ""
     expect(heading).toContain("select-none")
+  })
+})
+
+describe("RowsCompare", () => {
+  const columns = ["研究代表者", "所属機関"]
+
+  it("draws the page's own table once, with every column and heading", () => {
+    const html = draw(
+      <RowsCompare
+        locale="ja"
+        against="公開中の v8"
+        before={{ columns, rows: [{ id: "a", cells: ["宇佐美 真一", "信州大学"] }] }}
+        after={{ columns, rows: [{ id: "a", cells: ["宇佐美 真一", "信州大学"] }] }}
+      />,
+    )
+    expect(html.match(/<table/g)?.length).toBe(1)
+    expect(html).toContain(">研究代表者</th>")
+    expect(html).toContain(">所属機関</th>")
+    expect(html).toContain("信州大学")
+    // A row that did not move is not tinted.
+    expect(html).not.toMatch(/bg-diff-/)
+  })
+
+  it("says how many rows each side holds, a side holding none included", () => {
+    const html = draw(
+      <RowsCompare
+        locale="ja"
+        against="公開中の v8"
+        before={{ columns, rows: [{ id: "a", cells: ["A", "X"] }, { id: "b", cells: ["B", "Y"] }] }}
+        after={null}
+      />,
+    )
+    expect(html).toContain("公開中の v8: 2 件 / この下書き: 0 件")
+  })
+
+  it("strikes a dropped row on the published tint and underlines an added one on the draft's, with no sign at their head", () => {
+    const html = draw(
+      <RowsCompare
+        locale="ja"
+        against="公開中の v8"
+        before={{ columns, rows: [{ id: "a", cells: ["Gone", "X"] }] }}
+        after={{ columns, rows: [{ id: "n", cells: ["New", "Y"] }] }}
+      />,
+    )
+    expect(html).toMatch(/<tr class="bg-diff-del">[\s\S]*?<del[^>]*>Gone<\/del>/)
+    expect(html).toMatch(/<tr class="bg-diff-ins">[\s\S]*?<ins[^>]*>New<\/ins>/)
+    expect(html).not.toMatch(/<td[^>]*>[−+-]/)
+  })
+
+  it("shows a moved cell twice, the published words over the draft's, and leaves its neighbour as it is", () => {
+    const html = draw(
+      <RowsCompare
+        locale="ja"
+        against="公開中の v8"
+        before={{ columns, rows: [{ id: "a", cells: ["Same", "Old place"] }] }}
+        after={{ columns, rows: [{ id: "a", cells: ["Same", "New place"] }] }}
+      />,
+    )
+    const moved = html.slice(html.indexOf("place") - 200)
+    expect(moved.indexOf("<del")).toBeLessThan(moved.indexOf("<ins"))
+    expect(html).toMatch(/<del[^>]*>Old<\/del>/)
+    expect(html).toMatch(/<ins[^>]*>New<\/ins>/)
+    expect(html).toMatch(/<td[^>]*>Same<\/td>/)
   })
 })

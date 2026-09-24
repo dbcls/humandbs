@@ -22,8 +22,13 @@ import { pageRange } from "~/paging"
 
 export const PRIVATE_BUCKET = "private"
 
-/** Files a reader gets one page of. Most boxes hold fewer than this in total. */
-export const BOX_PAGE_SIZE = 100
+/**
+ * Files a reader gets one page of — the public download list and a dataset's
+ * files. Most boxes hold fewer than this in total, and a list that fits on one
+ * page draws neither a count nor page steps (`components/files.tsx` の
+ * `Downloads`).
+ */
+export const BOX_PAGE_SIZE = 20
 
 /** Above this a single PUT is a bad bet, and the upload is cut into parts. */
 export const MULTIPART_THRESHOLD = 64 * 1024 * 1024

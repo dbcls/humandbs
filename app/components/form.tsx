@@ -80,6 +80,13 @@ const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
 export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outline-offset-1 data-landed:bg-warning-surface`
 
 /**
+ * The same box at the height of a table row's buttons (`Button` の `row`), for a
+ * box that sits in a row beside them — a box a head taller than the buttons
+ * next to it reads as a step, the same as above.
+ */
+export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs focus-visible:-outline-offset-1`
+
+/**
  * Landing on a field from somewhere else on the screen — the page pane, a band
  * naming a conflict, the published version's differences.
  *
@@ -1167,6 +1174,7 @@ export function Submit({
   dirty,
   form,
   id,
+  busy = false,
 }: {
   children: ReactNode
   intent?: string
@@ -1210,6 +1218,12 @@ export function Submit({
   form?: string
   /** Passed on to `Button`, for a control another one has to find by id (`docs/admin-ui.md` の「道具の行」の Ctrl+S). */
   id?: string
+  /**
+   * A wait the press cannot see for itself: a lookup sent through a fetcher
+   * as `GET`, which reads rather than sends and so is not a deed in flight
+   * (`useSubmitting`), yet can keep the reader waiting as long as one.
+   */
+  busy?: boolean
 }) {
   const contextChanged = useContext(Changed)
   const changed = dirty ?? contextChanged
@@ -1223,7 +1237,8 @@ export function Submit({
     beside it, out of sight: the admin screens are Japanese only, which is why
     the word needs no locale.
   */
-  const { pending, press } = usePressed()
+  const { pending: pressed, press } = usePressed()
+  const pending = pressed || busy
   return (
     <>
       <Button

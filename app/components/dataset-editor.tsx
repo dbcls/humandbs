@@ -51,12 +51,14 @@ import {
   type ValueKind,
 } from "~/admin/dataset-form"
 import type { SlotState } from "~/admin/form"
-import type { DatasetEditorView } from "~/admin/pages.server"
+import { isNhaId } from "~/admin/labels"
+import type { DatasetEditorView, DatasetLabelResult } from "~/admin/pages.server"
 import type { EditableCatalog, EditableKey, EditableTerm } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
   adminExperimentFieldPath,
   adminExperimentFieldsPath,
+  adminResearchFilesPath,
   datasetPagePath,
   draftCommentsPath,
   termsPath,
@@ -74,7 +76,7 @@ import {
   PaneHeading,
   Stack,
 } from "~/components/base"
-import { CONTROL, Field, Select, Submit } from "~/components/form"
+import { Answered, CONTROL, Result, Select } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
@@ -87,9 +89,10 @@ import type { DrawnDataset } from "~/review/preview.server"
 import { usePanes } from "./admin"
 import { DraftHead, DraftTools, useDraftEditing, useDrawn, type DraftEditing } from "./draft-tools"
 import { OpenComments } from "./comments"
+import { IdForm } from "./dataset-id"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { DatasetBody } from "./dataset"
-import { FileSelection } from "./files"
+import { FileSelection } from "./file-selection"
 import {
   AddElement,
   ConflictBand,
@@ -295,16 +298,16 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           </div>
 
           {view.portalIssued && (
-            <Section id={FILES} title={t.files}>
-              <FieldHead
-                label={t.files}
-                marks={editing.marksFor("fileSelection")}
-                locale={locale}
-              />
+            <Section
+              id={FILES}
+              title={t.files}
+              flags={<FieldFlags marks={editing.marksFor("fileSelection")} locale={locale} />}
+            >
               <FileSelection
                 locale={locale}
                 listing={view.box}
                 selected={input.fileSelection}
+                filesAt={href(locale, adminResearchFilesPath(researchId))}
                 onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
               />
             </Section>
@@ -460,12 +463,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           // dates of an archive's accession are read from the archive rather
           // than written here.
           overview={(
-            <DatasetFacts
-              view={view}
-              locale={locale}
-              releaseDate={input.releaseDate}
-              onReleaseDate={(releaseDate) => { editing.edit({ ...input, releaseDate }) }}
-            />
+            <DatasetFacts view={view} locale={locale} />
           )}
           tools={(
             <DraftTools
@@ -525,9 +523,15 @@ function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: 
   return (
     <Stack gap="block">
       <Stack>
-        <PaneHeading title={t.experiments} level="h3" rule="start" />
+        {/* **The heading is the field's name**: under 「解析手法」 the one box is
+            what the experiment is called, and a second name over it only says
+            so again. Its marks stand on the heading's line. */}
+        <PaneHeading title={t.experiments} level="h3" rule="start">
+          <span className="flex items-center gap-2">
+            <FieldFlags marks={marksFor(`${path}.label`)} locale={locale} />
+          </span>
+        </PaneHeading>
         <SingleField
-          label={t.experimentLabel}
           value={experiment.label}
           marks={marksFor(`${path}.label`)}
           locale={locale}
@@ -1657,20 +1661,25 @@ export function comboKey(
  * (docs/publishing.md の「ラベルを pin する」). Nothing is redirected: the
  * listing under the screen is read again once the ledger has moved.
  *
- * The portal's proposal is written into the box, not chosen for the curator:
- * an archive's accession is typed over it.
+ * **Two ways to give it one**: an archive's accession is typed, and the portal's
+ * own id is issued — the next NHA number, which nobody types, so the numbering
+ * cannot be broken by hand (docs/publishing.md の「ラベルを pin する」). Both
+ * are settled by the same「割り当て」(`IdForm`), at the row's height — the line
+ * is a line of facts, and a 36px box among them stands taller than the words.
+ *
+ * **The dates are read, never typed.** An archive's accession is dated by the
+ * archive; a portal-issued id is dated by the version that first publishes it,
+ * written at the publish (`publish.server.ts` の `withReleaseDate`) — so until
+ * then it says it is not out yet, and there is nothing here to set.
  */
-function DatasetFacts({ view, locale, releaseDate, onReleaseDate }: {
+function DatasetFacts({ view, locale }: {
   view: DatasetEditorView
   locale: Locale
-  /** The date typed for a portal-issued id, which has no archive to read one from. */
-  releaseDate: string
-  onReleaseDate: (next: string) => void
 }) {
   const messages = messagesFor(locale)
   const t = messages.admin.datasetEditor
   const detail = messages.admin.detail
-  const fetcher = useFetcher<{ status: "pinned" | "unpinned" | "taken" } | null>()
+  const fetcher = useFetcher<DatasetLabelResult | null>()
   const dates = view.page.view
 
   return (
@@ -1681,14 +1690,7 @@ function DatasetFacts({ view, locale, releaseDate, onReleaseDate }: {
           {view.datasetLabel === null || view.datasetPinId === null
             ? (
                 <fetcher.Form method="post" className="flex flex-wrap items-center gap-3">
-                  <Field
-                    label={detail.pinLabel}
-                    name="label"
-                    value={view.datasetIdSuggestion ?? undefined}
-                    placeholder={detail.pinDatasetPlaceholder}
-                    hideLabel
-                  />
-                  <Submit intent="pin" icon={<Icon name="link" />}>{detail.pinSubmit}</Submit>
+                  <IdForm nextNhaId={view.nextNhaId} locale={locale} size="row" />
                 </fetcher.Form>
               )
             : (
@@ -1699,7 +1701,7 @@ function DatasetFacts({ view, locale, releaseDate, onReleaseDate }: {
                     <Confirm
                       label={detail.unpin}
                       title={detail.unpinTitle(view.datasetLabel)}
-                      warning={detail.unpinWarning}
+                      warning={detail.unpinDatasetWarning(isNhaId(view.datasetLabel))}
                       confirm={detail.unpinConfirm}
                       cancel={detail.cancel}
                       intent="unpin"
@@ -1712,17 +1714,7 @@ function DatasetFacts({ view, locale, releaseDate, onReleaseDate }: {
         </span>
         <span className="flex items-center gap-3">
           <span className="font-semibold text-ink-muted text-xs">{t.releaseDate}</span>
-          {view.portalIssued
-            ? (
-                <input
-                  type="date"
-                  aria-label={t.releaseDate}
-                  className={`${CONTROL} text-sm`}
-                  value={releaseDate}
-                  onChange={(event) => { onReleaseDate(event.target.value) }}
-                />
-              )
-            : <span>{dates.datePublished ?? t.notYet}</span>}
+          <span>{dates.datePublished ?? t.notYet}</span>
         </span>
         <span className="flex items-center gap-3">
           <span className="font-semibold text-ink-muted text-xs">{t.dateModified}</span>
@@ -1733,7 +1725,11 @@ function DatasetFacts({ view, locale, releaseDate, onReleaseDate }: {
         {view.portalIssued ? t.datesPortal : t.datesArchive}
         {t.idNote}
       </p>
+      <Answered answer={fetcher.data?.status === "issued" ? fetcher.data : null} locale={locale}>
+        {fetcher.data?.status === "issued" && <Result ok>{detail.issued(fetcher.data.label)}</Result>}
+      </Answered>
       {fetcher.data?.status === "taken" && <Note kind="danger" live>{detail.pinTaken}</Note>}
+      {fetcher.data?.status === "reserved" && <Note kind="danger" live>{detail.pinReserved}</Note>}
     </Stack>
   )
 }

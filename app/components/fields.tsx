@@ -549,7 +549,6 @@ export function ItemList<T extends { id: string }>({
   locale,
   items,
   title,
-  summary,
   columns,
   onChange,
   makeEmpty,
@@ -560,10 +559,14 @@ export function ItemList<T extends { id: string }>({
   path: string
   locale: Locale
   items: T[]
-  /** What the list holds, which names a panel whose element has nothing in it yet. */
+  /**
+   * What the list is called. **It names the panel** — 「<list>の追加」 for the
+   * element the add button just made, 「<list>の編集」 for one already there —
+   * and nothing written in the element does: a name read off the values
+   * changes as they are typed, and one element's title three lines long is no
+   * name for a panel.
+   */
   title: string
-  /** What one element is, in a line, for the panel's name. */
-  summary: (item: T) => string
   /** The table's columns, the first of which names an element. */
   columns: ItemColumn<T>[]
   onChange: (next: T[]) => void
@@ -579,7 +582,6 @@ export function ItemList<T extends { id: string }>({
   // panel closes with nothing written in it.
   const [made, setMade] = useState<T | null>(null)
   const held = items.find((row) => row.id === open)
-  const named = held === undefined ? "" : summary(held).trim()
 
   function close(): void {
     const next = keptOnClose(items, made)
@@ -600,13 +602,23 @@ export function ItemList<T extends { id: string }>({
               {columns.map((column, index) => {
                 const drawn = column.cell(item)
                 const empty = drawn === "" || drawn === null || drawn === undefined
+                if (index !== 0) return <Td key={column.header}>{drawn}</Td>
+                const short = shortfallsOf(item)
                 return (
                   <Td key={column.header}>
-                    {index === 0 && empty ? <span className="text-ink-muted">{t.unnamedElement}</span> : drawn}
+                    <Stack gap="tight">
+                      <div>{empty ? <span className="text-ink-muted">{t.unnamedElement}</span> : drawn}</div>
+                      {(short.untranslated || short.unsettled) && (
+                        <span className="flex flex-wrap gap-1">
+                          {short.unsettled && <Flag kind="short">{messages.unsettled}</Flag>}
+                          {short.untranslated && <Flag kind="short">{t.untranslated}</Flag>}
+                        </span>
+                      )}
+                    </Stack>
                   </Td>
                 )
               })}
-              <Td nowrap>
+              <Td nowrap holds="control">
                 <ItemOperations
                   index={at}
                   count={items.length}
@@ -630,7 +642,7 @@ export function ItemList<T extends { id: string }>({
         }}
       />
       <Dialog
-        title={named === "" ? title : named}
+        title={elementPanelTitle(title, held?.id ?? null, made?.id ?? null, locale)}
         held={{ open: held !== undefined, close }}
         dismiss={t.done}
         wide={wide}
@@ -649,6 +661,49 @@ export function ItemList<T extends { id: string }>({
       </Dialog>
     </>
   )
+}
+
+/**
+ * The name of an element's panel: 「<list>の追加」 while it is the element the
+ * add button just made, 「<list>の編集」 otherwise. Only the list's own name
+ * goes in — never what is written in the element (`ItemList`).
+ */
+export function elementPanelTitle(list: string, open: string | null, made: string | null, locale: Locale): string {
+  const t = messagesFor(locale).admin.editor
+  return open !== null && open === made ? t.addElementTitle(list) : t.editElementTitle(list)
+}
+
+/**
+ * What an element holds that is still short, so its row can say so before its
+ * panel is opened: a value marked unsettled anywhere in it, and a text pair
+ * with one language written and the other empty (`isUntranslated`). **Read
+ * from the element itself** rather than listed per kind of list — the four
+ * lists hold different fields, and a field added to one of them is looked at
+ * without anyone remembering to add it here. Links are not asked about
+ * translation: the two languages of a URL are different resources.
+ */
+export function shortfallsOf(element: unknown): { untranslated: boolean, unsettled: boolean } {
+  const found = { untranslated: false, unsettled: false }
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const one of value) walk(one)
+      return
+    }
+    if (typeof value !== "object" || value === null) return
+    const record = value as Record<string, unknown>
+    if (record.state === "unknown") found.unsettled = true
+    if (isTextPair(record) && isUntranslated(record)) found.untranslated = true
+    for (const inner of Object.values(record)) walk(inner)
+  }
+  walk(element)
+  return found
+}
+
+function isTextPair(value: Record<string, unknown>): value is TextPairInput & Record<string, unknown> {
+  const side = (one: unknown) => typeof one === "object" && one !== null
+    && typeof (one as Record<string, unknown>).state === "string"
+    && typeof (one as Record<string, unknown>).text === "string"
+  return side(value.ja) && side(value.en)
 }
 
 /**

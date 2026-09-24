@@ -3,7 +3,9 @@
  *
  * Both systems of label go through here because they follow one rule: unique
  * across primary and secondary alike, reusable once unpinned, and free to be
- * attached before anything is published. A hum number starts life as free text
+ * attached before anything is published. **The NHA id is the exception to
+ * reuse**: the portal issues it, never twice, and it is not typed
+ * (`issueNhaId`). A hum number starts life as free text
  * typed into an upstream system with a history of typos, so correcting a pin is
  * an everyday operation rather than an exception.
  *
@@ -30,14 +32,16 @@
  * a fact about that version, and what is visible now is a different question.
  */
 
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
-import type { Database, Transaction } from "~/db/client.server"
-import { dataset, labelPin } from "~/db/schema"
+import type { Database, Executor, Transaction } from "~/db/client.server"
+import { dataset, event, labelPin } from "~/db/schema"
 import { requestBoxMove } from "~/files/jobs.server"
 import { wakeFileRunner } from "~/files/runner.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
+
+import { isNhaId, NHA_ID_PATTERN, nhaId, nhaNumber } from "./labels"
 
 export interface PinRequest {
   kind: "hum" | "dataset"
@@ -51,6 +55,14 @@ export type PinOutcome
   = | { status: "pinned" }
     /** The label already names something. Uniqueness spans primary and secondary. */
     | { status: "taken" }
+    /** The label is spelled as an NHA id, which only `issueNhaId` gives out. */
+    | { status: "reserved" }
+    | { status: "gone" }
+
+export type IssueOutcome
+  = | { status: "issued", label: string }
+    /** The dataset already has a primary id; issuing is for one that has none. */
+    | { status: "held" }
     | { status: "gone" }
 
 export type UnpinOutcome
@@ -101,6 +113,9 @@ export async function pinLabel(
 ): Promise<PinOutcome> {
   const label = request.label.trim()
   if (label === "") return { status: "gone" }
+  // Typed by hand, the next number could be skipped or taken early; the only
+  // way an NHA id comes into being is being issued.
+  if (isNhaId(label)) return { status: "reserved" }
 
   const done = await db.transaction(async (tx) => {
     const researchId = await researchOf(tx, request)
@@ -130,6 +145,73 @@ export async function pinLabel(
     wakeFileRunner()
   }
   return done.outcome
+}
+
+/**
+ * The NHA id the next issue will give — the one after the highest the ledger
+ * or the trail holds. **Reading it reserves nothing**: a screen shows it before
+ * anything is pinned, and the issue itself reads it again under its lock, so
+ * what a screen showed can be overtaken by an issue made in between.
+ */
+export async function nextNhaId(db: Executor): Promise<string> {
+  const shape = `^${NHA_ID_PATTERN}$`
+  const [recorded, pinned] = await Promise.all([
+    db
+      .select({ label: sql<string | null>`max(${event.subjectId})` })
+      .from(event)
+      .where(and(
+        eq(event.action, "pin-label"),
+        eq(event.subjectType, "label"),
+        sql`${event.subjectId} ~ ${shape}`,
+      )),
+    db
+      .select({ label: sql<string | null>`max(${labelPin.label})` })
+      .from(labelPin)
+      .where(and(eq(labelPin.kind, "dataset"), sql`${labelPin.label} ~ ${shape}`)),
+  ])
+  // Six digits padded with zeros sort as their numbers do.
+  const highest = [recorded[0]?.label, pinned[0]?.label]
+    .map((label) => label == null ? 0 : nhaNumber(label) ?? 0)
+    .reduce((a, b) => Math.max(a, b), 0)
+  return nhaId(highest + 1)
+}
+
+/**
+ * Giving a dataset with no id the next NHA id, as its primary.
+ *
+ * **A number once given out is never given out again**, even after it is
+ * unpinned or its draft is discarded: a link somebody copied would otherwise
+ * come to name another dataset without anything saying so. The ledger forgets
+ * what is unpinned, so the next number is read from the trail as well — every
+ * pin is recorded there and nothing is ever taken out of it. The ledger is
+ * read too, for an id that reached it without being recorded one by one.
+ *
+ * Two issues at the same moment would read the same highest number, so they
+ * queue on a transaction-scoped lock and the second reads what the first wrote.
+ */
+export async function issueNhaId(
+  db: Database,
+  datasetId: string,
+  actor: EventActor,
+): Promise<IssueOutcome> {
+  return db.transaction(async (tx): Promise<IssueOutcome> => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('issue-nha-id'))`)
+
+    const researchId = await researchOfDataset(tx, datasetId)
+    if (researchId === null) return { status: "gone" }
+    const [held] = await tx
+      .select({ id: labelPin.id })
+      .from(labelPin)
+      .where(and(eq(labelPin.datasetId, datasetId), eq(labelPin.isPrimary, true)))
+      .limit(1)
+    if (held !== undefined) return { status: "held" }
+
+    const label = await nextNhaId(tx)
+
+    await writePin(tx, { kind: "dataset", label, subjectId: datasetId, isPrimary: true }, label, actor)
+    await rebuildSearchDocs(tx, { researchIds: [researchId] })
+    return { status: "issued", label }
+  })
 }
 
 export type PinManyOutcome

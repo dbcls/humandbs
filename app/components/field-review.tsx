@@ -9,10 +9,11 @@
  */
 
 import type { ShownLine } from "~/admin/changes"
+import type { AnchoredValue } from "~/public/view.server"
 import type { CommentView } from "~/review/comments"
 
 import { CommentSpot, type CommentContext } from "./comments"
-import { PreviousLines } from "./previous"
+import { PreviousLines, PreviousMark } from "./previous"
 
 export interface FieldReviewData {
   context: CommentContext
@@ -31,16 +32,37 @@ export interface FieldReviewData {
  * A place's review, beside its name (`page.tsx` の `Annotate`): the comment
  * mark, and after it the mark saying the published version reads otherwise.
  */
-export function FieldReview({ review, at, fieldLabel }: {
+export function FieldReview({ review, at, fieldLabel, drawn }: {
   review: FieldReviewData
   at: string
   /** The field's own name, for the panels' headings (`comments.tsx` の `CommentSpot`). */
   fieldLabel?: string
+  /**
+   * The page beside the form as it was last drawn. **A table of elements is
+   * compared as the page draws it** (`previous.tsx` の `RowsCompare`) — the
+   * form holds its elements as records, which say nothing a row of the table
+   * does not — so where the drawing has one, its two sides are read from there.
+   */
+  drawn?: {
+    changed: string[]
+    previous: Record<string, AnchoredValue>
+    current: Record<string, AnchoredValue>
+  } | null
 }) {
+  const table = drawn?.previous[at]?.kind === "rows" ? drawn : null
   return (
     <span className="inline-flex flex-wrap items-center gap-1 align-top">
       <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
-      {review.changed.includes(at) && (
+      {table !== null && table.changed.includes(at) && (
+        <PreviousMark
+          locale={review.context.locale}
+          value={table.previous[at]}
+          current={table.current[at]}
+          heading={review.heading}
+          fieldLabel={fieldLabel}
+        />
+      )}
+      {table === null && review.changed.includes(at) && (
         <PreviousLines
           locale={review.context.locale}
           lines={review.previous[at] ?? null}

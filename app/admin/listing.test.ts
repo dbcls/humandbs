@@ -5,7 +5,6 @@ import type { TranslatedText } from "~/content/types"
 import { PAGE_SIZE } from "~/search/page-size"
 
 import {
-  ADMIN_FLAG_KEYS,
   ADMIN_STATUSES,
   axisCounts,
   BRANCH_STANDINGS,
@@ -18,14 +17,6 @@ import {
   type AdminResearchRow,
   type BranchRow,
 } from "./listing"
-
-const NOTHING = {
-  noHumLabel: false,
-  noDatasetLabel: false,
-  unsettled: false,
-  untranslated: false,
-  upstreamMismatch: false,
-}
 
 function pair(ja: string, en: string): TranslatedText {
   return { ja: filled(ja), en: filled(en) }
@@ -41,7 +32,6 @@ function row(overrides: Partial<AdminResearchRow> = {}): AdminResearchRow {
     status: "published",
     publishedVersions: 1,
     draftCount: 0,
-    flags: NOTHING,
     updatedAt: "2026-01-01T00:00:00.000Z",
     publishedOn: "2026-01-01",
     ...overrides,
@@ -49,7 +39,7 @@ function row(overrides: Partial<AdminResearchRow> = {}): AdminResearchRow {
 }
 
 function matching(keyword: string, rows: AdminResearchRow[] = [row()]): number {
-  return filterResearchRows(rows, { keyword, statuses: [], flags: [] }).length
+  return filterResearchRows(rows, { keyword, statuses: [] }).length
 }
 
 describe("the direct lookup", () => {
@@ -101,16 +91,12 @@ describe("the filters", () => {
   const rows = [
     row({ researchId: "a", status: "published" }),
     row({ researchId: "b", status: "published" }),
-    row({ researchId: "c", status: "unpublished", flags: { ...NOTHING, noHumLabel: true } }),
-    row({
-      researchId: "d",
-      status: "unpublished",
-      flags: { ...NOTHING, noHumLabel: true, unsettled: true, untranslated: true },
-    }),
+    row({ researchId: "c", status: "unpublished" }),
+    row({ researchId: "d", status: "unpublished" }),
   ]
 
   it("narrows to one status", () => {
-    expect(filterResearchRows(rows, { keyword: "", statuses: ["unpublished"], flags: [] })
+    expect(filterResearchRows(rows, { keyword: "", statuses: ["unpublished"] })
       .map((held) => held.researchId)).toEqual(["c", "d"])
   })
 
@@ -118,68 +104,25 @@ describe("the filters", () => {
     expect(filterResearchRows(rows, {
       keyword: "",
       statuses: ["published", "unpublished"],
-      flags: [],
     }).map((held) => held.researchId)).toEqual(["a", "b", "c", "d"])
   })
 
   it("narrows nothing when neither state is ticked, as an untouched axis does", () => {
-    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: [] })
+    expect(filterResearchRows(rows, { keyword: "", statuses: [] })
       .map((held) => held.researchId))
       .toEqual(filterResearchRows(rows, {
         keyword: "",
         statuses: ["published", "unpublished"],
-        flags: [],
       }).map((held) => held.researchId))
   })
 
-  it("takes a row that has any one of the ticked shortcomings", () => {
-    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: ["noHumLabel"] })
-      .map((held) => held.researchId)).toEqual(["c", "d"])
-    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: ["unsettled"] })
-      .map((held) => held.researchId)).toEqual(["d"])
-  })
+  it("keeps the status and the word as separate conditions, ANDed", () => {
+    const named = row({ researchId: "e", status: "unpublished", humLabel: "hum0999" })
 
-  it("widens as more are ticked, and never drops a row that one of them took", () => {
-    const one = filterResearchRows(rows, { keyword: "", statuses: [], flags: ["unsettled"] })
-    const two = filterResearchRows(rows, {
-      keyword: "",
-      statuses: [],
-      flags: ["noHumLabel", "unsettled"],
-    })
-
-    expect(two.map((held) => held.researchId)).toEqual(["c", "d"])
-    for (const held of one) expect(two).toContain(held)
-  })
-
-  it("narrows nothing when none of them is ticked", () => {
-    expect(filterResearchRows(rows, { keyword: "", statuses: [], flags: [] })
-      .map((held) => held.researchId)).toEqual(["a", "b", "c", "d"])
-  })
-
-  it("takes a row on any of the five, the two pin-derived ones included", () => {
-    const held = row({
-      researchId: "e",
-      flags: { ...NOTHING, upstreamMismatch: true },
-    })
-
-    for (const flag of ADMIN_FLAG_KEYS) {
-      const taken = filterResearchRows([held], { keyword: "", statuses: [], flags: [flag] })
-      expect(taken.length, flag).toBe(flag === "upstreamMismatch" ? 1 : 0)
-    }
-    expect(filterResearchRows([held], {
-      keyword: "",
-      statuses: [],
-      flags: ["noHumLabel", "upstreamMismatch"],
-    })).toHaveLength(1)
-  })
-
-  it("keeps the status and the shortcomings as separate axes, ANDed", () => {
-    // 「未確定あり」は d だけが持ち、その d は未公開。公開中とは重ならない。
-    expect(filterResearchRows(rows, {
-      keyword: "糖尿病",
-      statuses: ["published"],
-      flags: ["unsettled"],
-    })).toEqual([])
+    expect(filterResearchRows([...rows, named], { keyword: "hum0999", statuses: ["published"] }))
+      .toEqual([])
+    expect(filterResearchRows([...rows, named], { keyword: "hum0999", statuses: ["unpublished"] })
+      .map((held) => held.researchId)).toEqual(["e"])
   })
 })
 
@@ -382,17 +325,15 @@ describe("axisCounts", () => {
   })
 
   it("counts a row under every value it holds, where one row can hold several", () => {
-    const two = row({ flags: { ...NOTHING, noHumLabel: true, untranslated: true } })
-    const one = row({ flags: { ...NOTHING, untranslated: true } })
+    const both = row({
+      datasets: [{ label: "JGAD000001", published: true }, { label: "JGAD000002", published: false }],
+    })
+    const closed = row({ datasets: [{ label: "JGAD000003", published: false }] })
+    const holds = (which: AdminResearchRow, open: string) =>
+      which.datasets.some((entry) => entry.published === (open === "open"))
 
-    expect(axisCounts([two, one], ADMIN_FLAG_KEYS, (which, flag) => which.flags[flag]))
-      .toEqual({
-        noHumLabel: 1,
-        noDatasetLabel: 0,
-        unsettled: 0,
-        untranslated: 2,
-        upstreamMismatch: 0,
-      })
+    expect(axisCounts([both, closed], ["open", "closed"], holds))
+      .toEqual({ open: 1, closed: 2 })
   })
 
   it("leaves the rows it was given alone", () => {

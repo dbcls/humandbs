@@ -73,7 +73,7 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
         applicationId: "J-DS000597-001",
         fields: FIELDS,
         datasets: [held],
-        dropped: [{ keyCode: "platform", keyLabel: "プラットフォーム", value: "DNBSEQ-T7" }],
+        dropped: [{ keyCode: "platform", keyLabel: "プラットフォーム", value: "DNBSEQ-T7", at: null }],
         unreachable: [],
       },
       holder: null,
@@ -91,7 +91,8 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     const creating = html.indexOf(`>${t.creating}</h2>`)
     expect(html.indexOf(`>${t.branchSummary}</h2>`)).toBeLessThan(registered)
     expect(registered).toBeLessThan(creating)
-    expect(html).toContain(t.dropped)
+    expect(html).toContain(t.droppedSaid)
+    expect(html).toContain("DNBSEQ-T7")
     for (const line of t.createNote) expect(html).toContain(line)
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>[\s\S]*hum0597 の作成を開始/)
   })
@@ -105,7 +106,7 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
   it("研究があれば何も作らず、登録されたデータセットは読ませ、作成済みの研究の節に説明とその研究への道を持つ", () => {
     const html = screen({ holder: { researchId: "r-597", humLabel: "hum0597" } })
     expect(html).not.toContain(t.creating)
-    expect(html).not.toContain(t.dropped)
+    expect(html).not.toContain("DNBSEQ-T7")
     // What the application registered is read here as well.
     expect(html).toContain(`>${t.registered}</h2>`)
     expect(html).toContain("JGAD000958")

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  applicationUrl,
   askedPath,
   datasetPath,
   href,
@@ -188,5 +189,12 @@ describe("normalizeQuery", () => {
 
   it("keeps every pair, in the order they were written", () => {
     expect(normalizeQuery("?q=a&sort=id&page=2")).toBe("?q=a&sort=id&page=2")
+  })
+})
+
+describe("applicationUrl", () => {
+  it("asks the application system for English on an English page and for nothing on a Japanese one", () => {
+    expect(applicationUrl("en")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/?lang=en")
+    expect(applicationUrl("ja")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/")
   })
 })

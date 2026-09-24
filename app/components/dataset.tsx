@@ -1,8 +1,9 @@
-import { Link } from "react-router"
+import { Link, useSearchParams } from "react-router"
 
 import { Band, Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
+import { pageOfBox } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
@@ -84,6 +85,13 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
 }) {
   const messages = messagesFor(locale)
   const t = messages.dataset
+  // The selection is cut here rather than on the server: the view is built by
+  // every screen that draws a dataset (the page, the preview, the editor's
+  // pane), and the page asked for is only ever the address's. It is the same
+  // parameter and the same size as the research's download list.
+  const [params] = useSearchParams()
+  const wanted = Number(params.get("files") ?? "1")
+  const files = pageOfBox(view.files, Number.isInteger(wanted) ? wanted : 1)
 
   return (
     <Stack gap="block">
@@ -141,12 +149,12 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           <Downloads
             locale={locale}
             humLabel={view.humLabel === "" ? null : view.humLabel}
-            rows={view.files}
-            total={view.files.length}
-            rangeFrom={view.files.length === 0 ? 0 : 1}
-            rangeTo={view.files.length}
-            page={1}
-            pageCount={1}
+            rows={files.rows}
+            total={files.total}
+            rangeFrom={files.rangeFrom}
+            rangeTo={files.rangeTo}
+            page={files.page}
+            pageCount={files.pageCount}
             at={(to) => `?files=${to}`}
           />
         </Section>

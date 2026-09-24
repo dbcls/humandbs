@@ -31,7 +31,9 @@ import { and, eq, sql, type SQL } from "drizzle-orm"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
 import { datasetWithTermMerged } from "~/content/terms"
+import { messagesFor } from "~/i18n/messages"
 import type {
+  CommentAnchor,
   DatasetContent,
   ResearchContent,
   VersionContent,
@@ -39,6 +41,7 @@ import type {
 import { descriptionOf, draftContentOf } from "~/content/version"
 import type { Database, Executor, Transaction } from "~/db/client.server"
 import {
+  comment,
   dataset,
   draftDatasetEntry,
   labelPin,
@@ -49,6 +52,7 @@ import {
 } from "~/db/schema"
 
 import { draftDatasets } from "./datasets"
+import type { DroppedValue } from "./templates"
 import { pinLabelsIn, type PinRequest } from "./labels.server"
 
 const SHARE_TOKEN_BYTES = 32
@@ -156,6 +160,13 @@ export interface SeededDataset {
   /** The accession, pinned as the dataset's primary id as it is created. */
   label: string
   content: DatasetContent
+  /**
+   * What upstream stated that the catalog has no word for. **Each is left as a
+   * comment on the field it would have gone in**, written by whoever made the
+   * dataset — the field is made unsettled, and the comment is what says what to
+   * settle it on, where the curator is when they do.
+   */
+  dropped?: readonly DroppedValue[]
 }
 
 export type SeedOutcome
@@ -236,7 +247,7 @@ export async function createResearchFromUpstream(
       })
       .returning({ id: researchDraft.id }))
 
-    await writeSeededDatasets(tx, created.id, draft.id, datasets)
+    await writeSeededDatasets(tx, created.id, draft.id, datasets, actor)
     const pinned = await pinLabelsIn(tx, pinRequests(seed.humLabel, created.id, datasets), actor)
     if (pinned.status === "taken") throw new LabelTaken(pinned.label)
 
@@ -275,7 +286,7 @@ export async function addDatasetsFromUpstream(
       .returning({ revision: researchDraft.revision })
     if (rows[0] === undefined) return { status: "conflict" }
 
-    await writeSeededDatasets(tx, seed.researchId, at.draftId, datasets)
+    await writeSeededDatasets(tx, seed.researchId, at.draftId, datasets, actor)
     const pinned = await pinLabelsIn(tx, pinRequests(null, seed.researchId, datasets), actor)
     if (pinned.status === "taken") throw new LabelTaken(pinned.label)
 
@@ -326,7 +337,7 @@ export async function applyUpstreamToDraft(
       .returning({ revision: researchDraft.revision })
     if (rows[0] === undefined) return { status: "conflict" }
 
-    await writeSeededDatasets(tx, seed.researchId, at.draftId, datasets)
+    await writeSeededDatasets(tx, seed.researchId, at.draftId, datasets, actor)
     const pinned = await pinLabelsIn(tx, pinRequests(null, seed.researchId, datasets), actor)
     if (pinned.status === "taken") throw new LabelTaken(pinned.label)
 
@@ -344,7 +355,8 @@ async function writeSeededDatasets(
   tx: Transaction,
   researchId: string,
   draftId: string,
-  datasets: readonly { id: string, content: DatasetContent }[],
+  datasets: readonly { id: string, content: DatasetContent, dropped?: readonly DroppedValue[] }[],
+  actor: EventActor,
 ): Promise<void> {
   if (datasets.length === 0) return
   await tx.insert(dataset).values(
@@ -357,6 +369,39 @@ async function writeSeededDatasets(
       content: entry.content,
     })),
   )
+  const said = datasets.flatMap((entry) => droppedComments(entry.id, entry.dropped ?? []))
+  if (said.length > 0) {
+    await tx.insert(comment).values(said.map((one) => ({
+      draftId,
+      anchor: one.anchor,
+      authorSub: actor.sub,
+      authorName: actor.name,
+      body: one.body,
+    })))
+  }
+}
+
+/**
+ * One comment per field, naming every value upstream stated there that the
+ * catalog has no word for. A value with no field to stand on — its key is not
+ * in the catalog — has nowhere to be said.
+ */
+export function droppedComments(
+  datasetId: string,
+  dropped: readonly DroppedValue[],
+): { anchor: CommentAnchor, body: string }[] {
+  const byField = new Map<string, string[]>()
+  for (const value of dropped) {
+    if (value.at === null) continue
+    const values = byField.get(value.at) ?? []
+    if (!values.includes(value.value)) values.push(value.value)
+    byField.set(value.at, values)
+  }
+  const t = messagesFor("ja").admin.templates
+  return [...byField].map(([path, values]) => ({
+    anchor: { kind: "dataset-field", datasetId, path },
+    body: t.droppedComment(values.map((value) => `「${value}」`).join("")),
+  }))
 }
 
 /**

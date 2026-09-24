@@ -56,6 +56,23 @@ describe("申請から作るものの一覧", () => {
     expect(submitOf(html)).not.toMatch(/disabled=""/)
   })
 
+  it("1 つのアクセッションを調べた答えとして並べ、「登録されたデータセット」の見出しを立てない", () => {
+    const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
+    const html = routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one] })} submit={t.add} />)
+    expect(html).toContain("JGAD000001")
+    expect(html).not.toContain(t.registered)
+  })
+
+  it("作成は見つけたデータセットと同じ行に、枠の面・行の高さで立つ", () => {
+    const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
+    const html = routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one] })} submit={t.add} />)
+    const row = /<div class="flex flex-wrap items-center gap-3">([\s\S]*?)<\/button>/.exec(html)?.[1] ?? ""
+    expect(row).toContain("JGAD000001")
+    expect(submitOf(html)).toContain("bg-white")
+    expect(submitOf(html)).not.toContain("bg-brand")
+    expect(submitOf(html)).toContain("min-h-6")
+  })
+
   it("押すものが無い読むだけの姿は、何も送らない", () => {
     const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
     expect(routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one] })} />)).not.toContain("name=\"accession\"")
@@ -144,13 +161,16 @@ describe("研究の作成の節", () => {
     expect(submitOf(draw())).not.toMatch(/disabled=""/)
   })
 
-  it("反映されない値は key を画面の名前で言い、説明を持ち、無ければ節ごと出さない", () => {
-    const html = draw({ dropped: [{ keyCode: "experimental-method", keyLabel: "実験方法", value: "Exome sequencing" }] })
-    expect(html).toContain(t.dropped)
-    expect(html).toContain(t.droppedNote)
-    expect(html).toContain("実験方法")
-    expect(html).not.toContain("experimental-method")
-    expect(draw()).not.toContain(t.dropped)
+  it("選択肢に無い値は 1 つの枠で、名前と件数・欄の名前と値の対・作るとどうなるか の順に言い、表への道を持たず、無ければ何も言わない", () => {
+    const drop = (keyLabel: string, value: string) => ({ keyCode: keyLabel, keyLabel, value, at: null })
+    const html = draw({ dropped: [drop("実験方法", "Exome sequencing"), drop("プラットフォーム", "Illumina Genome Analyzer")] })
+    const named = html.indexOf(t.droppedHeading(2))
+    const rows = [...html.matchAll(/<dt[^>]*>([^<]*)<\/dt><dd[^>]*>([^<]*)<\/dd>/g)].map((match) => [match[1], match[2]])
+    expect(named).toBeGreaterThan(-1)
+    expect(rows).toEqual([["実験方法", "Exome sequencing"], ["プラットフォーム", "Illumina Genome Analyzer"]])
+    expect(html.indexOf(t.droppedSaid)).toBeGreaterThan(html.indexOf("Illumina Genome Analyzer"))
+    expect(html).not.toContain("/admin/experiment-fields")
+    expect(draw()).not.toContain(t.droppedSaid)
   })
 })
 

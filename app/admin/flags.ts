@@ -1,10 +1,7 @@
 /**
  * What a research or a dataset is still missing, as far as its content can say.
  *
- * Two readers, one walk. The management listing only wants to know whether
- * anything is missing, and the publish gate wants to list what — deriving those
- * separately would be two statements of one rule, so the walk collects the
- * places and the booleans are read off the result.
+ * The walk collects the places, so that the publish gate can name each one.
  *
  * Whether a hum label has been pinned is not here: it is read off the ledger
  * rather than the content. Anything that needs the upstream cache to answer
@@ -54,13 +51,6 @@ export interface UntranslatedField {
 export interface ContentProblems {
   unsettled: UnsettledField[]
   untranslated: UntranslatedField[]
-}
-
-export interface ContentFlags {
-  /** Some value is marked as not yet settled. */
-  unsettled: boolean
-  /** Some translated pair holds a value in one language and nothing in the other. */
-  untranslated: boolean
 }
 
 function presence<T>(slot: Slot<T>, empty: (value: T) => boolean): Presence {
@@ -205,15 +195,4 @@ export function datasetProblems(content: DatasetContent): ContentProblems {
   }
 
   return walk.problems
-}
-
-export function contentFlags(content: ResearchContent): ContentFlags {
-  return flagsOf(researchProblems(content))
-}
-
-export function flagsOf(problems: ContentProblems): ContentFlags {
-  return {
-    unsettled: problems.unsettled.length > 0,
-    untranslated: problems.untranslated.length > 0,
-  }
 }

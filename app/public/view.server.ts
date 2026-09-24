@@ -30,6 +30,7 @@ import type {
   NumberValue,
 } from "~/content/types"
 import { catalogLabel } from "~/i18n/catalog-label"
+import { messagesFor } from "~/i18n/messages"
 import {
   resolveBilingual,
   resolveLinks,
@@ -108,7 +109,20 @@ export type AnchoredValue
   = | { kind: "field", field: FieldView }
     | { kind: "links", links: LinksView }
     | { kind: "list", items: string[] }
+    | { kind: "rows", rows: RowsView }
     | { kind: "term", term: TermView | null }
+
+/**
+ * A section drawn as a table of elements, as the comparison reads it: the
+ * table's headings, and each element's cells as the words the page shows. The
+ * element's id is what pairs a row of one version with the same row of the
+ * other — the position does not, since an element taken out moves every row
+ * after it.
+ */
+export interface RowsView {
+  columns: string[]
+  rows: { id: string, cells: string[] }[]
+}
 
 export interface Anchored<T> {
   view: T
@@ -119,6 +133,7 @@ interface Anchors {
   field: (at: string, field: FieldView) => FieldView
   links: (at: string, links: LinksView) => LinksView
   list: (at: string, items: string[]) => string[]
+  rows: (at: string, rows: RowsView) => RowsView
   term: (at: string, term: TermView | null) => TermView | null
   taken: () => Record<string, AnchoredValue>
 }
@@ -133,6 +148,7 @@ function anchorRecorder(): Anchors {
     field: (at, field) => keep(at, { kind: "field", field }, field),
     links: (at, links) => keep(at, { kind: "links", links }, links),
     list: (at, items) => keep(at, { kind: "list", items }, items),
+    rows: (at, rows) => keep(at, { kind: "rows", rows }, rows),
     term: (at, term) => keep(at, { kind: "term", term }, term),
     taken: () => taken,
   }
@@ -185,6 +201,19 @@ export const TYPE_OF_DATA_KEY = "type-of-data"
 export const PLATFORM_KEY = "platform"
 
 /** A value as one line of text, for saying what a list used to hold. */
+/** A cell of a compared table: the words, or the state said in words. */
+function cellText(field: FieldView, words: ReturnType<typeof messagesFor>): string {
+  if (field.state === "unsettled") return words.unsettled
+  if (field.state === "not-applicable") return words.notApplicable
+  return fieldText(field)
+}
+
+function linksText(links: LinksView, words: ReturnType<typeof messagesFor>): string {
+  if (links.state === "unsettled") return words.unsettled
+  if (links.state === "not-applicable") return words.notApplicable
+  return links.value.map((link) => link.url).join("\n")
+}
+
 export function fieldText(field: FieldView): string {
   if (field.state === "plain") return field.text
   if (field.state === "rich") return field.text.map((line) => line.map((span) => span.text).join("")).join(" ")
@@ -509,7 +538,19 @@ export interface ResearchView {
    * the content and carries no anchor: nobody edits it, and a comment about a
    * file would have nothing in the draft to attach to.
    */
-  files: FileListView
+  files: ResearchFileListView
+}
+
+export type ResearchFileListView = Omit<FileListView, "rows"> & { rows: ResearchFileRowView[] }
+
+/**
+ * A line of the research's download list, with the datasets that select it.
+ * **They are positions in `datasets`**, so the cell names and leads to each one
+ * exactly as the dataset table does — including a dataset of a preview that has
+ * no label yet. In the page's order; empty where no dataset selects the file.
+ */
+export interface ResearchFileRowView extends FileRowView {
+  datasets: number[]
 }
 
 /** One line of the download list. `isPublic` is false only inside a preview. */
@@ -658,18 +699,54 @@ export function anchoredResearchView(
       ],
     })),
     cau: input.cau.map((entry) => cauView(entry, locale)),
-    files: input.files,
+    files: {
+      ...input.files,
+      rows: input.files.rows.map((row) => ({
+        ...row,
+        datasets: input.datasets.flatMap((dataset, at) =>
+          dataset.content.fileSelection.includes(row.name) ? [at] : []),
+      })),
+    },
     // Read last: everything above has had its chance to fall back by now.
     untranslated: fallbacks.seen(),
   }
 
   // An array carries its own path for membership and order, so each list is
   // anchored as a whole as well: an element added or taken away is a change
-  // nobody could see if only the surviving elements were anchored.
-  at.list("dataProviders", view.dataProviders.map((row) => fieldText(row.principalInvestigator)))
-  at.list("researchProjects", view.researchProjects.map((row) => fieldText(row.name)))
-  at.list("grants", view.grants.map((row) => fieldText(row.title)))
-  at.list("relatedPublications", view.relatedPublications.map((row) => fieldText(row.title)))
+  // nobody could see if only the surviving elements were anchored. It is kept
+  // as the table the page draws, every column of it, so that what is compared
+  // is each element as a reader meets it and not its first word.
+  const words = messagesFor(locale)
+  const w = words.research
+  const cell = (field: FieldView): string => cellText(field, words)
+  at.rows("dataProviders", {
+    columns: [w.principalInvestigator, w.organization],
+    rows: view.dataProviders.map((row) => ({
+      id: row.id,
+      cells: [cell(row.principalInvestigator), cell(row.organization)],
+    })),
+  })
+  at.rows("researchProjects", {
+    columns: [w.researchProjectName, w.url],
+    rows: view.researchProjects.map((row) => ({
+      id: row.id,
+      cells: [cell(row.name), linksText(row.links, words)],
+    })),
+  })
+  at.rows("grants", {
+    columns: [w.grantAgency, w.grantTitle, w.grantId],
+    rows: view.grants.map((row) => ({
+      id: row.id,
+      cells: [cell(row.agency), cell(row.title), row.grantIds.join("\n")],
+    })),
+  })
+  at.rows("relatedPublications", {
+    columns: [w.publicationTitle, "DOI", words.dataset.datasetId],
+    rows: view.relatedPublications.map((row) => ({
+      id: row.id,
+      cells: [cell(row.title), cell(row.doi), row.datasetLabels.join("\n")],
+    })),
+  })
 
   return { view, byAnchor: at.taken() }
 }
@@ -728,8 +805,8 @@ export interface DatasetView {
   untranslated: boolean
   experiments: { id: string, label: FieldView, values: ValueView[] }[]
   /**
-   * What this dataset selects out of its research's box, in the order it
-   * selects it. Already narrowed to what the listing holds, so a selection
+   * What this dataset selects out of its research's box, in the box's order.
+   * Already narrowed to what the listing holds, so a selection
    * naming something absent is simply not here.
    */
   files: FileRowView[]
@@ -805,8 +882,8 @@ export function anchoredDatasetView(
 }
 
 /**
- * The selection, in the order the dataset holds it, keeping only what the
- * listing has. The projection has already dropped the rest, so this is the same
+ * The selection, in the listing's own order, keeping only what the listing
+ * has — a selection is a set (`files/selection.ts`). The projection has already dropped the rest, so this is the same
  * rule applied a second time — and what makes the second application harmless
  * is that both read the one listing.
  */
@@ -814,11 +891,8 @@ function selectedFiles(
   selection: readonly string[],
   listing: readonly FileRowView[],
 ): FileRowView[] {
-  const byName = new Map(listing.map((row) => [row.name, row]))
-  return selection.flatMap((name) => {
-    const row = byName.get(name)
-    return row === undefined ? [] : [row]
-  })
+  const chosen = new Set(selection)
+  return listing.filter((row) => chosen.has(row.name))
 }
 
 /**

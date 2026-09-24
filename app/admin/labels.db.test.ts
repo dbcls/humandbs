@@ -9,7 +9,7 @@ import { PUBLIC_BUCKET, publicPrefix } from "~/files/box"
 import { clearPrefix, putTestObject } from "~/files/_store"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
-import { pinLabel, unpinLabel } from "./labels.server"
+import { issueNhaId, nextNhaId, pinLabel, unpinLabel } from "./labels.server"
 
 /**
  * The pin ledger, against the development database.
@@ -227,6 +227,106 @@ describe("taking a label away", () => {
     const outcome = await unpinLabel(db, "00000000-0000-4000-8000-000000000000", CURATOR)
 
     expect(outcome).toEqual({ status: "gone" })
+  })
+})
+
+describe("issuing an NHA id", () => {
+  async function primaryOf(datasetId: string): Promise<string | undefined> {
+    const [pin] = await db.select({ label: s.labelPin.label }).from(s.labelPin)
+      .where(eq(s.labelPin.datasetId, datasetId))
+    return pin?.label
+  }
+
+  it("starts at NHA000001 and counts on across every research", async () => {
+    const one = await createDataset(await createResearch())
+    const two = await createDataset(await createResearch())
+
+    expect(await issueNhaId(db, one, CURATOR)).toEqual({ status: "issued", label: "NHA000001" })
+    expect(await issueNhaId(db, two, CURATOR)).toEqual({ status: "issued", label: "NHA000002" })
+    expect(await primaryOf(two)).toBe("NHA000002")
+  })
+
+  it("reads the next number without taking it", async () => {
+    const datasetId = await createDataset(await createResearch())
+
+    expect(await nextNhaId(db)).toBe("NHA000001")
+    expect(await nextNhaId(db)).toBe("NHA000001")
+    expect(await issueNhaId(db, datasetId, CURATOR)).toEqual({ status: "issued", label: "NHA000001" })
+    expect(await nextNhaId(db)).toBe("NHA000002")
+  })
+
+  it("never gives out a number again once it was unpinned, even the highest", async () => {
+    const researchId = await createResearch()
+    const [one, two] = [await createDataset(researchId), await createDataset(researchId)]
+    await issueNhaId(db, one, CURATOR)
+    await unpinLabel(db, only(await db.select().from(s.labelPin)).id, CURATOR)
+
+    expect(await issueNhaId(db, two, CURATOR)).toEqual({ status: "issued", label: "NHA000002" })
+  })
+
+  it("never gives out a number again once the dataset holding it is gone", async () => {
+    const researchId = await createResearch()
+    const [one, two] = [await createDataset(researchId), await createDataset(researchId)]
+    await issueNhaId(db, one, CURATOR)
+    await db.delete(s.dataset).where(eq(s.dataset.id, one))
+
+    expect(await pins()).toEqual([])
+    expect(await issueNhaId(db, two, CURATOR)).toEqual({ status: "issued", label: "NHA000002" })
+  })
+
+  it("counts past an NHA id that reached the ledger without a record", async () => {
+    const researchId = await createResearch()
+    const [one, two] = [await createDataset(researchId), await createDataset(researchId)]
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "NHA000041", datasetId: one, isPrimary: true })
+
+    expect(await issueNhaId(db, two, CURATOR)).toEqual({ status: "issued", label: "NHA000042" })
+  })
+
+  it("ignores every other spelling when counting", async () => {
+    const researchId = await createResearch()
+    const [a, b, c, d] = [
+      await createDataset(researchId),
+      await createDataset(researchId),
+      await createDataset(researchId),
+      await createDataset(researchId),
+    ]
+    await pinLabel(db, { kind: "dataset", label: "JGAD999999", subjectId: a, isPrimary: true }, CURATOR)
+    await pinLabel(db, { kind: "dataset", label: "hum0014-NHA999", subjectId: b, isPrimary: true }, CURATOR)
+    await pinLabel(db, { kind: "dataset", label: "NHA0000099", subjectId: c, isPrimary: true }, CURATOR)
+
+    expect(await issueNhaId(db, d, CURATOR)).toEqual({ status: "issued", label: "NHA000001" })
+  })
+
+  it("gives two issues at the same moment two numbers", async () => {
+    const researchId = await createResearch()
+    const datasets = await Promise.all([1, 2, 3, 4, 5].map(() => createDataset(researchId)))
+
+    const outcomes = await Promise.all(datasets.map((datasetId) => issueNhaId(db, datasetId, CURATOR)))
+
+    const labels = outcomes.map((outcome) => outcome.status === "issued" ? outcome.label : outcome.status)
+    expect(labels.toSorted()).toEqual(["NHA000001", "NHA000002", "NHA000003", "NHA000004", "NHA000005"])
+  })
+
+  it("refuses a dataset that already has a primary id, and writes nothing", async () => {
+    const datasetId = await createDataset(await createResearch())
+    await pinLabel(db, { kind: "dataset", label: "JGAD000001", subjectId: datasetId, isPrimary: true }, CURATOR)
+
+    expect(await issueNhaId(db, datasetId, CURATOR)).toEqual({ status: "held" })
+    expect(await pins()).toEqual([{ label: "JGAD000001", isPrimary: true }])
+  })
+
+  it("answers gone for a dataset that is not there", async () => {
+    expect(await issueNhaId(db, "00000000-0000-4000-8000-000000000000", CURATOR)).toEqual({ status: "gone" })
+  })
+
+  it("keeps the NHA spelling out of reach of typing, whatever the number", async () => {
+    const datasetId = await createDataset(await createResearch())
+
+    expect(await pinLabel(db, { kind: "dataset", label: "NHA000001", subjectId: datasetId, isPrimary: true }, CURATOR))
+      .toEqual({ status: "reserved" })
+    expect(await pinLabel(db, { kind: "dataset", label: " NHA123456 ", subjectId: datasetId, isPrimary: true }, CURATOR))
+      .toEqual({ status: "reserved" })
+    expect(await pins()).toEqual([])
   })
 })
 

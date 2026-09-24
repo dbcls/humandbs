@@ -9,8 +9,8 @@ import {
   researchListRowView,
   type CatalogView,
   type CauView,
-  type FileListView,
   type LinksView,
+  type ResearchFileListView,
   type ResearchView,
 } from "~/public/view.server"
 
@@ -24,11 +24,11 @@ import { ResearchBody, ResearchListTable, ResearchVersionPage, runsLong } from "
  * losing it because a bucket was unreachable would be the wrong trade.
  */
 
-const NOTHING: FileListView = { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 }
+const NOTHING: ResearchFileListView = { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 }
 
 const NO_LINKS: LinksView = { state: "value", value: [], untranslated: false }
 
-function view(files: FileListView, links: LinksView = NO_LINKS): ResearchView {
+function view(files: ResearchFileListView, links: LinksView = NO_LINKS): ResearchView {
   return {
     humLabel: "hum0001",
     versionNumber: 1,
@@ -55,7 +55,7 @@ function view(files: FileListView, links: LinksView = NO_LINKS): ResearchView {
   }
 }
 
-function render(files: FileListView, links: LinksView = NO_LINKS): string {
+function render(files: ResearchFileListView, links: LinksView = NO_LINKS): string {
   const Stub = createRoutesStub([{
     path: "/",
     Component: () => <ResearchVersionPage view={view(files, links)} locale="ja" />,
@@ -80,7 +80,7 @@ describe("the research page", () => {
 
   it("draws the section, with the range within the whole box rather than the page", () => {
     const html = render({
-      rows: [{ name: "a.zip", size: 1, isPublic: true }],
+      rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
       total: 101,
       rangeFrom: 1,
       rangeTo: 100,
@@ -94,7 +94,7 @@ describe("the research page", () => {
 
   it("offers the next page as an address rather than as a script", () => {
     const html = render({
-      rows: [{ name: "a.zip", size: 1, isPublic: true }],
+      rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
       total: 101,
       rangeFrom: 1,
       rangeTo: 100,
@@ -103,6 +103,80 @@ describe("the research page", () => {
     })
 
     expect(html).toContain("href=\"/?files=2\"")
+  })
+})
+
+describe("the dataset column of the download list", () => {
+  const ROW = { accessType: null, typeOfData: null, datePublished: null }
+
+  function withDatasets(
+    datasets: ResearchView["datasets"],
+    rows: ResearchFileListView["rows"],
+    datasetHref?: (ref: { id: string | null, label: string }) => string | null,
+  ): string {
+    const files = { rows, total: rows.length, page: 1, pageCount: 1, rangeFrom: 1, rangeTo: rows.length }
+    const Stub = createRoutesStub([{
+      path: "/",
+      Component: () => (
+        <ResearchBody view={{ ...view(files), datasets }} locale="ja" datasetHref={datasetHref} />
+      ),
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
+  }
+
+  /** The cells of the download table, row by row: name, datasets, size. */
+  function downloadCells(html: string): string[][] {
+    const table = html.slice(html.indexOf(">ダウンロード<"))
+    const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(table)?.[1] ?? ""
+    return [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((tr) =>
+      [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
+  }
+
+  it("heads the column between the name and the size", () => {
+    const html = withDatasets([], [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }])
+    const heads = [...html.slice(html.indexOf(">ダウンロード<")).matchAll(/<th[^>]*>([^<]*)<\/th>/g)]
+      .slice(0, 3).map((th) => th[1])
+
+    expect(heads).toEqual(["ファイル名", "データセット ID", "サイズ"])
+  })
+
+  it("links each dataset that selects the file to its page", () => {
+    const html = withDatasets(
+      [{ ...ROW, id: "d1", label: "NHA000001" }, { ...ROW, id: "d2", label: "NHA000002" }],
+      [{ name: "a.zip", size: 1, isPublic: true, datasets: [0, 1] }],
+    )
+    const [cell] = downloadCells(html)[0]?.slice(1, 2) ?? []
+
+    expect(cell).toContain("href=\"/dataset/NHA000001\"")
+    expect(cell).toContain("href=\"/dataset/NHA000002\"")
+  })
+
+  it("leaves the cell empty for a file no dataset selects", () => {
+    const html = withDatasets(
+      [{ ...ROW, id: "d1", label: "NHA000001" }],
+      [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
+    )
+
+    expect(downloadCells(html)[0]?.[1]).toBe("")
+  })
+
+  it("names a dataset without a label the way the dataset table does, and leads where the preview says", () => {
+    const html = withDatasets(
+      [{ ...ROW, id: "d1", label: "NHA000001" }, { ...ROW, id: "d2", label: "" }],
+      [{ name: "a.zip", size: 1, isPublic: false, datasets: [1] }],
+      (ref) => `/preview/x/dataset/${ref.id ?? ""}`,
+    )
+    const cell = downloadCells(html)[0]?.[1] ?? ""
+
+    expect(cell).toContain("データセット ID 2")
+    expect(cell).toContain("href=\"/preview/x/dataset/d2\"")
+  })
+
+  it("cuts a long run of datasets short, the way every dataset cell does", () => {
+    const datasets = Array.from({ length: 5 }, (_, at) => ({ ...ROW, id: `d${at}`, label: `NHA00000${at + 1}` }))
+    const html = withDatasets(datasets, [{ name: "a.zip", size: 1, isPublic: true, datasets: [0, 1, 2, 3, 4] }])
+
+    expect(downloadCells(html)[0]?.[1]).toContain("他 2 件")
   })
 })
 
@@ -271,8 +345,8 @@ describe("the row of the research listing", () => {
  * nothing they type reaches (docs/editing.md の「フォームの隣に立つ公開ページ」).
  */
 describe("the body beside the form", () => {
-  const FILES: FileListView = {
-    rows: [{ name: "a.zip", size: 1, isPublic: true }],
+  const FILES: ResearchFileListView = {
+    rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
     total: 1,
     rangeFrom: 1,
     rangeTo: 1,

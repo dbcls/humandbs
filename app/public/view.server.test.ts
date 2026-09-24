@@ -210,6 +210,61 @@ describe("what a research page carries", () => {
     expect(view.relatedPublications[0]?.datasetLabels).toEqual(["JGAD000001"])
   })
 
+  describe("the datasets that select a file of the download list", () => {
+    function selecting(selections: string[][], names: string[]) {
+      return researchView({
+        humLabel: "hum0001",
+        versionNumber: 1,
+        releaseDate: "2020-01-01",
+        latestVersionNumber: 1,
+        content: research(),
+        datasets: selections.map((fileSelection, at) => ({
+          id: `d${at}`,
+          label: `NHA00000${at + 1}`,
+          content: { ...emptyDatasetContent(), fileSelection },
+          datePublished: null,
+        })),
+        datasetLabelById: new Map(),
+        cau: [],
+        files: {
+          rows: names.map((name) => ({ name, size: 1, isPublic: true })),
+          total: names.length,
+          page: 1,
+          pageCount: 1,
+          rangeFrom: 1,
+          rangeTo: names.length,
+        },
+      }, "ja", catalog).files.rows.map((row) => row.datasets)
+    }
+
+    it("names each dataset by its place in the dataset table, in the table's order", () => {
+      expect(selecting([["b.zip"], ["a.zip", "b.zip"], []], ["a.zip", "b.zip"])).toEqual([[1], [0, 1]])
+    })
+
+    it("names none for a file no dataset selects", () => {
+      expect(selecting([["a.zip"]], ["c.zip"])).toEqual([[]])
+    })
+
+    it("does not match a name by its beginning", () => {
+      expect(selecting([["a.zip.md5"], ["a"]], ["a.zip"])).toEqual([[]])
+    })
+
+    it("keeps the paging of the listing as it came", () => {
+      const view = researchView({
+        humLabel: "hum0001",
+        versionNumber: 1,
+        releaseDate: "2020-01-01",
+        latestVersionNumber: 1,
+        content: research(),
+        datasets: [],
+        datasetLabelById: new Map(),
+        cau: [],
+        files: { rows: [], total: 250, page: 3, pageCount: 3, rangeFrom: 201, rangeTo: 250 },
+      }, "ja", catalog)
+      expect(view.files).toEqual({ rows: [], total: 250, page: 3, pageCount: 3, rangeFrom: 201, rangeTo: 250 })
+    })
+  })
+
   describe("the datasets a publication names", () => {
     function cited(humByLabel: ReadonlyMap<string, string>, datasetIds: string[], externalIds: string[]) {
       const content = research({

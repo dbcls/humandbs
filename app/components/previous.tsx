@@ -15,12 +15,14 @@ import type { ShownLine } from "~/admin/changes"
 import { toPlainText } from "~/content/richtext"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import type { AnchoredValue } from "~/public/view.server"
+import type { AnchoredValue, RowsView } from "~/public/view.server"
+import { compareRows, type ComparedRow } from "~/review/compare-rows"
 import { afterParts, beforeParts, diffSentences, type DiffPart } from "~/passage-diff"
 
 import { controlFace, Dialog } from "./base"
 import { Flag } from "./flags"
 import { Icon } from "./icons"
+import { Table, Td } from "./page"
 
 /** One side of one line: its text, or the state it says instead. */
 type Side
@@ -45,17 +47,16 @@ export interface CompareRow {
  * nothing to set side by side** — a list whose difference is which elements it
  * holds — the mark is a badge that opens nothing.
  */
-function ChangeMark({ locale, against, fieldLabel, rows }: {
+function ChangeMark({ locale, fieldLabel, children }: {
   locale: Locale
-  /** What the left side is, as the screen words it (「公開中の v4」). */
-  against: string
   fieldLabel?: string
-  rows: readonly CompareRow[] | null
+  /** The comparison the mark opens, or null where there is none to open. */
+  children: ReactNode
 }) {
   const t = messagesFor(locale)
   const [open, setOpen] = useState(false)
 
-  if (rows === null || rows.length === 0) return <Flag kind="differs">{t.preview.differsHere}</Flag>
+  if (children === null) return <Flag kind="differs">{t.preview.differsHere}</Flag>
 
   return (
     <span className="inline-flex">
@@ -73,7 +74,7 @@ function ChangeMark({ locale, against, fieldLabel, rows }: {
         dismiss={t.comment.close}
         wide
       >
-        <CompareTable locale={locale} against={against} rows={rows} />
+        {children}
       </Dialog>
     </span>
   )
@@ -175,6 +176,74 @@ export function CompareTable({ locale, against, after, rows }: {
 }
 
 /**
+ * A section that is a table of elements — providers, projects, grants,
+ * publications — compared as **the table the page draws, once**, rather than as
+ * two columns of words: an element is a row of several cells, and two tables
+ * side by side do not fit the panel. It is the page's own `Table`, headings and
+ * all, so the rows read as the section a reader meets. Rows pair by the element's id
+ * (`review/compare-rows.ts`). A row the draft dropped is struck through on the
+ * published tint, a row it added is underlined on the draft's, and a row whose
+ * cells moved shows each moved cell twice — the published words over the
+ * draft's, the pieces that differ a step deeper. Rows that did not move stand
+ * untinted, to read one's place by. Above the table, how many rows each side
+ * holds: a side that holds none is said, not left as an empty column.
+ */
+export function RowsCompare({ locale, against, before, after }: {
+  locale: Locale
+  against: string
+  before: RowsView
+  after: RowsView | null
+}) {
+  const t = messagesFor(locale).preview
+  const rows = compareRows(before, after)
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-ink-muted text-xs">
+        {t.rowCount(against, before.rows.length)}
+        {" / "}
+        {t.rowCount(t.compareDraft, after?.rows.length ?? 0)}
+      </p>
+      <Table headers={before.columns}>
+        {rows.map((row) => (
+          <tr key={`${row.kind}-${row.id}`} className={row.kind === "removed" ? LOOK.del.line : row.kind === "added" ? LOOK.ins.line : ""}>
+            {row.cells.map((text, at) => (
+              <Td key={before.columns[at] ?? at} className="whitespace-pre-wrap break-words">
+                <RowCell row={row} at={at} text={text} />
+              </Td>
+            ))}
+          </tr>
+        ))}
+      </Table>
+    </div>
+  )
+}
+
+function RowCell({ row, at, text }: { row: ComparedRow, at: number, text: string }) {
+  if (row.kind === "removed") return <del className={LOOK.del.mark}>{text}</del>
+  if (row.kind === "added") return <ins className={LOOK.ins.mark}>{text}</ins>
+  const parts = row.kind === "changed" ? row.parts[at] ?? null : null
+  if (parts === null) return <>{text}</>
+  const side = (kind: "del" | "ins") => {
+    const Mark = kind
+    const look = LOOK[kind]
+    return (
+      <div className={`-mx-2 px-2 ${look.line}`}>
+        {(kind === "del" ? beforeParts : afterParts)(parts).map((part, index) => part.kind === "same"
+          ? <span key={index}>{part.text}</span>
+          : <Mark key={index} className={`rounded ${look.word} ${look.mark}`}>{part.text}</Mark>)}
+      </div>
+    )
+  }
+  return (
+    <>
+      {side("del")}
+      {side("ins")}
+    </>
+  )
+}
+
+/**
  * The two sides' tints, and the line through (or under) what changed — the
  * mark that says the same without the colour. **No `−` / `+` at the head of a
  * line**: the values are prose, and a dash or a plus is as often a character
@@ -243,10 +312,22 @@ export function PreviousMark({ locale, value, current, heading, fieldLabel }: {
   heading: string
   fieldLabel?: string
 }) {
-  const rows = value === undefined
-    ? null
-    : [{ label: "", before: anchoredSide(value), after: current === undefined ? null : anchoredSide(current) }]
-  return <ChangeMark locale={locale} against={againstOf(locale, heading)} fieldLabel={fieldLabel} rows={rows} />
+  const against = againstOf(locale, heading)
+  let body: ReactNode = null
+  if (value?.kind === "rows") {
+    body = (
+      <RowsCompare
+        locale={locale}
+        against={against}
+        before={value.rows}
+        after={current?.kind === "rows" ? current.rows : null}
+      />
+    )
+  } else if (value !== undefined) {
+    const rows = [{ label: "", before: anchoredSide(value), after: current === undefined ? null : anchoredSide(current) }]
+    body = <CompareTable locale={locale} against={against} rows={rows} />
+  }
+  return <ChangeMark locale={locale} fieldLabel={fieldLabel}>{body}</ChangeMark>
 }
 
 /**
@@ -262,7 +343,11 @@ export function PreviousLines({ locale, lines, current, heading, fieldLabel, ter
   termLabel?: (id: string) => string
 }) {
   const rows = lines === null || lines.length === 0 ? null : lineRows(lines, current ?? [], termLabel)
-  return <ChangeMark locale={locale} against={againstOf(locale, heading)} fieldLabel={fieldLabel} rows={rows} />
+  return (
+    <ChangeMark locale={locale} fieldLabel={fieldLabel}>
+      {rows === null ? null : <CompareTable locale={locale} against={againstOf(locale, heading)} rows={rows} />}
+    </ChangeMark>
+  )
 }
 
 function againstOf(locale: Locale, heading: string): string {
@@ -311,6 +396,7 @@ function shownText(line: ShownLine, termLabel?: (id: string) => string): string 
 function anchoredSide(value: AnchoredValue): Side {
   if (value.kind === "term") return { state: "value", text: value.term?.label ?? "" }
   if (value.kind === "list") return { state: "value", text: value.items.join("\n") }
+  if (value.kind === "rows") return { state: "value", text: value.rows.rows.map((row) => row.cells.join(" / ")).join("\n") }
   const shown = value.kind === "field" ? value.field : value.links
   if (shown.state === "unsettled") return { state: "unknown" }
   if (shown.state === "not-applicable") return { state: "not-applicable" }

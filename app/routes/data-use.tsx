@@ -5,7 +5,7 @@ import { ActionButton, ActionRow } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { renderMarkdown } from "~/public/markdown.server"
-import { href, readLocale } from "~/public/urls"
+import { applicationUrl, href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/data-use"
 
@@ -51,7 +51,7 @@ export default function DataUse({ loaderData }: Route.ComponentProps) {
             />
             <ActionButton
               locale={locale}
-              href="https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
+              href={applicationUrl(locale)}
               label={messages.apply}
               note={messages.applyFor}
               tone="brand"

@@ -251,6 +251,13 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             // Only the query string changes, so the same links work from the
             // published address and from a preview without either being named.
             at={(to) => `?files=${to}`}
+            selectedBy={(file) => (
+              <SelectingDatasets
+                rows={file.datasets.map((at) => ({ at, row: view.datasets[at] }))}
+                linkTo={linkTo}
+                messages={messages}
+              />
+            )}
           />
         </Section>
       )}
@@ -481,6 +488,39 @@ export function runsLong(field: FieldView): boolean {
   if (field.state === "plain") return field.text.length >= SPLIT_FROM
   if (field.state === "rich") return toPlainText(field.text).length >= SPLIT_FROM
   return false
+}
+
+/**
+ * The datasets that select one file of the download list, named and led to the
+ * way the dataset table above names and leads to them — a dataset of a preview
+ * with no label yet is the same "データセット ID N" in both. Cut short the way
+ * `DatasetList` is; an empty cell where no dataset selects the file.
+ */
+function SelectingDatasets({ rows, linkTo, messages }: {
+  rows: { at: number, row: DatasetRowView | undefined }[]
+  linkTo: (ref: { id: string | null, label: string }) => string | null
+  messages: ReturnType<typeof messagesFor>
+}) {
+  const named = rows.flatMap(({ at, row }) => row === undefined
+    ? []
+    : [{ row, name: row.label === "" ? `${messages.dataset.datasetId} ${at + 1}` : row.label }])
+  if (named.length === 0) return null
+  return (
+    <Clamped
+      shown={SHOWN_DATASETS}
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={named.map(({ row, name }) => {
+        const to = linkTo(row)
+        return (
+          <span key={name} className="whitespace-nowrap">
+            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
+            {to === null ? name : <Link to={to}>{name}</Link>}
+          </span>
+        )
+      })}
+    />
+  )
 }
 
 /**

@@ -2,13 +2,13 @@ import { data, Form } from "react-router"
 
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
 import type { UpstreamChoiceView } from "~/admin/templates.server"
-import { adminExperimentFieldsPath, adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
+import { adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
 import { AdminBack, WayTo } from "~/components/admin"
-import { ButtonLink, Chevron, Heading, Note, Stack } from "~/components/base"
+import { Heading, Note, Stack } from "~/components/base"
 import { Answered, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, KeyValue, Page, Section } from "~/components/page"
-import { BranchDatasets, BranchPairs, UpstreamNotConnected } from "~/components/upstream"
+import { Card, Page, Section } from "~/components/page"
+import { BranchDatasets, BranchPairs, DroppedNote, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
@@ -159,29 +159,7 @@ export function BranchCreate({ locale, choice, submit }: {
   return (
     <Section title={t.creating} note={t.createNote}>
       <Stack gap="normal">
-        {choice.dropped.length > 0 && (
-          <dl>
-            <KeyValue title={t.dropped}>
-              <Stack gap="tight">
-                <span className="text-ink-muted text-sm">{t.droppedNote}</span>
-                <ul className="flex flex-col gap-1">
-                  {choice.dropped.map((value) => (
-                    <li key={`${value.keyCode} ${value.value}`} className="flex flex-wrap gap-2">
-                      <span className="text-ink-muted">{value.keyLabel}</span>
-                      <span>{value.value}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div>
-                  <ButtonLink size="row" to={href(locale, adminExperimentFieldsPath())}>
-                    {t.openCatalog}
-                    <Chevron dir="right" />
-                  </ButtonLink>
-                </div>
-              </Stack>
-            </KeyValue>
-          </dl>
-        )}
+        <DroppedNote locale={locale} dropped={choice.dropped} />
         <div>
           <Submit variant="primary" icon={<Icon name="plus" />}>{submit}</Submit>
         </div>

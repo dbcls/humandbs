@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import { messagesFor } from "~/i18n/messages"
 
-import { AccessionSection } from "./accession"
+import { AccessionSection, shownLookup } from "./accession"
 
 const t = messagesFor("ja").admin.templates
 
@@ -33,5 +33,21 @@ describe("外部アクセッションからの作成", () => {
 
   it("調べる前は、作成の押せるものを描かない", () => {
     expect(draw()).not.toContain(t.add)
+  })
+})
+
+describe("調べた結果の出し方", () => {
+  it("次を調べているあいだは前の結果を出さない — もう窓の値の答えではない", () => {
+    expect(shownLookup({ found: "前の結果", looking: true, made: false })).toBeUndefined()
+  })
+
+  it("作成したあとは結果を出さず、調べ終えたら出す", () => {
+    expect(shownLookup({ found: "結果", looking: false, made: true })).toBeUndefined()
+    expect(shownLookup({ found: "結果", looking: false, made: false })).toBe("結果")
+  })
+
+  it("調べる前は「調べる」が押せ、待っている姿ではない", () => {
+    const button = /<button[^>]*type="submit"[^>]*>/.exec(draw())?.[0] ?? ""
+    expect(button).not.toMatch(/disabled=""|aria-busy/)
   })
 })

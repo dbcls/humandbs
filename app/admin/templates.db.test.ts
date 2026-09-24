@@ -196,6 +196,59 @@ describe("adding datasets to a draft from upstream", () => {
     expect(await pinnedLabels("dataset")).toEqual(["DRA000123"])
   })
 
+  it("leaves what had no choice as one comment per field, by the curator who made it, and none for a value with no field", async () => {
+    const at = await draft()
+    const drop = (value: string, where: string | null) => ({ keyCode: "platform", keyLabel: "プラットフォーム", value, at: where })
+
+    const outcome = await addDatasetsFromUpstream(
+      db,
+      { draftId: at.draftId, revision: at.revision },
+      {
+        researchId: at.researchId,
+        datasets: [{
+          label: "DRA000123",
+          content: described("WGS"),
+          dropped: [
+            drop("DNBSEQ-T7", "experiments.e1.values.k1"),
+            drop("MGISEQ-2000", "experiments.e1.values.k1"),
+            drop("DNBSEQ-T7", "experiments.e1.values.k1"),
+            drop("no field", null),
+          ],
+        }],
+      },
+      CURATOR,
+    )
+
+    expect(outcome.status).toBe("added")
+    const datasetId = outcome.status === "added" ? outcome.datasetIds[0] : ""
+    const comments = await db.select().from(s.comment).where(eq(s.comment.draftId, at.draftId))
+    expect(comments.map((one) => ({ anchor: one.anchor, body: one.body, sub: one.authorSub, name: one.authorName, resolved: one.resolved })))
+      .toEqual([{
+        anchor: { kind: "dataset-field", datasetId, path: "experiments.e1.values.k1" },
+        body: "申請・登録情報の値「DNBSEQ-T7」「MGISEQ-2000」は選択肢に無いため、反映していません。",
+        sub: CURATOR.sub,
+        name: CURATOR.name,
+        resolved: false,
+      }])
+  })
+
+  it("writes no comment and no dataset when the revision has moved", async () => {
+    const at = await draft()
+    await saveDraftContent(db, { draftId: at.draftId, revision: at.revision }, { content: emptyResearchContent() })
+
+    await addDatasetsFromUpstream(
+      db,
+      { draftId: at.draftId, revision: at.revision },
+      {
+        researchId: at.researchId,
+        datasets: [{ label: "DRA000123", content: described("WGS"), dropped: [{ keyCode: "platform", keyLabel: "platform", value: "X", at: "values.k1" }] }],
+      },
+      CURATOR,
+    )
+
+    expect(await db.select().from(s.comment)).toEqual([])
+  })
+
   it("refuses a revision that has moved, and adds nothing", async () => {
     const at = await draft()
     await saveDraftContent(

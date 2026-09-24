@@ -1,15 +1,30 @@
 import { describe, expect, it } from "vitest"
 
-import { isPortalIssuedId, proposeDatasetId } from "./labels"
+import fc from "fast-check"
+
+import { isNhaId, isPortalIssuedId, nhaId, nhaNumber } from "./labels"
 
 /**
  * Whether a dataset may carry a file selection turns on this alone
  * (docs/data-model.md's section on files).
  */
 describe("whether an id is one the portal issued", () => {
-  it("calls a hum-prefixed id portal-issued, old numbering and new alike", () => {
+  it("calls an NHA id portal-issued", () => {
+    expect(isPortalIssuedId("NHA000001")).toBe(true)
+    expect(isPortalIssuedId("NHA999999")).toBe(true)
+  })
+
+  it("calls a hum-prefixed id portal-issued, which is how the older ones are spelled", () => {
     expect(isPortalIssuedId("hum0009.v1.CpG.v1")).toBe(true)
     expect(isPortalIssuedId("hum0014-NHA001")).toBe(true)
+  })
+
+  it("does not take an id that only begins with NHA for the portal's", () => {
+    expect(isPortalIssuedId("NHA00001")).toBe(false)
+    expect(isPortalIssuedId("NHA0000001")).toBe(false)
+    expect(isPortalIssuedId("NHA000001.v1")).toBe(false)
+    expect(isPortalIssuedId("nha000001")).toBe(false)
+    expect(isPortalIssuedId("NHAX00001")).toBe(false)
   })
 
   it("calls every archive accession external", () => {
@@ -25,37 +40,27 @@ describe("whether an id is one the portal issued", () => {
   })
 })
 
-/**
- * The proposal, which is a default and not a rule. What matters is that it does
- * not collide with what the research already holds and that it ignores the ids
- * it has no business counting — everything else about it is free to change.
- */
-describe("proposing a dataset id", () => {
-  it("starts at one for a research with nothing pinned", () => {
-    expect(proposeDatasetId("hum0014", [])).toBe("hum0014-NHA001")
+describe("the spelling of an NHA id", () => {
+  it("pads the number to six digits", () => {
+    expect(nhaId(1)).toBe("NHA000001")
+    expect(nhaId(42)).toBe("NHA000042")
+    expect(nhaId(999_999)).toBe("NHA999999")
   })
 
-  it("takes the number after the highest it already holds", () => {
-    const taken = ["hum0014-NHA001", "hum0014-NHA007", "hum0014-NHA003"]
-
-    expect(proposeDatasetId("hum0014", taken)).toBe("hum0014-NHA008")
+  it("refuses a number the six digits cannot hold, rather than growing a seventh", () => {
+    expect(() => nhaId(1_000_000)).toThrow(RangeError)
+    expect(() => nhaId(0)).toThrow(RangeError)
+    expect(() => nhaId(-1)).toThrow(RangeError)
+    expect(() => nhaId(1.5)).toThrow(RangeError)
   })
 
-  it("counts the highest rather than the number of them, so a gap stays a gap", () => {
-    expect(proposeDatasetId("hum0014", ["hum0014-NHA009"])).toBe("hum0014-NHA010")
-  })
-
-  it("ignores the ids an archive issued", () => {
-    const taken = ["JGAD000123", "DRA000456", "E-GEAD-789", "hum0014.v1.CpG.v1"]
-
-    expect(proposeDatasetId("hum0014", taken)).toBe("hum0014-NHA001")
-  })
-
-  it("ignores what another research holds, which is what the hum in it is for", () => {
-    expect(proposeDatasetId("hum0014", ["hum0018-NHA004"])).toBe("hum0014-NHA001")
-  })
-
-  it("keeps going past three digits rather than wrapping", () => {
-    expect(proposeDatasetId("hum0014", ["hum0014-NHA999"])).toBe("hum0014-NHA1000")
+  it("reads back the number it was made from, and nothing from any other spelling", () => {
+    fc.assert(fc.property(fc.integer({ min: 1, max: 999_999 }), (number) => {
+      const label = nhaId(number)
+      return isNhaId(label) && nhaNumber(label) === number
+    }))
+    expect(nhaNumber("JGAD000001")).toBeNull()
+    expect(nhaNumber("hum0014-NHA001")).toBeNull()
+    expect(nhaNumber("NHA000001 ")).toBeNull()
   })
 })

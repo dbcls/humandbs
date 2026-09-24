@@ -295,7 +295,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 name: emptyPair(),
                 organization: { name: emptyPair() },
               })}
-              summary={(item) => pairText(item.name, t.stateChoice)}
               columns={[
                 { header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) },
                 { header: words.organization, cell: (item) => pairCell(item.organization.name, t.stateChoice) },
@@ -331,7 +330,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               marksFor={marksFor}
               onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
               makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
-              summary={(item) => pairText(item.name, t.stateChoice)}
               columns={[
                 { header: words.researchProjectName, cell: (item) => pairCell(item.name, t.stateChoice) },
                 { header: words.url, cell: (item) => <LinkLines links={item.url} /> },
@@ -370,7 +368,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 agency: { name: emptyPair() },
                 grantIds: [],
               })}
-              summary={(item) => pairText(item.title, t.stateChoice)}
               columns={[
                 { header: words.grantAgency, cell: (item) => pairCell(item.agency.name, t.stateChoice) },
                 { header: words.grantTitle, cell: (item) => pairCell(item.title, t.stateChoice) },
@@ -425,7 +422,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 datasetIds: [],
                 externalIds: [],
               })}
-              summary={(item) => item.title.text}
               wide
               columns={[
                 { header: words.publicationTitle, cell: (item) => slotCell(item.title, t.stateChoice) },
@@ -527,7 +523,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 locale={locale}
                 items={content.listingSummary.dataProviders}
                 title={words.principalInvestigator}
-                summary={(item) => pairText(item.name, t.stateChoice)}
                 columns={[{ header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) }]}
                 makeEmpty={() => ({ id: newId(), name: emptyPair() })}
                 onChange={(next) => {
@@ -576,7 +571,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 **Where the caret is** is the page's to show too, on the value
                 itself (`page.tsx` の `Place`).
               */
-              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
+              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} drawn={drawn} />}
               here={at}
               onGo={goTo}
               goLabel={t.goToField}
@@ -759,7 +754,6 @@ function RepeatingSection<T extends { id: string }>({
   marksFor,
   onChange,
   makeEmpty,
-  summary,
   columns,
   wide = false,
   children,
@@ -772,8 +766,6 @@ function RepeatingSection<T extends { id: string }>({
   onChange: (next: T[]) => void
   /** One more of whatever the list holds, with nothing written in it yet. */
   makeEmpty: () => T
-  /** What one element is, in a line, for the panel's name. */
-  summary: (item: T) => string
   /** The table's columns — the public page's for the same list (`fields.tsx` の `ItemList`). */
   columns: ItemColumn<T>[]
   /** Whether an element's panel holds a table (`ItemList` の `wide`). */
@@ -790,7 +782,6 @@ function RepeatingSection<T extends { id: string }>({
         locale={locale}
         items={items}
         title={title}
-        summary={summary}
         columns={columns}
         onChange={onChange}
         makeEmpty={makeEmpty}
@@ -819,10 +810,6 @@ function sideLine(side: TextInput, states: StateWords): { text: string, isState:
 function pairLine(pair: { ja: TextInput, en: TextInput }, states: StateWords): { text: string, isState: boolean } {
   const ja = sideLine(pair.ja, states)
   return ja.text !== "" ? ja : sideLine(pair.en, states)
-}
-
-function pairText(pair: { ja: TextInput, en: TextInput }, states: StateWords): string {
-  return pairLine(pair, states).text
 }
 
 /** A line as a table cell: a state's word in the muted face a folded box wears (`fields.tsx`), a value as it is. */

@@ -4,10 +4,9 @@ import { draftDatasetListAction, draftDatasetListPage } from "~/admin/pages.serv
 import type { DraftDatasetListView } from "~/admin/pages.server"
 import {
   adminDraftDatasetPath,
-  adminDraftTakePath,
   adminResearchPath,
 } from "~/admin/urls"
-import { AdminBack, WayTo } from "~/components/admin"
+import { AdminBack } from "~/components/admin"
 import { AccessionSection } from "~/components/accession"
 import { Confirm, Heading, IconButton, Stack, Stated } from "~/components/base"
 import { Flag } from "~/components/flags"
@@ -115,20 +114,13 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
             ))}
           </Table>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <Form method="post">
-              <input type="hidden" name="revision" value={view.revision} />
-              <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
-            </Form>
-            {/* A whole application is taken in through this research's own
-                branches on the take-in screen. **The screen is a way out and
-                wears that face** — the bordered face with the mark after the
-                word — so it is not read as one more thing done here. A single
-                accession is looked up in the section below. */}
-            <WayTo to={href(locale, adminDraftTakePath(view.researchId, view.draftId))} icon="download">
-              {messages.admin.take.open}
-            </WayTo>
-          </div>
+          {/* **No way to the take-in screen here.** Taking in is done to the
+              research's contents, whose screen is where it starts; a second
+              entrance here would be a second way to the same screen. */}
+          <Form method="post">
+            <input type="hidden" name="revision" value={view.revision} />
+            <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
+          </Form>
 
           <AccessionSection
             locale={locale}

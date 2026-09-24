@@ -205,6 +205,31 @@ export async function publishedDatasetLabels(
 }
 
 /**
+ * The published datasets of a research that select each file of its box, by
+ * the file's name, in label order. **Only what is published answers** — the
+ * same descriptions the research's page reads — so a file a draft has chosen
+ * but nobody has published is selected by nothing yet.
+ */
+export async function publishedFileSelections(
+  db: Executor,
+  researchId: string,
+): Promise<Map<string, string[]>> {
+  const rows = await db
+    .select({
+      label: searchDoc.datasetLabel,
+      selection: sql<string[]>`coalesce(${searchDoc.content} -> 'fileSelection', '[]'::jsonb)`,
+    })
+    .from(searchDoc)
+    .where(and(eq(searchDoc.targetType, "dataset"), eq(searchDoc.researchId, researchId)))
+  const byFile = new Map<string, string[]>()
+  for (const row of rows.toSorted((a, b) => (a.label ?? "").localeCompare(b.label ?? ""))) {
+    if (row.label === null) continue
+    for (const name of row.selection) byFile.set(name, [...(byFile.get(name) ?? []), row.label])
+  }
+  return byFile
+}
+
+/**
  * What the portal's ledger says of the datasets a research's publications
  * cite: the one chosen by identity and the one typed as an ID. **Only a
  * published dataset answers** — a pinned ID whose dataset is not out yet would

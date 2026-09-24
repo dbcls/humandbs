@@ -160,10 +160,9 @@ describe("the listing", () => {
 
     expect(view.rows.map((row) => row.researchId)).toEqual([researchId])
     expect(view.rows[0]?.status).toBe("unpublished")
-    expect(view.rows[0]?.flags.noHumLabel).toBe(true)
   })
 
-  it("reads what a research is missing from the draft somebody is working on", async () => {
+  it("names a research that has never been out by its draft", async () => {
     const token = await signIn(CURATOR, true)
     const { draftId } = await createResearchWithDraft(db)
     await saveDraftContent(db, { draftId, revision: 1 }, {
@@ -172,7 +171,6 @@ describe("the listing", () => {
 
     const view = await researchListPage(get(token, "/admin/research"), "ja")
 
-    expect(view.rows[0]?.flags.untranslated).toBe(true)
     expect(view.rows[0]?.title).toBe("題目")
   })
 
@@ -199,24 +197,6 @@ describe("the listing", () => {
     const view = await researchListPage(get(token, "/admin/research"), "ja")
 
     expect(only(view.rows).title).toBe("公開の題目")
-  })
-
-  it("still reads what is missing from the draft while naming by the version", async () => {
-    const token = await signIn(CURATOR, true)
-    const { researchId, draftId } = await createResearchWithDraft(db)
-    await seedVersion(db, {
-      researchId,
-      number: 1,
-      body: { title: { ja: filled("公開の題目"), en: filled("Published title") } },
-    })
-    await saveDraftContent(db, { draftId, revision: 1 }, {
-      content: { ...emptyResearchContent(), title: { ja: filled("下書きの題目"), en: filled("") } },
-    })
-
-    const row = only((await researchListPage(get(token, "/admin/research"), "ja")).rows)
-
-    expect(row.title).toBe("公開の題目")
-    expect(row.flags.untranslated).toBe(true)
   })
 
   it("matches the box against the title the row shows, not against a draft's", async () => {
@@ -289,13 +269,10 @@ describe("the listing", () => {
 
     expect(view.rows).toHaveLength(0)
     expect(view.counts.statuses).toEqual({ published: 0, unpublished: 2 })
-    // The other axis is counted inside what the status left, which is nothing.
-    expect(view.counts.flags.noHumLabel).toBe(0)
 
-    // With the word in force and no status, the flags are counted within it.
+    // With the word in force, the status is counted within it.
     const narrowed = await researchListPage(get(token, "/admin/research?q=糖尿病"), "ja")
 
-    expect(narrowed.counts.flags.untranslated).toBe(1)
     expect(narrowed.counts.statuses).toEqual({ published: 0, unpublished: 1 })
   })
 
@@ -307,72 +284,15 @@ describe("the listing", () => {
     await db.insert(s.labelPin).values({ kind: "dataset", label, datasetId, isPrimary: true })
   }
 
-  async function flagsOfTheOnlyRow(token: string) {
-    const view = await researchListPage(get(token, "/admin/research"), "ja")
-    return only(view.rows).flags
-  }
-
-  it("flags a shortcoming when a dataset of the research carries no pinned id", async () => {
+  it("reads an address that still asks for a shortcoming as asking for nothing", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId } = await createResearchWithDraft(db)
-    await pinHum(researchId, "hum0001")
     await db.insert(s.dataset).values({ researchId })
 
-    expect((await flagsOfTheOnlyRow(token)).noDatasetLabel).toBe(true)
-  })
+    const view = await researchListPage(get(token, "/admin/research?flag=noHumLabel&flag=noDatasetLabel"), "ja")
 
-  it("flags a shortcoming when a pinned accession is absent from the upstream ledger", async () => {
-    const token = await signIn(CURATOR, true)
-    const { researchId } = await createResearchWithDraft(db)
-    await pinHum(researchId, "hum0001")
-    const dataset = only(await db.insert(s.dataset).values({ researchId })
-      .returning({ id: s.dataset.id }))
-    await pinDataset(dataset.id, "JGAD000001")
-
-    const flags = await flagsOfTheOnlyRow(token)
-    expect(flags.upstreamMismatch).toBe(true)
-    expect(flags.noDatasetLabel).toBe(false)
-  })
-
-  it("flags a shortcoming when a pinned accession's upstream hum disagrees with the pinned one", async () => {
-    const token = await signIn(CURATOR, true)
-    const { researchId } = await createResearchWithDraft(db)
-    await pinHum(researchId, "hum0001")
-    const dataset = only(await db.insert(s.dataset).values({ researchId })
-      .returning({ id: s.dataset.id }))
-    await pinDataset(dataset.id, "JGAD000001")
-    await db.insert(s.humAccession)
-      .values({ accession: "JGAD000001", humLabel: "hum0002", kind: "jga-dataset" })
-
-    expect((await flagsOfTheOnlyRow(token)).upstreamMismatch).toBe(true)
-  })
-
-  it("settles both the pin and the upstream shortcoming when every pin matches upstream", async () => {
-    const token = await signIn(CURATOR, true)
-    const { researchId } = await createResearchWithDraft(db)
-    await pinHum(researchId, "hum0001")
-    const dataset = only(await db.insert(s.dataset).values({ researchId })
-      .returning({ id: s.dataset.id }))
-    await pinDataset(dataset.id, "JGAD000001")
-    await db.insert(s.humAccession)
-      .values({ accession: "JGAD000001", humLabel: "hum0001", kind: "jga-dataset" })
-
-    const flags = await flagsOfTheOnlyRow(token)
-    expect(flags.noDatasetLabel).toBe(false)
-    expect(flags.upstreamMismatch).toBe(false)
-  })
-
-  it("leaves an id the portal issued out of the upstream check, even absent from the ledger", async () => {
-    const token = await signIn(CURATOR, true)
-    const { researchId } = await createResearchWithDraft(db)
-    await pinHum(researchId, "hum0001")
-    const dataset = only(await db.insert(s.dataset).values({ researchId })
-      .returning({ id: s.dataset.id }))
-    await pinDataset(dataset.id, "hum0001-NHA001")
-
-    const flags = await flagsOfTheOnlyRow(token)
-    expect(flags.noDatasetLabel).toBe(false)
-    expect(flags.upstreamMismatch).toBe(false)
+    expect(view.rows.map((row) => row.researchId)).toEqual([researchId])
+    expect(Object.keys(view.counts)).toEqual(["statuses"])
   })
 })
 
@@ -1186,7 +1106,6 @@ describe("the dataset screens of a draft", () => {
     const pinned = await datasetEditorPage(get(token, "/x"), "ja", params)
     expect(pinned.datasetLabel).toBe("JGAD000777")
     expect(pinned.datasetPinId).not.toBeNull()
-    expect(pinned.datasetIdSuggestion).toBeNull()
     // The ledger moved; the draft's rows did not.
     expect((await readDraft(db, draftId))?.revision).toBe(listing.revision)
 
@@ -1218,16 +1137,34 @@ describe("the dataset screens of a draft", () => {
     expect((await datasetEditorPage(get(token, "/x"), "ja", first)).datasetLabel).toBe("JGAD000777")
   })
 
-  it("proposes an id under the research's hum label while the dataset has none", async () => {
+  it("issues the next NHA id from the dataset's own screen, and refuses one typed in that shape", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
-    await researchDetailAction(postForm(token, "/x", { intent: "pin", label: "hum0042", isPrimary: "on" }), "ja", researchId)
     await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", { researchId, draftId })
-    const datasetId = (await draftDatasetListPage(get(token, "/x"), "ja", { researchId, draftId })).rows[0]?.id ?? ""
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "2" }), "ja", { researchId, draftId })
+    const [one, two] = (await draftDatasetListPage(get(token, "/x"), "ja", { researchId, draftId })).rows
+    const first = { researchId, draftId, datasetId: one?.id ?? "" }
+    const second = { researchId, draftId, datasetId: two?.id ?? "" }
 
-    const view = await datasetEditorPage(get(token, "/x"), "ja", { researchId, draftId, datasetId })
+    expect(await datasetLabelAction(postForm(token, "/x", { intent: "pin", label: "NHA000001" }), first))
+      .toEqual({ status: "reserved" })
+    // What the box shows before anything is pinned, and what reading it reserves: nothing.
+    expect((await datasetEditorPage(get(token, "/x"), "ja", first)).nextNhaId).toBe("NHA000001")
+    expect((await datasetEditorPage(get(token, "/x"), "ja", second)).nextNhaId).toBe("NHA000001")
+    expect(await datasetLabelAction(postForm(token, "/x", { intent: "issue" }), first))
+      .toEqual({ status: "issued", label: "NHA000001" })
+    const issued = await datasetEditorPage(get(token, "/x"), "ja", first)
+    expect(issued.datasetLabel).toBe("NHA000001")
+    expect(issued.nextNhaId).toBeNull()
+    expect(issued.portalIssued).toBe(true)
 
-    expect(view.datasetIdSuggestion).toBe("hum0042-NHA001")
+    // A dataset that has an id is not offered issuing, so asking is not an input the screen made.
+    expect((await thrown(() => datasetLabelAction(postForm(token, "/x", { intent: "issue" }), first))).status)
+      .toBe(400)
+    // The one the second screen showed was overtaken; the answer names the one given.
+    expect(await datasetLabelAction(postForm(token, "/x", { intent: "issue" }), second))
+      .toEqual({ status: "issued", label: "NHA000002" })
+    expect((await datasetEditorPage(get(token, "/x"), "ja", second)).datasetLabel).toBe("NHA000002")
   })
 
   it("puts the research's datasets in order from the dataset screen", async () => {
@@ -1338,8 +1275,7 @@ describe("making the files a version needs public", () => {
 })
 
 describe("the publish screen", () => {
-  /** The same proposal on two rows is refused on the second as soon as the first is pinned. */
-  it("proposes a different id for each dataset that has none", async () => {
+  it("names each dataset that has none as its row, and issues an NHA id to it from there", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     await pinLabel(db, { kind: "hum", label: "hum0001", subjectId: researchId, isPrimary: true }, BOOTSTRAP_ACTOR)
@@ -1348,11 +1284,20 @@ describe("the publish screen", () => {
 
     const view = await publishPage(get(token, "/x"), "ja", { researchId, draftId })
 
-    const proposed = view.blocks.map((block) => block.suggestion)
-    expect(proposed).toHaveLength(2)
-    expect(new Set(proposed).size).toBe(2)
+    expect(view.blocks).toHaveLength(2)
     // Each dataset it names is drawn as its row, not left to its identity.
     for (const block of view.blocks) expect(view.datasetRows[block.datasetId ?? ""]).toBeDefined()
+
+    expect(view.nextNhaId).toBe("NHA000001")
+    const datasetId = view.blocks[0]?.datasetId ?? ""
+    expect(await publishAction(postForm(token, "/x", { intent: "issue", datasetId }), "ja", { researchId, draftId }))
+      .toEqual({ status: "issued", label: "NHA000001" })
+    const after = await publishPage(get(token, "/x"), "ja", { researchId, draftId })
+    expect(after.blocks.map((block) => block.datasetId)).not.toContain(datasetId)
+    expect(after.nextNhaId).toBe("NHA000002")
+    const [pin] = await db.select({ label: s.labelPin.label }).from(s.labelPin)
+      .where(eq(s.labelPin.datasetId, datasetId))
+    expect(pin?.label).toBe("NHA000001")
   })
 
   it("refuses an update that would change nothing, and lets a new release date through as a change", async () => {

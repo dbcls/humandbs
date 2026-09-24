@@ -7,25 +7,20 @@
  * the full-text index would not help because it only holds what is published.
  * Several words all have to match, as they do in the public box.
  *
- * **The status and the shortcomings are two axes and combine as an AND; within
- * each axis the choices are an OR.** Ticking three shortcomings asks for the
- * rows that need looking at, not for the rare row that manages all three at
- * once, and an axis nothing is ticked on narrows nothing. Nothing here reaches
- * the database, so a rule can be checked against a row without one.
+ * **The status narrows as an OR of the ticked states**, and nothing ticked
+ * narrows nothing. Nothing here reaches the database, so a rule can be checked
+ * against a row without one.
  *
- * **The shortcomings are the ones a row can be built with**, which is a wider
- * line than "derived from the content": two of them come from the pin ledger and
- * one from the upstream cache. What decides it is whether the listing query can
- * reach it — a publish the gate would stop has to be visible before the curator
- * walks all the way to the confirmation screen.
+ * **A row says nothing about what its research still lacks.** A research holds
+ * several drafts and versions, and a shortcoming belongs to one of them; a
+ * listing row has no single one to speak for. What would stop a publish is said
+ * by the draft's own confirmation screen (`gate.ts`).
  */
 
 import type { TranslatedText } from "~/content/types"
 import { pageRange } from "~/paging"
 import { PAGE_SIZE, type PageSize } from "~/search/page-size"
 import { DEFAULT_SORT, defaultOrder, type SortKey, type SortOrder } from "~/search/sort"
-
-import type { ContentFlags } from "./flags"
 
 /**
  * Whether anything of this research is out.
@@ -40,31 +35,8 @@ export type AdminStatus = "published" | "unpublished"
 
 export const ADMIN_STATUSES: readonly AdminStatus[] = ["published", "unpublished"]
 
-export interface AdminFlags extends ContentFlags {
-  /** No hum label is pinned, which alone is enough to stop a version publishing. */
-  noHumLabel: boolean
-  /** Some dataset of this research carries no id, which stops a publish just as hard. */
-  noDatasetLabel: boolean
-  /** A pinned JGA accession upstream does not know, or holds against another research. */
-  upstreamMismatch: boolean
-}
-
-export type AdminFlagKey = keyof AdminFlags
-
-export const ADMIN_FLAG_KEYS: readonly AdminFlagKey[] = [
-  "noHumLabel",
-  "noDatasetLabel",
-  "unsettled",
-  "untranslated",
-  "upstreamMismatch",
-]
-
 export function isAdminStatus(value: string | null): value is AdminStatus {
   return value !== null && (ADMIN_STATUSES as readonly string[]).includes(value)
-}
-
-export function isAdminFlagKey(value: string): value is AdminFlagKey {
-  return (ADMIN_FLAG_KEYS as readonly string[]).includes(value)
 }
 
 /** A dataset as the listing names it: by its pinned label, out or not. */
@@ -86,7 +58,6 @@ export interface AdminResearchRow {
   status: AdminStatus
   publishedVersions: number
   draftCount: number
-  flags: AdminFlags
   /** The most recent change to the research, any of its versions or its drafts. */
   updatedAt: string
   /** The release date of the latest version that is out, or `null` while none is. */
@@ -95,9 +66,8 @@ export interface AdminResearchRow {
 
 export interface ListingFilter {
   keyword: string
-  /** Which states to keep. Empty is every state, the way no shortcoming is. */
+  /** Which states to keep. Empty is every state. */
   statuses: readonly AdminStatus[]
-  flags: readonly AdminFlagKey[]
 }
 
 /**
@@ -131,8 +101,7 @@ export function filterResearchRows(
 ): AdminResearchRow[] {
   return rows.filter((row) =>
     matchesKeyword(row, filter.keyword)
-    && (filter.statuses.length === 0 || filter.statuses.includes(row.status))
-    && (filter.flags.length === 0 || filter.flags.some((flag) => row.flags[flag])))
+    && (filter.statuses.length === 0 || filter.statuses.includes(row.status)))
 }
 
 /**

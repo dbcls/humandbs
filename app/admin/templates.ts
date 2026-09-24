@@ -72,6 +72,13 @@ export interface DroppedValue {
   /** The same key by the name the screens call it, which is what a curator reads. */
   keyLabel: string
   value: string
+  /**
+   * The field of the dataset it would have gone in, as a comment's path
+   * (`values.<keyId>`, `experiments.<id>.values.<keyId>`) — where the value is
+   * left as a comment when the dataset is made. Null where the catalog has no
+   * such key, and so the dataset no such field.
+   */
+  at: string | null
 }
 
 /** A dataset to be created: its accession, its content, and what did not fit. */
@@ -151,12 +158,12 @@ export function jgadDatasetSeed(
     ? null
     : ACCESS_TERM_BY_NUMBER.get(branch.dataAccess ?? 0) ?? null
   if (accessType !== null) {
-    take(values, dropped, vocabulary(catalog, ACCESS_TYPE_KEY, "dataset", [accessType]))
+    take(values, dropped, vocabulary(catalog, ACCESS_TYPE_KEY, "dataset", [accessType]), "values")
   }
 
   const label = registration.datasetType === "" ? registration.title : registration.datasetType
   if (label !== "") {
-    take(values, dropped, text(catalog, TYPE_OF_DATA_KEY, "dataset", label, label))
+    take(values, dropped, text(catalog, TYPE_OF_DATA_KEY, "dataset", label, label), "values")
   }
 
   return {
@@ -169,7 +176,7 @@ export function jgadDatasetSeed(
       // when there is no type, but offered to the vocabulary of experimental
       // methods it never matches, and every such dataset would list its own title
       // as a value that did not fit.
-      experiments: [experiment(catalog, dropped, label, registration.datasetType, diseasesOf(branch, catalog, dropped))],
+      experiments: [experiment(catalog, dropped, label, registration.datasetType, diseasesOf(branch, catalog))],
     },
     dropped,
   }
@@ -190,24 +197,30 @@ export function draDatasetSeed(
   const dropped: DroppedValue[] = []
   const values: ValueSlot[] = []
 
-  take(values, dropped, vocabulary(catalog, ACCESS_TYPE_KEY, "dataset", [UNRESTRICTED_TERM]))
+  take(values, dropped, vocabulary(catalog, ACCESS_TYPE_KEY, "dataset", [UNRESTRICTED_TERM]), "values")
   if (submission.title !== "") {
-    take(values, dropped, text(catalog, TYPE_OF_DATA_KEY, "dataset", submission.title, submission.title))
+    take(values, dropped, text(catalog, TYPE_OF_DATA_KEY, "dataset", submission.title, submission.title), "values")
   }
 
-  const diseases = diseasesOf(branch, catalog, dropped)
+  // **The diseases are the application's, the same in every experiment**, and
+  // what did not fit is said in each: every field left unsettled carries the
+  // comment that says what to settle it on.
+  const diseases = diseasesOf(branch, catalog)
   const experiments = submission.groups.map((group) => {
-    const own: ValueSlot[] = [...diseases]
-    take(own, dropped, vocabulary(catalog, METHOD_KEY, "experiment", [group.strategy]))
-    take(own, dropped, vocabulary(catalog, PLATFORM_KEY, "experiment", group.instrumentModels))
+    const id = newId()
+    const at = `experiments.${id}.values`
+    const own: ValueSlot[] = []
+    take(own, dropped, diseases, at)
+    take(own, dropped, vocabulary(catalog, METHOD_KEY, "experiment", [group.strategy]), at)
+    take(own, dropped, vocabulary(catalog, PLATFORM_KEY, "experiment", group.instrumentModels), at)
     const readType = READ_TYPE_TERM.get(group.layout ?? "")
     if (readType !== undefined) {
-      take(own, dropped, vocabulary(catalog, READ_TYPE_KEY, "experiment", [readType]))
+      take(own, dropped, vocabulary(catalog, READ_TYPE_KEY, "experiment", [readType]), at)
     }
     if (group.readLength !== null) {
-      take(own, dropped, number(catalog, READ_LENGTH_KEY, group.readLength))
+      take(own, dropped, number(catalog, READ_LENGTH_KEY, group.readLength), at)
     }
-    return { id: newId(), label: filled(group.strategy), values: own }
+    return { id, label: filled(group.strategy), values: own }
   })
 
   return {
@@ -231,27 +244,22 @@ function experiment(
   label: string,
   /** The assay the registration names, which is what the method is matched on. */
   method: string,
-  diseases: ValueSlot[],
+  diseases: Built,
 ): Experiment {
-  const values = [...diseases]
+  const id = newId()
+  const at = `experiments.${id}.values`
+  const values: ValueSlot[] = []
+  take(values, dropped, diseases, at)
   if (method !== "") {
-    take(values, dropped, vocabulary(catalog, METHOD_KEY, "experiment", [method]))
+    take(values, dropped, vocabulary(catalog, METHOD_KEY, "experiment", [method]), at)
   }
-  return { id: newId(), label: filled(label), values }
+  return { id, label: filled(label), values }
 }
 
 /** The diseases the application names, as terms of the catalog's ICD10 set. */
-function diseasesOf(
-  branch: DsBranchDetail | null,
-  catalog: CatalogWithTerms,
-  dropped: DroppedValue[],
-): ValueSlot[] {
-  if (branch === null) return []
-  const codes = icd10CodesIn(branch.icd10)
-  if (codes.length === 0) return []
-  const values: ValueSlot[] = []
-  take(values, dropped, disease(catalog, codes))
-  return values
+function diseasesOf(branch: DsBranchDetail | null, catalog: CatalogWithTerms): Built {
+  const codes = branch === null ? [] : icd10CodesIn(branch.icd10)
+  return codes.length === 0 ? { slot: null, dropped: [] } : disease(catalog, codes)
 }
 
 /**
@@ -292,9 +300,11 @@ function disease(catalog: CatalogWithTerms, codes: readonly string[]): Built {
   }
 
   const dropped = named(catalog, DISEASE_KEY, missed)
-  if (diseases.length === 0) return { slot: null, dropped }
   return {
-    slot: { keyId: key.id, value: { kind: "disease", diseases: filled(diseases) } },
+    slot: {
+      keyId: key.id,
+      value: { kind: "disease", diseases: diseases.length === 0 ? { state: "unknown" } : filled(diseases) },
+    },
     dropped,
   }
 }
@@ -306,9 +316,14 @@ type Built
   = | { slot: ValueSlot, dropped: DroppedValue[] }
     | { slot: null, dropped: DroppedValue[] }
 
-function take(values: ValueSlot[], dropped: DroppedValue[], built: Built): void {
+/**
+ * Puts a built slot among `values`, which stand at `base` in the dataset, and
+ * notes what did not fit against the field it would have gone in.
+ */
+function take(values: ValueSlot[], dropped: DroppedValue[], built: Built, base: string): void {
   if (built.slot !== null) values.push(built.slot)
-  dropped.push(...built.dropped)
+  const at = built.slot === null ? null : `${base}.${built.slot.keyId}`
+  dropped.push(...built.dropped.map((value) => ({ ...value, at })))
 }
 
 function keyOf(
@@ -364,11 +379,17 @@ function vocabulary(
   const { found, missed } = matchTerms(catalog.terms, key.vocabularySetId, values)
   const dropped = named(catalog, code, missed)
   const chosen = key.multiple ? found : found.slice(0, 1)
-  if (chosen.length === 0) return { slot: null, dropped }
+  if (chosen.length === 0 && dropped.length === 0) return { slot: null, dropped }
+  // **Stated but matching no term, the field is made unsettled** rather than
+  // left out: upstream did say something there, and the value it said is left
+  // on the field as a comment for the curator to choose by.
   return {
     slot: {
       keyId: key.id,
-      value: { kind: "vocabulary", termIds: filled(chosen.map((term) => term.id)) },
+      value: {
+        kind: "vocabulary",
+        termIds: chosen.length === 0 ? { state: "unknown" } : filled(chosen.map((term) => term.id)),
+      },
     },
     dropped,
   }
@@ -401,7 +422,7 @@ function named(catalog: CatalogWithTerms, keyCode: string, values: readonly stri
   // A key whose name has not been written yet is called by its code.
   const labelJa = catalog.keys.find((key) => key.code === keyCode)?.labelJa ?? ""
   const keyLabel = labelJa === "" ? keyCode : labelJa
-  return values.filter((value) => value !== "").map((value) => ({ keyCode, keyLabel, value }))
+  return values.filter((value) => value !== "").map((value) => ({ keyCode, keyLabel, value, at: null }))
 }
 
 /**

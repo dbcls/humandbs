@@ -8,10 +8,10 @@
  * Two arrays are identified rather than positional. A value slot is identified
  * by the catalog key it is under, an experiment by its own identity, and both
  * are spelled the way a comment anchors to them. **The file selection is
- * compared even though no screen shows it yet**: the form carries it through
- * untouched, and a difference the diff hid would be a difference the author
- * could not take.
+ * compared as a set** (`files/selection.ts`).
  */
+
+import { inBoxOrder } from "~/files/selection"
 
 import {
   diff,
@@ -97,7 +97,8 @@ export function diffDatasetInput(
   into.when(base.releaseDate === other.releaseDate, "releaseDate")
   elements(into, "values", base.values, other.values, byKeyId, value)
   elements(into, "experiments", base.experiments, other.experiments, byId, experiment)
-  into.when(sameStrings(base.fileSelection, other.fileSelection), "fileSelection")
+  // The selection is a set: the same files chosen in another order are the same selection.
+  into.when(sameStrings(inBoxOrder(base.fileSelection), inBoxOrder(other.fileSelection)), "fileSelection")
 
   return into.paths
 }

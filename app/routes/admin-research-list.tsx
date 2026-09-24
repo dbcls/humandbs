@@ -1,11 +1,6 @@
 import { Form, Link } from "react-router"
 
-import {
-  ADMIN_FLAG_KEYS,
-  ADMIN_STATUSES,
-  type AdminFlagKey,
-  type AdminStatus,
-} from "~/admin/listing"
+import { ADMIN_STATUSES, type AdminStatus } from "~/admin/listing"
 import { createResearchAction, researchListPage } from "~/admin/pages.server"
 import {
   adminResearchListPath,
@@ -42,20 +37,19 @@ import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 import { DEFAULT_SORT, defaultOrder, SORT_KEYS } from "~/search/sort"
 
 import type { Route } from "./+types/admin-research-list"
-import { Flag } from "~/components/flags"
 
 /** How many dataset ids a row opens with before it counts the rest. */
 const SHOWN_DATASETS = 3
 
 /**
  * The way into everything a curator works on: every research, published or
- * not, with what it is still missing.
+ * not.
  *
  * The box is a direct lookup rather than the public search — the full-text
  * index only holds what is published, and this listing exists mostly for what
- * is not. The three shortcomings beside it are derived from the content by the
- * same function the rest of the portal uses, so a filter cannot disagree with
- * what the editing screen shows.
+ * is not. **A row says nothing about what is missing**: a research holds several
+ * versions and drafts, and a shortcoming belongs to one of them, which the
+ * draft's confirmation screen names.
  *
  * **It is presented the way the public listings are** (`components/search.tsx`):
  * the conditions in a pane at the left, the ordering and the page size over the
@@ -98,7 +92,6 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.statuses.length
-    + view.flags.length
 
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
@@ -131,8 +124,8 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}
-            // The box is never alone in the pane here: a status and five
-            // shortcomings stand under it whatever the reader has asked for.
+            // The box is never alone in the pane here: the status stands under
+            // it whatever the reader has asked for.
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
             tools={tools}
@@ -140,7 +133,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
             panel={null}
           >
             <Stack gap="normal">
-              {/* 10 列あって窓に入り切らないので、行がどれの話かを言う列だけ残す。
+              {/* 9 列あって窓に入り切らないので、行がどれの話かを言う列だけ残す。
                   2 列目以降を固定できるのは 1 列目が mark のときだけ (`page.tsx`
                   の `STUCK`)。 */}
               <Table
@@ -153,7 +146,6 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                   t.columns.versions,
                   t.columns.drafts,
                   t.columns.files,
-                  t.columns.incomplete,
                   t.columns.published,
                   t.columns.updated,
                 ]}
@@ -237,21 +229,6 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                         ? <span className="text-ink-muted">{t.filesUnavailable}</span>
                         : messages.admin.files.summary(row.box.count, formatSize(row.box.bytes))}
                     </Td>
-                    <Td>
-                      {/* **Each badge is a flex item, not a word on a line.**
-                          Left on a line it shares the baseline of the columns
-                          beside it, and 12px type on a 14px baseline hangs 2px
-                          below them — a column of badges that reads as having
-                          slipped. Out of the line, the box starts where the
-                          cell's own text would. */}
-                      <ul className="flex flex-col gap-1">
-                        {ADMIN_FLAG_KEYS.filter((flag) => row.flags[flag]).map((flag) => (
-                          <li key={flag} className="flex">
-                            <Flag kind="short">{t.flags[flag]}</Flag>
-                          </li>
-                        ))}
-                      </ul>
-                    </Td>
                     <Td nowrap>{row.publishedOn}</Td>
                     <Td nowrap>{row.updatedOn}</Td>
                   </tr>
@@ -305,9 +282,6 @@ function Filters({ view, locale }: ViewProps) {
         {view.statuses.map((status) => (
           <input key={status} type="hidden" name="status" value={status} />
         ))}
-        {view.flags.map((flag) => (
-          <input key={flag} type="hidden" name="flag" value={flag} />
-        ))}
         <Presented view={view} />
       </SearchBox>
 
@@ -325,18 +299,6 @@ function Filters({ view, locale }: ViewProps) {
                 value={status}
                 checked={view.statuses.includes(status)}
                 count={view.counts.statuses[status]}
-              />
-            ))}
-          </RefineAxis>
-          <RefineAxis label={t.incomplete}>
-            {ADMIN_FLAG_KEYS.map((flag: AdminFlagKey) => (
-              <Checkbox
-                key={flag}
-                label={t.flags[flag]}
-                name="flag"
-                value={flag}
-                checked={view.flags.includes(flag)}
-                count={view.counts.flags[flag]}
               />
             ))}
           </RefineAxis>
@@ -379,7 +341,6 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Listin
   return href(locale, adminResearchListPath() + listingQuery({
     keyword: view.keyword,
     statuses: view.statuses,
-    flags: view.flags,
     page: 1,
     sort: view.sort === DEFAULT_SORT ? null : view.sort,
     order: view.order === defaultOrder(view.sort) ? null : view.order,

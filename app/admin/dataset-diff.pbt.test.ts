@@ -20,6 +20,20 @@ describe("the conflict diff over a dataset", () => {
     }))
   })
 
+  it("reads the file selection as a set: the same files in another order are no change", () => {
+    fc.assert(fc.property(datasetContentInputArb, (input) => {
+      const turned = { ...input, fileSelection: input.fileSelection.toReversed() }
+      expect(diffDatasetInput(input, turned)).toEqual([])
+    }))
+  })
+
+  it("reports the file selection when one side chose a file the other did not", () => {
+    fc.assert(fc.property(datasetContentInputArb, (input) => {
+      const more = { ...input, fileSelection: [...input.fileSelection, "\u0000added"] }
+      expect(diffDatasetInput(input, more)).toContain("fileSelection")
+    }))
+  })
+
   it("reports nothing between a version and itself", () => {
     fc.assert(fc.property(datasetContentInputArb, (input) => {
       expect(diffDatasetInput(input, input)).toEqual([])

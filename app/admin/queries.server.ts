@@ -29,7 +29,6 @@ import {
   contentKey,
   dataset,
   draftDatasetEntry,
-  humAccession,
   labelPin,
   research,
   researchDraft,
@@ -40,9 +39,7 @@ import {
 import { icd10Code } from "~/icd10/codes"
 
 import { changedDatasetFromPublished } from "./changes"
-import { contentFlags, type ContentFlags } from "./flags"
 import { draftDatasets } from "./datasets"
-import { CHECKED_ACCESSION } from "./gate"
 import { isPortalIssuedId } from "./labels"
 import type { AdminDatasetRef, AdminResearchRow, AdminStatus } from "./listing"
 
@@ -54,28 +51,12 @@ function statusOf(published: number): AdminStatus {
   return published > 0 ? "published" : "unpublished"
 }
 
-/**
- * The flags of the content somebody would be working on. A research with drafts
- * is judged by them — that is where the work is — and one with none by its
- * latest published version.
- */
-function flagsOf(drafts: readonly ResearchContent[], published: ResearchContent | null): ContentFlags {
-  const contents = drafts.length > 0 ? drafts : published === null ? [] : [published]
-  const each = contents.map(contentFlags)
-  return {
-    unsettled: each.some((flags) => flags.unsettled),
-    untranslated: each.some((flags) => flags.untranslated),
-  }
-}
-
 /** Every research, with what the listing needs to show and to filter on. */
 export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow[]> {
   const [
     researches,
     humLabels,
     datasetLabels,
-    datasets,
-    upstreamRows,
     versions,
     snapshots,
     drafts,
@@ -91,10 +72,6 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       .from(labelPin)
       .innerJoin(dataset, eq(dataset.id, labelPin.datasetId))
       .where(and(eq(labelPin.kind, "dataset"), eq(labelPin.isPrimary, true))),
-    db.select({ researchId: dataset.researchId }).from(dataset),
-    db
-      .select({ accession: humAccession.accession, humLabel: humAccession.humLabel })
-      .from(humAccession),
     db
       .select({
         researchId: researchVersion.researchId,
@@ -129,20 +106,14 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
   const publishedContentOf = new Map(
     snapshots.map((row) => [row.researchId, draftContentOf(row.content)]),
   )
-  const upstreamHumLabelOf = new Map(upstreamRows.map((row) => [row.accession, row.humLabel]))
 
   const grouped = new Map(researches.map((row) => [row.id, {
     published: 0,
     publishedOn: null as string | null,
-    datasets: 0,
     pinned: [] as AdminDatasetRef[],
     drafts: [] as ResearchContent[],
     dates: [row.createdAt],
   }]))
-  for (const row of datasets) {
-    const held = grouped.get(row.researchId)
-    if (held !== undefined) held.datasets += 1
-  }
   for (const row of versions) {
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
@@ -181,7 +152,6 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     const shown = publishedContent ?? draftContents[0] ?? null
     const humLabel = humLabelOf.get(row.id) ?? null
     const pinned = (held?.pinned ?? []).toSorted((a, b) => a.label < b.label ? -1 : a.label > b.label ? 1 : 0)
-    const labels = pinned.map((entry) => entry.label)
 
     return {
       researchId: row.id,
@@ -192,33 +162,10 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       status: statusOf(publishedCount),
       publishedVersions: publishedCount,
       draftCount: draftContents.length,
-      flags: {
-        noHumLabel: humLabel === null,
-        noDatasetLabel: labels.length < (held?.datasets ?? 0),
-        upstreamMismatch: disagreesWithUpstream(humLabel, labels, upstreamHumLabelOf),
-        ...flagsOf(draftContents, publishedContent),
-      },
       updatedAt: latest(held?.dates ?? [row.createdAt]),
       publishedOn: held?.publishedOn ?? null,
     }
   })
-}
-
-/**
- * The same comparison the publish gate makes, over every dataset of a research
- * rather than the ones one version lists. A research with no hum label of its
- * own has nothing to compare against, so it stays out — its own missing label is
- * already the finding.
- */
-function disagreesWithUpstream(
-  humLabel: string | null,
-  labels: readonly string[],
-  upstreamHumLabelOf: ReadonlyMap<string, string>,
-): boolean {
-  if (humLabel === null) return false
-  return labels
-    .filter((label) => CHECKED_ACCESSION.test(label))
-    .some((label) => upstreamHumLabelOf.get(label) !== humLabel)
 }
 
 const EMPTY_TITLE: TranslatedText = {
@@ -293,7 +240,6 @@ export interface AdminVersionRow {
 export interface AdminDraftRow {
   id: string
   revision: number
-  flags: ContentFlags
   createdAt: string
   updatedAt: string
 }
@@ -337,7 +283,6 @@ export async function adminResearch(
       .select({
         id: researchDraft.id,
         revision: researchDraft.revision,
-        content: researchDraft.content,
         replacesVersionId: researchDraft.replacesVersionId,
         createdAt: researchDraft.createdAt,
         updatedAt: researchDraft.updatedAt,
@@ -351,7 +296,6 @@ export async function adminResearch(
   const rows = drafts.map((row) => ({
     id: row.id,
     revision: row.revision,
-    flags: contentFlags(row.content),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     updates: row.replacesVersionId,

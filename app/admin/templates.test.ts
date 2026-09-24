@@ -180,27 +180,45 @@ describe("the dataset a JGA registration seeds", () => {
       .toEqual([["set-disease/E110"]])
   })
 
-  it("names a disease the catalog has no term for instead of writing it", () => {
+  it("makes the field unsettled for a disease the catalog has no term for, and names the value against that field", () => {
     const unknown = { ...branch, icd10: "Z999" }
     const seed = jgadDatasetSeed(registration, unknown, catalogFixture)
+    const experiment = seed.content.experiments[0]
 
-    expect(diseasesUnder(seed.content.experiments[0]?.values ?? [], DISEASE_KEY)).toEqual([])
-    expect(seed.dropped).toContainEqual({ keyCode: "disease", keyLabel: "disease", value: "Z999" })
+    expect(diseasesUnder(experiment?.values ?? [], DISEASE_KEY)).toEqual([])
+    expect(valueUnder(experiment?.values ?? [], DISEASE_KEY)).toEqual({ kind: "disease", diseases: { state: "unknown" } })
+    expect(seed.dropped).toContainEqual({
+      keyCode: "disease",
+      keyLabel: "disease",
+      value: "Z999",
+      at: `experiments.${experiment?.id}.values.${DISEASE_KEY}`,
+    })
   })
 
-  it("names an assay the catalog has no term for instead of minting one", () => {
+  it("makes the field unsettled for an assay the catalog has no term for, instead of minting one", () => {
     const seed = jgadDatasetSeed(
       { ...registration, datasetType: "Exome sequencing" },
       branch,
       catalogFixture,
     )
+    const experiment = seed.content.experiments[0]
 
-    expect(termsUnder(seed.content.experiments[0]?.values ?? [], METHOD_KEY)).toEqual([])
+    expect(termsUnder(experiment?.values ?? [], METHOD_KEY)).toEqual([])
+    expect(valueUnder(experiment?.values ?? [], METHOD_KEY)).toEqual({ kind: "vocabulary", termIds: { state: "unknown" } })
     expect(seed.dropped).toContainEqual({
       keyCode: "experimental-method",
       keyLabel: "experimental-method",
       value: "Exome sequencing",
+      at: `experiments.${experiment?.id}.values.${METHOD_KEY}`,
     })
+  })
+
+  it("names a value against no field where the catalog has no key for it", () => {
+    const catalog = { ...catalogFixture, keys: catalogFixture.keys.filter((key) => key.code !== "experimental-method") }
+    const seed = jgadDatasetSeed({ ...registration, datasetType: "Exome sequencing" }, branch, catalog)
+
+    expect(valueUnder(seed.content.experiments[0]?.values ?? [], METHOD_KEY)).toBeUndefined()
+    expect(seed.dropped).toContainEqual(expect.objectContaining({ value: "Exome sequencing", at: null }))
   })
 
   it("does not offer the title to the methods when there is no assay: a title never names one", () => {
@@ -217,7 +235,7 @@ describe("the dataset a JGA registration seeds", () => {
     }
     const seed = jgadDatasetSeed({ ...registration, datasetType: "Exome sequencing" }, branch, catalog)
 
-    expect(seed.dropped).toContainEqual({ keyCode: "experimental-method", keyLabel: "実験方法", value: "Exome sequencing" })
+    expect(seed.dropped).toContainEqual(expect.objectContaining({ keyCode: "experimental-method", keyLabel: "実験方法", value: "Exome sequencing" }))
   })
 
   it("writes the assay as the type of data as well, which is what a reader sees", () => {
@@ -265,9 +283,16 @@ describe("the dataset a DRA submission seeds", () => {
   it("writes the instrument models the catalog knows and names the rest", () => {
     const seed = draDatasetSeed(submission, null, catalogFixture)
 
-    expect(termsUnder(seed.content.experiments[0]?.values ?? [], PLATFORM_KEY))
+    const experiment = seed.content.experiments[0]
+    // The ones it knows are the value; the rest are named against the same field.
+    expect(termsUnder(experiment?.values ?? [], PLATFORM_KEY))
       .toEqual(["set-platform/illumina-hiseq-2500"])
-    expect(seed.dropped).toContainEqual({ keyCode: "platform", keyLabel: "platform", value: "DNBSEQ-T7" })
+    expect(seed.dropped).toContainEqual({
+      keyCode: "platform",
+      keyLabel: "platform",
+      value: "DNBSEQ-T7",
+      at: `experiments.${experiment?.id}.values.${PLATFORM_KEY}`,
+    })
   })
 
   it("writes the layout as the catalog spells it rather than as the archive does", () => {

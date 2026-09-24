@@ -2,14 +2,15 @@ import { useState } from "react"
 import { useFetcher } from "react-router"
 
 import type { BranchStanding } from "~/admin/listing"
+import type { DroppedValue } from "~/admin/templates"
 import type { DatasetChoiceView, SeededFieldView, UpstreamBranchView, UpstreamChoiceView } from "~/admin/templates.server"
-import { adminExperimentFieldsPath, adminUpstreamBranchPath } from "~/admin/urls"
+import { adminUpstreamBranchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, jgaEntryUrl } from "~/public/urls"
 import type { loader as branchLoader } from "~/routes/admin-upstream-branch"
 
-import { ButtonLink, Chevron, Clamped, Dialog, Excerpt, Stack, Stated } from "./base"
+import { Clamped, Dialog, Excerpt, Note, Stack, Stated } from "./base"
 import { LanguageMark } from "./fields"
 import { Submit } from "./form"
 import { Icon, type IconName } from "./icons"
@@ -72,7 +73,7 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
   const free = choice.datasets.filter((entry) => entry.heldBy === null)
 
   return (
-    <Stack gap="block">
+    <Stack gap="normal">
       {choice.fields.length > 0 && (
         <Section title={t.fields}>
           {/* **The two languages stand one above the other.** Side by side
@@ -113,56 +114,77 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
 
       {/* **Nothing is ticked.** What the accession names is made, less what a
           research already holds, which the list says beside it; the form
-          carries the rest as it stands (`BranchDatasets`). */}
-      <BranchDatasets locale={locale} datasets={choice.datasets} sayHeld={submit !== null} bare />
-      {submit !== null && free.map((entry) => (
-        <input key={entry.accession} type="hidden" name="accession" value={entry.accession} />
-      ))}
+          carries the rest as it stands (`BranchDatasets`). **What was found
+          and the press that makes it stand on one line** — the press is the
+          answer to that one row, not a step of its own under it. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <BranchDatasets locale={locale} datasets={choice.datasets} sayHeld={submit !== null} bare />
+        {submit !== null && (
+          <>
+            {free.map((entry) => (
+              <input key={entry.accession} type="hidden" name="accession" value={entry.accession} />
+            ))}
+            {/* **The mark says what the press does, and this one makes
+                something** (`docs/ui.md` の「押せるもの」). */}
+            {/* **Row height**: it is pressed for the one row it stands in,
+                beside that row's words, and at full height it would stand
+                over the row it belongs to (`BUTTON_SIZE` の `row`). */}
+            <Submit
+              size="row"
+              icon={<Icon name="plus" />}
+              disabled={free.length === 0 && choice.fields.length === 0 ? t.allHeld : false}
+            >
+              {submit}
+            </Submit>
+          </>
+        )}
+      </div>
+
+      {/* Said only where something will be made: a row the research
+          already holds makes nothing, and its values go nowhere. */}
+      {(submit === null || free.length > 0) && <DroppedNote locale={locale} dropped={choice.dropped} />}
 
       {choice.unreachable.length > 0 && (
         <p className="text-ink-muted text-sm">{t.unreachable(choice.unreachable.length)}</p>
       )}
-
-      {choice.dropped.length > 0 && (
-        <Section title={t.dropped} note={t.droppedNote}>
-          <Stack gap="tight">
-            {/* **The key is called by its name**, the one the form and the
-                catalog screen give it; its code is how the content addresses
-                it, and a curator reading this list does not know it by that. */}
-            <ul className="flex flex-col gap-1 text-sm">
-              {choice.dropped.map((value) => (
-                <li key={`${value.keyCode} ${value.value}`} className="flex flex-wrap gap-2">
-                  <span className="text-ink-muted">{value.keyLabel}</span>
-                  <span>{value.value}</span>
-                </li>
-              ))}
-            </ul>
-            <div>
-              <ButtonLink size="row" to={href(locale, adminExperimentFieldsPath())}>
-                {t.openCatalog}
-                <Chevron dir="right" />
-              </ButtonLink>
-            </div>
-          </Stack>
-        </Section>
-      )}
-
-      {submit !== null && (
-        <div>
-          {/* **The mark says what the press does, and this one makes
-              something** — a draft on one screen, a dataset on the other. The
-              way in from the application is what carries `download`
-              (`docs/ui.md` の「押せるもの」). */}
-          <Submit
-            variant="primary"
-            icon={<Icon name="plus" />}
-            disabled={free.length === 0 && choice.fields.length === 0}
-          >
-            {submit}
-          </Submit>
-        </div>
-      )}
     </Stack>
+  )
+}
+
+/**
+ * What upstream stated that has no choice to stand on, said in one sentence
+ * before it is made. **Nothing to do here and nowhere to go**: the field is
+ * made unsettled and the value is left on it as a comment, so it is settled in
+ * the dataset's own form, where the choices are (`docs/editing.md` の「下書きを
+ * 外から作る」).
+ */
+export function DroppedNote({ locale, dropped }: { locale: Locale, dropped: readonly DroppedValue[] }) {
+  const t = messagesFor(locale).admin.templates
+  if (dropped.length === 0) return null
+  return (
+    // **One box, and its first line names what it lists.** A sentence over a
+    // list on the same ground reads as a remark beside it rather than as the
+    // list's caption; boxed, the name, the rows and what becomes of them are
+    // one thing, and standing under the found row it is about that row. What is
+    // lacking wears `warning` (the choice is missing, nothing is refused).
+    // As wide as what it holds: a row of name and value stretched across the
+    // section leaves the value far from its name.
+    <div className="w-fit max-w-full">
+      <Note kind="warning">
+        <Stack gap="tight">
+          <p className="font-semibold text-ink">{t.droppedHeading(dropped.length)}</p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-ink">
+            {dropped.map((value) => (
+              <div key={`${value.keyCode} ${value.value}`} className="contents">
+                <dt className="text-ink-muted">{value.keyLabel}</dt>
+                <dd>{value.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="text-ink-muted">{t.droppedSaid}</p>
+        </Stack>
+      </Note>
+    </div>
   )
 }
 
@@ -320,7 +342,7 @@ export function BranchDialog({ applicationId, locale }: { applicationId: string,
  * with the way to that research: it is left out when a research is made from
  * the branch, and a reader looking for it finds where it is.
  */
-export function BranchDatasets({ locale, datasets, sayHeld = false }: {
+export function BranchDatasets({ locale, datasets, sayHeld = false, bare = false }: {
   locale: Locale
   datasets: readonly DatasetChoiceView[]
   /**

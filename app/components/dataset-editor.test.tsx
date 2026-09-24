@@ -179,9 +179,9 @@ function view(
     datasetId: "00000000-0000-0000-0000-000000000003",
     humLabel: "hum0001",
     steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
-    datasetLabel: portalIssued ? "hum0001-NHA001" : "JGAD000001",
+    datasetLabel: portalIssued ? "NHA000001" : "JGAD000001",
     datasetPinId: "00000000-0000-0000-0000-000000000004",
-    datasetIdSuggestion: null,
+    nextNhaId: null,
     published: true,
     updating: null,
     portalIssued,
@@ -528,16 +528,23 @@ describe("the dataset editing form", () => {
   })
 
   it("offers a file selection for a dataset the portal issued the id for", () => {
-    expect(render(view(emptyDatasetContent(), true))).toContain("この研究にアップロードしたファイルから選ぶ")
+    expect(render(view(emptyDatasetContent(), true))).toContain("ファイルの紐づけ")
   })
 
   it("does not offer a file selection for a dataset an archive issued the id for", () => {
-    expect(render(view(emptyDatasetContent(), false))).not.toContain("この研究の箱にあるファイル")
+    const html = render(view(emptyDatasetContent(), false))
+    expect(html).not.toContain("ファイルの紐づけ")
+    expect(html).not.toContain(`/admin/research/${RESEARCH_ID}/files`)
+  })
+
+  it("leads to the research's files screen in a new tab from the files section", () => {
+    const html = render(view(emptyDatasetContent(), true))
+    expect(html).toMatch(new RegExp(`href="/admin/research/${RESEARCH_ID}/files"[^>]*target="_blank"`))
   })
 })
 
 describe("what the form carries but does not show", () => {
-  it("keeps a file selection it has no screen for", () => {
+  it("carries the file selection into the form", () => {
     const input: DatasetContentInput = datasetContentInput({
       ...emptyDatasetContent(),
       fileSelection: ["hum0001.v1.zip"],
@@ -554,7 +561,7 @@ describe("the head", () => {
   it("names the screen \"データセットの編集\", the dataset's own label beside it, and the way back to the list", () => {
     const html = render(view())
     expect(html).toContain("データセットの編集")
-    expect(html).toContain("hum0001-NHA001")
+    expect(html).toContain("NHA000001")
     expect(html).toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}/dataset"`)
     expect(html).toContain("データセットへ")
   })
@@ -562,6 +569,19 @@ describe("the head", () => {
   it("names the identifier \"ID 未発行\" while the dataset has none yet", () => {
     const html = render({ ...view(), datasetLabel: null, datasetPinId: null })
     expect(html).toContain("ID 未発行")
+  })
+
+  it("offers the box for the id while the dataset has none, and proposes nothing into it", () => {
+    const html = render({ ...view(), datasetLabel: null, datasetPinId: null, nextNhaId: "NHA000003" })
+    expect(html).toMatch(/<input[^>]*aria-label="データセット ID"/)
+    expect(html).toContain("NHA ID の発行")
+    expect(html).not.toContain("NHA000003")
+  })
+
+  it("offers neither once the dataset has an id", () => {
+    const html = render(view())
+    expect(html).not.toContain("NHA ID の発行")
+    expect(html).not.toContain("value=\"issue\"")
   })
 
   it("wears the version it updates as a badge beside the identifier", () => {
@@ -733,13 +753,25 @@ describe("the head of the dataset's form", () => {
     expect(head).toContain("JGAD000001")
     expect(head).toContain("公開日")
     expect(head).toContain("更新日")
-    expect(head).toContain("その accession 自体の公開日と更新日を自動で表示する。")
+    expect(head).toContain("外部アーカイブがその accession に持つ日付を表示する。")
     expect(head).not.toContain("type=\"date\"")
   })
 
-  it("asks for the release date of a portal-issued id, in the head", () => {
+  it("asks for no release date of a portal-issued id — the publish dates it — and says so", () => {
     const head = render(view()).split("role=\"tablist\"")[0] ?? ""
-    expect(head).toContain("type=\"date\"")
+    expect(head).not.toContain("type=\"date\"")
+    expect(head).toContain("公開日")
+    expect(head).toContain("未公開")
+    expect(head).toContain("初めて公開したバージョンの公開日が自動で入る")
+  })
+
+  it("stands the id's box and its buttons at the row's height, among the facts of the line", () => {
+    const head = render({ ...view(), datasetLabel: null, datasetPinId: null }).split("role=\"tablist\"")[0] ?? ""
+    expect(head).toMatch(/<input[^>]*aria-label="データセット ID"[^>]*class="[^"]*\bmin-h-6\b/)
+    const buttons = [...head.matchAll(/<button[^>]*class="([^"]*)"[^>]*>[\s\S]*?<\/button>/g)]
+      .filter((one) => /割り当て|NHA ID の発行/.test(one[0]))
+    expect(buttons).toHaveLength(2)
+    for (const one of buttons) expect(one[1]).toMatch(/\bmin-h-6\b/)
   })
 
   it("names the experiments once — by the section, not again by the field", () => {
@@ -834,6 +866,8 @@ describe("the parts of an experiment's card", () => {
     const headings = [...card.matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((one) => one[1])
     expect(headings).toEqual(["解析手法", "項目", "項目の追加"])
     expect(card).toContain("項目はまだありません。")
+    // The heading 「解析手法」 names the one box under it; no second name over the box.
+    expect(card).not.toContain("表示ラベル")
   })
 })
 

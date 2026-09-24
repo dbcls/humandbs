@@ -16,6 +16,7 @@ import {
   publicPrefix,
 } from "./box"
 import { today } from "~/dates"
+import { emptyDatasetContent } from "~/content/empty"
 
 import {
   commonFilesAction,
@@ -153,6 +154,60 @@ describe("the box screen", () => {
 
     expect(view.rows?.map((row) => [row.name, row.isPublic]))
       .toEqual([["closed.zip", false], ["open.zip", true]])
+  })
+
+  describe("the datasets that select a file", () => {
+    async function publishedDataset(label: string, fileSelection: string[], of = researchId): Promise<void> {
+      await db.insert(s.searchDoc).values({
+        targetType: "dataset",
+        targetId: crypto.randomUUID(),
+        researchId: of,
+        humLabel,
+        datasetLabel: label,
+        content: { ...emptyDatasetContent(), fileSelection },
+        title: "",
+        textJa: "",
+        textEn: "",
+      })
+    }
+
+    it("names every published dataset that selects each file, in label order", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}a.zip`)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}c.zip`)
+      await publishedDataset("NHA000002", ["a.zip", "b.zip"])
+      await publishedDataset("NHA000001", ["a.zip"])
+
+      const view = await filesPage(get(token), JA, researchId)
+
+      expect(view.selectedBy).toEqual({ "a.zip": ["NHA000001", "NHA000002"], "b.zip": ["NHA000002"] })
+    })
+
+    it("names only the files on the page shown, and none that the box does not hold", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+      await publishedDataset("NHA000001", ["a.zip", "b.zip", "gone.zip"])
+
+      const view = await filesPage(get(token, "?q=b"), JA, researchId)
+
+      expect(view.selectedBy).toEqual({ "b.zip": ["NHA000001"] })
+    })
+
+    it("does not read another research's datasets", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      const other = only(await db.insert(s.research).values({}).returning({ id: s.research.id })).id
+      await publishedDataset("NHA000009", ["a.zip"], other)
+
+      const view = await filesPage(get(token), JA, researchId)
+
+      expect(view.selectedBy).toEqual({})
+    })
   })
 
   it("counts the whole box rather than the page it shows", async () => {

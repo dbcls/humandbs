@@ -139,6 +139,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                     locale={locale}
                     rows={view.rows}
                     humLabel={view.humLabel}
+                    selectedBy={view.selectedBy}
                     whenEmpty={inForce === 0 ? t.empty : t.noMatch}
                   />
                 </RefinableList>

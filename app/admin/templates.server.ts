@@ -508,7 +508,7 @@ export async function upstreamBranchAction(
       content: researchContentFrom(read.branch),
       datasets: read.seeds
         .filter((seed) => !held.has(seed.label))
-        .map((seed) => ({ label: seed.label, content: seed.content })),
+        .map((seed) => ({ label: seed.label, content: seed.content, dropped: seed.dropped })),
     },
     actorOf(actor),
   )
@@ -634,7 +634,7 @@ export async function upstreamDatasetAction(
   const outcome = await addDatasetsFromUpstream(
     db,
     { draftId, revision },
-    { researchId, datasets: seeds.map((seed) => ({ label: seed.label, content: seed.content })) },
+    { researchId, datasets: seeds.map((seed) => ({ label: seed.label, content: seed.content, dropped: seed.dropped })) },
     actorOf(actor),
   )
   if (outcome.status === "gone") notFound()
@@ -757,7 +757,7 @@ function accessionsIn(form: FormData): Set<string> {
 function chosen(seeds: readonly DatasetSeed[], wanted: ReadonlySet<string>): SeededDataset[] {
   return seeds
     .filter((seed) => wanted.has(seed.label))
-    .map((seed) => ({ label: seed.label, content: seed.content }))
+    .map((seed) => ({ label: seed.label, content: seed.content, dropped: seed.dropped }))
 }
 
 function readString(form: FormData, name: string): string | null {

@@ -229,6 +229,17 @@ export function jgaEntryUrl(accession: string): string {
 }
 
 /**
+ * Where a submission or a use is applied for. The application system is one
+ * address for both, and **it picks its language from `lang`, not from the
+ * browser**, so an English page has to ask for English or its reader lands on
+ * the Japanese form.
+ */
+export function applicationUrl(locale: Locale): string {
+  const base = "https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
+  return locale === "en" ? `${base}?lang=en` : base
+}
+
+/**
  * Where a published file is fetched from.
  *
  * **No route answers this.** The front proxy passes `/files/…` to the store,

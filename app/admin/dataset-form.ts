@@ -142,11 +142,7 @@ export interface ExperimentInput {
 export interface DatasetContentInput {
   /** Empty when there is no date. Only NHA IDs carry one. */
   releaseDate: string
-  /**
-   * Carried through untouched. The screen that selects files is a later layer,
-   * and a form that dropped what it does not show would erase the selection on
-   * the next save.
-   */
+  /** The research's files the dataset's page lists. A set, saved in the box's order (`files/selection.ts`). */
   fileSelection: string[]
   values: ValueInput[]
   experiments: ExperimentInput[]

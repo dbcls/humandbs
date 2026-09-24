@@ -284,25 +284,25 @@ describe("the download list", () => {
     const view = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
 
     expect(view.files.rows).toEqual([
-      { name: "a.zip", size: 1, isPublic: true },
-      { name: "b.zip", size: 2, isPublic: true },
+      { name: "a.zip", size: 1, isPublic: true, datasets: [] },
+      { name: "b.zip", size: 2, isPublic: true, datasets: [] },
     ])
     await clearPrefix(PUBLIC_BUCKET, publicPrefix("hum7999"))
   })
 
-  it("cuts at a hundred names and says how many pages there are", async () => {
+  it("cuts at twenty names and says how many pages there are", async () => {
     const researchId = await createResearch(HUM)
     await publish(researchId, 1, [])
     await rebuildSearchDocs(db)
-    for (let at = 0; at < 101; at += 1) {
+    for (let at = 0; at < 21; at += 1) {
       await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${String(at).padStart(4, "0")}.zip`)
     }
 
     const first = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
     const second = await researchPage({ ...ja, humId: HUM, wanted: "latest", filePage: 2 })
 
-    expect(first.files.rows).toHaveLength(100)
-    expect(first.files.total).toBe(101)
+    expect(first.files.rows).toHaveLength(20)
+    expect(first.files.total).toBe(21)
     expect(first.files.pageCount).toBe(2)
     expect(second.files.rows).toHaveLength(1)
   })

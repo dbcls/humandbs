@@ -179,7 +179,6 @@ interface ListingPresentation {
 
 export interface ListingQuery extends ListingPresentation {
   statuses: readonly string[]
-  flags: readonly string[]
 }
 
 /** The listing of approval branches narrows by one axis of its own. */
@@ -214,7 +213,7 @@ function listingAddress(
 }
 
 export function listingQuery(query: ListingQuery): string {
-  return listingAddress(query, { status: query.statuses, flag: query.flags })
+  return listingAddress(query, { status: query.statuses })
 }
 
 export function branchListingQuery(query: BranchListingQuery): string {

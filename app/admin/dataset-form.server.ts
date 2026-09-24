@@ -28,6 +28,7 @@ import type {
   ValueSlot,
 } from "~/content/types"
 import { convert } from "~/content/units"
+import { inBoxOrder } from "~/files/selection"
 
 import {
   highBelowValue,
@@ -239,7 +240,7 @@ export function datasetContentOf(input: DatasetContentInput, units: CanonicalUni
 
   return {
     releaseDate: input.releaseDate === "" ? null : input.releaseDate,
-    fileSelection: [...input.fileSelection],
+    fileSelection: inBoxOrder(input.fileSelection),
     values,
     experiments,
   }

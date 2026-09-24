@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { ConflictBand, ItemList, keptOnClose, LanguageMark, SingleField, type Marks, PairField, Section, SlotEditor, StateSwitch, toggledState } from "./fields"
+import { ConflictBand, elementPanelTitle, ItemList, keptOnClose, shortfallsOf, LanguageMark, SingleField, type Marks, PairField, Section, SlotEditor, StateSwitch, toggledState } from "./fields"
 
 /** Rendered inside a router, since the state switch beside the box closes on a move. */
 function render(element: React.ReactNode): string {
@@ -199,7 +199,6 @@ describe("a list of repeated elements", () => {
       locale="ja"
       items={items}
       title="助成金情報"
-      summary={(row) => row.name}
       columns={columns}
       onChange={() => { /* nothing changes here */ }}
       makeEmpty={() => ({ id: "new", name: "", number: "" })}
@@ -229,10 +228,77 @@ describe("a list of repeated elements", () => {
     expect(html.match(/未入力/g)?.length).toBe(1)
   })
 
+  it("lowers each row's operations onto the first line of the row's words", () => {
+    const html = list([{ id: "a", name: "課題 A", number: "JP1" }])
+    const operations = /<td[^>]*>(?:(?!<\/td>)[\s\S])*aria-label="編集"/.exec(html)?.[0] ?? ""
+    expect(operations).toMatch(/<td[^>]*class="[^"]*\bpy-0\b/)
+  })
+
   it("stands no table while the list is empty — only the way to add one", () => {
     const html = list([])
     expect(html).not.toContain("<table")
     expect(html).toContain("追加")
+  })
+})
+
+describe("an element's panel", () => {
+  it("is named for the list, 「の追加」 for the element just added and 「の編集」 for one already there", () => {
+    expect(elementPanelTitle("助成金情報", "new", "new", "ja")).toBe("助成金情報の追加")
+    expect(elementPanelTitle("助成金情報", "a", "new", "ja")).toBe("助成金情報の編集")
+    expect(elementPanelTitle("助成金情報", "a", null, "ja")).toBe("助成金情報の編集")
+  })
+
+  it("never takes anything written in the element into its name", () => {
+    fc.assert(fc.property(fc.string(), fc.boolean(), (list, added) => {
+      const title = elementPanelTitle(list, "x", added ? "x" : null, "ja")
+      return title === `${list}の追加` || title === `${list}の編集`
+    }))
+  })
+})
+
+describe("what an element's row says it is short of", () => {
+  const pair = (ja: string, en: string) => ({ ja: { state: "value", text: ja }, en: { state: "value", text: en } })
+
+  it("finds a pair with one language written anywhere in the element, however deep", () => {
+    expect(shortfallsOf({ id: "a", agency: { name: pair("科研費", "") }, title: pair("課題", "Title") }))
+      .toEqual({ untranslated: true, unsettled: false })
+  })
+
+  it("finds a value marked unsettled, in either language or in a single slot", () => {
+    expect(shortfallsOf({ id: "a", title: { ja: { state: "unknown", text: "" }, en: { state: "value", text: "" } } }).unsettled).toBe(true)
+    expect(shortfallsOf({ id: "a", doi: { state: "unknown", text: "" } }).unsettled).toBe(true)
+  })
+
+  it("says nothing of a pair both sides left empty, both written, or one not applicable", () => {
+    expect(shortfallsOf({ id: "a", name: pair("", "") })).toEqual({ untranslated: false, unsettled: false })
+    expect(shortfallsOf({ id: "a", name: pair("名", "Name") })).toEqual({ untranslated: false, unsettled: false })
+    expect(shortfallsOf({ id: "a", name: { ja: { state: "value", text: "名" }, en: { state: "not-applicable", text: "" } } }))
+      .toEqual({ untranslated: false, unsettled: false })
+  })
+
+  it("does not ask links about translation", () => {
+    expect(shortfallsOf({ id: "a", url: { ja: { state: "value", links: [{ url: "https://x" }] }, en: { state: "value", links: [] } } }))
+      .toEqual({ untranslated: false, unsettled: false })
+  })
+
+  it("puts the marks on the row, after the element's name", () => {
+    const html = render(
+      <ItemList
+        path="grants"
+        locale="ja"
+        items={[{ id: "a", title: pair("課題 A", "") }, { id: "b", title: pair("課題 B", "Grant B") }]}
+        title="助成金情報"
+        columns={[{ header: "研究課題名", cell: (row: { id: string, title: { ja: { text: string } } }) => row.title.ja.text }]}
+        onChange={() => { /* nothing changes here */ }}
+        makeEmpty={() => ({ id: "new", title: pair("", "") })}
+      >
+        {() => null}
+      </ItemList>,
+    )
+    const rowA = /<tr[^>]*data-at="grants\.a"[\s\S]*?<\/tr>/.exec(html)?.[0] ?? ""
+    const rowB = /<tr[^>]*data-at="grants\.b"[\s\S]*?<\/tr>/.exec(html)?.[0] ?? ""
+    expect(rowA.indexOf("課題 A")).toBeLessThan(rowA.indexOf("未翻訳"))
+    expect(rowB).not.toContain("未翻訳")
   })
 })
 
@@ -258,7 +324,6 @@ describe("a list's row as a place on the form", () => {
         locale="ja"
         items={[{ id: "a", name: "課題 A" }, { id: "b", name: "課題 B" }]}
         title="助成金情報"
-        summary={(row) => row.name}
         columns={[{ header: "研究課題名", cell: (row: { id: string, name: string }) => row.name }]}
         onChange={() => { /* nothing changes here */ }}
         makeEmpty={() => ({ id: "new", name: "" })}

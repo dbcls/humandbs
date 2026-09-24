@@ -7,9 +7,9 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import type { action as accessionAction, loader as accessionLoader } from "~/routes/admin-draft-dataset-upstream"
 
-import { Button, Note, Stack } from "./base"
-import { Field, Result } from "./form"
-import { Icon, Spinner } from "./icons"
+import { Note, Stack } from "./base"
+import { Field, Result, Submit } from "./form"
+import { Icon } from "./icons"
 import { Section } from "./page"
 import { UpstreamChoice } from "./upstream"
 
@@ -62,15 +62,16 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
 
   // **A lookup can take a minute** — a DRA submission is asked of the archive
   // itself — so the press has to say it is under way: the button waits with
-  // its spinner in place of its mark, and what the last lookup found is put
-  // away, since it is no longer the answer to what is in the box.
+  // its spinner in place of its mark (`Submit` の `busy`), and what the last
+  // lookup found is put away, since it is no longer the answer to what is in
+  // the box.
   const looking = look.state !== "idle"
-  const view = made || looking ? undefined : look.data
+  const view = shownLookup({ found: look.data, looking, made })
   const refused = make.data
 
   return (
     <Section title={t.openDataset}>
-      <Stack gap="block">
+      <Stack gap="normal">
         <look.Form method="get" action={at} className="flex flex-wrap items-end gap-3">
           {/* **The example is the box's grey word rather than a line under
               it.** A line under the box makes the field taller than the
@@ -82,15 +83,7 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
             placeholder={t.accessionPlaceholder}
             width="w-64"
           />
-          <Button
-            type="submit"
-            disabled={looking}
-            aria-busy={looking || undefined}
-            icon={looking ? <Spinner /> : <Icon name="search" />}
-          >
-            {t.look}
-          </Button>
-          {looking && <span role="status" className="sr-only">{messages.admin.busy}</span>}
+          <Submit icon={<Icon name="search" />} busy={looking}>{t.look}</Submit>
         </look.Form>
 
         {view?.unknown != null && <Note kind="warning">{t.unknown(view.unknown)}</Note>}
@@ -109,4 +102,12 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
       </Stack>
     </Section>
   )
+}
+
+/**
+ * What the section shows of the last lookup: nothing while the next one is on
+ * its way, and nothing once what it found has been made.
+ */
+export function shownLookup<T>({ found, looking, made }: { found: T | undefined, looking: boolean, made: boolean }): T | undefined {
+  return looking || made ? undefined : found
 }
