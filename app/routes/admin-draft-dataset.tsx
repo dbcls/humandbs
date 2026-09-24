@@ -3,7 +3,7 @@ import { data } from "react-router"
 import { datasetEditorPage, datasetLabelAction, saveDatasetAction } from "~/admin/pages.server"
 import { DatasetEditor } from "~/components/dataset-editor"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-draft-dataset"
@@ -33,11 +33,11 @@ export async function action({ request, params }: Route.ActionArgs) {
   return result
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   // The same name and identifier the head gives it (`components/dataset-editor.tsx`).
   return [
-    { title: pageTitle(messages, messages.admin.datasetEditor.heading, loaderData.datasetLabel) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.datasetEditor.heading, loaderData.datasetLabel) },
     { name: "robots", content: "noindex" },
   ]
 }

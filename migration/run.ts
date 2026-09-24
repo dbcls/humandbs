@@ -389,6 +389,7 @@ async function load() {
     }))))
 
     const datasets = selection.datasets.filter((d) => researchIdByHum.has(d.humId))
+    const humOfLabel = new Map(datasets.map((d) => [d.label, d.humId]))
     const datasetIdByLabel = await insertReturning(
       datasets,
       (d) => d.label,
@@ -450,6 +451,7 @@ async function load() {
             ? dump.research.get(rv.humId)?.summaryShort ?? null
             : null,
           datasetIdByLabel,
+          humOfLabel,
         }) satisfies ResearchContent
         return {
           researchId: identityOf(researchIdByHum, rv.humId, "research"),

@@ -19,8 +19,6 @@ import {
 import {
   Chooser,
   CHOOSER_SIDE,
-  Clamped,
-  Excerpt,
   Heading,
   MENU_ITEM,
   MENU_ITEM_HERE,
@@ -28,21 +26,18 @@ import {
 } from "~/components/base"
 import { Checkbox } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, ExternalLink, Page, Paging, Table, Td } from "~/components/page"
+import { Card, Page, Paging, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { BranchStandingMark, STANDING_MARK, UpstreamNotConnected } from "~/components/upstream"
+import { BranchCells, BranchStandingMark, STANDING_MARK, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
-import { pageTitle } from "~/i18n/title"
-import { href, jgaEntryUrl, readLocale } from "~/public/urls"
+import { adminWindowTitle } from "~/i18n/title"
+import { href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-research-upstream"
-
-/** How many datasets a row opens with before it counts the rest. */
-const SHOWN_DATASETS = 3
 
 /**
  * Finding the approved application a draft is to be written from.
@@ -68,10 +63,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   return upstreamResearchPage(request, locale)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.templates.heading) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.templates.heading) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -172,47 +167,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                           <Td nowrap>
                             <BranchStandingMark standing={branchStanding(row)} locale={locale} />
                           </Td>
-                          <Td nowrap>{row.approvedOn ?? ""}</Td>
-                          <Td floor="min-w-64">
-                            <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
-                              {row.titleJa === "" ? row.titleEn : row.titleJa}
-                            </Excerpt>
-                          </Td>
-                          <Td nowrap>{row.piName}</Td>
-                          <Td>
-                            {/* **The archive is where a dataset is described**,
-                                and a branch is often approved before the ones it
-                                registered are published, so the portal has
-                                nothing to show of them yet (`public/urls.ts` の
-                                `jgaEntryUrl`). */}
-                            <Clamped
-                              shown={SHOWN_DATASETS}
-                              more={(rest) => messages.search.andMore(rest)}
-                              less={messages.search.showLess}
-                              items={row.datasets.map((accession) => (
-                                // **1 行の中で揃え方を 2 つ持たない。** 外部リンク
-                                // は中身を中心で揃える箱なので、その隣のアイコンを
-                                // baseline に載せると印だけが 0.8px 上に浮く。行ごと
-                                // 中心で揃え、字との距離はこの行の gap が持つ。
-                                //
-                                // **箱の載せ方は `top`。** 中身を中心で揃える箱は
-                                // baseline を中の字から取るので、行の baseline とは
-                                // ずれる — 載せたままだと行の高さが 22.4px から
-                                // 25.3px に伸び、この列だけ表の行送りから外れる。
-                                // 箱の高さは行の高さと同じなので、上で載せると中身は
-                                // 動かずに行だけ元に戻る。
-                                <span
-                                  key={accession}
-                                  className="inline-flex items-center gap-1 align-top text-nowrap"
-                                >
-                                  <Icon name="database" aria-hidden="true" className="text-ink-muted" />
-                                  <ExternalLink to={jgaEntryUrl(accession)} locale={locale}>
-                                    {accession}
-                                  </ExternalLink>
-                                </span>
-                              ))}
-                            />
-                          </Td>
+                          <BranchCells row={row} locale={locale} />
                         </tr>
                       ))}
                     </Table>

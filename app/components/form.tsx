@@ -26,7 +26,6 @@ import { Form, useNavigation } from "react-router"
 import { scrollPaneTo } from "./scroll"
 
 import {
-  Badge,
   Button,
   type ButtonSize,
   type ButtonVariant,
@@ -46,6 +45,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { holdUnsaved } from "~/components/unsaved"
 import { usePressed } from "~/navigating"
+import { Flag } from "./flags"
 
 /**
  * What anything typed into looks like.
@@ -110,6 +110,64 @@ export function landOn(target: HTMLElement, block: "start" | "center"): void {
     }, { once: true })
     return
   }
+  // **A row of a list has no box to type in**: what is in it is written in a
+  // panel (`fields.tsx` の `ItemList`). The row takes the ground instead, and
+  // the caret goes to its first control — the way into that panel — so the
+  // eye and the keyboard land on the same row.
+  if (target.tagName !== "TR") return
+  target.querySelector<HTMLElement>("button:not(:disabled)")?.focus({ preventScroll: true })
+  target.dataset.landed = ""
+  const leave = (event: FocusEvent): void => {
+    if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return
+    delete target.dataset.landed
+    target.removeEventListener("focusout", leave)
+  }
+  target.addEventListener("focusout", leave)
+}
+
+/**
+ * Which of the places the form marks (`data-at`) a place of the page lands on.
+ *
+ * **The field when the form draws it open; else the element the field belongs
+ * to; else nothing** — a caller then falls back to the section. A cell of a
+ * list's table on the page names a field of one element
+ * (`grants.<id>.title`), and that field is written in a panel that is not open,
+ * so the nearest thing on the form is the element's row (`grants.<id>`).
+ */
+export function landingPath(path: string, marked: (candidate: string) => boolean): string | null {
+  const segments = path.split(".")
+  for (let length = segments.length; length >= 1; length -= 1) {
+    const candidate = segments.slice(0, length).join(".")
+    if (marked(candidate)) return candidate
+  }
+  return null
+}
+
+/**
+ * Going to a place from somewhere else on the screen: the field or row
+ * `landingPath` finds, brought to the middle, or else the section `section`
+ * names, brought to the top.
+ *
+ * **Only inside the form** (`form`). The page drawn beside it names the same
+ * places, so a search of the whole document finds the page's own copy when
+ * the form is not the one showing — and moves a pane the reader is reading.
+ * With no form on screen there is nowhere to go, and nothing moves.
+ */
+export function landAt(form: HTMLElement | null, path: string, section: string | undefined): void {
+  if (form === null) return
+  const find = (candidate: string): HTMLElement | null =>
+    form.querySelector<HTMLElement>(`[data-at="${CSS.escape(candidate)}"]`)
+  const found = landingPath(path, (candidate) => find(candidate) !== null)
+  const field = found === null ? null : find(found)
+  const target = field ?? (section === undefined ? null : form.querySelector<HTMLElement>(`#${CSS.escape(section)}`))
+  if (target === null) return
+  // **A field folded away is opened first.** A closed `<details>` keeps its
+  // boxes in the markup but lets none of them take the caret, so the landing
+  // would pass them by and settle on whatever box came first outside the fold.
+  for (let around = target.parentElement; around !== null && around !== form; around = around.parentElement) {
+    if (around instanceof HTMLDetailsElement && !around.open) around.open = true
+  }
+  landOn(target, field === null ? "start" : "center")
 }
 
 /**
@@ -129,7 +187,7 @@ export function landOn(target: HTMLElement, block: "start" | "center"): void {
  * word itself, so a control here would only be a second way to read it.
  */
 export function Accepts({ children }: { children: string }) {
-  return <Badge tone="muted">{children}</Badge>
+  return <Flag kind="notation">{children}</Flag>
 }
 
 /**
@@ -1059,11 +1117,39 @@ export function Unsaved({ locale, dirty }: {
 }) {
   const contextChanged = useContext(Changed)
   const changed = dirty ?? contextChanged
+  const word = messagesFor(locale).admin.editor.unsaved
   return (
-    <span role="status" className="text-xs">
-      {changed === true && (
-        <span className="text-accent">{messagesFor(locale).admin.editor.unsaved}</span>
-      )}
+    <span className="text-xs">
+      <SaveNews words={[word]} said={changed === true ? { word, tone: "accent" } : null} />
+    </span>
+  )
+}
+
+/**
+ * What a save is doing, in the room its longest word takes whether or not
+ * anything is said.
+ *
+ * **Nothing beside it moves when the news comes and goes.** The news appears
+ * at the first character typed and goes at the save; a report that takes its
+ * width only while it speaks pushes whatever stands to its right across the
+ * row at every keystroke that starts or ends a change. So every word it can
+ * say is laid in the same grid cell, out of sight and out of the reading
+ * order, and the cell is as wide as the widest of them — the one being said
+ * is drawn over them.
+ */
+export function SaveNews({ words, said }: {
+  /** Every word this report can say, so that its room is the widest of them. */
+  words: readonly string[]
+  said: { word: string, tone: "accent" | "muted" } | null
+}) {
+  return (
+    <span role="status" className="inline-grid">
+      {words.map((word) => (
+        <span key={word} aria-hidden="true" className="invisible col-start-1 row-start-1">{word}</span>
+      ))}
+      <span className={`col-start-1 row-start-1 ${said?.tone === "muted" ? "text-ink-muted" : "text-accent"}`}>
+        {said?.word}
+      </span>
     </span>
   )
 }
@@ -1221,10 +1307,16 @@ const Dismiss = createContext<ReactNode>(undefined)
  * worked) hands over what it wants shown, and nothing arrives here that the
  * screen had not decided to say.
  */
-export function Answered({ answer, locale, children }: {
+export function Answered({ answer, locale, label, dismiss, children }: {
   /** The last response. A new one raises the box; `null` and `undefined` do not. */
   answer: unknown
   locale: Locale
+  /**
+   * The region's name and the way out's, for an answer outside the management
+   * screens: theirs are Japanese only, and a page read in English is not.
+   */
+  label?: string
+  dismiss?: string
   children: ReactNode
 }) {
   const messages = messagesFor(locale)
@@ -1259,7 +1351,7 @@ export function Answered({ answer, locale, children }: {
   }, [nth, reading])
 
   return (
-    <Toast label={messages.admin.notice} announce="" at="head">
+    <Toast label={label ?? messages.admin.notice} announce="" at="head">
       {nth === 0
         ? undefined
         : (
@@ -1284,7 +1376,7 @@ export function Answered({ answer, locale, children }: {
                   <span className="flex h-6 items-center">
                     <IconButton
                       name="close"
-                      label={messages.admin.dismissNotice}
+                      label={dismiss ?? messages.admin.dismissNotice}
                       onClick={() => { setNth(0) }}
                     />
                   </span>

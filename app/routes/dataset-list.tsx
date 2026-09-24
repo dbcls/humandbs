@@ -9,6 +9,7 @@ import { AccessTypeBadge, Table, Td, Value } from "~/components/page"
 import { ListingScreen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { canonicalRedirect, datasetListPage } from "~/public/lists.server"
 import { datasetPath, href, readLocale, researchPath } from "~/public/urls"
 
@@ -80,7 +81,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: `${messages.search.datasetList} - ${messages.siteName}` }]
+  return [{ title: windowTitle(messages, [messages.search.datasetList]) }]
 }
 
 export default function DatasetList({ loaderData }: Route.ComponentProps) {

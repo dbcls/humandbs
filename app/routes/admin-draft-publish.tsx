@@ -3,7 +3,7 @@ import { data } from "react-router"
 import { publishAction, publishPage } from "~/admin/pages.server"
 import { PublishConfirmation } from "~/components/publish"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-draft-publish"
@@ -20,13 +20,13 @@ export async function action({ request, params }: Route.ActionArgs) {
   return data(result, { status: result.status === "conflict" ? 409 : 422 })
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   const t = messages.admin.publish
   return [
     {
-      title: pageTitle(
-        messages,
+      title: adminWindowTitle(
+        messages, location.pathname,
         loaderData.updating === null ? t.heading : t.updateHeading,
         loaderData.humLabel,
       ),

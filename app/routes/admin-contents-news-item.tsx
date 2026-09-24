@@ -10,7 +10,7 @@ import { Icon } from "~/components/icons"
 import { Page, Section } from "~/components/page"
 import { asLocalInput, dayOf, minuteOf } from "~/dates"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-news-item"
@@ -49,13 +49,13 @@ function titleOf(editors: { title: string }[]): string | null {
   return editors.map((editor) => editor.title).find((one) => one !== "") ?? null
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   const words = messages.admin.contents
   const dated = loaderData.publishedAt === null ? null : minuteOf(loaderData.publishedAt)
   const label = titleOf(loaderData.editors) ?? dated ?? words.news.undated
   return [
-    { title: pageTitle(messages, words.news.itemHeading, label) },
+    { title: adminWindowTitle(messages, location.pathname, words.news.itemHeading, label) },
     { name: "robots", content: "noindex" },
   ]
 }

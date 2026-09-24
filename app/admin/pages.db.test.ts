@@ -25,6 +25,7 @@ import {
   draftDatasetListPage,
   draftEditorPage,
   publishAction,
+  publishPage,
   researchDetailAction,
   researchDetailPage,
   researchListPage,
@@ -32,7 +33,9 @@ import {
   saveDraftAction,
   versionDatasetListPage,
 } from "./pages.server"
+import { pinLabel } from "./labels.server"
 import { readDraft } from "./queries.server"
+import { fieldText } from "~/public/view.server"
 
 /**
  * The management screens with their guards on, against the development
@@ -763,7 +766,33 @@ describe("the datasets of a version", () => {
     const view = await versionDatasetListPage(get(token, "/x"), "ja", { researchId, number: "1" })
 
     expect(view.number).toBe(1)
-    expect(view.rows).toEqual([{ id: second, label: "JGAD000002" }, { id: first, label: "JGAD000001" }])
+    expect(view.rows.map(({ id, label }) => ({ id, label })))
+      .toEqual([{ id: second, label: "JGAD000002" }, { id: first, label: "JGAD000001" }])
+  })
+
+  it("gives each row the public page's cells, and none to a dataset that is no longer published", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    const shown = await seedDataset(db, researchId, "JGAD000001")
+    const gone = await seedDataset(db, researchId, "JGAD000002")
+    await seedVersion(db, { researchId, number: 1, datasets: [{ datasetId: shown }, { datasetId: gone }] })
+    await db.insert(s.searchDoc).values({
+      targetType: "dataset",
+      targetId: shown,
+      researchId,
+      humLabel: "hum0001",
+      datasetLabel: "JGAD000001",
+      datePublished: "2023-05-01",
+      content: emptyDatasetContent(),
+      title: "",
+      textJa: "",
+      textEn: "",
+    })
+
+    const [one, two] = (await versionDatasetListPage(get(token, "/x"), "ja", { researchId, number: "1" })).rows
+
+    expect(one?.shown).toMatchObject({ id: shown, label: "JGAD000001", datePublished: "2023-05-01" })
+    expect(two?.shown).toBeNull()
   })
 
   it("lists an empty version as empty rather than as the research's datasets", async () => {
@@ -1076,6 +1105,46 @@ describe("the dataset screens of a draft", () => {
     expect(theirs?.kind === "text" && theirs.text.ja.text).toBe("theirs")
   })
 
+  it("gives each listed dataset the public table's cells, read from what the draft wrote", async () => {
+    const token = await signIn(CURATOR, true)
+    const catalog = await seedCatalog()
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const params = { researchId, draftId }
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", params)
+    const once = await draftDatasetListPage(get(token, "/x"), "ja", params)
+    await draftDatasetListAction(
+      postForm(token, "/x", { intent: "create-dataset", revision: String(once.revision) }),
+      "ja",
+      params,
+    )
+    const [written, untouched] = (await draftDatasetListPage(get(token, "/x"), "ja", params)).rows
+    const [closed] = catalog.terms.slice(1)
+
+    const saved = await saveDatasetAction(postJson(token, "/x", {
+      revision: null,
+      content: {
+        releaseDate: "2024-03-01",
+        fileSelection: [],
+        values: [
+          textValue(catalog.textKey, "NGS (WGS)"),
+          { keyId: catalog.vocabKey, value: { kind: "vocabulary", state: "value", termIds: [closed] } },
+        ],
+        experiments: [],
+      },
+    }), { ...params, datasetId: written?.id ?? "" })
+    expect(saved.status).toBe("saved")
+
+    const rows = (await draftDatasetListPage(get(token, "/x"), "ja", params)).rows
+    const shownOf = (id: string | undefined) => rows.find((row) => row.id === id)?.shown
+    const one = shownOf(written?.id)
+    expect(one?.typeOfData === null || one?.typeOfData === undefined ? null : fieldText(one.typeOfData))
+      .toBe("NGS (WGS)")
+    expect(one?.accessType?.label).toBe("Controlled")
+    expect(one?.datePublished).toBe("2024-03-01")
+    // Nothing written and nothing published: the cells are there and empty.
+    expect(shownOf(untouched?.id)).toMatchObject({ typeOfData: null, accessType: null, datePublished: null })
+  })
+
   it("carries a dataset it creates, and takes a published one out of the research", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -1265,5 +1334,50 @@ describe("making the files a version needs public", () => {
 
     expect(refusal.status).toBe(403)
     expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
+  })
+})
+
+describe("the publish screen", () => {
+  /** The same proposal on two rows is refused on the second as soon as the first is pinned. */
+  it("proposes a different id for each dataset that has none", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await pinLabel(db, { kind: "hum", label: "hum0001", subjectId: researchId, isPrimary: true }, BOOTSTRAP_ACTOR)
+    await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
+    await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
+
+    const view = await publishPage(get(token, "/x"), "ja", { researchId, draftId })
+
+    const proposed = view.blocks.map((block) => block.suggestion)
+    expect(proposed).toHaveLength(2)
+    expect(new Set(proposed).size).toBe(2)
+    // Each dataset it names is drawn as its row, not left to its identity.
+    for (const block of view.blocks) expect(view.datasetRows[block.datasetId ?? ""]).toBeDefined()
+  })
+
+  it("refuses an update that would change nothing, and lets a new release date through as a change", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    const versionId = await seedVersion(db, { researchId, number: 1, releaseDate: "2024-05-01" })
+    await researchDetailAction(postForm(token, "/x", { intent: "edit-version", versionId }), "ja", researchId)
+    const [update] = await db
+      .select({ id: s.researchDraft.id })
+      .from(s.researchDraft)
+      .where(eq(s.researchDraft.replacesVersionId, versionId))
+    const at = { researchId, draftId: update?.id ?? "" }
+
+    const same = await publishAction(
+      postForm(token, "/x", { intent: "publish", revision: "1", releaseDate: "2024-05-01" }),
+      "ja",
+      at,
+    )
+    expect(same).toEqual({ status: "unchanged" })
+
+    const moved = await publishAction(
+      postForm(token, "/x", { intent: "publish", revision: "1", releaseDate: "2024-06-01" }),
+      "ja",
+      at,
+    )
+    expect(moved).not.toEqual({ status: "unchanged" })
   })
 })

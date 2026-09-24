@@ -1,6 +1,7 @@
 import { ResearchVersionPage } from "~/components/research"
 import { readFilePage } from "~/files/listing.server"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { researchPage } from "~/public/pages.server"
 import { parseVersionSegment, readLocale } from "~/public/urls"
 
@@ -18,7 +19,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `${loaderData.view.versionLabel} - ${messagesFor(loaderData.locale).siteName}` }]
+  const messages = messagesFor(loaderData.locale)
+  const { view } = loaderData
+  return [{ title: windowTitle(messages, [view.versionLabel, view.humLabel, messages.search.researchList]) }]
 }
 
 export default function ResearchVersion({ loaderData }: Route.ComponentProps) {

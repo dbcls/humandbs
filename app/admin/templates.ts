@@ -26,7 +26,6 @@ import type {
   Experiment,
   ResearchContent,
   RichText,
-  Slot,
   TranslatedRichText,
   TranslatedText,
   ValueSlot,
@@ -35,6 +34,7 @@ import { icd10CodesIn, icd10Resolve } from "~/icd10/codes"
 import type { DsBranchDetail, JgadRegistration } from "~/upstream/application-db.server"
 import type { DraSubmission } from "~/upstream/dra.server"
 
+import { researchContentInput, type DraftInput } from "./form"
 import type { CatalogWithTerms, EditableKey, EditableTerm } from "./queries.server"
 
 /** The catalog keys a seeded draft writes under. */
@@ -69,6 +69,8 @@ const READ_TYPE_TERM: ReadonlyMap<string, string> = new Map([
 export interface DroppedValue {
   /** The key it would have gone under, by the code the catalog screen shows. */
   keyCode: string
+  /** The same key by the name the screens call it, which is what a curator reads. */
+  keyLabel: string
   value: string
 }
 
@@ -163,7 +165,11 @@ export function jgadDatasetSeed(
       releaseDate: null,
       fileSelection: [],
       values,
-      experiments: [experiment(catalog, dropped, label, diseasesOf(branch, catalog, dropped))],
+      // **Only the dataset type is an assay.** The title stands in for the label
+      // when there is no type, but offered to the vocabulary of experimental
+      // methods it never matches, and every such dataset would list its own title
+      // as a value that did not fit.
+      experiments: [experiment(catalog, dropped, label, registration.datasetType, diseasesOf(branch, catalog, dropped))],
     },
     dropped,
   }
@@ -213,7 +219,7 @@ export function draDatasetSeed(
       // A submission whose libraries all failed still gets somewhere to write.
       experiments: experiments.length > 0
         ? experiments
-        : [experiment(catalog, dropped, "", diseases)],
+        : [experiment(catalog, dropped, "", "", diseases)],
     },
     dropped,
   }
@@ -223,11 +229,13 @@ function experiment(
   catalog: CatalogWithTerms,
   dropped: DroppedValue[],
   label: string,
+  /** The assay the registration names, which is what the method is matched on. */
+  method: string,
   diseases: ValueSlot[],
 ): Experiment {
   const values = [...diseases]
-  if (label !== "") {
-    take(values, dropped, vocabulary(catalog, METHOD_KEY, "experiment", [label]))
+  if (method !== "") {
+    take(values, dropped, vocabulary(catalog, METHOD_KEY, "experiment", [method]))
   }
   return { id: newId(), label: filled(label), values }
 }
@@ -265,7 +273,7 @@ function diseasesOf(
  */
 function disease(catalog: CatalogWithTerms, codes: readonly string[]): Built {
   const key = keyOf(catalog, DISEASE_KEY, "experiment")
-  if (key?.vocabularySetId == null) return { slot: null, dropped: named(DISEASE_KEY, codes) }
+  if (key?.vocabularySetId == null) return { slot: null, dropped: named(catalog, DISEASE_KEY, codes) }
 
   const byCode = new Map(catalog.terms
     .filter((term) => term.setId === key.vocabularySetId)
@@ -283,7 +291,7 @@ function disease(catalog: CatalogWithTerms, codes: readonly string[]): Built {
     }
   }
 
-  const dropped = named(DISEASE_KEY, missed)
+  const dropped = named(catalog, DISEASE_KEY, missed)
   if (diseases.length === 0) return { slot: null, dropped }
   return {
     slot: { keyId: key.id, value: { kind: "disease", diseases: filled(diseases) } },
@@ -351,10 +359,10 @@ function vocabulary(
   values: readonly string[],
 ): Built {
   const key = keyOf(catalog, code, scope)
-  if (key?.vocabularySetId == null) return { slot: null, dropped: named(code, values) }
+  if (key?.vocabularySetId == null) return { slot: null, dropped: named(catalog, code, values) }
 
   const { found, missed } = matchTerms(catalog.terms, key.vocabularySetId, values)
-  const dropped = named(code, missed)
+  const dropped = named(catalog, code, missed)
   const chosen = key.multiple ? found : found.slice(0, 1)
   if (chosen.length === 0) return { slot: null, dropped }
   return {
@@ -374,13 +382,13 @@ function text(
   en: string,
 ): Built {
   const key = keyOf(catalog, code, scope)
-  if (key === undefined) return { slot: null, dropped: named(code, [ja || en]) }
+  if (key === undefined) return { slot: null, dropped: named(catalog, code, [ja || en]) }
   return { slot: { keyId: key.id, value: { kind: "text", text: prose(ja, en) } }, dropped: [] }
 }
 
 function number(catalog: CatalogWithTerms, code: string, value: number): Built {
   const key = keyOf(catalog, code, "experiment")
-  if (key === undefined) return { slot: null, dropped: named(code, [String(value)]) }
+  if (key === undefined) return { slot: null, dropped: named(catalog, code, [String(value)]) }
   const unit = key.canonicalUnit
   const held: ContentValue = {
     kind: "number",
@@ -389,128 +397,53 @@ function number(catalog: CatalogWithTerms, code: string, value: number): Built {
   return { slot: { keyId: key.id, value: held }, dropped: [] }
 }
 
-function named(keyCode: string, values: readonly string[]): DroppedValue[] {
-  return values.filter((value) => value !== "").map((value) => ({ keyCode, value }))
+function named(catalog: CatalogWithTerms, keyCode: string, values: readonly string[]): DroppedValue[] {
+  // A key whose name has not been written yet is called by its code.
+  const labelJa = catalog.keys.find((key) => key.code === keyCode)?.labelJa ?? ""
+  const keyLabel = labelJa === "" ? keyCode : labelJa
+  return values.filter((value) => value !== "").map((value) => ({ keyCode, keyLabel, value }))
 }
 
 /**
- * What the merge面 puts side by side, one line per field and language.
+ * An application laid over a draft, as a source for the take-in face
+ * (`take.ts`).
  *
- * **Only the four prose fields are compared this way.** A provider is a
- * structure — a name, an organisation, a country — and reading it as one string
- * would let a curator write something no structure can hold. It is offered
- * whole instead (`upstreamProvider`).
+ * **Only what the application states is laid over**: the title, the three
+ * summary fields and the principal investigator. Everything else is the
+ * draft's own — grants, publications and the dataset list are the curator's
+ * work, and the application knows nothing about them — so the face finds no
+ * difference there and offers nothing.
+ *
+ * **The investigator is added, never swapped in.** A provider is a structure,
+ * and the draft's providers are people the curator already wrote; the
+ * application's one joins the end of the list unless the draft already names
+ * that person in either language.
  */
-export type MergeField = "title" | "aims" | "methods" | "targets"
-
-export const MERGE_FIELDS: readonly MergeField[] = ["title", "aims", "methods", "targets"]
-
-export interface MergeRow {
-  field: MergeField
-  language: "ja" | "en"
-  /** What the draft says now. Read-only on the screen. */
-  current: string
-  /** What the application says. Read-only on the screen. */
-  incoming: string
-}
-
-/**
- * The draft and the application, field by field.
- *
- * **A row is kept even where the two agree.** The screen folds those away, but
- * it needs to know they exist to say how many there are, and the write path
- * reads back every row it drew.
- */
-export function mergeRows(current: ResearchContent, branch: DsBranchDetail): MergeRow[] {
-  const rows: MergeRow[] = []
-  for (const field of MERGE_FIELDS) {
-    for (const language of ["ja", "en"] as const) {
-      rows.push({
-        field,
-        language,
-        current: currentText(current, field, language),
-        incoming: incomingText(branch, field, language),
-      })
-    }
-  }
-  return rows
-}
-
-/** What a row starts out holding: the application, else the draft, else nothing. */
-export function mergeInitial(row: MergeRow): string {
-  return row.incoming !== "" ? row.incoming : row.current
-}
-
-/**
- * The content to write, with the four fields replaced by what was typed.
- *
- * **Everything else is carried across untouched.** Seeding an existing draft is
- * not the same operation as making one: the grants, the related publications and
- * the dataset ids are the curator's work, and the application knows nothing
- * about them.
- *
- * **An empty box becomes 未確定 rather than an empty string.** A value that is
- * present and blank is a fourth state the rest of the model does not have.
- */
-export function contentWithUpstream(
-  current: ResearchContent,
-  written: ReadonlyMap<string, string>,
-): ResearchContent {
-  const at = (field: MergeField, language: "ja" | "en"): Slot<string> => {
-    const value = (written.get(`${field}.${language}`) ?? "").trim()
-    return value === "" ? { state: "unknown" } : filled(value)
-  }
-  const asProse = (field: MergeField, language: "ja" | "en"): Slot<RichText> => {
-    const value = (written.get(`${field}.${language}`) ?? "").trim()
-    return value === "" ? { state: "unknown" } : filled(lines(value))
-  }
+export function applicationInput(mine: DraftInput, branch: DsBranchDetail): DraftInput {
+  const stated = researchContentInput(researchContentFrom(branch))
+  const content = mine.content
+  const provider = stated.dataProviders[0]
+  const named = provider !== undefined && content.dataProviders.some((held) =>
+    (["ja", "en"] as const).some((language) => {
+      const text = provider.name[language].text.trim()
+      return text !== "" && held.name[language].text.trim() === text
+    }))
   return {
-    ...current,
-    title: { ja: at("title", "ja"), en: at("title", "en") },
-    summary: {
-      ...current.summary,
-      aims: { ja: asProse("aims", "ja"), en: asProse("aims", "en") },
-      methods: { ja: asProse("methods", "ja"), en: asProse("methods", "en") },
-      targets: { ja: asProse("targets", "ja"), en: asProse("targets", "en") },
+    ...mine,
+    content: {
+      ...content,
+      title: stated.title,
+      summary: {
+        ...content.summary,
+        aims: stated.summary.aims,
+        methods: stated.summary.methods,
+        targets: stated.summary.targets,
+      },
+      dataProviders: provider === undefined || named
+        ? content.dataProviders
+        : [...content.dataProviders, provider],
     },
   }
-}
-
-/** The provider the application states, offered whole or not at all. */
-export function upstreamProvider(branch: DsBranchDetail): ResearchContent["dataProviders"][number] | null {
-  if (!hasName(branch)) return null
-  return {
-    id: newId(),
-    name: pair(branch.piNameJa, branch.piNameEn),
-    organization: {
-      name: pair(branch.affiliationJa, branch.affiliationEn),
-    },
-  }
-}
-
-function currentText(content: ResearchContent, field: MergeField, language: "ja" | "en"): string {
-  if (field === "title") return slotText(content.title[language])
-  return proseText(content.summary[field][language])
-}
-
-function incomingText(branch: DsBranchDetail, field: MergeField, language: "ja" | "en"): string {
-  const at = {
-    title: [branch.titleJa, branch.titleEn],
-    aims: [branch.aimsJa, branch.aimsEn],
-    methods: [branch.methodsJa, branch.methodsEn],
-    targets: [branch.targetsJa, branch.targetsEn],
-  }[field]
-  return (language === "ja" ? at[0] : at[1]) ?? ""
-}
-
-function slotText(slot: Slot<string>): string {
-  return slot.state === "value" ? slot.value : ""
-}
-
-/** The inverse of `lines`: a line is a line, and a blank line stays blank. */
-function proseText(slot: Slot<RichText>): string {
-  if (slot.state !== "value") return ""
-  return slot.value.map((line) => line.map((span) => span.text).join("")).join("\n")
 }
 
 // === values ===

@@ -107,7 +107,7 @@ describe("the untranslated notice", () => {
     const cau: CauUsage[] = [{
       principalInvestigator: { ja: "山田", en: "" },
       affiliation: { ja: "大学", en: "" },
-      country: "Japan",
+      country: { ja: "日本", en: "" },
       researchTitle: { ja: "研究", en: "" },
       periodStart: null,
       periodEnd: null,
@@ -208,6 +208,65 @@ describe("what a research page carries", () => {
       files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
     }, "ja", catalog)
     expect(view.relatedPublications[0]?.datasetLabels).toEqual(["JGAD000001"])
+  })
+
+  describe("the datasets a publication names", () => {
+    function cited(humByLabel: ReadonlyMap<string, string>, datasetIds: string[], externalIds: string[]) {
+      const content = research({
+        relatedPublications: [{ id: "pub1", title: filled("A paper"), doi: filled(""), datasetIds, externalIds }],
+      })
+      return researchView({
+        humLabel: "hum0001",
+        versionNumber: 1,
+        releaseDate: "2020-01-01",
+        latestVersionNumber: 1,
+        content,
+        datasets: [],
+        datasetLabelById: new Map([["mine", "JGAD000001"], ["theirs", "JGAD000009"]]),
+        humByLabel,
+        cau: [],
+        files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+      }, "ja", catalog).relatedPublications[0]
+    }
+
+    it("lists the chosen before the typed, and compares the place by both", () => {
+      const row = cited(new Map(), ["mine"], ["DRA000001"])
+      expect(row?.datasetLabels).toEqual(["JGAD000001", "DRA000001"])
+      expect(row?.datasets.map((one) => one.label)).toEqual(["JGAD000001", "DRA000001"])
+    })
+
+    it("says whose a dataset is only where it is another research's", () => {
+      const hums = new Map([["JGAD000001", "hum0001"], ["JGAD000009", "hum0009"], ["JGAD000777", "hum0007"]])
+      const row = cited(hums, ["mine", "theirs"], ["JGAD000777"])
+      expect(row?.datasets).toEqual([
+        { label: "JGAD000001", known: true, humLabel: null },
+        { label: "JGAD000009", known: true, humLabel: "hum0009" },
+        { label: "JGAD000777", known: true, humLabel: "hum0007" },
+      ])
+    })
+
+    it("draws a typed ID the ledger does not answer for as it was written, with nothing to follow", () => {
+      const row = cited(new Map(), [], ["JGAD999999"])
+      expect(row?.datasets).toEqual([{ label: "JGAD999999", known: false, humLabel: null }])
+    })
+
+    it("reads a publication written without typed IDs as having none", () => {
+      const content = research({
+        relatedPublications: [{ id: "pub1", title: filled("A paper"), doi: filled(""), datasetIds: ["mine"] }],
+      })
+      const view = researchView({
+        humLabel: "hum0001",
+        versionNumber: 1,
+        releaseDate: "2020-01-01",
+        latestVersionNumber: 1,
+        content,
+        datasets: [],
+        datasetLabelById: new Map([["mine", "JGAD000001"]]),
+        cau: [],
+        files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+      }, "ja", catalog)
+      expect(view.relatedPublications[0]?.datasets).toEqual([{ label: "JGAD000001", known: true, humLabel: null }])
+    })
   })
 })
 

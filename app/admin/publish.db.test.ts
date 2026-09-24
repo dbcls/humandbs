@@ -649,3 +649,29 @@ describe("looking a publish over first", () => {
     expect(preview?.heldNumbers).toEqual([2, 1])
   })
 })
+
+/**
+ * A draft reads a dataset it has not written as the published one (the editing
+ * screen shows it so), and publishes it the same way: what is not written is
+ * not rewritten. Taken for empty, the publish would put out every published
+ * dataset with nothing in it, and the confirmation would count its fields as
+ * changed.
+ */
+describe("a published dataset the draft has not written", () => {
+  it("is carried over as published, and counted as unchanged", async () => {
+    const ground = await ready()
+    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const first = await theDescription()
+
+    const draftId = await createEmptyDraft(db, ground.researchId)
+    const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
+    expect(preview?.datasetChanges).toEqual([])
+    expect(preview?.gate.findings.filter((finding) => finding.kind === "empty-dataset")).toEqual([])
+
+    const draft = await readDraft(db, draftId)
+    await publish({ draftId, revision: draft?.revision ?? 0 }, 2)
+
+    const [second] = await db.select().from(s.researchVersion).where(eq(s.researchVersion.number, 2))
+    expect(descriptionOf(only(second?.content.datasets ?? []))).toEqual(first)
+  })
+})

@@ -39,6 +39,7 @@ import {
 } from "~/db/schema"
 import { icd10Code } from "~/icd10/codes"
 
+import { changedDatasetFromPublished } from "./changes"
 import { contentFlags, type ContentFlags } from "./flags"
 import { draftDatasets } from "./datasets"
 import { CHECKED_ACCESSION } from "./gate"
@@ -515,16 +516,12 @@ export async function ownedDatasets(
 }
 
 export interface DraftDatasetRow extends ResearchDatasetRow {
-  /** This draft has written something for it. */
-  edited: boolean
   /** This draft made it, and no publish has adopted it yet. */
   isOwn: boolean
 }
 
 /**
  * What this draft publishes, in the order it goes out in (`admin/datasets.ts`).
- * The two marks are separate facts and neither implies the other: a dataset can
- * be published and never touched here, or made here and already written.
  */
 export async function draftDatasetRows(
   db: Executor,
@@ -532,21 +529,52 @@ export async function draftDatasetRows(
   researchId: string,
   order: readonly string[],
 ): Promise<DraftDatasetRow[]> {
-  const [rows, entries] = await Promise.all([
-    researchDatasets(db, researchId),
-    db
-      .select({ datasetId: draftDatasetEntry.datasetId })
-      .from(draftDatasetEntry)
-      .where(eq(draftDatasetEntry.draftId, draftId)),
-  ])
-
-  const edited = new Set(entries.map((row) => row.datasetId))
-
+  const rows = await researchDatasets(db, researchId)
   return draftDatasets(rows, draftId, order).map((row) => ({
     ...row,
-    edited: edited.has(row.id),
     isOwn: row.originDraftId === draftId,
   }))
+}
+
+/**
+ * The datasets whose description this draft has changed — measured against
+ * the version the published marks compare with, the one the draft updates or
+ * else the newest.
+ *
+ * **Holding an entry is not having changed it.** A draft copied from a version
+ * holds an entry for every dataset that version lists, word for word, so an
+ * entry says only that the draft could be written. What the version does not
+ * list — a dataset the draft made — has nothing to be compared with, and there
+ * the entry is the writing.
+ */
+export async function changedDatasets(
+  db: Executor,
+  draftId: string,
+  researchId: string,
+  /** The version the draft updates. Null compares with the newest. */
+  versionId: string | null,
+): Promise<Set<string>> {
+  const [entries, [version]] = await Promise.all([
+    db
+      .select({ datasetId: draftDatasetEntry.datasetId, content: draftDatasetEntry.content })
+      .from(draftDatasetEntry)
+      .where(eq(draftDatasetEntry.draftId, draftId)),
+    db
+      .select({ content: researchVersion.content })
+      .from(researchVersion)
+      .where(versionId === null
+        ? eq(researchVersion.researchId, researchId)
+        : and(eq(researchVersion.researchId, researchId), eq(researchVersion.id, versionId)))
+      .orderBy(desc(researchVersion.number))
+      .limit(1),
+  ])
+  const published = new Map((version?.content.datasets ?? []).map((row) => [row.datasetId, descriptionOf(row)]))
+  return new Set(entries
+    .filter((entry) => {
+      const before = published.get(entry.datasetId)
+      return before === undefined || changedDatasetFromPublished(before, entry.content).length > 0
+    })
+    .map((entry) => entry.datasetId))
 }
 
 export interface EditableKey {
@@ -658,8 +686,8 @@ export async function termsByIds(
 
 /**
  * The candidates for what was typed into a vocabulary's box: by code or by
- * either label, capped. **The cap is why an empty box
- * answers with nothing** rather than with an arbitrary twenty.
+ * either label, capped — and for an empty box, the vocabulary from its first
+ * code, so the box opens on something the moment it is entered.
  */
 export async function findTerms(
   db: Executor,
@@ -667,19 +695,23 @@ export async function findTerms(
   needle: string,
 ): Promise<EditableTerm[]> {
   const find = needle.trim()
-  if (find === "") return []
+  // **An empty box opens on the vocabulary's first terms**, in code order: a
+  // vocabulary of a handful is then shown whole the moment its box is entered,
+  // and a large one shows where it starts, with the box saying to type.
   const like = `%${find}%`
   return db
     .select(TERM_COLUMNS)
     .from(vocabularyTerm)
-    .where(and(
-      eq(vocabularyTerm.setId, setId),
-      or(
-        sql`${vocabularyTerm.code} ILIKE ${like}`,
-        sql`${vocabularyTerm.labelEn} ILIKE ${like}`,
-        sql`coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${like}`,
-      ),
-    ))
+    .where(find === ""
+      ? eq(vocabularyTerm.setId, setId)
+      : and(
+          eq(vocabularyTerm.setId, setId),
+          or(
+            sql`${vocabularyTerm.code} ILIKE ${like}`,
+            sql`${vocabularyTerm.labelEn} ILIKE ${like}`,
+            sql`coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${like}`,
+          ),
+        ))
     .orderBy(vocabularyTerm.code)
     .limit(TERM_CANDIDATES)
 }

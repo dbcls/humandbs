@@ -1,4 +1,6 @@
 import { PreviewDatasetScreen } from "~/components/preview"
+import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { PREVIEW_HEADERS, previewAction, previewDatasetPage } from "~/review/preview.server"
 import { readLocale } from "~/public/urls"
 
@@ -23,8 +25,9 @@ export function headers() {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
+  const messages = messagesFor(loaderData.locale)
   return [
-    { title: `${loaderData.datasetLabel ?? "dataset"} - preview` },
+    { title: windowTitle(messages, [loaderData.datasetLabel, loaderData.humLabel, messages.preview.heading]) },
     { name: "robots", content: "noindex, nofollow" },
   ]
 }

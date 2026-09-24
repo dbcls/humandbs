@@ -32,7 +32,7 @@ import type {
   ResearchContent,
   VersionContent,
 } from "~/content/types"
-import { describedBy, draftContentOf } from "~/content/version"
+import { describedBy, descriptionOf, draftContentOf } from "~/content/version"
 import type { Database, Transaction } from "~/db/client.server"
 import {
   dataset,
@@ -242,10 +242,22 @@ function gateDatasets(ground: Ground): GateDataset[] {
   // A stable order for whatever the draft has not named: the map comes from a
   // query, and the order a query gives back is not one to lean on.
   const rows = [...ground.datasets.values()].sort((one, other) => one.id.localeCompare(other.id))
+  // **What the draft has not written is what is published**, read where the
+  // editing screen reads it: the version this draft updates, else the newest
+  // that lists the dataset. Taken for empty instead, a draft that wrote nothing
+  // would put every published dataset out with nothing in it.
+  const sources = ground.updating === null ? ground.versions : [ground.updating, ...ground.versions]
+  const published = (datasetId: string): DatasetContent | null => {
+    for (const version of sources) {
+      const found = describedBy(version.content).get(datasetId)
+      if (found !== undefined) return descriptionOf(found)
+    }
+    return null
+  }
   return draftDatasets(rows, ground.draft.id, ground.draft.content.datasetIds).map((row) => ({
     datasetId: row.id,
     label: row.label,
-    content: ground.entries.get(row.id) ?? null,
+    content: ground.entries.get(row.id) ?? published(row.id),
   }))
 }
 

@@ -101,6 +101,13 @@ describe("認可の 3 つの答え", () => {
       .toBe("/auth/login?redirect=%2Fadmin%3Ftab%3Ddrafts")
   })
 
+  it("画面の中の移動で来た問い合わせでも、戻り先はアドレスそのもので .data を持たない", async () => {
+    const response = await thrownBy(() => requireActor(requestFor(null, "/admin/research.data?page=2")))
+
+    expect(response.headers.get("location"))
+      .toBe("/auth/login?redirect=%2Fadmin%2Fresearch%3Fpage%3D2")
+  })
+
   it("ログイン済みで権限が無ければ 403。ログインし直しても答えは変わらない", async () => {
     const token = await createSession(db, PERSON)
 

@@ -5,7 +5,6 @@ import {
   pgTable,
   text,
   timestamp,
-  unique,
   uuid,
 } from "drizzle-orm/pg-core"
 
@@ -58,8 +57,9 @@ export const comment = pgTable("comment", {
  * What a reader of the share link said about the draft as a whole: that they
  * have finished commenting, or that there is nothing to fix. Not an approval —
  * publishing is an admin operation — and it only carries identity when the
- * reader was signed in. One row per signed-in reader and kind, moved to the
- * latest press; a reader who did not sign in leaves a row each time.
+ * reader was signed in. **Every press is a row**, signed in or not: a reader
+ * presses again on each round of the review, and how many times they have is
+ * part of what the review screen reads.
  */
 export const reviewAcknowledgement = pgTable("review_acknowledgement", {
   id: primaryId(),
@@ -69,6 +69,5 @@ export const reviewAcknowledgement = pgTable("review_acknowledgement", {
   actorName: text().notNull(),
   createdAt: createdAt(),
 }, (t) => [
-  unique("review_acknowledgement_unique").on(t.draftId, t.kind, t.actorSub),
   index().on(t.draftId),
 ])

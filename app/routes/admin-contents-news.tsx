@@ -27,7 +27,7 @@ import { minuteOf } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
@@ -53,10 +53,10 @@ export async function action({ request }: Route.ActionArgs) {
   return newsListAction(request)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.contents.news.heading) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.contents.news.heading) },
     { name: "robots", content: "noindex" },
   ]
 }

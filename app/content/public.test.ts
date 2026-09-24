@@ -181,7 +181,7 @@ describe("publicResearch", () => {
     const cau = [{
       principalInvestigator: { ja: "山田", en: "Yamada" },
       affiliation: { ja: "大学", en: "University" },
-      country: "Japan",
+      country: { ja: "日本", en: "Japan" },
       researchTitle: { ja: "課題", en: "Project" },
       periodStart: "2020-01-01",
       periodEnd: null,

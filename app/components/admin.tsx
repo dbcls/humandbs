@@ -3,7 +3,7 @@ import { useCallback, useState, type ReactNode } from "react"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { ButtonLink, Choice, SectionTabs, Chevron } from "./base"
+import { ButtonLink, Choice, SectionTabs, Chevron, type ButtonSize } from "./base"
 import { Icon, type IconName } from "./icons"
 
 /**
@@ -230,14 +230,16 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
  * it says it is somewhere else, and moves that way when pointed at
  * (`base.tsx` の `Chevron`).
  */
-export function WayTo({ to, icon, children }: {
+export function WayTo({ to, icon, size, children }: {
   to: string
   /** What the screen is about, before the word. */
   icon?: IconName
+  /** `row` inside a table's row, where the row's own operations are that size. */
+  size?: ButtonSize
   children: ReactNode
 }) {
   return (
-    <ButtonLink to={to} icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}>
+    <ButtonLink to={to} size={size} icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}>
       {children}
       <Chevron dir="right" />
     </ButtonLink>

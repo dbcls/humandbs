@@ -48,8 +48,13 @@ export const cauEntry = pgTable("cau_entry", {
   piNameEn: text().notNull().default(""),
   affiliationJa: text().notNull().default(""),
   affiliationEn: text().notNull().default(""),
-  /** Upstream holds this in English only; the Japanese page shows the same value. */
-  country: text().notNull().default(""),
+  /**
+   * Named by the portal's own table, not by upstream, which holds only the
+   * applicant's English spelling (`app/upstream/country.ts`). A spelling the
+   * table does not know is stored as written, in both columns.
+   */
+  countryJa: text().notNull().default(""),
+  countryEn: text().notNull().default(""),
   researchTitleJa: text().notNull().default(""),
   researchTitleEn: text().notNull().default(""),
   periodStart: date(),

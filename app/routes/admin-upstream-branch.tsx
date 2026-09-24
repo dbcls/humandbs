@@ -1,21 +1,24 @@
-import { data, Form, Link } from "react-router"
+import { data, Form } from "react-router"
 
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
-import { adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
-import { AdminBack } from "~/components/admin"
-import { Heading, Note, Stack, Chevron } from "~/components/base"
-import { Answered, Result } from "~/components/form"
-import { Card, Page, Section } from "~/components/page"
-import { UpstreamChoice, UpstreamNotConnected } from "~/components/upstream"
+import type { UpstreamChoiceView } from "~/admin/templates.server"
+import { adminExperimentFieldsPath, adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
+import { AdminBack, WayTo } from "~/components/admin"
+import { ButtonLink, Chevron, Heading, Note, Stack } from "~/components/base"
+import { Answered, Result, Submit } from "~/components/form"
+import { Icon } from "~/components/icons"
+import { Card, KeyValue, Page, Section } from "~/components/page"
+import { BranchDatasets, BranchPairs, UpstreamNotConnected } from "~/components/upstream"
+import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-upstream-branch"
 
 /**
- * One approval branch: what taking it in would bring, and — where the hum
- * already names a research — the way there.
+ * One approval branch: what it states, and either the start of a research from
+ * it or — where the hum already names a research — the way there.
  *
  * **Two states only.** The hum is not in the portal, and the one thing to do
  * is start a research from what the branch states; or it already names one,
@@ -33,10 +36,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   return result instanceof Response ? result : data(result, { status: 409 })
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.templates.branchHeading, loaderData.applicationId) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.templates.branchHeading, loaderData.applicationId) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -60,7 +63,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
         <Stack gap="block">
           {/* The name says what is done here and the branch stands beside it —
               an application ID on its own would not say which screen this is. */}
-          <Heading title={t.branchHeading} aside={view.applicationId} note={t.branchHeadingNote}>
+          <Heading title={t.branchHeading} aside={view.applicationId}>
             <AdminBack
               to={href(locale, adminUpstreamResearchPath())}
               label={t.backToList}
@@ -80,74 +83,109 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                     </Note>
                   )}
 
-                  {/*
-                    The branch is read once and shown once. Where a research is
-                    already there the datasets are ticked on the screen the
-                    draft arrives at, so here they are only read.
-                  */}
                   {/* **The heading names what is being read; the branch says
                       which one.** Standing the branch's own title where the
                       heading goes left the screen without a word for what it
                       holds — and the listing this screen is opened from names
                       six things about a branch where this named one. */}
                   <Section title={t.branchSummary}>
-                    <Stack gap="normal">
-                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                        <div className="contents">
-                          <dt className="text-ink-muted">{t.humLabel}</dt>
-                          <dd>{view.branch.humLabel ?? <span className="text-ink-muted">{t.noHumLabel}</span>}</dd>
-                        </div>
-                        <div className="contents">
-                          <dt className="text-ink-muted">{t.approvedOn}</dt>
-                          <dd>{view.branch.approvedOn ?? ""}</dd>
-                        </div>
-                        <div className="contents">
-                          <dt className="text-ink-muted">{t.title}</dt>
-                          <dd>
-                            {view.branch.titleJa === "" ? view.branch.titleEn : view.branch.titleJa}
-                          </dd>
-                        </div>
-                        <div className="contents">
-                          <dt className="text-ink-muted">{t.pi}</dt>
-                          <dd>{view.branch.piName}</dd>
-                        </div>
-                      </dl>
-
-                      {holder === null
-                        ? (
-                            <Form method="post">
-                              <input type="hidden" name="into" value="new" />
-                              <UpstreamChoice locale={locale} choice={view.chosen} submit={t.create} />
-                            </Form>
-                          )
-                        : (
-                            <>
-                              <UpstreamChoice locale={locale} choice={view.chosen} />
-                              {/* **The way in is a link, and says it goes
-                                  somewhere.** The one thing this state offers
-                                  is the research it names, so it wears the
-                                  face of a way there — the word and the mark
-                                  after it (`docs/ui.md` の「押せるもの」) —
-                                  rather than a button that reads as an
-                                  operation done here. */}
-                              <p className="flex flex-wrap items-center gap-3 text-sm">
-                                <Link
-                                  to={href(locale, adminResearchPath(holder.researchId))}
-                                  className="group/way inline-flex items-center gap-1 font-semibold"
-                                >
-                                  {t.toResearch}
-                                  <Chevron dir="right" />
-                                </Link>
-                                <span className="text-ink-muted">{t.takeFromResearch}</span>
-                              </p>
-                            </>
-                          )}
-                    </Stack>
+                    <BranchPairs locale={locale} branch={view.branch} fields={view.chosen.fields} />
                   </Section>
+
+                  {/* What the application registered is part of what it says,
+                      read the same way whether a research is made from it
+                      here or it already has one. */}
+                  <BranchDatasets locale={locale} datasets={view.chosen.datasets} />
+
+                  {holder === null
+                    ? (
+                        /* **Only a research that is not here yet is made here**,
+                           in a section of its own that says what the press
+                           makes (`BranchCreate`). */
+                        <Form method="post">
+                          <input type="hidden" name="into" value="new" />
+                          <BranchCreate
+                            locale={locale}
+                            choice={view.chosen}
+                            submit={view.branch.humLabel === null ? t.createUnlabelled : t.createFor(view.branch.humLabel)}
+                          />
+                        </Form>
+                      )
+                    : (
+                        /* **A research that is here already is only a way to
+                           it.** Nothing is made on this screen then, so what
+                           making would bring is not drawn; the take-in face of
+                           one of its drafts draws it where it can be pressed.
+                           **The way in says it goes somewhere**, the bordered
+                           face with the mark after the word. */
+                        <Section title={t.heldHeading} note={t.heldNote}>
+                          <div>
+                            <WayTo to={href(locale, adminResearchPath(holder.researchId))} icon="book">
+                              {t.toResearchOf(view.branch.humLabel ?? "")}
+                            </WayTo>
+                          </div>
+                        </Section>
+                      )}
                 </>
               )}
         </Stack>
       </Card>
     </Page>
+  )
+}
+
+/**
+ * Starting a research from a branch: what the press makes, and the press.
+ *
+ * **A section of its own, under a name that says what it is for** — the
+ * sentence and the button are what the screen is opened to do, and standing
+ * straight under the application's values they read as one more value.
+ *
+ * **Nothing is chosen.** Every dataset the branch registered belongs to the
+ * research it describes, so all of them are made with it — they are read in
+ * the application's own section above (`BranchDatasets`), where one a research
+ * already holds says so, and that one is left out because pinning it again
+ * would refuse the whole creation. **What will not go in is said before the
+ * press**, by the name the form gives its key.
+ */
+export function BranchCreate({ locale, choice, submit }: {
+  locale: Locale
+  choice: UpstreamChoiceView
+  submit: string
+}) {
+  const messages = messagesFor(locale)
+  const t = messages.admin.templates
+
+  return (
+    <Section title={t.creating} note={t.createNote}>
+      <Stack gap="normal">
+        {choice.dropped.length > 0 && (
+          <dl>
+            <KeyValue title={t.dropped}>
+              <Stack gap="tight">
+                <span className="text-ink-muted text-sm">{t.droppedNote}</span>
+                <ul className="flex flex-col gap-1">
+                  {choice.dropped.map((value) => (
+                    <li key={`${value.keyCode} ${value.value}`} className="flex flex-wrap gap-2">
+                      <span className="text-ink-muted">{value.keyLabel}</span>
+                      <span>{value.value}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div>
+                  <ButtonLink size="row" to={href(locale, adminExperimentFieldsPath())}>
+                    {t.openCatalog}
+                    <Chevron dir="right" />
+                  </ButtonLink>
+                </div>
+              </Stack>
+            </KeyValue>
+          </dl>
+        )}
+        <div>
+          <Submit variant="primary" icon={<Icon name="plus" />}>{submit}</Submit>
+        </div>
+      </Stack>
+    </Section>
   )
 }

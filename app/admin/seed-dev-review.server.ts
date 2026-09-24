@@ -46,7 +46,7 @@ import {
   saveDraftContent,
   setDraftSharing,
 } from "./drafts.server"
-import { draftDatasetIds, readDraft } from "./queries.server"
+import { draftDatasetIds, ownedDatasets, readDatasetEntry, readDraft, readPublishedDataset } from "./queries.server"
 
 const MARK = "[seed-dev-review]"
 const REVIEW_DRAFT_MEMO = `${MARK} レビュー画面確認用の共有 draft`
@@ -66,6 +66,8 @@ const PROVIDER_B = { sub: null, name: "データ提供者 B" }
 export interface SeedReviewResult {
   /** hum0127: a shared draft carrying comments, marks and unsettled fields. */
   reviewDraftId: string
+  /** hum0127: a published dataset the review draft describes otherwise, if the research has one. */
+  changedDatasetId: string | null
   /** hum0127: the draft updating its newest published version, if it has one. */
   updatingDraftId: string | null
   /** hum0005: a draft nobody has touched. */
@@ -269,6 +271,41 @@ async function ensureReviewDraft(db: Database, researchId: string): Promise<stri
   return draftId
 }
 
+/**
+ * One of the research's published datasets, rewritten in the review draft so
+ * that the dataset's editing screen has a difference from the published
+ * version to mark: the first experiment's label, and its first single value.
+ *
+ * **Idempotent by the entry itself** — a draft that already holds anything
+ * for the dataset is left as it is, whether this wrote it or somebody editing.
+ */
+async function ensureDatasetDifference(db: Database, draftId: string, researchId: string): Promise<string | null> {
+  for (const one of await ownedDatasets(db, researchId)) {
+    if (one.originDraftId !== null) continue
+    const published = await readPublishedDataset(db, researchId, one.id, null)
+    const experiment = published?.content.experiments[0]
+    if (published === null || experiment?.label.state !== "value") continue
+    if (await readDatasetEntry(db, draftId, one.id) !== null) return one.id
+
+    const single = experiment.values.findIndex((slot) => slot.value.kind === "single" && slot.value.value.state === "value")
+    const values = experiment.values.map((slot, at) => {
+      if (at !== single || slot.value.kind !== "single" || slot.value.value.state !== "value") return slot
+      return { ...slot, value: { ...slot.value, value: { state: "value" as const, value: `${slot.value.value.value} (再解析分を含む)` } } }
+    })
+    const rewritten: DatasetContent = {
+      ...published.content,
+      experiments: [
+        { ...experiment, label: { state: "value", value: `${experiment.label.value} (2026 年の追加分を含む)` }, values },
+        ...published.content.experiments.slice(1),
+      ],
+    }
+    const saved = await saveDatasetEntry(db, { draftId, datasetId: one.id, revision: null }, rewritten)
+    if (saved.status !== "saved") throw new Error(`rewriting a published dataset: ${saved.status}`)
+    return one.id
+  }
+  return null
+}
+
 /** hum0127's draft updating its newest published version, made the same way the editor makes one. */
 async function ensureUpdatingDraft(db: Database, researchId: string): Promise<string | null> {
   const [latest] = await db
@@ -279,7 +316,48 @@ async function ensureUpdatingDraft(db: Database, researchId: string): Promise<st
     .limit(1)
   if (latest === undefined) return null
   const outcome = await draftUpdating(db, researchId, latest.id)
-  return outcome.status === "opened" ? outcome.draftId : null
+  if (outcome.status !== "opened") return null
+  await ensureOneSentenceRewritten(db, outcome.draftId)
+  return outcome.draftId
+}
+
+/**
+ * The updating draft's Japanese aims with one sentence rewritten and the rest
+ * as published — the shape of an edit a curator makes most, and the one the
+ * comparison has to find a single sentence in.
+ *
+ * **Only while the aims still read as published**, so a rerun, or somebody
+ * having edited them since, leaves them alone.
+ */
+async function ensureOneSentenceRewritten(db: Database, draftId: string): Promise<void> {
+  const draft = await readDraft(db, draftId)
+  if (draft?.updating == null) return
+  const [version] = await db
+    .select({ content: researchVersion.content })
+    .from(researchVersion)
+    .where(eq(researchVersion.id, draft.updating.versionId))
+  const published = version?.content.summary.aims.ja
+  const aims = draft.content.summary.aims.ja
+  if (published === undefined || aims.state !== "value" || JSON.stringify(aims) !== JSON.stringify(published)) return
+
+  // The first span that holds at least two whole sentences, and its second one.
+  const where = aims.value.flatMap((line, row) => line.map((span, column) => ({ row, column, stops: span.text.split("。") })))
+    .find((one) => one.stops.length >= 3)
+  if (where === undefined) return
+  // The spaces after a full stop stay where they were, so the sentence before
+  // the rewritten one still reads as published.
+  const second = where.stops[1] ?? ""
+  const lead = /^\s*/.exec(second)?.[0] ?? ""
+  const rewritten = [where.stops[0], `${lead}2026 年度からは${second.slice(lead.length)}`, ...where.stops.slice(2)].join("。")
+  const lines = aims.value.map((line, row) => line.map((span, column) =>
+    row === where.row && column === where.column ? { ...span, text: rewritten } : span))
+
+  const content: ResearchContent = {
+    ...draft.content,
+    summary: { ...draft.content.summary, aims: { ...draft.content.summary.aims, ja: { state: "value", value: lines } } },
+  }
+  const saved = await saveDraftContent(db, { draftId, revision: draft.revision }, { content })
+  if (saved.status !== "saved") throw new Error(`rewriting a sentence of the updating draft: ${saved.status}`)
 }
 
 /** An empty draft marked with `memo`, made only when no draft already carries that mark. */
@@ -306,6 +384,7 @@ export async function seedDevReviewData(db: Database): Promise<SeedReviewResult>
   if (hum0005 === null) throw new Error("hum0005 is not in the development data — run db:load-dev-data first")
 
   const reviewDraftId = await ensureReviewDraft(db, hum0127)
+  const changedDatasetId = await ensureDatasetDifference(db, reviewDraftId, hum0127)
   const updatingDraftId = await ensureUpdatingDraft(db, hum0127)
   const emptyDraftId = await ensureMarkedDraft(db, hum0005, EMPTY_DRAFT_MEMO)
   const expiredShareDraftId = await ensureMarkedDraft(db, hum0005, EXPIRED_SHARE_MEMO, async (draftId) => {
@@ -313,5 +392,5 @@ export async function seedDevReviewData(db: Database): Promise<SeedReviewResult>
     if (shared.status !== "set") throw new Error(`sharing the expired draft: ${shared.status}`)
   })
 
-  return { reviewDraftId, updatingDraftId, emptyDraftId, expiredShareDraftId }
+  return { reviewDraftId, changedDatasetId, updatingDraftId, emptyDraftId, expiredShareDraftId }
 }

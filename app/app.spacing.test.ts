@@ -83,8 +83,9 @@ const MANAGEMENT_PARTS = [
   "components/previous.tsx",
   "components/publish.tsx",
   "components/review.tsx",
+  "components/research-fields.tsx",
+  "components/take.tsx",
   "components/upstream.tsx",
-  "components/upstream-merge.tsx",
 ]
 
 async function managementFiles(): Promise<string[]> {
@@ -719,13 +720,87 @@ describe("名前の行の並び", () => {
     expect([...body.matchAll(/<AdminBack\b/g)]).toHaveLength(1)
   })
 
+  /**
+   * Under the table of versions and drafts, the one thing to press stands at
+   * the left edge — where the rows begin, and where every other section of
+   * the research's screen puts what it offers. Pushed to the right end it sits
+   * under the row's buttons and reads as one more of them.
+   */
+  it("研究の編集の「空の下書き」は表の下の左端に立つ", async () => {
+    const text = await readFile(path.join(ROOT, "routes/admin-research.tsx"), "utf8")
+    const submit = text.indexOf("intent=\"create-draft\"")
+    expect(submit).toBeGreaterThan(-1)
+    const form = text.lastIndexOf("<Form", submit)
+    const tag = text.slice(form, text.indexOf(">", form))
+    expect(tag).not.toMatch(/\bjustify-(end|between|center)\b|\bml-auto\b/)
+  })
+
+  /**
+   * Every row that has a draft — a draft's own, and a version being updated
+   * in one — offers the draft's screens in the order the work goes: write it,
+   * show it, publish it; what throws something away comes last. The review
+   * is offered even though the review cell has nothing to press: it says only
+   * whether the draft is shared.
+   */
+  describe("研究の編集の行の操作", () => {
+    const source = async (): Promise<string> =>
+      readFile(path.join(ROOT, "routes/admin-research.tsx"), "utf8")
+    const bodyOf = (text: string, name: string): string => {
+      const start = text.indexOf(`function ${name}`)
+      expect(start).toBeGreaterThan(-1)
+      return text.slice(start, text.indexOf("\n}\n", start))
+    }
+    const inOrder = (text: string, marks: readonly string[]): void => {
+      const at = marks.map((mark) => text.indexOf(mark))
+      expect(at.every((one) => one > -1)).toBe(true)
+      expect(at).toEqual([...at].sort((a, b) => a - b))
+    }
+
+    it("レビュー・公開の順で下書きの面へ渡る", async () => {
+      inOrder(bodyOf(await source(), "DraftWays"), ["adminDraftReviewPath(", "adminDraftPublishPath("])
+    })
+
+    it("下書きの行は 編集・レビューと公開・削除", async () => {
+      const row = bodyOf(await source(), "DraftRow")
+      inOrder(row.slice(row.indexOf("holds=\"control\"")), ["adminDraftPath(", "<DraftWays", "intent=\"discard-draft\""])
+    })
+
+    it("更新中の版の行も 編集のすぐ後にレビューと公開を持つ", async () => {
+      const row = bodyOf(await source(), "VersionRow")
+      inOrder(row.slice(row.indexOf("holds=\"control\"")), [
+        "adminDraftPath(",
+        "<DraftWays",
+        "intent=\"copy-version\"",
+        "intent=\"discard-draft\"",
+        "intent=\"withdraw-version\"",
+      ])
+    })
+
+    it("表は不備の列を持たず、行は数を chip で持たない", async () => {
+      const text = await source()
+      expect(text).not.toContain("t.problems")
+      expect(text).not.toMatch(/<Flag kind="(unresolved|stops|short)"/)
+    })
+
+    /**
+     * The count is the only way from this table to a row's datasets, so it
+     * wears the face of a way to another screen at the row's size — a bare
+     * number in the link colour reads as one more fact of the row.
+     */
+    it("データセットの件数は行の大きさの WayTo で、素の link にしない", async () => {
+      const body = bodyOf(await source(), "Datasets")
+      expect(body).toMatch(/<WayTo\b[^>]*\bsize="row"/)
+      expect(body).not.toMatch(/<Link\b/)
+    })
+  })
+
   it("DraftTools の行は、保存・その状態・面の入口・切り替えの順に並ぶ", async () => {
     const text = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
     const start = text.indexOf("export function DraftTools")
     expect(start).toBeGreaterThan(-1)
     const body = text.slice(start)
     const save = body.indexOf("variant=\"accent\"")
-    const status = body.indexOf("role=\"status\"")
+    const status = body.indexOf("<SaveNews")
     const unresolved = body.indexOf("{notes}")
     const control = body.indexOf("{panesControl}")
     expect(save).toBeGreaterThan(-1)
@@ -1161,6 +1236,113 @@ describe("向きのある印", () => {
       .filter(({ name }) => !name.endsWith("base.tsx") && !name.endsWith("icons.tsx"))
     const offenders = files
       .filter(({ text }) => /<Icon\s+name="chevron-(?:left|right)"/.test(text))
+      .map(({ name }) => name)
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * **A way to another screen wears the bordered face** (`docs/ui.md` の
+   * 「押せるもの」, `docs/admin-ui.md` の「区画の枠」): `WayTo`, `AdminBack` or a
+   * `ButtonLink`, all of which are the group the chevron moves with. A screen
+   * that names the group by hand is dressing a bare word as a way — the word
+   * reads as the note beside it and is found by pressing it.
+   */
+  it("管理画面は group/way を手で付けない — 別の画面への道は WayTo / ButtonLink で描く", async () => {
+    const offenders: string[] = []
+    for (const file of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, file), "utf8")
+      if (text.includes("group/way")) offenders.push(file)
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+/**
+ * **A mark on some rows takes its colour and glyph from its kind**
+ * (`components/flags.tsx`, `docs/ui.md` の「壊れるもの」). A screen that
+ * chose them itself would give the same fact a second look on the next screen.
+ * What is left to `Badge` is not a mark of that sort: a label on a band, a
+ * value drawn round (`pill`), a count beside its own glyph, and the key's type,
+ * which is a kind with a glyph per type.
+ */
+describe("印のバッジ", () => {
+  const ALLOWED = [
+    /^<Badge\s+(onBand|pill)\b/,
+    /\{[\w.]+\.length\}<\/Badge>$/,
+    /^<Badge icon=\{<Icon name=\{TYPE_MARK\[/,
+  ]
+
+  it("管理画面は Badge を直に描かず、印は Flag の種類で名指す", async () => {
+    const offenders: string[] = []
+    for (const file of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, file), "utf8")
+      for (const use of text.matchAll(/<Badge\b[^]*?<\/Badge>|<Badge\b[^>]*\/>/g)) {
+        const drawn = use[0].replace(/\s+/g, " ")
+        if (ALLOWED.some((one) => one.test(drawn))) continue
+        offenders.push(`${file}:${String(text.slice(0, use.index).split("\n").length)}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+/**
+ * **The management area has no bare words to press** (`docs/ui.md` の「押せるもの」).
+ * A word set beside a button in the link colour reads as a note on that button,
+ * and is found to be a way only by pressing it. A way to another screen wears
+ * the bordered face (`WayTo`, `AdminBack`, `ButtonLink`); a link stays bare only
+ * where it is a value — an id or a count in a table's cell — and there it
+ * carries no class of its own.
+ */
+describe("字だけの道", () => {
+  /**
+   * A class on a link is how a bare word gets dressed as a control — sized to
+   * sit beside a button, or given the link colour it would have had anyway. The
+   * classes that are not that: a face (`border`), a wrapper around a badge
+   * (`no-underline`), and a value underlined where it stands (`underline`).
+   */
+  it("管理画面の link は、素の語に大きさや色だけを着せて操作の位置に置かない", async () => {
+    const offenders: string[] = []
+    for (const file of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, file), "utf8")
+      for (const link of text.matchAll(/<(?:Link|a)\s[^>]*?\bclassName="([^"]*)"/gs)) {
+        const look = link[1] ?? ""
+        if (!/\bborder\b|\bunderline\b/.test(look)) offenders.push(`${file}: className="${look}"`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("管理画面は公開側の字だけの道 (MoreLink / CLEAR) を使わない", async () => {
+    const offenders: string[] = []
+    for (const file of await managementFiles()) {
+      const text = await readFile(path.join(ROOT, file), "utf8")
+      if (/<MoreLink\b|\{CLEAR\}/.test(text)) offenders.push(file)
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+/**
+ * **A tag standing over a control answers to its own wrapper and nothing else**
+ * (`base.tsx` の `TOOLTIP`). An unnamed `group-hover` answers to any ancestor
+ * marked `group`, and a fold drawn around a form of marks then shows every tag
+ * in it at once while the pointer is anywhere inside.
+ */
+describe("札の group", () => {
+  it("TOOLTIP を開くのは名前付きの group (/tip) だけ", async () => {
+    const offenders: string[] = []
+    for (const { name, text } of await everySource()) {
+      for (const use of text.matchAll(/\$\{TOOLTIP\}[^`]*`/g)) {
+        if (/\bgroup-(?:hover|focus-visible|has-focus-visible):/.test(use[0])) offenders.push(`${name}: ${use[0]}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("名前の無い group を置かない — 中の札や印が外の hover に答えてしまう", async () => {
+    const offenders = (await everySource())
+      .filter(({ text }) => /className=["'`{][^"'`]*(?<![\w/-])group(?![\w/-])/.test(text))
       .map(({ name }) => name)
     expect(offenders).toEqual([])
   })

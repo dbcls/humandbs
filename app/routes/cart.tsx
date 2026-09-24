@@ -7,6 +7,7 @@ import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Card, Crumbs, Page, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { cartPath, datasetPath, href, readLocale, researchPath } from "~/public/urls"
 
 import type { Route } from "./+types/cart"
@@ -33,7 +34,7 @@ export function loader({ request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: `${messages.cart.heading} - ${messages.siteName}` }]
+  return [{ title: windowTitle(messages, [messages.cart.heading]) }]
 }
 
 export default function Cart({ loaderData }: Route.ComponentProps) {

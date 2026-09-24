@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
-import { Form, Link } from "react-router"
+import { Form, Link, useLocation } from "react-router"
 
+import { isAdminPath } from "~/admin/urls"
 import { BAND_FILL, Button, ButtonLink, Chip, Chooser, CHOOSER_SIDE, CLEAR, Heading, LISTING_CONTROL, MENU_ITEM, MENU_ITEM_HERE, MoreLink, Note, PALE, PANE_LABEL, PaneHeading, Stack, SwitchTabs, Chevron } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
@@ -333,6 +334,7 @@ export function RefinableList({
   children: React.ReactNode
 }) {
   const messages = messagesFor(locale)
+  const managing = isAdminPath(useLocation().pathname)
   // The same 4px the row leaves over the table, under it, and at the same right
   // edge the row over the table keeps.
   const foot = pages === undefined || pages === null
@@ -373,16 +375,28 @@ export function RefinableList({
             way it folds.** At the size the pane's other asides take (12px, no
             glyph) it stands beside a bold heading and is not found — the reader
             has to already know a control is there.
+
+            **In the management area it wears the bordered face**, which has no
+            bare words to press (`docs/ui.md` の「押せるもの」); the public
+            listings keep the word.
           */}
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded="true"
-            className="group/way inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
-          >
-            <Chevron dir="left" />
-            {messages.search.refine.fold}
-          </button>
+          {managing
+            ? (
+                <Button type="button" size="xs" onClick={onToggle} aria-expanded="true" icon={<Chevron dir="left" />}>
+                  {messages.search.refine.fold}
+                </Button>
+              )
+            : (
+                <button
+                  type="button"
+                  onClick={onToggle}
+                  aria-expanded="true"
+                  className="group/way inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
+                >
+                  <Chevron dir="left" />
+                  {messages.search.refine.fold}
+                </button>
+              )}
         </PaneHeading>
       </div>
       <div className="pt-4 md:col-start-1 md:row-start-2">{refine}</div>

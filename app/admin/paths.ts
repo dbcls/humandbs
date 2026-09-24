@@ -18,7 +18,7 @@
  * them honest.
  */
 
-function identityOf(item: unknown): string | undefined {
+export function identityOf(item: unknown): string | undefined {
   if (typeof item !== "object" || item === null) return undefined
   const record = item as { id?: unknown, keyId?: unknown }
   if (typeof record.id === "string") return record.id

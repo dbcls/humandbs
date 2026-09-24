@@ -24,6 +24,7 @@ import type {
   DraftInput,
   GrantInput,
   LinkInput,
+  ListingProviderInput,
   LinksInput,
   LinksPairInput,
   RelatedPublicationInput,
@@ -58,6 +59,10 @@ function provider(into: Diff, a: DataProviderInput, b: DataProviderInput, at: st
   into.when(sameTextPair(a.organization.name, b.organization.name), `${at}.organization.name`)
 }
 
+function listingProvider(into: Diff, a: ListingProviderInput, b: ListingProviderInput, at: string): void {
+  into.when(sameTextPair(a.name, b.name), `${at}.name`)
+}
+
 function project(into: Diff, a: ResearchProjectInput, b: ResearchProjectInput, at: string): void {
   into.when(sameTextPair(a.name, b.name), `${at}.name`)
   into.when(sameLinksPair(a.url, b.url), `${at}.url`)
@@ -77,7 +82,8 @@ function publication(
 ): void {
   into.when(sameText(a.title, b.title), `${at}.title`)
   into.when(sameText(a.doi, b.doi), `${at}.doi`)
-  into.when(sameStrings(a.datasetIds, b.datasetIds), `${at}.datasetIds`)
+  // One place on the page: the column lists both the chosen and the typed.
+  into.when(sameStrings(a.datasetIds, b.datasetIds) && sameStrings(a.externalIds, b.externalIds), `${at}.datasetIds`)
 }
 
 /**
@@ -89,23 +95,34 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
   const a = base.content
   const b = other.content
 
+  // **In the order the editing form stands its fields**, so that every
+  // screen listing the places that differ reads them as the form does.
   into.when(sameTextPair(a.title, b.title), "title")
+  into.when(sameTextPair(a.releaseNote, b.releaseNote), "releaseNote")
   into.when(sameTextPair(a.summary.aims, b.summary.aims), "summary.aims")
   into.when(sameTextPair(a.summary.methods, b.summary.methods), "summary.methods")
   into.when(sameTextPair(a.summary.targets, b.summary.targets), "summary.targets")
   into.when(sameLinksPair(a.summary.url, b.summary.url), "summary.url")
+
+  elements(into, "dataProviders", a.dataProviders, b.dataProviders, byId, provider)
+  elements(into, "researchProjects", a.researchProjects, b.researchProjects, byId, project)
+  elements(into, "grants", a.grants, b.grants, byId, grant)
+  elements(into, "relatedPublications", a.relatedPublications, b.relatedPublications, byId, publication)
+
   into.when(sameTextPair(a.listingSummary.methods, b.listingSummary.methods), "listingSummary.methods")
   into.when(sameTextPair(a.listingSummary.targets, b.listingSummary.targets), "listingSummary.targets")
   into.when(
     sameTextPair(a.listingSummary.typeOfData, b.listingSummary.typeOfData),
     "listingSummary.typeOfData",
   )
-  into.when(sameTextPair(a.releaseNote, b.releaseNote), "releaseNote")
-
-  elements(into, "dataProviders", a.dataProviders, b.dataProviders, byId, provider)
-  elements(into, "researchProjects", a.researchProjects, b.researchProjects, byId, project)
-  elements(into, "grants", a.grants, b.grants, byId, grant)
-  elements(into, "relatedPublications", a.relatedPublications, b.relatedPublications, byId, publication)
+  elements(
+    into,
+    "listingSummary.dataProviders",
+    a.listingSummary.dataProviders,
+    b.listingSummary.dataProviders,
+    byId,
+    listingProvider,
+  )
 
   into.when(sameStrings(a.datasetIds, b.datasetIds), "datasetIds")
   return into.paths
@@ -120,5 +137,12 @@ export function takeField(mine: DraftInput, theirs: DraftInput, path: string): D
   const keys = path === "note" ? ["note"] : ["content", ...path.split(".")]
   const taken = readAt(theirs, keys)
   if (!taken.found) return mine
-  return writeAt(mine, keys, taken.value) as DraftInput
+  const written = writeAt(mine, keys, taken.value) as DraftInput
+  // **A publication's datasets are one place holding two lists** — the ones
+  // chosen and the ones typed (`publication` above) — so taking the place
+  // takes both.
+  if (keys[1] !== "relatedPublications" || keys.at(-1) !== "datasetIds") return written
+  const typed = [...keys.slice(0, -1), "externalIds"]
+  const other = readAt(theirs, typed)
+  return other.found ? writeAt(written, typed, other.value) as DraftInput : written
 }

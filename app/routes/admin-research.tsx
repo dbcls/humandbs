@@ -1,4 +1,4 @@
-import { data, Form, Link } from "react-router"
+import { data, Form } from "react-router"
 
 import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import type { AdminDraftReviewRow, AdminResearchVersionRow } from "~/admin/pages.server"
@@ -13,8 +13,8 @@ import {
   adminResearchListPath,
   adminVersionDatasetsPath,
 } from "~/admin/urls"
-import { AdminBack } from "~/components/admin"
-import { Badge, ButtonLink, Confirm, Dialog, Heading, Stack, Stated, Chevron } from "~/components/base"
+import { AdminBack, WayTo } from "~/components/admin"
+import { ButtonLink, Confirm, Dialog, Heading, Stack, Stated, Chevron } from "~/components/base"
 import { Answered, Checkbox, Field, Result, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, ExternalLink, Page, Section, Table, Td } from "~/components/page"
@@ -22,10 +22,11 @@ import { minuteInJst } from "~/dates"
 import { formatSize } from "~/files/box"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale, researchPath } from "~/public/urls"
 
 import type { Route } from "./+types/admin-research"
+import { Flag } from "~/components/flags"
 
 /**
  * One research: what is out, what is being written, which IDs name it, and
@@ -62,10 +63,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   return result instanceof Response ? result : data(result, { status: 409 })
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.detail.heading, loaderData.humLabel) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.detail.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -107,7 +108,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             </Form>
           </Heading>
 
-          <Section title={t.rows}>
+          <Section title={t.rows} note={t.rowsNote}>
             <Stack gap="normal">
               {/* Drafts first, newest writing first; then the versions, newest
                   number first. **The first column says which is which**, and
@@ -127,7 +128,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                   t.releaseDate,
                   t.datasets,
                   t.review,
-                  t.problems,
                   /* The column of things to press names itself for anyone reading
                      the row aloud and nowhere else. */
                   <span key="actions" className="sr-only">{messages.admin.actions}</span>,
@@ -159,9 +159,10 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                 ))}
               </Table>
               {/* An empty draft: what it comes to hold is taken in or typed
-                  afterwards. Under the table and at its end, where a row
-                  would be added. */}
-              <Form method="post" className="flex justify-end">
+                  afterwards. Under the table at its left edge, where the rows
+                  begin and where the other things to press on this screen
+                  stand. */}
+              <Form method="post" className="flex">
                 <Submit intent="create-draft" icon={<Icon name="plus" />}>{t.createEmptyDraft}</Submit>
               </Form>
             </Stack>
@@ -189,9 +190,9 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                     <ul className="grid grid-cols-[auto_auto_auto] justify-start items-center gap-x-4 gap-y-2 text-sm">
                       {view.labels.map((label) => (
                         <li key={label.id} className="col-span-3 grid grid-cols-subgrid items-center">
-                          <Badge tone={label.isPrimary ? "brand" : "muted"}>
+                          <Flag kind={label.isPrimary ? "pointed" : "secondary"}>
                             {label.isPrimary ? t.primary : t.secondary}
-                          </Badge>
+                          </Flag>
                           <span>{label.label}</span>
                           <span className="flex items-center gap-1">
                             {/* Moving a label is not taking it away: the one
@@ -277,14 +278,13 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 }
 
 /**
- * A draft: when it was last written to, what its steps say, and the three
+ * A draft: when it was last written to, what its steps say, and the four
  * things done to one. **A draft is a draft** — it does not say which version
  * it came from, because it does not know (docs/editing.md の「draft」).
  *
- * **Every fact beside it is the way to the screen that fact is about**
- * (docs/editing.md の「draft」): the dataset count leads to the dataset
- * listing, the unresolved count to the review screen, a shortcoming to the
- * publish confirmation.
+ * **Its dataset count is the way to the dataset listing**; the review and the
+ * publish confirmation are offered as things to press (`DraftWays`), since
+ * nothing in the row counts what they hold (docs/editing.md の「draft」).
  *
  * Discarding asks twice. It takes the whole draft with it and cannot be undone,
  * and the revision travels with the request so a draft somebody has edited in
@@ -314,8 +314,7 @@ function DraftRow({ draft, review, researchId, locale }: {
           locale={locale}
         />
       </Td>
-      <Td><Review review={review} to={href(locale, adminDraftReviewPath(researchId, draft.id))} locale={locale} /></Td>
-      <Td><Problems review={review} to={href(locale, adminDraftPublishPath(researchId, draft.id))} locale={locale} /></Td>
+      <Td><Review review={review} locale={locale} /></Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
           <ButtonLink
@@ -325,13 +324,7 @@ function DraftRow({ draft, review, researchId, locale }: {
           >
             {t.edit}
           </ButtonLink>
-          <ButtonLink
-            to={href(locale, adminDraftPublishPath(researchId, draft.id))}
-            size="row"
-            icon={<Icon name="upload" />}
-          >
-            {messages.admin.publish.open}
-          </ButtonLink>
+          <DraftWays researchId={researchId} draftId={draft.id} locale={locale} />
           <Form method="post">
             <input type="hidden" name="draftId" value={draft.id} />
             <input type="hidden" name="revision" value={draft.revision} />
@@ -355,63 +348,47 @@ function DraftRow({ draft, review, researchId, locale }: {
  * How many datasets a row lists, which is always somewhere to go: a draft's to
  * the screen they are decided on (even an empty list has a screen to add the
  * first one on), a version's to the screen that reads what it lists.
+ *
+ * **Drawn as a way to another screen, not as a bare count** (`WayTo`): the
+ * count is the only way from this table to a draft's datasets, and a number in
+ * the link colour among dates and words reads as one more fact of the row.
  */
 function Datasets({ count, to, locale }: { count: number, to: string, locale: Locale }) {
   const t = messagesFor(locale).admin.detail
-  return <Link to={to}>{t.datasetCount(count)}</Link>
+  return <WayTo to={to} icon="database" size="row">{t.datasetCount(count)}</WayTo>
 }
 
 /*
-  **A state every row has is a mark and a word; a box is for what only some
-  rows have** (docs/ui.md の「壊れるもの」). Whether a draft is shared, every
-  draft answers — so it is a mark. Unresolved comments are a box, because they
-  are what a reader is picking out — and, having something to pick out, the way
-  to the screen that reads them. A version being updated shows its draft's in
-  the cells a version leaves empty.
+  **Whether a draft is shared is a mark and a word**, every draft answers it
+  (docs/ui.md の「壊れるもの」). What the review holds is read on the review
+  screen, which the row's own "レビュー" opens. A version being updated shows its
+  draft's in the cell a version leaves empty.
 */
-function Review({ review, to, locale }: { review: AdminDraftReviewRow | null, to: string, locale: Locale }) {
+function Review({ review, locale }: { review: AdminDraftReviewRow | null, locale: Locale }) {
   const t = messagesFor(locale).admin.detail
   if (review === null) return null
-  return (
-    <span className="flex items-center gap-2 text-nowrap">
-      {review.shared
-        ? <Stated icon="link">{t.shared}</Stated>
-        : review.expired
-          ? <Stated icon="link">{t.shareExpired}</Stated>
-          : <Stated icon="lock">{t.notShared}</Stated>}
-      {review.unresolved > 0 && (
-        <Link to={to}>
-          <Badge tone="accent" icon={<Icon name="comment" />}>{t.unresolved(review.unresolved)}</Badge>
-        </Link>
-      )}
-    </span>
-  )
+  if (review.shared) return <Stated icon="link">{t.shared}</Stated>
+  if (review.expired) return <Stated icon="link">{t.shareExpired}</Stated>
+  return <Stated icon="lock">{t.notShared}</Stated>
 }
 
 /**
- * What the publish gate says of a draft: what would stop it and what it would
- * ask to confirm, each leading to the confirmation screen that lists them.
- * Nothing to stop and nothing to confirm is a state of its own, the same shape
- * as "shared" — a mark and a word, not a box, because every draft has it or
- * does not.
+ * The two screens of a draft past writing it, offered on every row that has a
+ * draft — a draft's own and a version being updated in one. **Offered, not
+ * read off a cell**: the review cell says only whether the draft is shared,
+ * and a draft nobody has been shown yet still needs a way to be shown.
  */
-function Problems({ review, to, locale }: { review: AdminDraftReviewRow | null, to: string, locale: Locale }) {
-  const t = messagesFor(locale).admin.detail
-  if (review === null) return null
-  if (review.blocks === 0 && review.findings === 0) return <Stated icon="check">{t.ready}</Stated>
+function DraftWays({ researchId, draftId, locale }: { researchId: string, draftId: string, locale: Locale }) {
+  const messages = messagesFor(locale)
   return (
-    <span className="flex items-center gap-2 text-nowrap">
-      {review.blocks > 0 && (
-        <Link to={to}>
-          <Badge tone="danger" icon={<Icon name="alert" />}>{t.blocked(review.blocks)}</Badge>
-        </Link>
-      )}
-      {review.findings > 0 && (
-        <Link to={to}>
-          <Badge tone="warning" icon={<Icon name="warning" />}>{t.toConfirm(review.findings)}</Badge>
-        </Link>
-      )}
-    </span>
+    <>
+      <ButtonLink to={href(locale, adminDraftReviewPath(researchId, draftId))} size="row" icon={<Icon name="comment" />}>
+        {messages.admin.detail.review}
+      </ButtonLink>
+      <ButtonLink to={href(locale, adminDraftPublishPath(researchId, draftId))} size="row" icon={<Icon name="upload" />}>
+        {messages.admin.publish.open}
+      </ButtonLink>
+    </>
   )
 }
 
@@ -426,8 +403,9 @@ function Problems({ review, to, locale }: { review: AdminDraftReviewRow | null, 
  * dataset count leads to the screen that reads what it lists** — a version is
  * not edited in place, so that screen has nothing to press. **The
  * update is a state of this row, not a row of its own**: while it is on, the
- * row says so, carries the draft's day, dataset count, review and
- * shortcomings in the cells a version leaves empty, and offers stopping it;
+ * row says so, carries the draft's day, dataset count and share in the
+ * cells a version leaves empty, offers the draft's review and publishing
+ * beside editing it, and offers stopping it;
  * and the version cannot be withdrawn until it is stopped. Making a draft from
  * a version copies it and leaves it out; pressed twice it makes two.
  */
@@ -449,7 +427,7 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
           {/* The same mark the listing gives a published research. */}
           <Stated icon="eye">{t.published}</Stated>
           {updating !== null && (
-            <Badge tone="accent" icon={<Icon name="edit" />}>{t.updating}</Badge>
+            <Flag kind="changed">{t.updating}</Flag>
           )}
         </span>
       </Td>
@@ -482,14 +460,7 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
             )}
       </Td>
       <Td>
-        {updating !== null && (
-          <Review review={review} to={href(locale, adminDraftReviewPath(researchId, updating.id))} locale={locale} />
-        )}
-      </Td>
-      <Td>
-        {updating !== null && (
-          <Problems review={review} to={href(locale, adminDraftPublishPath(researchId, updating.id))} locale={locale} />
-        )}
+        {updating !== null && <Review review={review} locale={locale} />}
       </Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
@@ -513,6 +484,7 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
                   {t.edit}
                 </ButtonLink>
               )}
+          {updating !== null && <DraftWays researchId={researchId} draftId={updating.id} locale={locale} />}
           <Form method="post">
             <input type="hidden" name="number" value={version.number} />
             <Submit intent="copy-version" size="row" icon={<Icon name="plus" />}>{t.copyToDraft}</Submit>

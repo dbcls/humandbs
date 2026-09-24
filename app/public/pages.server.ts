@@ -22,6 +22,7 @@ import {
   controlledAccessUsers,
   loadCatalog,
   publishedDataset,
+  citedDatasets,
   publishedDatasetLabels,
   publishedDatasets,
   publishedVersions,
@@ -90,9 +91,10 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
   const content = projected.content
 
   const citedIds = content.relatedPublications.flatMap((publication) => publication.datasetIds)
-  const [listed, citedLabels] = await Promise.all([
+  const typedIds = content.relatedPublications.flatMap((publication) => publication.externalIds ?? [])
+  const [listed, cited] = await Promise.all([
     publishedDatasets(db, content.datasetIds),
-    publishedDatasetLabels(db, citedIds),
+    citedDatasets(db, citedIds, typedIds),
   ])
 
   const rows: DatasetRowInput[] = content.datasetIds.flatMap((id) => {
@@ -110,7 +112,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     }]
   })
 
-  const datasetLabelById = new Map(citedLabels)
+  const datasetLabelById = new Map(cited.labelById)
   for (const [id, row] of listed) datasetLabelById.set(id, row.label)
 
   return researchView({
@@ -121,6 +123,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     content,
     datasets: rows,
     datasetLabelById,
+    humByLabel: cited.humByLabel,
     cau: projected.cau,
     files: fileListOf(publicRows(listing), request.filePage),
   }, request.locale, catalog)

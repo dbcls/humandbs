@@ -2,8 +2,8 @@
  * What a window is called, and the one place it is spelled.
  *
  * The order is a rule a reader notices only across screens — two windows open
- * on the same area, named back to front — so it is held here rather than left
- * to each `meta` (`docs/ui.md` の「管理画面の枠」).
+ * on the same area, named front to back — so it is held here rather than left
+ * to each `meta` (`docs/public-pages.md` の「窓の名前」).
  */
 
 import { readdir, readFile } from "node:fs/promises"
@@ -12,45 +12,96 @@ import path from "node:path"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
+import { adminArea } from "~/admin/navigation"
+
 import { messagesFor } from "./messages"
-import { pageTitle } from "./title"
+import { adminWindowTitle, windowTitle } from "./title"
 
 const ROUTES = path.join(import.meta.dirname, "..", "routes")
 
 const messages = messagesFor("ja")
+const site = messages.siteName
 
-describe("pageTitle", () => {
-  it("名前・識別子・サイト名の順に並べる", () => {
-    expect(pageTitle(messages, "研究の編集", "hum0588"))
-      .toBe(`研究の編集 - hum0588 - ${messages.siteName}`)
+describe("windowTitle", () => {
+  it("この画面から外へ向かって並べ、サイト名で終える", () => {
+    expect(windowTitle(messages, ["hum0006-v2", "hum0006", "研究一覧"]))
+      .toBe(`hum0006-v2 | hum0006 | 研究一覧 | ${site}`)
   })
 
-  it("識別子が無いときは名前とサイト名だけになる", () => {
-    expect(pageTitle(messages, "研究一覧")).toBe(`研究一覧 - ${messages.siteName}`)
-    expect(pageTitle(messages, "研究の編集", null)).toBe(`研究の編集 - ${messages.siteName}`)
-    expect(pageTitle(messages, "研究の編集", "")).toBe(`研究の編集 - ${messages.siteName}`)
+  it("段が無ければサイト名だけになる", () => {
+    expect(windowTitle(messages, [])).toBe(site)
   })
 
-  it("空の段を挟まない — 区切りが 2 つ続くことがない", () => {
-    fc.assert(fc.property(
-      fc.string(),
-      fc.option(fc.string(), { nil: null }),
-      (name, subject) => {
-        expect(pageTitle(messages, name, subject)).not.toContain(" -  - ")
-      },
-    ))
+  it("無い段は抜け、言い直しで埋めない", () => {
+    expect(windowTitle(messages, [null, "公開前の確認"])).toBe(`公開前の確認 | ${site}`)
+    expect(windowTitle(messages, ["JGAD000001", undefined, "  ", "公開前の確認"]))
+      .toBe(`JGAD000001 | 公開前の確認 | ${site}`)
   })
 
-  it("いつもサイト名で終わり、名前で始まる", () => {
-    fc.assert(fc.property(
-      fc.string({ minLength: 1 }).filter((one) => one.trim() !== ""),
-      fc.option(fc.string({ minLength: 1 }), { nil: null }),
-      (name, subject) => {
-        const title = pageTitle(messages, name, subject)
-        expect(title.startsWith(name)).toBe(true)
-        expect(title.endsWith(messages.siteName)).toBe(true)
-      },
-    ))
+  it("直前と同じ段は 1 度だけ書き、離れた同じ語は残す", () => {
+    expect(windowTitle(messages, ["研究", "研究", "Admin"])).toBe(`研究 | Admin | ${site}`)
+    expect(windowTitle(messages, ["研究", "hum0006", "研究"])).toBe(`研究 | hum0006 | 研究 | ${site}`)
+    expect(windowTitle(messages, [site])).toBe(site)
+  })
+
+  const steps = fc.array(fc.option(fc.string(), { nil: null }), { maxLength: 6 })
+
+  it("空の段を挟まず、隣り合う段が同じ語になることがない", () => {
+    fc.assert(fc.property(steps, (given) => {
+      const parts = windowTitle(messages, given).split(" | ")
+      for (const [i, part] of parts.entries()) {
+        expect(part.trim()).not.toBe("")
+        if (i > 0) expect(part).not.toBe(parts[i - 1])
+      }
+    }))
+  })
+
+  it("いつもサイト名で終わり、最初の中身のある段で始まる", () => {
+    fc.assert(fc.property(steps, (given) => {
+      const title = windowTitle(messages, given)
+      const first = given.map((one) => one?.trim() ?? "").find((one) => one !== "") ?? site
+      expect(title.endsWith(site)).toBe(true)
+      expect(title.startsWith(first)).toBe(true)
+    }))
+  })
+})
+
+describe("adminWindowTitle", () => {
+  it.each([
+    ["/admin", "トップ", null, `トップ | Admin | ${site}`],
+    ["/admin/research", "研究", null, `研究 | Admin | ${site}`],
+    ["/admin/research/r1", "研究の編集", "hum0006", `研究の編集 | hum0006 | 研究 | Admin | ${site}`],
+    [
+      "/admin/research/r1/draft/d1/dataset/x1",
+      "データセットの編集",
+      "JGAD000001",
+      `データセットの編集 | JGAD000001 | 研究 | Admin | ${site}`,
+    ],
+    [
+      "/admin/research/upstream/J-DS000136-010",
+      "データ提供申請の内容",
+      "J-DS000136-010",
+      `データ提供申請の内容 | J-DS000136-010 | データ提供申請 | Admin | ${site}`,
+    ],
+    ["/admin/documents/d1", "記事の編集", "guidelines", `記事の編集 | guidelines | 記事 | Admin | ${site}`],
+  ])("%s は %s の窓になる", (at, name, subject, expected) => {
+    expect(adminWindowTitle(messages, at, name, subject)).toBe(expected)
+  })
+})
+
+describe("adminArea", () => {
+  it("区画はメニューの語ではなく区画の一覧が名乗る語で呼ぶ", () => {
+    expect(adminArea(messages.admin, "/admin/research/r1")).toBe(messages.admin.research.heading)
+    expect(adminArea(messages.admin, "/admin/research/r1")).not.toBe(messages.admin.tasks.research.find)
+  })
+
+  it("下に別の区画を持つ区画は、その下を名乗らない", () => {
+    expect(adminArea(messages.admin, "/admin/research/upstream")).toBe(messages.admin.templates.heading)
+  })
+
+  it("区画の外と、名前の途中で切れるアドレスは区画を持たない", () => {
+    expect(adminArea(messages.admin, "/research/hum0006")).toBeNull()
+    expect(adminArea(messages.admin, "/admin/researchers")).toBeNull()
   })
 })
 
@@ -60,16 +111,16 @@ describe("pageTitle", () => {
  * role — which is the kind of difference nobody sees on the screen they are
  * working on.
  */
-describe("管理画面の title", () => {
-  it("どの画面も pageTitle を通す", async () => {
+describe("画面の title", () => {
+  it("どの画面も windowTitle を通し、管理画面は adminWindowTitle を通す", async () => {
     const names = (await readdir(ROUTES))
-      .filter((name) => name.startsWith("admin") && name.endsWith(".tsx")
-        && !name.includes(".test."))
+      .filter((name) => name.endsWith(".tsx") && !name.includes(".test.") && name !== "dev-ui.tsx")
     const offenders: string[] = []
     for (const name of names) {
       const text = await readFile(path.join(ROUTES, name), "utf8")
       if (!text.includes("export function meta")) continue
-      if (!text.includes("pageTitle(")) offenders.push(`${name}: pageTitle を通していない`)
+      const through = name.startsWith("admin") ? "adminWindowTitle(" : "windowTitle("
+      if (!text.includes(through)) offenders.push(`${name}: ${through} を通していない`)
       if (text.includes("title: `")) offenders.push(`${name}: title を自分で綴っている`)
     }
     expect(offenders).toEqual([])

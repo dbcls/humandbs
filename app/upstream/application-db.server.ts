@@ -17,7 +17,9 @@
  *
  * **Only what a public page shows is selected.** The application forms hold
  * addresses, telephone numbers, the head of institution and every collaborator;
- * none of it is read here (docs/data-model.md の「外部キャッシュ」).
+ * of all that, only the country and the state line of the investigator's
+ * address are read, and the state survives only where a state is a
+ * jurisdiction of its own (docs/data-model.md の「外部キャッシュ」).
  *
  * The reads that seed a draft answer a screen rather than a nightly batch, so
  * they are shaped around what this database is fast at. Three things decide it:
@@ -37,6 +39,7 @@
 import { Pool } from "pg"
 
 import type { ApplicationDbConfig } from "~/config.server"
+import { countryName } from "~/upstream/country"
 
 /**
  * Long enough for the two passes the hum resolution needs (about half a minute
@@ -55,7 +58,8 @@ export interface CauUpstreamRow {
   piNameEn: string
   affiliationJa: string
   affiliationEn: string
-  country: string
+  countryJa: string
+  countryEn: string
   researchTitleJa: string
   researchTitleEn: string
   periodStart: string | null
@@ -275,6 +279,14 @@ export async function fetchJgadDates(
  * later branches genuinely change — the period and the datasets — are read from
  * where the system keeps them summed per project.
  *
+ * **The country is the one exception.** Early initial applications often left
+ * the investigator's address out, and a later branch of the same project, or
+ * the initial one's submitter where that is the investigator, is where it was
+ * written. Where the initial application has no country, the newest submission
+ * that has one answers — approved branches before the rest — and its state
+ * line comes from the same submission, so the two never describe different
+ * addresses.
+ *
  * The end of the period follows the same care. Reaching the expiry is not the
  * same as ending: a project can expire and be extended back into use, so the
  * expiry date answers except where a closing report was approved, whose date is
@@ -296,6 +308,7 @@ export async function fetchCauEntries(
     division_en: string | null
     institution_en: string | null
     country: string | null
+    region: string | null
     title_ja: string | null
     title_en: string | null
     started_on: string | null
@@ -334,6 +347,7 @@ export async function fetchCauEntries(
         max(c.value) FILTER (WHERE c.key = 'pi_division_en')     AS division_en,
         max(c.value) FILTER (WHERE c.key = 'pi_institution_en')  AS institution_en,
         max(c.value) FILTER (WHERE c.key = 'pi_country_en')      AS country,
+        max(c.value) FILTER (WHERE c.key = 'pi_prefecture_en')   AS region,
         max(c.value) FILTER (WHERE c.key = 'use_study_title')    AS title_ja,
         max(c.value) FILTER (WHERE c.key = 'use_study_title_en') AS title_en
       FROM latest_submit ls
@@ -357,7 +371,7 @@ export async function fetchCauEntries(
     SELECT sc.ds_du_id, ah.hum_label,
            v.pi_last_ja, v.pi_first_ja, v.pi_last_en, v.pi_first_en,
            v.division_ja, v.institution_ja, v.division_en, v.institution_en,
-           v.country, v.title_ja, v.title_en,
+           v.country, v.region, v.title_ja, v.title_en,
            (st.started_at AT TIME ZONE 'Asia/Tokyo')::date::text AS started_on,
            CASE WHEN sc.phase_type IN (190, 200)
                 THEN (sc.history_date AT TIME ZONE 'Asia/Tokyo')::date::text
@@ -372,23 +386,82 @@ export async function fetchCauEntries(
     GROUP BY sc.ds_du_id, ah.hum_label, sc.phase_type, sc.history_date, period.expire_date,
              v.pi_last_ja, v.pi_first_ja, v.pi_last_en, v.pi_first_en,
              v.division_ja, v.institution_ja, v.division_en, v.institution_en,
-             v.country, v.title_ja, v.title_en, st.started_at
+             v.country, v.region, v.title_ja, v.title_en, st.started_at
     ORDER BY ah.hum_label, sc.ds_du_id`)
 
-  return rows.map((row) => ({
-    humLabel: row.hum_label,
-    applicationId: row.ds_du_id,
-    piNameJa: joinName(row.pi_last_ja, row.pi_first_ja),
-    piNameEn: joinName(row.pi_first_en, row.pi_last_en),
-    affiliationJa: joinAffiliation(row.division_ja, row.institution_ja),
-    affiliationEn: joinAffiliation(row.division_en, row.institution_en),
-    country: row.country ?? "",
-    researchTitleJa: row.title_ja ?? "",
-    researchTitleEn: row.title_en ?? "",
-    periodStart: row.started_on,
-    periodEnd: row.ended_on,
-    datasetAccessions: row.accessions,
-  }))
+  const unplaced = rows.filter((row) => (row.country ?? "").trim() === "").map((row) => row.ds_du_id)
+  const located = await fetchLaterAddresses(pool, schema, unplaced)
+
+  return rows.map((row) => {
+    const own = (row.country ?? "").trim() !== ""
+    const address = own ? { country: row.country ?? "", region: row.region ?? "" } : located.get(row.ds_du_id)
+    const country = countryName(address?.country ?? "", address?.region ?? "")
+    return {
+      humLabel: row.hum_label,
+      applicationId: row.ds_du_id,
+      piNameJa: joinName(row.pi_last_ja, row.pi_first_ja),
+      piNameEn: joinName(row.pi_first_en, row.pi_last_en),
+      affiliationJa: joinAffiliation(row.division_ja, row.institution_ja),
+      affiliationEn: joinAffiliation(row.division_en, row.institution_en),
+      countryJa: country.ja,
+      countryEn: country.en,
+      researchTitleJa: row.title_ja ?? "",
+      researchTitleEn: row.title_en ?? "",
+      periodStart: row.started_on,
+      periodEnd: row.ended_on,
+      datasetAccessions: row.accessions,
+    }
+  })
+}
+
+/**
+ * The investigator's country and state line for projects whose initial
+ * application left them out, from the newest submission of the project that
+ * has them: approved branches before the rest, and the submitter's address
+ * only where the submitter is the investigator. Country and state come from
+ * the same submission, so the two never describe different addresses.
+ *
+ * A second statement rather than part of the one above, because it reads every
+ * branch of a project and there are only a handful of projects that need it.
+ */
+async function fetchLaterAddresses(
+  pool: Pool,
+  schema: string,
+  projects: string[],
+): Promise<Map<string, { country: string, region: string }>> {
+  if (projects.length === 0) return new Map()
+  const { rows } = await pool.query<{ ds_du_id: string, country: string, region: string | null }>(`
+    WITH addressed AS (
+      SELECT a.ds_du_id, s.appl_submit_id, s.submit_date,
+        st.appl_status_type = 60 AS approved,
+        max(c.value) FILTER (WHERE c.key = 'pi_country_en')           AS pi_country,
+        max(c.value) FILTER (WHERE c.key = 'pi_prefecture_en')        AS pi_region,
+        max(c.value) FILTER (WHERE c.key = 'pi_last_name_en')         AS pi_last,
+        max(c.value) FILTER (WHERE c.key = 'submitter_country_en')    AS submitter_country,
+        max(c.value) FILTER (WHERE c.key = 'submitter_prefecture_en') AS submitter_region,
+        max(c.value) FILTER (WHERE c.key = 'submitter_last_name_en')  AS submitter_last
+      FROM ${schema}.nbdc_application a
+      JOIN ${schema}.current_nbdc_application_status st ON st.appl_id = a.appl_id
+      JOIN ${schema}.nbdc_application_submit s ON s.appl_id = a.appl_id
+      JOIN ${schema}.nbdc_application_component c ON c.appl_submit_id = s.appl_submit_id
+      WHERE a.ds_du_id = ANY($1) AND c.t_order = -1 AND c.key IN (
+        'pi_country_en', 'pi_prefecture_en', 'pi_last_name_en',
+        'submitter_country_en', 'submitter_prefecture_en', 'submitter_last_name_en')
+      GROUP BY a.ds_du_id, s.appl_submit_id, s.submit_date, st.appl_status_type
+    ),
+    judged AS (
+      SELECT *, coalesce(trim(pi_country), '') <> '' AS own FROM addressed
+    )
+    SELECT DISTINCT ON (ds_du_id) ds_du_id,
+      CASE WHEN own THEN pi_country ELSE submitter_country END AS country,
+      CASE WHEN own THEN pi_region ELSE submitter_region END AS region
+    FROM judged
+    WHERE own
+       OR (coalesce(trim(submitter_country), '') <> ''
+           AND lower(trim(submitter_last)) = lower(trim(pi_last)))
+    ORDER BY ds_du_id, own DESC, approved DESC, submit_date DESC NULLS LAST, appl_submit_id DESC`,
+  [projects])
+  return new Map(rows.map((row) => [row.ds_du_id, { country: row.country, region: row.region ?? "" }]))
 }
 
 /**

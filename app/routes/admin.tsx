@@ -2,14 +2,15 @@ import { Form } from "react-router"
 
 import { adminTasks } from "~/admin/navigation"
 import { requireActor } from "~/auth/actor.server"
-import { Badge, ButtonLink, Heading, Note, Stack } from "~/components/base"
+import { ButtonLink, Heading, Note, Stack, Stated } from "~/components/base"
+import { Flag } from "~/components/flags"
 import { Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, KeyValue, Page, Section, Table, Td } from "~/components/page"
 import { minuteInJst } from "~/dates"
 import { getDb } from "~/db/client.server"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { upstreamStatus } from "~/upstream/status.server"
 
@@ -50,10 +51,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.overview) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.overview) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -130,20 +131,22 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                           : minuteInJst(row.succeededAt)}
                       </Td>
                       <Td nowrap>{row.rowCount}</Td>
-                      {/* The reason a fetch gave is a sentence rather than a
-                          state, so the badge says which of the three it is and
-                          the sentence stands under it. */}
+                      {/* **Every row has one of the three, so a fetch that
+                          worked or has not run is a mark and a word; only a
+                          failure is a box** (docs/ui.md の「壊れるもの」). The
+                          reason it gave is a sentence rather than a state, so
+                          it stands under the box. */}
                       <Td>
                         {row.failure !== null
                           ? (
                               <Stack gap="tight">
-                                <Badge tone="danger" icon={<Icon name="alert" />}>{words.failed}</Badge>
+                                <Flag kind="stops">{words.failed}</Flag>
                                 <span className="text-ink-muted text-sm">{row.failure}</span>
                               </Stack>
                             )
                           : row.succeededAt === null
-                            ? <Badge dashed>{words.never}</Badge>
-                            : <Badge icon={<Icon name="check" />}>{words.ok}</Badge>}
+                            ? <Stated icon="clock">{words.never}</Stated>
+                            : <Stated icon="check">{words.ok}</Stated>}
                       </Td>
                     </tr>
                   ))}

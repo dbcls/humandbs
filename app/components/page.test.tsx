@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { AnnotationLayer, KeyValue, MarkedPlace, pageWindow, Paging, Section, Table, Td, TermLabel, Value } from "./page"
+import { AnnotationLayer, KeyValue, MarkedPlace, pageWindow, Paging, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -309,6 +309,25 @@ describe("where a cell sits in a row taller than it is", () => {
     it do — and the same 1px the cells had was there between the words (17.0) and
     the mark that sets the row's height (18.0).
   */
+  /*
+    A control flush with the top of a top-set row stood 5px above the first line
+    of the words beside it (measured: 12.0 against 17.2 on the take-in screen's
+    table of applications); a middle-set row has no first line to meet.
+  */
+  it("lowers a control onto the first line in a row set to the top, and only there", () => {
+    const control = (align?: "top" | "middle") => renderToStaticMarkup(
+      <Table headers={["", ""]} align={align}>
+        <tr>
+          <Td>hum0001</Td>
+          <Td holds="control"><button type="button">取り込み</button></Td>
+        </tr>
+      </Table>,
+    )
+    expect(control()).toMatch(/<td[^>]*pt-1\.25[^>]*><button/)
+    expect(control("middle")).not.toContain("pt-1.25")
+    expect(of()).not.toContain("pt-1.25")
+  })
+
   it("centres the header whichever way the cells go", () => {
     expect(of()).toMatch(/<th[^>]*align-middle/)
     expect(of("middle")).toMatch(/<th[^>]*align-middle/)
@@ -380,35 +399,64 @@ describe("横に流れる表で残る列", () => {
   })
 })
 
-describe("where a place's two annotations stand", () => {
-  const annotate = (at: string, part: "name" | "value") => <i data-part={part}>{`${part}:${at}`}</i>
+describe("where a place's marks stand", () => {
+  const annotate = (at: string, name?: string) => <i data-mark="">{`mark:${at}:${name ?? ""}`}</i>
   const draw = (element: React.ReactNode) => renderToStaticMarkup(<AnnotationLayer annotate={annotate}>{element}</AnnotationLayer>)
 
-  it("a section's mark stands in its heading, and what the published version said under its value", () => {
+  it("a section's marks stand in its heading, and nothing of them under the value", () => {
     const html = draw(<Section title="研究題目" at="title"><p>値</p></Section>)
-    expect(html).toMatch(/<h2[^>]*>研究題目[\s\S]*?name:title[\s\S]*?<\/h2>/)
-    expect(html.indexOf("value:title")).toBeGreaterThan(html.indexOf("値"))
-    expect(html.slice(0, html.indexOf("</h2>"))).not.toContain("value:title")
+    expect(html).toMatch(/<h2[^>]*>研究題目[\s\S]*?mark:title[\s\S]*?<\/h2>/)
+    expect(html.match(/mark:title/g)).toHaveLength(1)
   })
 
-  it("a pair's mark stands with its name (dt), not under the value", () => {
+  it("a pair's marks stand with its name (dt), and the value (dd) holds only the value", () => {
     const html = draw(<dl><KeyValue title="研究代表者" at="dataProviders.p.name">松原</KeyValue></dl>)
-    expect(html).toMatch(/<dt[^>]*>研究代表者[\s\S]*?name:dataProviders\.p\.name[\s\S]*?<\/dt>/)
-    const dd = html.slice(html.indexOf("<dd"))
-    expect(dd).not.toContain("name:dataProviders.p.name")
-    expect(dd.indexOf("value:dataProviders.p.name")).toBeGreaterThan(dd.indexOf("松原"))
+    expect(html).toMatch(/<dt[^>]*>研究代表者[\s\S]*?mark:dataProviders\.p\.name[\s\S]*?<\/dt>/)
+    expect(html.slice(html.indexOf("<dd"))).not.toContain("mark:")
   })
 
-  it("a cell's mark stands at the value's right on its row, and what was published under the row", () => {
-    const html = draw(<MarkedPlace at="grants.g.title">課題名</MarkedPlace>)
-    const row = html.slice(0, html.indexOf("value:grants.g.title"))
-    expect(row.indexOf("name:grants.g.title")).toBeGreaterThan(row.indexOf("課題名"))
-    expect(row).toContain("flex items-start")
+  /** A field just added has nothing written; its place is still a line to light and to press. */
+  it("an empty place still stands a line tall, so the caret in its box lights something", () => {
+    const html = draw(<dl><KeyValue title="細胞株" at="experiments.e.values.k">{null}</KeyValue></dl>)
+    expect(html).toMatch(/<div data-place="experiments\.e\.values\.k" class="[^"]*\bmin-h-\[1lh\]/)
+  })
+
+  it("a cell's marks stand at the value's right on its row, once", () => {
+    const html = draw(<MarkedPlace at="grants.g.title" name="研究課題名">課題名</MarkedPlace>)
+    expect(html.indexOf("mark:grants.g.title")).toBeGreaterThan(html.indexOf("課題名"))
+    expect(html).toContain("flex items-start")
+    expect(html.match(/mark:grants/g)).toHaveLength(1)
+  })
+
+  it("hands each mark the name the page gives the place — the heading, the pair's name, the column's", () => {
+    expect(draw(<Section title="研究題目" at="title"><p>値</p></Section>)).toContain("mark:title:研究題目")
+    expect(draw(<dl><KeyValue title="研究代表者" at="p.name">松原</KeyValue></dl>)).toContain("mark:p.name:研究代表者")
+    expect(draw(<MarkedPlace at="grants.g.title" name="研究課題名">課題名</MarkedPlace>)).toContain("mark:grants.g.title:研究課題名")
   })
 
   it("draws none of it on a page without a layer", () => {
     const html = renderToStaticMarkup(<dl><KeyValue title="研究代表者" at="dataProviders.p.name">松原</KeyValue></dl>)
-    expect(html).not.toContain("name:")
-    expect(html).not.toContain("value:")
+    expect(html).not.toContain("mark:")
+  })
+})
+
+describe("段に流す対", () => {
+  function pair(split?: boolean): string {
+    return renderToStaticMarkup(<Pairs><KeyValue title="研究方法" split={split}>長い</KeyValue></Pairs>)
+  }
+
+  it("既定では値を段の境で切らない", () => {
+    expect(pair()).toContain("break-inside-avoid")
+    expect(pair()).not.toContain("break-after-avoid")
+  })
+
+  it("split なら値は段を越えてよいが、ラベルの直後では切らない", () => {
+    const html = pair(true)
+    expect(html).not.toContain("break-inside-avoid")
+    expect(/<dt class="[^"]*break-after-avoid/.test(html)).toBe(true)
+  })
+
+  it("split でもラベルと値の順は変わらない", () => {
+    expect(pair(true).indexOf("研究方法")).toBeLessThan(pair(true).indexOf("長い"))
   })
 })

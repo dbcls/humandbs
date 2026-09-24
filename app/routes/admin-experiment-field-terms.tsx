@@ -15,7 +15,6 @@ import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/url
 import { ICD10_SET_CODE } from "~/icd10/codes"
 import { AdminBack } from "~/components/admin"
 import {
-  Badge,
   ButtonLink,
   Chooser,
   CHOOSER_SIDE,
@@ -42,11 +41,12 @@ import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { datasetsUsing, href } from "~/public/urls"
 import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 
 import type { Route } from "./+types/admin-experiment-field-terms"
+import { Flag } from "~/components/flags"
 
 /**
  * The terms one field draws its values from.
@@ -76,12 +76,12 @@ export async function action({ request }: Route.ActionArgs) {
   return catalogAction(request)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
     {
-      title: pageTitle(
-        messages,
+      title: adminWindowTitle(
+        messages, location.pathname,
         messages.admin.catalog.termsHeading,
         catalogLabel(loaderData.field, loaderData.locale),
       ),
@@ -456,7 +456,7 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                 mergeFrom.id === term.id
                   // The row being folded away cannot be its own destination, and
                   // saying which one it is beats leaving a gap in the column.
-                  ? <Badge tone="warning">{t.merge}</Badge>
+                  ? <Flag kind="merging">{t.merge}</Flag>
                   : (
                       <Form method="post">
                         <input type="hidden" name="termId" value={mergeFrom.id} />

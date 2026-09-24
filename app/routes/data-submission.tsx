@@ -3,6 +3,7 @@ import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { ActionButton, ActionRow } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { renderMarkdown } from "~/public/markdown.server"
 import { readLocale } from "~/public/urls"
 
@@ -26,7 +27,7 @@ export function loader({ request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: `${messages.submission.heading} - ${messages.siteName}` }]
+  return [{ title: windowTitle(messages, [messages.submission.heading]) }]
 }
 
 export default function DataSubmission({ loaderData }: Route.ComponentProps) {

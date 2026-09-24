@@ -4,6 +4,7 @@ import { Heading, Stack } from "~/components/base"
 import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { documentPage } from "~/public/site.server"
 import { href, legacyTarget, readLocale } from "~/public/urls"
 
@@ -45,8 +46,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  const { siteName } = messagesFor(loaderData.locale)
-  return [{ title: `${loaderData.article.title} - ${siteName}` }]
+  return [{ title: windowTitle(messagesFor(loaderData.locale), [loaderData.article.title]) }]
 }
 
 export default function Document({ loaderData }: Route.ComponentProps) {

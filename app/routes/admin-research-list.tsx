@@ -15,7 +15,6 @@ import {
   type ListingQuery,
 } from "~/admin/urls"
 import {
-  Badge,
   ButtonLink,
   Chooser,
   CHOOSER_SIDE,
@@ -36,13 +35,14 @@ import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { datasetPath, href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
 import { DEFAULT_SORT, defaultOrder, SORT_KEYS } from "~/search/sort"
 
 import type { Route } from "./+types/admin-research-list"
+import { Flag } from "~/components/flags"
 
 /** How many dataset ids a row opens with before it counts the rest. */
 const SHOWN_DATASETS = 3
@@ -78,10 +78,10 @@ export async function action({ request }: Route.ActionArgs) {
   return createResearchAction(request, locale)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.research.heading) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.research.heading) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -247,7 +247,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                       <ul className="flex flex-col gap-1">
                         {ADMIN_FLAG_KEYS.filter((flag) => row.flags[flag]).map((flag) => (
                           <li key={flag} className="flex">
-                            <Badge tone="accent">{t.flags[flag]}</Badge>
+                            <Flag kind="short">{t.flags[flag]}</Flag>
                           </li>
                         ))}
                       </ul>

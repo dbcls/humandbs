@@ -6,6 +6,8 @@ import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { seedDataset, seedResearch, seedVersion } from "~/db/seed"
 
+import { changedDatasetFromPublished } from "./changes"
+import { readDatasetEntry, readPublishedDataset } from "./queries.server"
 import { seedDevReviewData } from "./seed-dev-review.server"
 
 /**
@@ -230,5 +232,88 @@ describe("べき等性", () => {
     expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(3)
     expect(await db.select().from(s.dataset)).toHaveLength(3)
     expect(await db.select().from(s.labelPin)).toHaveLength(4)
+  })
+})
+
+describe("hum0127 のレビュー用 draft が書き換える公開済みの dataset", () => {
+  /** hum0127 with one published dataset that has an experiment to rewrite. */
+  async function seedWithExperiment(): Promise<{ hum0127: string, datasetId: string }> {
+    await seedCatalog()
+    const hum0127 = await seedResearch(db, "hum0127")
+    const datasetId = await seedDataset(db, hum0127, "JGAD000001")
+    await seedVersion(db, {
+      researchId: hum0127,
+      number: 1,
+      datasets: [{
+        datasetId,
+        content: {
+          releaseDate: null,
+          fileSelection: [],
+          values: [],
+          experiments: [{ id: "e1", label: { state: "value", value: "WGS" }, values: [] }],
+        },
+      }],
+    })
+    await seedResearch(db, "hum0005")
+    return { hum0127, datasetId }
+  }
+
+  it("公開版と違う値を持ち、dataset の編集画面に差の印が立つ", async () => {
+    const { hum0127, datasetId } = await seedWithExperiment()
+
+    const result = await seedDevReviewData(db)
+
+    expect(result.changedDatasetId).toBe(datasetId)
+    const entry = await readDatasetEntry(db, result.reviewDraftId, datasetId)
+    const published = await readPublishedDataset(db, hum0127, datasetId, null)
+    if (entry === null || published === null) throw new Error("the entry or the published dataset is missing")
+    expect(changedDatasetFromPublished(published.content, entry.content)).toContain("experiments.e1.label")
+  })
+
+  it("2 回流しても書き換えは 1 回だけ (entry の revision が進まない)", async () => {
+    const { datasetId } = await seedWithExperiment()
+
+    const first = await seedDevReviewData(db)
+    const before = await readDatasetEntry(db, first.reviewDraftId, datasetId)
+    const second = await seedDevReviewData(db)
+    const after = await readDatasetEntry(db, second.reviewDraftId, datasetId)
+
+    expect(after?.revision).toBe(before?.revision)
+    expect(after?.content).toEqual(before?.content)
+  })
+
+  it("書き換えられる実験を持つ公開済みの dataset が無ければ何も書かない", async () => {
+    await seedFixture()
+
+    const result = await seedDevReviewData(db)
+
+    expect(result.changedDatasetId).toBeNull()
+  })
+})
+
+describe("hum0127 の更新中の draft", () => {
+  it("目的 (ja) の 2 文目だけを書き換え、他の文は公開版のまま / 2 回流しても 1 回だけ", async () => {
+    await seedCatalog()
+    const hum0127 = await seedResearch(db, "hum0127")
+    await seedVersion(db, {
+      researchId: hum0127,
+      number: 1,
+      body: {
+        summary: {
+          aims: { ja: { state: "value", value: [[{ text: "一つ目の文。 二つ目の文。三つ目の文。" }]] }, en: { state: "value", value: [] } },
+          methods: { ja: { state: "value", value: [] }, en: { state: "value", value: [] } },
+          targets: { ja: { state: "value", value: [] }, en: { state: "value", value: [] } },
+          url: { ja: { state: "value", value: [] }, en: { state: "value", value: [] } },
+        },
+      },
+    })
+    await seedResearch(db, "hum0005")
+
+    const first = await seedDevReviewData(db)
+    await seedDevReviewData(db)
+
+    if (first.updatingDraftId === null) throw new Error("no updating draft")
+    const [row] = await db.select({ content: s.researchDraft.content }).from(s.researchDraft).where(eq(s.researchDraft.id, first.updatingDraftId))
+    expect(row?.content.summary.aims.ja).toEqual({ state: "value", value: [[{ text: "一つ目の文。 2026 年度からは二つ目の文。三つ目の文。" }]] })
   })
 })

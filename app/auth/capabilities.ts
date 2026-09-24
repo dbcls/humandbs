@@ -33,7 +33,7 @@ export interface Actor {
   sessionId: string
   /** The Keycloak `sub`, and the only thing a person is identified by. */
   sub: string
-  /** `preferred_username`: shown on screen, and written into the audit trail. */
+  /** The person's own name (`name`, else `preferred_username`): shown on screen, and written into the audit trail. */
   name: string
   isAdmin: boolean
   capabilities: ReadonlySet<Capability>

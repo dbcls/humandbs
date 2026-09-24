@@ -1,6 +1,6 @@
 import { ReviewScreen } from "~/components/review"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 import { reviewAction, reviewPage } from "~/review/review.server"
 
@@ -22,10 +22,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   return reviewAction(request, locale, params, "redirect")
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.review.heading, loaderData.humLabel) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.review.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }

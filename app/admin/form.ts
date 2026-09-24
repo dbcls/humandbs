@@ -92,7 +92,10 @@ export interface RelatedPublicationInput {
   id: string
   title: TextInput
   doi: TextInput
+  /** This research's datasets, chosen from its table. */
   datasetIds: string[]
+  /** Any other dataset ID, typed; blank rows are dropped at the save. */
+  externalIds: string[]
 }
 
 export interface ResearchContentInput {
@@ -193,6 +196,7 @@ export function researchContentInput(content: ResearchContent): ResearchContentI
       title: textInput(publication.title),
       doi: textInput(publication.doi),
       datasetIds: [...publication.datasetIds],
+      externalIds: [...(publication.externalIds ?? [])],
     })),
     datasetIds: [...content.datasetIds],
   }

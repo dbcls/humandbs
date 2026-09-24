@@ -37,7 +37,7 @@ function drawn(): DrawnDraft {
     datePublished: null,
     dateModified: null,
   }, "ja", NO_CATALOG)
-  return { humLabel: "hum0001", publishedNumber: null, view: anchored.view, row, changed: [], previous: {} }
+  return { humLabel: "hum0001", publishedNumber: null, view: anchored.view, row, changed: [], previous: {}, current: {} }
 }
 
 function view(produce: (input: DraftInput) => void = () => undefined): AdminDraftPageView {
@@ -51,7 +51,7 @@ function view(produce: (input: DraftInput) => void = () => undefined): AdminDraf
     revision: 3,
     input,
     datasets: [],
-    upstream: null,
+    citable: [],
     review: {
       changed: [],
       previous: {},
@@ -233,7 +233,7 @@ describe("the head", () => {
     expect(render(view())).not.toContain("を更新中")
   })
 
-  it("leads to this draft's other faces in one order — application, datasets, review, publish — by name only", () => {
+  it("leads to this draft's other faces in one order — take-in, datasets, review, publish — by name only", () => {
     const html = render({
       ...view(),
       steps: { datasets: 3, shared: true, unresolved: 4, blocks: 0, findings: 2 },
@@ -245,7 +245,7 @@ describe("the head", () => {
       return found
     }
     const order = [
-      at(`href="${DRAFT_BASE}/upstream"`),
+      at(`href="${DRAFT_BASE}/take"`),
       at(`href="${DRAFT_BASE}/dataset"`),
       at(`href="${DRAFT_BASE}/review"`),
       at(`href="${DRAFT_BASE}/publish"`),
@@ -290,6 +290,28 @@ describe("the tools row", () => {
     const unresolvedAt = at("未解決のコメント", wholeAt)
     const switchAt = at("aria-label=\"表示 pane\"", unresolvedAt)
     expect(switchAt).toBeGreaterThan(unresolvedAt)
+  })
+
+  /**
+   * **Save stands alone at the left; the panels' entries stand with the switch
+   * at the right end** — none of them changes the draft (`docs/admin-ui.md` の
+   * 「道具の行」).
+   */
+  it("pushes the panels' entries to the right end, together with the pane switch, and leaves save alone on the left", () => {
+    const html = render(view())
+    const statusAt = html.indexOf("role=\"status\"")
+    const groupAt = html.indexOf("class=\"ml-auto", statusAt)
+    const memoAt = html.indexOf("メモ", statusAt)
+    const switchAt = html.indexOf("aria-label=\"表示 pane\"", statusAt)
+    expect(statusAt).toBeGreaterThan(-1)
+    expect(groupAt).toBeGreaterThan(statusAt)
+    // The group opens before the first entry, so the entries are inside it
+    // rather than beside save …
+    expect(memoAt).toBeGreaterThan(groupAt)
+    // … and the switch is in the same group rather than one of its own.
+    expect(switchAt).toBeGreaterThan(memoAt)
+    expect(html.slice(groupAt + 1, switchAt)).not.toContain("class=\"ml-auto")
+    expect(html.slice(groupAt, switchAt)).not.toContain(">保存<")
   })
 
   it("stands inside the head card — the first of the two things that stick, the panes being the second", () => {
@@ -359,6 +381,19 @@ describe("a section of one prose field", () => {
     const title = html.indexOf("<h2")
     expect(html.slice(0, title)).not.toContain("リンクと改行")
   })
+
+  it("carries the field's flags on the same line as the heading and the badge, and draws no row of its own", () => {
+    const html = render(view((input) => {
+      input.content.releaseNote = { ja: { state: "value", text: "公開に向けて精査中" }, en: { state: "value", text: "" } }
+    }))
+    const heading = /<h2[^>]*>リリースノート[\s\S]*?<\/h2>/.exec(html)?.[0] ?? ""
+    expect(heading).toContain("リンクと改行")
+    expect(heading).toContain("未翻訳")
+    expect(heading.indexOf("未翻訳")).toBeGreaterThan(heading.indexOf("リンクと改行"))
+    // Only one 未翻訳 on the screen's form side: the heading's, not a second on a row under it.
+    const after = html.slice(html.indexOf(heading) + heading.length, html.indexOf("<h2", html.indexOf(heading) + heading.length))
+    expect(after).not.toContain("未翻訳")
+  })
 })
 
 /**
@@ -366,33 +401,16 @@ describe("a section of one prose field", () => {
  * list with each place as the way there; nothing else of the review stands
  * there (`docs/editing.md` の「他の版や draft と比べる」).
  */
-describe("the band over the form", () => {
-  it("names the version and counts the places, each a way there, with the dataset list leading to its screen", () => {
+describe("the form against the published version", () => {
+  it("offers no take-in and marks no field, however much the page differs from the version", () => {
     const page = view()
-    page.upstream = { theirs: page.input, differing: ["title", "summary.aims", "datasetIds"], number: 4 }
     page.review.publishedNumber = 4
     page.review.changed = ["title", "summary.aims", "datasetIds"]
     const html = render(page)
     const form = html.slice(html.indexOf("role=\"tablist\""))
-    expect(form).toContain("公開されている v4 と 3 か所違います")
-    expect(form).toContain(">title<")
-    expect(form).toContain(`href="${DRAFT_BASE}/dataset"`)
-    // The dataset list is one place, drawn once, as the way to its screen and never as a field to go to.
-    expect(form.match(/>datasetIds</g)).toHaveLength(1)
-    expect(form).not.toMatch(/<button[^>]*>(?:(?!<\/button>).)*>datasetIds</s)
-    expect(form).toContain("3 項目をまとめて取り込み")
-    expect(form.match(/公開されている v4/g)).toHaveLength(1)
-  })
-
-  it("adds the dataset list from the review's reading when the take-in does not carry it", () => {
-    const page = view()
-    page.upstream = { theirs: page.input, differing: ["title"], number: 2 }
-    page.review.publishedNumber = 2
-    page.review.changed = ["title", "datasetIds"]
-    const form = render(page).slice(render(page).indexOf("role=\"tablist\""))
-    expect(form).toContain("公開されている v2 と 2 か所違います")
-    expect(form).toContain("1 項目をまとめて取り込み")
-    expect(form.match(/>datasetIds</g)).toHaveLength(1)
+    expect(form).not.toContain("か所違います")
+    expect(form).not.toContain("まとめて取り込み")
+    expect(form).not.toMatch(/<button[^>]*>(?:(?!<\/button>).)*取り込み/s)
   })
 
   it("stands only while something differs, and never says the review's own things there", () => {

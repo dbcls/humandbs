@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { emptyDatasetContent } from "~/content/empty"
+import { emptyDatasetContent, filled } from "~/content/empty"
 import type { DatasetContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
@@ -318,5 +318,43 @@ describe("the download list", () => {
     const view = await datasetPage({ locale: "ja", datasetId: "JGAD000001" })
 
     expect(view.files).toEqual([{ name: "a.zip", size: 1, isPublic: true }])
+  })
+})
+
+describe("the datasets a publication names", () => {
+  it("says whose another research's published dataset is, found by any ID it holds, and nothing of an unpublished one", async () => {
+    const own = await createResearch("hum0001")
+    const other = await createResearch("hum0002")
+    const hidden = await createResearch("hum0003")
+    const mine = await createDataset(own, "JGAD000001")
+    const theirs = await createDataset(other, "JGAD000002")
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "JGAD000022", datasetId: theirs, isPrimary: false })
+    // Pinned, but its research has published nothing: the page must not say it exists.
+    await createDataset(hidden, "JGAD000003")
+    await publish(other, 1, [theirs])
+    await seedVersion(db, {
+      researchId: own,
+      number: 1,
+      datasets: [{ datasetId: mine }],
+      body: {
+        relatedPublications: [{
+          id: "p1",
+          title: filled("A paper"),
+          doi: filled("https://doi.org/10.1/x"),
+          datasetIds: [mine],
+          externalIds: ["JGAD000022", "JGAD000003", "DRA000001"],
+        }],
+      },
+    })
+    await rebuildSearchDocs(db)
+
+    const view = await researchPage({ ...ja, humId: "hum0001", wanted: "latest" })
+
+    expect(view.relatedPublications[0]?.datasets).toEqual([
+      { label: "JGAD000001", known: true, humLabel: null },
+      { label: "JGAD000022", known: true, humLabel: "hum0002" },
+      { label: "JGAD000003", known: false, humLabel: null },
+      { label: "DRA000001", known: false, humLabel: null },
+    ])
   })
 })

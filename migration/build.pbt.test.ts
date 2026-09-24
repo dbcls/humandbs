@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { buildResearchContent } from "./build"
+import { buildResearchContent, citedLabel, isAccessionShaped } from "./build"
 import type { EsResearchVersion } from "./es"
 
 function build(overrides: Partial<EsResearchVersion>) {
@@ -47,5 +47,37 @@ describe("buildResearchContent", () => {
         expect([...states]).toEqual(["value"])
       },
     ))
+  })
+})
+
+describe("a cited ID", () => {
+  const letters = fc.stringMatching(/^[A-Z]{2,5}$/)
+
+  it("is folded once and stays folded", () => {
+    fc.assert(fc.property(fc.string(), (label) => {
+      expect(citedLabel(citedLabel(label))).toBe(citedLabel(label))
+    }))
+  })
+
+  it("reads JGA's long and short forms as one ID", () => {
+    fc.assert(fc.property(fc.constantFrom("JGAD", "JGAS"), fc.stringMatching(/^\d{6}$/), (prefix, digits) => {
+      expect(citedLabel(`${prefix}00000${digits}`)).toBe(`${prefix}${digits}`)
+    }))
+  })
+
+  it("is a placeholder when its digits are all zero, whatever their number", () => {
+    fc.assert(fc.property(letters, fc.integer({ min: 1, max: 14 }), (prefix, length) => {
+      expect(isAccessionShaped(`${prefix}${"0".repeat(length)}`)).toBe(false)
+    }))
+  })
+
+  it("is shaped as an accession when letters are followed by digits that are not all zero", () => {
+    fc.assert(fc.property(letters, fc.stringMatching(/^\d{0,5}[1-9]\d{0,5}$/), (prefix, digits) => {
+      expect(isAccessionShaped(`${prefix}${digits}`)).toBe(true)
+      expect(isAccessionShaped(`E-GEAD-${digits}`)).toBe(true)
+    }))
+    for (const junk of ["", "JGAD", "000123", "jgad000001", "JGAD 000001", "JGAD000001x"]) {
+      expect(isAccessionShaped(junk)).toBe(false)
+    }
   })
 })

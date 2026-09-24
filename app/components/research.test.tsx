@@ -14,7 +14,7 @@ import {
   type ResearchView,
 } from "~/public/view.server"
 
-import { ResearchBody, ResearchListTable, ResearchVersionPage } from "./research"
+import { ResearchBody, ResearchListTable, ResearchVersionPage, runsLong } from "./research"
 
 /**
  * The download section is the one part of this page that comes from outside the
@@ -335,5 +335,82 @@ describe("a section with nothing in it", () => {
     expect(html).toContain("19H05656")
     // The other three are still empty, and still stand.
     expect(html).toContain(t.noResearchProjects)
+  })
+})
+
+describe("the datasets a publication names", () => {
+  const html = renderWith({
+    relatedPublications: [{
+      id: "p1",
+      title: field("A paper"),
+      doi: field("https://doi.org/10.1/x"),
+      datasetLabels: ["JGAD000001", "JGAD000022", "DRA000001"],
+      datasets: [
+        { label: "JGAD000001", known: true, humLabel: null },
+        { label: "JGAD000022", known: true, humLabel: "hum0002" },
+        { label: "DRA000001", known: false, humLabel: null },
+      ],
+    }],
+  })
+  const cell = /<tr[^>]*>(?:(?!<\/tr>)[\s\S])*A paper[\s\S]*?<\/tr>/.exec(html)?.[0] ?? ""
+
+  it("heads the column with the same words as the dataset table", () => {
+    expect(html).toContain(messagesFor("ja").dataset.datasetId)
+    expect(html).not.toContain("利用データID")
+  })
+
+  it("leads each published ID to its page, and another research's to that research too", () => {
+    expect(cell).toMatch(/<a[^>]*href="\/dataset\/JGAD000001"/)
+    expect(cell).toMatch(/<a[^>]*href="\/dataset\/JGAD000022"/)
+    expect(cell).toMatch(/JGAD000022<\/a> \(<a[^>]*href="\/research\/hum0002"[^>]*>hum0002<\/a>\)/)
+    expect(cell).not.toContain("hum0001")
+  })
+
+  it("writes an ID the portal publishes nothing under as text, with nothing to press", () => {
+    expect(cell).toContain("DRA000001")
+    expect(cell).not.toMatch(/href="[^"]*DRA000001"/)
+  })
+})
+
+describe("an ID in a table", () => {
+  it("does not break mid-ID, wherever a dataset ID is listed", () => {
+    const html = renderWith({
+      relatedPublications: [{
+        id: "p1",
+        title: field("A paper"),
+        doi: field(""),
+        datasetLabels: ["JGAD000107"],
+        datasets: [{ label: "JGAD000107", known: true, humLabel: null }],
+      }],
+      cau: [usage(["JGAD000107", "JGAD000113"])],
+    })
+    // The box each occurrence of the ID sits in: the last span, cell or item opened before it.
+    const boxes = [...html.matchAll(/JGAD000107/g)].map((hit) =>
+      [...html.slice(0, hit.index).matchAll(/<(?:span|td|li)\b[^>]*\bclass="([^"]*)"/g)].at(-1)?.[1] ?? "")
+    expect(boxes.length).toBeGreaterThanOrEqual(2)
+    for (const box of boxes) {
+      expect(box).toMatch(/whitespace-nowrap/)
+      expect(box).not.toMatch(/break-all/)
+    }
+  })
+})
+
+describe("研究概要の値が次の段へ続いてよいか", () => {
+  const plain = (length: number) => ({ state: "plain" as const, text: "あ".repeat(length), untranslated: false })
+
+  it("400 字から続いてよく、399 字までは 1 つの段に収める", () => {
+    expect(runsLong(plain(399))).toBe(false)
+    expect(runsLong(plain(400))).toBe(true)
+  })
+
+  it("リンクを含む文は、行き先を除いた字数で数える", () => {
+    const line = [{ text: "あ".repeat(250) }, { text: "い".repeat(150), href: "https://example.org/" }]
+    expect(runsLong({ state: "rich", text: [line], untranslated: false })).toBe(true)
+    expect(runsLong({ state: "rich", text: [[{ text: "あ".repeat(10) }]], untranslated: false })).toBe(false)
+  })
+
+  it("値が無いものは続かない", () => {
+    expect(runsLong({ state: "unsettled" })).toBe(false)
+    expect(runsLong({ state: "not-applicable" })).toBe(false)
   })
 })

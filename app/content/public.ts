@@ -70,8 +70,8 @@ export const PUBLISHED: PublicOptions = { keepUnsettled: false }
 export interface CauUsage {
   principalInvestigator: Bilingual
   affiliation: Bilingual
-  /** Upstream holds this in English only. */
-  country: string
+  /** Named by the portal, because upstream holds only an English spelling. */
+  country: Bilingual
   researchTitle: Bilingual
   periodStart: string | null
   periodEnd: string | null
@@ -204,6 +204,7 @@ export function publicResearchContent(
       title: single(publication.title, options),
       doi: single(publication.doi, options),
       datasetIds: [...publication.datasetIds],
+      externalIds: [...(publication.externalIds ?? [])],
     })),
     datasetIds: [...content.datasetIds],
   }

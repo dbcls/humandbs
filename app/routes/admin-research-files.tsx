@@ -27,7 +27,7 @@ import { filesAction, filesPage, type FilesPageView } from "~/files/pages.server
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { dateWindows } from "~/search/date-window"
 import { PAGE_SIZE, PAGE_SIZES } from "~/search/page-size"
@@ -60,10 +60,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   return result instanceof Response ? result : data(result, { status: 400 })
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.files.heading, loaderData.humLabel) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.files.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }

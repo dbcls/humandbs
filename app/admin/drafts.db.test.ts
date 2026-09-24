@@ -24,6 +24,7 @@ import {
   saveDraftContent,
 } from "./drafts.server"
 import {
+  changedDatasets,
   readDatasetEntry,
   readDraft,
 } from "./queries.server"
@@ -488,6 +489,77 @@ describe("writing a dataset of a draft", () => {
 
     expect(await saveDatasetEntry(db, { draftId, datasetId, revision: 1 }, described("mine")))
       .toEqual({ status: "gone" })
+  })
+})
+
+describe("which datasets a draft has changed", () => {
+  async function makeDataset(researchId: string): Promise<string> {
+    return only(await db.insert(s.dataset).values({ researchId }).returning({ id: s.dataset.id })).id
+  }
+
+  it("counts none of what it copied from a version and has not touched", async () => {
+    const researchId = await createResearch()
+    const [one, two] = [await makeDataset(researchId), await makeDataset(researchId)]
+    await publish(researchId, 1, titled("v1"), [
+      { datasetId: one, content: described("one") },
+      { datasetId: two, content: withExperiment("WGS") },
+    ])
+    const draftId = await draftCopiedFrom(db, researchId, 1)
+    if (draftId === null) throw new Error("no draft")
+
+    expect(await changedDatasets(db, draftId, researchId, null)).toEqual(new Set())
+  })
+
+  it("counts a dataset saved with a different value, and only that one", async () => {
+    const researchId = await createResearch()
+    const [one, two] = [await makeDataset(researchId), await makeDataset(researchId)]
+    await publish(researchId, 1, titled("v1"), [
+      { datasetId: one, content: described("one") },
+      { datasetId: two, content: described("two") },
+    ])
+    const draftId = await draftCopiedFrom(db, researchId, 1)
+    if (draftId === null) throw new Error("no draft")
+
+    await saveDatasetEntry(db, { draftId, datasetId: two, revision: 1 }, described("two, edited"))
+
+    expect(await changedDatasets(db, draftId, researchId, null)).toEqual(new Set([two]))
+  })
+
+  it("stops counting a dataset written back to what the version says", async () => {
+    const researchId = await createResearch()
+    const datasetId = await makeDataset(researchId)
+    await publish(researchId, 1, titled("v1"), [{ datasetId, content: described("one") }])
+    const draftId = await draftCopiedFrom(db, researchId, 1)
+    if (draftId === null) throw new Error("no draft")
+
+    await saveDatasetEntry(db, { draftId, datasetId, revision: 1 }, described("edited"))
+    await saveDatasetEntry(db, { draftId, datasetId, revision: 2 }, described("one"))
+
+    expect(await changedDatasets(db, draftId, researchId, null)).toEqual(new Set())
+  })
+
+  it("counts a dataset no version lists once the draft has written it", async () => {
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const written = await makeDataset(researchId)
+    const unwritten = await makeDataset(researchId)
+    await saveDatasetEntry(db, { draftId, datasetId: written, revision: null }, emptyDatasetContent())
+
+    const changed = await changedDatasets(db, draftId, researchId, null)
+
+    expect(changed).toEqual(new Set([written]))
+    expect(changed.has(unwritten)).toBe(false)
+  })
+
+  it("compares an update with the version it updates, not with the newest", async () => {
+    const researchId = await createResearch()
+    const datasetId = await makeDataset(researchId)
+    const first = await publish(researchId, 1, titled("v1"), [{ datasetId, content: described("old") }])
+    await publish(researchId, 2, titled("v2"), [{ datasetId, content: described("new") }])
+    const opened = await draftUpdating(db, researchId, first)
+    if (opened.status !== "opened") throw new Error(opened.status)
+
+    expect(await changedDatasets(db, opened.draftId, researchId, first)).toEqual(new Set())
+    expect(await changedDatasets(db, opened.draftId, researchId, null)).toEqual(new Set([datasetId]))
   })
 })
 

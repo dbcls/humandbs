@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { Button, Chevron, Chip, Clamped, Confirm, Fold, foldShown, PaneHeading, Stated } from "./base"
+import { Button, Chevron, Chip, Clamped, Confirm, controlFace, Fold, foldShown, PaneHeading, Stated } from "./base"
 
 /** Rendered at an address, since a part may hold a link. */
 function render(element: React.ReactNode): string {
@@ -295,5 +295,11 @@ describe("Chevron", () => {
   it("moves inside any Button, which is the group it answers to", () => {
     const html = render(<Button type="button" icon={<Chevron dir="right" />}>研究へ</Button>)
     expect(html).toMatch(/<button[^>]*class="[^"]*\bgroup\/way\b/)
+  })
+})
+
+describe("a control in a line of text (row)", () => {
+  it("is 24px tall whether or not it carries a word, so a glyph alone does not sit lower than the word beside it", () => {
+    expect(controlFace({ size: "row" }).split(" ")).toContain("min-h-6")
   })
 })

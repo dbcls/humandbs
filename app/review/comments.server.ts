@@ -183,44 +183,43 @@ export async function deleteComment(
   return row === undefined ? { status: "gone" } : { status: "deleted" }
 }
 
+/**
+ * One reader's presses of one mark, as the review screen lists them: a reader
+ * presses again on each round, so a row is a person rather than a press.
+ */
 export interface AcknowledgementView {
   kind: AcknowledgementKind
+  /** The name they pressed it under most recently. */
   name: string
   bySignedIn: boolean
+  /** When they last pressed it. */
   createdAt: string
+  /** How many times they have pressed it. */
+  count: number
 }
 
 /**
- * "I have finished commenting" or "there is nothing to fix". A signed-in reader
- * has one of each kind, moved to the latest press; an anonymous one leaves a
- * note each time, since there is nothing to recognise them by and pretending
- * otherwise would merge two people who share a link.
+ * "I have finished commenting" or "there is nothing to fix". **Every press is
+ * kept**, signed in or not — a reader presses again on each round of the
+ * review, and the count is read.
  */
 export async function acknowledgeDraft(
   db: Executor,
   input: { draftId: string, kind: AcknowledgementKind, actor: CommentAuthor },
 ): Promise<void> {
-  if (input.actor.sub === null) {
-    await db
-      .insert(reviewAcknowledgement)
-      .values({ draftId: input.draftId, kind: input.kind, actorSub: null, actorName: input.actor.name })
-    return
-  }
-
   await db
     .insert(reviewAcknowledgement)
-    .values({
-      draftId: input.draftId,
-      kind: input.kind,
-      actorSub: input.actor.sub,
-      actorName: input.actor.name,
-    })
-    .onConflictDoUpdate({
-      target: [reviewAcknowledgement.draftId, reviewAcknowledgement.kind, reviewAcknowledgement.actorSub],
-      set: { actorName: input.actor.name, createdAt: new Date() },
-    })
+    .values({ draftId: input.draftId, kind: input.kind, actorSub: input.actor.sub, actorName: input.actor.name })
 }
 
+/**
+ * Each reader's presses of each mark, gathered into one row, the most recently
+ * pressed first.
+ *
+ * **Who a reader is**: a signed-in one is their account, whatever name it
+ * carried at the time — the row goes by the latest; one who did not sign in is
+ * the name they typed, which is all there is to know them by.
+ */
 export async function readAcknowledgements(
   db: Executor,
   draftId: string,
@@ -234,12 +233,25 @@ export async function readAcknowledgements(
     })
     .from(reviewAcknowledgement)
     .where(eq(reviewAcknowledgement.draftId, draftId))
-    .orderBy(asc(reviewAcknowledgement.createdAt))
+    // The id breaks ties: presses in one transaction share a clock reading,
+    // and the ids are drawn in the order the presses were made.
+    .orderBy(asc(reviewAcknowledgement.createdAt), asc(reviewAcknowledgement.id))
 
-  return rows.map((row) => ({
-    kind: row.kind,
-    name: row.actorName,
-    bySignedIn: row.actorSub !== null,
-    createdAt: row.createdAt.toISOString(),
-  }))
+  const people = new Map<string, { view: AcknowledgementView, last: number }>()
+  rows.forEach((row, at) => {
+    const who = row.actorSub === null ? `name:${row.actorName}` : `sub:${row.actorSub}`
+    const key = `${row.kind} ${who}`
+    const held = people.get(key)
+    people.set(key, {
+      view: {
+        kind: row.kind,
+        name: row.actorName,
+        bySignedIn: row.actorSub !== null,
+        createdAt: row.createdAt.toISOString(),
+        count: (held?.view.count ?? 0) + 1,
+      },
+      last: at,
+    })
+  })
+  return [...people.values()].toSorted((a, b) => b.last - a.last).map((one) => one.view)
 }

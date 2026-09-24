@@ -330,8 +330,15 @@ export interface RelatedPublication {
    */
   title: Slot<string>
   doi: Slot<string>
-  /** Dataset identities this publication covers. */
+  /** This research's datasets the publication covers, by identity. */
   datasetIds: string[]
+  /**
+   * Dataset IDs written by hand: another research's dataset, or an accession
+   * the portal does not hold. Kept as written and looked up in the portal's
+   * ledger when drawn, so one that is registered later is found then. Absent
+   * means none.
+   */
+  externalIds?: string[]
 }
 
 /**

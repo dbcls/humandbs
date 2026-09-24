@@ -14,14 +14,13 @@ import {
   READ_TYPE_KEY,
   TYPE_KEY,
 } from "./arbitraries/upstream"
+import { researchContentInput, type DraftInput } from "./form"
+import { initialTake, RESEARCH_TAKE, takePlaces } from "./take"
 import {
-  contentWithUpstream,
+  applicationInput,
   draDatasetSeed,
   jgadDatasetSeed,
-  mergeInitial,
-  mergeRows,
   researchContentFrom,
-  upstreamProvider,
 } from "./templates"
 
 const branch: DsBranchDetail = {
@@ -186,7 +185,7 @@ describe("the dataset a JGA registration seeds", () => {
     const seed = jgadDatasetSeed(registration, unknown, catalogFixture)
 
     expect(diseasesUnder(seed.content.experiments[0]?.values ?? [], DISEASE_KEY)).toEqual([])
-    expect(seed.dropped).toContainEqual({ keyCode: "disease", value: "Z999" })
+    expect(seed.dropped).toContainEqual({ keyCode: "disease", keyLabel: "disease", value: "Z999" })
   })
 
   it("names an assay the catalog has no term for instead of minting one", () => {
@@ -199,8 +198,26 @@ describe("the dataset a JGA registration seeds", () => {
     expect(termsUnder(seed.content.experiments[0]?.values ?? [], METHOD_KEY)).toEqual([])
     expect(seed.dropped).toContainEqual({
       keyCode: "experimental-method",
+      keyLabel: "experimental-method",
       value: "Exome sequencing",
     })
+  })
+
+  it("does not offer the title to the methods when there is no assay: a title never names one", () => {
+    const seed = jgadDatasetSeed({ ...registration, datasetType: "" }, branch, catalogFixture)
+
+    expect(termsUnder(seed.content.experiments[0]?.values ?? [], METHOD_KEY)).toEqual([])
+    expect(seed.dropped.filter((value) => value.keyCode === "experimental-method")).toEqual([])
+  })
+
+  it("names the key a value did not fit by the name the screens give it", () => {
+    const catalog = {
+      ...catalogFixture,
+      keys: catalogFixture.keys.map((key) => key.code === "experimental-method" ? { ...key, labelJa: "実験方法" } : key),
+    }
+    const seed = jgadDatasetSeed({ ...registration, datasetType: "Exome sequencing" }, branch, catalog)
+
+    expect(seed.dropped).toContainEqual({ keyCode: "experimental-method", keyLabel: "実験方法", value: "Exome sequencing" })
   })
 
   it("writes the assay as the type of data as well, which is what a reader sees", () => {
@@ -250,7 +267,7 @@ describe("the dataset a DRA submission seeds", () => {
 
     expect(termsUnder(seed.content.experiments[0]?.values ?? [], PLATFORM_KEY))
       .toEqual(["set-platform/illumina-hiseq-2500"])
-    expect(seed.dropped).toContainEqual({ keyCode: "platform", value: "DNBSEQ-T7" })
+    expect(seed.dropped).toContainEqual({ keyCode: "platform", keyLabel: "platform", value: "DNBSEQ-T7" })
   })
 
   it("writes the layout as the catalog spells it rather than as the archive does", () => {
@@ -289,11 +306,10 @@ describe("the dataset a DRA submission seeds", () => {
   })
 })
 
-describe("the draft and the application side by side", () => {
-  const drafted = () => {
-    const content = researchContentFrom({ ...branch, titleJa: "下書きの題目", aimsJa: "下書きの目的" })
-    return {
-      ...content,
+describe("an application laid over a draft", () => {
+  const drafted = (): DraftInput => ({
+    content: researchContentInput({
+      ...researchContentFrom({ ...branch, titleJa: "下書きの題目", aimsJa: "下書きの目的" }),
       grants: [{
         id: "g1",
         title: pairOf("助成金"),
@@ -301,69 +317,43 @@ describe("the draft and the application side by side", () => {
         grantIds: ["JP00000001"],
       }],
       datasetIds: ["kept-1", "kept-2"],
-    }
-  }
-
-  it("puts one row on every field and language, whether or not the two agree", () => {
-    const rows = mergeRows(drafted(), branch)
-    expect(rows).toHaveLength(8)
-    expect(new Set(rows.map((row) => row.field))).toEqual(
-      new Set(["title", "aims", "methods", "targets"]),
-    )
+    }),
   })
 
-  it("reads the draft and the application into the two columns", () => {
-    const rows = mergeRows(drafted(), branch)
-    const title = rows.find((row) => row.field === "title" && row.language === "ja")
-    expect(title?.current).toBe("下書きの題目")
-    expect(title?.incoming).toBe("ゲノム解析による疾患研究")
-  })
-
-  it("shows nothing in a column the side has left unsettled", () => {
-    const empty = researchContentFrom({ ...branch, aimsJa: "", aimsEn: "" })
-    const rows = mergeRows(empty, { ...branch, aimsJa: "" })
-    const aims = rows.find((row) => row.field === "aims" && row.language === "ja")
-    expect(aims?.current).toBe("")
-    expect(aims?.incoming).toBe("")
+  it("differs from the draft only where the application states something", () => {
+    const mine = drafted()
+    const places = takePlaces(RESEARCH_TAKE, mine, applicationInput(mine, branch))
+    expect(places).toEqual(["title", "summary.aims"])
   })
 
   /** 取り込みの動機が「申請が更新された」なので、既定は申請の側になる。 */
-  it("starts a box at the application, falling back to the draft", () => {
-    const rows = mergeRows(drafted(), { ...branch, methodsJa: "" })
-    const initial = (field: string) => {
-      const row = rows.find((one) => one.field === field && one.language === "ja")
-      return row === undefined ? null : mergeInitial(row)
-    }
-    expect(initial("title")).toBe("ゲノム解析による疾患研究")
-    expect(initial("methods")).toBe("方法です")
+  it("opens the face at the application, keeping the draft where the application is blank", () => {
+    const mine = drafted()
+    const written = initialTake(RESEARCH_TAKE, mine, applicationInput(mine, { ...branch, aimsJa: "" }))
+    expect(written.content.title.ja).toEqual({ state: "value", text: "ゲノム解析による疾患研究" })
+    expect(written.content.summary.aims.ja).toEqual({ state: "value", text: "下書きの目的" })
   })
 
-  it("keeps the line breaks a curator typed, in both directions", () => {
-    const written = new Map([["aims.ja", "一行目\n\n三行目"]])
-    const after = contentWithUpstream(drafted(), written)
-    const back = mergeRows(after, branch).find((row) => row.field === "aims" && row.language === "ja")
-    expect(back?.current).toBe("一行目\n\n三行目")
+  it("carries the rest of the draft across untouched", () => {
+    const mine = drafted()
+    const laid = applicationInput(mine, { ...branch, titleJa: "新しい題目" })
+    expect(laid.content.datasetIds).toEqual(["kept-1", "kept-2"])
+    expect(laid.content.grants).toEqual(mine.content.grants)
+    expect(laid.content.summary.url).toEqual(mine.content.summary.url)
   })
 
-  it("writes only the four fields and carries the rest of the draft across", () => {
-    const before = drafted()
-    const after = contentWithUpstream(before, new Map([["title.ja", "決めた題目"]]))
-    expect(after.title.ja).toEqual({ state: "value", value: "決めた題目" })
-    expect(after.datasetIds).toEqual(["kept-1", "kept-2"])
-    expect(after.grants).toEqual(before.grants)
-    expect(after.summary.url).toEqual(before.summary.url)
+  it("adds the investigator after the draft's providers, unless the draft already names them", () => {
+    const empty: DraftInput = { content: { ...drafted().content, dataProviders: [] } }
+    const added = applicationInput(empty, branch).content.dataProviders
+    expect(added.map((one) => one.name.ja.text)).toEqual(["田中 太郎"])
+
+    const named = drafted()
+    expect(applicationInput(named, branch).content.dataProviders).toEqual(named.content.dataProviders)
   })
 
-  /** 空の箱は「値があって空」ではなく未確定。第 4 の状態を作らない。 */
-  it("turns an empty box into 未確定 rather than an empty value", () => {
-    const after = contentWithUpstream(drafted(), new Map([["title.ja", "   "], ["aims.ja", ""]]))
-    expect(after.title.ja).toEqual({ state: "unknown" })
-    expect(after.summary.aims.ja).toEqual({ state: "unknown" })
-  })
-
-  it("offers the provider whole, and not at all when the application names nobody", () => {
-    expect(upstreamProvider(branch)?.name.ja).toEqual({ state: "value", value: "田中 太郎" })
-    expect(upstreamProvider({ ...branch, piNameJa: "", piNameEn: "" })).toBeNull()
+  it("adds nobody when the application names nobody", () => {
+    const empty: DraftInput = { content: { ...drafted().content, dataProviders: [] } }
+    expect(applicationInput(empty, { ...branch, piNameJa: "", piNameEn: "" }).content.dataProviders).toEqual([])
   })
 })
 

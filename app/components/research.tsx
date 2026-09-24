@@ -5,6 +5,7 @@ import { CartColumnHead, CartToggle } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { toPlainText } from "~/content/richtext"
 import {
   datasetPath,
   href,
@@ -12,7 +13,7 @@ import {
   researchPath,
   researchVersionsPath,
 } from "~/public/urls"
-import type { ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
+import type { CitedDatasetView, DatasetRowView, FieldView, ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
 
 import { Downloads } from "./files"
 import {
@@ -185,13 +186,13 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
 
       <Section title={t.overview}>
         <Pairs>
-          <KeyValue title={t.aims} at="summary.aims">
+          <KeyValue title={t.aims} at="summary.aims" split={runsLong(view.summary.aims)}>
             <Value field={view.summary.aims} locale={locale} />
           </KeyValue>
-          <KeyValue title={t.methods} at="summary.methods">
+          <KeyValue title={t.methods} at="summary.methods" split={runsLong(view.summary.methods)}>
             <Value field={view.summary.methods} locale={locale} />
           </KeyValue>
-          <KeyValue title={t.targets} at="summary.targets">
+          <KeyValue title={t.targets} at="summary.targets" split={runsLong(view.summary.targets)}>
             <Value field={view.summary.targets} locale={locale} />
           </KeyValue>
           {hasLinks(view.summary.links) && (
@@ -213,10 +214,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
               : (
                   <Table headers={[
                     ...(cart ? [<CartColumnHead key="cart" locale={locale} />] : []),
-                    messages.dataset.datasetId,
-                    messages.dataset.typeOfData,
-                    messages.dataset.accessType,
-                    messages.dataset.datePublished,
+                    ...datasetColumns(locale),
                   ]}
                   >
                     {view.datasets.map((row, at) => {
@@ -229,15 +227,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                           {cart && (
                             <Td holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
                           )}
-                          <Td className="break-all">
-                            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
-                            {to === null ? name : <Link to={to}>{name}</Link>}
-                          </Td>
-                          <Td>
-                            {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
-                          </Td>
-                          <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
-                          <Td>{row.datePublished}</Td>
+                          <DatasetCells row={row} name={name} to={to} locale={locale} />
                         </tr>
                       )
                     })}
@@ -290,12 +280,12 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 {view.researchProjects.map((project) => (
                   <tr key={project.id}>
                     <Td>
-                      <MarkedPlace at={`researchProjects.${project.id}.name`}>
+                      <MarkedPlace at={`researchProjects.${project.id}.name`} name={t.researchProjectName}>
                         <Value field={project.name} locale={locale} />
                       </MarkedPlace>
                     </Td>
                     <Td className="break-all">
-                      <MarkedPlace at={`researchProjects.${project.id}.url`}>
+                      <MarkedPlace at={`researchProjects.${project.id}.url`} name={t.url}>
                         <LinksValue links={project.links} locale={locale} />
                       </MarkedPlace>
                     </Td>
@@ -316,19 +306,19 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 {view.grants.map((grant) => (
                   <tr key={grant.id}>
                     <Td>
-                      <MarkedPlace at={`grants.${grant.id}.agency.name`}>
+                      <MarkedPlace at={`grants.${grant.id}.agency.name`} name={t.grantAgency}>
                         <Value field={grant.agency} locale={locale} />
                       </MarkedPlace>
                     </Td>
                     <Td>
-                      <MarkedPlace at={`grants.${grant.id}.title`}>
+                      <MarkedPlace at={`grants.${grant.id}.title`} name={t.grantTitle}>
                         <Value field={grant.title} locale={locale} />
                       </MarkedPlace>
                     </Td>
                     <Td>
                       {/* A line each, because a grant carrying several numbers runs
                       them into one long code on a single line. */}
-                      <MarkedPlace at={`grants.${grant.id}.grantIds`}>
+                      <MarkedPlace at={`grants.${grant.id}.grantIds`} name={t.grantId}>
                         <ul className="flex flex-col items-start gap-1">
                           {grant.grantIds.map((grantId) => (
                             <li key={grantId}><Badge pill>{grantId}</Badge></li>
@@ -346,16 +336,16 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
         {view.relatedPublications.length === 0
           ? <Empty>{t.noRelatedPublications}</Empty>
           : (
-              <Table headers={[t.publicationTitle, "DOI", t.dataInUse]}>
+              <Table headers={[t.publicationTitle, "DOI", messages.dataset.datasetId]}>
                 {view.relatedPublications.map((publication) => (
                   <tr key={publication.id}>
                     <Td>
-                      <MarkedPlace at={`relatedPublications.${publication.id}.title`}>
+                      <MarkedPlace at={`relatedPublications.${publication.id}.title`} name={t.publicationTitle}>
                         <Value field={publication.title} locale={locale} />
                       </MarkedPlace>
                     </Td>
                     <Td className="break-all">
-                      <MarkedPlace at={`relatedPublications.${publication.id}.doi`}>
+                      <MarkedPlace at={`relatedPublications.${publication.id}.doi`} name="DOI">
                         {publication.doi.state === "plain" && publication.doi.text !== ""
                           ? (
                               <ExternalLink to={publication.doi.text} locale={locale}>
@@ -366,11 +356,11 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                       </MarkedPlace>
                     </Td>
                     <Td>
-                      <MarkedPlace at={`relatedPublications.${publication.id}.datasetIds`}>
-                        <DatasetList
-                          labels={publication.datasetLabels}
+                      <MarkedPlace at={`relatedPublications.${publication.id}.datasetIds`} name={messages.dataset.datasetId}>
+                        <CitedList
+                          cited={publication.datasets}
                           linkTo={linkTo}
-                          messages={messages}
+                          locale={locale}
                         />
                       </MarkedPlace>
                     </Td>
@@ -398,7 +388,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                   t.country,
                   t.title,
                   t.periodOfDataUse,
-                  t.dataInUse,
+                  messages.dataset.datasetId,
                 ]}
                 >
                   {view.cau.map((usage, index) => (
@@ -431,6 +421,68 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
   )
 }
 
+/** The names over `DatasetCells`, in its order. */
+export function datasetColumns(locale: Locale): string[] {
+  const messages = messagesFor(locale)
+  return [
+    messages.dataset.datasetId,
+    messages.dataset.typeOfData,
+    messages.dataset.accessType,
+    messages.dataset.datePublished,
+  ]
+}
+
+/**
+ * One dataset's cells in a research's dataset table: its id, what kind of data
+ * it is, how it is accessed, and when it was published.
+ *
+ * **The management screen that orders a draft's datasets draws the same cells**,
+ * so the table a curator arranges reads as the table the page will show — the
+ * one difference is where the id leads.
+ */
+export function DatasetCells({ row, name, to, newTab = false, locale }: {
+  row: DatasetRowView
+  /** What the id cell says: the label, or a stand-in where none is pinned. */
+  name: string
+  /** Where the id leads; null draws it as text. */
+  to: string | null
+  /** Whether the id opens its page in a new tab, for a screen someone is working on. */
+  newTab?: boolean
+  locale: Locale
+}) {
+  return (
+    <>
+      <Td nowrap>
+        <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
+        {to === null
+          ? name
+          : newTab
+            ? <ExternalLink to={to} locale={locale}>{name}</ExternalLink>
+            : <Link to={to}>{name}</Link>}
+      </Td>
+      <Td>
+        {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
+      </Td>
+      <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
+      <Td>{row.datePublished}</Td>
+    </>
+  )
+}
+
+/**
+ * How long a summary value has to be before it may run on into the next
+ * column: about ten lines of the wide column, fourteen of the narrow one.
+ * Shorter, and splitting it saves a line or two while leaving one or two lines
+ * of it stranded at the head of the other column.
+ */
+const SPLIT_FROM = 400
+
+export function runsLong(field: FieldView): boolean {
+  if (field.state === "plain") return field.text.length >= SPLIT_FROM
+  if (field.state === "rich") return toPlainText(field.text).length >= SPLIT_FROM
+  return false
+}
+
 /**
  * The datasets one row of a table names.
  *
@@ -457,9 +509,47 @@ function DatasetList({ labels, linkTo, messages }: {
       items={labels.map((label) => {
         const to = linkTo({ id: null, label })
         return (
-          <span key={label} className="break-all">
+          <span key={label} className="whitespace-nowrap">
             <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
             {to === null ? label : <Link to={to}>{label}</Link>}
+          </span>
+        )
+      })}
+    />
+  )
+}
+
+/**
+ * The datasets one publication names, cut short the way `DatasetList` is.
+ *
+ * **Another research's dataset carries that research's ID after it**, as a way
+ * to its page: the ID alone reads as one of this research's datasets. **An ID
+ * the portal publishes nothing under is written as it was typed**, with nothing
+ * to press — a link would lead to a page that is not there.
+ */
+function CitedList({ cited, linkTo, locale }: {
+  cited: CitedDatasetView[]
+  linkTo: (ref: { id: string | null, label: string }) => string | null
+  locale: Locale
+}) {
+  const messages = messagesFor(locale)
+  return (
+    <Clamped
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={cited.map((one) => {
+        const to = one.known ? linkTo({ id: null, label: one.label }) : null
+        return (
+          <span key={one.label} className="whitespace-nowrap">
+            <Icon name="database" aria-hidden="true" className="mr-1 text-ink-muted" />
+            {to === null ? one.label : <Link to={to}>{one.label}</Link>}
+            {one.humLabel !== null && (
+              <>
+                {" ("}
+                <Link to={href(locale, researchPath(one.humLabel))}>{one.humLabel}</Link>
+                )
+              </>
+            )}
           </span>
         )
       })}

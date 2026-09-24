@@ -16,23 +16,24 @@ import { scrollPaneTo } from "./scroll"
  * What a preview hangs beside a place the page draws — a comment mark, a note
  * that the published version says something else.
  *
- * A page marks its places by putting `<Annotation at="…" part="…" />` where
- * each part belongs, and the anchor it names is the same path a comment is
+ * A page marks its places by putting `<Annotation at="…" />` beside each
+ * place's name, and the anchor it names is the same path a comment is
  * attached by and the diff reports. **A public page provides nothing**, so
  * `annotate` is absent, every mark renders as nothing, and the published page
  * is drawn by the same code that draws the preview.
  *
- * **A place has two parts to annotate, and they stand in different places.**
- * The mark (a comment's) stands with the name — beside a section's heading,
- * beside a pair's name, at the value's right in a cell that has no name of
- * its own — where the form beside the page stands its own marks, and where a
- * reader looks to see what a thing is called. What the published version said
- * instead stands under the value, being lines to read against it. Drawn in
- * one place, the mark sat under the value and read as belonging to whatever
- * came next.
+ * **Every mark stands with the name** — beside a section's heading, beside a
+ * pair's name, at the value's right in a cell that has no name of its own —
+ * where the form beside the page stands its own marks, and where a reader looks
+ * to see what a thing is called. Under the value, a mark read as belonging to
+ * whatever came next.
  */
-export type AnnotationPart = "name" | "value"
-export type Annotate = (at: string, part: AnnotationPart) => ReactNode
+/**
+ * What hangs beside one place, given the place and the name the page gives it
+ * — the heading, the pair's name, the column's — so that a panel opened from a
+ * mark can say which place it is about in the words the reader is looking at.
+ */
+export type Annotate = (at: string, name?: string) => ReactNode
 
 interface AnnotationLayerValue {
   annotate: Annotate
@@ -60,26 +61,28 @@ export function AnnotationLayer({ annotate, here = null, onGo = null, goLabel = 
   return <AnnotateContext.Provider value={value}>{children}</AnnotateContext.Provider>
 }
 
-export function Annotation({ at, part }: { at: string, part: AnnotationPart }) {
+export function Annotation({ at, name }: { at: string, name?: string }) {
   const layer = useContext(AnnotateContext)
-  return layer === null ? null : <>{layer.annotate(at, part)}</>
+  return layer === null ? null : <>{layer.annotate(at, name)}</>
 }
 
 /**
  * A place with its mark beside it, for a cell that has no name of its own —
  * the name is the column's heading, and a mark under the value read as
  * belonging to the row below. The mark stands at the value's right on its
- * first line; what stands under a value stands under it here too.
+ * first line.
  */
-export function MarkedPlace({ at, children }: { at: string, children: ReactNode }) {
+export function MarkedPlace({ at, name, children }: {
+  at: string
+  /** The column's heading, which is this cell's name. */
+  name: string
+  children: ReactNode
+}) {
   return (
-    <>
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1"><Place at={at}>{children}</Place></div>
-        <Annotation at={at} part="name" />
-      </div>
-      <Annotation at={at} part="value" />
-    </>
+    <div className="flex items-start gap-3">
+      <div className="min-w-0 flex-1"><Place at={at}>{children}</Place></div>
+      <Annotation at={at} name={name} />
+    </div>
   )
 }
 
@@ -100,7 +103,17 @@ export function MarkedPlace({ at, children }: { at: string, children: ReactNode 
  *
  * **A public page has no layer**, and this draws the value and nothing else.
  */
-export function Place({ at, children }: { at: string, children: ReactNode }) {
+export function Place({ at, onBand = false, children }: {
+  at: string
+  /**
+   * Standing on a coloured band — an experiment's name. **The ground that
+   * marks the caret's place is the band's own white, not the page's tint**:
+   * the tint under white words leaves the words unreadable at the one moment
+   * they are being pointed at.
+   */
+  onBand?: boolean
+  children: ReactNode
+}) {
   const layer = useContext(AnnotateContext)
   const box = useRef<HTMLDivElement>(null)
   const here = layer !== null && layer.here === at
@@ -115,7 +128,11 @@ export function Place({ at, children }: { at: string, children: ReactNode }) {
     <div
       ref={box}
       data-place={at}
-      className={`-mx-2 rounded px-2 transition-colors ${here ? "bg-surface-hover" : ""} ${
+      // **At least a line tall.** A field just added to the form has nothing
+      // written yet, and a place with nothing in it is no height at all — the
+      // caret in its box would light nothing here, and there would be nothing
+      // to press to go back to it.
+      className={`-mx-2 min-h-[1lh] rounded px-2 transition-colors ${here ? (onBand ? "bg-white/20" : "bg-surface-hover") : ""} ${
         go === null ? "" : "cursor-pointer"
       }`}
       onClick={go === null
@@ -123,6 +140,11 @@ export function Place({ at, children }: { at: string, children: ReactNode }) {
         : (event) => {
             const pressed = event.target instanceof Element ? event.target : null
             if (pressed?.closest("a, button, summary, details, input, textarea, select") !== null) return
+            // **The innermost place answers, and only it.** A section is a
+            // place holding places (a list's table holds its cells), and a
+            // press left to rise would go on to the section's own field and
+            // take the form away from the row it had just landed on.
+            event.stopPropagation()
             go(at)
           }}
     >
@@ -345,7 +367,7 @@ export function Section({ title, note, at, aside, fill = false, children }: {
         <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
           {title}
           {aside}
-          {at !== undefined && <Annotation at={at} part="name" />}
+          {at !== undefined && <Annotation at={at} name={title} />}
         </h2>
         {note !== undefined && (
           <div className="flex flex-col gap-1 text-ink-muted text-sm">
@@ -354,7 +376,6 @@ export function Section({ title, note, at, aside, fill = false, children }: {
         )}
       </Stack>
       {at === undefined ? children : <Place at={at}>{children}</Place>}
-      {at !== undefined && <Annotation at={at} part="value" />}
     </Stack>
   )
 }
@@ -369,8 +390,12 @@ export function Section({ title, note, at, aside, fill = false, children }: {
  * also why they are not simply set full width: the page is 1,344px across, which
  * is eighty Japanese characters to a line.
  *
- * **No value is broken across the two columns.** Split at the foot of one, a
- * sentence continued at the head of the other reads as a second answer.
+ * **A value stays whole in its column unless it says `split`** (`KeyValue`).
+ * Split at the foot of one, a sentence continued at the head of the other can
+ * read as a second answer, so short values keep together. A value long enough
+ * to outweigh all the others together — a study's methods at twenty lines,
+ * against one line of participants — is the exception: kept whole it fills one
+ * column while the other stands nearly empty.
  *
  * **A rule goes between two pairs and nowhere else.** Drawn under each one, the
  * last in a column closes against nothing — inside a box it floats a few pixels
@@ -400,23 +425,44 @@ export function Pairs({ children }: { children: ReactNode }) {
   )
 }
 
-export function KeyValue({ title, at, children }: {
+/**
+ * A label and its value.
+ *
+ * **A value that says `split` may run from the foot of one column to the head
+ * of the next** (`Pairs`), but its label never stays behind on its own: a
+ * label at the foot of a column with its value at the head of the other reads
+ * as a label with nothing under it. Keeping the two together is a rule a flex
+ * column cannot carry across a column break, so a split pair is laid out as
+ * plain blocks, with the gap the stack would have given it.
+ */
+export function KeyValue({ title, at, split = false, children }: {
   title: string
   /** The anchor of the value below, when the page has one for it. */
   at?: string
+  /** Let the value continue into the next column (`Pairs`). */
+  split?: boolean
   children: ReactNode
 }) {
+  const label = (
+    <dt className={`flex flex-wrap items-center gap-2 text-ink-muted text-xs ${split ? "mb-2 break-after-avoid" : ""}`}>
+      {title}
+      {at !== undefined && <Annotation at={at} name={title} />}
+    </dt>
+  )
+  const value = <dd>{at === undefined ? children : <Place at={at}>{children}</Place>}</dd>
+  if (split) {
+    return (
+      <div className="py-2">
+        {label}
+        {value}
+      </div>
+    )
+  }
   return (
     <div className="break-inside-avoid py-2">
       <Stack gap="tight">
-        <dt className="flex flex-wrap items-center gap-2 text-ink-muted text-xs">
-          {title}
-          {at !== undefined && <Annotation at={at} part="name" />}
-        </dt>
-        <dd>
-          {at === undefined ? children : <Place at={at}>{children}</Place>}
-          {at !== undefined && <Annotation at={at} part="value" />}
-        </dd>
+        {label}
+        {value}
       </Stack>
     </div>
   )
@@ -519,6 +565,9 @@ const FrozenEdgeAt = createContext(-1)
 const CellAlign = createContext<"top" | "middle">("top")
 
 const ALIGN = { top: "align-top", middle: "align-middle" }
+
+/** Where a row-sized control (24px) stands in a top-set row so its middle meets the first line's (6px + 22.4px / 2). */
+const CONTROL_ON_FIRST_LINE = "pt-1.25"
 
 /**
  * A table.
@@ -783,7 +832,10 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
    * **Neither kind keeps room above and below.** A cell that padded its control
    * would make the row half as tall again and leave the control sitting below
    * the words beside it; without the padding the row is as tall as its text and
-   * the control rides inside it (`docs/ui.md` の「押せるものの大きさ」).
+   * the control rides inside it (`docs/ui.md` の「押せるものの大きさ」). **In a
+   * table set to the top, a control is lowered onto the first line** — the
+   * text below its neighbours' 6px starts lower than a control flush with the
+   * row's top, and a 24px control centred on a 22.4px line sits 5px down.
    *
    * The two differ in width. **A `mark` is one glyph**, so the column is a
    * fixed 60px wherever it stands — left to the content it came out 60px in one
@@ -823,7 +875,7 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
   return (
     <td
       colSpan={colSpan}
-      className={`${nowrap ? "" : CEILING} border-line border-b px-3 ${ALIGN[align]} ${holds === undefined ? `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5` : `py-0 ${holds === "mark" ? MARK_COLUMN : ""}`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
+      className={`${nowrap ? "" : CEILING} border-line border-b px-3 ${ALIGN[align]} ${holds === undefined ? `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5` : `py-0 ${holds === "mark" ? MARK_COLUMN : ""} ${holds === "control" && align === "top" ? CONTROL_ON_FIRST_LINE : ""}`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
     >
       {children}
     </td>

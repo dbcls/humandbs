@@ -161,14 +161,13 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
                   <section key={experiment.id} className="overflow-hidden rounded border border-line">
                     <Band>
                       <h3 className="flex flex-wrap items-center gap-2 font-semibold">
-                        <Place at={`experiments.${experiment.id}.label`}>
+                        <Place at={`experiments.${experiment.id}.label`} onBand>
                           <Value field={experiment.label} locale={locale} />
                         </Place>
-                        <Annotation at={`experiments.${experiment.id}.label`} part="name" />
+                        <Annotation at={`experiments.${experiment.id}.label`} name={t.experiments} />
                       </h3>
                     </Band>
                     <div className="px-4 py-3">
-                      <Annotation at={`experiments.${experiment.id}.label`} part="value" />
                       <Pairs>
                         {experiment.values.map((value) => (
                           <KeyValue

@@ -433,13 +433,27 @@ function datasetRowView(
 }
 
 /**
+ * One row of a research's dataset table on its own, for a screen that draws
+ * the same columns outside a research page (the draft's dataset screen).
+ */
+export function datasetRowOf(
+  input: DatasetRowInput,
+  locale: Locale,
+  catalog: CatalogView,
+): DatasetRowView {
+  return datasetRowView(input, locale, catalog, fallbackTracker())
+}
+
+/**
  * A usage record with one language chosen. The record itself is `CauUsage`
  * (`app/content/public.ts`) — the pages and the JSON API read the same rows, so
  * there is one shape for them and this is only what a page does to it.
  */
-export interface CauView extends Omit<CauUsage, "principalInvestigator" | "affiliation" | "researchTitle"> {
+export interface CauView
+  extends Omit<CauUsage, "principalInvestigator" | "affiliation" | "country" | "researchTitle"> {
   principalInvestigator: string
   affiliation: string
+  country: string
   researchTitle: string
 }
 
@@ -454,6 +468,7 @@ function cauView(entry: CauUsage, locale: Locale): CauView {
     ...entry,
     principalInvestigator: resolveBilingual(entry.principalInvestigator, locale),
     affiliation: resolveBilingual(entry.affiliation, locale),
+    country: resolveBilingual(entry.country, locale),
     researchTitle: resolveBilingual(entry.researchTitle, locale),
   }
 }
@@ -479,7 +494,15 @@ export interface ResearchView {
   dataProviders: { id: string, principalInvestigator: FieldView, organization: FieldView }[]
   researchProjects: { id: string, name: FieldView, links: LinksView }[]
   grants: { id: string, title: FieldView, agency: FieldView, grantIds: string[] }[]
-  relatedPublications: { id: string, title: FieldView, doi: FieldView, datasetLabels: string[] }[]
+  relatedPublications: {
+    id: string
+    title: FieldView
+    doi: FieldView
+    /** Every ID the publication names, chosen and typed, in that order: what its place is compared by. */
+    datasetLabels: string[]
+    /** The same IDs as they are drawn. */
+    datasets: CitedDatasetView[]
+  }[]
   cau: CauView[]
   /**
    * The research's box, as the caller listed and paged it. It is not part of
@@ -511,6 +534,19 @@ export interface FileListView {
   rangeTo: number
 }
 
+/**
+ * One dataset a publication names, as the page draws it. **Another research's
+ * dataset says whose it is** — the ID alone reads as this research's, and a
+ * reader following it would land somewhere they did not expect.
+ */
+export interface CitedDatasetView {
+  label: string
+  /** Whether the ID is a dataset the portal publishes, and so has a page. */
+  known: boolean
+  /** The research it belongs to, where that is another research. */
+  humLabel: string | null
+}
+
 export interface ResearchViewInput {
   humLabel: string
   versionNumber: number
@@ -521,6 +557,12 @@ export interface ResearchViewInput {
   datasets: DatasetRowInput[]
   /** Dataset identity to primary label, for the publications that cite them. */
   datasetLabelById: ReadonlyMap<string, string>
+  /**
+   * The research each published dataset a publication names belongs to, by
+   * its ID as typed and as its primary ID (`queries.server.ts` の
+   * `citedDatasets`). Absent where nothing is to be looked up.
+   */
+  humByLabel?: ReadonlyMap<string, string>
   cau: CauUsage[]
   files: FileListView
 }
@@ -548,6 +590,12 @@ export function anchoredResearchView(
   const content = input.content
   const labelsOf = (ids: string[]): string[] =>
     ids.map((id) => input.datasetLabelById.get(id)).filter((label) => label !== undefined)
+
+  const humByLabel = input.humByLabel ?? new Map<string, string>()
+  const cited = (label: string, known: boolean): CitedDatasetView => {
+    const hum = humByLabel.get(label)
+    return { label, known, humLabel: hum === undefined || hum === input.humLabel ? null : hum }
+  }
 
   const datasets = input.datasets.map((row) => datasetRowView(row, locale, catalog, fallbacks))
   at.list("datasetIds", datasets.map((row) => row.label))
@@ -602,8 +650,12 @@ export function anchoredResearchView(
       doi: at.field(`relatedPublications.${publication.id}.doi`, plainOf(publication.doi)),
       datasetLabels: at.list(
         `relatedPublications.${publication.id}.datasetIds`,
-        labelsOf(publication.datasetIds),
+        [...labelsOf(publication.datasetIds), ...(publication.externalIds ?? [])],
       ),
+      datasets: [
+        ...labelsOf(publication.datasetIds).map((label) => cited(label, true)),
+        ...(publication.externalIds ?? []).map((label) => cited(label, humByLabel.has(label))),
+      ],
     })),
     cau: input.cau.map((entry) => cauView(entry, locale)),
     files: input.files,

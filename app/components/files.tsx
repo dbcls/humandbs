@@ -14,7 +14,6 @@ import { messagesFor } from "~/i18n/messages"
 import { filePath } from "~/public/urls"
 
 import {
-  Badge,
   Button,
   ButtonLink,
   Confirm,
@@ -30,6 +29,7 @@ import { SlugEditor } from "./contents"
 import { CONTROL, Submit } from "./form"
 import { Icon } from "./icons"
 import { Empty, Paging, Table, Td } from "./page"
+import { Flag } from "./flags"
 
 /**
  * The download list, and the box behind it.
@@ -109,7 +109,7 @@ function NotPublicYet({ locale, humLabel, name }: {
       <span>
         {name}
         {" "}
-        <Badge>{t.fileNotPublic}</Badge>
+        <Flag kind="hidden">{t.fileNotPublic}</Flag>
       </span>
       {humLabel !== null && (
         <span className="text-ink-muted text-xs">
@@ -275,13 +275,13 @@ function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
   return (
     <span className="flex flex-wrap items-center gap-2">
       {side}
-      <Badge tone="danger">
+      <Flag kind="stops">
         {t.failed}
         {/* The store's own words, untranslated: a message nobody wrote cannot be. */}
         {entry.pending.lastError !== null && (
           <span className="ml-1 text-ink-muted">{entry.pending.lastError}</span>
         )}
-      </Badge>
+      </Flag>
     </span>
   )
 }

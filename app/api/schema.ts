@@ -185,7 +185,9 @@ export const researchSchema = z.object({
   relatedPublications: z.array(z.object({
     title: z.string().nullable().optional(),
     doi: z.string().nullable().optional(),
-    datasets: z.array(z.string()),
+    datasets: z.array(z.string()).meta({
+      description: "Dataset ids the publication names: this research's that are published, then any other written by hand — another research's, or an accession the portal does not hold — as written.",
+    }),
   })),
   datasets: z.array(z.string()).meta({
     description: "Dataset ids this version lists. Only published ones appear.",
@@ -193,7 +195,7 @@ export const researchSchema = z.object({
   controlledAccessUsers: z.array(z.object({
     principalInvestigator: textSchema,
     affiliation: textSchema,
-    country: z.string(),
+    country: textSchema,
     researchTitle: textSchema,
     periodStart: dateString.nullable(),
     periodEnd: dateString.nullable(),

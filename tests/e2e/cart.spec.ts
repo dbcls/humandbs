@@ -30,7 +30,7 @@ test.describe("P-ANON カート", () => {
       .not.toHaveAttribute("aria-pressed", "false")
 
     await page.goto("/cart")
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("カート")
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("利用申請の対象となるデータセット")
     // 行は browser から取りに行くので、出るまでに一手ある
     await expect(page.getByRole("row").filter({ hasText: /JGAD\d+/ }).first()).toBeVisible()
   })
@@ -56,7 +56,7 @@ test.describe("P-ANON カート", () => {
 
   test("S-CART-04: 何も入れていないカートは、行を持たない", async ({ page }) => {
     await page.goto("/cart")
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("カート")
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("利用申請の対象となるデータセット")
     await expect(page.getByRole("row").filter({ hasText: /JGAD\d+/ })).toHaveCount(0)
   })
 })

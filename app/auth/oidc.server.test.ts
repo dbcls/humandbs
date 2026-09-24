@@ -229,6 +229,37 @@ describe("completeLogin: outcomes", () => {
     })
   })
 
+  /** A comment or a mark is read by someone who wants to know who it was, and an account id does not say. */
+  it("names the person by their own name, not their account id, when the realm gives both", async () => {
+    const { cookie } = await beginLogin(null)
+    vi.mocked(oidc.authorizationCodeGrant).mockResolvedValue(
+      fakeTokens({ sub: "abc-def", preferred_username: "ts-suecharo", name: "Hirotaka Suetake" }),
+    )
+    const request = requestWithCookie(
+      cookie,
+      `http://localhost:8080/auth/callback?code=abc&state=${flowField(cookie, "state")}`,
+    )
+    const outcome = await completeLogin(request)
+    expect(outcome.ok && outcome.login.name).toBe("Hirotaka Suetake")
+  })
+
+  it.each([
+    [{ sub: "s1", preferred_username: "ts-suecharo", name: "" }, "ts-suecharo"],
+    [{ sub: "s1", preferred_username: "ts-suecharo", name: "   " }, "ts-suecharo"],
+    [{ sub: "s1", preferred_username: "ts-suecharo", name: "  Hirotaka Suetake " }, "Hirotaka Suetake"],
+    [{ sub: "s1", name: "" }, "s1"],
+    [{ sub: "s1" }, "s1"],
+  ])("falls back from the name to the account id, and from that to the subject: %o", async (claims, expected) => {
+    const { cookie } = await beginLogin(null)
+    vi.mocked(oidc.authorizationCodeGrant).mockResolvedValue(fakeTokens(claims))
+    const request = requestWithCookie(
+      cookie,
+      `http://localhost:8080/auth/callback?code=abc&state=${flowField(cookie, "state")}`,
+    )
+    const outcome = await completeLogin(request)
+    expect(outcome.ok && outcome.login.name).toBe(expected)
+  })
+
   it("reports rejected when the token exchange itself is refused", async () => {
     const { cookie } = await beginLogin(null)
     vi.mocked(oidc.authorizationCodeGrant).mockRejectedValue(new Error("invalid_grant"))

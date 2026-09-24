@@ -1,36 +1,44 @@
+import { useState } from "react"
 import { Form, Link } from "react-router"
 
 import { HUM_LABEL_PATTERN } from "~/admin/labels"
-import type { PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
-import { adminResearchPath } from "~/admin/urls"
+import type { PublishBlockView, PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
+import { adminDraftDatasetPath, adminDraftPath, adminDraftReviewPath, adminResearchPath, draftCommentsPath } from "~/admin/urls"
+import type { CommentAnchor } from "~/content/types"
+import { minuteInJst } from "~/dates"
+import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
+import { RESEARCH } from "~/review/anchors"
 
-import { AdminBack } from "./admin"
-import { Fold, Heading, Stack } from "./base"
+import { AdminBack, WayTo } from "./admin"
+import { Fold, Heading, Stack, Stated } from "./base"
+import { Author, OpenComments, type CommentContext } from "./comments"
+import { Flag } from "./flags"
 import { Answered, Checkbox, CONTROL, Field, Result, Submit } from "./form"
 import { Icon } from "./icons"
-import { Card, Empty, Page, Section } from "./page"
-import { messagesFor } from "~/i18n/messages"
+import { Card, Empty, Page, Section, Table, Td } from "./page"
+import { DatasetCells, datasetColumns } from "./research"
+import { researchFieldLabel } from "./research-fields"
+import { firstSentence } from "./review"
 
 /**
  * The last screen before a draft becomes a version.
  *
+ * **What is wanted before pressing, in the order it is wanted** (docs/publishing.md
+ * の「公開前の確認の画面」): what changes, what stops it, what the review says,
+ * what to look at, and last the press with what it does. Every section names
+ * itself with a noun and says in one sentence what it is for; the one thing to
+ * press stands at the end, after everything read.
+ *
  * It is read rather than written on. What is missing is shown with a way back
- * to the screen that can fix it, and the one thing that can be settled here is
- * a label that is not pinned — because that is what stops the publish, and
- * because pinning one is a single field rather than an edit.
+ * to the screen that can fix it, and the one thing settled here is a label that
+ * is not pinned — because that is what stops the publish, and because pinning
+ * one is a single field rather than an edit.
  *
- * That is also why what stops the publish comes first, above the form rather
- * than inside it: pinning is its own operation with its own form, and a form
- * cannot hold another one.
- *
- * The two checks read differently on purpose. What is structural is a wall:
- * there is no confirmation that gets past it. Everything else is a list with a
- * single box under it, and ticking that box is recorded.
- *
- * **An update asks for no number.** The draft carries the number of the version
- * it stands in for, so the screen names that version instead and offers the day
- * it went out as the release date (docs/publishing.md の「公開前の確認の画面」).
+ * **Forms do not nest**, so each thing sent from here is its own form: a pin
+ * in its row, the files in a form of their own that their button names, and
+ * the publish around the two sections it needs (the acknowledgement and the
+ * version).
  */
 export function PublishConfirmation({ view, result }: {
   view: PublishPageView
@@ -40,7 +48,6 @@ export function PublishConfirmation({ view, result }: {
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.publish
-  const blocked = view.blocks.length > 0
 
   return (
     <Page>
@@ -59,6 +66,9 @@ export function PublishConfirmation({ view, result }: {
         {actionData?.status === "malformed" && (
           <Result ok={false}>{messages.admin.detail.pinMalformed}</Result>
         )}
+        {actionData?.status === "unchanged" && view.updating !== null && (
+          <Result ok={false}>{t.unchanged(`v${view.updating.number}`)}</Result>
+        )}
       </Answered>
       <Card under={false}>
         <Stack gap="block">
@@ -73,73 +83,17 @@ export function PublishConfirmation({ view, result }: {
             />
           </Heading>
 
-          {blocked && <Blocked view={view} />}
-          <PrivateFiles view={view} />
+          <Changes view={view} />
+          {view.blocks.length > 0 && <Blocked view={view} />}
+          <Review view={view} />
+          <PrivateFilesForm view={view} />
 
-          <Form method="post">
+          <Form id={PUBLISH_FORM} method="post">
             <input type="hidden" name="intent" value="publish" />
             <input type="hidden" name="revision" value={view.revision} />
-
             <Stack gap="block">
-              <Section title={t.what}>
-                <Stack gap="normal">
-                  {view.updating === null
-                    ? (
-                        <>
-                          {/* **The number is typed, not chosen from a list.** Any
-                              free whole number will do — the next one is offered
-                              first, and the ones versions hold are said beside the
-                              box because they are the ones the server refuses
-                              (docs/publishing.md の「版番号」). */}
-                          <Field
-                            label={t.number}
-                            name="number"
-                            type="number"
-                            value={String(view.nextNumber)}
-                            width="w-28"
-                            hint={t.numberHint}
-                          />
-                          <p className="text-ink-muted text-xs">
-                            {view.heldNumbers.length === 0
-                              ? t.noneHeld
-                              : t.held(view.heldNumbers.map((number) => `v${number}`).join(", "))}
-                          </p>
-                        </>
-                      )
-                    : <p className="text-sm">{t.updateWhat(`v${view.updating.number}`)}</p>}
-                  <Field
-                    label={t.releaseDate}
-                    name="releaseDate"
-                    type="date"
-                    value={view.releaseDate}
-                  />
-                </Stack>
-              </Section>
-
-              {view.groups.length > 0 && (
-                <Section title={t.findings}>
-                  <Stack gap="normal">
-                    <Stack as="ul" gap="normal">
-                      {view.groups.map((group) => (
-                        <FindingGroup key={group.kind} group={group} locale={locale} />
-                      ))}
-                    </Stack>
-                    <Checkbox label={t.acknowledge(view.findingCount)} name="acknowledged" />
-                  </Stack>
-                </Section>
-              )}
-
-              <Changes view={view} />
-
-              {/* **The one thing to press.** The way out of this screen is the
-                  head's own back to the research (`docs/admin-ui.md` の
-                  「編集画面」) — a second one here would be a foot repeating
-                  what the top of the screen already offers. */}
-              <div className="flex items-center gap-4">
-                <Submit variant="primary" icon={<Icon name="upload" />} disabled={blocked}>
-                  {view.updating === null ? t.submit : t.update(`v${view.updating.number}`)}
-                </Submit>
-              </div>
+              {view.groups.length > 0 && <Findings view={view} />}
+              <Publish view={view} />
             </Stack>
           </Form>
         </Stack>
@@ -148,61 +102,133 @@ export function PublishConfirmation({ view, result }: {
   )
 }
 
+const PUBLISH_FORM = "publish"
+const FILES_FORM = "publish-files"
+
+/** Whether anything this publish writes differs from the version it is measured against. */
+function changesNothing(view: PublishPageView): boolean {
+  return view.researchFields === 0 && view.datasetChanges.length === 0
+}
+
 /**
- * What has to be settled first. A label is pinned from here in its own form —
- * outside the publish form, because it is a different operation and it must not
- * be carried along by the publish button.
+ * What the version will say that the one it is measured against does not.
+ * **The datasets are the rows of the research's own table**, so one with no id
+ * yet is told apart by what kind of data it holds rather than by an identity.
  */
-function Blocked({ view }: { view: PublishPageView }) {
-  const t = messagesFor(view.locale).admin.publish
+function Changes({ view }: { view: PublishPageView }) {
+  const locale = view.locale
+  const messages = messagesFor(locale)
+  const t = messages.admin.publish
+  const note = view.comparedWith === null ? t.changesNoteFirst : t.changesNote(`v${view.comparedWith}`)
 
   return (
-    <Section title={t.blocked}>
-      <Stack gap="normal">
-        <p className="text-ink-muted text-sm">{t.blockedHint}</p>
-        <Stack as="ul" gap="normal">
-          {view.blocks.map((block) => (
-            <li key={`${block.kind}:${block.datasetId ?? ""}`} className="text-sm">
-              <Stack gap="tight">
-                <p className="text-danger">
-                  {block.kind === "hum-label-missing" ? t.humLabelMissing : t.datasetIdMissing}
+    <Section title={t.changes} note={note}>
+      {changesNothing(view)
+        ? <Empty>{t.nothingChanges}</Empty>
+        : (
+            <Stack gap="normal">
+              {view.researchFields !== null && view.researchFields > 0 && (
+                <p className="flex flex-wrap items-center gap-3 text-sm">
+                  <span>{`${t.research}: ${t.researchChanged(view.researchFields)}`}</span>
+                  {/* The research's own screen sets the form beside the page it
+                      writes, which is where a change is read. */}
+                  <WayTo to={href(locale, adminDraftPath(view.researchId, view.draftId))} icon="book">
+                    {messages.admin.draft.heading}
+                  </WayTo>
                 </p>
-                <PinForm
-                  kind={block.kind === "hum-label-missing" ? "hum" : "dataset"}
-                  datasetId={block.datasetId}
-                  suggestion={block.suggestion}
-                  locale={view.locale}
-                />
-              </Stack>
-            </li>
-          ))}
-        </Stack>
+              )}
+              {view.datasetChanges.length > 0 && (
+                <Table align="middle" headers={[...datasetColumns(locale), t.changes]}>
+                  {view.datasetChanges.map((change) => (
+                    <tr key={change.datasetId}>
+                      <DatasetRowCells view={view} datasetId={change.datasetId} label={change.label} />
+                      <Td nowrap>
+                        {change.isNew
+                          ? <Flag kind="changed">{t.newDataset}</Flag>
+                          : t.datasetFields(change.fields)}
+                      </Td>
+                    </tr>
+                  ))}
+                </Table>
+              )}
+            </Stack>
+          )}
+    </Section>
+  )
+}
+
+/** A dataset's cells as the research's table draws them, leading to its editing screen. */
+function DatasetRowCells({ view, datasetId, label }: { view: PublishPageView, datasetId: string, label: string | null }) {
+  const locale = view.locale
+  const name = label ?? messagesFor(locale).admin.editor.unpinnedDataset
+  const row = view.datasetRows[datasetId]
+    ?? { id: datasetId, label: name, typeOfData: null, accessType: null, datePublished: null }
+  return (
+    <DatasetCells
+      row={row}
+      name={name}
+      to={href(locale, adminDraftDatasetPath(view.researchId, view.draftId, datasetId))}
+      locale={locale}
+    />
+  )
+}
+
+/**
+ * What has to be settled first, each row naming what it is about. A label is
+ * pinned from its row in a form of its own — a different operation from the
+ * publish, which the publish button must not carry along.
+ */
+function Blocked({ view }: { view: PublishPageView }) {
+  const locale = view.locale
+  const messages = messagesFor(locale)
+  const t = messages.admin.publish
+  const hum = view.blocks.filter((block) => block.kind === "hum-label-missing")
+  const datasets = view.blocks.filter((block) => block.kind === "dataset-id-missing")
+
+  return (
+    <Section title={t.blocked} note={t.blockedHint}>
+      <Stack gap="normal">
+        {hum.map((block) => (
+          <Stack key="hum" gap="tight">
+            <p className="text-danger text-sm">{t.humLabelMissing}</p>
+            <PinForm block={block} locale={locale} />
+          </Stack>
+        ))}
+        {datasets.length > 0 && (
+          <Stack gap="tight">
+            <p className="text-danger text-sm">{t.datasetIdMissing}</p>
+            <Table align="middle" headers={[...datasetColumns(locale), t.pinColumn]}>
+              {datasets.map((block) => (
+                <tr key={block.datasetId}>
+                  <DatasetRowCells view={view} datasetId={block.datasetId ?? ""} label={null} />
+                  <Td nowrap holds="control"><PinForm block={block} locale={locale} /></Td>
+                </tr>
+              ))}
+            </Table>
+          </Stack>
+        )}
       </Stack>
     </Section>
   )
 }
 
-function PinForm({ kind, datasetId, suggestion, locale }: {
-  kind: "hum" | "dataset"
-  datasetId: string | null
-  suggestion: string | null
-  locale: PublishPageView["locale"]
-}) {
+function PinForm({ block, locale }: { block: PublishBlockView, locale: PublishPageView["locale"] }) {
   const messages = messagesFor(locale)
   const t = messages.admin.publish
   const detail = messages.admin.detail
+  const kind = block.kind === "hum-label-missing" ? "hum" : "dataset"
 
   return (
     <Form method="post" className="flex items-center gap-2">
       <input type="hidden" name="intent" value="pin" />
       <input type="hidden" name="kind" value={kind} />
-      {datasetId !== null && <input type="hidden" name="datasetId" value={datasetId} />}
+      {block.datasetId !== null && <input type="hidden" name="datasetId" value={block.datasetId} />}
       <input
         type="text"
         name="label"
         required
         aria-label={detail.pinLabel}
-        defaultValue={suggestion ?? ""}
+        defaultValue={block.suggestion ?? ""}
         placeholder={kind === "hum" ? detail.pinPlaceholder : detail.pinDatasetPlaceholder}
         pattern={kind === "hum" ? HUM_LABEL_PATTERN : undefined}
         className={`${CONTROL} text-sm`}
@@ -213,27 +239,114 @@ function PinForm({ kind, datasetId, suggestion, locale }: {
 }
 
 /**
- * Making the selected files public, before or after this version goes out.
+ * What the review says: whether the link is out, what is still asked, and who
+ * has pressed which mark. **Advice only** — publishing is the administrator's
+ * call, and this is what it is made on (docs/editing.md の「レビュー」).
  *
- * It sits above the publish form rather than inside it, because a form cannot
- * hold another one — the same reason the pin form is up here. **The publish is
- * not made to wait for it**: a switch copies the actual bytes, and where a file
- * sits is a different question from whether this version is out.
+ * **The open questions are the panel the editing screen opens**
+ * (`OpenComments`) — read and resolved here without leaving for the review
+ * screen, whose way stands under the list for everything else.
  */
-function PrivateFiles({ view }: { view: PublishPageView }) {
-  const t = messagesFor(view.locale).admin.publish
-  const group = view.groups.find((row) => row.kind === "private-file")
-  if (group === undefined || group.fileNames.length === 0) return null
+function Review({ view }: { view: PublishPageView }) {
+  const locale = view.locale
+  const messages = messagesFor(locale)
+  const t = messages.admin.publish
+  const review = view.review
+
+  const context: CommentContext = {
+    locale,
+    action: draftCommentsPath(view.researchId, view.draftId),
+    subject: RESEARCH,
+    canResolve: true,
+    signedInName: review.signedInName,
+  }
+  // The screen's own words for a place, as the editing screen calls it.
+  const nameOf = (anchor: CommentAnchor): string => {
+    if (anchor.kind === "research-field") return researchFieldLabel(anchor.path, locale) ?? anchor.path
+    if (anchor.kind === "dataset-field") return review.datasetLabels[anchor.datasetId] ?? messages.admin.editor.unpinnedDataset
+    return messages.admin.editor.whole
+  }
 
   return (
-    <Form method="post" className="flex flex-wrap items-center gap-3">
+    <Section title={t.review} note={t.reviewNote}>
+      <Stack gap="normal">
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-3 text-sm">
+          <dt className="text-ink-muted">{t.share}</dt>
+          <dd>
+            {review.shared
+              ? <Stated icon="link">{messages.admin.detail.shared}</Stated>
+              : <Stated icon="lock">{messages.admin.detail.notShared}</Stated>}
+          </dd>
+          <dt className="text-ink-muted">{t.unresolved}</dt>
+          <dd><OpenComments context={context} comments={review.comments} nameOf={nameOf} /></dd>
+          {(["commented", "approved"] as const).map((kind) => {
+            const rows = review.acknowledgements.filter((row) => row.kind === kind)
+            const button = firstSentence(kind === "commented" ? messages.preview.commented : messages.preview.approved)
+            return (
+              <div key={kind} className="contents">
+                <dt className="text-ink-muted">{messages.preview.pressedBy(button)}</dt>
+                <dd>
+                  {rows.length === 0
+                    ? messages.admin.review.nobodyYet
+                    : (
+                        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          {rows.map((row) => (
+                            <span key={`${row.bySignedIn ? "signed" : "typed"}-${row.name}`} className="flex items-center gap-2">
+                              <Author locale={locale} name={row.name} bySignedIn={row.bySignedIn} />
+                              <span className="text-ink-muted">{minuteInJst(row.createdAt)}</span>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                </dd>
+              </div>
+            )
+          })}
+        </dl>
+        <div>
+          <WayTo to={href(locale, adminDraftReviewPath(view.researchId, view.draftId))} icon="comment">
+            {messages.admin.review.heading}
+          </WayTo>
+        </div>
+      </Stack>
+    </Section>
+  )
+}
+
+/**
+ * The form the private files are published by. **It holds no control of its
+ * own**: its button stands in the findings, beside the files it is about, and
+ * names this form — the findings are inside the publish form, which it cannot
+ * be nested in.
+ */
+function PrivateFilesForm({ view }: { view: PublishPageView }) {
+  const group = view.groups.find((row) => row.kind === "private-file")
+  if (group === undefined || group.fileNames.length === 0) return null
+  return (
+    <Form id={FILES_FORM} method="post" className="hidden">
       <input type="hidden" name="intent" value="publish-files" />
       {group.fileNames.map((name) => (
         <input key={name} type="hidden" name="fileName" value={name} />
       ))}
-      <span className="text-sm">{t.privateFileNote}</span>
-      <Submit icon={<Icon name="upload" />}>{`${t.publishFiles} (${group.fileNames.length})`}</Submit>
     </Form>
+  )
+}
+
+/** What the gate lists without stopping, by kind, and the one box that passes it. */
+function Findings({ view }: { view: PublishPageView }) {
+  const t = messagesFor(view.locale).admin.publish
+
+  return (
+    <Section title={t.findings} note={t.findingsNote}>
+      <Stack gap="normal">
+        <Stack as="ul" gap="normal">
+          {view.groups.map((group) => (
+            <FindingGroup key={group.kind} group={group} locale={view.locale} />
+          ))}
+        </Stack>
+        <Checkbox label={t.acknowledge(view.findingCount)} name="acknowledged" />
+      </Stack>
+    </Section>
   )
 }
 
@@ -243,65 +356,89 @@ function FindingGroup({ group, locale }: { group: PublishGroupView, locale: Publ
   return (
     <li>
       <Fold summary={`${t.kinds[group.kind]} ${group.count}`}>
-        <Stack as="ul" gap="tight">
-          {group.places.map((place) => (
-            <li key={place.label} className="flex flex-wrap items-center gap-2 text-sm">
-              {place.href === null
-                ? <span>{place.label}</span>
-                : <Link to={place.href}>{place.label}</Link>}
-              <span className="text-ink-muted text-xs">{place.count}</span>
-              {place.note !== null && <span className="text-ink-muted text-xs">{place.note}</span>}
-            </li>
-          ))}
+        <Stack gap="tight">
+          <Stack as="ul" gap="tight">
+            {group.places.map((place) => (
+              <li key={place.label} className="flex flex-wrap items-center gap-2 text-sm">
+                {place.href === null
+                  ? <span>{place.label}</span>
+                  : <Link to={place.href}>{place.label}</Link>}
+                <span className="text-ink-muted text-xs">{place.count}</span>
+                {place.note !== null && <span className="text-ink-muted text-xs">{place.note}</span>}
+              </li>
+            ))}
+          </Stack>
+          {group.kind === "private-file" && group.fileNames.length > 0 && (
+            <p className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-ink-muted">{t.privateFileNote}</span>
+              <Submit form={FILES_FORM} icon={<Icon name="upload" />}>
+                {`${t.publishFiles} (${group.fileNames.length})`}
+              </Submit>
+            </p>
+          )}
         </Stack>
       </Fold>
     </li>
   )
 }
 
-function Changes({ view }: { view: PublishPageView }) {
-  const t = messagesFor(view.locale).admin.publish
-  const nothing = view.researchFields === 0
-    && view.datasetChanges.length === 0
-    && view.listingAdded.length === 0
-    && view.listingRemoved.length === 0
+/**
+ * The number, the day, what pressing does, and the press. **What pressing does
+ * is said before it**, since it cannot be taken back as pressed: the draft
+ * becomes the version and is gone. **The press says why it cannot be pressed**
+ * — something stops it, or an update would change nothing (the release date
+ * counts as a change, which is why the box is watched).
+ */
+function Publish({ view }: { view: PublishPageView }) {
+  const locale = view.locale
+  const t = messagesFor(locale).admin.publish
+  const [releaseDate, setReleaseDate] = useState(view.releaseDate)
+  const updating = view.updating
+  const unchanged = updating !== null && changesNothing(view) && releaseDate === view.updatingReleaseDate
+    ? t.unchanged(`v${updating.number}`)
+    : undefined
+  const refused = view.blocks.length > 0 ? t.blockedReason : unchanged
 
   return (
-    <Section title={t.changes}>
-      {nothing
-        ? <Empty>{t.nothingChanges}</Empty>
-        : (
-            <Stack as="ul" gap="normal">
-              {view.researchFields !== null && view.researchFields > 0 && (
-                <li className="text-sm">{t.researchChanged(view.researchFields)}</li>
-              )}
-              {view.datasetChanges.length > 0 && (
-                <li className="text-sm">
-                  <Stack gap="tight">
-                    <p>{t.datasetsChanged}</p>
-                    <div className="ml-4">
-                      <Stack as="ul" gap="tight">
-                        {view.datasetChanges.map((change) => (
-                          <li key={change.datasetId} className="flex flex-wrap items-center gap-2">
-                            <Link to={change.href}>{change.label ?? change.datasetId}</Link>
-                            {change.isNew && (
-                              <span className="text-ink-muted text-xs">{t.newDataset}</span>
-                            )}
-                          </li>
-                        ))}
-                      </Stack>
-                    </div>
-                  </Stack>
-                </li>
-              )}
-              {view.listingAdded.length > 0 && (
-                <li className="text-sm">{t.listingAdded(view.listingAdded.length)}</li>
-              )}
-              {view.listingRemoved.length > 0 && (
-                <li className="text-sm">{t.listingRemoved(view.listingRemoved.length)}</li>
-              )}
-            </Stack>
-          )}
+    <Section title={t.what} note={updating === null ? t.publishNote : t.updateNote(`v${updating.number}`)}>
+      <Stack gap="normal">
+        {updating === null && (
+          <>
+            {/* **The number is typed, not chosen from a list.** Any free whole
+                number will do — the next one is offered first, and the ones
+                versions hold are said beside the box because they are the ones
+                the server refuses (docs/publishing.md の「版番号」). */}
+            <Field
+              label={t.number}
+              name="number"
+              type="number"
+              value={String(view.nextNumber)}
+              width="w-28"
+              hint={t.numberHint}
+            />
+            <p className="text-ink-muted text-xs">
+              {view.heldNumbers.length === 0
+                ? t.noneHeld
+                : t.held(view.heldNumbers.map((number) => `v${number}`).join(", "))}
+            </p>
+          </>
+        )}
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-semibold text-ink-muted text-xs">{t.releaseDate}</span>
+          <input
+            type="date"
+            name="releaseDate"
+            value={releaseDate}
+            onChange={(event) => { setReleaseDate(event.currentTarget.value) }}
+            className={`${CONTROL} w-48`}
+          />
+        </label>
+        <div>
+          <Submit variant="primary" icon={<Icon name="upload" />} disabled={refused}>
+            {updating === null ? t.submit : t.update(`v${updating.number}`)}
+          </Submit>
+        </div>
+      </Stack>
     </Section>
   )
 }

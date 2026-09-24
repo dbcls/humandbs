@@ -103,6 +103,18 @@
   --color-visited: #6b21a8;
 
   /*
+   * The two sides of a comparison between two versions of one text: what the
+   * older one loses, and what the newer one gains. The line is tinted, and the
+   * pieces that differ inside it a step deeper — the shades a code review
+   * uses, since that is where a reader has learnt to read them. The green here
+   * says "added", never "passed".
+   */
+  --color-diff-del: #ffebe9;
+  --color-diff-del-word: #ffcecb;
+  --color-diff-ins: #e6ffec;
+  --color-diff-ins-word: #abf2bc;
+
+  /*
    * How wide a page may be, and how much room it keeps at its edges.
    *
    * **A table and a paragraph do not want the same width.** A listing of
@@ -205,10 +217,19 @@
 }
 
 @layer base {
+  /*
+   * **A word longer than its line breaks where it has to.** Text written by
+   * people — a URL in the middle of a study's methods, an address with no
+   * spaces — reaches boxes as narrow as a phone's column, and a word that
+   * cannot break there either runs under the box beside it or is cut off by a
+   * box that clips. `break-word` breaks only a word that does not fit on a line
+   * of its own, so ordinary text wraps exactly as before.
+   */
   html {
     color: var(--color-ink);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-wrap: break-word;
   }
 
   /*

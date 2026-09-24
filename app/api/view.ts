@@ -287,7 +287,7 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
     relatedPublications: input.content.relatedPublications.map((publication) => ({
       title: held(publication.title),
       doi: held(publication.doi),
-      datasets: labelsOf(publication.datasetIds),
+      datasets: [...labelsOf(publication.datasetIds), ...(publication.externalIds ?? [])],
     })),
     datasets: labelsOf(input.content.datasetIds),
     controlledAccessUsers: input.cau.map((usage) => ({
@@ -295,7 +295,7 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
       // empty side is a language upstream does not have.
       principalInvestigator: plainPair(usage.principalInvestigator.ja, usage.principalInvestigator.en),
       affiliation: plainPair(usage.affiliation.ja, usage.affiliation.en),
-      country: usage.country,
+      country: plainPair(usage.country.ja, usage.country.en),
       researchTitle: plainPair(usage.researchTitle.ja, usage.researchTitle.en),
       periodStart: usage.periodStart,
       periodEnd: usage.periodEnd,

@@ -201,6 +201,48 @@ test.describe("P-ADMIN", () => {
     await expect(page).toHaveURL(/\/admin\/experiment-fields\/[^/]+$/)
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
+
+  test("S-ADMIN-07: 公開ページの pane で一覧の cell を押すと、編集 pane のその要素の行に着き、行が pane の中に見える", async ({ page }) => {
+    await page.goto(await openADraft(page))
+    // The last element of any list: the row the form has to move furthest for.
+    const cells = page.locator(
+      "[data-place^='grants.'], [data-place^='relatedPublications.'], [data-place^='researchProjects.'], [data-place^='dataProviders.']",
+    )
+    test.skip(await cells.count() === 0, "この下書きは繰り返しの要素を持たない")
+    const cell = cells.last()
+    const at = await cell.getAttribute("data-place") ?? ""
+    const element = at.split(".").slice(0, 2).join(".")
+
+    await cell.scrollIntoViewIfNeeded()
+    await cell.click()
+
+    const row = page.locator(`tr[data-at="${element}"]`)
+    await expect(row).toHaveAttribute("data-landed", "")
+    const pane = page.locator("[data-pane-body]").first()
+    const [rowBox, paneBox] = await Promise.all([row.boundingBox(), pane.boundingBox()])
+    expect(rowBox).not.toBeNull()
+    expect(paneBox).not.toBeNull()
+    if (rowBox === null || paneBox === null) return
+    expect(rowBox.y).toBeGreaterThanOrEqual(paneBox.y)
+    expect(rowBox.y + Math.min(rowBox.height, 36)).toBeLessThanOrEqual(paneBox.y + paneBox.height)
+    // The keyboard lands on the same row: its first control opens the element.
+    await expect(row.getByRole("button").first()).toBeFocused()
+  })
+
+  test("S-ADMIN-08: 両方の pane が公開ページのとき、値を押してもどちらの pane も動かない", async ({ page }) => {
+    await page.goto(await openADraft(page))
+    // The form's pane takes a page instead, so no pane holds the form.
+    await page.getByRole("tablist").first().getByRole("tab", { name: "公開ページ en" }).click()
+    const panes = page.locator("[data-pane-body]")
+    await expect(panes.first().locator("form, input, textarea")).toHaveCount(0)
+    const cells = panes.nth(1).locator("[data-place]")
+    test.skip(await cells.count() < 2, "この下書きは押せる値をほとんど持たない")
+    const before = await panes.evaluateAll((all) => all.map((one) => one.scrollTop))
+
+    await cells.nth(1).click({ position: { x: 4, y: 4 } })
+
+    await expect.poll(() => panes.evaluateAll((all) => all.map((one) => one.scrollTop))).toEqual(before)
+  })
 })
 
 /**

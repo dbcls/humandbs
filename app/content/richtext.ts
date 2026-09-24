@@ -82,10 +82,41 @@ function spanMarkdown(span: Span): string {
   return span.href === undefined ? text : `[${text}](${destination(span.href)})`
 }
 
+/**
+ * A line's spans joined. **A `!` right before a link is escaped**: joined bare,
+ * `!` and `[` open an image, which the save path does not keep as a link, and
+ * the link would come back as its own markdown written out as text.
+ */
 function lineMarkdown(line: Line): string {
-  return line.map(spanMarkdown).join("")
+  return line.map((span, at) => {
+    const written = spanMarkdown(span)
+    const beforeLink = line[at + 1]?.href !== undefined
+    return beforeLink && written.endsWith("!") ? `${written.slice(0, -1)}\\!` : written
+  }).join("")
+}
+
+/**
+ * What opens a block at the head of a line: a quote, a heading, a list item, a
+ * fence. The group is the one character whose escape makes it plain text.
+ */
+const BLOCK_OPENER = /^(?:(>)|(#)(?=#{0,5}(?:\s|$))|([-+*])(?=\s)|\d{1,9}([.)])(?=\s)|(`)(?=``)|(~)(?=~~))/
+
+/**
+ * A line that holds a link **does not open with a block**: read as a quote or
+ * a list, the line is kept as the characters it was written with
+ * (`parse.server.ts`), and its links with it. The opening mark is escaped so
+ * the line reads as the text and links the tree holds. A line with no link
+ * goes out bare — it comes back as the same characters either way.
+ */
+function plainLine(markdown: string, line: Line): string {
+  if (!line.some((span) => span.href !== undefined)) return markdown
+  const opener = BLOCK_OPENER.exec(markdown)
+  if (opener === null) return markdown
+  const mark = (opener.slice(1) as (string | undefined)[]).find((group) => group !== undefined) ?? ""
+  const at = opener[0].lastIndexOf(mark)
+  return `${markdown.slice(0, at)}\\${markdown.slice(at)}`
 }
 
 export function toMarkdown(rich: RichText): string {
-  return rich.map(lineMarkdown).join("\n")
+  return rich.map((line) => plainLine(lineMarkdown(line), line)).join("\n")
 }

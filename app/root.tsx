@@ -19,6 +19,7 @@ import { DEFAULT_LOCALE } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { activeAlerts } from "~/public/site.server"
 import { readLocale } from "~/public/urls"
+import { isPreviewPath } from "~/review/urls"
 import { startUpstreamRunner } from "~/upstream/runner.server"
 
 import type { Route } from "./+types/root"
@@ -136,7 +137,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           rest of the visit — which is the one thing closing a notice must not
           mean.
         */}
-        {!managing && <Announcements key={path} alerts={data?.alerts ?? []} locale={locale} />}
+        {/*
+          **Not over a share link's page either.** What is there is a draft
+          being checked before it is published, and an alert speaks to the
+          site's readers about the site — standing over the draft it reads as
+          part of what is being checked.
+        */}
+        {!managing && !isPreviewPath(path) && (
+          <Announcements key={path} alerts={data?.alerts ?? []} locale={locale} />
+        )}
         <div className="flex-1">
           {/*
             What the cart says back when it is pressed. **It belongs to the

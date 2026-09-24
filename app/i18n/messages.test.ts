@@ -9,9 +9,9 @@ import { messagesFor } from "./messages"
  * a label, and the reader is left to guess whether the deed can be undone.
  */
 function warnings(node: unknown, path: string): [string, string][] {
-  if (typeof node === "function") {
-    return [[path, (node as (...args: unknown[]) => string)("x", "y", "z")]]
-  }
+  // A word made from its arguments is read as what it makes — a string, or the
+  // lines of a note given one per line.
+  if (typeof node === "function") return warnings((node as (...args: unknown[]) => unknown)("x", "y", "z"), path)
   if (typeof node === "string") return [[path, node]]
   if (node !== null && typeof node === "object") {
     return Object.entries(node).flatMap(([key, value]) => warnings(value, `${path}.${key}`))
@@ -246,5 +246,41 @@ describe("全ページの上部に出る 1 文の語", () => {
   it("読者に向けた名前も「アラート」で、news の「お知らせ」と混ぜない", () => {
     expect(messagesFor("ja").announcements).toBe("アラート")
     expect(messagesFor("ja").dismissAnnouncement).not.toContain("お知らせ")
+  })
+})
+
+/**
+ * The note over the research's table of versions and drafts tells a curator
+ * which button does what, by the button's own word in 「」. A word renamed on
+ * the button and not in the note sends the reader looking for a button that
+ * is not there — so every word the note quotes has to be a word some button
+ * on the way actually carries.
+ */
+describe("研究の編集の「バージョンと下書き」の説明文", () => {
+  const admin = messagesFor("ja").admin
+  const note = admin.detail.rowsNote.join("")
+  const buttons = new Set([
+    admin.detail.createEmptyDraft,
+    admin.detail.copyToDraft,
+    admin.detail.edit,
+    admin.take.open,
+  ])
+
+  it("「」で名指す語は、どれも実際のボタンの語", () => {
+    const quoted = [...note.matchAll(/「([^」]+)」/g)].map((match) => match[1])
+    expect(quoted.length).toBeGreaterThan(0)
+    for (const word of quoted) expect(buttons).toContain(word)
+  })
+
+  it("下書きを作る 2 つの道、作成後の取り込み、公開中のバージョンの更新のすべてを名指す", () => {
+    for (const word of buttons) expect(note).toContain(`「${word}」`)
+    expect(note).toContain(admin.take.application)
+  })
+
+  it("どの行も常体の文で閉じる", () => {
+    for (const line of admin.detail.rowsNote) {
+      expect(line).toMatch(/。$/)
+      expect(line).not.toMatch(/です。|ます。/)
+    }
   })
 })

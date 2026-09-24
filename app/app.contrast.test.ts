@@ -56,6 +56,10 @@ describe("the palette", () => {
       "brand-lighter",
       "danger",
       "deep",
+      "diff-del",
+      "diff-del-word",
+      "diff-ins",
+      "diff-ins-word",
       "focus",
       "ink",
       "ink-muted",
@@ -126,6 +130,15 @@ describe("the palette", () => {
   it("reads body text on the tint the page sits on", () => {
     expect(contrast(colours.ink ?? "", colours.surface ?? "")).toBeGreaterThanOrEqual(TEXT)
     expect(contrast(colours["ink-muted"] ?? "", colours.surface ?? "")).toBeGreaterThanOrEqual(TEXT)
+  })
+
+  it.each(["diff-del", "diff-del-word", "diff-ins", "diff-ins-word"])("reads body text on the %s of a comparison", (name) => {
+    expect(contrast(colours.ink ?? "", colours[name] ?? "")).toBeGreaterThanOrEqual(TEXT)
+  })
+
+  it("tells a deeper piece from the line it stands in, on both sides of a comparison", () => {
+    expect(contrast(colours["diff-del-word"] ?? "", colours["diff-del"] ?? "")).toBeGreaterThan(1.1)
+    expect(contrast(colours["diff-ins-word"] ?? "", colours["diff-ins"] ?? "")).toBeGreaterThan(1.1)
   })
 
   it("reads an announcement on its own ground", () => {

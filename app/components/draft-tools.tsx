@@ -9,16 +9,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useFetcher, type SubmitTarget } from "react-router"
 
-import { takeAll } from "~/admin/merge"
-import type { UpstreamView } from "~/admin/pages.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useHoldsUnsaved } from "~/components/unsaved"
 
 import { AdminBack } from "./admin"
-import { Badge, Button, Heading, Stack } from "./base"
+import { Button, Heading, Stack } from "./base"
 import { Icon, type IconName } from "./icons"
 import type { Marks } from "./fields"
+import { SaveNews } from "./form"
+import { Flag } from "./flags"
 
 /**
  * The head of an editing screen: what is being edited, the way back out of
@@ -132,9 +132,7 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
               badge={(
                 <>
                   {updating !== null && (
-                    <Badge tone="accent" icon={<Icon name="edit" aria-hidden="true" />}>
-                      {t.updatingBadge(`v${updating}`)}
-                    </Badge>
+                    <Flag kind="changed">{t.updatingBadge(`v${updating}`)}</Flag>
                   )}
                   {badge}
                 </>
@@ -159,10 +157,10 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
  * while typing (the memo, the whole, what is still open), and — at the far
  * end — the pane switch.
  *
- * **Save stands first.** It is the one thing on the row that has to be
- * pressed, so it is where the eye starts; its news stands to its right, and
- * the panels after that. **The switch stands last**, apart from the rest: it
- * arranges the boxes below and changes nothing.
+ * **Save stands first, alone.** It is the one thing on the row that has to be
+ * pressed, so it is where the eye starts, with its news to its right. **The
+ * panels' entries and the switch stand together at the far end**, the switch
+ * last: none of them changes the draft.
  *
  * **Ctrl+S and Cmd+S save.** The hands typing are on the keyboard, and what the
  * browser offers for that chord — saving the page as a file — is nothing anyone
@@ -242,19 +240,28 @@ export function DraftTools({
           of news that assistive tech should hear as it changes
           (`docs/ui.md` の「壊れるもの」).
         */}
-        <span role="status">
-          {saving && <span className="text-ink-muted">{t.editor.saving}</span>}
-          {!saving && dirty && <span className="text-accent">{t.editor.unsaved}</span>}
-          {!saving && !dirty && saved && <span className="text-ink-muted">{t.editor.saved}</span>}
-        </span>
+        <SaveNews
+          words={[t.editor.saving, t.editor.unsaved, t.editor.saved]}
+          said={saving
+            ? { word: t.editor.saving, tone: "muted" }
+            : dirty
+              ? { word: t.editor.unsaved, tone: "accent" }
+              : saved ? { word: t.editor.saved, tone: "muted" } : null}
+        />
       </div>
-      {/* **What is read while typing, beside what is written.** Each entry
-          opens a panel over the form, so none of them takes the reader off
-          the screen. */}
-      <span className="flex flex-wrap items-center gap-4 whitespace-nowrap">{notes}</span>
-      {/* **How the panes are arranged is about the boxes below, not about the
-          draft** — it stands at the far end, beside nothing it acts on. */}
-      <span className="ml-auto">{panesControl}</span>
+      {/*
+        **Everything else is one group at the right end.** None of it changes
+        the draft: the entries open what is read while typing, in panels over
+        the form, and the switch arranges the boxes below. Set beside save they
+        read as more of what save is; set with the switch, save stands alone.
+        The group wraps as a whole, so a narrow window sends it down together.
+      */}
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+        <span className="flex flex-wrap items-center gap-4 whitespace-nowrap">{notes}</span>
+        {/* **The pane switch stands last** — it is about the boxes below, not
+            about the draft. */}
+        {panesControl}
+      </div>
     </div>
   )
 }
@@ -322,7 +329,6 @@ export interface DraftEditingOptions<T> {
    * reads it — it is carried to the server and compared there.
    */
   revision: number | null
-  upstream: UpstreamView<T> | null
   /** Where the two versions of this shape say different things. */
   diff: (base: T, other: T) => string[]
   /** One field of theirs, put into mine. */
@@ -345,9 +351,6 @@ export interface DraftEditing<T> {
   save: () => void
   /** The version a refused save came back with, and where it disagrees. */
   conflict: { theirs: T, changed: string[] } | null
-  upstream: UpstreamView<T> | null
-  /** Taking everything only the other publish touched. */
-  takeUpstream: () => void
   marksFor: (path: string) => Marks
 }
 
@@ -369,7 +372,6 @@ export interface DraftEditing<T> {
  * const editing = useDraftEditing<DraftInput>({
  *   initial: view.input,
  *   revision: view.revision,
- *   upstream: view.upstream,
  *   diff: diffDraftInput,
  *   take: takeField,
  *   body: (value) => ({ content: value.content }),
@@ -380,7 +382,6 @@ export interface DraftEditing<T> {
 export function useDraftEditing<T>({
   initial,
   revision: startingRevision,
-  upstream: startingUpstream,
   diff,
   take,
   body,
@@ -392,7 +393,6 @@ export function useDraftEditing<T>({
   const [base, setBase] = useState<T>(initial)
   const [revision, setRevision] = useState<number | null>(startingRevision)
   const [conflict, setConflict] = useState<{ theirs: T, changed: string[] } | null>(null)
-  const [upstream, setUpstream] = useState(startingUpstream)
   const [saved, setSaved] = useState(false)
 
   // What the pending save carried, so that a success can record it as the
@@ -428,36 +428,18 @@ export function useDraftEditing<T>({
     void fetcher.submit(payload, { method: "post", encType: "application/json" })
   }
 
-  /** Every difference at once. Each is equally a choice, so none is held back. */
-  function takeUpstream(): void {
-    if (upstream === null) return
-    edit(takeAll(take, value, upstream.theirs, upstream.differing))
-    setUpstream({ ...upstream, differing: [] })
-  }
-
   /**
-   * A field can be marked from two directions — a save somebody refused, and a
-   * difference from the version being compared against. The refusal wins when
-   * both apply: it is the more recent of the two.
+   * A field is marked when a refused save says somebody else moved it, and
+   * offers their value. **Only a refusal marks the form**: a difference from a
+   * version or another draft is taken in on its own screen, and read on the
+   * page beside the form (docs/editing.md の「取り込み」).
    */
   function marksFor(path: string): Marks {
-    const refused = conflict?.changed.includes(path) ?? false
-    const differs = upstream?.differing.includes(path) ?? false
-    const theirs = refused ? conflict?.theirs : differs ? upstream?.theirs : undefined
+    const theirs = conflict?.changed.includes(path) === true ? conflict.theirs : undefined
     return {
       at: path,
-      changed: refused || differs,
-      onTake: theirs === undefined
-        ? null
-        : () => {
-            edit(take(value, theirs, path))
-            if (!refused && upstream !== null) {
-              setUpstream({
-                ...upstream,
-                differing: upstream.differing.filter((held) => held !== path),
-              })
-            }
-          },
+      changed: theirs !== undefined,
+      onTake: theirs === undefined ? null : () => { edit(take(value, theirs, path)) },
       extra: extraFor?.(path),
     }
   }
@@ -470,8 +452,6 @@ export function useDraftEditing<T>({
     saving: fetcher.state !== "idle",
     save,
     conflict,
-    upstream,
-    takeUpstream,
     marksFor,
   }
 }

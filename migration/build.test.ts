@@ -135,6 +135,39 @@ describe("buildResearchContent", () => {
     )
     expect(content.datasetIds).toEqual(["identity-1"])
     expect(first(content.relatedPublications).datasetIds).toEqual(["identity-1"])
+    // Not in the ledger, but shaped as an accession: kept as the ID.
+    expect(first(content.relatedPublications).externalIds).toEqual(["JGAD2"])
+  })
+
+  it("keeps a publication's citation of another research's dataset as the ID, not the identity", () => {
+    const content = buildResearchContent({
+      version: version({
+        humId: "hum0001",
+        relatedPublication: [{ title: { en: "P" }, datasetIds: ["JGAD000001", "JGAD000009"] }],
+      }),
+      listingSummary: null,
+      datasetIdByLabel: new Map([["JGAD000001", "identity-1"], ["JGAD000009", "identity-9"]]),
+      humOfLabel: new Map([["JGAD000001", "hum0001"], ["JGAD000009", "hum0009"]]),
+    })
+    expect(first(content.relatedPublications).datasetIds).toEqual(["identity-1"])
+    expect(first(content.relatedPublications).externalIds).toEqual(["JGAD000009"])
+  })
+
+  it("folds JGA's long form before looking it up, and drops a placeholder of zeros", () => {
+    const content = buildResearchContent({
+      version: version({
+        humId: "hum0012",
+        relatedPublication: [{
+          title: { en: "P" },
+          datasetIds: ["JGAD00000000012", "JGAD00000000227", "JGAD000000", "JGAD00000000000", "DRA000000", "DRA007067", "JGAD00000000227"],
+        }],
+      }),
+      listingSummary: null,
+      datasetIdByLabel: new Map([["JGAD000012", "identity-12"]]),
+      humOfLabel: new Map([["JGAD000012", "hum0012"]]),
+    })
+    expect(first(content.relatedPublications).datasetIds).toEqual(["identity-12"])
+    expect(first(content.relatedPublications).externalIds).toEqual(["JGAD000227", "DRA007067"])
   })
 
   it("keeps the two languages of a URL apart, because they are different pages", () => {

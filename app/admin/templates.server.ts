@@ -24,8 +24,9 @@ import { redirect } from "react-router"
 import { requireCapability } from "~/auth/actor.server"
 import { can, type Actor } from "~/auth/capabilities"
 import { loadConfig } from "~/config.server"
+import type { ResearchContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
-import { dataset, labelPin, researchDraft } from "~/db/schema"
+import { dataset, labelPin } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { href } from "~/public/urls"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
@@ -70,16 +71,11 @@ import {
   type CatalogWithTerms,
 } from "./queries.server"
 import {
-  contentWithUpstream,
   draDatasetSeed,
   jgadDatasetSeed,
-  MERGE_FIELDS,
-  mergeRows,
   researchContentFrom,
-  upstreamProvider,
   type DatasetSeed,
   type DroppedValue,
-  type MergeRow,
 } from "./templates"
 import { adminDraftDatasetsPath, adminDraftPath } from "./urls"
 
@@ -499,13 +495,20 @@ export async function upstreamBranchAction(
   })
   if (read == null) notFound()
 
+  // **Every dataset the application registered is made with the research,
+  // except one a research already holds** — there is nothing to choose: a
+  // dataset the branch registered belongs to the research it describes, and
+  // pinning a held one again would refuse the whole creation. What the form
+  // sends besides `into` is not read.
+  const held = await datasetHolders(db, read.seeds.map((seed) => seed.label))
   const outcome = await createResearchFromUpstream(
     db,
     {
       humLabel: read.branch.humLabel,
-      applicationId,
       content: researchContentFrom(read.branch),
-      datasets: chosen(read.seeds, accessionsIn(form)),
+      datasets: read.seeds
+        .filter((seed) => !held.has(seed.label))
+        .map((seed) => ({ label: seed.label, content: seed.content })),
     },
     actorOf(actor),
   )
@@ -639,198 +642,84 @@ export async function upstreamDatasetAction(
   return redirect(href(locale, adminDraftDatasetsPath(researchId, draftId)))
 }
 
-/** The provider an application states, as one line per language. */
-export interface UpstreamProviderView {
-  nameJa: string
-  nameEn: string
-  affiliationJa: string
-  affiliationEn: string
-}
-
-/** One of this research's own branches, and whether this draft already took it in. */
-export interface UpstreamDraftBranchRow extends UpstreamBranchView {
-  /** Whether this branch is already among the draft's `takenBranches`. */
-  taken: boolean
-}
-
-export interface UpstreamDraftView {
-  locale: Locale
-  connected: boolean
-  researchId: string
-  draftId: string
-  revision: number
-  humLabel: string | null
-  /** The application chosen, or typed — null while the screen shows the table. */
-  applicationId: string | null
-  /** An application ID that was typed and names no branch. */
-  unknown: string | null
-  /**
-   * This research's own branches, newest approval first — read when no
-   * application is chosen yet.
-   */
-  branches: UpstreamDraftBranchRow[]
-  /** The branch being taken in, once one is chosen. */
-  branch: UpstreamBranchView | null
-  /** The draft and the application, field by field. */
-  merge: MergeRow[] | null
-  /** Offered whole, and only when the draft does not already name this person. */
-  provider: UpstreamProviderView | null
-  datasets: DatasetChoiceView[]
-  dropped: DroppedValue[]
-  unreachable: string[]
-}
-
 /**
- * Taking an application into a draft that exists.
- *
- * **Without an application chosen, this is the table of the research's own
- * branches** plus the box to type one that has not been given a hum label yet
- * (`docs/editing.md` の「行き先」). Chosen, it is the three-column face that
- * settles what goes into the draft.
+ * This research's own branches, newest approval first, for the take-in
+ * screen's table (`docs/editing.md` の「行き先」). Null where the application
+ * system cannot be reached.
  */
-export async function upstreamDraftPage(
-  request: Request,
-  locale: Locale,
-  params: { researchId: string | undefined, draftId: string | undefined },
-): Promise<UpstreamDraftView> {
-  await requireSeeding(request)
-  const db = getDb()
-  const at = await draftAt(db, params)
-  const draft = await readDraft(db, at.draftId)
-  if (draft === null) notFound()
+export async function applicationBranches(
+  db: Executor,
+  humLabel: string | null,
+): Promise<UpstreamBranchView[] | null> {
+  const rows = await withApplicationDb((connection) =>
+    humLabel === null
+      ? Promise.resolve([])
+      : searchDsBranches(connection.pool, connection.schema, humLabel, null))
+  if (rows === null) return null
 
-  const applicationId = new URL(request.url).searchParams.get("application")
-  const base = {
-    ...at,
-    locale,
-    applicationId,
-    unknown: null,
-    branches: [],
-    branch: null,
-    merge: null,
-    provider: null,
-    datasets: [],
-    dropped: [],
-    unreachable: [],
-  }
+  const matched = humLabel === null ? [] : rows.filter((row) => row.humLabel === humLabel)
+  return branchViews(db, matched)
+}
 
-  if (applicationId === null || applicationId === "") {
-    const humLabel = at.humLabel
-    const rows = await withApplicationDb((connection) =>
-      humLabel === null
-        ? Promise.resolve([])
-        : searchDsBranches(connection.pool, connection.schema, humLabel, null))
-    if (rows === null) return { ...base, connected: false }
-
-    const matched = humLabel === null ? [] : rows.filter((row) => row.humLabel === humLabel)
-    const views = await branchViews(db, matched)
-    const taken = await takenBranchesOf(db, at.draftId)
-    return {
-      ...base,
-      connected: true,
-      branches: views.map((view) => ({ ...view, taken: taken.includes(view.applicationId) })),
+/** One branch as a source, with the datasets it registered. */
+export type ApplicationRead
+  = | { status: "unconnected" }
+    | { status: "unknown" }
+    | {
+      status: "found"
+      branch: DsBranchDetail
+      view: UpstreamBranchView
+      choice: UpstreamChoiceView
     }
-  }
 
+export async function readApplication(db: Executor, applicationId: string): Promise<ApplicationRead> {
   const catalog = await loadCatalogWithTerms(db)
   const read = await withApplicationDb(async (connection) => {
     const branch = await fetchDsBranch(connection.pool, connection.schema, applicationId)
     return { branch, seeds: branch === null ? [] : await jgadSeeds(connection, branch, catalog) }
   })
-  if (read === null) return { ...base, connected: false }
-  if (read.branch === null) return { ...base, connected: true, unknown: applicationId }
+  if (read === null) return { status: "unconnected" }
+  if (read.branch === null) return { status: "unknown" }
 
-  const choice = await choiceOf(db, {
-    applicationId,
-    branch: read.branch,
-    seeds: read.seeds,
-    unreachable: [],
-  })
+  const choice = await choiceOf(db, { applicationId, branch: read.branch, seeds: read.seeds })
   const [view] = await branchViews(db, [read.branch])
-  return {
-    ...base,
-    connected: true,
-    branch: view ?? null,
-    merge: mergeRows(draft.content, read.branch),
-    provider: providerView(read.branch),
-    datasets: choice.datasets,
-    dropped: choice.dropped,
-    unreachable: choice.unreachable,
-  }
+  if (view === undefined) return { status: "unknown" }
+  return { status: "found", branch: read.branch, view, choice }
 }
 
 /**
- * Writing what the curator decided.
+ * Writing what the curator decided for a branch: the content as written on the
+ * face, and the datasets ticked, in one transaction (`applyUpstreamToDraft`).
  *
- * **Nothing is merged here.** The boxes arrive holding the answer, so this puts
- * them into the content and appends whichever datasets were ticked
- * (`docs/editing.md` の「下書きを外から作る」).
+ * **The datasets are read again**; the form sends which accessions to create
+ * and nothing else (the header of this file).
  */
-export async function upstreamDraftAction(
-  request: Request,
-  locale: Locale,
-  params: { researchId: string | undefined, draftId: string | undefined },
-): Promise<Response | UpstreamResult> {
-  const actor = await requireSeeding(request)
-  const db = getDb()
-  const { researchId, draftId } = await draftAt(db, params)
-  const draft = await readDraft(db, draftId)
-  if (draft === null) notFound()
-
-  const form = await request.formData()
-  const revision = Number(form.get("revision"))
-  if (!Number.isInteger(revision)) badRequest()
-  const applicationId = readString(form, "application")
-  if (applicationId === null) badRequest()
-
-  const written = new Map<string, string>()
-  for (const field of MERGE_FIELDS) {
-    for (const language of ["ja", "en"] as const) {
-      const at = `${field}.${language}`
-      written.set(at, readString(form, at) ?? "")
-    }
-  }
-  const wanted = accessionsIn(form)
-  const withProvider = form.get("provider") !== null
-
+export async function takeApplication(
+  db: Parameters<typeof applyUpstreamToDraft>[0],
+  at: { draftId: string, revision: number },
+  seed: { researchId: string, applicationId: string, content: ResearchContent, accessions: ReadonlySet<string> },
+  actor: Actor,
+): Promise<{ status: "gone" } | { status: "added" } | UpstreamResult> {
   const catalog = await loadCatalogWithTerms(db)
   const read = await withApplicationDb(async (connection) => {
-    const branch = await fetchDsBranch(connection.pool, connection.schema, applicationId)
+    const branch = await fetchDsBranch(connection.pool, connection.schema, seed.applicationId)
     if (branch === null) return null
     return { branch, seeds: await jgadSeeds(connection, branch, catalog) }
   })
-  if (read == null) notFound()
-
-  const written_ = contentWithUpstream(draft.content, written)
-  const provider = withProvider ? upstreamProvider(read.branch) : null
-  const content = provider === null
-    ? written_
-    : { ...written_, dataProviders: [...written_.dataProviders, provider] }
+  if (read == null) return { status: "gone" }
 
   const outcome = await applyUpstreamToDraft(
     db,
-    { draftId, revision },
+    at,
     {
-      researchId,
-      applicationId,
-      content,
-      datasets: chosen(read.seeds, wanted),
+      researchId: seed.researchId,
+      content: seed.content,
+      datasets: chosen(read.seeds, seed.accessions),
     },
     actorOf(actor),
   )
-  if (outcome.status === "gone") notFound()
-  if (outcome.status !== "added") return outcome
-  return redirect(href(locale, adminDraftPath(researchId, draftId)))
-}
-
-function providerView(branch: DsBranchDetail): UpstreamProviderView | null {
-  if (branch.piNameJa === "" && branch.piNameEn === "") return null
-  return {
-    nameJa: branch.piNameJa,
-    nameEn: branch.piNameEn,
-    affiliationJa: branch.affiliationJa,
-    affiliationEn: branch.affiliationEn,
-  }
+  if (outcome.status === "added") return { status: "added" }
+  return outcome
 }
 
 // === shared ===
@@ -840,22 +729,12 @@ function providerView(branch: DsBranchDetail): UpstreamProviderView | null {
  * rather than at each write is what keeps a screen from offering a button that
  * would be refused halfway through.
  */
-async function requireSeeding(request: Request): Promise<Actor> {
+export async function requireSeeding(request: Request): Promise<Actor> {
   const actor = await requireCapability(request, "edit-content")
   if (!can(actor, "manage-labels")) {
     throw new Response(null, { status: 403, statusText: "Forbidden" })
   }
   return actor
-}
-
-/** The branches this draft has already taken in, from its own record. */
-async function takenBranchesOf(db: Executor, draftId: string): Promise<string[]> {
-  const [row] = await db
-    .select({ takenBranches: researchDraft.takenBranches })
-    .from(researchDraft)
-    .where(eq(researchDraft.id, draftId))
-    .limit(1)
-  return row?.takenBranches ?? []
 }
 
 async function draftAt(

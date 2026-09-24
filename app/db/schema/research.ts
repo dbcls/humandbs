@@ -93,17 +93,6 @@ export const researchDraft = pgTable("research_draft", {
   content: jsonb().$type<ResearchContent>().notNull(),
   /** Free text for admins only. It never reaches the preview. */
   /**
-   * The approval branches of the application system this draft has taken values
-   * from, oldest first.
-   *
-   * **A record, not a constraint.** Nothing consults it to decide what may be
-   * taken: a branch is approved before its data is registered, so the same one
-   * is taken twice — once for the description and again once the accessions
-   * exist. Several branches reach one draft as well, because approvals arrive
-   * one at a time while a draft stays open.
-   */
-  takenBranches: text().array().notNull().default([]),
-  /**
    * The published version this draft is the update of, when it is one.
    *
    * **An update is a state of the version, and the draft is only its vessel.**

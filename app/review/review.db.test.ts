@@ -9,7 +9,7 @@ import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
 import { RESEARCH, anchorOf } from "./anchors"
-import { postAboutDraft, readComments } from "./comments.server"
+import { postAboutDraft, readComments, setCommentResolved } from "./comments.server"
 import { readShare } from "./queries.server"
 import { reviewAction, reviewPage } from "./review.server"
 
@@ -111,10 +111,10 @@ describe("the review screen", () => {
 
     const view = await reviewPage(get(token), "ja", created)
     expect(view.share.open).toBe(false)
-    expect(view.share.url).toContain("/preview/")
+    // Whole, since it is pasted into a mail: the site's public origin and the path.
+    expect(view.share.url).toMatch(/^https?:\/\/[^/]+\/preview\/[^/]+$/)
     expect(view.unresolved).toBe(1)
-    expect(view.comments[0]?.href).toContain(`/draft/${created.draftId}`)
-    expect(view.comments[0]?.comment.anchor).toEqual({
+    expect(view.comments[0]?.anchor).toEqual({
       kind: "research-field",
       path: "summary.aims",
     })
@@ -128,7 +128,20 @@ describe("the review screen", () => {
     const token = await signIn(CURATOR, true)
 
     const view = await reviewPage(get(token), "ja", created)
-    expect(view.comments.map((row) => [row.comment.body, row.path])).toEqual([["全体", null]])
+    expect(view.comments.map((row) => [row.body, row.anchor.kind])).toEqual([["全体", "draft"]])
+    expect(view.unresolved).toBe(1)
+  })
+
+  /** What has been resolved is read in the panel of its own place, not here. */
+  it("lists only what is still open", async () => {
+    const created = await createResearchWithDraft(db)
+    const answered = await saidAt(created.draftId, "title", "題目は？")
+    await saidAt(created.draftId, "summary.aims", "目的は？")
+    await setCommentResolved(db, { draftId: created.draftId, commentId: answered, resolved: true, actorSub: CURATOR.sub })
+    const token = await signIn(CURATOR, true)
+
+    const view = await reviewPage(get(token), "ja", created)
+    expect(view.comments.map((row) => row.body)).toEqual(["目的は？"])
     expect(view.unresolved).toBe(1)
   })
 })
@@ -154,6 +167,33 @@ describe("what the review screen does", () => {
     expect(closed?.enabled).toBe(false)
     expect(closed?.expiresAt).toBe(null)
     expect(closed?.token).toBe(before?.token)
+  })
+
+  /** The switch turns sharing on or off whatever the form says, and saves the expiry typed with it. */
+  it("turns sharing on and off with the switch, saving the expiry typed beside it", async () => {
+    const created = await createResearchWithDraft(db)
+    const token = await signIn(CURATOR, true)
+
+    await reviewAction(postForm(token, { intent: "share-on", enabled: "", expiresOn: "2026-12-31" }), "ja", created, "redirect")
+    const on = await readShare(db, created.draftId)
+    expect(on?.enabled).toBe(true)
+    expect(on?.expiresAt?.toISOString().slice(0, 10)).toBe("2026-12-31")
+
+    await reviewAction(postForm(token, { intent: "share-off", enabled: "on", expiresOn: "2026-12-31" }), "ja", created, "redirect")
+    const off = await readShare(db, created.draftId)
+    expect(off?.enabled).toBe(false)
+    expect(off?.expiresAt?.toISOString().slice(0, 10)).toBe("2026-12-31")
+  })
+
+  it("keeps sharing as it stands when only the expiry is saved", async () => {
+    const created = await createResearchWithDraft(db)
+    const token = await signIn(CURATOR, true)
+    await reviewAction(postForm(token, { intent: "share-on", expiresOn: "" }), "ja", created, "redirect")
+
+    await reviewAction(postForm(token, { intent: "share", enabled: "on", expiresOn: "2027-01-31" }), "ja", created, "redirect")
+    const saved = await readShare(db, created.draftId)
+    expect(saved?.enabled).toBe(true)
+    expect(saved?.expiresAt?.toISOString().slice(0, 10)).toBe("2027-01-31")
   })
 
   it("mints a different address when the token is reissued", async () => {

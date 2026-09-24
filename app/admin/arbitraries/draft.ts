@@ -35,6 +35,10 @@ function positional(content: ResearchContent): ResearchContent {
     grants: content.grants.map((row, at) => ({ ...row, id: `grant-${at}` })),
     relatedPublications: content.relatedPublications
       .map((row, at) => ({ ...row, id: `publication-${at}` })),
+    listingSummary: {
+      ...content.listingSummary,
+      dataProviders: content.listingSummary.dataProviders.map((row, at) => ({ ...row, id: `listed-${at}` })),
+    },
   }
 }
 

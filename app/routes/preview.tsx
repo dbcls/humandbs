@@ -1,4 +1,6 @@
 import { PreviewResearchScreen } from "~/components/preview"
+import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { RESEARCH } from "~/review/anchors"
 import { PREVIEW_HEADERS, previewAction, previewResearchPage } from "~/review/preview.server"
 import { readLocale } from "~/public/urls"
@@ -28,17 +30,15 @@ export function headers() {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
+  const messages = messagesFor(loaderData.locale)
   return [
-    { title: `${loaderData.humLabel ?? "draft"} - preview` },
+    { title: windowTitle(messages, [loaderData.humLabel, messages.preview.heading]) },
     { name: "robots", content: "noindex, nofollow" },
   ]
 }
 
 export default function Preview({ loaderData, actionData }: Route.ComponentProps) {
   return (
-    <PreviewResearchScreen
-      view={loaderData}
-      problem={actionData?.status === "invalid" ? actionData.problem : null}
-    />
+    <PreviewResearchScreen view={loaderData} answer={actionData} />
   )
 }

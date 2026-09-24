@@ -111,6 +111,7 @@ const researchContentInputSchema = z.object({
     title: textInputSchema,
     doi: textInputSchema,
     datasetIds: z.array(z.uuid()),
+    externalIds: z.array(z.string().max(64)).max(200),
   })),
   datasetIds: z.array(z.uuid()),
 })
@@ -162,6 +163,14 @@ export function prosePair(pair: TextPairInput): TranslatedRichText {
   return { ja: side(pair.ja), en: side(pair.en) }
 }
 
+/**
+ * The IDs typed into a publication's list as they are kept: each trimmed, the
+ * blank rows the add button leaves dropped, and each written once.
+ */
+export function typedIds(typed: readonly string[]): string[] {
+  return [...new Set(typed.map((id) => id.trim()).filter((id) => id !== ""))]
+}
+
 export function researchContentOf(input: ResearchContentInput): ResearchContent {
   const prose = (pair: TextPairInput) => prosePair(pair)
 
@@ -206,6 +215,7 @@ export function researchContentOf(input: ResearchContentInput): ResearchContent 
       title: textSlot(publication.title),
       doi: textSlot(publication.doi),
       datasetIds: [...publication.datasetIds],
+      externalIds: typedIds(publication.externalIds),
     })),
     datasetIds: [...input.datasetIds],
   }

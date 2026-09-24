@@ -31,9 +31,10 @@
  * itself.
  */
 
-import { useId, useState } from "react"
-import { Link, useFetcher } from "react-router"
+import { useEffect, useId, useRef, useState } from "react"
+import { useFetcher } from "react-router"
 
+import { describeAt } from "~/admin/changes"
 import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
 import {
   emptyDiseaseRow,
@@ -54,7 +55,8 @@ import type { DatasetEditorView } from "~/admin/pages.server"
 import type { EditableCatalog, EditableKey, EditableTerm } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
-  adminDraftReviewPath,
+  adminExperimentFieldPath,
+  adminExperimentFieldsPath,
   datasetPagePath,
   draftCommentsPath,
   termsPath,
@@ -62,10 +64,14 @@ import {
 import {
   Badge,
   Button,
+  ButtonLink,
   Confirm,
-  Fold,
+  FoldMark,
+  foldShown,
   IconButton,
+  MENU_PANEL,
   Note,
+  PaneHeading,
   Stack,
 } from "~/components/base"
 import { CONTROL, Field, Select, Submit } from "~/components/form"
@@ -80,26 +86,28 @@ import type { DrawnDataset } from "~/review/preview.server"
 
 import { usePanes } from "./admin"
 import { DraftHead, DraftTools, useDraftEditing, useDrawn, type DraftEditing } from "./draft-tools"
+import { OpenComments } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { DatasetBody } from "./dataset"
 import { FileSelection } from "./files"
 import {
   AddElement,
   ConflictBand,
-  ElementCard,
+  FieldFlags,
   FieldHead,
+  isUntranslated,
   PairField,
   Section,
   SingleField,
   StateSwitch,
-  PublishedBand,
   emptySlot,
   moved,
   newId,
   replacing,
   type Marks,
 } from "./fields"
-import { landOn } from "./form"
+import { landAt, landOn } from "./form"
+import { Flag } from "./flags"
 
 /**
  * How many candidates the term picker offers at once. A vocabulary can hold
@@ -107,8 +115,9 @@ import { landOn } from "./form"
  */
 const PICKER_RESULTS = 20
 
-/** How long the keys have to be still before the pane beside the form is redrawn. */
-const DATASET_ID = "dataset-id"
+/** How long the keys have to be still before the vocabulary is asked. */
+const SEARCH_PAUSE_MS = 200
+
 const BASICS = "basics"
 const FILES = "files"
 const EXPERIMENTS = "experiments"
@@ -140,6 +149,19 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
    * mark is addressed by, the same one the field itself is written at
    * (`fields.tsx` の `Marks`).
    */
+  /**
+   * A field of this dataset as the open-comments panel names it: the field's
+   * label, and for a field of an experiment, the experiment's label before it.
+   */
+  function placeName(path: string): string {
+    const label = fieldLabelFor(path) ?? path
+    const [head, id] = path.split(".")
+    if (head !== "experiments" || id === undefined) return label
+    const experiment = view.input.experiments.find((one) => one.id === id)
+    const name = experiment === undefined || experiment.label.text === "" ? t.unnamedExperiment : experiment.label.text
+    return `${name} — ${label}`
+  }
+
   function fieldLabelFor(path: string): string | undefined {
     const [head, ...rest] = path.split(".")
     if (head === "releaseDate") return t.releaseDate
@@ -166,6 +188,8 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     comments: commentsByPath(view.review.comments, subject),
     changed: view.review.changed,
     previous: view.review.previous,
+    // Read when a mark opens, by which time the editing state below exists.
+    current: (at) => describeAt(editing.value, at),
     heading: messagesFor(locale).preview.previousPublished,
     termLabel: (id) => termLabelOf.get(id) ?? id,
   }
@@ -173,7 +197,6 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const editing = useDraftEditing<DatasetContentInput>({
     initial: view.input,
     revision: view.revision,
-    upstream: view.upstream,
     diff: diffDatasetInput,
     take: takeDatasetField,
     body: (value) => ({ content: value }),
@@ -199,6 +222,8 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   )
 
   const [at, setAt] = useState<string | null>(null)
+  /** The form, when a pane shows it: the only place a jump may land (`landAt`). */
+  const form = useRef<HTMLDivElement>(null)
   function onFormFocus(event: React.FocusEvent): void {
     const target = event.target
     if (!(target instanceof Element)) return
@@ -206,15 +231,12 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     if (found !== undefined && found !== null) setAt(found)
   }
 
-  /** Going to the place a band or the page pane names (`form.tsx` の `landOn`). */
+  /**
+   * Going to the place a band or the page pane names (`form.tsx` の `landAt`):
+   * the field when it stands open, the nearest element that is, else the section.
+   */
   function goTo(path: string): void {
-    // The field itself when it stands open on the form; the section holding it
-    // when it is written inside a panel that is not open.
-    const field = document.querySelector<HTMLElement>(`[data-at="${CSS.escape(path)}"]`)
-    const wanted = SECTION_OF[path.split(".")[0] ?? path]
-    const section = field ?? (wanted === undefined ? null : document.getElementById(wanted))
-    if (section === null) return
-    landOn(section, field === null ? "start" : "center")
+    landAt(form.current, path, SECTION_OF[path.split(".")[0] ?? path])
   }
 
   /** The same move, for a band that draws its own anchors. */
@@ -228,6 +250,8 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   }
 
   const input = editing.value
+  // The copy just made, which opens so the curator starts on what differs.
+  const [copied, setCopied] = useState<string | null>(null)
   const marked = markedPaths(editing)
   const markedUnder = (prefix: string) =>
     marked.filter((path) => path === prefix || path.startsWith(`${prefix}.`)).length
@@ -239,56 +263,36 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   }
 
   const formBody = (
-    <div onFocusCapture={onFormFocus}>
+    <div ref={form} onFocusCapture={onFormFocus}>
       <Card under={false}>
         <Stack>
-          {editing.upstream !== null && editing.upstream.differing.length > 0 && (
-            <PublishedBand
-              locale={locale}
-              number={editing.upstream.number}
-              places={editing.upstream.differing.map((path) => ({ path, go: () => { goTo(path) } }))}
-              takeCount={editing.upstream.differing.length}
-              onTakeAll={editing.takeUpstream}
-            />
-          )}
           {editing.conflict !== null && (
             <div onClick={onBandJump}>
               <ConflictBand locale={locale} changed={editing.conflict.changed} />
             </div>
           )}
 
-          <DatasetIdSection view={view} locale={locale} />
-
-          <Section id={BASICS} title={t.basics}>
-            <Stack gap="tight">
-              <FieldHead
-                label={t.releaseDate}
-                marks={editing.marksFor("releaseDate")}
+          {/* **No section named for what it holds in general** (「基本情報」): each
+              of the dataset's values is a section headed by its own name, the
+              way the research's fields are. The wrapper is only what a landing
+              falls back to. */}
+          <div id={BASICS} className="scroll-mt-32">
+            <Stack gap="block">
+              <Values
+                headed
                 locale={locale}
+                catalog={view.catalog}
+                terms={view.terms}
+                scope="dataset"
+                path="values"
+                leading={[view.page.typeOfDataAnchor, view.page.accessAnchor]
+                  .flatMap((anchor) => anchor?.split(".")[1] ?? [])}
+                values={input.values}
+                marksFor={editing.marksFor}
+                onChange={(values) => { editing.edit({ ...input, values }) }}
               />
-              <p className="text-ink-muted text-xs">{t.releaseDateHint}</p>
-              <div>
-                <input
-                  type="date"
-                  className={`${CONTROL} text-sm`}
-                  value={input.releaseDate}
-                  onChange={(event) => {
-                    editing.edit({ ...input, releaseDate: event.target.value })
-                  }}
-                />
-              </div>
             </Stack>
-            <Values
-              locale={locale}
-              catalog={view.catalog}
-              terms={view.terms}
-              scope="dataset"
-              path="values"
-              values={input.values}
-              marksFor={editing.marksFor}
-              onChange={(values) => { editing.edit({ ...input, values }) }}
-            />
-          </Section>
+          </div>
 
           {view.portalIssued && (
             <Section id={FILES} title={t.files}>
@@ -306,20 +310,34 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             </Section>
           )}
 
-          <Section id={EXPERIMENTS} title={t.experiments}>
-            <FieldHead
-              label={t.experiments}
-              marks={editing.marksFor("experiments")}
-              locale={locale}
-            />
+          <Section
+            id={EXPERIMENTS}
+            title={t.experiments}
+            flags={<FieldFlags marks={editing.marksFor("experiments")} locale={locale} />}
+          >
             {input.experiments.map((experiment, at) => (
-              <ElementCard
+              <ExperimentCard
                 key={experiment.id}
+                locale={locale}
                 index={at}
                 count={input.experiments.length}
-                locale={locale}
+                summary={experiment.label.text === ""
+                  ? <span className="text-ink-muted">{t.unnamedExperiment}</span>
+                  : experiment.label.text}
+                note={experimentNote(experiment)}
+                open={experiment.label.text === ""
+                  || experiment.id === copied
+                  || markedUnder(`experiments.${experiment.id}`) > 0}
                 onMove={(by) => {
                   editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
+                }}
+                onCopy={() => {
+                  const copy = copiedExperiment(experiment)
+                  setCopied(copy.id)
+                  editing.edit({
+                    ...input,
+                    experiments: [...input.experiments.slice(0, at + 1), copy, ...input.experiments.slice(at + 1)],
+                  })
                 }}
                 onRemove={() => {
                   editing.edit({
@@ -328,29 +346,20 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                   })
                 }}
               >
-                <Fold
-                  summary={experiment.label.text === ""
-                    ? <span className="text-ink-muted">{t.unnamedExperiment}</span>
-                    : experiment.label.text}
-                  note={experimentNote(experiment)}
-                  open={experiment.label.text === ""
-                    || markedUnder(`experiments.${experiment.id}`) > 0}
-                >
-                  <Experiment
-                    locale={locale}
-                    catalog={view.catalog}
-                    terms={view.terms}
-                    experiment={experiment}
-                    marksFor={editing.marksFor}
-                    onChange={(next) => {
-                      editing.edit({
-                        ...input,
-                        experiments: replacing(input.experiments, experiment.id, next),
-                      })
-                    }}
-                  />
-                </Fold>
-              </ElementCard>
+                <Experiment
+                  locale={locale}
+                  catalog={view.catalog}
+                  terms={view.terms}
+                  experiment={experiment}
+                  marksFor={editing.marksFor}
+                  onChange={(next) => {
+                    editing.edit({
+                      ...input,
+                      experiments: replacing(input.experiments, experiment.id, next),
+                    })
+                  }}
+                />
+              </ExperimentCard>
             ))}
             <AddElement
               label={t.addExperiment}
@@ -387,7 +396,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                 the form. Where the caret is, the page shows on the value itself
                 (`page.tsx` の `Place`).
               */
-              annotate={(anchor, part) => <FieldReview review={review} at={anchor} part={part} fieldLabel={fieldLabelFor(anchor)} />}
+              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
               here={at}
               onGo={goTo}
               goLabel={editor.goToField}
@@ -440,25 +449,40 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           title={t.heading}
           aside={view.datasetLabel ?? editor.unpinnedDataset}
           updating={view.updating}
-          badge={!view.published && <Badge>{messagesFor(locale).admin.detail.unpublishedDataset}</Badge>}
+          badge={!view.published && <Flag kind="hidden">{messagesFor(locale).admin.detail.unpublishedDataset}</Flag>}
           back={{
             to: href(locale, adminDraftDatasetsPath(researchId, draftId)),
             label: t.backToList,
             icon: "chevron-left",
           }}
+          // **What identifies the dataset and dates it stands in the head**,
+          // not in the form: the id is pinned apart from the save, and the
+          // dates of an archive's accession are read from the archive rather
+          // than written here.
+          overview={(
+            <DatasetFacts
+              view={view}
+              locale={locale}
+              releaseDate={input.releaseDate}
+              onReleaseDate={(releaseDate) => { editing.edit({ ...input, releaseDate }) }}
+            />
+          )}
           tools={(
             <DraftTools
               locale={locale}
               panesControl={panes.control}
-              // **The count is a way to the screen that reads them all** — a
-              // dataset is a part of the draft, and the draft's questions are
-              // read on the draft's own screens.
+              // **The open questions about this dataset, in the panel the
+              // research's own form opens** — cut by field, since the dataset
+              // is the whole of what is written here. The memo and the whole
+              // belong to the draft, and are the research's form to open.
               notes={(
-                <Link to={href(locale, adminDraftReviewPath(researchId, draftId))} className="no-underline">
-                  <Badge tone={view.steps.unresolved > 0 ? "accent" : undefined} icon={<Icon name="comment" aria-hidden="true" />}>
-                    {messagesFor(locale).admin.detail.openComments(view.steps.unresolved)}
-                  </Badge>
-                </Link>
+                <OpenComments
+                  context={review.context}
+                  comments={view.review.comments.filter((one) =>
+                    one.anchor.kind === "dataset-field" && one.anchor.datasetId === view.datasetId)}
+                  nameOf={(anchor) => anchor.kind === "dataset-field" ? placeName(anchor.path) : editor.whole}
+                  perField
+                />
               )}
               dirty={editing.dirty}
               saved={editing.saved}
@@ -475,16 +499,12 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 }
 
 /**
- * Every path a save or a publish left something at, whatever kind of thing it
- * left. A tab and a fold both hide what is inside them, so both have to be able
- * to say that something in there wants looking at — and none of the four
- * reasons is more worth saying than the others.
+ * Every path a refused save left a mark at. A tab and a fold both hide what is
+ * inside them, so both have to be able to say that something in there wants
+ * looking at.
  */
 function markedPaths(editing: DraftEditing<DatasetContentInput>): string[] {
-  return [
-    ...editing.conflict?.changed ?? [],
-    ...editing.upstream?.differing ?? [],
-  ]
+  return editing.conflict?.changed ?? []
 }
 
 function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: {
@@ -498,15 +518,22 @@ function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: 
   const t = messagesFor(locale).admin.datasetEditor
   const path = `experiments.${experiment.id}`
 
+  // **Three parts, each under its own heading** — the experiment itself, the
+  // items it carries, and the way to add one. Twenty-odd fields run together
+  // under the card's line read as one list, and the box to add a field was
+  // found only by scrolling past all of them.
   return (
-    <Stack>
-      <SingleField
-        label={t.experimentLabel}
-        value={experiment.label}
-        marks={marksFor(`${path}.label`)}
-        locale={locale}
-        onChange={(label) => { onChange({ ...experiment, label }) }}
-      />
+    <Stack gap="block">
+      <Stack>
+        <PaneHeading title={t.experiments} level="h3" rule="start" />
+        <SingleField
+          label={t.experimentLabel}
+          value={experiment.label}
+          marks={marksFor(`${path}.label`)}
+          locale={locale}
+          onChange={(label) => { onChange({ ...experiment, label }) }}
+        />
+      </Stack>
       <Values
         locale={locale}
         catalog={catalog}
@@ -515,6 +542,7 @@ function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: 
         path={`${path}.values`}
         values={experiment.values}
         marksFor={marksFor}
+        headings={{ values: t.values, add: t.addValue }}
         onChange={(values) => { onChange({ ...experiment, values }) }}
       />
     </Stack>
@@ -529,9 +557,29 @@ function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: 
  * which is what keeps the set of keys a decision somebody made rather than a
  * side effect of typing — the way the previous portal's catalog drifted.
  */
-function Values({ locale, catalog, terms, scope, path, values, marksFor, onChange }: {
+function Values({ locale, catalog, terms, scope, path, values, marksFor, onChange, leading = [], headed = false, headings }: {
   locale: Locale
   catalog: EditableCatalog
+  /**
+   * The keys the page draws in places of its own, in the page's order — the
+   * type of data, then the access type. **The form runs in the page's order**,
+   * so these come first and the rest follow in catalog order. **They are always
+   * there**: every dataset page draws them, so the form offers neither adding
+   * nor removing them — an empty one is a field waiting to be filled.
+   */
+  leading?: readonly string[]
+  /**
+   * Each value is a section of its own, headed by its name (`fields.tsx` の
+   * `Section`) — the dataset's own values, which stand at the top of the form
+   * the way the research's fields do. An experiment's values stay named rows
+   * inside its card.
+   */
+  headed?: boolean
+  /**
+   * Headings for the items and for the way to add one, inside an experiment's
+   * card (`Experiment`) — the parts stand apart rather than run together.
+   */
+  headings?: { values: string, add: string }
   /** The terms the document names, for the chosen values to be readable. */
   terms: EditableTerm[]
   scope: "dataset" | "experiment"
@@ -543,107 +591,260 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
   const t = messagesFor(locale).admin.datasetEditor
   const keys = catalog.keys.filter((key) => key.scope === scope)
   const keyById = new Map(keys.map((key) => [key.id, key]))
-  const positionOf = (value: ValueInput) => keyById.get(value.keyId)?.position ?? 0
-  const inOrder = [...values].sort((a, b) => positionOf(a) - positionOf(b))
+  const positionOf = (value: ValueInput) => {
+    const lead = leading.indexOf(value.keyId)
+    return lead === -1 ? leading.length + (keyById.get(value.keyId)?.position ?? 0) : lead
+  }
   const held = new Set(values.map((value) => value.keyId))
-  const spare = keys.filter((key) => !held.has(key.id) && isEditable(key))
+  const always = leading.flatMap((id) => {
+    const key = keyById.get(id)
+    return key === undefined || held.has(id) || !isEditable(key)
+      ? []
+      : [emptyValueInput(key.id, editableKind(key), key.canonicalUnit)]
+  })
+  const inOrder = [...values, ...always].sort((a, b) => positionOf(a) - positionOf(b))
+  const spare = keys.filter((key) => !held.has(key.id) && !leading.includes(key.id) && isEditable(key))
 
+  // The field just added, which takes the caret once it is drawn.
+  const around = useRef<HTMLDivElement>(null)
+  const added = useRef<string | null>(null)
+  useEffect(() => {
+    if (added.current === null) return
+    const field = around.current?.querySelector<HTMLElement>(`[data-at="${CSS.escape(`${path}.${added.current}`)}"]`)
+    added.current = null
+    if (field != null) landOn(field, "center")
+  })
+
+  // An always-there field the document does not carry yet joins it once written.
   const replace = (keyId: string, next: ValueInput) => {
-    onChange(values.map((value) => value.keyId === keyId ? next : value))
+    onChange(held.has(keyId) ? values.map((value) => value.keyId === keyId ? next : value) : [...values, next])
   }
 
-  return (
-    <Stack>
-      <FieldHead label={t.values} marks={marksFor(path)} locale={locale} />
+  const adding = spare.length > 0 && (
+    <AddValue
+      locale={locale}
+      keys={spare}
+      catalogWay={scope === "experiment" && (
+        <ButtonLink
+          to={href(locale, adminExperimentFieldsPath())}
+          external
+          newTab
+          newTabLabel={messagesFor(locale).newTab}
+          size="row"
+          icon={<Icon name="external" aria-hidden="true" />}
+        >
+          {messagesFor(locale).admin.catalog.heading}
+        </ButtonLink>
+      )}
+      onAdd={(key) => {
+        onChange([...values, emptyValueInput(key.id, editableKind(key), key.canonicalUnit)])
+        added.current = key.id
+      }}
+    />
+  )
+
+  const fields = (
+    <>
       {inOrder.map((value) => {
         const key = keyById.get(value.keyId)
         if (key === undefined) return null
         const at = `${path}.${value.keyId}`
-        const body = value.value
         // **At the field name's own row, the same place every other row's
         // delete stands** (`docs/admin-ui.md` の「編集画面」) — not a control of
         // its own set apart from the field it acts on.
-        const remove = {
-          label: t.removeValue,
-          onClick: () => { onChange(values.filter((row) => row.keyId !== value.keyId)) },
+        const remove = leading.includes(value.keyId)
+          ? undefined
+          : {
+              label: t.removeValue,
+              onClick: () => { onChange(values.filter((row) => row.keyId !== value.keyId)) },
+            }
+        if (headed) {
+          const body = value.value
+          return (
+            <Section
+              key={value.keyId}
+              id={`value-${value.keyId}`}
+              title={catalogLabel(key, locale)}
+              accepts={body.kind === "text" ? messagesFor(locale).admin.accepts.prose : undefined}
+              flags={(
+                <FieldFlags
+                  marks={marksFor(at)}
+                  locale={locale}
+                  untranslated={body.kind === "text" && isUntranslated(body.text)}
+                />
+              )}
+              remove={remove}
+            >
+              <ValueEditor
+                label={catalogLabel(key, locale)}
+                named={false}
+                locale={locale}
+                catalogKey={key}
+                terms={terms}
+                value={value}
+                marks={marksFor(at)}
+                onChange={(next) => { replace(value.keyId, next) }}
+              />
+            </Section>
+          )
         }
         return (
           <div key={value.keyId}>
-            {body.kind === "text" && (
-              <PairField
-                label={catalogLabel(key, locale)}
-                value={body.text}
-                multiline
-                marks={marksFor(at)}
-                locale={locale}
-                remove={remove}
-                onChange={(text) => {
-                  replace(value.keyId, { keyId: value.keyId, value: { kind: "text", text } })
-                }}
-              />
-            )}
-            {body.kind === "vocabulary" && (
-              <VocabularyField
-                label={catalogLabel(key, locale)}
-                locale={locale}
-                marks={marksFor(at)}
-                setId={key.vocabularySetId}
-                known={terms}
-                multiple={key.multiple}
-                state={body.state}
-                termIds={body.termIds}
-                remove={remove}
-                onChange={(state, termIds) => {
-                  replace(value.keyId, {
-                    keyId: value.keyId,
-                    value: { kind: "vocabulary", state, termIds },
-                  })
-                }}
-              />
-            )}
-            {body.kind === "number" && (
-              <NumberField
-                label={catalogLabel(key, locale)}
-                locale={locale}
-                marks={marksFor(at)}
-                units={key.inputUnits ?? []}
-                labelCandidates={labelCandidatesFor(key.code)}
-                state={body.state}
-                rows={body.rows}
-                remove={remove}
-                onChange={(next) => {
-                  replace(value.keyId, { keyId: value.keyId, value: { kind: "number", ...next } })
-                }}
-              />
-            )}
-            {body.kind === "disease" && (
-              <DiseaseField
-                label={catalogLabel(key, locale)}
-                locale={locale}
-                marks={marksFor(at)}
-                setId={key.vocabularySetId}
-                known={terms}
-                state={body.state}
-                diseases={body.diseases}
-                remove={remove}
-                onChange={(next) => {
-                  replace(value.keyId, { keyId: value.keyId, value: { kind: "disease", ...next } })
-                }}
-              />
-            )}
+            <ValueEditor
+              label={catalogLabel(key, locale)}
+              locale={locale}
+              catalogKey={key}
+              terms={terms}
+              value={value}
+              marks={marksFor(at)}
+              remove={remove}
+              onChange={(next) => { replace(value.keyId, next) }}
+            />
           </div>
         )
       })}
-      {spare.length > 0 && (
-        <AddValue
+    </>
+  )
+
+  if (headings === undefined) {
+    return (
+      <div ref={around}>
+        <Stack>
+          {fields}
+          {adding}
+        </Stack>
+      </div>
+    )
+  }
+  return (
+    <div ref={around}>
+      <Stack gap="block">
+        <Stack>
+          <PaneHeading title={headings.values} level="h3" rule="start" />
+          {inOrder.length === 0 ? <Empty>{t.noValue}</Empty> : fields}
+        </Stack>
+        {adding !== false && (
+          <Stack>
+            <PaneHeading title={headings.add} level="h3" rule="start" />
+            {adding}
+          </Stack>
+        )}
+      </Stack>
+    </div>
+  )
+}
+
+/**
+ * One value under a catalog key, with the control its kind is written with.
+ * **Written once**, so the dataset's own form and the take-in face write a
+ * value the same way.
+ */
+export function ValueEditor({ label, named = true, locale, catalogKey: key, terms, value, marks, remove, onChange }: {
+  label: string
+  /**
+   * Whether the field draws its own name row. **Not when a heading names it**
+   * (`Values` の `headed`): the name would be read twice, and the name row's
+   * marks stand on the heading instead. The label still names the boxes for
+   * anyone not looking at them.
+   */
+  named?: boolean
+  locale: Locale
+  catalogKey: EditableKey
+  terms: EditableTerm[]
+  value: ValueInput
+  marks: Marks
+  remove?: { label: string, onClick: () => void }
+  onChange: (next: ValueInput) => void
+}) {
+  const body = value.value
+  const way = <ChoicesWay catalogKey={key} locale={locale} />
+  return (
+    <>
+      {body.kind === "text" && (
+        <PairField
+          label={named ? label : undefined}
+          value={body.text}
+          multiline
+          marks={marks}
           locale={locale}
-          keys={spare}
-          onAdd={(key) => {
-            onChange([...values, emptyValueInput(key.id, editableKind(key), key.canonicalUnit)])
+          remove={remove}
+          onChange={(text) => { onChange({ keyId: value.keyId, value: { kind: "text", text } }) }}
+        />
+      )}
+      {body.kind === "vocabulary" && (
+        <VocabularyField
+          label={label}
+          named={named}
+          way={way}
+          locale={locale}
+          marks={marks}
+          setId={key.vocabularySetId}
+          known={terms}
+          multiple={key.multiple}
+          state={body.state}
+          termIds={body.termIds}
+          remove={remove}
+          onChange={(state, termIds) => {
+            onChange({ keyId: value.keyId, value: { kind: "vocabulary", state, termIds } })
           }}
         />
       )}
-    </Stack>
+      {body.kind === "number" && (
+        <NumberField
+          label={label}
+          named={named}
+          locale={locale}
+          marks={marks}
+          units={key.inputUnits ?? []}
+          labelCandidates={labelCandidatesFor(key.code)}
+          state={body.state}
+          rows={body.rows}
+          remove={remove}
+          onChange={(next) => { onChange({ keyId: value.keyId, value: { kind: "number", ...next } }) }}
+        />
+      )}
+      {body.kind === "disease" && (
+        <DiseaseField
+          label={label}
+          named={named}
+          way={way}
+          locale={locale}
+          marks={marks}
+          setId={key.vocabularySetId}
+          known={terms}
+          state={body.state}
+          diseases={body.diseases}
+          remove={remove}
+          onChange={(next) => { onChange({ keyId: value.keyId, value: { kind: "disease", ...next } }) }}
+        />
+      )}
+    </>
+  )
+}
+
+/**
+ * The way to the screen that keeps what a field chooses from (「選べる値」),
+ * **opened in a new tab** — the form around it may hold unsaved work, and a
+ * value found missing there is added and then chosen here.
+ *
+ * **Only for the keys that have that screen**: the vocabularies of an
+ * experiment. A dataset's own access type is a closed list the portal defines,
+ * with no screen to keep it on.
+ */
+export function ChoicesWay({ catalogKey: key, locale }: { catalogKey: EditableKey, locale: Locale }) {
+  if (key.scope !== "experiment" || (key.valueType !== "vocabulary" && key.valueType !== "disease")) return null
+  const messages = messagesFor(locale)
+  return (
+    <ButtonLink
+      to={href(locale, adminExperimentFieldPath(key.code))}
+      external
+      newTab
+      newTabLabel={messages.newTab}
+      size="row"
+      icon={<Icon name="external" aria-hidden="true" />}
+    >
+      {messages.admin.datasetEditor.choices}
+    </ButtonLink>
   )
 }
 
@@ -671,9 +872,11 @@ function isEditable(key: EditableKey): boolean {
 }
 
 /**
- * The way to add an item the dataset or the experiment is not carrying:
- * folded away, filtered by what the key is called or by the code it is
- * stored under, and each candidate is the control that adds it.
+ * The way to add an item the dataset or the experiment is not carrying: **a
+ * box that opens its list as it is entered**, the same combobox a vocabulary is
+ * chosen with (`ComboBox`), filtered by what the key is called. A fold labelled
+ * 「項目の追加」 read as a heading, and what it held was found by opening it.
+ * Choosing adds the field and takes the caret to it.
  *
  * **The shape does not follow the number of keys on offer.** A dataset down to
  * a couple of spare items and an experiment down to most of ninety draw the
@@ -690,56 +893,64 @@ function isEditable(key: EditableKey): boolean {
  * already made is a step that only exists because the first control could not
  * act.
  */
-function AddValue({ locale, keys, onAdd }: {
+function AddValue({ locale, keys, catalogWay, onAdd }: {
   locale: Locale
   keys: EditableKey[]
+  /** A way to the screen where the keys themselves are kept, when there is one. */
+  catalogWay?: React.ReactNode
   onAdd: (key: EditableKey) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const [find, setFind] = useState("")
-
+  const [chosen, setChosen] = useState<EditableKey | null>(null)
+  // Drawn afresh after each addition, so the box starts empty again.
+  const [round, setRound] = useState(0)
   const needle = find.trim().toLowerCase()
-  const offered = keys.filter((key) =>
-    catalogLabel(key, locale).toLowerCase().includes(needle)
-    || key.code.toLowerCase().includes(needle))
+  const offered = keys.filter((key) => catalogLabel(key, locale).toLowerCase().includes(needle))
 
   return (
-    <Fold summary={t.addValue}>
-      <Stack>
-        {/* A plain, controlled box rather than `Field`: `Field` posts a
-            `defaultValue`, and this one narrows the list on every keystroke.
-            `CONTROL` is the edge `Field` itself draws with. */}
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-semibold text-ink-muted text-xs">{t.findKey}</span>
-          <input
-            type="search"
-            value={find}
-            onChange={(event) => { setFind(event.target.value) }}
-            className={`${CONTROL} w-64`}
-          />
-        </label>
-        <p className="text-ink-muted text-xs">{t.shownOf(offered.length, keys.length)}</p>
-        {offered.length === 0
-          ? <Empty>{t.noKey}</Empty>
-          : (
-              <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-                {offered.map((key) => (
-                  <li key={key.id}>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="xs"
-                      icon={<Icon name="plus" />}
-                      onClick={() => { onAdd(key) }}
-                    >
-                      {catalogLabel(key, locale)}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-      </Stack>
-    </Fold>
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-1 md:max-w-md">
+        <ComboBox
+          key={round}
+          label={t.addValue}
+          placeholder={t.addValuePlaceholder}
+          options={offered}
+          keyOf={(key) => key.id}
+          render={(key) => <span>{catalogLabel(key, locale)}</span>}
+          empty={t.noKey}
+          words={{ searching: t.searching, count: t.candidateCount }}
+          onQuery={(value, typed) => {
+            setFind(value)
+            if (typed) setChosen(null)
+          }}
+          onChoose={(key) => {
+            setChosen(key)
+            setFind("")
+          }}
+          kept={(key) => catalogLabel(key, locale)}
+        />
+      </div>
+      {/* **Choosing is not adding.** A whole field lands in the form at the
+          press, so the choice waits in the box until it is confirmed — unlike
+          a term, which is one chip and taken back with one press. */}
+      <Button
+        type="button"
+        size="xs"
+        icon={<Icon name="plus" />}
+        disabled={chosen === null ? t.chooseKeyFirst : undefined}
+        onClick={() => {
+          if (chosen === null) return
+          onAdd(chosen)
+          setChosen(null)
+          setFind("")
+          setRound((at) => at + 1)
+        }}
+      >
+        {t.add}
+      </Button>
+      {catalogWay}
+    </div>
   )
 }
 
@@ -776,8 +987,10 @@ function AddValue({ locale, keys, onAdd }: {
  * wrong the moment it is typed rather than waiting for that refusal
  * (`docs/ui.md` の「壊れるもの」の「欄の誤りは、その欄が名乗る」).
  */
-function NumberField({ label, locale, marks, units, labelCandidates, state, rows, remove, onChange }: {
+function NumberField({ label, named: drawsName = true, locale, marks, units, labelCandidates, state, rows, remove, onChange }: {
   label: string
+  /** Whether it draws its own name row (`ValueEditor` の `named`). */
+  named?: boolean
   locale: Locale
   marks: Marks
   units: string[]
@@ -798,124 +1011,131 @@ function NumberField({ label, locale, marks, units, labelCandidates, state, rows
   }
 
   return (
-    <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} remove={remove} />
-      <div className="md:max-w-xl">
-        <Stack gap="tight">
+    <Stack gap="tight" at={marks.at}>
+      <FieldHead label={drawsName ? label : undefined} marks={marks} locale={locale} remove={remove} />
+      {/* **The state marks stand at the right of the values**, level with the
+          first row — where every other field puts them — rather than on a row
+          of their own above the values. */}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 md:max-w-xl">
+          <Stack gap="tight">
+            {labelCandidates.length > 0 && (
+              <datalist id={labelListId}>
+                {labelCandidates.map((candidate) => <option key={candidate} value={candidate} />)}
+              </datalist>
+            )}
+            {rows.map((row, at) => {
+              const highInvalid = highBelowValue(row)
+              const highErrorId = `${labelListId}-high-${at}`
+              // Rendered as a spread rather than `aria-invalid={false}` — React
+              // writes an `aria-*` prop out whichever way it is set, and a valid
+              // row has nothing to describe (`fields.tsx` の `SlotEditor` の `described`).
+              const invalidDescribed = highInvalid
+                ? { "aria-invalid": true, "aria-describedby": highErrorId }
+                : {}
+              return (
+                <div key={at} className="flex flex-wrap items-center gap-2">
+                  {named && (
+                    <input
+                      type="text"
+                      value={row.label}
+                      disabled={disabled}
+                      aria-label={t.numberLabel}
+                      placeholder={t.numberLabel}
+                      list={labelCandidates.length > 0 ? labelListId : undefined}
+                      onChange={(event) => { edit(at, { label: event.target.value }) }}
+                      className={`${box} w-36`}
+                    />
+                  )}
+                  <input
+                    type="number"
+                    step="any"
+                    value={row.value}
+                    disabled={disabled}
+                    aria-label={label}
+                    onChange={(event) => { edit(at, { value: event.target.value }) }}
+                    className={`${box} w-40`}
+                  />
+                  <span aria-hidden="true" className="text-ink-muted text-sm">{t.numberRangeSeparator}</span>
+                  <input
+                    type="number"
+                    step="any"
+                    value={row.high}
+                    disabled={disabled}
+                    aria-label={`${label} ${t.numberHigh}`}
+                    placeholder={t.numberHigh}
+                    {...invalidDescribed}
+                    onChange={(event) => { edit(at, { high: event.target.value }) }}
+                    className={`${box} w-40 ${highInvalid ? "border-danger" : ""}`}
+                  />
+                  {highInvalid && (
+                    <span id={highErrorId} className="flex items-center gap-1 text-danger text-xs">
+                      <Icon name="alert" aria-hidden="true" />
+                      {t.numberHighInvalid}
+                    </span>
+                  )}
+                  {units.length > 1
+                    ? (
+                        <Select
+                          label={t.unit}
+                          hideLabel
+                          value={row.unit ?? ""}
+                          options={units.map((one) => ({ value: one, label: one }))}
+                          disabled={disabled}
+                          width="w-28"
+                          onChange={(unit) => { edit(at, { unit }) }}
+                        />
+                      )
+                    : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
+                  {named && (
+                    <input
+                      type="text"
+                      value={row.note}
+                      disabled={disabled}
+                      aria-label={t.numberNote}
+                      placeholder={t.numberNote}
+                      onChange={(event) => { edit(at, { note: event.target.value }) }}
+                      className={`${box} w-36`}
+                    />
+                  )}
+                  {rows.length > 1 && (
+                    <IconButton
+                      name="trash"
+                      label={t.removeNumber}
+                      disabled={disabled}
+                      onClick={() => { onChange({ state, rows: rows.filter((_, i) => i !== at) }) }}
+                    />
+                  )}
+                </div>
+              )
+            })}
+            {!disabled && (
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  icon={<Icon name="plus" />}
+                  onClick={() => {
+                    onChange({ state, rows: [...rows, emptyNumberRow(units[0] ?? null)] })
+                  }}
+                >
+                  {t.addNumber}
+                </Button>
+              </div>
+            )}
+            {!disabled && rows.every((row) => row.value.trim() === "") && (
+              <p className="text-ink-muted text-xs">{t.emptyNumber}</p>
+            )}
+          </Stack>
+        </div>
+        <span className="ml-auto flex h-9 shrink-0 items-center">
           <StateSwitch
             state={state}
             onChange={(next) => { onChange({ state: next, rows }) }}
             locale={locale}
           />
-          {labelCandidates.length > 0 && (
-            <datalist id={labelListId}>
-              {labelCandidates.map((candidate) => <option key={candidate} value={candidate} />)}
-            </datalist>
-          )}
-          {rows.map((row, at) => {
-            const highInvalid = highBelowValue(row)
-            const highErrorId = `${labelListId}-high-${at}`
-            // Rendered as a spread rather than `aria-invalid={false}` — React
-            // writes an `aria-*` prop out whichever way it is set, and a valid
-            // row has nothing to describe (`fields.tsx` の `SlotEditor` の `described`).
-            const invalidDescribed = highInvalid
-              ? { "aria-invalid": true, "aria-describedby": highErrorId }
-              : {}
-            return (
-              <div key={at} className="flex flex-wrap items-center gap-2">
-                {named && (
-                  <input
-                    type="text"
-                    value={row.label}
-                    disabled={disabled}
-                    aria-label={t.numberLabel}
-                    placeholder={t.numberLabel}
-                    list={labelCandidates.length > 0 ? labelListId : undefined}
-                    onChange={(event) => { edit(at, { label: event.target.value }) }}
-                    className={`${box} w-36`}
-                  />
-                )}
-                <input
-                  type="number"
-                  step="any"
-                  value={row.value}
-                  disabled={disabled}
-                  aria-label={label}
-                  onChange={(event) => { edit(at, { value: event.target.value }) }}
-                  className={`${box} w-40`}
-                />
-                <span aria-hidden="true" className="text-ink-muted text-sm">{t.numberRangeSeparator}</span>
-                <input
-                  type="number"
-                  step="any"
-                  value={row.high}
-                  disabled={disabled}
-                  aria-label={`${label} ${t.numberHigh}`}
-                  placeholder={t.numberHigh}
-                  {...invalidDescribed}
-                  onChange={(event) => { edit(at, { high: event.target.value }) }}
-                  className={`${box} w-40 ${highInvalid ? "border-danger" : ""}`}
-                />
-                {highInvalid && (
-                  <span id={highErrorId} className="flex items-center gap-1 text-danger text-xs">
-                    <Icon name="alert" aria-hidden="true" />
-                    {t.numberHighInvalid}
-                  </span>
-                )}
-                {units.length > 1
-                  ? (
-                      <Select
-                        label={t.unit}
-                        hideLabel
-                        value={row.unit ?? ""}
-                        options={units.map((one) => ({ value: one, label: one }))}
-                        disabled={disabled}
-                        width="w-28"
-                        onChange={(unit) => { edit(at, { unit }) }}
-                      />
-                    )
-                  : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
-                {named && (
-                  <input
-                    type="text"
-                    value={row.note}
-                    disabled={disabled}
-                    aria-label={t.numberNote}
-                    placeholder={t.numberNote}
-                    onChange={(event) => { edit(at, { note: event.target.value }) }}
-                    className={`${box} w-36`}
-                  />
-                )}
-                {rows.length > 1 && (
-                  <IconButton
-                    name="trash"
-                    label={t.removeNumber}
-                    disabled={disabled}
-                    onClick={() => { onChange({ state, rows: rows.filter((_, i) => i !== at) }) }}
-                  />
-                )}
-              </div>
-            )
-          })}
-          {!disabled && (
-            <div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                icon={<Icon name="plus" />}
-                onClick={() => {
-                  onChange({ state, rows: [...rows, emptyNumberRow(units[0] ?? null)] })
-                }}
-              >
-                {t.addNumber}
-              </Button>
-            </div>
-          )}
-          {!disabled && rows.every((row) => row.value.trim() === "") && (
-            <p className="text-ink-muted text-xs">{t.emptyNumber}</p>
-          )}
-        </Stack>
+        </span>
       </div>
     </Stack>
   )
@@ -928,6 +1148,8 @@ function NumberField({ label, locale, marks, units, labelCandidates, state, rows
  */
 function VocabularyField({
   label,
+  named = true,
+  way,
   locale,
   marks,
   setId,
@@ -939,6 +1161,10 @@ function VocabularyField({
   onChange,
 }: {
   label: string
+  /** The way to where this field's choices are kept (`ChoicesWay`). */
+  way?: React.ReactNode
+  /** Whether it draws its own name row (`ValueEditor` の `named`). */
+  named?: boolean
   locale: Locale
   marks: Marks
   setId: string | null
@@ -951,8 +1177,8 @@ function VocabularyField({
   onChange: (state: SlotState, termIds: string[]) => void
 }) {
   return (
-    <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} remove={remove} />
+    <Stack gap="tight" at={marks.at}>
+      <FieldHead label={named ? label : undefined} marks={marks} locale={locale} way={way} remove={remove} />
       <div className="md:max-w-md">
         {/* **The two marks stand beside the search box**, the way a
             translated field's stand beside its box (`fields.tsx` の
@@ -997,8 +1223,12 @@ function VocabularyField({
  * a curator away from the source they are copying
  * (`docs/editing.md` の「編集フォーム」).
  */
-function DiseaseField({ label, locale, marks, setId, known, state, diseases, remove, onChange }: {
+function DiseaseField({ label, named = true, way, locale, marks, setId, known, state, diseases, remove, onChange }: {
   label: string
+  /** The way to where this field's choices are kept (`ChoicesWay`). */
+  way?: React.ReactNode
+  /** Whether it draws its own name row (`ValueEditor` の `named`). */
+  named?: boolean
   locale: Locale
   marks: Marks
   setId: string | null
@@ -1018,84 +1248,91 @@ function DiseaseField({ label, locale, marks, setId, known, state, diseases, rem
     row.termIds.length === 0 && row.nameJa.trim() === "" && row.nameEn.trim() === ""
 
   return (
-    <Stack gap="tight">
-      <FieldHead label={label} marks={marks} locale={locale} remove={remove} />
-      <div className="md:max-w-xl">
-        <Stack gap="tight">
+    <Stack gap="tight" at={marks.at}>
+      <FieldHead label={named ? label : undefined} marks={marks} locale={locale} way={way} remove={remove} />
+      {/* **The state marks stand at the right of the values**, level with the
+          first row — where every other field puts them — rather than on a row
+          of their own above the values. */}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 md:max-w-xl">
+          <Stack gap="tight">
+            {diseases.map((row, at) => (
+              <div key={at} className="rounded border border-line px-3 py-2">
+                <Stack gap="tight">
+                  {/*
+                  **The names come first.** They are what the row is called, so
+                  reading down a list of diseases is reading down this line; the
+                  codes are how each one is filed and sit under it.
+                */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={row.nameJa}
+                      disabled={disabled}
+                      aria-label={t.diseaseNameJa}
+                      placeholder={t.diseaseNameJa}
+                      onChange={(event) => { edit(at, { nameJa: event.target.value }) }}
+                      className={`${box} min-w-0 flex-1`}
+                    />
+                    <input
+                      type="text"
+                      value={row.nameEn}
+                      disabled={disabled}
+                      aria-label={t.diseaseNameEn}
+                      placeholder={t.diseaseNameEn}
+                      onChange={(event) => { edit(at, { nameEn: event.target.value }) }}
+                      className={`${box} min-w-0 flex-1`}
+                    />
+                    <IconButton
+                      name="trash"
+                      label={t.removeDisease}
+                      disabled={disabled}
+                      onClick={() => {
+                        onChange({ state, diseases: diseases.filter((_, i) => i !== at) })
+                      }}
+                    />
+                  </div>
+                  <TermPicker
+                    locale={locale}
+                    setId={setId}
+                    kind="disease"
+                    disabled={disabled}
+                    chosen={resolveTerms(known, row.termIds)}
+                    onAdd={(id) => { edit(at, { termIds: [...row.termIds, id] }) }}
+                    onRemove={(id) => {
+                      edit(at, { termIds: row.termIds.filter((one) => one !== id) })
+                    }}
+                  />
+                </Stack>
+              </div>
+            ))}
+            {!disabled && (
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  icon={<Icon name="plus" />}
+                  onClick={() => {
+                    onChange({ state, diseases: [...diseases, emptyDiseaseRow()] })
+                  }}
+                >
+                  {t.addDisease}
+                </Button>
+              </div>
+            )}
+            {!disabled && diseases.every(empty) && (
+              <p className="text-ink-muted text-xs">{t.emptyDisease}</p>
+            )}
+          </Stack>
+        </div>
+        <span className="ml-auto flex h-9 shrink-0 items-center">
           <StateSwitch
             state={state}
             onChange={(next) => { onChange({ state: next, diseases }) }}
             locale={locale}
           />
-          {diseases.map((row, at) => (
-            <div key={at} className="rounded border border-line px-3 py-2">
-              <Stack gap="tight">
-                {/*
-                  **The names come first.** They are what the row is called, so
-                  reading down a list of diseases is reading down this line; the
-                  codes are how each one is filed and sit under it.
-                */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={row.nameJa}
-                    disabled={disabled}
-                    aria-label={t.diseaseNameJa}
-                    placeholder={t.diseaseNameJa}
-                    onChange={(event) => { edit(at, { nameJa: event.target.value }) }}
-                    className={`${box} min-w-0 flex-1`}
-                  />
-                  <input
-                    type="text"
-                    value={row.nameEn}
-                    disabled={disabled}
-                    aria-label={t.diseaseNameEn}
-                    placeholder={t.diseaseNameEn}
-                    onChange={(event) => { edit(at, { nameEn: event.target.value }) }}
-                    className={`${box} min-w-0 flex-1`}
-                  />
-                  <IconButton
-                    name="trash"
-                    label={t.removeDisease}
-                    disabled={disabled}
-                    onClick={() => {
-                      onChange({ state, diseases: diseases.filter((_, i) => i !== at) })
-                    }}
-                  />
-                </div>
-                <TermPicker
-                  locale={locale}
-                  setId={setId}
-                  kind="disease"
-                  disabled={disabled}
-                  chosen={resolveTerms(known, row.termIds)}
-                  onAdd={(id) => { edit(at, { termIds: [...row.termIds, id] }) }}
-                  onRemove={(id) => {
-                    edit(at, { termIds: row.termIds.filter((one) => one !== id) })
-                  }}
-                />
-              </Stack>
-            </div>
-          ))}
-          {!disabled && (
-            <div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                icon={<Icon name="plus" />}
-                onClick={() => {
-                  onChange({ state, diseases: [...diseases, emptyDiseaseRow()] })
-                }}
-              >
-                {t.addDisease}
-              </Button>
-            </div>
-          )}
-          {!disabled && diseases.every(empty) && (
-            <p className="text-ink-muted text-xs">{t.emptyDisease}</p>
-          )}
-        </Stack>
+        </span>
       </div>
     </Stack>
   )
@@ -1149,21 +1386,27 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
   trailing?: React.ReactNode
 }) {
   const t = messagesFor(locale).admin.datasetEditor
-  const [find, setFind] = useState("")
   const search = useFetcher<EditableTerm[]>()
+  const wait = useRef<number | null>(null)
   const held = new Set(chosen.map((term) => term.id))
-
-  const needle = find.trim()
   const candidates = (search.data ?? [])
     .filter((term) => term.setId === setId && !held.has(term.id))
     .slice(0, PICKER_RESULTS)
 
-  const look = (value: string) => {
-    setFind(value)
-    if (setId === null || value.trim() === "") return
+  /**
+   * **Asked once the keys are still**, not at every key: a vocabulary of
+   * twelve thousand terms is searched on the server, and a burst of typing
+   * would otherwise send a burst of questions whose answers arrive out of
+   * order. Entering the box asks at once.
+   */
+  const ask = (value: string, pause: number) => {
+    if (wait.current !== null) window.clearTimeout(wait.current)
+    if (setId === null) return
     const query = new URLSearchParams({ set: setId, q: value.trim() })
     if (kind !== undefined) query.set("kind", kind)
-    void search.load(`${termsPath()}?${query.toString()}`)
+    wait.current = window.setTimeout(() => {
+      void search.load(`${termsPath()}?${query.toString()}`)
+    }, pause)
   }
 
   return (
@@ -1190,43 +1433,218 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
             </ul>
           )}
       <div className="flex items-center gap-2">
-        <input
-          type="search"
-          value={find}
-          disabled={disabled}
-          aria-label={t.findTerm}
-          placeholder={t.findTerm}
-          onChange={(event) => { look(event.target.value) }}
-          className={`${CONTROL} min-w-0 flex-1 text-sm disabled:opacity-50`}
+        <ComboBox
+          label={t.findTerm}
+          disabled={disabled || setId === null}
+          options={candidates}
+          keyOf={(term) => term.id}
+          render={(term) => <CandidateWords term={term} locale={locale} kind={kind} />}
+          loading={search.state !== "idle"}
+          empty={t.noCandidate}
+          more={candidates.length >= PICKER_RESULTS ? t.typeToNarrow(PICKER_RESULTS) : undefined}
+          words={{ searching: t.searching, count: t.candidateCount }}
+          onQuery={(value, typed) => { ask(value, typed ? SEARCH_PAUSE_MS : 0) }}
+          onChoose={(term) => { onAdd(term.id) }}
         />
         {trailing}
       </div>
-      {needle !== "" && candidates.length === 0 && search.state === "idle" && (
-        <Empty>{t.noCandidate}</Empty>
-      )}
-      {candidates.length > 0 && (
-        <ul className="flex flex-col rounded border border-line">
-          {candidates.map((term) => (
-            <li key={term.id}>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                className="w-full justify-start"
-                onClick={() => {
-                  onAdd(term.id)
-                  setFind("")
-                }}
-              >
-                <code className="text-ink-muted text-xs">{term.code}</code>
-                {catalogLabel(term, locale)}
-              </Button>
+    </Stack>
+  )
+}
+
+/**
+ * A box to type in with a list that opens under it — **one combobox for every
+ * list chosen from on this screen** (a vocabulary's terms, the keys to add), so
+ * the keys and the look are learned once.
+ *
+ * WAI-ARIA APG, "list autocomplete" (`comboKey`): the list opens as the box is
+ * entered, by the pointer or the keyboard, and as it is typed into; Up and Down
+ * walk it while the caret stays in the box; Enter takes the one walked to and
+ * never sends the form; Escape closes, a second empties. The caret stays in the
+ * box after a choice, so the next one is a key away.
+ */
+function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, render, loading = false, empty, more, words, onQuery, onChoose, kept }: {
+  label: string
+  /** The grey word in the empty box; the label when absent. */
+  placeholder?: string
+  disabled?: boolean
+  /** What the list offers for what is typed now. */
+  options: readonly T[]
+  keyOf: (option: T) => string
+  render: (option: T) => React.ReactNode
+  /** Whether the options are still being asked for. */
+  loading?: boolean
+  empty: string
+  /** A line under a list cut short, saying so. */
+  more?: string
+  words: { searching: string, count: (count: number) => string }
+  /** What is typed, whenever it changes or the box is entered (typed: false). */
+  onQuery?: (value: string, typed: boolean) => void
+  onChoose: (option: T) => void
+  /**
+   * Keep the choice in the box, as these words, rather than emptying it — for a
+   * choice that is confirmed by a button beside the box rather than acted on
+   * as it is made. Typing again goes back to looking.
+   */
+  kept?: (option: T) => string
+}) {
+  const [find, setFind] = useState("")
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(0)
+  const listId = useId()
+  const optionId = (at: number) => `${listId}-${String(at)}`
+  const shown = open && !disabled
+  const at = Math.min(active, options.length - 1)
+  const current = options[at]
+
+  const look = (value: string) => {
+    setFind(value)
+    setActive(0)
+    setOpen(true)
+    onQuery?.(value, true)
+  }
+  const enter = () => {
+    if (disabled || open) return
+    setOpen(true)
+    setActive(0)
+    onQuery?.(find, false)
+  }
+  const choose = (option: T) => {
+    onChoose(option)
+    setFind(kept === undefined ? "" : kept(option))
+    setOpen(false)
+    setActive(0)
+  }
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const next = comboKey({ open: shown, active, find }, event.key, options.length)
+    if (next === null) return
+    event.preventDefault()
+    if (event.key === "Escape") event.stopPropagation()
+    if (next.choose && current !== undefined) {
+      choose(current)
+      return
+    }
+    if (next.state.open && !shown) onQuery?.(find, false)
+    setOpen(next.state.open)
+    setActive(next.state.active)
+    setFind(next.state.find)
+  }
+
+  return (
+    <div className="relative min-w-0 flex-1">
+      <input
+        type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={shown}
+        aria-controls={listId}
+        aria-activedescendant={shown && current !== undefined ? optionId(at) : undefined}
+        // The browser's own suggestions are what someone typed in some other
+        // box; over this one they hide the list that answers.
+        autoComplete="off"
+        spellCheck={false}
+        value={find}
+        disabled={disabled}
+        aria-label={label}
+        placeholder={placeholder ?? label}
+        onChange={(event) => { look(event.target.value) }}
+        onKeyDown={onKeyDown}
+        onFocus={enter}
+        onClick={enter}
+        onBlur={() => { setOpen(false) }}
+        className={`${CONTROL} w-full pr-8 text-sm disabled:opacity-50`}
+      />
+      {/* The mark of a list that opens here, the way a pull-down draws it.
+          Not a control of its own: the box is what is pressed. */}
+      <Icon
+        name="chevron-down"
+        className={`pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-muted transition-transform ${shown ? "rotate-180" : ""}`}
+      />
+      {shown && (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={label}
+          className={`absolute top-[calc(100%+0.25rem)] left-0 z-20 flex max-h-72 w-full overflow-y-auto ${MENU_PANEL}`}
+        >
+          {options.length === 0 && (
+            <li role="presentation" className="px-4 py-2 text-ink-muted text-sm">{loading ? words.searching : empty}</li>
+          )}
+          {!loading && more !== undefined && (
+            <li role="presentation" className="order-last border-line border-t px-4 py-2 text-ink-muted text-xs">{more}</li>
+          )}
+          {options.map((option, index) => (
+            <li
+              key={keyOf(option)}
+              id={optionId(index)}
+              role="option"
+              aria-selected={index === at}
+              // Pressed with the pointer, the box keeps the caret: taking it
+              // away would close the list before the press lands.
+              onMouseDown={(event) => { event.preventDefault() }}
+              onMouseEnter={() => { setActive(index) }}
+              onClick={() => { choose(option) }}
+              className={`flex cursor-pointer items-baseline gap-2 px-4 py-2 text-sm ${index === at ? "bg-surface-hover" : ""}`}
+            >
+              {render(option)}
             </li>
           ))}
         </ul>
       )}
-    </Stack>
+      <span role="status" className="sr-only">{shown && !loading ? words.count(options.length) : ""}</span>
+    </div>
   )
+}
+
+/**
+ * One candidate as the list reads it: **the words, not the key they are stored
+ * under** — an id like `controlled-access-type-2` says nothing a reader chooses
+ * by. A disease keeps its code before the words: ICD-10 is what the box is typed
+ * with, and what tells two names apart.
+ */
+export function CandidateWords({ term, locale, kind }: { term: EditableTerm, locale: Locale, kind?: "disease" }) {
+  return (
+    <>
+      {kind === "disease" && <code className="shrink-0 text-ink-muted text-xs">{term.code}</code>}
+      <span>{catalogLabel(term, locale)}</span>
+    </>
+  )
+}
+
+/** What a combobox holds between keys: whether its list is open, which option is walked to, what is typed. */
+export interface ComboState {
+  open: boolean
+  active: number
+  find: string
+}
+
+/**
+ * **The keys of a combobox** (WAI-ARIA APG, "list autocomplete"). The list
+ * opens as the box is entered — by the pointer or the keyboard — and as it is
+ * typed into, and Down opens it again once it has been closed. Up and Down walk
+ * it, wrapping, while the caret stays in the box; Enter takes the one walked to
+ * and is never the form's submit; Escape closes the list, and a second Escape
+ * empties the box. Any other key is the box's own (null).
+ */
+export function comboKey(
+  state: ComboState,
+  key: string,
+  count: number,
+): { state: ComboState, choose: boolean } | null {
+  if (key === "ArrowDown" || key === "ArrowUp") {
+    if (!state.open) return { state: { ...state, open: true, active: 0 }, choose: false }
+    if (count === 0) return { state, choose: false }
+    const from = Math.min(Math.max(state.active, 0), count - 1)
+    const by = key === "ArrowDown" ? 1 : -1
+    return { state: { ...state, active: (from + by + count) % count }, choose: false }
+  }
+  if (key === "Enter") return { state, choose: state.open && count > 0 }
+  if (key === "Escape") {
+    if (state.open) return { state: { ...state, open: false }, choose: false }
+    if (state.find !== "") return { state: { ...state, find: "" }, choose: false }
+    return null
+  }
+  return null
 }
 
 /**
@@ -1242,49 +1660,145 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
  * The portal's proposal is written into the box, not chosen for the curator:
  * an archive's accession is typed over it.
  */
-function DatasetIdSection({ view, locale }: { view: DatasetEditorView, locale: Locale }) {
+function DatasetFacts({ view, locale, releaseDate, onReleaseDate }: {
+  view: DatasetEditorView
+  locale: Locale
+  /** The date typed for a portal-issued id, which has no archive to read one from. */
+  releaseDate: string
+  onReleaseDate: (next: string) => void
+}) {
   const messages = messagesFor(locale)
   const t = messages.admin.datasetEditor
   const detail = messages.admin.detail
   const fetcher = useFetcher<{ status: "pinned" | "unpinned" | "taken" } | null>()
+  const dates = view.page.view
 
   return (
-    <Section id={DATASET_ID} title={t.idHeading}>
-      <Stack gap="tight">
-        <p className="text-ink-muted text-xs">{t.idNote}</p>
-        {view.datasetLabel === null || view.datasetPinId === null
-          ? (
-              <fetcher.Form method="post" className="flex flex-wrap items-center gap-3">
-                <Field
-                  label={detail.pinLabel}
-                  name="label"
-                  value={view.datasetIdSuggestion ?? undefined}
-                  placeholder={detail.pinDatasetPlaceholder}
-                  hideLabel
-                />
-                <Submit intent="pin" icon={<Icon name="link" />}>{detail.pinSubmit}</Submit>
-              </fetcher.Form>
-            )
-          : (
-              <span className="flex flex-wrap items-center gap-3 text-sm">
-                <span>{view.datasetLabel}</span>
-                <fetcher.Form method="post">
-                  <input type="hidden" name="pinId" value={view.datasetPinId} />
-                  <Confirm
-                    label={detail.unpin}
-                    title={detail.unpinTitle(view.datasetLabel)}
-                    warning={detail.unpinWarning}
-                    confirm={detail.unpinConfirm}
-                    cancel={detail.cancel}
-                    intent="unpin"
-                    icon="close"
-                    size="row"
+    <Stack gap="tight">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
+        <span className="flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-ink-muted text-xs">{t.idHeading}</span>
+          {view.datasetLabel === null || view.datasetPinId === null
+            ? (
+                <fetcher.Form method="post" className="flex flex-wrap items-center gap-3">
+                  <Field
+                    label={detail.pinLabel}
+                    name="label"
+                    value={view.datasetIdSuggestion ?? undefined}
+                    placeholder={detail.pinDatasetPlaceholder}
+                    hideLabel
                   />
+                  <Submit intent="pin" icon={<Icon name="link" />}>{detail.pinSubmit}</Submit>
                 </fetcher.Form>
-              </span>
-            )}
-        {fetcher.data?.status === "taken" && <Note kind="danger" live>{detail.pinTaken}</Note>}
-      </Stack>
-    </Section>
+              )
+            : (
+                <>
+                  <span>{view.datasetLabel}</span>
+                  <fetcher.Form method="post">
+                    <input type="hidden" name="pinId" value={view.datasetPinId} />
+                    <Confirm
+                      label={detail.unpin}
+                      title={detail.unpinTitle(view.datasetLabel)}
+                      warning={detail.unpinWarning}
+                      confirm={detail.unpinConfirm}
+                      cancel={detail.cancel}
+                      intent="unpin"
+                      icon="close"
+                      size="row"
+                    />
+                  </fetcher.Form>
+                </>
+              )}
+        </span>
+        <span className="flex items-center gap-3">
+          <span className="font-semibold text-ink-muted text-xs">{t.releaseDate}</span>
+          {view.portalIssued
+            ? (
+                <input
+                  type="date"
+                  aria-label={t.releaseDate}
+                  className={`${CONTROL} text-sm`}
+                  value={releaseDate}
+                  onChange={(event) => { onReleaseDate(event.target.value) }}
+                />
+              )
+            : <span>{dates.datePublished ?? t.notYet}</span>}
+        </span>
+        <span className="flex items-center gap-3">
+          <span className="font-semibold text-ink-muted text-xs">{t.dateModified}</span>
+          <span>{dates.dateModified ?? t.notYet}</span>
+        </span>
+      </div>
+      <p className="text-ink-muted text-xs">
+        {view.portalIssued ? t.datesPortal : t.datesArchive}
+        {t.idNote}
+      </p>
+      {fetcher.data?.status === "taken" && <Note kind="danger" live>{detail.pinTaken}</Note>}
+    </Stack>
   )
+}
+
+/**
+ * One experiment, folded to **a single line**: its name, how many values it
+ * carries, and what can be done to the whole of it — copy, move, delete — on
+ * the same line (`docs/admin-ui.md` の「編集画面」).
+ *
+ * **The controls stand over the line rather than inside the part that folds.**
+ * A button inside a `<summary>` is a control within a control: pressing it
+ * would fold the card as well. The fold itself is a `<details>`, so a landing
+ * from the page opens it (`form.tsx` の `landAt`).
+ */
+function ExperimentCard({ locale, index, count, summary, note, open, onMove, onCopy, onRemove, children }: {
+  locale: Locale
+  index: number
+  count: number
+  summary: React.ReactNode
+  note: string
+  /** Whether there is a reason for this to be open right now. */
+  open: boolean
+  onMove: (by: number) => void
+  onCopy: () => void
+  onRemove: () => void
+  children: React.ReactNode
+}) {
+  const t = messagesFor(locale).admin
+  const [shown, setShown] = useState(open)
+  const [reason, setReason] = useState(open)
+  if (open !== reason) {
+    setReason(open)
+    setShown(foldShown(shown, open))
+  }
+  return (
+    <div className="relative rounded border border-line">
+      <details open={shown} onToggle={(event) => { setShown(event.currentTarget.open) }} className="group/fold">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 py-1.5 pr-44 pl-4 text-sm marker:content-none">
+          <FoldMark />
+          <span className="text-ink-muted text-xs">{index + 1}</span>
+          <span className="min-w-0 truncate font-semibold">{summary}</span>
+          <span className="shrink-0 text-ink-muted text-xs">{note}</span>
+        </summary>
+        <div className="border-line border-t px-4 py-3">{children}</div>
+      </details>
+      <div className="absolute top-0 right-2 flex h-12 items-center gap-1">
+        <IconButton name="copy" label={t.datasetEditor.copyExperiment} onClick={onCopy} />
+        {/* A glyph carries no colour of its own to dim, so what says a move is
+            unavailable is put on the box around it. */}
+        <span className={index === 0 ? "opacity-50" : ""}>
+          <IconButton name="chevron-up" label={t.editor.moveUp} disabled={index === 0} onClick={() => { onMove(-1) }} />
+        </span>
+        <span className={index === count - 1 ? "opacity-50" : ""}>
+          <IconButton name="chevron-down" label={t.editor.moveDown} disabled={index === count - 1} onClick={() => { onMove(1) }} />
+        </span>
+        <IconButton name="trash" label={t.editor.remove} onClick={onRemove} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * An experiment with the same label and values under a new identity — the ids
+ * inside are the experiment's own, so only the experiment's changes.
+ */
+export function copiedExperiment(experiment: ExperimentInput): ExperimentInput {
+  return { ...structuredClone(experiment), id: newId() }
 }

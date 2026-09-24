@@ -5,8 +5,9 @@ import { Card, Crumbs, Empty, Page, Paging } from "~/components/page"
 import { SearchBox } from "~/components/search"
 import { NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { newsList } from "~/public/site.server"
-import { href, newsPath, readLocale } from "~/public/urls"
+import { askedPath, href, newsPath, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/news"
 
@@ -36,7 +37,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   if (dropped) {
     const query = given.toString()
-    throw redirect(`${url.pathname}${query === "" ? "" : `?${query}`}`)
+    throw redirect(`${askedPath(url.pathname)}${query === "" ? "" : `?${query}`}`)
   }
 
   const asked = Number(given.get("page") ?? "1")
@@ -47,7 +48,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: `${messages.news.all} - ${messages.siteName}` }]
+  return [{ title: windowTitle(messages, [messages.news.all]) }]
 }
 
 export default function News({ loaderData }: Route.ComponentProps) {

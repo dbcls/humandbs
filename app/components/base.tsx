@@ -216,7 +216,7 @@ const HEADING_LOOK = {
  * puts their middles below its middle — measured at 5.7px for the aside and
  * 2.8px for the controls, which reads as the title floating above its own row.
  */
-export function Heading({ level = "h1", look = level, rule = "edge", title, aside, badge, note, children }: {
+export function Heading({ level = "h1", look = level, rule = "edge", title, aside, badge, from, note, children }: {
   level?: "h1" | "h2"
   /**
    * How large it is drawn, when that is not what its level would give.
@@ -252,6 +252,13 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
    */
   badge?: ReactNode
   /**
+   * Where what the screen shows comes from, when that is part of which screen
+   * this is — the source a take-in is reading. **A block of its own, apart
+   * from the identifier**: set straight after it at the same size, the two
+   * read as one long name, and which part is the research is lost.
+   */
+  from?: string
+  /**
    * What the screen is for, in one line under its name.
    *
    * **The distance to it belongs to the heading rather than to the screen.** A
@@ -275,6 +282,7 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
             screen, so it takes the size of body text rather than of an aside. */}
         {aside !== undefined && <span className="text-ink-muted text-base">{aside}</span>}
         {badge}
+        {from !== undefined && <span className="ml-3 text-ink-muted text-sm">{from}</span>}
       </div>
       {children !== undefined && (
         <div className="flex flex-wrap items-center gap-3 text-sm">{children}</div>
@@ -530,9 +538,11 @@ const BUTTON_SIZE = {
    * half again to hold it.
    *
    * **A word keeps no 36px floor** — that belongs to a control which is only a
-   * glyph. What a word may not go under is 24px, and this is 24.
+   * glyph. What a word may not go under is 24px, and this is 24 — **with or
+   * without the word**: a glyph alone set the box by its own 13px and came out
+   * 19px, and the comment mark beside a 24px one sat visibly lower on the line.
    */
-  row: "gap-1 px-2 py-0.5 text-xs",
+  row: "min-h-6 gap-1 px-2 py-0.5 text-xs",
   /** Beside a value in a panel or a row, where the control is not the subject. */
   xs: "gap-1 px-2 py-1 text-xs",
   sm: "gap-1.5 px-3 py-1.5 text-sm",
@@ -584,7 +594,10 @@ interface ButtonLook {
  * a closed control's reason (`Button`), a mark's effect (`fields.tsx` の
  * `StateMark`). One look, so that a thing standing over a control is read as
  * the control speaking wherever it appears. Kept `hidden` rather than
- * `invisible` and shown by the wrapper's `group-hover` / `group-focus-visible`;
+ * `invisible` and shown by the wrapper's `group-hover/tip` / `group-focus-visible/tip`
+ * — **named**, because an unnamed `group-hover` answers to any ancestor marked
+ * `group`, and a fold around a form full of marks then shows every one of them
+ * while the pointer is anywhere inside it;
  * which edge it hangs from is the wrapper's to say.
  */
 export const TOOLTIP = "pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max max-w-64 rounded bg-ink px-2 py-1 text-left text-white text-xs shadow-md"
@@ -643,7 +656,7 @@ export function Button({
   }
   return (
     <span
-      className="group relative inline-flex cursor-not-allowed"
+      className="group/tip relative inline-flex cursor-not-allowed"
       tabIndex={0}
       aria-describedby={reasonId}
     >
@@ -664,7 +677,7 @@ export function Button({
       <span
         id={reasonId}
         role="tooltip"
-        className={`${TOOLTIP} group-focus-visible:block group-hover:block ${reasonAt === "left" ? "left-0" : "right-0"}`}
+        className={`${TOOLTIP} group-focus-visible/tip:block group-hover/tip:block ${reasonAt === "left" ? "left-0" : "right-0"}`}
       >
         {disabled}
       </span>
@@ -1519,6 +1532,15 @@ export function foldShown(shown: boolean, reason: boolean): boolean {
   return reason || shown
 }
 
+/**
+ * The mark of something that opens where it stands: a chevron that turns down
+ * while its `<details>` (named `group/fold`) is open. **Not `Chevron`** — this
+ * one turns rather than moves, being a fold rather than a way somewhere.
+ */
+export function FoldMark() {
+  return <Icon name="chevron-right" className="shrink-0 text-ink-muted transition-transform group-open/fold:rotate-90" />
+}
+
 export function Fold({ summary, note, open = false, children }: {
   summary: ReactNode
   /** What the section is worth glancing at while closed. */
@@ -1546,11 +1568,11 @@ export function Fold({ summary, note, open = false, children }: {
     <details
       open={shown}
       onToggle={(event) => { setShown(event.currentTarget.open) }}
-      className="group"
+      className="group/fold"
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 font-semibold text-sm marker:content-none">
         <span className="flex items-center gap-1.5">
-          <Icon name="chevron-right" className="text-ink-muted transition-transform group-open:rotate-90" />
+          <FoldMark />
           {summary}
         </span>
         {note !== undefined && <span className="text-ink-muted text-xs">{note}</span>}
@@ -1569,10 +1591,10 @@ export function Fold({ summary, note, open = false, children }: {
  * comparison they opened the listing for. So the count is a control rather than
  * a link, and what it reveals arrives in the same cell.
  *
- * **What opens has a ceiling.** The largest research has over two hundred
- * datasets, and a row grown to hold them would push everything under it off the
- * screen; past the ceiling the list scrolls where it stands, so the page below
- * moves by at most one screenful however long the list is.
+ * **What opens is all of it.** A list that opened to a scrolling box of a dozen
+ * entries read as a list that had not finished opening — the box's scrollbar
+ * is hidden until touched, so the sixtieth accession looked absent rather than
+ * further down. The row grows instead, and the same control closes it again.
  */
 export function Clamped({ items, shown = 3, more, less }: {
   items: ReactNode[]
@@ -1593,7 +1615,7 @@ export function Clamped({ items, shown = 3, more, less }: {
   const rest = items.length - shown
   return (
     <>
-      <ul className={open ? "max-h-72 overflow-y-auto" : undefined}>
+      <ul>
         {(open || !cut ? items : items.slice(0, shown)).map((item, index) => (
           <li key={index}>{item}</li>
         ))}
@@ -1880,9 +1902,12 @@ export function Toast({ label, announce, at = "band", children }: {
  * opened from the same screen, and at two sizes they read as two kinds of
  * thing; at one, the reader sees the same panel every time and reads what is
  * different about it. The width is the one two language boxes stacked can be
- * read in, and it gives way only to a window narrower than that.
+ * read in, and it gives way only to a window narrower than that. **The one
+ * other width is for two values set side by side** (`wide`): a comparison
+ * halves the width it is given, and at 672px each side is a column of a few
+ * words.
  */
-export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, children, disabled }: {
+export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, children, disabled, wide = false }: {
   /** The way in, when the panel has one of its own. */
   label?: string
   /**
@@ -1939,6 +1964,8 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
   action?: (close: () => void) => ReactNode
   /** What is written in the panel — the fields, and only those. */
   children?: ReactNode
+  /** Two values side by side, which need twice the width of one. */
+  wide?: boolean
 }) {
   const box = useRef<HTMLDialogElement>(null)
   const [ownOpen, setOwnOpen] = useState(false)
@@ -2018,8 +2045,9 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
            inherits from where it stands in the markup, and a row's cell that
            holds its controls on one line would otherwise hand the panel that
            line too: the words inside would run off the side instead of
-           breaking. */
-        className="m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto whitespace-normal rounded-lg border border-line bg-white p-6 shadow-lg backdrop:bg-ink/40"
+           breaking. The weight and colour are set for the same reason — a
+           mark on a band's title opened a panel written in bold. */
+        className={`m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] ${wide ? "max-w-5xl" : "max-w-2xl"} overflow-y-auto whitespace-normal rounded-lg border border-line bg-white p-6 font-normal text-ink shadow-lg backdrop:bg-ink/40`}
       >
         {open && (
           <Stack gap="normal">
@@ -2164,6 +2192,7 @@ export function Confirm({
       disabled={disabled}
       action={(close) => (
         <>
+          <ShutWhenSent pending={pending} close={close} />
           {children}
           <Button
             type={onConfirm === undefined ? "submit" : "button"}
@@ -2201,6 +2230,23 @@ export function Confirm({
  * nothing has to be clipped — and clipping would take the focus ring of the
  * first and last lines with it.
  */
+/**
+ * Shuts a confirming panel once what it sent has been answered.
+ *
+ * **The deed is done, so the question is over.** A deed that leaves the screen
+ * takes the panel with it, but one answered by coming back to the same screen —
+ * reissuing a link, deleting one row of a list — would otherwise leave the
+ * panel standing over the result, asking again what has just been done.
+ */
+function ShutWhenSent({ pending, close }: { pending: boolean, close: () => void }) {
+  const was = useRef(false)
+  useEffect(() => {
+    if (was.current && !pending) close()
+    was.current = pending
+  }, [pending, close])
+  return null
+}
+
 export const MENU_PANEL
   = "min-w-max flex-col items-stretch rounded-lg border border-line bg-white py-1 shadow-lg"
 

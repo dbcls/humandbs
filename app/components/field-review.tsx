@@ -12,7 +12,6 @@ import type { ShownLine } from "~/admin/changes"
 import type { CommentView } from "~/review/comments"
 
 import { CommentSpot, type CommentContext } from "./comments"
-import type { AnnotationPart } from "./page"
 import { PreviousLines } from "./previous"
 
 export interface FieldReviewData {
@@ -21,33 +20,36 @@ export interface FieldReviewData {
   /** Paths where the draft says something other than the published version. */
   changed: string[]
   previous: Record<string, ShownLine[]>
+  /** What the form holds now at a path, for the draft's side of the comparison. */
+  current: (at: string) => ShownLine[] | null
   /** What is being compared against, as the screen words it. */
   heading: string
   termLabel?: (id: string) => string
 }
 
 /**
- * The two parts of a place's review, each where the page stands it
- * (`page.tsx` の `AnnotationPart`): the comment mark with the name, and the
- * published version's lines under the value.
+ * A place's review, beside its name (`page.tsx` の `Annotate`): the comment
+ * mark, and after it the mark saying the published version reads otherwise.
  */
-export function FieldReview({ review, at, part, fieldLabel }: {
+export function FieldReview({ review, at, fieldLabel }: {
   review: FieldReviewData
   at: string
-  part: AnnotationPart
-  /** The field's own name, for the comment panel's heading (`comments.tsx` の `CommentSpot`). */
+  /** The field's own name, for the panels' headings (`comments.tsx` の `CommentSpot`). */
   fieldLabel?: string
 }) {
-  if (part === "name") {
-    return <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
-  }
-  if (!review.changed.includes(at)) return null
   return (
-    <PreviousLines
-      locale={review.context.locale}
-      lines={review.previous[at] ?? null}
-      heading={review.heading}
-      termLabel={review.termLabel}
-    />
+    <span className="inline-flex flex-wrap items-center gap-1 align-top">
+      <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
+      {review.changed.includes(at) && (
+        <PreviousLines
+          locale={review.context.locale}
+          lines={review.previous[at] ?? null}
+          current={review.current(at)}
+          heading={review.heading}
+          fieldLabel={fieldLabel}
+          termLabel={review.termLabel}
+        />
+      )}
+    </span>
   )
 }

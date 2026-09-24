@@ -218,7 +218,6 @@ export async function createResearchFromUpstream(
   db: Database,
   seed: {
     humLabel: string | null
-    applicationId: string
     content: ResearchContent
     datasets: SeededDataset[]
   },
@@ -233,7 +232,6 @@ export async function createResearchFromUpstream(
       .values({
         researchId: created.id,
         content: { ...seed.content, datasetIds: datasets.map((entry) => entry.id) },
-        takenBranches: [seed.applicationId],
         shareToken: newShareToken(),
       })
       .returning({ id: researchDraft.id }))
@@ -304,7 +302,6 @@ export async function applyUpstreamToDraft(
   at: DraftAt,
   seed: {
     researchId: string
-    applicationId: string
     content: ResearchContent
     datasets: SeededDataset[]
   },
@@ -322,9 +319,6 @@ export async function applyUpstreamToDraft(
           ...seed.content,
           datasetIds: [...before.datasetIds, ...datasets.map((entry) => entry.id)],
         },
-        takenBranches: sql`case when ${seed.applicationId}::text = any(${researchDraft.takenBranches})
-          then ${researchDraft.takenBranches}
-          else ${researchDraft.takenBranches} || ${seed.applicationId}::text end`,
         revision: sql`${researchDraft.revision} + 1`,
         updatedAt: sql`now()`,
       })

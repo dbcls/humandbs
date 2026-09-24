@@ -13,8 +13,7 @@
  *
  * **A single newline is a line**, as it is on the way out, so a value that lists
  * things one per line survives the round trip. A blank line is a blank line in
- * the tree, and only where one was written: two blocks the parser tells apart
- * on adjacent lines stay on adjacent lines.
+ * the tree, and only where one was written.
  *
  * **Plain CommonMark, without GFM.** A table, a strikethrough and a footnote
  * are characters here whether or not a parser names them, and GFM's literal
@@ -157,27 +156,25 @@ function walk(node: RootContent, reader: Reader): void {
   }
 }
 
-/** True when the source has an empty line between the end of one node and the start of the next. */
-function blankBetween(reader: Reader, before: RootContent, after: RootContent): boolean {
-  const from = before.position?.end.offset
-  const to = after.position?.start.offset
-  if (from === undefined || to === undefined) return true
-  return /\n[ \t]*\n/.test(reader.source.slice(from, to))
-}
-
-/** The tree the source says. Every source has one. */
+/**
+ * The tree the source says. Every source has one.
+ *
+ * **Each line is read on its own.** The tree is lines, and a construct that
+ * spans lines in markdown would carry one line's reading into the next: a line
+ * opening with `>` continues as a quote through the line under it, and the
+ * link on that line then comes back as the characters it was written with. A
+ * line read alone keeps its own links whatever the line above began with.
+ */
 export function parseRichText(source: string): RichText {
-  const reader: Reader = { source, into: lines() }
-  const root = processor.parse(source)
-
-  root.children.forEach((child, index) => {
-    const before = root.children[index - 1]
-    if (before !== undefined) {
-      if (blankBetween(reader, before, child)) reader.into.blankLine()
-      else reader.into.endLine()
+  const into = lines()
+  for (const line of source.split(/\r?\n/)) {
+    if (line.trim() === "") {
+      into.blankLine()
+      continue
     }
-    walk(child, reader)
-  })
-
-  return reader.into.finish()
+    const reader: Reader = { source: line, into }
+    for (const child of processor.parse(line).children) walk(child, reader)
+    into.endLine()
+  }
+  return into.finish()
 }

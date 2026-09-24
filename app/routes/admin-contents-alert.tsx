@@ -2,16 +2,17 @@ import { Fragment, useState } from "react"
 import { Form } from "react-router"
 
 import { alertAction, alertsPage, type AlertRow } from "~/admin/contents.server"
-import { Badge, Confirm, Heading, Stack } from "~/components/base"
+import { Confirm, Heading, Stack } from "~/components/base"
 import { ResultLine, SHOWING } from "~/components/contents"
 import { Answered, Editing, Submit, TextArea, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, Page } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 
 import type { Route } from "./+types/admin-contents-alert"
+import { Flag } from "~/components/flags"
 
 /**
  * The alert: the sentence the site says at the top of every public page.
@@ -35,10 +36,10 @@ export async function action({ request }: Route.ActionArgs) {
   return alertAction(request)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.contents.alert.heading) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.contents.alert.heading) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -143,8 +144,8 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex flex-wrap items-center gap-3 text-sm">
           {row.active
-            ? <Badge tone="accent" icon={<Icon name="eye" />}>{t.alert.shown}</Badge>
-            : <Badge tone="muted" icon={<Icon name="eye-off" />}>{t.alert.hidden}</Badge>}
+            ? <Flag kind="live">{t.alert.shown}</Flag>
+            : <Flag kind="off">{t.alert.hidden}</Flag>}
           {row.shownAt !== null && (
             <span className="text-ink-muted text-xs">
               {t.alert.shownOn}

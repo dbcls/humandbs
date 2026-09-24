@@ -12,35 +12,38 @@
  */
 
 import type { ReactNode } from "react"
-import { Form, Link } from "react-router"
+import { Form, Link, useLocation, useNavigation } from "react-router"
 
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
-import { commentsByPath, unresolvedCount, type CommentProblem, type CommentView } from "~/review/comments"
+import { commentsByPath, type CommentProblem, type CommentView } from "~/review/comments"
 import type {
+  PreviewActionResult,
   PreviewDatasetPageView,
   PreviewResearchPageView,
   PreviewShell,
 } from "~/review/preview.server"
 import { previewDatasetPath, previewPath } from "~/review/urls"
 
-import { Badge, Button, Stack } from "./base"
-import { authorLabel, CommentSpot, CommentTimeline, rememberName, useRememberedName, type CommentContext } from "./comments"
-import { Icon } from "./icons"
+import { Badge, Button, ButtonLink, Stack } from "./base"
+import { CommentSpot, rememberName, useRememberedName, WholeNote, type CommentContext } from "./comments"
 import { DatasetBody } from "./dataset"
-import { CONTROL } from "./form"
-import { AnnotationLayer, Card, Empty, Page, PageHead } from "./page"
+import { Answered, CONTROL, Result } from "./form"
+import { AnnotationLayer, Card, Code, Page, PageHead } from "./page"
+import { Icon } from "./icons"
 import { PreviousMark } from "./previous"
 import { ResearchBody } from "./research"
+import { firstSentence } from "./review"
 
-export function PreviewResearchScreen({ view, problem }: {
+export function PreviewResearchScreen({ view, answer }: {
   view: PreviewResearchPageView
-  /** What a form posted from the page itself was refused for. */
-  problem: CommentProblem | null
+  /** What a form posted from the page itself was answered with. */
+  answer: PreviewActionResult | undefined
 }) {
   const locale = view.locale
+  const problem = answer?.status === "invalid" ? answer.problem : null
   const context: CommentContext = {
     locale,
     action: href(locale, previewPath(view.token)),
@@ -52,28 +55,27 @@ export function PreviewResearchScreen({ view, problem }: {
 
   return (
     <Page>
+      <MarkAnswer answer={answer} locale={locale} />
       <PreviewHead
         shell={view}
         label={view.humLabel ?? title(view)}
-        comments={byPath}
         locale={locale}
         problem={problem}
         whole={{ ...context, subject: "draft" }}
       >
         <Stack gap="block">
-          <AnnotationLayer annotate={(at, part) => part === "value"
-            ? null
-            : (
-                <Marks
-                  context={context}
-                  at={at}
-                  view={view}
-                  comments={byPath[at] ?? []}
-                  heading={view.publishedNumber === null
-                    ? ""
-                    : messagesFor(locale).preview.previousIn(view.publishedNumber)}
-                />
-              )}
+          <AnnotationLayer annotate={(at, name) => (
+            <Marks
+              context={context}
+              at={at}
+              view={view}
+              comments={byPath[at] ?? []}
+              fieldLabel={name}
+              heading={view.publishedNumber === null
+                ? ""
+                : messagesFor(locale).preview.previousIn(view.publishedNumber)}
+            />
+          )}
           >
             <ResearchBody
               view={view.view}
@@ -118,7 +120,6 @@ export function PreviewDatasetScreen({ view, problem }: {
       <PreviewHead
         shell={view}
         label={view.datasetLabel ?? t.unnamedDataset}
-        comments={byPath}
         locale={locale}
         problem={problem}
       >
@@ -126,17 +127,16 @@ export function PreviewDatasetScreen({ view, problem }: {
           <p className="text-sm">
             <Link to={href(locale, previewPath(view.token))}>{t.backToResearch}</Link>
           </p>
-          <AnnotationLayer annotate={(at, part) => part === "value"
-            ? null
-            : (
-                <Marks
-                  context={context}
-                  at={at}
-                  view={view}
-                  comments={byPath[at] ?? []}
-                  heading={t.previousPublished}
-                />
-              )}
+          <AnnotationLayer annotate={(at, name) => (
+            <Marks
+              context={context}
+              at={at}
+              view={view}
+              comments={byPath[at] ?? []}
+              fieldLabel={name}
+              heading={t.previousPublished}
+            />
+          )}
           >
             <DatasetBody
               view={view.view}
@@ -158,156 +158,213 @@ export function PreviewDatasetScreen({ view, problem }: {
  * **They sit on the first line of the value and do not make it taller.** Both
  * are drawn no higher than the 22.4px line the words set (`CommentSpot`,
  * `Mark`), so a pair stands inside it and pushes no row of any table down.
- * Both being marks, both stand with the name (`page.tsx` の `AnnotationPart`);
- * nothing of a preview stands under a value.
+ * Both stand with the name (`page.tsx` の `Annotate`), the comment first and
+ * the change after it — the same order the form beside the page uses.
  */
 export function Marks({ context, at, view, comments, heading, fieldLabel }: {
   context: CommentContext
   at: string
-  view: { changed: string[], previous: PreviewResearchPageView["previous"] }
+  view: { changed: string[], previous: PreviewResearchPageView["previous"], current: PreviewResearchPageView["current"] }
   comments: readonly CommentView[]
   heading: string
   /** The field's own name, for the comment panel's heading (`comments.tsx` の `CommentSpot`). */
   fieldLabel?: string
 }) {
   return (
-    <span className="ml-2 inline-flex flex-wrap items-start gap-1 align-top">
-      {view.changed.includes(at) && (
-        <PreviousMark locale={context.locale} value={view.previous[at]} heading={heading} />
-      )}
+    <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-top">
       <CommentSpot context={context} at={at} comments={comments} fieldLabel={fieldLabel} />
+      {view.changed.includes(at) && (
+        <PreviousMark
+          locale={context.locale}
+          value={view.previous[at]}
+          current={view.current[at]}
+          heading={heading}
+          fieldLabel={fieldLabel}
+        />
+      )}
     </span>
   )
 }
 
 /**
- * The banner over a preview: that this is not published, what to do here, the
- * two marks a reader can leave, what has been said about the whole, and where
- * the marked places are.
+ * A preview in two boxes: what the reader is asked to do here, and then the
+ * page as it will be published.
+ *
+ * **The request is a card of its own, above the page.** Folded into the page's
+ * box it stood between the band and the first section, and the page no longer
+ * read as the published page it is meant to be checked as. Below it the page
+ * wears exactly what a published one does — the band, then the white box.
  *
  * **The steps come first and are written out**, numbered, rather than drawn as
  * a chart: a provider opening the link for the first time has to know what is
  * asked of them before reading, and a list is read in the same order by a
- * screen reader. **The two marks stand under the steps that name them.** The
- * research page carries all of this; a dataset page, which is one step down
- * from it, carries only its own places and the way back.
+ * screen reader. **The whole's entry and the two marks stand under the steps
+ * that name them, in the steps' order.** What has been said about the whole is
+ * read in its panel, as on the editing screen, rather than as a thread that
+ * grows at the head of the page. **Who has pressed a mark is not listed here**:
+ * it is the office's record (the review screen), and a provider reading
+ * another provider's name learns nothing about what to do. A dataset page,
+ * one step down from the research, carries only the notice and the name.
  */
-function PreviewHead({ shell, label, comments, locale, problem, whole, children }: {
-  shell: PreviewShell & { changed: string[] }
+export function PreviewHead({ shell, label, locale, problem, whole, children }: {
+  shell: PreviewShell
   label: string
-  comments: Record<string, CommentView[]>
   locale: Locale
   /** What a form posted from the page itself was refused for. */
   problem: CommentProblem | null
   /** Where a comment on the whole posts, on the page that has one. */
   whole?: CommentContext
-  /** The page being previewed, which the same outline has to close around. */
+  /** The page being previewed. */
   children: ReactNode
 }) {
   const t = messagesFor(locale).preview
-  const open = Object.entries(comments)
-  const unresolved = unresolvedCount(shell.comments)
 
   return (
-    <>
-      <PageHead label={label}>
-        <Badge onBand>{t.heading}</Badge>
-      </PageHead>
-      {/*
-        **The outline goes round the whole of what is not published**, banner
-        and page together. Drawn round the banner alone it stopped mid-page in
-        three sides of a box, which reads as something half-finished rather than
-        as a boundary.
-      */}
-      <div className="rounded-b border-accent border-x border-b">
-        <div className="border-line border-b bg-surface px-6 py-4 text-sm">
-          <Stack gap="normal">
+    <Stack gap="normal">
+      <Card under={false}>
+        <Stack gap="normal">
+          <Stack gap="tight">
             <p className="font-semibold">{t.notPublished}</p>
-            {whole !== undefined && (
-              <Stack gap="tight">
-                <p className="font-semibold">{t.stepsHeading}</p>
-                <ol className="list-decimal space-y-1 pl-6">
-                  {t.steps.map((step) => <li key={step}>{step}</li>)}
-                </ol>
-              </Stack>
-            )}
-            {whole !== undefined && <Decide shell={shell} problem={problem} />}
-            {whole !== undefined && (
-              <Stack gap="tight">
-                <p className="font-semibold">{t.whole}</p>
-                <CommentTimeline
-                  context={whole}
-                  comments={shell.comments.filter((one) => one.anchor.kind === "draft")}
-                  placeholder={t.wholePlaceholder}
-                  empty={t.wholeEmpty}
-                />
-              </Stack>
-            )}
-            {whole === undefined && problem !== null && (
-              <p className="text-danger text-xs">{problemText(locale, problem)}</p>
-            )}
-            <p>
-              {shell.publishedNumber === null
-                ? t.noPublished
-                : shell.changed.length === 0
-                  ? t.differsNone
-                  : t.differs(shell.changed.length)}
-            </p>
-            {open.length === 0 && <Empty>{t.noComments}</Empty>}
-            {open.length > 0 && (
-              <Stack gap="tight">
-                <p className="text-ink-muted text-xs">
-                  {`${t.commentPlaces} — ${t.commentCount(unresolved)}`}
-                </p>
-                <ul className="flex flex-wrap gap-2">
-                  {open.map(([path, held]) => (
-                    <li key={path}>
-                      <a href={`#${encodeURIComponent(path)}`} className="flex no-underline">
-                        <Badge tone="brand">{`${path} (${held.length})`}</Badge>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </Stack>
-            )}
-            <WhoBar shell={shell} locale={locale} />
+            <p className="text-sm">{t.notPublishedNote}</p>
           </Stack>
-        </div>
+          {whole !== undefined && (
+            <Stack gap="tight">
+              <p className="font-semibold text-sm">{t.stepsHeading}</p>
+              <ol className="list-decimal space-y-1 pl-6 text-sm">
+                {stepsFor(shell).map((step, at) => <li key={at}>{step}</li>)}
+              </ol>
+            </Stack>
+          )}
+          <WhoBar shell={shell} locale={locale} joins={whole === undefined ? undefined : DECIDE_FORM} />
+          {whole !== undefined && (
+            <Decide shell={shell}>
+              <WholeNote
+                context={whole}
+                comments={shell.comments.filter((one) => one.anchor.kind === "draft")}
+                size="sm"
+                words={{
+                  entry: t.whole,
+                  wholeHint: t.wholeHint,
+                  empty: t.wholeEmpty,
+                  placeholder: t.wholePlaceholder,
+                }}
+              />
+            </Decide>
+          )}
+          {problem !== null && (
+            <p className="text-danger text-xs">{problemText(locale, problem)}</p>
+          )}
+        </Stack>
+      </Card>
+      <div>
+        <PageHead label={label}>
+          <Badge onBand>{t.heading}</Badge>
+        </PageHead>
         <Card>{children}</Card>
       </div>
-    </>
+    </Stack>
   )
+}
+
+/**
+ * What a reader is asked to do, in the order they do it.
+ *
+ * **Saying who they are comes first**: a comment is refused without a name,
+ * and a reader who learns that only on posting has to type the comment twice.
+ * Signed in, the step says whose name the comments will carry instead of
+ * asking for one. **The "変更あり" mark is explained only where it can
+ * appear** — on a draft that updates a published version; elsewhere the
+ * sentence describes nothing on the page. **The datasets are a step of their
+ * own**: each has a page of its own, reached from the research's table, and a
+ * reader who stops at the research page never sees those items. **The two
+ * buttons are two steps, in the order the exchange goes** — commenting, the
+ * office's corrections, then the final confirmation on the corrected content;
+ * the second is also the only one to press when there is nothing to say.
+ * **Each is named by the button's own word**, built from it, so the step and
+ * the button cannot say different things.
+ */
+export function stepsFor(shell: PreviewShell): ReactNode[] {
+  const t = messagesFor(shell.locale).preview
+  return [
+    shell.signedInName === null
+      ? t.steps.who
+      : (
+          <>
+            {t.steps.signedIn.before}
+            <AccountName name={shell.signedInName} />
+            {t.steps.signedIn.after}
+          </>
+        ),
+    shell.publishedNumber === null ? t.steps.read : `${t.steps.read}${shell.locale === "ja" ? "" : " "}${t.steps.changed}`,
+    t.steps.unsettled,
+    t.steps.other,
+    t.steps.datasets,
+    t.steps.commented(t.commented),
+    t.steps.approved(t.approved),
+  ]
+}
+
+/**
+ * The name of the account a reader is signed in with, set as code — an
+ * identifier the account holder chose, which a sentence around it should not
+ * be read into — on the tint inline code wears in the site's articles.
+ */
+function AccountName({ name }: { name: string }) {
+  return <Code className="rounded bg-surface px-1">{name}</Code>
 }
 
 /**
  * Who the reader is signing as. A DDBJ account settles it; otherwise the name
  * typed here is what the comment forms start with, kept for this session only.
  */
-function WhoBar({ shell, locale }: { shell: PreviewShell, locale: Locale }) {
+function WhoBar({ shell, locale, joins }: {
+  shell: PreviewShell
+  locale: Locale
+  /** The form the typed name is also sent with (`Decide`), on the page that has one. */
+  joins?: string
+}) {
   const t = messagesFor(locale).preview
   const remembered = useRememberedName()
+  const location = useLocation()
 
   if (shell.signedInName !== null) {
     return (
-      <p className="text-ink-muted text-xs">
-        {`${t.who}: ${shell.signedInName}`}
+      // The size of the words it stands beside: the step above says this name
+      // and the reader looks for it here.
+      <p className="text-sm">
+        <span className="text-ink-muted">{`${t.who}: `}</span>
+        <AccountName name={shell.signedInName} />
       </p>
     )
   }
 
+  // The way back is this page, so a reader who signs in lands where they were.
+  const back = new URLSearchParams({ redirect: `${location.pathname}${location.search}` })
+
   return (
     <Stack gap="tight">
-      <label className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-ink-muted">{t.who}</span>
-        <input
-          type="text"
-          key={remembered}
-          defaultValue={remembered}
-          placeholder={t.whoPlaceholder}
-          className={CONTROL}
-          onBlur={(event) => { rememberName(event.currentTarget.value.trim()) }}
-        />
-      </label>
+      {/* **The two ways of saying who is writing stand on one line**, joined by
+          "または": typing a name and signing in answer the same question, and
+          the step above names both. */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <label className="flex items-center gap-2">
+          <span className="text-ink-muted">{t.who}</span>
+          <input
+            type="text"
+            name={joins === undefined ? undefined : "name"}
+            form={joins}
+            key={remembered}
+            defaultValue={remembered}
+            placeholder={t.whoPlaceholder}
+            className={CONTROL}
+            onBlur={(event) => { rememberName(event.currentTarget.value.trim()) }}
+          />
+        </label>
+        <span className="text-ink-muted">{t.whoOr}</span>
+        <ButtonLink to={`/auth/login?${back.toString()}`} external size="xs" icon={<Icon name="log-in" aria-hidden="true" />}>
+          {t.logIn}
+        </ButtonLink>
+      </div>
       <p className="text-ink-muted text-xs">{t.whoHint}</p>
     </Stack>
   )
@@ -322,60 +379,68 @@ function problemText(locale: Locale, problem: CommentProblem): string {
 /**
  * The two marks a reader can leave: that they have finished commenting and it
  * is the office's turn, or that there is nothing to fix. Neither is an
- * approval, and neither says anything back once pressed — the name joins the
- * list under the button, which is the record.
+ * approval, and neither says anything back once pressed — the office reads who
+ * pressed which on its own screen.
  *
  * **Each button says the whole sentence.** A reader who opens the link once
  * has no other way to learn what pressing it means, so the words are long
  * rather than short, and an abbreviation would say nothing to them.
  */
-function Decide({ shell, problem }: {
+function Decide({ shell, children }: {
   shell: PreviewShell
-  problem: CommentProblem | null
+  /** What stands before the two, in the order the steps name them. */
+  children: ReactNode
 }) {
   const t = messagesFor(shell.locale).preview
-  const remembered = useRememberedName()
+  // **While a mark is on its way, neither can be pressed again.** Both keep
+  // their words and widths, so nothing beside them moves at the moment the
+  // reader is watching; the word for the wait is read out beside them.
+  const navigation = useNavigation()
+  const sending = navigation.state === "submitting" && navigation.formData?.get("intent") === "acknowledge"
+    ? navigation.formData.get("kind")
+    : null
 
   return (
-    <Stack gap="tight">
-      {(["commented", "approved"] as const).map((kind) => {
-        const rows = shell.acknowledgements.filter((row) => row.kind === kind)
-        return (
-          <Stack key={kind} gap="tight">
-            <Form method="post" className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="intent" value="acknowledge" />
-              <input type="hidden" name="kind" value={kind} />
-              {shell.signedInName === null && (
-                <input
-                  type="text"
-                  name="name"
-                  key={remembered}
-                  defaultValue={remembered}
-                  aria-label={t.who}
-                  placeholder={t.whoPlaceholder}
-                  className={CONTROL}
-                />
-              )}
-              <Button type="submit" variant={kind === "approved" ? "primary" : "secondary"}>
-                {kind === "commented" ? t.commented : t.approved}
-              </Button>
-            </Form>
-            {rows.length > 0 && (
-              <p className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-ink-muted">{kind === "commented" ? t.commentedBy : t.approvedBy}</span>
-                {rows.map((row) => (
-                  <Badge key={`${row.name}-${row.createdAt}`} icon={<Icon name="user" aria-hidden="true" />}>
-                    {authorLabel(shell.locale, row.name, row.bySignedIn)}
-                  </Badge>
-                ))}
-              </p>
-            )}
-          </Stack>
-        )
-      })}
-      {problem !== null && (
-        <p className="text-danger text-xs">{problemText(shell.locale, problem)}</p>
-      )}
-    </Stack>
+    <div className="flex flex-wrap items-center gap-3">
+      {children}
+      {/* **One form, and the button pressed says which mark.** The name is the
+          one typed under "お名前" (`WhoBar`), which joins this form by its id
+          rather than being asked for a second time beside each button. */}
+      <Form id={DECIDE_FORM} method="post" className="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="intent" value="acknowledge" />
+        <Button type="submit" name="kind" value="commented" variant="secondary" disabled={sending !== null} aria-busy={sending === "commented" || undefined}>
+          {t.commented}
+        </Button>
+        <Button type="submit" name="kind" value="approved" variant="primary" disabled={sending !== null} aria-busy={sending === "approved" || undefined}>
+          {t.approved}
+        </Button>
+        {sending !== null && <span role="status" className="sr-only">{t.sending}</span>}
+      </Form>
+    </div>
   )
 }
+
+/**
+ * What pressing a mark answers: that it reached the office, naming the mark by
+ * its first sentence as the office's own screen does.
+ *
+ * **Over the page, and only for a moment** (`Answered`): the page is what the
+ * reader came to check, and a sentence left in its head would push the page
+ * down by the height of a thing already done. A refusal is not answered here —
+ * it is the name that was missing, and it is said under the name.
+ */
+export function MarkAnswer({ answer, locale }: { answer: PreviewActionResult | undefined, locale: Locale }) {
+  const messages = messagesFor(locale)
+  const t = messages.preview
+  const done = answer?.status === "acknowledged" ? answer : undefined
+  return (
+    <Answered answer={done} locale={locale} label={t.notice} dismiss={messages.comment.close}>
+      {done !== undefined && (
+        <Result ok>{t.sent(firstSentence(done.kind === "commented" ? t.commented : t.approved))}</Result>
+      )}
+    </Answered>
+  )
+}
+
+/** The id the two marks' form is known by, so the name field can join it from outside. */
+const DECIDE_FORM = "preview-decide"

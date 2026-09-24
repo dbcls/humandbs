@@ -2,6 +2,7 @@ import { Heading, Stack } from "~/components/base"
 import { Card, Crumbs, Page } from "~/components/page"
 import { Markdown } from "~/components/markdown"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { renderMarkdown } from "~/public/markdown.server"
 import { readLocale } from "~/public/urls"
 
@@ -20,7 +21,7 @@ export function loader({ request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: `${messages.contact.heading} - ${messages.siteName}` }]
+  return [{ title: windowTitle(messages, [messages.contact.heading]) }]
 }
 
 export default function ContactUs({ loaderData }: Route.ComponentProps) {

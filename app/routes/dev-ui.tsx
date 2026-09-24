@@ -359,7 +359,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="button" className="flex flex-col gap-4">
               <p className="text-ink-muted text-sm">
                 面を決めるのは「その画面がどれだけ押してほしいか」で、そこで何が似合うかではない。
-                塗りは画面に 1 つまで、枠が既定、文字だけは並びの片方にしか立たない。
+                塗りは画面に 1 つまで、枠が既定。字だけの面は持たない — 素の語は文の続きに
+                読め、押せると分かるのが押したあとになる。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 {BUTTON_VARIANTS.map((variant) => (
@@ -367,8 +368,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 ))}
               </div>
               <p className="text-ink-muted text-sm">
-                塗りの隣に文字だけを置いた形。取り消しは単独では立たない — 枠を持たないものが
-                1 つで置かれると、それが押せることを言うものが無くなる。
+                塗りの隣に枠を置いた形。取り消しも枠の面で、実行との違いは並びの左右と色が言う。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" variant="primary" icon={<Icon name="save" />}>保存する</Button>

@@ -1,8 +1,9 @@
+import fc from "fast-check"
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { ItemList, LanguageMark, type Marks, PairField, Section, SlotEditor, StateSwitch, toggledState } from "./fields"
+import { ConflictBand, ItemList, keptOnClose, LanguageMark, SingleField, type Marks, PairField, Section, SlotEditor, StateSwitch, toggledState } from "./fields"
 
 /** Rendered inside a router, since the state switch beside the box closes on a move. */
 function render(element: React.ReactNode): string {
@@ -153,6 +154,21 @@ describe("the dialect badge on a field's name row", () => {
     expect(section).toMatch(/<h2[^>]*>リリースノート[\s\S]*?リンクと改行[\s\S]*?<\/h2>/)
   })
 
+  it("draws no row for a field with no name, however much the review has to say — the heading carries it", () => {
+    const html = render(
+      <PairField
+        value={{ ja: { state: "value", text: "値" }, en: { state: "value", text: "" } }}
+        marks={{ ...marks(), changed: true }}
+        locale="ja"
+        onChange={() => { /* nothing changes here */ }}
+      />,
+    )
+    expect(html).not.toContain("未翻訳")
+    expect(html).not.toContain("変更あり")
+    const section = render(<Section id="title" title="研究題目" flags={<i>未翻訳</i>}><p>欄</p></Section>)
+    expect(section).toMatch(/<h2[^>]*>研究題目[\s\S]*?<i>未翻訳<\/i>[\s\S]*?<\/h2>/)
+  })
+
   it("is absent from a field that does not read prose", () => {
     const html = render(
       <PairField value={pair} marks={marks()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
@@ -217,5 +233,99 @@ describe("a list of repeated elements", () => {
     const html = list([])
     expect(html).not.toContain("<table")
     expect(html).toContain("追加")
+  })
+})
+
+describe("the conflict band", () => {
+  it("draws each changed place as a bordered way to its section, not as a bare word", () => {
+    const html = render(<ConflictBand locale="ja" changed={["summary.aims", "publications"]} />)
+    const ways = [...html.matchAll(/<a\b[^>]*href="#([^"]*)"[^>]*class="([^"]*)"/g)]
+    expect(ways.map((way) => way[1])).toEqual(["summary", "publications"])
+    for (const way of ways) expect(way[2]).toMatch(/\bborder\b/)
+  })
+
+  it("draws no ways when nothing it can name has changed", () => {
+    const html = render(<ConflictBand locale="ja" changed={[]} />)
+    expect(html).not.toContain("<a")
+  })
+})
+
+describe("a list's row as a place on the form", () => {
+  it("names each row by the element's path, so a cell of the page's table can land on it", () => {
+    const html = render(
+      <ItemList
+        path="grants"
+        locale="ja"
+        items={[{ id: "a", name: "課題 A" }, { id: "b", name: "課題 B" }]}
+        title="助成金情報"
+        summary={(row) => row.name}
+        columns={[{ header: "研究課題名", cell: (row: { id: string, name: string }) => row.name }]}
+        onChange={() => { /* nothing changes here */ }}
+        makeEmpty={() => ({ id: "new", name: "" })}
+      >
+        {() => null}
+      </ItemList>,
+    )
+    expect(html).toMatch(/<tr[^>]*data-at="grants\.a"/)
+    expect(html).toMatch(/<tr[^>]*data-at="grants\.b"/)
+    expect(html).toMatch(/<tr[^>]*data-landed:bg-warning-surface/)
+  })
+})
+
+describe("keptOnClose", () => {
+  interface Row { id: string, name: string, tags: string[] }
+  const row = fc.record({ id: fc.uuid(), name: fc.string(), tags: fc.array(fc.string(), { maxLength: 3 }) })
+  const rows = fc.uniqueArray(row, { selector: (one) => one.id, maxLength: 5 })
+
+  it("drops the element just added when it closes exactly as it was made", () => {
+    fc.assert(fc.property(rows, row, (before, made) => {
+      fc.pre(!before.some((one) => one.id === made.id))
+      expect(keptOnClose([...before, made], { ...made, tags: [...made.tags] })).toEqual(before)
+    }))
+  })
+
+  it("keeps the element just added once anything in it has been written", () => {
+    fc.assert(fc.property(rows, row, fc.string({ minLength: 1 }), (before, made, typed) => {
+      fc.pre(!before.some((one) => one.id === made.id))
+      const written: Row = { ...made, name: made.name + typed }
+      const items = [...before, written]
+      expect(keptOnClose(items, made)).toBe(items)
+    }))
+  })
+
+  it("hands back the same list when nothing was just added, however empty a row is", () => {
+    fc.assert(fc.property(rows, (items) => {
+      expect(keptOnClose(items, null)).toBe(items)
+    }))
+    const empty = [{ id: "a", name: "", tags: [] }]
+    expect(keptOnClose(empty, null)).toBe(empty)
+  })
+
+  it("hands back the same list when the element just added is no longer in it", () => {
+    fc.assert(fc.property(rows, row, (items, made) => {
+      fc.pre(!items.some((one) => one.id === made.id))
+      expect(keptOnClose(items, made)).toBe(items)
+    }))
+  })
+})
+
+describe("a field with one value", () => {
+  const value = { state: "value" as const, text: "https://doi.org/10.1/x" }
+  const marks = (): Marks => ({ at: "relatedPublications.p1.doi", changed: false, onTake: null })
+  const field = (props: { wide?: boolean, hint?: string }) => render(
+    <SingleField label="DOI" value={value} marks={marks()} locale="ja" onChange={() => { /* nothing changes here */ }} {...props} />,
+  )
+
+  it("holds an identifier to a short box unless told the value is long", () => {
+    expect(field({})).toContain("md:max-w-md")
+    expect(field({ wide: true })).not.toContain("md:max-w-md")
+  })
+
+  it("says the hint under the box, and nothing where there is none", () => {
+    const hint = "論文の DOI を、https://doi.org/ から始まる完全な URL で書く。"
+    const html = field({ wide: true, hint })
+    expect(html).toContain(hint)
+    expect(html.indexOf(hint)).toBeGreaterThan(html.indexOf("<input"))
+    expect(field({ wide: true })).not.toContain("完全な URL")
   })
 })

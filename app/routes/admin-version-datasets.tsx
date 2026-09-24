@@ -2,9 +2,10 @@ import { versionDatasetListPage } from "~/admin/pages.server"
 import { adminResearchPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Heading, Stack } from "~/components/base"
-import { Card, ExternalLink, Page, Table, Td } from "~/components/page"
+import { Card, Page, Table } from "~/components/page"
+import { DatasetCells, datasetColumns } from "~/components/research"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { datasetPath, href, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/admin-version-datasets"
@@ -29,10 +30,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return versionDatasetListPage(request, locale, params)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.draft.datasets, versionName(loaderData)) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.draft.datasets, versionName(loaderData)) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -58,26 +59,27 @@ export default function AdminVersionDatasets({ loaderData }: Route.ComponentProp
               icon="chevron-left"
             />
           </Heading>
-          {/* **The order is the public page's order.** The table stays when
-              empty: the column name says what would stand here. */}
+          {/* **The order and the columns are the public page's.** The table
+              stays when empty: the column names say what would stand here. */}
           <Table
             align="middle"
-            headers={[messages.dataset.datasetId]}
+            headers={datasetColumns(locale)}
             whenEmpty={messages.admin.detail.versionNoDatasets}
           >
-            {view.rows.map((row) => (
-              <tr key={row.id}>
-                <Td nowrap>
-                  {row.label === null
-                    ? messages.admin.editor.unpinnedDataset
-                    : (
-                        <ExternalLink to={href(locale, datasetPath(row.label))} locale={locale}>
-                          {row.label}
-                        </ExternalLink>
-                      )}
-                </Td>
-              </tr>
-            ))}
+            {view.rows.map((row) => {
+              const name = row.label ?? messages.admin.editor.unpinnedDataset
+              return (
+                <tr key={row.id}>
+                  <DatasetCells
+                    row={row.shown ?? { id: row.id, label: name, typeOfData: null, accessType: null, datePublished: null }}
+                    name={name}
+                    to={row.label === null ? null : href(locale, datasetPath(row.label))}
+                    newTab
+                    locale={locale}
+                  />
+                </tr>
+              )
+            })}
           </Table>
         </Stack>
       </Card>

@@ -24,6 +24,7 @@
 import { isPortalIssuedId } from "~/admin/labels"
 import { isEmptyRichText } from "~/content/richtext"
 import { convert } from "~/content/units"
+import { countryName } from "~/upstream/country"
 import type {
   DataProvider,
   DatasetContent,
@@ -110,6 +111,50 @@ function datasetIdentities(labels: string[], datasetIdByLabel: Map<string, strin
   return labels.map((l) => datasetIdByLabel.get(l)).filter((id) => id !== undefined)
 }
 
+/**
+ * A cited ID as the portal writes it. **JGA's long form is folded to its six
+ * digits** (`JGAD00000000222` is `JGAD000222`): v1 carries both spellings, and
+ * only the short one is in the ledger.
+ */
+export function citedLabel(label: string): string {
+  const long = /^(JGA[DS])0{5}(\d{6})$/.exec(label)
+  return long === null ? label : `${long[1] ?? ""}${long[2] ?? ""}`
+}
+
+/**
+ * Whether a cited ID has the shape of an accession — letters, then digits,
+ * with a hyphen between allowed — and is not a placeholder of all zeros
+ * (`JGAD000000`), which v1 writes where the ID was not known yet.
+ */
+export function isAccessionShaped(label: string): boolean {
+  const digits = /^[A-Z]+(?:-[A-Z]+)*-?(\d+)$/.exec(label)?.[1]
+  return digits !== undefined && /[1-9]/.test(digits)
+}
+
+/**
+ * The datasets one publication cites, split the way the content holds them:
+ * this research's own by identity, anything else by the ID as written.
+ * A placeholder is dropped.
+ */
+function publicationDatasets(
+  labels: string[],
+  datasetIdByLabel: Map<string, string>,
+  own: (label: string) => boolean,
+): { datasetIds: string[], externalIds: string[] } {
+  const datasetIds: string[] = []
+  const externalIds: string[] = []
+  for (const written of labels) {
+    const label = citedLabel(written)
+    const identity = datasetIdByLabel.get(label)
+    if (identity !== undefined && own(label)) {
+      if (!datasetIds.includes(identity)) datasetIds.push(identity)
+    } else if (isAccessionShaped(label) && !externalIds.includes(label)) {
+      externalIds.push(label)
+    }
+  }
+  return { datasetIds, externalIds }
+}
+
 export interface ResearchContentInput {
   version: EsResearchVersion
   /**
@@ -120,10 +165,17 @@ export interface ResearchContentInput {
    */
   listingSummary: EsSummaryShort | null
   datasetIdByLabel: Map<string, string>
+  /**
+   * The research each dataset belongs to, by label: a publication's citation
+   * of another research's dataset is kept as the ID, not the identity. Absent,
+   * every dataset in `datasetIdByLabel` counts as this research's.
+   */
+  humOfLabel?: ReadonlyMap<string, string>
 }
 
 export function buildResearchContent(input: ResearchContentInput): ResearchContent {
-  const { version: rv, listingSummary, datasetIdByLabel } = input
+  const { version: rv, listingSummary, datasetIdByLabel, humOfLabel } = input
+  const own = (label: string): boolean => humOfLabel === undefined || humOfLabel.get(label) === rv.humId
 
   const dataProviders: DataProvider[] = (rv.dataProvider ?? []).map((p, i) => ({
     id: `data-provider-${i + 1}`,
@@ -150,7 +202,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
     id: `publication-${i + 1}`,
     title: single(p.title?.en, p.title?.ja),
     doi: single(p.doi),
-    datasetIds: datasetIdentities(p.datasetIds ?? [], datasetIdByLabel),
+    ...publicationDatasets(p.datasetIds ?? [], datasetIdByLabel, own),
   }))
 
   return {
@@ -488,7 +540,8 @@ export interface CauRow {
   piNameEn: string
   affiliationJa: string
   affiliationEn: string
-  country: string
+  countryJa: string
+  countryEn: string
   researchTitleJa: string
   researchTitleEn: string
   periodStart: string | null
@@ -507,19 +560,24 @@ function dateOrNull(value: string | null | undefined): string | null {
   return value === undefined || value === "" ? null : value
 }
 
+/** v1 kept no state, so the country is named without one. */
 export function buildCauRows(humLabel: string, entries: EsControlledAccessUser[]): CauRow[] {
-  return entries.map((e, i) => ({
-    humLabel,
-    applicationId: `es-${String(i + 1).padStart(4, "0")}`,
-    piNameJa: e.name?.ja?.text ?? "",
-    piNameEn: e.name?.en?.text ?? "",
-    affiliationJa: e.organization?.name?.ja?.text ?? "",
-    affiliationEn: e.organization?.name?.en?.text ?? "",
-    country: e.organization?.address?.country ?? "",
-    researchTitleJa: e.researchTitle?.ja ?? "",
-    researchTitleEn: e.researchTitle?.en ?? "",
-    periodStart: dateOrNull(e.periodOfDataUse?.startDate),
-    periodEnd: dateOrNull(e.periodOfDataUse?.endDate),
-    datasetAccessions: e.datasetIds ?? [],
-  }))
+  return entries.map((e, i) => {
+    const country = countryName(e.organization?.address?.country ?? "", "")
+    return {
+      humLabel,
+      applicationId: `es-${String(i + 1).padStart(4, "0")}`,
+      piNameJa: e.name?.ja?.text ?? "",
+      piNameEn: e.name?.en?.text ?? "",
+      affiliationJa: e.organization?.name?.ja?.text ?? "",
+      affiliationEn: e.organization?.name?.en?.text ?? "",
+      countryJa: country.ja,
+      countryEn: country.en,
+      researchTitleJa: e.researchTitle?.ja ?? "",
+      researchTitleEn: e.researchTitle?.en ?? "",
+      periodStart: dateOrNull(e.periodOfDataUse?.startDate),
+      periodEnd: dateOrNull(e.periodOfDataUse?.endDate),
+      datasetAccessions: e.datasetIds ?? [],
+    }
+  })
 }

@@ -144,15 +144,18 @@ export function clearedFlowCookie(): string {
 }
 
 /**
- * `preferred_username` is what the interface shows and what the audit trail
- * records as the actor's name. It is never an identity — that is `sub` — so
- * falling back to the subject when the claim is absent loses nothing.
+ * **The person's own name** (`name`) is what the interface shows and what the
+ * audit trail records as the actor's name — a comment, a mark pressed on a
+ * preview, a line in the trail are read by people who want to know who it was,
+ * and an account id (`preferred_username`) does not say. The account id stands
+ * in where the realm has no name, and the subject where it has neither. None
+ * of them is an identity — that is `sub` — so falling back loses nothing.
  */
 function displayName(claims: { sub: string, preferred_username?: unknown, name?: unknown }): string {
+  if (typeof claims.name === "string" && claims.name.trim() !== "") return claims.name.trim()
   if (typeof claims.preferred_username === "string" && claims.preferred_username !== "") {
     return claims.preferred_username
   }
-  if (typeof claims.name === "string" && claims.name !== "") return claims.name
   return claims.sub
 }
 

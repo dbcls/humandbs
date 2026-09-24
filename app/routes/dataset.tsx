@@ -1,5 +1,6 @@
 import { DatasetPage } from "~/components/dataset"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { datasetPage } from "~/public/pages.server"
 import { readLocale } from "~/public/urls"
 
@@ -11,7 +12,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  return [{ title: `${loaderData.view.label} - ${messagesFor(loaderData.locale).siteName}` }]
+  const messages = messagesFor(loaderData.locale)
+  return [{ title: windowTitle(messages, [loaderData.view.label, messages.search.datasetList]) }]
 }
 
 export default function Dataset({ loaderData }: Route.ComponentProps) {

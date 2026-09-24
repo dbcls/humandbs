@@ -228,6 +228,7 @@ export const researchContentArb: fc.Arbitrary<ResearchContent> = fc.record({
       title: slotArb(fc.string()),
       doi: slotArb(fc.string()),
       datasetIds: fc.array(idArb, { maxLength: 3 }),
+      externalIds: fc.array(fc.stringMatching(/^[A-Z]{3,5}\d{6}$/), { maxLength: 2 }),
     }),
     { maxLength: 3 },
   ),

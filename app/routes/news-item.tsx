@@ -3,6 +3,7 @@ import { Markdown } from "~/components/markdown"
 import { Card, Crumbs, Page } from "~/components/page"
 import { dayOf } from "~/dates"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { newsItemPage } from "~/public/site.server"
 import { href, newsPath, readLocale } from "~/public/urls"
 
@@ -15,7 +16,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: `${loaderData.item.title} - ${messages.news.heading} - ${messages.siteName}` }]
+  return [{ title: windowTitle(messages, [loaderData.item.title, messages.news.all]) }]
 }
 
 export default function NewsItem({ loaderData }: Route.ComponentProps) {

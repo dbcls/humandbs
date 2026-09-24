@@ -235,30 +235,61 @@ describe("deleting a comment", () => {
 })
 
 describe("the marks a reader leaves on a draft", () => {
-  it("keeps one of each kind per signed-in reader, moved to the latest press", async () => {
+  /**
+   * A reader presses again on each round of the review, so every press is kept
+   * and the screen reads one row per person and mark, with how many times.
+   */
+  it("gathers a signed-in reader's presses of one mark into one row, counted, under the latest name", async () => {
     const { draftId } = await draft()
 
     await acknowledgeDraft(db, { draftId, kind: "commented", actor: CURATOR })
     await acknowledgeDraft(db, { draftId, kind: "commented", actor: { ...CURATOR, name: "curator (renamed)" } })
     await acknowledgeDraft(db, { draftId, kind: "approved", actor: CURATOR })
 
+    expect(await db.select().from(s.reviewAcknowledgement)).toHaveLength(3)
     const rows = await readAcknowledgements(db, draftId)
-    expect(rows.map((row) => [row.kind, row.name, row.bySignedIn])).toEqual([
-      ["commented", "curator (renamed)", true],
-      ["approved", "curator", true],
+    expect(rows.map((row) => [row.kind, row.name, row.bySignedIn, row.count])).toEqual([
+      ["approved", "curator", true, 1],
+      ["commented", "curator (renamed)", true, 2],
     ])
   })
 
-  /** There is nothing to recognise an anonymous reader by, so nothing is merged. */
-  it("keeps every mark from readers who did not sign in", async () => {
+  /** One who did not sign in is known by the name they typed, and by nothing else. */
+  it("gathers presses under the same typed name, and keeps different names apart", async () => {
     const { draftId } = await draft()
 
     await acknowledgeDraft(db, { draftId, kind: "approved", actor: PROVIDER })
     await acknowledgeDraft(db, { draftId, kind: "approved", actor: { sub: null, name: "another" } })
+    await acknowledgeDraft(db, { draftId, kind: "approved", actor: PROVIDER })
 
     const rows = await readAcknowledgements(db, draftId)
-    expect(rows.map((row) => row.name)).toEqual(["provider", "another"])
+    expect(rows.map((row) => [row.name, row.count])).toEqual([["provider", 2], ["another", 1]])
     expect(rows.every((row) => !row.bySignedIn)).toBe(true)
+  })
+
+  /** Typing a signed-in reader's name does not make an anonymous press theirs. */
+  it("keeps a signed-in reader apart from an anonymous one who typed the same name", async () => {
+    const { draftId } = await draft()
+
+    await acknowledgeDraft(db, { draftId, kind: "commented", actor: CURATOR })
+    await acknowledgeDraft(db, { draftId, kind: "commented", actor: { sub: null, name: CURATOR.name } })
+
+    const rows = await readAcknowledgements(db, draftId)
+    expect(rows.map((row) => [row.name, row.bySignedIn, row.count])).toEqual([
+      [CURATOR.name, false, 1],
+      [CURATOR.name, true, 1],
+    ])
+  })
+
+  /** The two marks answer different questions, so one reader has a row under each. */
+  it("keeps the two marks apart for the same reader — a first round's and a second's", async () => {
+    const { draftId } = await draft()
+
+    await acknowledgeDraft(db, { draftId, kind: "commented", actor: PROVIDER })
+    await acknowledgeDraft(db, { draftId, kind: "approved", actor: PROVIDER })
+
+    const rows = await readAcknowledgements(db, draftId)
+    expect(rows.map((row) => [row.kind, row.count])).toEqual([["approved", 1], ["commented", 1]])
   })
 
   it("goes with the draft, like everything else hung off it", async () => {

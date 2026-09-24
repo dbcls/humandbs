@@ -4,16 +4,17 @@ import { nextVersionNumber } from "~/admin/contents"
 import { seriesAction, seriesPage } from "~/admin/contents.server"
 import { adminContentsPath, adminDocumentPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
-import { Badge, Confirm, Heading, Stack } from "~/components/base"
+import { Confirm, Heading, Stack } from "~/components/base"
 import { ResultLine, StateCell } from "~/components/contents"
 import { Answered, Field, Result, Select, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Code, Page, Section, Table, Td } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-series"
+import { Flag } from "~/components/flags"
 
 /**
  * One versioned article: the address readers hold, which revision it answers
@@ -38,10 +39,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   return seriesAction(request, params.seriesId)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.contents.seriesHeading, loaderData.series.slug) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.contents.seriesHeading, loaderData.series.slug) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -132,7 +133,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
                       <Link to={href(locale, adminDocumentPath(revision.id))}>
                         <Code>{revision.slug}</Code>
                       </Link>
-                      {revision.id === series.currentId && <Badge>{t.isCurrent}</Badge>}
+                      {revision.id === series.currentId && <Flag kind="pointed">{t.isCurrent}</Flag>}
                     </span>
                   </Td>
                   <Td floor="min-w-64">{revision.title}</Td>

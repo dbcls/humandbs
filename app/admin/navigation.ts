@@ -85,18 +85,68 @@ type AdminWords = ReturnType<typeof messagesFor>["admin"]
  * **Which entry the reader is under is a question about addresses**, and the
  * answer has to see all of them at once rather than one at a time (`isHere`).
  * The words come from a locale; the shape of the area does not.
+ *
+ * **`heading` is what the destination's screen calls itself**, which is not
+ * always the bar's word: the bar says 「研究一覧」 where the screen, a listing,
+ * says 「研究」. A window names its area by the screen's word (`adminArea`).
  */
-const BAR: { path: string, label: (words: AdminWords) => string }[] = [
-  { path: adminPath(), label: (words) => words.overview },
-  { path: adminResearchListPath(), label: (words) => words.tasks.research.find },
-  { path: adminUpstreamResearchPath(), label: (words) => words.tasks.research.fromUpstream },
-  { path: adminContentsPath(), label: (words) => words.contents.heading },
-  { path: adminAlertPath(), label: (words) => words.contents.alert.heading },
-  { path: adminNewsListPath(), label: (words) => words.tasks.contents.news },
-  { path: adminContentFilesPath(), label: (words) => words.contents.files.heading },
-  { path: adminExperimentFieldsPath(), label: (words) => words.catalog.heading },
-  { path: adminAssistantPath(), label: (words) => words.assistant.heading },
+const BAR: {
+  path: string
+  label: (words: AdminWords) => string
+  heading: (words: AdminWords) => string
+}[] = [
+  { path: adminPath(), label: (words) => words.overview, heading: (words) => words.overview },
+  {
+    path: adminResearchListPath(),
+    label: (words) => words.tasks.research.find,
+    heading: (words) => words.research.heading,
+  },
+  {
+    path: adminUpstreamResearchPath(),
+    label: (words) => words.tasks.research.fromUpstream,
+    heading: (words) => words.templates.heading,
+  },
+  {
+    path: adminContentsPath(),
+    label: (words) => words.contents.heading,
+    heading: (words) => words.contents.heading,
+  },
+  {
+    path: adminAlertPath(),
+    label: (words) => words.contents.alert.heading,
+    heading: (words) => words.contents.alert.heading,
+  },
+  {
+    path: adminNewsListPath(),
+    label: (words) => words.tasks.contents.news,
+    heading: (words) => words.contents.news.heading,
+  },
+  {
+    path: adminContentFilesPath(),
+    label: (words) => words.contents.files.heading,
+    heading: (words) => words.contents.files.heading,
+  },
+  {
+    path: adminExperimentFieldsPath(),
+    label: (words) => words.catalog.heading,
+    heading: (words) => words.catalog.heading,
+  },
+  {
+    path: adminAssistantPath(),
+    label: (words) => words.assistant.heading,
+    heading: (words) => words.assistant.heading,
+  },
 ]
+
+/**
+ * The name of the bar's area a management address sits in, as that area's own
+ * screen spells it — the same entry the bar lights (`isHere`). An address
+ * outside the area has none.
+ */
+export function adminArea(words: AdminWords, path: string): string | null {
+  const entry = BAR.find((one) => isHere(one, path))
+  return entry === undefined ? null : entry.heading(words)
+}
 
 /**
  * **How wide the window has to be before each entry appears in the bar**, the

@@ -3,7 +3,7 @@ import { Heading, Stack } from "~/components/base"
 import { Card, Empty, Page } from "~/components/page"
 import { loadConfig } from "~/config.server"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { readLocale } from "~/public/urls"
 
 import { AssistantContents } from "./admin-assistant-client"
@@ -33,10 +33,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.assistant.heading) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.assistant.heading) },
     { name: "robots", content: "noindex" },
   ]
 }

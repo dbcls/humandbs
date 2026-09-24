@@ -1,10 +1,11 @@
+import fc from "fast-check"
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
 import { Icon } from "~/components/icons"
 
-import { Field, MarkdownEditor, Select, Submit, TextArea } from "./form"
+import { Field, landingPath, MarkdownEditor, SaveNews, Select, Submit, TextArea } from "./form"
 
 /** Rendered under a router, since a panel off a control watches the address to close. */
 function render(element: React.ReactNode): string {
@@ -131,5 +132,60 @@ describe("a box the caret was brought to", () => {
     const html = render(<TextArea label="研究題目" name="title" value="" />)
     expect(html).toContain("data-landed:bg-warning-surface")
     expect(html).not.toMatch(/data-landed:outline-/)
+  })
+})
+
+describe("the news beside a save", () => {
+  const WORDS = ["保存中", "未保存の変更があります", "保存しました"] as const
+  const shown = (html: string): string =>
+    /<span class="col-start-1 row-start-1[^"]*">([^<]*)<\/span>/.exec(html)?.[1] ?? "missing"
+
+  it("holds the room of every word it can say, out of sight and out of the reading order, while saying nothing", () => {
+    const html = renderToStaticMarkup(<SaveNews words={WORDS} said={null} />)
+    for (const word of WORDS) {
+      expect(html).toContain(`<span aria-hidden="true" class="invisible col-start-1 row-start-1">${word}</span>`)
+    }
+    expect(shown(html)).toBe("")
+  })
+
+  it("draws the word being said in the same cell, so what stands beside it keeps its place", () => {
+    const html = renderToStaticMarkup(<SaveNews words={WORDS} said={{ word: "未保存の変更があります", tone: "accent" }} />)
+    expect(html).toMatch(/^<span role="status" class="inline-grid">/)
+    expect(shown(html)).toBe("未保存の変更があります")
+    expect(html).toContain("row-start-1 text-accent")
+  })
+
+  it("says a quiet word in the muted ink", () => {
+    const html = renderToStaticMarkup(<SaveNews words={WORDS} said={{ word: "保存しました", tone: "muted" }} />)
+    expect(shown(html)).toBe("保存しました")
+    expect(html).toContain("row-start-1 text-ink-muted")
+  })
+})
+
+describe("landingPath", () => {
+  const segment = fc.stringMatching(/^[a-z0-9-]{1,8}$/)
+  const path = fc.array(segment, { minLength: 1, maxLength: 5 }).map((parts) => parts.join("."))
+
+  it("takes the place itself when the form marks it", () => {
+    fc.assert(fc.property(path, (at) => {
+      expect(landingPath(at, () => true)).toBe(at)
+    }))
+  })
+
+  it("takes the nearest marked place the path runs through, and never one it does not", () => {
+    fc.assert(fc.property(path, fc.array(path, { maxLength: 6 }), (at, marks) => {
+      const marked = new Set(marks)
+      const found = landingPath(at, (candidate) => marked.has(candidate))
+      const through = at.split(".").map((_, index, parts) => parts.slice(0, index + 1).join("."))
+      const expected = [...through].reverse().find((candidate) => marked.has(candidate)) ?? null
+      expect(found).toBe(expected)
+    }))
+  })
+
+  it("lands a cell of a list's table on the element's row", () => {
+    const marked = new Set(["grants.g1", "title"])
+    expect(landingPath("grants.g1.title", (candidate) => marked.has(candidate))).toBe("grants.g1")
+    expect(landingPath("grants.g2.title", (candidate) => marked.has(candidate))).toBeNull()
+    expect(landingPath("title", (candidate) => marked.has(candidate))).toBe("title")
   })
 })

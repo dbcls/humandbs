@@ -103,9 +103,14 @@ describe("the candidates for what was typed", () => {
     expect(await codesOf("気管支")).toEqual(["C34", "C349"])
   })
 
-  it("answers an empty box with nothing rather than with an arbitrary handful", async () => {
-    expect(await codesOf("")).toEqual([])
-    expect(await codesOf("   ")).toEqual([])
+  /** The box opens on the vocabulary the moment it is entered — whole, when it is small. */
+  it("answers an empty box with the vocabulary from its first code, and only this vocabulary", async () => {
+    const all = await codesOf("")
+    expect(all.length).toBeGreaterThan(0)
+    expect(all).toEqual([...all].sort())
+    expect(await codesOf("   ")).toEqual(all)
+    // Every one belongs to the set asked about.
+    for (const code of await codesOf("C")) expect(all).toContain(code)
   })
 
   it("reads a code as a code, however the box was written", async () => {

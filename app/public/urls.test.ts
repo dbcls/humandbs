@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  askedPath,
   datasetPath,
   href,
   legacyTarget,
@@ -11,6 +12,21 @@ import {
   researchVersionPath,
   researchVersionsPath,
 } from "./urls"
+
+describe("askedPath", () => {
+  it("takes off the suffix a client navigation appends, and only at the end", () => {
+    expect(askedPath("/preview/abc.data")).toBe("/preview/abc")
+    expect(askedPath("/.data")).toBe("/")
+    expect(askedPath("/research/hum0001")).toBe("/research/hum0001")
+    expect(askedPath("/data-use")).toBe("/data-use")
+    expect(askedPath("/dataset/a.data/b")).toBe("/dataset/a.data/b")
+    expect(askedPath("/dataset/JGAD000001.database")).toBe("/dataset/JGAD000001.database")
+  })
+
+  it("takes it off once, so a path that really ends in it survives one strip", () => {
+    expect(askedPath("/files/x.data.data")).toBe("/files/x.data")
+  })
+})
 
 describe("readLocale", () => {
   it("reads Japanese from an address with no prefix", () => {

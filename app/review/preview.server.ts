@@ -28,14 +28,16 @@ import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
 import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
 import { adminBox, boxRows, fileListOf, readFilePage } from "~/files/listing.server"
-import type { DatasetContent, ResearchContent } from "~/content/types"
-import { getDb } from "~/db/client.server"
+import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/content/types"
+import { getDb, type Executor } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import {
+  citedDatasets,
   controlledAccessUsers,
   loadCatalog,
   publishedDatasetLabels,
 } from "~/public/queries.server"
+import { askedPath } from "~/public/urls"
 import {
   ACCESS_TYPE_KEY,
   PLATFORM_KEY,
@@ -43,10 +45,12 @@ import {
   anchorUnderCode,
   anchoredDatasetView,
   anchoredResearchView,
+  datasetRowOf,
   researchListRowView,
   type AnchoredValue,
   type CatalogView,
   type DatasetRowInput,
+  type DatasetRowView,
   type DatasetView,
   type ResearchListRowView,
   type ResearchView,
@@ -116,6 +120,8 @@ export interface PreviewResearchPageView extends PreviewShell {
   changed: string[]
   /** What the published version says at each of those, and only at those. */
   previous: Record<string, AnchoredValue>
+  /** What the draft says at the same anchors, for the other side of the comparison. */
+  current: Record<string, AnchoredValue>
 }
 
 export interface PreviewDatasetPageView extends PreviewShell {
@@ -126,6 +132,7 @@ export interface PreviewDatasetPageView extends PreviewShell {
   typeOfDataAnchor: string | null
   changed: string[]
   previous: Record<string, AnchoredValue>
+  current: Record<string, AnchoredValue>
 }
 
 /**
@@ -206,6 +213,8 @@ export interface DrawnDraft {
   changed: string[]
   /** What the published version says at each of those, and only at those. */
   previous: Record<string, AnchoredValue>
+  /** What the draft says at the same anchors, for the other side of the comparison. */
+  current: Record<string, AnchoredValue>
 }
 
 /**
@@ -232,6 +241,30 @@ function termIdsUnder(
     }
   }
   return [...ids]
+}
+
+/**
+ * The public dataset table's row for each dataset a draft lists, read the way
+ * the preview reads them: the draft's own entry where it wrote one, what is
+ * published otherwise, and the archive's date. Keyed by dataset id.
+ */
+export async function draftDatasetRowViews(
+  db: Executor,
+  draftId: string,
+  ids: readonly string[],
+  locale: Locale,
+): Promise<Map<string, DatasetRowView>> {
+  const [catalog, datasets] = await Promise.all([loadCatalog(db), previewDatasets(db, draftId, ids)])
+  return new Map(datasets.map((row) => {
+    // The table reads no files, so the projection is given none.
+    const dataset = publicDataset(row.content, { files: [], archive: row.archive }, PREVIEW)
+    return [row.id, datasetRowOf({
+      id: row.id,
+      label: row.label ?? "",
+      content: dataset.content,
+      datePublished: dataset.dates.datePublished,
+    }, locale, catalog)] as const
+  }))
 }
 
 export async function drawDraft(
@@ -276,6 +309,15 @@ export async function drawDraft(
   })
   const nextNumber = (published?.number ?? 0) + 1
 
+  // What the publications name beyond the draft's own datasets: another
+  // research's, chosen by identity or typed as an ID.
+  const own = new Set(datasets.map((row) => row.id))
+  const cited = await citedDatasets(
+    db,
+    projected.content.relatedPublications.flatMap((row) => row.datasetIds).filter((id) => !own.has(id)),
+    projected.content.relatedPublications.flatMap((row) => row.externalIds ?? []),
+  )
+
   const anchored = anchoredResearchView({
     humLabel: humLabel ?? "",
     versionNumber: nextNumber,
@@ -283,8 +325,11 @@ export async function drawDraft(
     latestVersionNumber: nextNumber,
     content: projected.content,
     datasets: rows,
-    datasetLabelById: new Map(datasets.flatMap((row) =>
-      row.label === null ? [] : [[row.id, row.label] as const])),
+    datasetLabelById: new Map([
+      ...cited.labelById,
+      ...datasets.flatMap((row) => row.label === null ? [] : [[row.id, row.label] as const]),
+    ]),
+    humByLabel: cited.humByLabel,
     cau: projected.cau,
     files: fileListOf(listing, readFilePage(new URL(request.url))),
   }, locale, catalog)
@@ -316,6 +361,7 @@ export async function drawDraft(
     previous: changed.length === 0 || published === null
       ? {}
       : previousAt(changed, await publishedResearchAnchors(published.content, locale, catalog, humLabel)),
+    current: previousAt(changed, anchored.byAnchor),
   }
 }
 
@@ -338,6 +384,7 @@ export async function previewResearchPage(
     view: drawn.view,
     changed: drawn.changed,
     previous: drawn.previous,
+    current: drawn.current,
   }
 }
 
@@ -391,6 +438,7 @@ export interface DrawnDataset {
   typeOfDataAnchor: string | null
   changed: string[]
   previous: Record<string, AnchoredValue>
+  current: Record<string, AnchoredValue>
 }
 
 export async function drawDatasetDraft(
@@ -463,6 +511,7 @@ export async function drawDatasetDraft(
     typeOfDataAnchor: anchorUnderCode(catalog, TYPE_OF_DATA_KEY),
     changed,
     previous,
+    current: previousAt(changed, anchored.byAnchor),
   }
 }
 
@@ -491,13 +540,18 @@ export async function previewDatasetPage(
     typeOfDataAnchor: drawn.typeOfDataAnchor,
     changed: drawn.changed,
     previous: drawn.previous,
+    current: drawn.current,
   }
 }
 
-export interface PreviewActionResult {
-  status: "invalid"
-  problem: CommentProblem
-}
+export type PreviewActionResult
+  = | { status: "invalid", problem: CommentProblem }
+  /**
+   * A mark was recorded. **It answers on the same page rather than sending
+   * back**: the page does not change when a mark is pressed, so an answer is the
+   * only thing that tells the reader it reached the office.
+   */
+    | { status: "acknowledged", kind: AcknowledgementKind }
 
 /**
  * Writing from a share link: a comment on a place or on the draft as a whole,
@@ -533,7 +587,7 @@ export async function previewAction(
     if (kind !== "commented" && kind !== "approved") badRequest()
     if (author.name === "") return { status: "invalid", problem: "name-required" }
     await acknowledgeDraft(db, { draftId: draft.draftId, kind, actor: author })
-    return back
+    return { status: "acknowledged", kind }
   }
 
   if (intent !== "comment") badRequest()
@@ -571,7 +625,7 @@ export async function previewAction(
 function backTo(request: Request, at: string): string {
   const url = new URL(request.url)
   const hash = at === "" ? "" : `#${encodeURIComponent(at)}`
-  return `${url.pathname}${url.search}${hash}`
+  return `${askedPath(url.pathname)}${url.search}${hash}`
 }
 
 function readString(form: FormData, name: string): string {

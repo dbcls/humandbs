@@ -10,7 +10,7 @@ import { Answered, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Empty, Page, Section } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 
 import type { Route } from "./+types/admin-contents-document"
@@ -39,10 +39,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   return documentAction(request, params.documentId)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.contents.documentHeading, loaderData.slug) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.contents.documentHeading, loaderData.slug) },
     { name: "robots", content: "noindex" },
   ]
 }

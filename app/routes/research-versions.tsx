@@ -13,6 +13,7 @@ import {
   Value,
 } from "~/components/page"
 import { messagesFor } from "~/i18n/messages"
+import { windowTitle } from "~/i18n/title"
 import { releaseListPage } from "~/public/pages.server"
 import {
   datasetPath,
@@ -31,8 +32,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  const t = messagesFor(loaderData.locale).research
-  return [{ title: `${t.releaseInfoOf(loaderData.view.humLabel)} - ${messagesFor(loaderData.locale).siteName}` }]
+  const messages = messagesFor(loaderData.locale)
+  const steps = [messages.research.releaseInfo, loaderData.view.humLabel, messages.search.researchList]
+  return [{ title: windowTitle(messages, steps) }]
 }
 
 /**
@@ -97,7 +99,7 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
                       : (
                           <Stack gap="tight" as="ul">
                             {version.addedDatasetLabels.map((label) => (
-                              <li key={label} className="break-all text-sm">
+                              <li key={label} className="whitespace-nowrap text-sm">
                                 <Link to={href(locale, datasetPath(label))}>{label}</Link>
                               </li>
                             ))}

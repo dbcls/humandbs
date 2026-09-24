@@ -13,6 +13,7 @@
 import { redirect } from "react-router"
 
 import { getDb } from "~/db/client.server"
+import { askedPath } from "~/public/urls"
 
 import { isAdmin } from "./admins.server"
 import { type Actor, type Capability, can, capabilitiesFor } from "./capabilities"
@@ -42,7 +43,7 @@ export async function requireActor(request: Request): Promise<Actor> {
   if (actor !== null) return actor
 
   const url = new URL(request.url)
-  const query = new URLSearchParams({ redirect: `${url.pathname}${url.search}` })
+  const query = new URLSearchParams({ redirect: `${askedPath(url.pathname)}${url.search}` })
   throw redirect(`/auth/login?${query.toString()}`)
 }
 

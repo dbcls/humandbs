@@ -17,19 +17,15 @@ import { redirect } from "react-router"
 
 import { reissueShareToken, setDraftSharing } from "~/admin/drafts.server"
 import { humLabelOf, readDraft, researchDatasets } from "~/admin/queries.server"
-import {
-  adminDraftDatasetPath,
-  adminDraftPath,
-  adminDraftReviewPath,
-} from "~/admin/urls"
+import { adminDraftReviewPath } from "~/admin/urls"
 import { requireCapability } from "~/auth/actor.server"
+import { loadConfig, publicOrigin } from "~/config.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
-import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 
-import { isAnchorPath, isFieldAnchor, subjectOf, type AnchorSubject } from "./anchors"
-import { byAttention, checkComment, unresolvedCount, type CommentProblem, type CommentView } from "./comments"
+import { isAnchorPath, type AnchorSubject } from "./anchors"
+import { checkComment, unresolvedCount, type CommentProblem, type CommentView } from "./comments"
 import {
   deleteComment,
   postAboutDraft,
@@ -71,23 +67,17 @@ async function draftOf(
 }
 
 export interface ShareView {
-  /** The address to hand out, in the language the screen is being read in. */
+  /**
+   * The address to hand out, whole — the site's public origin and the path, in
+   * the language the screen is being read in. **Whole because it is handed out**:
+   * pasted into a mail, a path alone opens nothing.
+   */
   url: string
   enabled: boolean
   open: boolean
   expired: boolean
   /** `yyyy-mm-dd`, which is what the date input takes. */
   expiresOn: string | null
-}
-
-export interface ReviewCommentView {
-  comment: CommentView
-  /** What it is about, named as the screen names things. */
-  subject: string
-  /** The place inside it, or null for the draft as a whole, which names none. */
-  path: string | null
-  /** Where to go to deal with it. */
-  href: string
 }
 
 export interface ReviewPageView {
@@ -98,8 +88,14 @@ export interface ReviewPageView {
   /** The administrator reading it, which is what their replies are signed with. */
   signedInName: string
   share: ShareView
-  /** Everything said to be dealt with, open first. The memo is not among them: it is a note, not a question. */
-  comments: ReviewCommentView[]
+  /**
+   * What is still waiting for an answer, as the open-comments panel of the
+   * editing screens lists it. The memo is not among them: it is a note, not a
+   * question. What has been resolved is read in the panel of its own place.
+   */
+  comments: CommentView[]
+  /** What each of the research's datasets is called, to name the place a comment is about. */
+  datasetLabels: Record<string, string | null>
   unresolved: number
   acknowledgements: AcknowledgementView[]
   /** The number of the version the draft updates, which names the last step. */
@@ -124,9 +120,7 @@ export async function reviewPage(
   ])
   if (share === null) notFound()
 
-  const t = messagesFor(locale)
-  const labelOf = new Map(datasets.map((row) => [row.id, row.label]))
-  const shareNow = shareView(share, locale)
+  const shareNow = shareView(share, locale, publicOrigin(loadConfig(process.env).auth))
   const unresolved = unresolvedCount(comments)
   const steps = await draftSteps(db, researchId, draftId, draft.content, { shared: shareNow.open, unresolved })
 
@@ -138,30 +132,8 @@ export async function reviewPage(
     signedInName: actor.name,
     share: shareNow,
     unresolved,
-    comments: byAttention(comments.filter((one) => one.anchor.kind !== "memo")).map((comment) => {
-      const anchor = comment.anchor
-      // A comment on the draft as a whole names no place, so it is named as
-      // the whole and leads to the screen the draft is written on.
-      if (!isFieldAnchor(anchor)) {
-        return {
-          comment,
-          subject: t.admin.review.whole,
-          path: null,
-          href: href(locale, adminDraftPath(researchId, draftId)),
-        }
-      }
-      const subject = subjectOf(anchor)
-      return {
-        comment,
-        subject: subject.kind === "research"
-          ? t.admin.review.research
-          : labelOf.get(subject.datasetId) ?? t.preview.unnamedDataset,
-        path: anchor.path,
-        href: subject.kind === "research"
-          ? href(locale, adminDraftPath(researchId, draftId))
-          : href(locale, adminDraftDatasetPath(researchId, draftId, subject.datasetId)),
-      }
-    }),
+    comments: comments.filter((one) => one.anchor.kind !== "memo" && !one.resolved),
+    datasetLabels: Object.fromEntries(datasets.map((row) => [row.id, row.label])),
     acknowledgements,
     updating: draft.updating?.number ?? null,
     steps,
@@ -171,11 +143,12 @@ export async function reviewPage(
 function shareView(
   share: { token: string, enabled: boolean, expiresAt: Date | null },
   locale: Locale,
+  origin: string,
 ): ShareView {
   const now = new Date()
   const policy = { enabled: share.enabled, expiresAt: share.expiresAt }
   return {
-    url: href(locale, previewPath(share.token)),
+    url: new URL(href(locale, previewPath(share.token)), origin).href,
     enabled: share.enabled,
     open: isShareOpen(policy, now),
     expired: isShareExpired(policy, now),
@@ -211,8 +184,10 @@ export async function reviewAction(
   const done = async (): Promise<Response | ReviewActionResult> =>
     answer === "redirect" ? back() : { status: "comments", comments: await readComments(db, draftId) }
 
-  if (intent === "share") {
-    const enabled = form.get("enabled") === "on"
+  // Saving the expiry keeps sharing as it stands; the switch beside it turns
+  // sharing on or off and saves the expiry typed with it.
+  if (intent === "share" || intent === "share-on" || intent === "share-off") {
+    const enabled = intent === "share" ? form.get("enabled") === "on" : intent === "share-on"
     const on = readString(form, "expiresOn")
     const expiresAt = on === "" ? null : new Date(`${on}T23:59:59Z`)
     if (expiresAt !== null && Number.isNaN(expiresAt.getTime())) badRequest()

@@ -25,10 +25,11 @@ import { useId, useState } from "react"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Badge, Button, Dialog, IconButton, Note, Stack, TOOLTIP, ButtonLink, Chevron } from "./base"
+import { Button, Dialog, IconButton, Note, Stack, TOOLTIP, ButtonLink, Chevron } from "./base"
 import { Accepts, CONTROL } from "./form"
 import { Icon, type IconName } from "./icons"
 import { Section as PageSection, Table, Td } from "./page"
+import { Flag } from "./flags"
 
 /**
  * Which language a box or a line holds, said as the code beside it.
@@ -118,7 +119,7 @@ export function replacing<T extends { id: string }>(items: readonly T[], id: str
  * two of them is twice what is inside one and still reads as the edge; a block
  * would set the fields of one section as far apart as the sections are.
  */
-export function Section({ id, title, accepts, children }: {
+export function Section({ id, title, accepts, flags, remove, children }: {
   id: string
   title: string
   /**
@@ -128,11 +129,36 @@ export function Section({ id, title, accepts, children }: {
    * named field says it too (`FieldHead`).
    */
   accepts?: string
+  /**
+   * What the review says about that one field (`FieldFlags`), standing on the
+   * heading's line after the dialect badge — for the same reason the badge
+   * does: the field has no name row of its own, and a row holding only the
+   * flags names nothing.
+   */
+  flags?: React.ReactNode
+  /**
+   * Removes the section's one field, at the far end of the heading's line —
+   * the place a named field's own delete stands on its name row (`FieldHead`).
+   */
+  remove?: { label: string, onClick: () => void }
   children: React.ReactNode
 }) {
+  const aside = accepts === undefined && flags === undefined && remove === undefined
+    ? undefined
+    : (
+        <>
+          {accepts !== undefined && <Accepts>{accepts}</Accepts>}
+          {flags}
+          {remove !== undefined && (
+            <span className="ml-auto flex items-center">
+              <IconButton name="trash" label={remove.label} onClick={remove.onClick} />
+            </span>
+          )}
+        </>
+      )
   return (
     <div id={id} className="scroll-mt-32">
-      <PageSection title={title} aside={accepts !== undefined ? <Accepts>{accepts}</Accepts> : undefined}>
+      <PageSection title={title} aside={aside}>
         <Stack gap="normal">{children}</Stack>
       </PageSection>
     </div>
@@ -144,16 +170,15 @@ export function Section({ id, title, accepts, children }: {
  *
  * **A field that is the only one in its section has no name of its own** — the
  * section's heading is its name, and a second line saying the same word under
- * it is the word read twice (`docs/editing.md` の「編集フォーム」). Such a field
- * still gets this line when there is a mark to hang on it, and nothing at all
- * when there is not. **The dialect badge stands right after the name** — it
- * says what the named thing reads, so it belongs to the name, not to the far
- * end of the row where the row's own delete stands. **A field with no name
- * does not draw it**: a badge alone at the end of an otherwise empty row names
- * nothing, so the heading naming the field carries it instead (`Section` の
- * `accepts`).
+ * it is the word read twice (`docs/editing.md` の「編集フォーム」). **Such a
+ * field draws no line at all**: its dialect badge and its flags stand on the
+ * heading's line instead (`Section` の `accepts` と `flags`) — a row holding
+ * only flags names nothing, and pushes the box a line down from its name.
+ * **The dialect badge stands right after the name** — it says what the named
+ * thing reads, so it belongs to the name, not to the far end of the row where
+ * the row's own delete stands.
  */
-export function FieldHead({ label, marks, locale, untranslated = false, accepts, remove }: {
+export function FieldHead({ label, marks, locale, untranslated = false, accepts, way, remove }: {
   label?: string
   marks: Marks
   locale: Locale
@@ -167,17 +192,40 @@ export function FieldHead({ label, marks, locale, untranslated = false, accepts,
    * remove itself from.
    */
   remove?: { label: string, onClick: () => void }
+  /** A way to the screen where what the field chooses from is kept, before the delete. */
+  way?: React.ReactNode
 }) {
-  const t = messagesFor(locale).admin.editor
-  const says = label !== undefined || untranslated || marks.changed || marks.onTake !== null
-    || marks.extra !== undefined || remove !== undefined
-  if (!says) return null
+  if (label === undefined) return null
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {label !== undefined && <span className="font-semibold text-ink-muted text-xs">{label}</span>}
-      {label !== undefined && accepts !== undefined && <Accepts>{accepts}</Accepts>}
-      {untranslated && <Badge>{t.untranslated}</Badge>}
-      {marks.changed && <Badge tone="accent">{t.changed}</Badge>}
+      <span className="font-semibold text-ink-muted text-xs">{label}</span>
+      {accepts !== undefined && <Accepts>{accepts}</Accepts>}
+      <FieldFlags marks={marks} locale={locale} untranslated={untranslated} />
+      {(way !== undefined || remove !== undefined) && (
+        <span className="ml-auto flex items-center gap-2">
+          {way}
+          {remove !== undefined && <IconButton name="trash" label={remove.label} onClick={remove.onClick} />}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * What the review says about one field: that one language is missing, and
+ * whatever the field's marks carry. Drawn on the field's name row, or — for a
+ * field with no name — on its section's heading (`Section` の `flags`).
+ */
+export function FieldFlags({ marks, locale, untranslated = false }: {
+  marks: Marks
+  locale: Locale
+  untranslated?: boolean
+}) {
+  const t = messagesFor(locale).admin.editor
+  return (
+    <>
+      {untranslated && <Flag kind="short">{t.untranslated}</Flag>}
+      {marks.changed && <Flag kind="changed">{t.changed}</Flag>}
       {marks.onTake !== null && (
         <Button
           type="button"
@@ -190,12 +238,7 @@ export function FieldHead({ label, marks, locale, untranslated = false, accepts,
         </Button>
       )}
       {marks.extra}
-      {remove !== undefined && (
-        <span className="ml-auto flex items-center">
-          <IconButton name="trash" label={remove.label} onClick={remove.onClick} />
-        </span>
-      )}
-    </div>
+    </>
   )
 }
 
@@ -238,7 +281,7 @@ function StateMark({ icon, label, does, pressed, onClick }: {
 }) {
   const doesId = useId()
   return (
-    <span className="group relative inline-flex">
+    <span className="group/tip relative inline-flex">
       <button
         type="button"
         aria-pressed={pressed}
@@ -251,7 +294,7 @@ function StateMark({ icon, label, does, pressed, onClick }: {
       >
         <Icon name={icon} aria-hidden="true" />
       </button>
-      <span id={doesId} role="tooltip" className={`${TOOLTIP} right-0 group-has-focus-visible:block group-hover:block`}>
+      <span id={doesId} role="tooltip" className={`${TOOLTIP} right-0 group-has-focus-visible/tip:block group-hover/tip:block`}>
         {does}
       </span>
     </span>
@@ -338,8 +381,12 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
         ? (
             multiline === true
               ? (
+                  // **As tall as what is written in it**, from two lines up: a one-line
+                  // value in a four-line box made an experiment's form mostly
+                  // empty boxes. A browser that cannot size to the content keeps
+                  // the four rows.
                   <textarea
-                    className={classes}
+                    className={`${classes} field-sizing-content min-h-[calc(2lh+0.75rem+2px)]`}
                     rows={4}
                     lang={language}
                     value={value.text}
@@ -423,19 +470,30 @@ export function PairField({ label, value, multiline, marks, locale, onChange, re
   )
 }
 
-/** A field with one value and no languages: an identifier, an address, a DOI. */
-export function SingleField({ label, value, marks, locale, onChange }: {
+/**
+ * A field with one value and no languages: an identifier, an address, a DOI.
+ *
+ * **An identifier is held to the width it needs; a title or an address takes
+ * the row** (`wide`). A short box says "a short value goes here", which is
+ * right for an ID and wrong for a paper's title or a URL, whose end the writer
+ * could then not see.
+ */
+export function SingleField({ label, value, marks, locale, wide = false, hint, onChange }: {
   /** Absent for the one field of a section, which the section's heading names. */
   label?: string
   value: TextInput
   marks: Marks
   locale: Locale
+  /** Whether the box takes the whole row: a title, an address. */
+  wide?: boolean
+  /** What to put in the box and how, said under it (`docs/admin-ui.md` の「語と文」). */
+  hint?: string
   onChange: (next: TextInput) => void
 }) {
   return (
     <Stack gap="tight" at={marks.at}>
       <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="md:max-w-md">
+      <div className={wide ? "" : "md:max-w-md"}>
         <SlotEditor
           language={locale}
           named={false}
@@ -444,57 +502,8 @@ export function SingleField({ label, value, marks, locale, onChange }: {
           onChange={onChange}
         />
       </div>
+      {hint !== undefined && <span className="text-ink-muted text-xs">{hint}</span>}
     </Stack>
-  )
-}
-
-/**
- * One element of a repeated list: a provider, a project, a grant, a paper.
- *
- * **Moving and removing are glyphs**, because they are the same three controls
- * on every card and a list of ten would otherwise carry thirty words that say
- * nothing about the element they belong to. Each names itself for anybody not
- * looking at it (`IconButton`).
- */
-export function ElementCard({ index, count, locale, onMove, onRemove, children }: {
-  index: number
-  count: number
-  locale: Locale
-  onMove: (by: number) => void
-  onRemove: () => void
-  children: React.ReactNode
-}) {
-  const t = messagesFor(locale).admin.editor
-  return (
-    <div className="rounded border border-line px-4 py-3">
-      <Stack>
-        <div className="flex items-center justify-between">
-          <span className="text-ink-muted text-xs">{index + 1}</span>
-          <div className="flex items-center gap-1">
-            {/* A glyph carries no colour of its own to dim, so what says a move
-                is unavailable is put on the box around it. */}
-            <span className={index === 0 ? "opacity-50" : ""}>
-              <IconButton
-                name="chevron-up"
-                label={t.moveUp}
-                disabled={index === 0}
-                onClick={() => { onMove(-1) }}
-              />
-            </span>
-            <span className={index === count - 1 ? "opacity-50" : ""}>
-              <IconButton
-                name="chevron-down"
-                label={t.moveDown}
-                disabled={index === count - 1}
-                onClick={() => { onMove(1) }}
-              />
-            </span>
-            <IconButton name="trash" label={t.remove} onClick={onRemove} />
-          </div>
-        </div>
-        {children}
-      </Stack>
-    </div>
   )
 }
 
@@ -527,6 +536,9 @@ export interface ItemColumn<T> {
  *
  * **Adding one opens it.** A new element says nothing on its row, so a list
  * that only appended would leave the reader a blank line to find and open.
+ * **Closed with nothing written in it, it goes again** — pressing add and
+ * thinking better of it is not asking for an empty row. An element that was
+ * already there keeps its row however empty it is.
  *
  * **The panel writes as it is typed.** There is nothing to accept or cancel in
  * here — the draft is saved by the one save the screen has, and a panel with a
@@ -541,6 +553,7 @@ export function ItemList<T extends { id: string }>({
   columns,
   onChange,
   makeEmpty,
+  wide = false,
   children,
 }: {
   /** What one element's path opens with. */
@@ -555,20 +568,35 @@ export function ItemList<T extends { id: string }>({
   columns: ItemColumn<T>[]
   onChange: (next: T[]) => void
   makeEmpty: () => T
+  /** Whether the panel holds a table and takes the wide measure (`base.tsx` の `Dialog`). */
+  wide?: boolean
   children: (item: T, path: string, set: (next: T) => void) => React.ReactNode
 }) {
   const messages = messagesFor(locale)
   const t = messages.admin.editor
   const [open, setOpen] = useState<string | null>(null)
+  // The element the add button just made, as it was made — gone again if the
+  // panel closes with nothing written in it.
+  const [made, setMade] = useState<T | null>(null)
   const held = items.find((row) => row.id === open)
   const named = held === undefined ? "" : summary(held).trim()
+
+  function close(): void {
+    const next = keptOnClose(items, made)
+    if (next !== items) onChange(next)
+    setMade(null)
+    setOpen(null)
+  }
 
   return (
     <>
       {items.length > 0 && (
         <Table headers={[...columns.map((column) => column.header), messages.admin.actions]}>
           {items.map((item, at) => (
-            <tr key={item.id}>
+            // The row is the element's place on the form: a cell of the same
+            // list on the page lands here (`form.tsx` の `landAt`), and the
+            // row takes the ground a landed box takes.
+            <tr key={item.id} data-at={`${path}.${item.id}`} className="transition-colors data-landed:bg-warning-surface">
               {columns.map((column, index) => {
                 const drawn = column.cell(item)
                 const empty = drawn === "" || drawn === null || drawn === undefined
@@ -595,15 +623,17 @@ export function ItemList<T extends { id: string }>({
       <AddElement
         label={t.add}
         onClick={() => {
-          const made = makeEmpty()
-          onChange([...items, made])
-          setOpen(made.id)
+          const empty = makeEmpty()
+          onChange([...items, empty])
+          setMade(empty)
+          setOpen(empty.id)
         }}
       />
       <Dialog
         title={named === "" ? title : named}
-        held={{ open: held !== undefined, close: () => { setOpen(null) } }}
+        held={{ open: held !== undefined, close }}
         dismiss={t.done}
+        wide={wide}
       >
         {held === undefined
           ? null
@@ -619,6 +649,18 @@ export function ItemList<T extends { id: string }>({
       </Dialog>
     </>
   )
+}
+
+/**
+ * The list once the panel closes: the element the add button made is dropped
+ * when it is still exactly as it was made, and the list is handed back as it
+ * is otherwise — the same array, so a caller can tell nothing changed.
+ */
+export function keptOnClose<T extends { id: string }>(items: T[], made: T | null): T[] {
+  if (made === null) return items
+  const now = items.find((row) => row.id === made.id)
+  if (now === undefined || JSON.stringify(now) !== JSON.stringify(made)) return items
+  return items.filter((row) => row.id !== made.id)
 }
 
 /**
@@ -702,76 +744,16 @@ export function ConflictBand({ locale, changed }: { locale: Locale, changed: str
         <p className="font-semibold">{t.conflictHeading}</p>
         <p>{changed.length === 0 ? t.conflictNone : t.conflictBody(changed.length)}</p>
         {changed.length > 0 && (
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <ul className="flex flex-wrap gap-2">
             {changed.map((path) => (
               <li key={path}>
-                <a href={`#${path.split(".")[0] ?? path}`} className="text-brand">{path}</a>
+                <ButtonLink external size="row" to={`#${path.split(".")[0] ?? path}`}>
+                  {path}
+                  <Chevron dir="right" />
+                </ButtonLink>
               </li>
             ))}
           </ul>
-        )}
-      </Stack>
-    </Note>
-  )
-}
-
-/**
- * Where this draft differs from the version readers see, and the way to close
- * the gap either way.
- *
- * **One band for one fact.** Which places differ is both the review's mark
- * on the form and the take-in's list — drawn as two bands, "vN differs" read
- * as two facts. **Each place is the way there** (`Chevron`), except the
- * dataset list, which is decided on its own screen and leads there. **Taking
- * all is offered under the list**: it replaces what is held here with the
- * version's, and it is not required — publishing without it is allowed, and
- * the gate lists what that leaves (`docs/editing.md` の「他の版や draft と比べる」).
- */
-export function PublishedBand({ locale, number, places, takeCount, onTakeAll }: {
-  locale: Locale
-  /** The version compared against, for the band to name it. */
-  number: number
-  /** The places that differ, each as the way there: in place (`go`), or on another screen (`to`). */
-  places: { path: string, go?: () => void, to?: string }[]
-  /** How many of them the take-in covers — the dataset list is not among them. */
-  takeCount: number
-  onTakeAll: () => void
-}) {
-  const t = messagesFor(locale).admin.upstream
-  return (
-    <Note kind="info">
-      <Stack gap="tight">
-        <p className="font-semibold">{t.heading(number, places.length)}</p>
-        <ul className="flex flex-wrap gap-2">
-          {places.map((place) => (
-            <li key={place.path}>
-              {place.to !== undefined
-                ? (
-                    <ButtonLink to={place.to} size="xs" icon={<Icon name="database" aria-hidden="true" />}>
-                      {place.path}
-                    </ButtonLink>
-                  )
-                : (
-                    <Button type="button" variant="secondary" size="xs" icon={<Chevron dir="right" />} onClick={place.go}>
-                      {place.path}
-                    </Button>
-                  )}
-            </li>
-          ))}
-        </ul>
-        <p>{t.body}</p>
-        {takeCount > 0 && (
-          <div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="xs"
-              icon={<Icon name="download" aria-hidden="true" />}
-              onClick={onTakeAll}
-            >
-              {t.takeAll(takeCount)}
-            </Button>
-          </div>
         )}
       </Stack>
     </Note>

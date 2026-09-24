@@ -174,7 +174,8 @@ describe("the languages' forms", () => {
     // Nothing typed at first draw: the save waits, without the accent.
     expect(save).toMatch(/disabled=""/)
     expect(save).not.toMatch(/bg-accent/)
-    expect(form).not.toContain("未保存の変更があります")
+    // The words are laid out of sight to hold their room; none is being said.
+    expect(form).not.toMatch(/<span class="col-start-1 row-start-1[^"]*">未保存の変更があります/)
   })
 
   it("keep publishing inside the form — it is pressed back and forth, not on the way out of the box", () => {

@@ -1,11 +1,10 @@
 /**
  * Where a draft says something other than the version that is out there now.
  *
- * This is what the preview and the editing screens mark, and it answers a
- * different question from `merge.ts`: not "who changed what since we started",
- * but "what would a reader see change if this went out". So there is no base
- * and no three-way — the published version and the draft, compared with the
- * same functions the conflict band uses, reported as the same paths.
+ * This is what the preview and the page beside the form mark, and it answers
+ * "what would a reader see change if this went out". So there is no base and no
+ * three-way — the published version and the draft, compared with the same
+ * functions the conflict band uses, reported as the same paths.
  *
  * A research with nothing published has nothing to compare against. That is not
  * "everything changed": a first version is all new by definition, and marking

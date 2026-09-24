@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useId, useState } from "react"
-import { Form, useNavigation, useSubmit } from "react-router"
+import { Form, Link, useNavigation, useSubmit } from "react-router"
 
 import {
   KEY_VALUE_TYPES,
@@ -40,7 +40,6 @@ import {
   Dialog,
   Heading,
   IconButton,
-  MoreLink,
   Stack,
 } from "~/components/base"
 import {
@@ -59,7 +58,7 @@ import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
-import { pageTitle } from "~/i18n/title"
+import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 
@@ -91,10 +90,10 @@ export async function action({ request }: Route.ActionArgs) {
   return catalogAction(request)
 }
 
-export function meta({ loaderData }: Route.MetaArgs) {
+export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: pageTitle(messages, messages.admin.catalog.heading) },
+    { title: adminWindowTitle(messages, location.pathname, messages.admin.catalog.heading) },
     { name: "robots", content: "noindex" },
   ]
 }
@@ -369,8 +368,9 @@ function Row({ entry, ordered, at, of, locale }: {
       </Td>
       {/* What the field draws from, when it draws from anything.
 
-          **How many, and the way to them, in one.** The count alone reads as a
-          fact about the row; the mark says the cell is a way onward.
+          **How many, and the way to them, in one** — the count is a link the
+          way the research screen's dataset count is, a cell's value that is
+          also where it leads.
 
           **Both kinds of vocabulary have the screen; only one may be changed
           there.** What a settled vocabulary holds is fixed by what the portal
@@ -381,9 +381,9 @@ function Row({ entry, ordered, at, of, locale }: {
         {entry.terms === null
           ? null
           : (
-              <MoreLink to={href(locale, adminExperimentFieldPath(entry.code))}>
+              <Link to={href(locale, adminExperimentFieldPath(entry.code))}>
                 {settled ? t.termCountRead(entry.terms) : t.termCount(entry.terms)}
-              </MoreLink>
+              </Link>
             )}
       </Td>
       {/* **How many published datasets say something under this key.** The

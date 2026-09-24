@@ -38,6 +38,10 @@ v1 はこれを backend (定義域) と frontend (UI type) と localization (値
 | 研究課題番号 | 研究課題番号 | Project number |
 | 関連論文 | 関連論文 | Related publications |
 
+**dataset の ID を並べる列は、どの表でも「データセット ID / Dataset ID」。** データセットの一覧、関連論文、
+制限公開データの利用者一覧のどれでも、列はセルに入っているもの (dataset の ID) を名指し、それが何のための
+ものかは節の名前が言う。同じものを表ごとに別の語で呼ぶと、別のものに読める。
+
 `experiment` はモデル上の名前で、画面には出さない。curator と読者が見るのは「解析手法 /
 Analysis method」で、これは v1 が使っていた語。
 
@@ -51,7 +55,6 @@ Analysis method」で、これは v1 が使っていた語。
 | 制限公開 (Type II) | 制限公開（Type II） | Controlled-access (Type II) |
 | データの種類 | データの種類 | Type of data |
 | 制限公開データの利用者 (CAU) | 制限公開データの利用者一覧 | Controlled access users |
-| 利用データ | 利用データID | Data in use |
 | 国 | 国・州名 | Country/Region |
 | データ利用期間 | データ利用期間 | Period of data use |
 | ダウンロード | ダウンロード | Downloads |
@@ -90,7 +93,7 @@ curator が見る語。**未確定と該当なしと未翻訳は preview にも�
 | 共有リンク | 共有リンク | Share link |
 | preview | プレビュー | Preview |
 | 閲覧者の印: コメントを書き終えた | コメントを書き終えました。事務局に確認をお願いします | I have finished commenting. Please review my comments |
-| 閲覧者の印: 直すところは無い | 直すところはありません。この内容で問題ありません | Nothing to fix. The content is fine as it is |
+| 閲覧者の印: 修正の必要は無い | 修正の必要はありません。この内容で問題ありません | No corrections are needed. The content is fine as it is |
 | catalog のキー | key | Key |
 | 語彙値 | 値 | Value |
 | 語彙型 | 選択肢 | Choice |

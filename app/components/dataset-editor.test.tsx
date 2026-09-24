@@ -1,8 +1,11 @@
+import fc from "fast-check"
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { datasetContentInput, type DatasetContentInput } from "~/admin/dataset-form"
+import type { CommentAnchor } from "~/content/types"
+
+import { datasetContentInput, emptyValueInput, type DatasetContentInput } from "~/admin/dataset-form"
 import type { DatasetEditorView } from "~/admin/pages.server"
 import type { EditableCatalog } from "~/admin/queries.server"
 import { emptyDatasetContent, filled } from "~/content/empty"
@@ -10,7 +13,7 @@ import type { DatasetContent } from "~/content/types"
 import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
 import type { DrawnDataset } from "~/review/preview.server"
 
-import { DatasetEditor } from "./dataset-editor"
+import { CandidateWords, ChoicesWay, comboKey, copiedExperiment, DatasetEditor } from "./dataset-editor"
 
 const TEXT_KEY = "00000000-0000-0000-0000-0000000000a1"
 const VOCAB_KEY = "00000000-0000-0000-0000-0000000000a2"
@@ -161,6 +164,7 @@ function drawn(content: DatasetContent): DrawnDataset {
     typeOfDataAnchor: null,
     changed: [],
     previous: {},
+    current: {},
   }
 }
 
@@ -187,7 +191,6 @@ function view(
     revision: 2,
     input: datasetContentInput(content),
     catalog,
-    upstream: null,
     review: {
       changed: [],
       previous: {},
@@ -221,9 +224,11 @@ describe("the dataset editing form", () => {
     expect(html).toContain("全ゲノムシークエンス")
     // The one it already carries is not offered again as a candidate.
     expect(html.split("データの種類").length - 1).toBe(1)
-    // The two it does not carry are candidates to add, not empty fields — and
-    // the picker that offers them is not a `<select>`.
-    expect(html).toContain("備考")
+    // The ones it does not carry are candidates in a box that opens as it is
+    // entered — not empty fields, not a `<select>`, not a fold to open first.
+    expect(html).not.toContain("備考")
+    expect(html).toMatch(/<input[^>]*role="combobox"[^>]*aria-label="項目の追加"/)
+    expect(html).not.toMatch(/<summary[^>]*>[\s\S]*?項目の追加/)
     expect(html).not.toContain("アクセス制限</span>")
     expect(html).not.toContain("<option")
   })
@@ -572,11 +577,31 @@ describe("the head", () => {
 })
 
 describe("the tools row", () => {
-  it("draws the pane switch and the unresolved count once, on the tools row", () => {
-    const html = render({ ...view(), steps: { datasets: 0, shared: false, unresolved: 2, blocks: 0, findings: 0 } })
+  /** The research's form opens the same panel; here it holds this dataset's questions only. */
+  it("draws the pane switch once, and the open-comments panel counting this dataset's open questions only", () => {
+    const base = view()
+    const said = (id: string, anchor: CommentAnchor, resolved = false) => ({
+      id, anchor, authorName: "provider", bySignedIn: false, body: id, resolved,
+      resolvedBy: null, resolvedAt: null, createdAt: "2026-01-01T00:00:00.000Z",
+    })
+    base.review.comments = [
+      said("mine-1", { kind: "dataset-field", datasetId: base.datasetId, path: "values.k1" }),
+      said("mine-2", { kind: "dataset-field", datasetId: base.datasetId, path: "experiments" }),
+      said("mine-resolved", { kind: "dataset-field", datasetId: base.datasetId, path: "values.k1" }, true),
+      said("other-dataset", { kind: "dataset-field", datasetId: "another", path: "values.k1" }),
+      said("research", { kind: "research-field", path: "title" }),
+      said("whole", { kind: "draft" }),
+    ]
+    const html = render({ ...base, steps: { datasets: 0, shared: false, unresolved: 9, blocks: 0, findings: 0 } })
     expect([...html.matchAll(/aria-label="表示 pane"/g)]).toHaveLength(1)
-    expect(html).toContain("未解決のコメント 2 件")
-    expect(html).toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}/review"`)
+    const entry = html.slice(html.indexOf(">未解決のコメント"), html.indexOf("</button>", html.indexOf(">未解決のコメント")))
+    expect(entry).toMatch(/>2</)
+    // No way off to the review screen: the questions are read here.
+    expect(html).not.toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}/review"`)
+  })
+
+  it("does not offer the take-in from the head", () => {
+    expect(render(view())).not.toContain("/take\"")
   })
 })
 
@@ -601,5 +626,233 @@ describe("the comment panel's own name", () => {
     }]
     const html = render(withComment)
     expect(html).toContain("title=\"解析手法 へのコメント\"")
+  })
+})
+
+describe("the keys of the term box", () => {
+  const typed = { open: false, active: 0, find: "ゲノム" }
+
+  it("opens on Down or Up once closed, whether anything is typed or not, at the first option", () => {
+    for (const find of ["", "  ", "ゲノム"]) {
+      for (const key of ["ArrowDown", "ArrowUp"]) {
+        expect(comboKey({ open: false, active: 3, find }, key, 5)?.state).toEqual({ open: true, active: 0, find })
+      }
+    }
+  })
+
+  it("walks the list round at both ends", () => {
+    const open = { ...typed, open: true }
+    expect(comboKey({ ...open, active: 4 }, "ArrowDown", 5)?.state.active).toBe(0)
+    expect(comboKey({ ...open, active: 0 }, "ArrowUp", 5)?.state.active).toBe(4)
+  })
+
+  it("takes the walked-to option on Enter only while the list is open and holds something", () => {
+    expect(comboKey({ ...typed, open: true }, "Enter", 3)).toEqual({ state: { ...typed, open: true }, choose: true })
+    expect(comboKey({ ...typed, open: true }, "Enter", 0)?.choose).toBe(false)
+    // Closed, Enter is still caught — the box never sends the form.
+    expect(comboKey(typed, "Enter", 3)).toEqual({ state: typed, choose: false })
+  })
+
+  it("closes on Escape, empties on a second, and leaves a third to whatever is around it", () => {
+    const first = comboKey({ ...typed, open: true }, "Escape", 3)
+    expect(first?.state).toEqual({ ...typed, open: false })
+    const second = comboKey(first?.state ?? typed, "Escape", 3)
+    expect(second?.state.find).toBe("")
+    expect(comboKey({ open: false, active: 0, find: "" }, "Escape", 3)).toBeNull()
+  })
+
+  it("leaves every other key to the box", () => {
+    expect(comboKey(typed, "a", 3)).toBeNull()
+    expect(comboKey(typed, "Tab", 3)).toBeNull()
+  })
+
+  it("never walks outside the list, whatever the list's length or where it stood", () => {
+    fc.assert(fc.property(
+      fc.integer({ min: 1, max: 50 }),
+      fc.integer({ min: -5, max: 60 }),
+      fc.constantFrom("ArrowDown", "ArrowUp"),
+      (count, active, key) => {
+        const next = comboKey({ open: true, active, find: "x" }, key, count)?.state.active ?? -1
+        return next >= 0 && next < count
+      },
+    ))
+  })
+})
+
+describe("copying an experiment", () => {
+  it("keeps the label and values under a new identity, and shares nothing with the original", () => {
+    const original = {
+      id: "e1",
+      label: { state: "value" as const, text: "RNA-seq" },
+      values: [],
+    }
+    const copy = copiedExperiment(original)
+    expect(copy.id).not.toBe(original.id)
+    expect(copy.label).toEqual(original.label)
+    copy.label.text = "WGS"
+    expect(original.label.text).toBe("RNA-seq")
+  })
+})
+
+describe("where the page lands on the form", () => {
+  /**
+   * A press on the page goes to the field the form marks with the same place
+   * (`form.tsx` の `landAt`). A kind of field that marks nothing sends it to the
+   * section's first box instead — an experiment's label, whatever was pressed.
+   */
+  it("marks every kind of value with its place — text, vocabulary, number and disease alike", () => {
+    const page = view()
+    page.input = {
+      ...page.input,
+      values: [
+        emptyValueInput(TEXT_KEY, "text"),
+        emptyValueInput(VOCAB_KEY, "vocabulary"),
+        emptyValueInput(NUMBER_KEY, "number"),
+        emptyValueInput(DISEASE_KEY, "disease"),
+      ],
+    }
+    const html = render(page)
+    for (const key of [TEXT_KEY, VOCAB_KEY, NUMBER_KEY, DISEASE_KEY]) {
+      expect(html, key).toContain(`data-at="values.${key}"`)
+    }
+  })
+
+  it("runs the dataset's fields in the page's order — the type of data before the access type", () => {
+    const page = view()
+    page.input = { ...page.input, values: [emptyValueInput(VOCAB_KEY, "vocabulary"), emptyValueInput(TEXT_KEY, "text")] }
+    page.page = { ...page.page, typeOfDataAnchor: `values.${TEXT_KEY}`, accessAnchor: `values.${VOCAB_KEY}` }
+    const html = render(page)
+    expect(html.indexOf(`data-at="values.${TEXT_KEY}"`)).toBeLessThan(html.indexOf(`data-at="values.${VOCAB_KEY}"`))
+  })
+})
+
+describe("the head of the dataset's form", () => {
+  it("carries the id and the dates, and says the archive's dates are read, not written", () => {
+    const html = render(view(emptyDatasetContent(), false))
+    const head = html.slice(0, html.indexOf("role=\"tablist\""))
+    expect(head).toContain("JGAD000001")
+    expect(head).toContain("公開日")
+    expect(head).toContain("更新日")
+    expect(head).toContain("その accession 自体の公開日と更新日を自動で表示する。")
+    expect(head).not.toContain("type=\"date\"")
+  })
+
+  it("asks for the release date of a portal-issued id, in the head", () => {
+    const head = render(view()).split("role=\"tablist\"")[0] ?? ""
+    expect(head).toContain("type=\"date\"")
+  })
+
+  it("names the experiments once — by the section, not again by the field", () => {
+    const html = render(view())
+    const start = html.indexOf("<div id=\"experiments\" class=\"scroll-mt-32\">")
+    const section = html.slice(start, html.indexOf("</section>", start))
+    expect(start).toBeGreaterThan(-1)
+    expect(section.split(">解析手法<").length - 1).toBe(1)
+  })
+})
+
+describe("the dataset's own fields", () => {
+  /** The page draws the type of data and the access type on every dataset, so the form always has them. */
+  const anchored = (page: DatasetEditorView): DatasetEditorView => ({
+    ...page,
+    page: { ...page.page, typeOfDataAnchor: `values.${TEXT_KEY}`, accessAnchor: `values.${VOCAB_KEY}` },
+  })
+
+  it("heads each field with its own name, under no heading that names them in general", () => {
+    const html = render(anchored(view(described())))
+    expect(html).toMatch(/<h2[^>]*>データの種類/)
+    expect(html).toMatch(/<h2[^>]*>アクセス制限/)
+    expect(html).not.toContain("基本情報")
+  })
+
+  it("always has the type of data and the access type, even when the dataset carries neither, and offers neither to be removed or added", () => {
+    const html = render(anchored(view()))
+    expect(html).toContain(`data-at="values.${TEXT_KEY}"`)
+    expect(html).toContain(`data-at="values.${VOCAB_KEY}"`)
+    for (const key of [TEXT_KEY, VOCAB_KEY]) {
+      const at = html.indexOf(`id="value-${key}"`)
+      const section = html.slice(at, html.indexOf("</section>", at))
+      expect(section, key).not.toContain("aria-label=\"項目の削除\"")
+    }
+    const adding = html.slice(html.indexOf("項目の追加"))
+    expect(adding).not.toMatch(/>データの種類<\/button>|>アクセス制限<\/button>/)
+  })
+
+  it("lets any other field be removed from its heading", () => {
+    const page = anchored(view())
+    page.input = { ...page.input, values: [emptyValueInput(NUMBER_KEY, "number")] }
+    const html = render(page)
+    const at = html.indexOf(`id="value-${NUMBER_KEY}"`)
+    const heading = html.slice(at, html.indexOf("</h2>", at))
+    expect(heading).toContain("aria-label=\"項目の削除\"")
+  })
+})
+
+describe("a candidate in the term box's list", () => {
+  const term = { id: "term-ca2", setId: SET, code: "controlled-access-type-2", labelJa: "制限公開 (Type II)", labelEn: "Controlled-access (Type II)", position: 1 }
+  const words = (kind?: "disease") => renderToStaticMarkup(<CandidateWords term={term} locale="ja" kind={kind} />)
+
+  it("reads as its words, without the key it is stored under", () => {
+    expect(words()).toContain("制限公開 (Type II)")
+    expect(words()).not.toContain("controlled-access-type-2")
+  })
+
+  it("keeps a disease's code before its words, the code being what it is typed and told apart by", () => {
+    const html = words("disease")
+    expect(html.indexOf("controlled-access-type-2")).toBeGreaterThan(-1)
+    expect(html.indexOf("controlled-access-type-2")).toBeLessThan(html.indexOf("制限公開"))
+  })
+})
+
+describe("the way to a field's choices", () => {
+  const key = (over: Partial<EditableCatalog["keys"][number]>) => ({ ...catalog.keys[0], ...over }) as EditableCatalog["keys"][number]
+  const way = (over: Partial<EditableCatalog["keys"][number]>): string => {
+    const Stub = createRoutesStub([{ path: "/*", Component: () => <ChoicesWay catalogKey={key(over)} locale="ja" /> }])
+    return renderToStaticMarkup(<Stub initialEntries={["/admin/research/x/draft/y/dataset/z"]} />)
+  }
+
+  it("leads an experiment's vocabulary to its 「選べる値」, in a new tab so the form's unsaved work stays", () => {
+    const html = way({ scope: "experiment", valueType: "vocabulary", code: "platform" })
+    expect(html).toMatch(/<a href="\/admin\/experiment-fields\/platform" target="_blank"[^>]*>[\s\S]*選べる値/)
+  })
+
+  it("does the same for an experiment's disease", () => {
+    expect(way({ scope: "experiment", valueType: "disease", code: "disease" })).toContain("/admin/experiment-fields/disease")
+  })
+
+  it("draws nothing for a dataset's own closed list, or a field that chooses from nothing", () => {
+    expect(way({ scope: "dataset", valueType: "vocabulary", code: "access-criteria" })).not.toContain("<a")
+    expect(way({ scope: "experiment", valueType: "text", code: "coverage" })).not.toContain("<a")
+    expect(way({ scope: "experiment", valueType: "number", code: "read-length" })).not.toContain("<a")
+  })
+})
+
+describe("the parts of an experiment's card", () => {
+  it("stands the experiment, its items and the way to add one under three headings, in that order", () => {
+    const html = render(view({ ...emptyDatasetContent(), experiments: [{ id: "e1", label: filled("RNA-seq"), values: [] }] }))
+    const card = html.slice(html.indexOf("<details"), html.indexOf("</details>"))
+    const headings = [...card.matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((one) => one[1])
+    expect(headings).toEqual(["解析手法", "項目", "項目の追加"])
+    expect(card).toContain("項目はまだありません。")
+  })
+})
+
+describe("adding an item", () => {
+  it("waits for the 追加 button, which cannot be pressed until an item is chosen, and carries no mark of its own before the box", () => {
+    const html = render(view(described()))
+    const at = html.indexOf("aria-label=\"項目の追加\"")
+    const around = html.slice(html.lastIndexOf("<div class=\"flex flex-wrap items-center gap-2\">", at), html.indexOf("</button>", at) + 9)
+    expect(around).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*追加<\/button>/)
+    expect(html).toContain("追加する項目を先に選んでください。")
+    // The box stands alone: no glyph before it.
+    expect(around.slice(0, around.indexOf("<input"))).not.toContain("<svg")
+  })
+
+  it("leads to 解析手法の表 from an experiment's items, and not from the dataset's own", () => {
+    const withExperiment = render(view({ ...emptyDatasetContent(), experiments: [{ id: "e1", label: filled("RNA-seq"), values: [] }] }))
+    const card = withExperiment.slice(withExperiment.indexOf("<details"), withExperiment.indexOf("</details>"))
+    expect(card).toMatch(/<a href="\/admin\/experiment-fields" target="_blank"[^>]*>[\s\S]*解析手法の表/)
+    const datasetOnly = render(view(described()))
+    expect(datasetOnly).not.toContain("href=\"/admin/experiment-fields\"")
   })
 })

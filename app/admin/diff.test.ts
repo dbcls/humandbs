@@ -39,6 +39,24 @@ describe("diffDraftInput", () => {
     expect(diffDraftInput(mine, theirs)).toEqual(["summary.targets"])
   })
 
+  it("reports the places in the order the editing form stands them — release note after the title, the lists before the listing's row", () => {
+    const mine = draft()
+    const theirs = withProvider("p1", "松原")
+    const text = { state: "value" as const, text: "x" }
+    theirs.content.title.ja = text
+    theirs.content.releaseNote.ja = text
+    theirs.content.summary.aims.ja = text
+    theirs.content.listingSummary.methods.ja = text
+
+    expect(diffDraftInput(mine, theirs)).toEqual([
+      "title",
+      "releaseNote",
+      "summary.aims",
+      "dataProviders",
+      "listingSummary.methods",
+    ])
+  })
+
   it("ignores half-typed text left behind by a slot that holds no value", () => {
     const mine = draft()
     const theirs = draft()

@@ -27,15 +27,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useFetcher } from "react-router"
 
-import { Badge, Button, controlFace, Dialog, Note, PANE_LABEL, Stack } from "~/components/base"
+import { Badge, Button, type ButtonSize, controlFace, Dialog, Note, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
-import { Icon } from "~/components/icons"
+import { Icon, type IconName } from "~/components/icons"
 import { minuteInJst } from "~/dates"
 import type { CommentAnchor } from "~/content/types"
 import { isFieldAnchor, type AnchorSubject } from "~/review/anchors"
 import { unresolvedCount, type CommentView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { Flag } from "./flags"
 
 const NAME_KEY = "humandbs.review.name"
 
@@ -293,7 +294,7 @@ export function CommentRow({ context, comment, at, fetcher }: {
           <span>{minuteInJst(comment.createdAt)}</span>
           {/* The state alone: who closed it and when is on record, but a
               badge that recites it is a sentence in a row of marks. */}
-          {question && <Badge tone={comment.resolved ? undefined : "accent"}>{comment.resolved ? t.resolved : t.unresolved}</Badge>}
+          {question && <Flag kind={comment.resolved ? "resolved" : "unresolved"}>{comment.resolved ? t.resolved : t.unresolved}</Flag>}
           {context.canResolve && (
             <span className="ml-auto flex items-center gap-2">
               {question && (
@@ -335,10 +336,26 @@ export function CommentRow({ context, comment, at, fetcher }: {
 }
 
 /** The comments of one place, in the order they were said. */
-interface CommentGroup {
+export interface CommentGroup {
   key: string
+  /** Which of the three places it is — a field of the research, a dataset, the whole. */
+  kind: CommentAnchor["kind"]
+  /** The mark before the name — the place's kind, or a field's where a dataset is cut by field. */
+  mark: IconName
   name: string
   comments: CommentView[]
+}
+
+/**
+ * The mark a place carries before its name: the same mark the way to that
+ * place carries elsewhere on the draft's screens, so that "ID 未発行" reads as
+ * a dataset before its words are read.
+ */
+const PLACE_MARK: Record<CommentAnchor["kind"], IconName> = {
+  "research-field": "type",
+  "dataset-field": "database",
+  "draft": "comment",
+  "memo": "clipboard",
 }
 
 /**
@@ -346,9 +363,9 @@ interface CommentGroup {
  * field**: its fields are written on that dataset's own screen, so a reader of
  * this panel is told which dataset to open rather than which box inside it.
  */
-function placeKey(anchor: CommentAnchor): string {
+function placeKey(anchor: CommentAnchor, perField: boolean): string {
   if (anchor.kind === "research-field") return `research:${anchor.path}`
-  if (anchor.kind === "dataset-field") return `dataset:${anchor.datasetId}`
+  if (anchor.kind === "dataset-field") return perField ? `dataset:${anchor.datasetId}:${anchor.path}` : `dataset:${anchor.datasetId}`
   return anchor.kind
 }
 
@@ -360,11 +377,18 @@ function placeKey(anchor: CommentAnchor): string {
 export function groupedByPlace(
   comments: readonly CommentView[],
   nameOf: (anchor: CommentAnchor) => string,
+  /**
+   * Cut a dataset by its fields. **On the dataset's own screen** the dataset is
+   * the whole of what is being written, so the place a reader wants named is
+   * the field; everywhere else it is which dataset to open.
+   */
+  perField = false,
 ): CommentGroup[] {
   const groups = new Map<string, CommentGroup>()
   for (const one of comments) {
-    const key = placeKey(one.anchor)
-    const held = groups.get(key) ?? { key, name: nameOf(one.anchor), comments: [] }
+    const key = placeKey(one.anchor, perField)
+    const mark = perField && one.anchor.kind === "dataset-field" ? "type" : PLACE_MARK[one.anchor.kind]
+    const held = groups.get(key) ?? { key, kind: one.anchor.kind, mark, name: nameOf(one.anchor), comments: [] }
     held.comments.push(one)
     groups.set(key, held)
   }
@@ -520,20 +544,37 @@ export function DraftNote({ context, comments }: {
   )
 }
 
+/** What the whole's entry and panel say, where the reader is not a curator. */
+export interface WholeWords {
+  entry: string
+  wholeHint: string
+  empty: string
+  placeholder: string
+}
+
 /**
- * What has been said about the draft as a whole, as the editing screen shows
- * it. The same timeline the share link shows at the head of the preview, so a
- * provider's remark about the research and the office's answer stand in one
- * place for both.
+ * What has been said about the draft as a whole. The editing screen and the
+ * share link open the same panel onto the same timeline, so a provider's remark
+ * about the research and the office's answer stand in one place for both.
  *
  * **The entry is a `Button`; what it opens is a panel**, the same one
- * `DraftNote`'s does (`docs/admin-ui.md` の「コメントの面」).
+ * `DraftNote`'s does (`docs/admin-ui.md` の「コメントの面」). **Only the words
+ * and the size differ**: the share link speaks to a provider, and its entry
+ * stands with the two marks at full size rather than in a tool row.
  */
-export function WholeNote({ context, comments }: {
+export function WholeNote({ context, comments, words, size = "xs" }: {
   context: CommentContext
   comments: readonly CommentView[]
+  words?: WholeWords
+  size?: ButtonSize
 }) {
-  const t = messagesFor(context.locale).admin.editor
+  const editor = messagesFor(context.locale).admin.editor
+  const t: WholeWords = words ?? {
+    entry: editor.whole,
+    wholeHint: editor.wholeHint,
+    empty: editor.wholeEmpty,
+    placeholder: messagesFor(context.locale).comment.bodyPlaceholder,
+  }
   const fetcher = useFetcher<Answer>()
   const shown = shownOf(fetcher.data, comments, (one) => one.anchor.kind === "draft")
   const open = unresolvedCount(shown)
@@ -543,15 +584,15 @@ export function WholeNote({ context, comments }: {
     <>
       <Button
         type="button"
-        size="xs"
+        size={size}
         icon={<Icon name="comment" aria-hidden="true" />}
         onClick={() => { setHeld(true) }}
       >
-        {t.whole}
+        {t.entry}
         {shown.length > 0 && <Badge tone={open > 0 ? "accent" : undefined}>{shown.length}</Badge>}
       </Button>
       <Dialog
-        title={t.whole}
+        title={t.entry}
         note={t.wholeHint}
         held={{ open: held, close: () => { setHeld(false) } }}
         dismiss={messagesFor(context.locale).comment.close}
@@ -560,8 +601,8 @@ export function WholeNote({ context, comments }: {
           context={{ ...context, subject: "draft" }}
           comments={shown}
           fetcher={fetcher}
-          placeholder={messagesFor(context.locale).comment.bodyPlaceholder}
-          empty={t.wholeEmpty}
+          placeholder={t.placeholder}
+          empty={t.empty}
         />
       </Dialog>
     </>
@@ -580,11 +621,13 @@ export function WholeNote({ context, comments }: {
  * belongs at the place it answers, and the way there stands over each row.
  * A memo line is never open: it is a note, not a question.
  */
-export function OpenComments({ context, comments, nameOf }: {
+export function OpenComments({ context, comments, nameOf, perField = false }: {
   context: CommentContext
   comments: readonly CommentView[]
   /** What to call the place a comment is about, in the screen's own words. */
   nameOf: (anchor: CommentAnchor) => string
+  /** Cut a dataset by its fields (`groupedByPlace`). */
+  perField?: boolean
 }) {
   const t = messagesFor(context.locale).admin.editor
   const fetcher = useFetcher<Answer>()
@@ -594,7 +637,7 @@ export function OpenComments({ context, comments, nameOf }: {
   const close = () => {
     setHeld(false)
   }
-  const groups = groupedByPlace(shown, nameOf)
+  const groups = groupedByPlace(shown, nameOf, perField)
 
   return (
     <>
@@ -609,7 +652,6 @@ export function OpenComments({ context, comments, nameOf }: {
       </Button>
       <Dialog
         title={t.openComments}
-        note={t.openCommentsHint}
         held={{ open: held, close }}
         dismiss={messagesFor(context.locale).comment.close}
       >
@@ -619,22 +661,47 @@ export function OpenComments({ context, comments, nameOf }: {
               <Stack as="ul" gap="block">
                 {groups.map((group) => (
                   <li key={group.key}>
-                    <Stack gap="tight">
-                      {/* **The place names the group rather than each row.**
-                          Said once over the comments it holds, it is a heading
-                          — and drawn as one, under the panel's own h2;
-                          repeated over every row it becomes part of the row and
-                          the eye stops reading it. */}
-                      <h3 className={PANE_LABEL}>{group.name}</h3>
-                      {group.comments.map((one) => (
-                        <CommentRow key={one.id} context={context} comment={one} fetcher={fetcher} />
-                      ))}
-                    </Stack>
+                    <PlaceGroup context={context} group={group} fetcher={fetcher} />
                   </li>
                 ))}
               </Stack>
             )}
       </Dialog>
     </>
+  )
+}
+
+/**
+ * One place and the open comments said about it.
+ *
+ * **The place is a box, and its name is the band on top of it.** A name set in
+ * small muted letters over a rule is weaker than the rows under it — each row
+ * begins with a person, a time and a badge — and nothing says where one place
+ * ends and the next begins. The border closes the place; the band, on the
+ * page's tint, is read before the rows are. The name is the body's size and
+ * colour, with the place's mark before it and the count after it.
+ */
+export function PlaceGroup({ context, group, fetcher }: {
+  context: CommentContext
+  group: CommentGroup
+  fetcher?: Fetcher
+}) {
+  return (
+    <section className="rounded border border-line">
+      <h3 className="flex items-center gap-2 rounded-t bg-surface px-4 py-2 font-semibold text-ink text-sm">
+        <Icon name={group.mark} aria-hidden="true" />
+        {group.name}
+        <Badge>{group.comments.length}</Badge>
+      </h3>
+      {/* The band's lower edge is where the first row's rule would be, so the
+          first row does not draw its own. */}
+      <div className="px-4 pb-3 [&>*:first-child>*:first-child]:border-t-0">
+        <Stack gap="tight">
+          {group.comments.map((one) => (
+            <CommentRow key={one.id} context={context} comment={one} fetcher={fetcher} />
+          ))}
+        </Stack>
+      </div>
+    </section>
   )
 }

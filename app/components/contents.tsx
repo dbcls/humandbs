@@ -19,12 +19,13 @@ import { messagesFor } from "~/i18n/messages"
 import type { ArticleView } from "~/public/site.server"
 
 import { usePanes } from "./admin"
-import { Badge, Button, type ButtonSize, Dialog, Heading, Stack, Stated, Chevron } from "./base"
+import { Button, type ButtonSize, Dialog, Heading, Stack, Stated, Chevron } from "./base"
 import { useDrawn } from "./draft-tools"
 import { Editing, Field, MarkdownEditor, Result, Submit, Unsaved } from "./form"
 import { Icon, type IconName } from "./icons"
 import { Markdown } from "./markdown"
 import { Card, Section } from "./page"
+import { Flag, type FlagKind } from "./flags"
 
 /**
  * What the last form did.
@@ -69,6 +70,13 @@ export function stateMark(state: NewsState): IconName {
   if (state === "published") return "eye"
   return state === "scheduled" ? "clock" : "lock"
 }
+
+/** The same states as marks on a box, where one state heads a section (`flags.tsx`). */
+const STATE_FLAG = {
+  published: "live",
+  scheduled: "scheduled",
+  unpublished: "hidden",
+} as const satisfies Record<NewsState, FlagKind>
 
 function stateWord(locale: Locale, state: NewsState): string {
   const t = messagesFor(locale).admin.contents
@@ -343,9 +351,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
         language and it is the first thing the section says.
       */}
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Badge tone={shown === "unpublished" ? "muted" : "accent"} icon={<Icon name={stateMark(shown)} />}>
-          {stateWord(locale, shown)}
-        </Badge>
+        <Flag kind={STATE_FLAG[shown]}>{stateWord(locale, shown)}</Flag>
         {editor.publishedAt !== null && (
           <span className="text-ink-muted text-xs">
             {t.publishedOn}

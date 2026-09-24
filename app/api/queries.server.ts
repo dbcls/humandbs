@@ -174,7 +174,7 @@ export async function cauByHumLabel(
     held.push({
       principalInvestigator: { ja: row.piNameJa, en: row.piNameEn },
       affiliation: { ja: row.affiliationJa, en: row.affiliationEn },
-      country: row.country,
+      country: { ja: row.countryJa, en: row.countryEn },
       researchTitle: { ja: row.researchTitleJa, en: row.researchTitleEn },
       periodStart: row.periodStart,
       periodEnd: row.periodEnd,

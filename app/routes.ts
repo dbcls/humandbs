@@ -146,9 +146,9 @@ const management = [
       { id: "admin-draft" },
     ),
     route(
-      "admin/research/:researchId/draft/:draftId/upstream",
-      "routes/admin-draft-upstream.tsx",
-      { id: "admin-draft-upstream" },
+      "admin/research/:researchId/draft/:draftId/take",
+      "routes/admin-draft-take.tsx",
+      { id: "admin-draft-take" },
     ),
     route(
       "admin/research/:researchId/draft/:draftId/publish",

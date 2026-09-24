@@ -521,3 +521,38 @@ describe("a range of days", () => {
     expect(html).not.toContain("すべて")
   })
 })
+
+describe("the fold of the refinement pane", () => {
+  const at = (address: string): string => {
+    const element = (
+      <RefinableList
+        open
+        busy={false}
+        locale="ja"
+        onToggle={() => { /* nothing to fold here */ }}
+        inForce={0}
+        refine={<p>条件</p>}
+        refineHasMore={false}
+        tools={<p>並び替え</p>}
+        panel={null}
+      >
+        <p>hum0001</p>
+      </RefinableList>
+    )
+    const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
+    return renderToStaticMarkup(<Stub initialEntries={[address]} />)
+  }
+  const fold = (html: string): string => /<button[^>]*aria-expanded="true"[^>]*>/.exec(html)?.[0] ?? ""
+
+  it("wears the bordered face in the management area, where no bare word is pressed", () => {
+    expect(fold(at("/admin/research"))).toMatch(/\bborder\b/)
+    expect(fold(at("/admin"))).toMatch(/\bborder\b/)
+  })
+
+  it("keeps the bare word on a public listing", () => {
+    expect(fold(at("/research"))).not.toMatch(/\bborder\b/)
+    expect(fold(at("/en/research"))).not.toMatch(/\bborder\b/)
+    // An address that only begins with the same letters is not the management area.
+    expect(fold(at("/administration"))).not.toMatch(/\bborder\b/)
+  })
+})

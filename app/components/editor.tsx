@@ -19,25 +19,24 @@
  * always where the field is.
  */
 
-import { useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode } from "react"
 
+import { describeAt } from "~/admin/changes"
 import { diffDraftInput, takeField } from "~/admin/diff"
 import type {
   DataProviderInput,
   DraftInput,
-  LinkInput,
   LinksPairInput,
   SlotState,
   TextInput,
   ResearchContentInput,
 } from "~/admin/form"
 import type { AdminDraftPageView } from "~/admin/pages.server"
-import type { ResearchDatasetRow } from "~/admin/queries.server"
 import {
   adminDraftDatasetsPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
-  adminDraftUpstreamPath,
+  adminDraftTakePath,
   adminResearchPath,
   draftCommentsPath,
   draftPagePath,
@@ -45,7 +44,7 @@ import {
 import type { CommentAnchor } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
+import { AnnotationLayer, Card, Page, PageHead } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import {
@@ -55,17 +54,20 @@ import {
 } from "~/review/comments"
 
 import { usePanes, WayTo } from "./admin"
-import { Badge, Button, IconButton, Stack } from "./base"
+import { Badge, Stack } from "./base"
 import { DraftHead, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote, OpenComments, WholeNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { ResearchBody, ResearchListTable } from "./research"
+import { CitableTable, datasetName, GrantIds, IdList, LinksField, researchFieldLabel } from "./research-fields"
 import {
   ConflictBand,
   emptyLinksPair,
   emptyPair,
   emptySlot,
+  FieldFlags,
   FieldHead,
+  isUntranslated,
   type ItemColumn,
   ItemList,
   LanguageMark,
@@ -74,10 +76,8 @@ import {
   PairField,
   Section,
   SingleField,
-  StateSwitch,
-  PublishedBand,
 } from "./fields"
-import { CONTROL, landOn } from "./form"
+import { landAt } from "./form"
 import { Icon } from "./icons"
 
 /**
@@ -111,6 +111,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     comments: commentsByPath(view.review.comments, RESEARCH),
     changed: view.review.changed,
     previous: view.review.previous,
+    // Read when a mark opens, by which time the editing state below exists.
+    current: (at) => describeAt(editing.value.content, at),
     heading: view.review.publishedNumber === null
       ? ""
       : messagesFor(locale).preview.previousIn(view.review.publishedNumber),
@@ -119,7 +121,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const editing = useDraftEditing<DraftInput>({
     initial: view.input,
     revision: view.revision,
-    upstream: view.upstream,
     diff: diffDraftInput,
     take: takeField,
     body: (value) => ({ content: value.content }),
@@ -128,7 +129,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const input = editing.value
   const content = input.content
   const marksFor = editing.marksFor
-  const upstream = editing.upstream
 
   function editContent(produce: (held: ResearchContentInput) => ResearchContentInput): void {
     editing.edit({ ...input, content: produce(content) })
@@ -141,44 +141,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
    * the same one the field itself is written at (`fields.tsx` の `Marks`).
    */
   function fieldLabelFor(path: string): string | undefined {
-    const [head, ...rest] = path.split(".")
-    const tail = rest.join(".")
-    switch (head) {
-      case "title": return words.title
-      case "releaseNote": return words.releaseNote
-      case "summary":
-        if (tail === "aims") return words.aims
-        if (tail === "methods") return words.methods
-        if (tail === "targets") return words.targets
-        if (tail === "url") return words.url
-        return words.overview
-      case "dataProviders":
-        if (tail.endsWith("organization.name")) return words.organization
-        if (tail.endsWith(".name")) return words.principalInvestigator
-        return words.dataProvider
-      case "researchProjects":
-        if (tail.endsWith(".name")) return words.researchProjectName
-        if (tail.endsWith(".url")) return words.url
-        return words.researchProjects
-      case "grants":
-        if (tail.endsWith(".title")) return words.grantTitle
-        if (tail.endsWith("agency.name")) return words.grantAgency
-        if (tail.endsWith("grantIds")) return t.grantIds
-        return words.grants
-      case "relatedPublications":
-        if (tail.endsWith(".title")) return words.publicationTitle
-        if (tail.endsWith(".doi")) return t.doi
-        if (tail.endsWith("datasetIds")) return t.citedDatasets
-        return words.relatedPublications
-      case "listingSummary":
-        if (tail === "methods") return words.listingSummary.methods
-        if (tail === "targets") return words.listingSummary.targets
-        if (tail === "typeOfData") return words.listingSummary.typeOfData
-        if (tail === "dataProviders" || tail.endsWith(".name")) return words.listingSummary.dataProviders
-        return t.paneRow
-      default:
-        return undefined
-    }
+    return researchFieldLabel(path, locale)
   }
 
   const body = JSON.stringify({ revision: view.revision, content })
@@ -197,6 +160,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
    * announce itself.
    */
   const [at, setAt] = useState<string | null>(null)
+  /** The form, when a pane shows it: the only place a jump may land (`landAt`). */
+  const form = useRef<HTMLDivElement>(null)
   function onFormFocus(event: React.FocusEvent): void {
     const target = event.target
     if (!(target instanceof Element)) return
@@ -204,14 +169,13 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     if (found !== undefined && found !== null) setAt(found)
   }
 
-  /** Going to the place a band or the page pane names (`form.tsx` の `landOn`). */
+  /**
+   * Going to the place a band or the page pane names (`form.tsx` の `landAt`):
+   * the field when it stands open on the form, the element's row when the field
+   * is written in a panel that is not open (`ItemList`), else the section.
+   */
   function goTo(path: string): void {
-    // The field itself when it stands open on the form; the section holding it
-    // when it is written inside a panel that is not open (`ItemList`).
-    const field = document.querySelector<HTMLElement>(`[data-at="${CSS.escape(path)}"]`)
-    const target = field ?? document.getElementById(sectionOf(path))
-    if (target === null) return
-    landOn(target, field === null ? "start" : "center")
+    landAt(form.current, path, sectionOf(path))
   }
 
   /**
@@ -253,36 +217,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     goTo(path)
   }
 
-  // **The take-in's list is the band's**, since it shrinks as fields are
-  // taken; the dataset list is decided on its own screen, so its place is the
-  // way there — and it is added from the review's reading only when the
-  // take-in does not already carry it.
-  const comparedNumber = upstream?.number ?? view.review.publishedNumber
-  const differing = upstream?.differing ?? []
-  const differingPlaces = [
-    ...differing,
-    ...(view.review.changed.includes("datasetIds") && !differing.includes("datasetIds") ? ["datasetIds"] : []),
-  ].map((path) => (
-    path === "datasetIds"
-      ? { path, to: href(locale, adminDraftDatasetsPath(view.researchId, view.draftId)) }
-      : { path, go: () => { goTo(path) } }
-  ))
-
   const formBody = (
-    <div onFocusCapture={onFormFocus}>
+    <div ref={form} onFocusCapture={onFormFocus}>
       <Card under={false}>
         <Stack>
-          {/* **The version's differences, once**, over the form. */}
-          {differingPlaces.length > 0 && comparedNumber !== null && (
-            <PublishedBand
-              locale={locale}
-              number={comparedNumber}
-              places={differingPlaces}
-              takeCount={differing.length}
-              onTakeAll={editing.takeUpstream}
-            />
-          )}
-
           {editing.conflict !== null && (
             <div onClick={onBandJump}>
               <ConflictBand locale={locale} changed={editing.conflict.changed} />
@@ -291,7 +229,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
           <Stack gap="block">
             <Stack gap="block">
-              <Section id="title" title={words.title}>
+              <Section
+                id="title"
+                title={words.title}
+                flags={<FieldFlags marks={marksFor("title")} locale={locale} untranslated={isUntranslated(content.title)} />}
+              >
                 <PairField
                   value={content.title}
                   marks={marksFor("title")}
@@ -300,7 +242,12 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 />
               </Section>
 
-              <Section id="releaseNote" title={words.releaseNote} accepts={messages.admin.accepts.prose}>
+              <Section
+                id="releaseNote"
+                title={words.releaseNote}
+                accepts={messages.admin.accepts.prose}
+                flags={<FieldFlags marks={marksFor("releaseNote")} locale={locale} untranslated={isUntranslated(content.releaseNote)} />}
+              >
                 <PairField
                   value={content.releaseNote}
                   multiline
@@ -476,16 +423,21 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 title: emptySlot(),
                 doi: emptySlot(),
                 datasetIds: [],
+                externalIds: [],
               })}
               summary={(item) => item.title.text}
+              wide
               columns={[
                 { header: words.publicationTitle, cell: (item) => slotCell(item.title, t.stateChoice) },
                 { header: t.doi, cell: (item) => <span className="break-all">{slotCell(item.doi, t.stateChoice)}</span> },
-                { header: words.dataInUse, cell: (item) => (
+                { header: messages.dataset.datasetId, cell: (item) => (
                   <ul className="flex flex-col gap-1">
                     {view.datasets
                       .filter((row) => item.datasetIds.includes(row.id))
                       .map((row) => <li key={row.id}>{datasetName(row, locale)}</li>)}
+                    {item.externalIds
+                      .filter((id) => id.trim() !== "")
+                      .map((id) => <li key={`external-${id}`}>{id}</li>)}
                   </ul>
                 ) },
               ]}
@@ -497,6 +449,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     value={item.title}
                     marks={marksFor(`${path}.title`)}
                     locale={locale}
+                    wide
                     onChange={(title) => { set({ ...item, title }) }}
                   />
                   <SingleField
@@ -504,21 +457,37 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     value={item.doi}
                     marks={marksFor(`${path}.doi`)}
                     locale={locale}
+                    wide
+                    hint={t.doiHint}
                     onChange={(doi) => { set({ ...item, doi }) }}
                   />
                   <Stack gap="tight">
                     <FieldHead
-                      label={t.citedDatasets}
+                      label={messages.dataset.datasetId}
                       marks={marksFor(`${path}.datasetIds`)}
                       locale={locale}
                     />
-                    <DatasetChecklist
+                    <CitableTable
                       locale={locale}
-                      datasets={view.datasets}
+                      datasets={view.citable}
                       selected={item.datasetIds}
                       onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
                     />
                   </Stack>
+                  {/* The column on the page is one place for both, so this
+                      list answers to the same path; the marks stand once,
+                      with the table above. */}
+                  <IdList
+                    label={t.externalIds}
+                    itemLabel={t.externalIds}
+                    addLabel={t.addExternalId}
+                    hint={t.externalIdsHint}
+                    placeholder={t.externalIdPlaceholder}
+                    locale={locale}
+                    value={item.externalIds}
+                    marks={{ at: `${path}.datasetIds`, changed: false, onTake: null }}
+                    onChange={(externalIds) => { set({ ...item, externalIds }) }}
+                  />
                 </>
               )}
             </RepeatingSection>
@@ -607,7 +576,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 **Where the caret is** is the page's to show too, on the value
                 itself (`page.tsx` の `Place`).
               */
-              annotate={(anchor, part) => <FieldReview review={review} at={anchor} part={part} fieldLabel={fieldLabelFor(anchor)} />}
+              annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
               here={at}
               onGo={goTo}
               goLabel={t.goToField}
@@ -736,8 +705,8 @@ function DraftOverview({ locale, researchId, draftId }: {
   const admin = messagesFor(locale).admin
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <WayTo to={href(locale, adminDraftUpstreamPath(researchId, draftId))} icon="download">
-        {admin.templates.openApplication}
+      <WayTo to={href(locale, adminDraftTakePath(researchId, draftId))} icon="download">
+        {admin.take.open}
       </WayTo>
       <WayTo to={href(locale, adminDraftDatasetsPath(researchId, draftId))} icon="database">
         {admin.draft.datasets}
@@ -792,6 +761,7 @@ function RepeatingSection<T extends { id: string }>({
   makeEmpty,
   summary,
   columns,
+  wide = false,
   children,
 }: {
   id: string
@@ -806,14 +776,15 @@ function RepeatingSection<T extends { id: string }>({
   summary: (item: T) => string
   /** The table's columns — the public page's for the same list (`fields.tsx` の `ItemList`). */
   columns: ItemColumn<T>[]
+  /** Whether an element's panel holds a table (`ItemList` の `wide`). */
+  wide?: boolean
   /** One element's own fields, given the path it is addressed by and its setter. */
   children: (item: T, path: string, set: (next: T) => void) => ReactNode
 }) {
   return (
-    <Section id={id} title={title}>
-      {/* The list is the section's one field, so the heading is its name; the
-          line under it holds only what the review says about the list. */}
-      <FieldHead marks={marksFor(id)} locale={locale} />
+    // The list is the section's one field, so the heading is its name and
+    // carries what the review says about the list.
+    <Section id={id} title={title} flags={<FieldFlags marks={marksFor(id)} locale={locale} />}>
       <ItemList
         path={id}
         locale={locale}
@@ -823,155 +794,11 @@ function RepeatingSection<T extends { id: string }>({
         columns={columns}
         onChange={onChange}
         makeEmpty={makeEmpty}
+        wide={wide}
       >
         {children}
       </ItemList>
     </Section>
-  )
-}
-
-/**
- * A URL pair. The two languages are different resources rather than two
- * renderings of one, so nothing here is ever untranslated.
- *
- * **The two languages stand one above the other, as every pair does**
- * (`docs/ui.md` の「1 つの値の 2 つの言語は上下に積む」): side by side, each
- * link's address and text had half a panel's width between them and the pair
- * read as two columns of a table rather than as one value written twice.
- */
-function LinksField({ label, value, marks, locale, onChange }: {
-  label: string
-  value: LinksPairInput
-  marks: Marks
-  locale: Locale
-  onChange: (next: LinksPairInput) => void
-}) {
-  const t = messagesFor(locale).admin.editor
-
-  return (
-    <Stack gap="tight" at={marks.at}>
-      <FieldHead label={label} marks={marks} locale={locale} />
-      <div className="flex flex-col gap-2">
-        {(["ja", "en"] as const).map((language) => {
-          const side = value[language]
-          const setLinks = (links: LinkInput[]) => {
-            onChange({ ...value, [language]: { ...side, links } })
-          }
-          return (
-            <Stack key={language} gap="tight">
-              <div className="flex items-center justify-between gap-2">
-                <LanguageMark language={language} />
-                <StateSwitch
-                  state={side.state}
-                  onChange={(state) => { onChange({ ...value, [language]: { ...side, state } }) }}
-                  locale={locale}
-                />
-              </div>
-              {side.links.map((link, at) => (
-                <div key={link.id} className="flex flex-wrap items-center gap-1">
-                  <input
-                    type="text"
-                    aria-label={t.url}
-                    placeholder={t.url}
-                    className={`${CONTROL} min-w-40 flex-1 text-sm`}
-                    disabled={side.state !== "value"}
-                    value={link.url}
-                    onChange={(event) => {
-                      setLinks(side.links.map((row, index) =>
-                        index === at ? { ...row, url: event.target.value } : row))
-                    }}
-                  />
-                  <input
-                    type="text"
-                    aria-label={t.linkText}
-                    placeholder={t.linkText}
-                    className={`${CONTROL} min-w-32 flex-1 text-sm`}
-                    disabled={side.state !== "value"}
-                    value={link.text}
-                    onChange={(event) => {
-                      setLinks(side.links.map((row, index) =>
-                        index === at ? { ...row, text: event.target.value } : row))
-                    }}
-                  />
-                  <IconButton
-                    name="trash"
-                    label={t.remove}
-                    onClick={() => { setLinks(side.links.filter((_, index) => index !== at)) }}
-                  />
-                </div>
-              ))}
-              <div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  icon={<Icon name="plus" aria-hidden="true" />}
-                  disabled={side.state !== "value"}
-                  onClick={() => { setLinks([...side.links, { id: newId(), url: "", text: "" }]) }}
-                >
-                  {t.addLink}
-                </Button>
-              </div>
-            </Stack>
-          )
-        })}
-      </div>
-    </Stack>
-  )
-}
-
-/**
- * The numbers a grant is known by.
- *
- * They are plain strings with no identity of their own, so a row is addressed by
- * where it stands — which is also why the whole list is one path to the diff and
- * carries one mark rather than one per number.
- */
-function GrantIds({ locale, value, marks, onChange }: {
-  locale: Locale
-  value: string[]
-  marks: Marks
-  onChange: (next: string[]) => void
-}) {
-  const t = messagesFor(locale).admin.editor
-
-  return (
-    <Stack gap="tight" at={marks.at}>
-      <FieldHead label={t.grantIds} marks={marks} locale={locale} />
-      <div className="md:max-w-md">
-        <Stack gap="tight">
-          {value.map((grantId, at) => (
-            <div key={at} className="flex items-center gap-1">
-              <input
-                type="text"
-                aria-label={t.grantIds}
-                className={`${CONTROL} flex-1 text-sm`}
-                value={grantId}
-                onChange={(event) => {
-                  onChange(value.map((row, index) => index === at ? event.target.value : row))
-                }}
-              />
-              <IconButton
-                name="trash"
-                label={t.remove}
-                onClick={() => { onChange(value.filter((_, index) => index !== at)) }}
-              />
-            </div>
-          ))}
-          <div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="xs"
-              icon={<Icon name="plus" aria-hidden="true" />}
-              onClick={() => { onChange([...value, ""]) }}
-            >
-              {t.addGrantId}
-            </Button>
-          </div>
-        </Stack>
-      </div>
-    </Stack>
   )
 }
 
@@ -1017,42 +844,6 @@ function LinkLines({ links }: { links: LinksPairInput }) {
   return (
     <ul className="flex flex-col gap-1 break-all">
       {shown.map((link) => <li key={link.id}>{link.text !== "" ? link.text : link.url}</li>)}
-    </ul>
-  )
-}
-
-function datasetName(row: ResearchDatasetRow, locale: Locale): string {
-  return row.label ?? messagesFor(locale).admin.editor.unpinnedDataset
-}
-
-/** Which datasets a publication covers. A set, so there is no order to keep. */
-function DatasetChecklist({ locale, datasets, selected, onChange }: {
-  locale: Locale
-  datasets: ResearchDatasetRow[]
-  selected: string[]
-  onChange: (next: string[]) => void
-}) {
-  const t = messagesFor(locale).admin.editor
-  if (datasets.length === 0) return <Empty>{t.noDatasets}</Empty>
-
-  return (
-    <ul className="flex flex-wrap gap-3 text-sm">
-      {datasets.map((row) => (
-        <li key={row.id}>
-          <label className="flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={selected.includes(row.id)}
-              onChange={(event) => {
-                onChange(event.target.checked
-                  ? [...selected, row.id]
-                  : selected.filter((id) => id !== row.id))
-              }}
-            />
-            {datasetName(row, locale)}
-          </label>
-        </li>
-      ))}
     </ul>
   )
 }

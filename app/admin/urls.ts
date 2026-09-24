@@ -79,8 +79,9 @@ export function adminDraftPath(researchId: string, draftId: string): string {
   return `${adminResearchPath(researchId)}/draft/${draftId}`
 }
 
-export function adminDraftUpstreamPath(researchId: string, draftId: string): string {
-  return `${adminDraftPath(researchId, draftId)}/upstream`
+/** Where a source is chosen and taken into the draft (docs/editing.md の「取り込み」). */
+export function adminDraftTakePath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/take`
 }
 
 export function adminDraftDatasetsPath(researchId: string, draftId: string): string {

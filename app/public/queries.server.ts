@@ -205,6 +205,52 @@ export async function publishedDatasetLabels(
 }
 
 /**
+ * What the portal's ledger says of the datasets a research's publications
+ * cite: the one chosen by identity and the one typed as an ID. **Only a
+ * published dataset answers** — a pinned ID whose dataset is not out yet would
+ * otherwise tell a reader of this page that a research exists before it is
+ * published — so an ID the ledger does not hold, or holds for nothing public,
+ * is drawn as it was written.
+ *
+ * `labelById` names each cited identity by its primary ID; `humByLabel` says,
+ * for every ID either way (as typed, and as the primary ID), the research the
+ * dataset belongs to.
+ */
+export async function citedDatasets(
+  db: Executor,
+  ids: readonly string[],
+  typed: readonly string[],
+): Promise<{ labelById: Map<string, string>, humByLabel: Map<string, string> }> {
+  const labelById = new Map<string, string>()
+  const humByLabel = new Map<string, string>()
+  const [byId, byLabel] = await Promise.all([
+    ids.length === 0
+      ? []
+      : db
+          .select({ datasetId: searchDoc.targetId, label: searchDoc.datasetLabel, humLabel: searchDoc.humLabel })
+          .from(searchDoc)
+          .where(and(eq(searchDoc.targetType, "dataset"), inArray(searchDoc.targetId, [...ids]))),
+    typed.length === 0
+      ? []
+      : db
+          .select({ typed: labelPin.label, label: searchDoc.datasetLabel, humLabel: searchDoc.humLabel })
+          .from(labelPin)
+          .innerJoin(searchDoc, and(eq(searchDoc.targetType, "dataset"), eq(searchDoc.targetId, labelPin.datasetId)))
+          .where(and(eq(labelPin.kind, "dataset"), inArray(labelPin.label, [...typed]))),
+  ])
+  for (const row of byId) {
+    if (row.label === null) continue
+    labelById.set(row.datasetId, row.label)
+    humByLabel.set(row.label, row.humLabel)
+  }
+  for (const row of byLabel) {
+    humByLabel.set(row.typed, row.humLabel)
+    if (row.label !== null) humByLabel.set(row.label, row.humLabel)
+  }
+  return { labelById, humByLabel }
+}
+
+/**
  * The usage records of one research, in the order upstream's project numbering
  * puts them. `applicationId` orders the rows and never leaves this function:
  * the column exists to match a cached row to upstream, and the pages and the
@@ -220,7 +266,7 @@ export async function controlledAccessUsers(db: Executor, humLabel: string): Pro
   return rows.map((row) => ({
     principalInvestigator: { ja: row.piNameJa, en: row.piNameEn },
     affiliation: { ja: row.affiliationJa, en: row.affiliationEn },
-    country: row.country,
+    country: { ja: row.countryJa, en: row.countryEn },
     researchTitle: { ja: row.researchTitleJa, en: row.researchTitleEn },
     periodStart: row.periodStart,
     periodEnd: row.periodEnd,

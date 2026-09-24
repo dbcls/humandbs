@@ -50,6 +50,16 @@ const DATA_SUFFIX = ".data"
 export const ADMIN_ROOT = "/admin"
 
 /**
+ * The path a request asked for, without the `.data` a client navigation
+ * appends. **Anything that sends the reader back to where they were builds from
+ * this, not from `request.url`** — a redirect to `<path>.data` is followed as a
+ * page, and no route answers it.
+ */
+export function askedPath(pathname: string): string {
+  return pathname.endsWith(DATA_SUFFIX) ? pathname.slice(0, -DATA_SUFFIX.length) : pathname
+}
+
+/**
  * The language an address is written in, and the address with the prefix taken
  * off.
  *
@@ -64,9 +74,7 @@ export const ADMIN_ROOT = "/admin"
  * remember.
  */
 export function readLocale(pathname: string): ReadLocale {
-  const asked = pathname.endsWith(DATA_SUFFIX)
-    ? pathname.slice(0, -DATA_SUFFIX.length)
-    : pathname
+  const asked = askedPath(pathname)
   const [, head = "", ...rest] = asked.split("/")
   if (!isLocale(head)) return { locale: DEFAULT_LOCALE, path: asked, redundantPrefix: false }
   return {

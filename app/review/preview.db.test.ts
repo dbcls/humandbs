@@ -535,14 +535,35 @@ describe("writing from a share link", () => {
   it("records which of the two marks a reader left, under their name", async () => {
     const { draftId, token } = await sharedDraft()
 
-    await previewAction(post({ intent: "acknowledge", kind: "commented", name: "提供者" }), token, RESEARCH)
-    await previewAction(post({ intent: "acknowledge", kind: "approved", name: "提供者" }), token, RESEARCH)
+    // Answered on the same page rather than sent back: the page does not change
+    // when a mark is pressed, and the answer is what says it arrived.
+    expect(await previewAction(post({ intent: "acknowledge", kind: "commented", name: "提供者" }), token, RESEARCH))
+      .toEqual({ status: "acknowledged", kind: "commented" })
+    expect(await previewAction(post({ intent: "acknowledge", kind: "approved", name: "提供者" }), token, RESEARCH))
+      .toEqual({ status: "acknowledged", kind: "approved" })
 
     const rows = await db
       .select({ kind: s.reviewAcknowledgement.kind, name: s.reviewAcknowledgement.actorName })
       .from(s.reviewAcknowledgement)
       .where(eq(s.reviewAcknowledgement.draftId, draftId))
     expect(rows).toEqual([{ kind: "commented", name: "提供者" }, { kind: "approved", name: "提供者" }])
+  })
+
+  it("sends a post made from the page back to the page, not to the address the router fetched", async () => {
+    const { token } = await sharedDraft()
+    const form = new FormData()
+    for (const [name, value] of Object.entries({ intent: "comment", path: "summary.aims", at: "summary.aims", name: "提供者", body: "text" })) {
+      form.set(name, value)
+    }
+
+    const outcome = await previewAction(
+      new Request(`http://localhost/en/preview/${token}.data`, { method: "POST", body: form }),
+      token,
+      RESEARCH,
+    )
+
+    expect(outcome).toBeInstanceOf(Response)
+    expect((outcome as Response).headers.get("location")).toBe(`/en/preview/${token}#summary.aims`)
   })
 
   it("refuses a mark of a kind it does not know, and writes nothing", async () => {
