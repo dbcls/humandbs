@@ -20,10 +20,15 @@
  * - a curator's question written into a draft's value becomes an unsettled
  *   value with the question as a comment on it (`requests.ts`);
  * - links whose destination has gone follow a hand-made table to where it went,
- *   or are taken off (`links.ts`);
+ *   or are taken off (`links.ts`), and a value that is only `NA` becomes
+ *   not-applicable (`not-applicable.ts`);
  * - the datasets v1 named after their research are given NHA ids, keeping the
  *   old names as secondary labels (`nha.ts`), and start with the files their
  *   old pages and names pointed at selected.
+ *
+ * The research and datasets it makes take identities derived from their
+ * labels (`identity.ts`), so loading again gives back the same ones and the
+ * private files keyed by them stay where they are.
  *
  * Run once against an empty database. What no rule could settle is written to
  * `input/l12/out/` for somebody to work through on the loaded data.
@@ -68,6 +73,8 @@ import {
 } from "./build"
 import { ACCESS_CRITERIA_KEY, contentKeySeeds, TYPE_OF_DATA_KEY } from "./catalog"
 import { applyCellEdits, type CellEdit } from "./cell-edits"
+import { datasetIdentity, researchIdentity } from "./identity"
+import { markNotApplicable } from "./not-applicable"
 import {
   applyKeyFixes,
   CATALOG_MERGES,
@@ -97,7 +104,7 @@ import {
   readByHand,
   seedCatalog,
 } from "./load"
-import { byHand } from "./numbers"
+import { byHand, type ReadByHand } from "./numbers"
 import {
   applyKeyRules,
   dropResearch,
@@ -163,12 +170,13 @@ interface KeyMap {
 }
 
 /**
- * The reviewed decisions on v1's keys. Two were left to the owner and settled:
- * the institute that did the genotyping joins the analysis methods under its
- * own name, and a template placeholder with no data is dropped.
+ * The two keys the reviewed table left open. The institute that did the
+ * genotyping joins the analysis methods, its one value reworded into a sentence
+ * that says what the institute did (`hand/cell-edits.json`); a template
+ * placeholder with no data is dropped.
  */
 const SETTLED: Record<string, KeyRule> = {
-  "遺伝子型決定機関": { action: "merge-into", to: "Analysis Methods", labelled: true },
+  "遺伝子型決定機関": { action: "merge-into", to: "Analysis Methods" },
   "Transcriptome Shotgun Assembly ID": { action: "drop" },
 }
 
@@ -480,10 +488,13 @@ async function load() {
   const cms = siteContent()
   const moved = relinks()
   const followed = new Set<string>()
+  let notApplicable = 0
   const linked = <T>(content: T): T => {
     const result = relink(content, moved)
     for (const url of result.used) followed.add(url)
-    return result.content
+    const marked = markNotApplicable(result.content)
+    notApplicable += marked.marked
+    return marked.content
   }
   const db = getOwnerDb()
 
@@ -504,7 +515,7 @@ async function load() {
     const researchIdByHum = await insertReturning(
       humIds,
       (hum) => hum,
-      (chunk) => tx.insert(research).values(chunk.map(() => ({}))).returning({ id: research.id }),
+      (chunk) => tx.insert(research).values(chunk.map((hum) => ({ id: researchIdentity(hum) }))).returning({ id: research.id }),
     )
     await insertChunked(humIds, (chunk) => tx.insert(labelPin).values(chunk.map((hum) => ({
       kind: "hum" as const,
@@ -533,6 +544,7 @@ async function load() {
       (chunk) => tx
         .insert(dataset)
         .values(chunk.map((label) => ({
+          id: datasetIdentity(label),
           researchId: identityOf(researchIdByHum, humOfLabel.get(label) ?? "", "research"),
         })))
         .returning({ id: dataset.id }),
@@ -562,7 +574,11 @@ async function load() {
     await insertChunked(pins, (chunk) => tx.insert(labelPin).values(chunk.map((pin) => ({ kind: "dataset" as const, ...pin }))))
 
     const unread: { dataset: string, sourceKey: string, line: string }[] = []
-    const hand = byHand(readByHand())
+    // The shared readings, and the lines read for this load (`hand/read-by-hand.json`).
+    const hand = byHand([
+      ...readByHand(),
+      ...(existsSync(join(INPUT, "hand", "read-by-hand.json")) ? readJson("hand", "read-by-hand.json") as ReadByHand[] : []),
+    ])
     const datasetLabels = new Set(labels)
     const selected = fileSeed()
     const describe = (one: PublishedDataset, siblings: ReadonlySet<string>): DatasetContent => ({
@@ -706,10 +722,10 @@ async function load() {
   })
 
   const unfollowed = [...moved.keys()].filter((url) => !followed.has(url))
-  return { counts, selection, drafts, review, prose, relinked: { followed: followed.size, unfollowed } }
+  return { counts, selection, drafts, review, prose, notApplicable, relinked: { followed: followed.size, unfollowed } }
 }
 
-const { counts, selection, drafts, review, prose, relinked } = await load()
+const { counts, selection, drafts, review, prose, notApplicable, relinked } = await load()
 
 mkdirSync(OUT, { recursive: true })
 const written = (name: string, value: unknown) => {
@@ -733,6 +749,7 @@ console.log("prose read from    ", prose.counts)
 console.log("unread number lines", counts.unread.length, written("unread-numbers.json", counts.unread))
 console.log("cells to divide    ", review.length, written("inversion-review.json", review))
 console.log("prose notes        ", prose.notes.length, written("prose-notes.json", prose.notes))
+console.log("NA made not-applicable", notApplicable)
 console.log("dead links followed", relinked.followed, "not found in content", relinked.unfollowed.length,
   written("relinks-not-found.json", relinked.unfollowed))
 if (counts.claimedTwice.length > 0) console.log("claimed twice:", written("claimed-twice.json", counts.claimedTwice))

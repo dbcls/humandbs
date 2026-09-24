@@ -16,11 +16,22 @@ const experiment = (data: NonNullable<EsExperiment["data"]>): EsExperiment => ({
 const text = (e: EsExperiment, key: string, lang: "ja" | "en" = "ja") => e.data?.[key]?.[lang]?.text
 
 describe("merging keys with headings", () => {
-  it("puts each language's own heading in front of the value it moves", () => {
+  it("puts each language's own heading in front of a protocol step it moves into the sample processing", () => {
     const e = experiment({ Blocking: cell("正常ヤギ血清", "Normal goat serum") })
     applyKeyRules(e, CATALOG_MERGES)
 
     expect(e.data).toEqual({ "Sample Preparation": cell("ブロッキング: 正常ヤギ血清", "Blocking: Normal goat serum") })
+  })
+
+  it("moves a step of the analysis without a heading", () => {
+    const e = experiment({ "MAG Construction": cell("MetaBAT2"), "Analysis Methods": cell("fastp") })
+    applyKeyRules(e, CATALOG_MERGES)
+
+    expect(e.data).toEqual({ "Analysis Methods": cell("fastp\nMetaBAT2") })
+  })
+
+  it("leaves the keys whose values need their own name", () => {
+    for (const key of ["Participant Attributes", "Experiment Variables"]) expect(CATALOG_MERGES.has(key)).toBe(false)
   })
 
   it("adds a moved line after what the key holds, and not a line it already holds", () => {
@@ -109,6 +120,13 @@ describe("applyKeyFixes", () => {
     applyKeyFixes("hum0238", e, [{ hum: "hum0238", from: "Histological Staining", to: "Analysis Methods", labelJa: "HHV-6配列構築方法", labelEn: "HHV-6 sequence construction" }])
 
     expect(e.data).toEqual({ "Analysis Methods": cell("HHV-6配列構築方法: BWA-MEM で HHV-6 リードを整列", "HHV-6 sequence construction: aligned with BWA-MEM") })
+  })
+
+  it("does not repeat a line the key it moves to already holds", () => {
+    const e = experiment({ "Measurement Conditions": cell("Nightingale"), "Analysis Methods": cell("Nightingale") })
+    applyKeyFixes("hum0311", e, [{ hum: "hum0311", from: "Measurement Conditions", to: "Analysis Methods" }])
+
+    expect(e.data).toEqual({ "Analysis Methods": cell("Nightingale") })
   })
 
   it("touches only the research named, and only a value that matches", () => {

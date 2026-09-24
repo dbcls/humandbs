@@ -5,9 +5,14 @@
  * v1 folded 208 table headings into keys and then grew more by hand, so the
  * catalog it left names one step of a pipeline in six places and several steps
  * that only one research ever wrote. Here each question gets one key: a step
- * only a few research describe joins the nearest key as a line with its own
- * heading (`固定化: 10%ホルマリン`), and a key whose name says something other
- * than its values is renamed. Accessions stay one key per archive — each has its
+ * only a few research describe joins the nearest key, and a key whose name says
+ * something other than its values is renamed.
+ *
+ * **A merge keeps no heading, save in the sample processing.** Merging accepts
+ * that the step's name is lost; a key whose values cannot be read without it is
+ * not merged at all. The sample processing is a protocol whose steps are its
+ * content — fixing, retrieval, blocking, the antibodies — so there each line
+ * keeps the name of its step (`固定化: 10%ホルマリン`). Accessions stay one key per archive — each has its
  * own identifiers and its own destination.
  *
  * The keys are the v1 keys as written in the dump, so the rules here name them
@@ -54,20 +59,18 @@ export const CATALOG_MERGES: ReadonlyMap<string, KeyRule> = new Map<string, KeyR
   ["Chromogen", into(SAMPLE_PROCESSING, "発色試薬", "Chromogen")],
   ["Washing", into(SAMPLE_PROCESSING, "洗浄", "Washing")],
   ["Histological Staining", into(SAMPLE_PROCESSING, "組織染色", "Histological staining")],
-  // Steps of the analysis that one to three research wrote under a key of their own.
-  ["Host Read Removal", into(ANALYSIS, "宿主リード除去", "Host read removal")],
-  ["Genome Sequence Construction", into(ANALYSIS, "ゲノム配列構築", "Genome sequence construction")],
-  ["MAG Construction", into(ANALYSIS, "MAG構築", "MAG construction")],
-  ["CRISPR Construction", into(ANALYSIS, "CRISPR構築", "CRISPR construction")],
-  ["Virus Genome Construction", into(ANALYSIS, "ウイルスゲノム構築", "Virus genome construction")],
-  ["Protein Identification", into(ANALYSIS, "タンパク質同定", "Protein identification")],
-  ["Bacteria Identification", into(ANALYSIS, "細菌同定", "Bacteria identification")],
-  ["TCR Repertoire Analysis Methods (Software)", into(ANALYSIS, "TCRレパトア解析", "TCR repertoire analysis")],
-  // What the participants are described by, and what the samples differ in.
-  ["Participant Attributes", into("Materials and Participants", "表現型データの項目", "Phenotype items")],
-  ["Experiment Variables", into("Sample Description", "比較の軸", "Compared by")],
+  // Steps of the analysis that one to three research wrote under a key of their
+  // own; the values name the software, which reads without the step's name.
+  ["Host Read Removal", into(ANALYSIS)],
+  ["Genome Sequence Construction", into(ANALYSIS)],
+  ["MAG Construction", into(ANALYSIS)],
+  ["CRISPR Construction", into(ANALYSIS)],
+  ["Virus Genome Construction", into(ANALYSIS)],
+  ["Protein Identification", into(ANALYSIS)],
+  ["Bacteria Identification", into(ANALYSIS)],
+  ["TCR Repertoire Analysis Methods (Software)", into(ANALYSIS)],
   // A correction between plates is a normalisation.
-  ["Validation", into("Normalization", "プレート間補正", "Between-plate correction")],
+  ["Validation", into("Normalization")],
   // Counts of another kind of variant or feature, told apart by the unit.
   ["Mobile Element Number", into("Variant Number")],
   ["Marker Number after Filtering", into("Variant Number")],
@@ -123,7 +126,11 @@ export function applyKeyFixes(humId: string, experiment: EsExperiment, fixes: re
     const ja = heading(value.ja?.text ?? "", fix.labelJa)
     const en = heading(value.en?.text ?? "", fix.labelEn)
     const held = rest[fix.to]
-    const join = (a: string, b: string) => [a, b].filter((one) => one !== "").join("\n")
+    // A line the key already holds is not said twice.
+    const join = (a: string, b: string) => {
+      const lines = a === "" ? [] : a.split("\n")
+      return [...lines, ...b.split("\n").filter((line) => line !== "" && !lines.includes(line))].join("\n")
+    }
     experiment.data = { ...rest, [fix.to]: cell(join(textIn(held, "ja"), ja), join(textIn(held, "en"), en)) }
   }
 }

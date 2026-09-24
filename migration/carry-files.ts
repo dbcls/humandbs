@@ -15,10 +15,10 @@
  * finish. A file larger than one part goes up in parts, as the upload screen
  * sends it.
  *
- * **Run it after the database is loaded, and again after any reload.** A private
- * box is keyed by research identity, which a reload makes anew; a second run
- * puts the private files under the new identity (the old keys are listed in the
- * report to be removed).
+ * **Run it after the database is loaded.** A private box is keyed by research
+ * identity, which the load derives from the hum label, so loading again does not
+ * move it. A private key under no research the plan knows is listed in the
+ * report to be removed.
  *
  * `--dry-run` prints the plan and carries nothing.
  */
@@ -131,7 +131,7 @@ async function put(path: string, one: Carry, size: number): Promise<void> {
   }
 }
 
-/** Private keys that no longer belong to a research the plan knows: left by a reload. */
+/** Private keys that belong to no research the plan knows. */
 async function strayPrivateKeys(plan: readonly Carry[]): Promise<string[]> {
   const planned = new Set(plan.filter((one) => one.bucket === PRIVATE_BUCKET).map((one) => one.key))
   const stray: string[] = []

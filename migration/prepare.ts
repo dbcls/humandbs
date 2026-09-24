@@ -83,18 +83,21 @@ function textOf(value: EsRichText | null | undefined): string {
   return value?.text ?? ""
 }
 
-/** Renames, merges and drops the keys of one experiment in place. */
+/**
+ * Renames, merges and drops the keys of one experiment in place. The keys that
+ * stay are placed first, so a key merged into one of them follows that key's
+ * own value whatever order the dump wrote the two in.
+ */
 export function applyKeyRules(experiment: EsExperiment, rules: ReadonlyMap<string, KeyRule>): void {
   const data = experiment.data
   if (!data) return
   const out: NonNullable<EsExperiment["data"]> = {}
   for (const [key, value] of Object.entries(data)) {
+    if (!rules.has(key)) out[key] = value
+  }
+  for (const [key, value] of Object.entries(data)) {
     const rule = rules.get(key)
-    if (rule === undefined) {
-      out[key] = value
-      continue
-    }
-    if (rule.action === "drop") continue
+    if (rule === undefined || rule.action === "drop") continue
 
     const heading = rule.labelled === true ? { ja: key, en: key } : rule.labelled
     const headed = (text: string, label: string | undefined) => text === "" || label === undefined ? text : `${label}: ${text}`

@@ -48,6 +48,15 @@ describe("mergeDumps", () => {
   })
 })
 
+describe("applyKeyRules", () => {
+  it("keeps the value of the key merged into, whichever of the two the dump wrote first", () => {
+    const e = experiment({ "MAG Construction": cell("MetaBAT2"), "Analysis Methods": cell("fastp") })
+    applyKeyRules(e, new Map<string, KeyRule>([["MAG Construction", { action: "merge-into", to: "Analysis Methods" }]]))
+
+    expect(e.data?.["Analysis Methods"]?.ja?.text).toBe("fastp\nMetaBAT2")
+  })
+})
+
 describe("dropResearch", () => {
   it("removes a research with its versions and its datasets", () => {
     const held = dump(["hum0001", "hum9999"], [dataset("JGAD000001", []), dataset("JGAD999999", [], "hum9999")])
