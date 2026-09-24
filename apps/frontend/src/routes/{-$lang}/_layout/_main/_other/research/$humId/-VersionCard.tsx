@@ -54,6 +54,10 @@ export function VersionCard({
 
   const isLatestVersion = versionData.version === versionData.latestVersion;
 
+  const hasRestrictedDatasets = versionData.datasets.some(
+    (dataset) => dataset.criteria !== "Unrestricted-access",
+  );
+
   return (
     <CardWithCaption
       size={"lg"}
@@ -193,16 +197,20 @@ export function VersionCard({
           meta={tableMeta}
         />
       </section>
-      <Separator className="-mx-4" />
-      <section>
-        <ContentHeader>{t("Research.fields.controlledAccessUser.label")}</ContentHeader>
-        <Table
-          className="mt-4 text-sm"
-          columns={dataUsedByColumns}
-          data={versionData?.controlledAccessUser || []}
-          meta={tableMeta}
-        />
-      </section>
+      {hasRestrictedDatasets ? (
+        <>
+          <Separator className="-mx-4" />
+          <section>
+            <ContentHeader>{t("Research.fields.controlledAccessUser.label")}</ContentHeader>
+            <Table
+              className="mt-4 text-sm"
+              columns={dataUsedByColumns}
+              data={versionData?.controlledAccessUser || []}
+              meta={tableMeta}
+            />
+          </section>
+        </>
+      ) : null}
     </CardWithCaption>
   );
 }
