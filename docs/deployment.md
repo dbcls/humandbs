@@ -94,11 +94,10 @@ migration の失敗であって、置き場の故障ではない。
 
 ## schema を変える
 
-**開発では `db:push` で書き、決まったら `npm run db:generate` で `drizzle/` に SQL を書き出して commit
-する。** 配信先は push しない。`migrate` が owner で繋ぎ、まだ当てていない migration を 1 つの
-transaction で当て、続けて `humandbs_app` の権限を張り直す (新しい表はそれまでアプリから読めない)。
-当てた記録は DB の `drizzle.__drizzle_migrations` にある。書き出した SQL は読んでから commit し、手で
-直してよい。
+**`drizzle/` に書き出して commit した SQL だけが配信先の schema を変える** (書き出し方は
+[development.md](development.md) の「DB を触る」)。`migrate` が owner で繋ぎ、まだ当てていない migration を
+1 つの transaction で当て、続けて `humandbs_app` の権限を張り直す (新しい表はそれまでアプリから読めない)。
+当てた記録は DB の `drizzle.__drizzle_migrations` にある。
 
 **migration は 1 つ前の版のアプリが動き続ける形にする。** 更新は migration を当ててからアプリを入れ替える
 ので、その間は古いアプリが新しい schema で動く。列や表は足す (既にある行に要る値は default で与える)
@@ -167,7 +166,7 @@ podman start <project>_app_1 && podman start <project>_proxy_1
 
 ## push で作った DB を migration に載せる
 
-`db:push` で schema を作った DB には当てた記録が無く、`migrate` は断る。**最初の migration (`drizzle/` の
+`drizzle-kit push` で schema を作った DB には当てた記録が無く、`migrate` は断る。**最初の migration (`drizzle/` の
 baseline) と schema が同じことを確かめてから、それを当てた印だけを付ける。** 比べるのは
 `scripts/schema-fingerprint.sql` で、列の並び順を除いた schema の形を 1 行ずつ出す。
 

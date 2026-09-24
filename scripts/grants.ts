@@ -1,8 +1,7 @@
 /**
- * Applies the privileges of the application role. Chained onto `db:push`,
- * because the grants describe tables the push has just created; a deployment
- * applies them in `scripts/migrate.ts` instead, and this stays the way to put
- * them back by hand (after a restore, for one).
+ * Applies the privileges of the application role by hand. Every migrate run
+ * applies them already (`scripts/migrate.ts`); this is for putting them back
+ * on their own, after a restore for one.
  */
 
 import { closePools, getOwnerDb } from "~/db/client.server"

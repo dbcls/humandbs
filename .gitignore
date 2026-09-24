@@ -10,3 +10,6 @@
 /compose.override.yml
 /test-results/
 /playwright-report/
+
+# What the assistant writes while it runs (logs, results, uploads) when started from this directory.
+assistant-api/work/

@@ -23,7 +23,7 @@ named volume にあり、ホストの `npm` を叩くと状態が食い違う。
 cp env.dev .env
 docker compose run --rm --no-deps app npm install
 docker compose up -d
-docker compose exec app npm run db:push
+docker compose exec app npm run db:migrate:dev
 docker compose exec app npm run s3:buckets
 docker compose exec app npm run icd10:import
 ```
@@ -34,7 +34,7 @@ build して立てる。`env.dev` より前に作った `.env` には、`COMPOSE
 1 行足す。
 
 `http://localhost:8080/` が開けば起動している。`/healthz` は依存サービスへの疎通で、1 つでも落ちていれば
-503。`db:push` はアプリの role と test 用の database も作る。`s3:buckets` が要るのは、bucket を書き込みの
+503。`db:migrate:dev` はアプリの role と test 用の database も作る。`s3:buckets` が要るのは、bucket を書き込みの
 副作用で作らないから (どちらの bucket に居るかが公開状態なので)。`icd10:import` は ICD10 の配布物を取って
 くる (repo に置かない)。
 
@@ -67,24 +67,30 @@ docker compose exec db psql -U humandbs -d humandbs         # test 用は -d hum
 書き換えられずどの表も TRUNCATE できない ([publishing.md](publishing.md) の「証跡」)。psql は owner で
 入る。**database も 2 つ** — 開発用と `_test` 付きの test 用で、test は後者だけを空にする。
 
-**schema は `npm run db:push` が定義 (`app/db/schema/`) をそのまま両方の database に反映し、role と権限も
-張り直す。** 全文検索の生成列と PGroonga の索引も定義に含まれる。配信先は push せず migration を当てるので、
-変更が決まったら `npm run db:generate` で `drizzle/` に書き出して commit する
-([deployment.md](deployment.md) の「schema を変える」)。
+**schema を変える道は開発でも配信でも 1 つ — 定義 (`app/db/schema/`) を書き、`npm run db:generate` で
+`drizzle/` に SQL を書き出し、それを当てる。** 開発では `npm run db:migrate:dev` が開発用と test 用の
+両方に当て、role と権限も張り直す。全文検索の生成列と PGroonga の索引も定義に含まれる。配信先への
+当て方は [deployment.md](deployment.md) の「schema を変える」。
 
-- **行が残っていると危うい変更 (列や制約を消す、既にある行に unique を足す) では対話の確認が出る。**
-  TTY が無いと `Interactive prompts require a TTY terminal` を出して何も反映せず、**終了コードは 0 のまま**。
-  schema を変えたつもりで変わっていないときは、まずこれを疑う。消える列が意図どおりか、打つ前に
-  schema の diff で確かめる
-- **既にある enum に値を足しても反映されない。** 走っても黙って通り、その値の書き込みが `22P02` で
-  落ちる。psql で `ALTER TYPE … ADD VALUE … BEFORE / AFTER …` を位置付きで打ってから開発用データを
-  入れ直す
-- **開発用データを作り直すなら、先に schema を空にすれば確認は出ない**
+```bash
+docker compose exec app npm run db:generate      # 書いた定義との差を drizzle/ に SQL で書き出す
+docker compose exec app npm run db:migrate:dev   # 定義との食い違いを確かめてから、両方の database に当てる
+```
+
+- **`drizzle-kit push` は使わない。** 複数列の unique 制約・複合主キー・PGroonga の索引を、同じなのに
+  毎回作り直そうとする。行があると対話の確認で止まり、TTY が無いと何も反映しないまま終了コード 0 で終わる
+- **定義を書いて書き出し忘れると test が落ちる。** `app/db/schema-drift.test.ts` が、`drizzle/` の写しに
+  書き出してみて新しいファイルができないことを見る (`npm run db:check` も同じ)。drizzle-kit は失敗しても
+  終了コード 0 を返すので、書き出しの結果は出力の文で確かめている
+- **書き出した SQL は読んでから commit する。** 手で直してよい。まだ出していない migration は、消して
+  書き出し直せば 1 本にまとまる (当てた DB は、その分を戻してから)
+- **test 用の database は当てた記録が無ければ作り直す。** test が毎回空にするので、残すものが無い
+- **開発用データを作り直すなら、schema も空から当て直せる**
 
 ```bash
 docker compose exec db psql -U humandbs -d humandbs \
-  -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; CREATE EXTENSION pgroonga;"
-docker compose exec app npm run db:push
+  -c "DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE; CREATE SCHEMA public; CREATE EXTENSION pgroonga;"
+docker compose exec app npm run db:migrate:dev
 docker compose exec app npm run db:load-dev-data
 ```
 
@@ -113,7 +119,7 @@ docker compose exec app npm run db:seed-review     # レビューの姿の下書
 ```
 
 - **全部を 1 つのトランザクションで置き換える**ので、途中で落ちても前のデータが残る。admin と session は
-  消さない。schema を変えたら `db:push` の後に流し直す
+  消さない。schema を変えたら `db:migrate:dev` の後に流し直す
 - **サイトコンテンツは本番と同じ変換を通る。** 本文の生 HTML は markdown になり、扱えない記法に出会うと
   止まる
 - **`s3:common-assets` は本文が指しているものだけを旧ポータル (`HUMANDBS_LEGACY_ORIGIN`) から運ぶ。**
