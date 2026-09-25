@@ -37,7 +37,7 @@ Staging 環境のテストアカウント情報は以下を参照（要アクセ
 | 変数名 | 説明 | 例 |
 |--------|------|-----|
 | `HUMANDBS_AUTH_ISSUER_URL` | OIDC Issuer URL（Keycloak の realm URL） | `https://idp-staging.ddbj.nig.ac.jp/realms/master` |
-| `HUMANDBS_AUTH_CLIENT_ID` | OIDC クライアント ID | `humandbs-staging` |
+| `HUMANDBS_AUTH_CLIENT_ID` | OIDC クライアント ID | `humandbs-dev` |
 | `HUMANDBS_AUTH_REDIRECT_URI` | 認証後のリダイレクト URI | `https://humandbs-staging.ddbj.nig.ac.jp/auth/callback` |
 | `HUMANDBS_BACKEND_ADMIN_UID_FILE` | 管理者 UID リストのファイルパス（絶対パス） | `/app/admin_uids.json` |
 
@@ -47,7 +47,7 @@ Staging 環境のテストアカウント情報は以下を参照（要アクセ
 |------|------------|-----------|--------------|
 | Development | `https://idp-staging.ddbj.nig.ac.jp/realms/master` | `humandbs-dev` | `http://localhost:8080/auth/callback` |
 | Staging | `https://idp-staging.ddbj.nig.ac.jp/realms/master` | `humandbs-dev` | `https://humandbs-staging.ddbj.nig.ac.jp/auth/callback` |
-| Production | `https://idp.ddbj.nig.ac.jp/realms/master` | `humandbs-production` | `https://humandbs.dbcls.jp/auth/callback` |
+| Production | `https://idp.ddbj.nig.ac.jp/realms/master` | `humandbs` | `https://humandbs.dbcls.jp/auth/callback` |
 
 **注意:** Development と Staging は同じクライアント（`humandbs-dev`）を共有する。
 
