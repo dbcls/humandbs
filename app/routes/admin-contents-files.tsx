@@ -45,7 +45,7 @@ import type { Route } from "./+types/admin-contents-files"
  * **The screen is the upload control and the prefix.** A heading over a single upload
  * panel, and under it the one table with the pane the other listings have: the
  * prefix is looked through by the slug a body links and by the day a file was
- * written, which are the two things a row means that a curator can have in
+ * written, which are the two things in a row that a curator can have in
  * mind.
  *
  * A body links to a file by writing its address, and nothing keeps that link
@@ -196,11 +196,11 @@ function at(view: CommonFilesView, over: Partial<FilesListingQuery>): string {
  * the rule every listing follows.
  *
  * **Nothing here waits to be confirmed.** The field sends the query once the typing has
- * stopped, a window sends as it is pressed, and a day sends the moment it is
+ * stopped, a window sends it as it is pressed, and a day sends it the moment it is
  * whole.
  *
  * **The box and the days are two forms, and each has what the other
- * holds**, because a form cannot be shown inside another.
+ * holds**, because a form cannot be nested inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)

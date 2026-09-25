@@ -3,7 +3,7 @@
  *
  * `app.contrast.test.ts` is the same idea for colour: a requirement nobody can
  * check by looking at one screen, held by something that reads the source. What
- * is here is the pair of rules that kept slipping — the screens each with
+ * is here is the pair of rules that kept slipping — the screens each having
  * their own margins, and the same box being drawn with a different corner in
  * every file.
  */
@@ -561,7 +561,7 @@ async function everySource(): Promise<{ name: string, text: string }[]> {
 
 describe("ボタンの色と形", () => {
   /**
-   * The round end is where a control remains, not how it should look — the header bar
+   * The round end is where a control is placed, not how it should look — the header bar
    * of controls above a listing, and nowhere else (`base.tsx` の `ButtonLook`).
    * Asked for as a taste it had spread to five places that are not a listing,
    * and the shape had stopped indicating anything.
@@ -602,8 +602,8 @@ describe("ボタンの色と形", () => {
 
   /**
    * **What is chosen is not what should be pressed.** A state shown in a style
-   * spends the ranking the styles exist to have, so the control that holds one
-   * is `Choice`, whose options divide a box rather than shown as buttons of
+   * spends the ranking the styles exist to express, so the control that holds one
+   * is `Choice`, whose options divide a box rather than being shown as buttons of
    * their own.
    */
   it("選んだ状態を Button の色で表さない", async () => {
@@ -1141,7 +1141,7 @@ function attrValue(attrs: string, prop: string): AttrFound {
   return m[1] !== undefined ? { literal: m[1] } : { expr: m[2] ?? "" }
 }
 
-/** The `IconName` an icon-passing prop resolves to, or `undefined` for one this cannot read. */
+/** The `IconName` an icon-valued prop resolves to, or `undefined` for one this cannot read. */
 function iconAt(attrs: string, prop: string, fallback?: string): string | undefined {
   const found = attrValue(attrs, prop)
   if (found === undefined) return fallback
@@ -1390,7 +1390,7 @@ describe("状態の語", () => {
     t.contents.published, t.contents.scheduled,
   ])
 
-  /** The element a child expression or text remains directly in, or null where it cannot be read. */
+  /** The element a child expression or text sits directly in, or null where it cannot be read. */
   function parentTag(text: string, at: number): string | null {
     const before = text.slice(Math.max(0, at - 600), at)
     return /<([A-Z]?[\w.]+)\b[^<>]*>\s*$/.exec(before)?.[1] ?? null
@@ -1541,7 +1541,7 @@ describe("字だけの経路", () => {
    * A class on a link is how a bare word gets dressed as a control — sized to
    * sit beside a button, or given the link colour it would have had anyway. The
    * classes that are not that: a style (`border`), a wrapper around a badge
-   * (`no-underline`), and a value underlined where it remains (`underline`).
+   * (`no-underline`), and a value underlined where it sits (`underline`).
    */
   it("管理画面の link は、素の語に大きさや色だけを加えて操作の位置に置かない", async () => {
     const offenders: string[] = []

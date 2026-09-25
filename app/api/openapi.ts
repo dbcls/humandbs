@@ -8,7 +8,7 @@
  * an operation id — are filled in here.
  *
  * **Security is declared empty rather than left out.** The API takes no
- * credentials at all, and an empty requirement reports it; an absent one only reports
+ * credentials at all, and an empty requirement states it; an absent one only means
  * that nobody wrote it down.
  */
 
@@ -25,7 +25,7 @@ import { problemSchema } from "./schema"
  * The version of the contract, not of the deployment. The portal does not
  * promise that an answer's content stays the same — a version can be fixed in
  * place without its number changing — so a version here that moved with every
- * release would be indicating something it does not mean.
+ * release would be stating something it does not mean.
  */
 const API_VERSION = "1.0.0"
 
@@ -40,11 +40,11 @@ datasets rather than with the datasets themselves, because each of them has an a
 authenticate against. An unpublished object and one that never existed answer alike, and no
 endpoint tells them apart.
 
-**Where to start.** \`GET /api/fields\` reports what a search may be written against.
+**Where to start.** \`GET /api/fields\` lists what a search may be written against.
 \`GET /api/research\` and \`GET /api/dataset\` take that query and answer twenty at a time.
 \`.jsonl\` beside either name streams the whole published set instead, one object to a line.
 
-**Reading an answer.** Both languages are always kept and neither falls back on the other:
+**Reading an answer.** Both languages are always included and neither falls back on the other:
 \`ja\` and \`en\` are what somebody wrote, not what the portal guessed. **A key that is
 absent is a value nobody filled in; \`null\` means the value is known not to exist.** An array
 is always there, empty if it holds nothing. Prose is plain text — a link written inside a sentence

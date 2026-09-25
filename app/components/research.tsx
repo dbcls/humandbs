@@ -155,7 +155,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
    */
   cart?: boolean
   /**
-   * Whether to draw what this version shows it changed. A published page does
+   * Whether to draw what this version records that it changed. A published page does
    * not: the note belongs to the release list, where the versions can be read
    * against each other. A preview has no release list, and the note is part of
    * what the provider is being asked to check.
@@ -509,7 +509,7 @@ export function runsLong(field: FieldView): boolean {
  * **The columns are the ones v1 shows**, which is more than a window holds: the
  * table scrolls sideways and the columns that say which row it is stay put
  * (`components/page.tsx`). **Three of them hold what the datasets beneath a
- * study have** rather than anything the study shows of itself — the analysis
+ * study have** rather than anything the study states about itself — the analysis
  * methods, the platforms and who took part — which is why they are named for
  * the values and not for the sections of the research's own page.
  *

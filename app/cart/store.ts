@@ -262,7 +262,7 @@ function heldIn(ids: string[]): Set<string> {
 }
 
 /**
- * The last press, and what it takes to respond for it.
+ * The last press, and what it takes to respond to it.
  *
  * **One at a time.** Two notices stacked would make the reader choose which to
  * read before either goes, and the second is always the one they just caused.

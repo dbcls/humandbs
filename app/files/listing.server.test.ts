@@ -65,7 +65,7 @@ describe("publicListingsOf", () => {
     expect(listings).toEqual(new Map([["hum0001", []], ["hum0002", []]]))
   })
 
-  it("keeps the listing the store responded for, even when another label in the same request fails", async () => {
+  it("keeps the listing the store returned, even when another label in the same request fails", async () => {
     mockedListPrefix.mockImplementation((_bucket, prefix) => {
       if (prefix === publicPrefix("hum0002")) return Promise.reject(new Error("ECONNREFUSED"))
       return Promise.resolve([{ name: "a.zip", size: 4, updatedAt: "2020-01-01T00:00:00.000Z" }])

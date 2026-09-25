@@ -16,7 +16,7 @@ function missing(content: ResearchContent) {
   }
 }
 
-/** A research whose only field that can report anything is its title. */
+/** A research whose only field that can hold anything is its title. */
 function withTitle(title: TranslatedText): ResearchContent {
   return { ...emptyResearchContent(), title }
 }

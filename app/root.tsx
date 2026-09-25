@@ -48,7 +48,7 @@ export const middleware: Route.MiddlewareFunction[] = [
  * The alert is loaded here because it belongs to every page. It is one small
  * read, and querying each loader for it instead would mean a page that forgot it
  * silently stops announcing. The header's account area is here for the same
- * reason; a request with no session cookie queries the database for nothing at all.
+ * reason; a request with no session cookie makes no database query at all.
  *
  * **Only the name and whether the person is an administrator leave the server.**
  * Capabilities are derived per request where they are checked, and putting them
@@ -72,7 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 /**
- * The site's own indicators, served from `public/` and kept from v1 as they
+ * The site's own icons, served from `public/` and kept from v1 as they
  * are — a favicon is the one thing a reader recognises in a row of tabs, so
  * changing it would be changing the site rather than rebuilding it.
  */

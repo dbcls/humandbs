@@ -12,7 +12,7 @@
  * and an administrator holds every capability; deriving the list from what the
  * reader may do would mean sending an authorisation decision to the browser,
  * which the root loader deliberately does not do (`root.tsx`). The screens
- * themselves each request the capability they need.
+ * themselves each require the capability they need.
  *
  * The order is the order the work runs in — what is being edited, then what
  * editing draws on, then the site around it, then the tools beside it.
@@ -46,7 +46,7 @@ export interface AdminEntry extends AdminDestination {
 
 export interface AdminTask {
   title: string
-  /** Said only where the title cannot report what the work is. */
+  /** Said only where the title cannot show what the work is. */
   note?: string
   links: AdminEntry[]
   /** A form rather than a link: what it makes is what it opens. */
@@ -87,8 +87,8 @@ type AdminWords = ReturnType<typeof messagesFor>["admin"]
  * The words come from a locale; the shape of the area does not.
  *
  * **`heading` is what the destination's screen calls itself**, which is not
- * always the bar's word: the bar reports 「研究一覧」 where the screen, a listing,
- * reports 「研究」. A window names its area by the screen's word (`adminArea`).
+ * always the bar's word: the bar shows 「研究一覧」 where the screen, a listing,
+ * shows 「研究」. A window names its area by the screen's word (`adminArea`).
  */
 const BAR: {
   path: string
@@ -193,26 +193,26 @@ export const ADMIN_NAVBAR_MENU_STEP
  * The work the area is for, and what each piece of it is pressed on.
  *
  * **A section is a verb, and the screens under it are where that work is
- * done.** A name on its own cannot report whether 「お知らせ」 is a screen to read
+ * done.** A name on its own does not show whether 「お知らせ」 is a screen to read
  * or one to write in, and lengthening the name does not settle it — the verb
  * above it does.
  *
- * **A note belongs to a section whose title cannot report what is inside it.**
+ * **A note belongs to a section whose title cannot show what is inside it.**
  * Giving one to every section buries the titles under sentences nobody reads.
  *
  * **What is pressed is not always a destination.** Starting a research is an
  * action rather than an address, and a list that held only addresses would make
  * three ways to begin a research look like two.
  *
- * **The map reports the short name and the screen reports its role.** 「お知らせ」 is
- * enough under a section that already reports which site the announcements are on,
+ * **The map shows the short name and the screen shows its role.** 「お知らせ」 is
+ * enough under a section that already shows which site the announcements are on,
  * while the screen it opens calls itself 「お知らせ一覧」 because a screen is
  * arrived at from anywhere and has to name itself out of any surroundings.
  * Holding the two to one word means every entry has a qualification the map
  * has already given it.
  *
  * **A glyph rides in front of the word**, so that an entry is found by its shape
- * before it is read. **It reports the subject, not the act** (`SUBJECT_ICON`) — a
+ * before it is read. **It shows the subject, not the act** (`SUBJECT_ICON`) — a
  * research is `book` here and on the public side — and the one thing in the
  * list that is not a destination takes the indicator for creating everywhere else
  * (`ACTION_ICON`).

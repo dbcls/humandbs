@@ -147,9 +147,9 @@ function findingsOf(input: PublishCheckInput): PublishFinding[] {
 /**
  * The application system is the authority for which hum label a JGA accession
  * belongs to, so a pin it does not know and a pin it disagrees with are both
- * worth indicating. Neither stops the publish: upstream has typos of its own, and a
+ * worth flagging. Neither stops the publish: upstream has typos of its own, and a
  * portal that cannot publish while upstream is wrong is worse than one that
- * publishes and reports it.
+ * publishes and warns about it.
  */
 function pinFindings(input: PublishCheckInput): PublishFinding[] {
   const humLabel = input.humLabel

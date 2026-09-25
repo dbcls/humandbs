@@ -5,7 +5,7 @@
  * banner across the top of a rejected save names the fields somebody else
  * changed, and the indicator beside each of those fields is what offers to import
  * their value. Nothing is merged and nothing is reloaded — **what is in the
- * form stays in the form** until the author reports otherwise.
+ * form stays in the form** until the author decides otherwise.
  *
  * How two values are told apart and how an array is compared are the same for a
  * research and for a dataset, so they are defined in `compare.ts`.

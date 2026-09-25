@@ -1,10 +1,10 @@
 /**
  * What the management screens load, and what their forms do.
  *
- * The order is always the same: establish who is requesting and what they may do,
+ * The order is always the same: establish who is making the request and what they may do,
  * then read. Nothing here is reachable without a capability, and the two that
- * only read request `view-unpublished` while everything that writes requests
- * `edit-content` — the operation names itself rather than indicating "an
+ * only read require `view-unpublished` while everything that writes requires
+ * `edit-content` — the operation names itself rather than standing for "an
  * administrator did it", so a later role would need no new shape.
  *
  * The save path is the one worth reading twice. It refuses in three different
@@ -14,9 +14,9 @@
  * - prose holding a construct the tree cannot express is the author's to fix:
  *   **422**, with the problems attached to the fields they were written in
  * - a revision that no longer matches is somebody else's edit: **409**, with
- *   their version attached so the editor can report which fields moved
+ *   their version attached so the editor can show which fields moved
  *
- * In all three the answer has no new content for the form. **What was typed
+ * In all three the answer contains no new content for the form. **What was typed
  * stays typed** — the screen decides what to import from the other version, one
  * field at a time. Which fields the other version moved is worked out on the
  * screen rather than here, because the comparison is against what the screen
@@ -208,7 +208,7 @@ export interface AdminListView {
   rangeTo: number
 }
 
-/** The page asked for, or the first one when the address reports nothing sensible. */
+/** The page asked for, or the first one when the address has nothing sensible. */
 export function readPage(value: string | null): number {
   const page = Number(value ?? "1")
   return Number.isInteger(page) && page >= 1 ? page : 1
@@ -228,7 +228,7 @@ export async function researchListPage(
 
   // An ordering or a size that is not one of the offered ones is read as none
   // asked for, the way the public listings read theirs: an address arriving
-  // from somewhere else should respond rather than refuse.
+  // from somewhere else should be served rather than refused.
   const askedSort = url.searchParams.get("sort")
   const sort = isSortKey(askedSort) ? askedSort : DEFAULT_SORT
   const askedOrder = url.searchParams.get("order")
@@ -306,7 +306,7 @@ export interface AdminDraftReviewRow extends DraftReviewSummary {
   datasets: number
   /** What the publish check would stop. */
   blocks: number
-  /** What the publish check would request to confirm. */
+  /** What the publish check would ask the editor to confirm. */
   findings: number
 }
 
@@ -321,7 +321,7 @@ export interface AdminResearchPageView {
   labels: { id: string, label: string, isPrimary: boolean, holdsFiles: boolean | null }[]
   versions: AdminResearchVersionRow[]
   drafts: AdminDraftRow[]
-  /** Whether a link is out there for each draft, what is unanswered, and what its publish check has. */
+  /** Whether a link is out there for each draft, what is unanswered, and what its publish check found. */
   reviews: AdminDraftReviewRow[]
   /** What the prefix holds. Null when the store did not respond. */
   fileSummary: { count: number, bytes: number } | null
@@ -363,7 +363,7 @@ export async function researchDetailPage(
   // it; only the retired labels' prefixes are listed on their own. A store that
   // does not respond leaves a fact unknown rather than the page lost — the
   // controls it would close stay open, and the refusal on pressing them is
-  // what remains.
+  // what still applies.
   const retired = view.labels.filter((label) => !label.isPrimary)
   const [listing, retiredPrefixes, pending, reviews, draftRecords, versionContents] = await Promise.all([
     adminListing(db, id, humLabel),
@@ -643,7 +643,7 @@ export interface DatasetListRefusal {
 
 /**
  * Making a dataset, taking one out of the research, and putting the ones that
- * go out in order. All change the draft's content, so all have its revision.
+ * go out in order. All change the draft's content, so all include its revision.
  */
 export async function draftDatasetListAction(
   request: Request,
@@ -996,7 +996,7 @@ export async function saveDatasetAction(
   const payload = saveDatasetSchema.safeParse(await request.json())
   if (!payload.success) badRequest()
   // The screen marks a disordered width `aria-invalid` the moment it is typed
-  // (`dataset-editor.tsx` の `NumberField`), so a save still with one went
+  // (`dataset-editor.tsx` の `NumberField`), so a save that still has one went
   // around the form. Checked here rather than in the schema itself — the draw
   // preview below parses the same schema from content that is still being
   // typed, where a width caught mid-edit is ordinary
@@ -1067,7 +1067,7 @@ export type ResearchDetailResult
  * Everything the research screen does: open an empty draft or a copy of a
  * version, throw one away, take a version out of sight, and attach, promote
  * or remove a research ID. They are ordinary form posts told apart by what
- * the form reports it is.
+ * the form states it is.
  *
  * The capability is asked for per operation, so that what each one requires
  * is written where it is done. **Reading that the research exists is asked for
@@ -1181,7 +1181,7 @@ export interface PublishFieldView {
   /** Where it can be dealt with, when there is such a screen. */
   href: string | null
   count: number
-  /** A second line where the count alone does not report enough. */
+  /** A second line where the count alone does not show enough. */
   note: string | null
 }
 
@@ -1203,7 +1203,7 @@ export interface PublishBlockView {
   datasetId: string | null
 }
 
-/** What the review has, for the screen's advice: it never stops a publish. */
+/** What the review found, for the screen's advice: it never stops a publish. */
 export interface PublishReviewView {
   shared: boolean
   /** Shared, but past the date the link stopped opening — said apart from never shared. */
@@ -1515,7 +1515,7 @@ export async function publishAction(
 
   const revision = Number(form.get("revision"))
   if (!Number.isInteger(revision)) badRequest()
-  // An update has its version's number, and the screen requests none.
+  // An update has its version's number, and the screen sends none.
   const numberField = form.get("number")
   const number = numberField === null ? null : Number(numberField)
   if (number !== null && (!Number.isInteger(number) || number < 1)) badRequest()
@@ -1619,7 +1619,7 @@ export async function saveDraftAction(
  * function draws it as the share link uses, so the two cannot disagree.
  *
  * **Prose the tree cannot keep is not an error here.** Refusing markup is the
- * save's job and it reports where the problem is; a pane that responded with 422 would
+ * save's job and it shows where the problem is; a pane that responded with 422 would
  * empty itself in the middle of a sentence. It responds with nothing instead and
  * the pane keeps the last drawing it had.
  */

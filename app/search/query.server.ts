@@ -12,7 +12,7 @@
  *
  * `NOT` is made total with `coalesce`. A date comparison against a row with no
  * date is unknown rather than false, and "everything that does not match" has
- * to include the rows that could not respond.
+ * to include the rows the comparison could not decide.
  */
 
 import { sql, type SQL } from "drizzle-orm"
@@ -67,7 +67,7 @@ export interface SearchRequest extends SearchQuery {
   /** 1-based. Out of range gives an empty page rather than an error. */
   page: number
   /**
-   * How many rows to respond with. **Left out means the default**, which is what
+   * How many rows to return. **Left out means the default**, which is what
    * the JSON API leaves it as — a caller that never requests a size cannot be
    * given a different one by a change here.
    */

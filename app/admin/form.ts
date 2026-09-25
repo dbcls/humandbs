@@ -120,7 +120,7 @@ export interface ResearchContentInput {
   datasetIds: string[]
 }
 
-/** What one save has: the content being edited. */
+/** What one save contains: the content being edited. */
 export interface DraftInput {
   content: ResearchContentInput
 }

@@ -11,7 +11,7 @@
  *
  * **A single newline is a line.** markdown reads one as a space, but the
  * published values use it to list things (`JGAD000004: 375.31 GB` on one line,
- * the next dataset on the next), and the tree has no other way to report that.
+ * the next dataset on the next), and the tree has no other way to express that.
  * A blank line between blocks stays a blank line.
  */
 
@@ -23,7 +23,7 @@ import type { Line, RichText, Span } from "~/content/types"
 
 const processor = unified().use(remarkParse)
 
-/** The only raw HTML that has meaning the tree can hold. */
+/** The only raw HTML whose meaning the tree can hold. */
 const LINE_BREAK = /^<br\s*\/?>$/i
 const TAG = /<[^>]*>/g
 
@@ -52,7 +52,7 @@ function collector(): Collector {
    * Whitespace at either end of a line is layout, not content — **except a
    * non-breaking space, which is a character somebody typed.** v1's editor had
    * no way to indent, so a curator who needed one wrote `&nbsp;` runs, and in
-   * `Materials and Participants` those runs are what reports which cell line the
+   * `Materials and Participants` those runs are what shows which cell line the
    * lines under it are about. Dropping them leaves the same two lines under two
    * headings with nothing to tell them apart, which reads as the value being
    * written twice.

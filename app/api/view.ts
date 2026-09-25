@@ -197,7 +197,7 @@ function valueOf(slot: ValueSlot, catalog: CatalogView): ApiValue | undefined {
 }
 
 /**
- * **A disease responds with both names.** The terms have what a classification
+ * **A disease is returned with both names.** The terms hold what a classification
  * calls it, `name` what the article called it, and neither replaces the other:
  * a reader looking for `NASH` will not find `その他の明示された炎症性肝疾患`,
  * and a client counting diseases needs the code. **The terms may be empty**, so

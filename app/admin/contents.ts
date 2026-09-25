@@ -2,8 +2,8 @@
  * The rules the site-content screens run on: what a slug may be, how the tree
  * is shaped, and which revision a series may name.
  *
- * Nothing here reaches the database — this module reports what an answer means,
- * and `contents.server.ts` reports where the rows are.
+ * Nothing here reaches the database — this module defines what an answer means,
+ * and `contents.server.ts` finds where the rows are.
  *
  * **A slug is an address**, so the checks here are about the URL space rather
  * than about the text: it has to be shaped like a path, it must not be one a
@@ -157,7 +157,7 @@ export function entryNames(entry: TreeEntry): { slug: string, title: string } {
  *
  * **A series is matched on what its row shows** — its own slug and the title of
  * the revision it points at. The revisions under it are not rows here, and a
- * listing that responded on them would offer a line whose words are nowhere in
+ * listing that matched on them would offer a line whose words are nowhere in
  * it.
  */
 export function matchingEntries(entries: readonly TreeEntry[], words: string): TreeEntry[] {
@@ -172,7 +172,7 @@ export function matchingEntries(entries: readonly TreeEntry[], words: string): T
 /**
  * Whether an article keeps numbered revisions.
  *
- * **This reports what kind of row it is rather than what state it is in**: a
+ * **This describes what kind of row it is rather than what state it is in**: a
  * versioned article's row stands for the pointer and everything under it at
  * once, and a plain one stands for a body.
  */

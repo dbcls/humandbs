@@ -241,7 +241,7 @@ const DUMP = join(process.cwd(), "migration", "input", "cms.json")
 describe.skipIf(!existsSync(DUMP))("ナビの行き先", () => {
   it("route で使われている address か、この移行が作る slug のどちらかである", () => {
     const { documents, series } = buildDocuments(loadCms().documents)
-    // A version-less slug responds through its pointer, so it counts as reachable.
+    // A version-less slug is served through its pointer, so it counts as reachable.
     const slugs = new Set([...documents, ...series].map((d) => `/${d.slug}`))
     const screens: string[] = [...SCREEN_PATHS]
     expect(navigationPaths().filter((path) => !screens.includes(path) && !slugs.has(path)))

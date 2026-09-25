@@ -2,7 +2,7 @@
  * The upstream correspondence between hum labels and JGA accessions.
  *
  * This is not part of the v1 dump: it is a cache of what the JGA application
- * system reports, and in production a batch will refresh it. The development data
+ * system holds, and in production a batch will refresh it. The development data
  * seeds it from the two tab-separated files the current nightly job already
  * produces, so that the endpoint that supplies the correspondence to DDBJ
  * Search, and the comparison the publish check runs against it, both have the real

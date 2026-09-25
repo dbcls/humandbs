@@ -5,7 +5,7 @@ import { paneScrollTop } from "./scroll"
 
 /**
  * The one promise of the number: after the pane scrolls to it, the target
- * is shown where it was asked to. The pane's own top and what it had already
+ * sits where it was asked to. The pane's own top and what it had already
  * scrolled must fall out of the answer — the target is measured on screen,
  * against a pane that is itself somewhere on screen and partly scrolled.
  */
@@ -41,7 +41,7 @@ describe("where the pane has to scroll to", () => {
     }))
   })
 
-  it("requests nothing when the target already is shown where it was asked to", () => {
+  it("scrolls nothing when the target already sits where it was asked to", () => {
     fc.assert(fc.property(pane, fc.double({ min: 0, max: 3000, noNaN: true }), (p, height) => {
       const atStart = { top: p.top, height }
       expect(paneScrollTop(p, atStart, "start")).toBeCloseTo(p.scrollTop, 6)

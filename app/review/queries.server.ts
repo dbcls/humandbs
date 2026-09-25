@@ -159,7 +159,7 @@ export interface DraftReviewSummary {
 }
 
 /**
- * What the research screen has about each of its drafts: whether a link is out
+ * What the research screen shows about each of its drafts: whether a link is out
  * there, and whether anybody is waiting for an answer.
  */
 export async function draftReviewSummaries(

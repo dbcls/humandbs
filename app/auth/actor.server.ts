@@ -1,12 +1,12 @@
 /**
- * Who is requesting, and what they may do.
+ * Who is making the request, and what they may do.
  *
  * Derived per request: the cookie names a session, the session names a `sub`,
  * and whether that `sub` administers the portal is read from Postgres every
  * time. Nothing about authorisation is held in the cookie, so removing
  * somebody's access takes effect on their next request.
  *
- * A request with no cookie queries the database for nothing, which is every request to
+ * A request with no cookie makes no database query, which is every request to
  * a public page.
  */
 

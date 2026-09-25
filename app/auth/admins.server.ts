@@ -1,7 +1,7 @@
 /**
  * Who administers the portal.
  *
- * The state is defined in Postgres rather than in a Keycloak role, because the realm
+ * The state is stored in Postgres rather than in a Keycloak role, because the realm
  * belongs to another organisation and a change of staff would otherwise be a
  * request to them. It is read on every request that needs it; nothing about it
  * is cached in a cookie.

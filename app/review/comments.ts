@@ -7,7 +7,7 @@
  * drawing, and group them by place. That is here rather than in each screen.
  *
  * **There are no threads.** The comments at one place are shown in the order they
- * were written, and whoever has more to report writes the next one there; each is
+ * were written, and whoever has more to say writes the next one there; each is
  * resolved on its own. A reply nested under a comment would put two
  * conversations at one place and ask which to write in, and at a place the
  * size of a field that question has no answer.
@@ -86,7 +86,7 @@ export function wholeComments(comments: readonly CommentView[]): CommentView[] {
  *
  * **It belongs to no subject and reaches no reader**, so nothing that draws a
  * research, a dataset or a preview picks it up: the one screen that wants it
- * requests it by name.
+ * fetches it by name.
  */
 export function memoComments(comments: readonly CommentView[]): CommentView[] {
   return comments.filter((one) => one.anchor.kind === "memo")

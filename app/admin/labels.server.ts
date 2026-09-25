@@ -16,9 +16,9 @@
  *
  * Making a label primary demotes the one that was — the old one keeps resolving,
  * which is the point of holding more than one. Unpinning does not reserve
- * anything: the `label_pin` table reports which labels are in use and nothing more.
+ * anything: the `label_pin` table records which labels are in use and nothing more.
  *
- * **Renumbering a research moves its prefix.** The public key has the hum
+ * **Renumbering a research moves its prefix.** The public key contains the hum
  * label, so the files a reader can already fetch would otherwise stay at the
  * retired address and disappear from the new one. The prefix is listed before the
  * transaction opens — holding the `label_pin` table's rows while talking to the store
@@ -98,7 +98,7 @@ function subjectColumns(request: PinRequest) {
 
 /**
  * The `label_pin` row and the record that it was made, which are one act. Both ways
- * of pinning go through here so that what an event has is decided once —
+ * of pinning go through here so that what an event contains is decided once —
  * the trail is append-only, and a detail that two writers spell differently
  * cannot be corrected afterwards.
  */

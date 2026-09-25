@@ -83,7 +83,7 @@ export function experimentOf(entry: SraEntry): DraExperiment {
  * A value the group's libraries disagree about is dropped rather than reduced to
  * one of them: the catalog holds one layout and one read length per experiment,
  * and a draft that stated the first library's would be stating something no
- * table of the article reports. Instrument models are kept in full, because that
+ * table of the article states. Instrument models are kept in full, because that
  * key takes more than one.
  */
 export function groupByStrategy(experiments: readonly DraExperiment[]): DraExperimentGroup[] {

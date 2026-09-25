@@ -222,7 +222,7 @@ export function isDecimalNumber(value: string): boolean {
 
 /**
  * A wildcard has to keep at least two literal characters in front of it. A
- * leading one requests the index to walk every term there is, and the shortest
+ * leading one makes the index walk every term there is, and the shortest
  * prefixes come to the same thing.
  */
 function checkWildcard(value: string, column: number): void {
@@ -234,7 +234,7 @@ function checkWildcard(value: string, column: number): void {
  * One end of a range, checked against what the field's type admits.
  *
  * **Either end may be open, dates included.** "Published since 2020" is a
- * question with no closing day, and requesting the reader to write today's date
+ * question with no closing day, and asking the reader to write today's date
  * would give the address a meaning that changes overnight.
  */
 function checkBound(type: "date" | "number", value: string, column: number): void {

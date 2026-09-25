@@ -145,7 +145,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
  * **Nothing is chosen.** Every dataset the branch registered belongs to the
  * research it describes, so all of them are made with it — they are read in
  * the application's own section above (`BranchDatasets`), where one a research
- * already holds shows it, and that one is left out because pinning it again
+ * already holds is marked as such, and that one is left out because pinning it again
  * would refuse the whole creation. **What will not go in is said before the
  * press**, by the name the form gives its key.
  */

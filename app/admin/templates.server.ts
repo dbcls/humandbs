@@ -108,7 +108,7 @@ export type SeededField = "title" | "aims" | "methods" | "targets" | "provider"
 
 /**
  * **The value itself rather than whether there is one.** This is read before
- * anything is written, and "ja あり" handles a question nobody has — what a
+ * anything is written, and "ja あり" addresses a question nobody has — what a
  * curator is deciding is whether these words belong in the research, which
  * cannot be told from their presence.
  */
@@ -135,7 +135,7 @@ export interface UpstreamChoiceView {
   datasets: DatasetChoiceView[]
   /** What upstream stated that the catalog has no word for. */
   dropped: DroppedValue[]
-  /** Experiments DDBJ Search did not respond for, named. */
+  /** Experiments DDBJ Search returned nothing for, named. */
   unreachable: string[]
 }
 
@@ -198,7 +198,7 @@ export interface UpstreamDatasetView {
   humLabel: string | null
 }
 
-/** What either screen responds with when it could not do as it was asked. */
+/** What either screen returns when it could not do as it was asked. */
 export type UpstreamResult
   = | { status: "taken", label: string }
     | { status: "conflict" }
@@ -214,7 +214,7 @@ interface Connection {
  * The application system, for as long as one request needs it.
  *
  * Answering null rather than throwing is what makes a deployment with no
- * connection an ordinary deployment: the screen reports it cannot reach the
+ * connection an ordinary deployment: the screen shows it cannot reach the
  * system, and the half of it that reads DDBJ Search still works.
  */
 async function withApplicationDb<T>(run: (at: Connection) => Promise<T>): Promise<T | null> {
@@ -244,7 +244,7 @@ async function humHolders(
 /**
  * Which research each dataset accession already belongs to. The pin names a
  * dataset and the dataset names the research, which is what a screen offering
- * to create it has to report.
+ * to create it has to show.
  */
 async function datasetHolders(
   db: Executor,
@@ -432,7 +432,7 @@ export async function upstreamResearchPage(
  *
  * **The branch is read whether or not a keyword would find it.** An address
  * naming a branch is followed on its own, so a screen reached from elsewhere
- * still responds for the branch it identifies.
+ * still shows the branch it names.
  */
 export async function upstreamBranchPage(
   request: Request,
@@ -724,7 +724,7 @@ export async function importApplication(
 // === shared ===
 
 /**
- * Seeding writes content and pins labels, so it requests both. Asking once here
+ * Seeding writes content and pins labels, so it requires both. Checking once here
  * rather than at each write is what keeps a screen from offering a button that
  * would be refused halfway through.
  */

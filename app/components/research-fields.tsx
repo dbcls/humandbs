@@ -188,7 +188,7 @@ export function LinksField({ label, value, annotations, locale, onChange }: {
  * The numbers a grant is known by.
  *
  * They are plain strings with no identity of their own, so a row is addressed by
- * where it remains — which is also why the whole list is one path to the diff and
+ * its position — which is also why the whole list is one path to the diff and
  * has one indicator rather than one per number.
  */
 export function GrantIds({ label, locale, value, annotations, onChange }: {

@@ -43,7 +43,7 @@ export interface LoginResult {
 
 /**
  * The two ways completing a login can fail are kept apart because they call for
- * opposite responds. `no-flow` means there is nothing to complete — a tab left
+ * opposite responses. `no-flow` means there is nothing to complete — a tab left
  * open, a callback address opened by hand — and starting again fixes it.
  * `rejected` means the exchange itself was refused, and starting again would
  * arrive here a second time, so it has to stop.
@@ -147,8 +147,8 @@ export function clearedFlowCookie(): string {
  * **The person's own name** (`name`) is what the interface shows and what the
  * audit trail records as the actor's name — a comment, an indicator pressed on a
  * preview, a line in the trail are read by people who want to know who it was,
- * and an account id (`preferred_username`) does not report. The account id remains
- * in where the realm has no name, and the subject where it has neither. None
+ * and an account id (`preferred_username`) does not tell them. The account id is used
+ * where the realm has no name, and the subject where it has neither. None
  * of them is an identity — that is `sub` — so falling back loses nothing.
  */
 function displayName(claims: { sub: string, preferred_username?: unknown, name?: unknown }): string {

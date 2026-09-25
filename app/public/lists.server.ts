@@ -6,8 +6,8 @@
  * differ only in which kind of row they request and what they show of it.
  *
  * **The address always holds the query language.** The box holds keywords, so a
- * submission arrives as `k` and is turned into a tree here, then responded with
- * a redirect to the `q` that tree writes out. One search has one address, it
+ * submission arrives as `k` and is turned into a tree here, then redirected
+ * to the `q` that tree writes out. One search has one address, it
  * can be shared, and none of it needs JavaScript — the box is a GET form.
  */
 
@@ -79,7 +79,7 @@ export interface ConditionChip {
   field: string | null
   value: string
   /**
-   * The code the value is filed under, where that is a key the reader can have
+   * The code the value is filed under, where that is a key the reader can take
    * away — ICD10 and nothing else. Null on every other condition, whose codes
    * are slugs this site made up to put in an address
    * (`components/facets.tsx` の `Value`).
@@ -98,8 +98,8 @@ export interface ListShell {
   /**
    * The search with everything in force lifted, or null when nothing is.
    * **The typed words go too** — they are one of the conditions listed, so a
-   * control that reports it lifts all of them and leaves one behind would be
-   * indicating something untrue about the list right above it.
+   * control labelled as lifting all of them that leaves one behind would be
+   * stating something untrue about the list right above it.
    */
   clearHref: string | null
   /** The normalised query, for building links off this search. */
@@ -159,7 +159,7 @@ async function lastPageInstead(db: Executor, request: SearchRequest): Promise<Se
 }
 
 /**
- * A submission is responded to with the address it should have had.
+ * A submission is redirected to the address it should have had.
  *
  * **Both forms on the page arrive here**: the keyword box, which has what
  * was typed under `k`, and the range inputs of a numeric or date facet, which
@@ -211,7 +211,7 @@ export async function canonicalRedirect(
 /**
  * An input left blank is an end that is not being asked about, and so is one
  * holding something the field could not take. **Both ends open means the facet
- * is not being asked at all**, which `withRange` responds by dropping the
+ * is not being asked at all**, which `withRange` handles by dropping the
  * condition rather than by making one that matches everything.
  */
 function bound(value: string | null, kind: "number" | "date"): string {
@@ -244,7 +244,7 @@ function describeCondition(node: QueryNode, locale: Locale): { field: string | n
     if (only === undefined) return { field: null, value: "" }
     // The negation belongs to the value rather than to the field: what is
     // excluded is this value of that dimension, and moving the word to the
-    // field would report the dimension itself is being left out.
+    // field would suggest the dimension itself is being left out.
     const inner = describeCondition(only, locale)
     return { field: inner.field, value: `${words.exclude}: ${inner.value}` }
   }
@@ -580,7 +580,7 @@ async function datasetRowsOf(
  *
  * **Read from the same rows as the listings**, so a dataset that has since been
  * withdrawn is simply not among them — the cart is held in the browser and can
- * name something the portal no longer publishes, and the screen reports it rather
+ * name something the portal no longer publishes, and the screen shows that rather
  * than inventing a row for it.
  */
 export async function cartRows(

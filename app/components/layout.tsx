@@ -141,7 +141,7 @@ function AdminNavLink({ entry, locale, here, inMenu = false }: {
   )
 }
 
-/** What the header knows about the person requesting. Never their capabilities. */
+/** What the header knows about the person making the request. Never their capabilities. */
 export interface Account {
   name: string
   isAdmin: boolean

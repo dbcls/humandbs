@@ -243,7 +243,7 @@ describe("a cell the splitting rules cannot settle", () => {
     expect(result.review[0]?.reason).toContain("複数 dataset")
   })
 
-  it("flags a key that identifies only some of the block's own datasets", () => {
+  it("flags a key that lists only some of the block's own datasets", () => {
     // Real shape from hum0402/hum0356: fewer accession lines than siblings.
     const result = splitSharedBlock(
       block("Sequence Read Archive Accession", "[DRA016537](https://ddbj.nig.ac.jp/resource/sra-submission/DRA016537)"),

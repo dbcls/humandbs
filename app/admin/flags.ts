@@ -1,10 +1,10 @@
 /**
- * What a research or a dataset is still missing, as far as its content can report.
+ * What a research or a dataset is still missing, as far as its content can show.
  *
  * The walk collects the places, so that the publish check can name each one.
  *
  * Whether a hum label has been pinned is not here: it is read off the `label_pin` table
- * rather than the content. Anything that needs the upstream cache to respond
+ * rather than the content. Anything that needs the upstream cache to decide
  * ("the pins disagree with the application system") belongs to the publish check, where
  * the answer decides something.
  *

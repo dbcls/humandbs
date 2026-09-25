@@ -1,7 +1,7 @@
 /**
  * The shape of everything stored as content.
  *
- * Content is defined in JSONB columns, so these types are the only place that reports
+ * Content is stored in JSONB columns, so these types are the only place that defines
  * which fields are translated, which have a single language-independent value,
  * and which hold a separate value per language. There is no second list of that
  * classification anywhere — a list would drift from the types.
@@ -67,7 +67,7 @@ export interface TranslatedText {
  * superscript, no raw HTML.
  *
  * `text` never contains a newline. A line break is a line, which is the only
- * thing the structure above a span reports.
+ * thing the structure above a span expresses.
  */
 export interface Span {
   text: string
@@ -147,7 +147,7 @@ export interface NumberValue {
    * The upper end of a value written as a width — `0.9-1.3 GB`, `85〜120 GB` —
    * converted the same way `value` is. **Optional rather than always present**,
    * so that every place a bare number was ever written on its own continues to
-   * compile and needs no escort of a field it never had anything to report about.
+   * compile and needs no escort of a field it never had anything to do with.
    * Absent and `null` mean the same thing: there is no upper end. Code that
    * builds a `NumberValue` writes `null` explicitly; only values from before
    * this field existed omit it.
@@ -170,7 +170,7 @@ export interface NumberValue {
  *
  * **The state sits inside**: translated prose holds one per language,
  * everything else holds one. Putting a state on the slot as well would be a
- * second place to report the same thing.
+ * second place to record the same thing.
  */
 /**
  * One disease an experiment studied: **what a classification calls it, and what
@@ -206,7 +206,7 @@ export type ContentValue
     /**
      * **In the value state the list is never empty.** A key holding no number
      * at all is a key with no slot, and the write path drops it rather than
-     * storing a value that reports nothing (`app/admin/dataset-form.server.ts`).
+     * storing a value that holds nothing (`app/admin/dataset-form.server.ts`).
      */
     | { kind: "number", values: Slot<NumberValue[]> }
     /** Same rule as the numbers: an empty list is a slot that should not exist. */
@@ -263,7 +263,7 @@ export interface ResearchContent {
  * What a published version holds: the body, with the description of every
  * dataset it lists written out inside it.
  *
- * **A version accounts for its own moment without requesting anything else.**
+ * **A version describes its own moment without reading anything else.**
  * Opening an old one shows the datasets of that time described as they were
  * described then, so a later correction does not reach backwards.
  *
@@ -398,7 +398,7 @@ export interface AlertContent {
  * slot is a path like any other place, only the subject has to be named.
  *
  * **Two anchors name no place.** `draft` is the draft as a whole — what a
- * reader has to report about the research rather than about one field — and a
+ * reader has to say about the research rather than about one field — and a
  * share link shows and accepts it like any field. `memo` is the administrators'
  * own note about the work: what the draft is for, who was telephoned, why
  * publishing is waiting. A share link neither shows one nor accepts one, and a

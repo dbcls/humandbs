@@ -6,7 +6,7 @@ import { isShareExpired, isShareOpen, shareExpiryDay, shareExpiryOf } from "./sh
 const NOW = new Date("2026-08-10T00:00:00Z")
 
 describe("a share link", () => {
-  it("does not open while sharing is off, whatever the expiry has", () => {
+  it("does not open while sharing is off, whatever the expiry is", () => {
     expect(isShareOpen({ enabled: false, expiresAt: null }, NOW)).toBe(false)
     expect(isShareOpen({ enabled: false, expiresAt: new Date("2030-01-01") }, NOW)).toBe(false)
   })

@@ -58,7 +58,7 @@ export async function importIcd10Terms(
   return { roots: roots.length, children: children.length }
 }
 
-/** English is required of a term, so a code named only in Japanese has that in both. */
+/** English is required of a term, so a code named only in Japanese gets that name in both. */
 function labelsOf(entry: Icd10Entry): { labelEn: string, labelJa: string | null } {
   return { labelEn: entry.titleEn ?? entry.titleJa ?? entry.code, labelJa: entry.titleJa }
 }

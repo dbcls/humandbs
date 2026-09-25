@@ -35,7 +35,7 @@ export function UpstreamNotConnected({ locale }: { locale: Locale }) {
  * A branch's status in the portal, drawn as a glyph and a word.
  *
  * Whether the hum's research is already here is the question every row of the
- * branch listing is opened to respond to, and a label that is or is not a link shows
+ * branch listing is opened to answer, and a label that is or is not a link shows
  * it only to a reader who tries to press it. **The pair is the one the pane
  * narrows by** (`Stated`): the same three glyphs are shown beside the ticks, so the
  * shape a curator narrows by is the shape they then read down the rows. **The
@@ -252,7 +252,7 @@ export function BranchCells({ row, locale }: { row: UpstreamBranchView, locale: 
 }
 
 /**
- * A branch's ID that opens what the branch shows, in a panel over the table.
+ * A branch's ID that opens the branch's details, in a panel over the table.
  *
  * **Read here, chosen in the row.** Which branch to import from is decided by
  * reading it, and a table that sends the reader to another screen to read makes
@@ -308,11 +308,11 @@ export function BranchDialog({ applicationId, locale }: { applicationId: string,
 }
 
 /**
- * The datasets a branch registered, read as part of what the application shows
+ * The datasets a branch registered, read as part of what the application contains
  * — on the branch's own screen and in the panel a draft's table opens.
  *
  * **Each ID leads to the archive**, the same way the listing's cell does: the
- * portal may have nothing of it yet. **One a research already holds shows it**,
+ * portal may have nothing of it yet. **One a research already holds is marked as such**,
  * with the link to that research: it is left out when a research is made from
  * the branch, and a reader looking for it finds where it is.
  */

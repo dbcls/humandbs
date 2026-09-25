@@ -109,7 +109,7 @@ describe("resolveLinks", () => {
     }))
   })
 
-  it("has the state of the wanted language out unchanged", () => {
+  it("passes the state of the wanted language through unchanged", () => {
     fc.assert(fc.property(localizedLinksArb, localeArb, (links, locale) => {
       const slot = links[locale]
       const resolved = resolveLinks(links, locale)

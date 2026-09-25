@@ -378,7 +378,7 @@ describe("the body beside the form", () => {
 })
 
 /**
- * A section remains whether or not the research has anything to put in it: once
+ * A section is drawn whether or not the research has anything to put in it: once
  * it is gone a reader cannot tell "none" from "no such section", and every
  * research reads in the same order.
  */

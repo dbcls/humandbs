@@ -1,7 +1,7 @@
 /**
  * Reading what the management screens show.
  *
- * The public side starts from `search_doc` because its job is to respond to "is
+ * The public side starts from `search_doc` because its job is to decide "is
  * this published"; here the answer is the opposite — **everything is in scope,
  * published or not** — so these read the identity tables directly. Nothing in
  * this file is reachable without `view-unpublished`.
@@ -94,7 +94,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       })
       .from(researchDraft),
     // A dataset with a search row is one a reader can open: that is the one
-    // question the public side responds to, from this table.
+    // question the public side decides from this table.
     db
       .select({ datasetId: searchDoc.targetId })
       .from(searchDoc)
@@ -118,7 +118,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
     held.published += 1
-    // The listing reports when this research was last out, which is the newest
+    // The listing shows when this research was last out, which is the newest
     // release date among the versions it still has — withdrawing one takes its
     // row away, so a version that is here is a version that is out.
     if (held.publishedOn === null || row.releaseDate > held.publishedOn) {
@@ -405,7 +405,7 @@ export async function readDatasetEntry(
 /**
  * How the newest version describes a dataset, which is what the editor compares
  * against. Null means no version lists it — the draft introduced it, or every
- * version that kept it has been withdrawn.
+ * version that had it has been withdrawn.
  */
 export async function readPublishedDataset(
   db: Executor,
@@ -430,8 +430,8 @@ export async function readPublishedDataset(
 /**
  * The identities this draft publishes, in the order it publishes them
  * (`admin/datasets.ts`). **What a draft's content holds is the order alone**,
- * so everything that requests "which datasets is this draft about" — the steps, the
- * preview, the places a comment may be left — requests here rather than reading the
+ * so everything that needs "which datasets is this draft about" — the steps, the
+ * preview, the places a comment may be left — reads it here rather than reading the
  * order and taking it for the set.
  */
 export async function draftDatasetIds(
@@ -487,7 +487,7 @@ export async function draftDatasetRows(
  *
  * **Holding an entry is not having changed it.** A draft copied from a version
  * holds an entry for every dataset that version lists, word for word, so an
- * entry reports only that the draft could be written. What the version does not
+ * entry means only that the draft could be written. What the version does not
  * list — a dataset the draft made — has nothing to be compared with, and there
  * the entry is the writing.
  */
@@ -555,7 +555,7 @@ export interface CatalogWithTerms extends EditableCatalog {
   terms: EditableTerm[]
 }
 
-/** How many candidates one search of a vocabulary responds with. */
+/** How many candidates one search of a vocabulary returns. */
 export const TERM_CANDIDATES = 20
 
 const TERM_COLUMNS = {
@@ -575,7 +575,7 @@ const TERM_COLUMNS = {
  * **It has no terms.** A vocabulary holds anything from three values to
  * several hundred, and sending all of them so that a box can filter them in the
  * browser makes the size of the page follow the size of the catalog. The values
- * a document already identifies are resolved by identity (`termsByIds`) and the rest
+ * a document already refers to are resolved by identity (`termsByIds`) and the rest
  * are searched for (`findTerms`).
  */
 export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog> {
@@ -641,7 +641,7 @@ export async function findTerms(
   const find = needle.trim()
   // **An empty field opens on the vocabulary's first terms**, in code order: a
   // vocabulary of a handful is then shown whole the moment its box is entered,
-  // and a large one shows where it starts, with the box indicating to type.
+  // and a large one shows where it starts, with the box prompting to type.
   const like = `%${find}%`
   return db
     .select(TERM_COLUMNS)
@@ -665,7 +665,7 @@ export async function findTerms(
  *
  * A code is normalised before it is looked for — the box is written with and
  * without the point, in either case — and **the tail is dropped until the
- * vocabulary responds**. What the articles and the application forms write is
+ * vocabulary has it**. What the articles and the application forms write is
  * partly ICD-10-CM, which WHO's classification cannot spell: `K75.81` is NASH
  * and `K758` is what stands for it, so typing the longer code offers the
  * shorter one rather than nothing.

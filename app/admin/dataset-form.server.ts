@@ -118,7 +118,7 @@ const datasetContentInputSchema = z.object({
 })
 
 /**
- * What one save has. **The revision is null when the screen was opened
+ * What one save contains. **The revision is null when the screen was opened
  * before this draft had touched the dataset**, which is what tells an insert
  * apart from an update: the first save creates the entry and finds a conflict
  * by not being the one that created it.
@@ -173,7 +173,7 @@ function highValue(
 }
 
 /**
- * The stored form of a disease. Null when the row reports nothing — neither a
+ * The stored form of a disease. Null when the row holds nothing — neither a
  * classification's word for it nor anybody else's — which is a row somebody
  * added and left alone rather than a disease.
  */

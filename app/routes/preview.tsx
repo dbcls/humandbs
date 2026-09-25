@@ -14,7 +14,7 @@ import type { Route } from "./+types/preview"
  * index it and not to send a referrer: a link followed out of this page must
  * not hand the token to the site at the other end. The token is checked where
  * the data is fetched rather than here, so nothing else can reach the draft by
- * requesting a different way.
+ * requesting it a different way.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { locale } = readLocale(new URL(request.url).pathname)

@@ -27,7 +27,7 @@ import type { Route } from "./+types/admin-contents-document"
  *
  * **"Cut into a version"** is how a page that never had revisions gets one: the
  * body moves to `{slug}/version/1` and the address it had becomes a pointer at
- * it. Nothing is copied, so the same text never is kept at two addresses.
+ * it. Nothing is copied, so the same text is never stored at two addresses.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const view = await documentPage(request, params.documentId)

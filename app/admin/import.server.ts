@@ -6,7 +6,7 @@
  * draft already are one, and an application is laid over this draft
  * (`templates.ts` の `applicationInput`) — so the form and the write are one
  * path for all three. Only an application also creates datasets, and only it
- * requests the right to pin their labels.
+ * requires the right to pin their labels.
  */
 
 import { redirect } from "react-router"
@@ -49,7 +49,7 @@ import { adminDraftPath } from "./urls"
  * screen draws.
  *
  * **A draft that updates a version is that version's row**, as it is on the
- * research's screen: the row reports the version is being updated and has the
+ * research's screen: the row shows that the version is being updated and has the
  * draft's time, and choosing it imports what the update has written (`update`).
  * So every draft row is a draft that updates nothing.
  */

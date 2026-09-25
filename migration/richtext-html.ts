@@ -6,7 +6,7 @@
  * Many leaves also kept the article's original HTML (`rawHtml`) untouched
  * beside it, which still has the `<br>`, `<p>` and table structure `text`
  * collapsed away. Where the two agree on content, the line breaks and links
- * `rawHtml` has are real and worth recovering; where they disagree,
+ * `rawHtml` contains are real and worth recovering; where they disagree,
  * `rawHtml` usually is not a stale edit but a different value altogether (an
  * older bug folded several rows of one column into a single `rawHtml`, with
  * `text` holding only the row a leaf is actually about), so a leaf that
@@ -216,7 +216,7 @@ function inlineLabel(node: Element): string {
 }
 
 /* -------------------------------------------------------------------- */
-/* Dropping the field-name heading rawHtml still has                 */
+/* Dropping the field-name heading rawHtml still contains               */
 /* -------------------------------------------------------------------- */
 
 /**
@@ -291,7 +291,7 @@ function documentRewrite(path: string): string {
 
 /**
  * Applies `resolve` to the path with an `/en` prefix taken off, then puts the
- * prefix back on the result — `legacyTarget` responds in the default locale,
+ * prefix back on the result — `legacyTarget` resolves to the default locale,
  * and a link that named the English page should keep naming it.
  */
 function withLocalePrefix(path: string, resolve: (bare: string) => string | null): string | null {
@@ -327,7 +327,7 @@ function resolveInternalPath(path: string, ctx: RecoverContext): HrefResolution 
  * Resolves one `href` from `rawHtml` to what it should point at in v2:
  * external links and files are kept, a same-page anchor is dropped, and an
  * old-portal address (Joomla's `index.php?...`, or an absolute link to the
- * portal's own domain) is rewritten to the v2 page it identifies.
+ * portal's own domain) is rewritten to the v2 page it points to.
  */
 function resolveHref(href: string, ctx: RecoverContext): HrefResolution {
   const value = href.trim()
@@ -475,7 +475,7 @@ function walkNode(node: Flow, into: Collector, ctx: RecoverContext): number {
     return dropped
   }
   // Formatting with no representation in v2 rich text (emphasis, spans,
-  // headings' own tag) — its content is shown on its own, unwrapped.
+  // headings' own tag) — its content is kept, unwrapped.
   return walkChildren(node.children, into, ctx)
 }
 
@@ -506,7 +506,7 @@ function withSource(built: Built, source: "rawHtml" | "split"): RecoveredRichTex
 /**
  * Recovers a v2 rich text from a v1 `{text, rawHtml}` leaf.
  *
- * `rawHtml` is used whenever it reports the same thing `text` does: either the
+ * `rawHtml` is used whenever it has the same content as `text`: either the
  * whole value agrees, or — where an older bug packed several rows into one
  * `rawHtml` — exactly one of its `"\n"`-separated rows agrees. Otherwise the
  * leaf falls back to parsing `text` as markdown, the way `migration/build.ts`

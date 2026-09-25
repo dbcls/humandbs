@@ -297,7 +297,7 @@ export async function loadSiteContent(tx: Executor, cms: CmsDump = loadCms()) {
       .returning({ id: alert.id }),
   )
 
-  // The editing screen reports since when an alert has been up by reading the
+  // The editing screen shows since when an alert has been up by reading the
   // trail, so one that comes across standing is put up there as well — under
   // the reserved actor, at the instant the input holds for it.
   await insertChunked(

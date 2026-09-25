@@ -139,7 +139,7 @@ describe("splitArchiveAccessions", () => {
     expect(one.data?.[SRA]).toEqual(cell("DRA008482"))
   })
 
-  it("leaves a copied value alone when it identifies no accession of one archive, rather than emptying that key", () => {
+  it("leaves a copied value alone when it lists no accession of one archive, rather than emptying that key", () => {
     const one = experiment({ [JGA]: cell("JGAD000261"), [SRA]: cell("JGAD000261") })
     splitArchiveAccessions(one)
 

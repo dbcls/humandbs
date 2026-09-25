@@ -99,7 +99,7 @@ export function timeOf(value: string | undefined): string {
 }
 
 /**
- * Where a task remains, as the listing and the task's own screen both say it.
+ * A task's status, as the listing and the task's own screen both show it.
  *
  * **Every task has a status, so it is a glyph and a word** (`Stated`), and
  * **only a failure is a badge** (`Flag` の `stops`): a finished task is the

@@ -170,14 +170,14 @@ export function Section({ id, title, accepts, flags, remove, children }: {
  * The line over a field: its name, and what the review has to show about it.
  *
  * **A field that is the only one in its section has no name of its own** — the
- * section's heading is its name, and a second line indicating the same word under
+ * section's heading is its name, and a second line repeating the same word under
  * it is the word read twice. **Such a
  * field draws no line at all**: its dialect badge and its flags are shown on the
  * heading's line instead (`Section` の `accepts` と `flags`) — a row holding
  * only flags names nothing, and pushes the box a line down from its name.
- * **The dialect badge remains right after the name** — it shows what the named
+ * **The dialect badge is shown right after the name** — it shows what the named
  * thing reads, so it belongs to the name, not to the far end of the row where
- * the row's own delete remains.
+ * the row's own delete sits.
  */
 export function FieldHead({ label, annotations, locale, untranslated = false, accepts, link, remove }: {
   label?: string
@@ -188,7 +188,7 @@ export function FieldHead({ label, annotations, locale, untranslated = false, ac
   accepts?: string
   /**
    * Removes the whole field, at the row's far end — the same place every
-   * other row's own delete remains (`ItemCard`). Only a value slot under a
+   * other row's own delete sits (`ItemCard`). Only a value slot under a
    * catalog key has one; a field with no key behind it has nothing to
    * remove itself from.
    */
@@ -214,7 +214,7 @@ export function FieldHead({ label, annotations, locale, untranslated = false, ac
 
 /**
  * What the review shows about one field: that one language is missing, and
- * whatever the field's annotations have. Drawn on the field's name row, or — for a
+ * whatever the field's annotations report. Drawn on the field's name row, or — for a
  * field with no name — on its section's heading (`Section` の `flags`).
  */
 export function FieldFlags({ annotations, locale, untranslated = false }: {
@@ -256,7 +256,7 @@ export function toggledState(state: SlotState, target: "unknown" | "not-applicab
 }
 
 /**
- * One of the two indicators a slot can be shown with instead of a value: unsettled, or that
+ * One of the two indicators a slot can be marked with instead of a value: unsettled, or that
  * the question does not apply.
  *
  * **Pressed, it takes the brand fill** (`IconButton` の `fill`) that elsewhere
@@ -299,13 +299,13 @@ function StateToggle({ icon, label, does, pressed, onClick }: {
 }
 
 /**
- * The two indicators a slot can be shown with instead of a value: unsettled, or that the
+ * The two indicators a slot can be marked with instead of a value: unsettled, or that the
  * question does not apply.
  *
  * **Both always shown, and mutually exclusive.** A writer cannot be left to
  * find them behind a collapsed menu, and pressing one releases the other — a
- * slot is shown with at most one of the two at a time. **The ordinary answer, a
- * value, is shown with neither** — there is a pair of these per language of every
+ * slot is marked with at most one of the two at a time. **The ordinary answer, a
+ * value, is marked with neither** — there is a pair of these per language of every
  * field, so a screen holds dozens, and filling one for the ordinary answer
  * too would bury the one control that saves.
  */
@@ -339,10 +339,10 @@ export function StateSwitch({ state, onChange, locale }: {
 const COLLAPSED_SLOT = "flex h-9 items-center rounded border border-line bg-surface px-2 text-ink-muted text-sm"
 
 /**
- * One language of one field. The text stays in state whatever the state shows,
+ * One language of one field. The text stays in state whatever the state is,
  * so switching to "unsettled" and back gives the half-written value back.
  *
- * **Set to a state, the field collapses** — in its place remains one line
+ * **Set to a state, the field collapses** — in its place is one line
  * naming the state. The box leaves the DOM, but
  * `value.text` does not: it is state held by the caller, untouched until the
  * toggle is pressed again or the field is saved.
@@ -513,7 +513,7 @@ export interface ItemColumn<T> {
  * A list of one kind of thing, each element written in a panel of its own.
  *
  * **The table shows what the elements are; the panel holds what is in one.**
- * Four of these lists are shown in one screen and an element passes up to eight
+ * Four of these lists are shown in one screen and an element has up to eight
  * fields, so drawn open they are a hundred boxes deep and what the list itself
  * shows — how many, in what order, which is which — is buried in them. Opened
  * one at a time, the shape of the list stays readable and the element being
@@ -748,7 +748,7 @@ function ItemOperations({ index, count, locale, onEdit, onMove, onRemove }: {
 /**
  * The way to add one more of whatever the section holds.
  *
- * **A word's size, not a control's** (`base.tsx` の `BUTTON_SIZE`): it remains
+ * **A word's size, not a control's** (`base.tsx` の `BUTTON_SIZE`): it sits
  * under a table or in place of one, acting on the list rather than on any row,
  * and at 36px it read as the section's main control — which is the table.
  */

@@ -25,7 +25,7 @@ import { draftDatasetIds, ownedDatasets } from "./queries.server"
 export interface DraftStepsView {
   /** How many datasets the version would list. */
   datasets: number
-  /** Whether the share link responds right now. */
+  /** Whether the share link works right now. */
   shared: boolean
   /** Comments nobody has closed. The memo is not counted: it is a note, not a question. */
   unresolved: number
@@ -71,13 +71,13 @@ export async function draftSteps(
 }
 
 /**
- * Where every draft of a research remains, read once for the whole research
+ * The progress of every draft of a research, read once for the whole research
  * rather than once per draft — the research screen's table, which shows every
  * draft's steps at the same time.
  *
  * **The private bucket is asked once and given to all**, the way
- * `draftReviewSummaries` requests the comment table once for every draft rather
- * than once per draft: a research with six drafts requesting the file store six
+ * `draftReviewSummaries` queries the comment table once for every draft rather
+ * than once per draft: a research with six drafts querying the file store six
  * times for the same listing would be five wasted round trips. The publish check
  * itself still runs once per draft — it is read under that draft's own row —
  * but it no longer reads the store to do it.
@@ -119,7 +119,7 @@ async function unresolvedNow(db: Database, draftId: string): Promise<number> {
  *
  * **The store not responding is not a reason to leave every screen of the
  * draft without its step indicator.** The file finding is then left out of the count;
- * the confirmation screen, which cannot do without it, requests the store itself.
+ * the confirmation screen, which cannot do without it, queries the store itself.
  */
 async function publishCheckNow(db: Database, researchId: string, draftId: string): Promise<PublishCheck | null> {
   const privateFiles = await privateNames(researchId).catch(() => new Set<string>())

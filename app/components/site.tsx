@@ -112,7 +112,7 @@ export function NewsList({ locale, items, dateBeside = false }: {
         // The padding is what sets the entries apart from each other. Where the
         // list is not closed, the first and the last give up the half of it
         // that faces outwards — otherwise it lands on top of the gap the list
-        // already sits in, and the heading remains 32px clear of its own first
+        // already sits in, and the heading sits 32px clear of its own first
         // line. Where it is closed, that padding is what keeps the words off
         // the rules.
         <li

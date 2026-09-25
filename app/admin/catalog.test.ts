@@ -80,7 +80,7 @@ describe("the code a new key or term is stored under", () => {
     expect(termCodeProblem(codeFrom("メチル化アレイ"))).toBe("malformed")
   })
 
-  /* Whatever the label holds, what comes out is a code a query can have
+  /* Whatever the label holds, what comes out is a code a query can contain
      unquoted — that is the one thing the generated side must not get wrong. */
   it("never makes a code the query language would refuse", () => {
     for (const label of ["ATAC-seq", "a:b", "x (y) [z]", "q?w*e", "back\\slash", "'quoted'"]) {
@@ -114,7 +114,7 @@ describe("the first free spelling of a code", () => {
     expect(freeCode("atac-seq", new Set(["atac-seq", "atac-seq-3"]))).toBe("atac-seq-2")
   })
 
-  it("never responds with a spelling the set holds, and never reshapes the wanted one", () => {
+  it("never returns a spelling the set holds, and never reshapes the wanted one", () => {
     fc.assert(fc.property(
       fc.stringMatching(/^[a-z][a-z0-9-]{0,8}$/),
       fc.array(fc.stringMatching(/^[a-z][a-z0-9-]{0,10}$/), { maxLength: 30 }),
@@ -238,7 +238,7 @@ describe("narrowing the fields listing", () => {
     expect(found({ keyword: "targets ターゲット" })).toEqual([])
   })
 
-  it("requests the same whatever the case and the surrounding space", () => {
+  it("matches the same whatever the case and the surrounding space", () => {
     expect(found({ keyword: "  PLATFORM  " })).toEqual(["platform"])
   })
 

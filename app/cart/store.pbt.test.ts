@@ -68,7 +68,7 @@ describe("what was stored", () => {
  * These say it holds the right one for any press, and that what it claims moved
  * is what moved.
  */
-describe("what a press has about itself", () => {
+describe("what a press reports about itself", () => {
   it("holds exactly the cart the press started from", () => {
     fc.assert(fc.property(cart, fc.array(anyId), (held, ids) => {
       const after = addToCart(held, ids)
@@ -78,7 +78,7 @@ describe("what a press has about itself", () => {
     }))
   })
 
-  it("counts what actually moved, and reports where the cart remains now", () => {
+  it("counts what actually moved, and reports where the cart is now", () => {
     fc.assert(fc.property(cart, fc.array(anyId), (held, ids) => {
       const after = addToCart(held, ids)
       const notice = noticeOf(held, after, 1)

@@ -212,7 +212,7 @@ describe("a question held open from outside", () => {
     expect(html).not.toContain("同じ名前のファイルの上書き")
   })
 
-  it("requests with the sentence and both answers once it is open, and the action sends no form", () => {
+  it("shows the sentence and both answers once it is open, and the action sends no form", () => {
     const html = question(true)
     expect(html).toContain("同じ名前のファイルの上書き")
     expect(html).toContain("2 件が既にあります: a.zip, b.zip。")
@@ -247,7 +247,7 @@ describe("a control that cannot be pressed", () => {
     expect(html).toMatch(new RegExp(`<button[^>]*aria-describedby="${id ?? ""}"`))
   })
 
-  it("lets the pointer through to what holds the reason up, which can also take focus", () => {
+  it("lets the pointer through to what shows the reason, which can also take focus", () => {
     expect(html).toMatch(/<span[^>]*tabindex="0"[^>]*>/)
     expect(html).toContain("pointer-events-none")
   })
@@ -277,7 +277,7 @@ describe("a control that cannot be pressed", () => {
 })
 
 /**
- * The indicator of a way moves the way it points while the control it is shown in is
+ * The chevron of a link moves the way it points while the control it is shown in is
  * pointed at — and only then, and only for those who allow motion.
  */
 describe("Chevron", () => {

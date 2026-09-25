@@ -45,7 +45,7 @@ import { Flag, Stated } from "~/components/flags"
  * **The `label_pin` table is managed here rather than at publish time.** A label is
  * attached to an identity, not to a version, and correcting one is an everyday
  * operation: the number originates as free text in a system upstream that has
- * typed it wrong before. Taking a version out of sight is kept here for the same
+ * typed it wrong before. Taking a version out of sight belongs here for the same
  * reason — it is an operation on the version, not on anything being written.
  * **A dataset's id is not pinned here**: datasets are decided on the draft's
  * own screen, and the id where the dataset is written.
@@ -303,7 +303,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
  * publish confirmation are offered as things to press (`DraftLinks`), since
  * nothing in the row counts what they hold.
  *
- * Discarding requests twice. It takes the whole draft with it and cannot be undone,
+ * Discarding is confirmed twice. It takes the whole draft with it and cannot be undone,
  * and the revision travels with the request so a draft somebody has edited in
  * the meantime is not thrown away on the strength of a stale screen.
  */
@@ -375,7 +375,7 @@ function Datasets({ count, to, locale }: { count: number, to: string, locale: Lo
 }
 
 /*
-  **Whether a draft is shared is an indicator and a word**, every draft responds to it.
+  **Whether a draft is shared is an indicator and a word**, since every draft is either shared or not.
   What the review holds is read on the review
   screen, which the row's own "レビュー" opens. A version being updated shows its
   draft's in the cell a version leaves empty.
@@ -419,7 +419,7 @@ function DraftLinks({ researchId, draftId, locale }: { researchId: string, draft
  * dataset count leads to the screen that reads what it lists** — a version is
  * not edited in place, so that screen has nothing to press. **The
  * update is a state of this row, not a row of its own**: while it is on, the
- * row shows it, has the draft's day, dataset count and share in the
+ * row shows it, fills in the draft's day, dataset count and share in the
  * cells a version leaves empty, offers the draft's review and publishing
  * beside editing it, and offers stopping it;
  * and the version cannot be withdrawn until it is stopped. Making a draft from
@@ -427,7 +427,7 @@ function DraftLinks({ researchId, draftId, locale }: { researchId: string, draft
  */
 function VersionRow({ version, review, humLabel, researchId, locale }: {
   version: AdminResearchVersionRow
-  /** What the review shows of the draft it is updated in, while it is. */
+  /** The review state of the draft it is updated in, while it is. */
   review: AdminDraftReviewRow | null
   humLabel: string | null
   researchId: string

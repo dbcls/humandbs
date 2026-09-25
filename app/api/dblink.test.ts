@@ -69,7 +69,7 @@ describe("an accession nobody knows", () => {
 
   it("responds in the same way as to an accession whose research is not published", () => {
     // Only the echoed identifier differs, and that is what was asked for; there
-    // is nothing in the answer that reports whether the accession exists.
+    // is nothing in the answer that shows whether the accession exists.
     const published = EDGES.filter((edge) => edge.humLabel !== "hum0004")
     const unpublished = linksOfSubject(published, "jga-dataset", "JGAD000001", ORIGIN)
     const absent = linksOfSubject(published, "jga-dataset", "JGAD999999", ORIGIN)

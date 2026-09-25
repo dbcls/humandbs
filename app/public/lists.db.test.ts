@@ -61,7 +61,7 @@ async function createDataset(
   return id
 }
 
-/** What the next version will report about each dataset, until it merges them in. */
+/** What the next version will hold for each dataset, until it merges them in. */
 const descriptions = new Map<string, DatasetContent>()
 
 async function publish(
@@ -228,7 +228,7 @@ describe("the research listing", () => {
     expect(view.clearHref).toBe("/research")
   })
 
-  it("handles a query it cannot read with the failure rather than with everything", async () => {
+  it("returns the failure for a query it cannot read rather than everything", async () => {
     const researchId = await createResearch("hum0001")
     await publish(researchId, 1, [], "研究題目")
     await rebuildSearchDocs(db)
@@ -283,7 +283,7 @@ describe("the dataset listing", () => {
 })
 
 describe("a search submitted from the box", () => {
-  it("is responded with the address it should have, so it can be shared", async () => {
+  it("is redirected to the address it should have, so it can be shared", async () => {
     const answer = await canonicalRedirect(
       new URL("http://localhost/research?k=NGS%28Exome%29"),
       "research",
@@ -505,7 +505,7 @@ describe("refining a listing", () => {
 
     const view = await datasetListPage(request("/dataset?q=disease%3AC34"))
 
-    // One row matches, and the value that is not chosen still reports what it
+    // One row matches, and the value that is not chosen still shows what it
     // would add — a count taken under the whole query would be zero and gone.
     expect(view.total).toBe(1)
     expect(facetOf(view, "disease").values.map((value) => [value.code, value.count]))
@@ -600,7 +600,7 @@ describe("a facet with more values than are shown in its box", () => {
    * The list scrolls inside its box rather than being truncated, so nothing
    * here decides how much of it the reader can reach.
    */
-  it("has every one of them", async () => {
+  it("lists every one of them", async () => {
     await withManyMethods(11)
 
     expect(facetOf(await datasetListPage(request("/dataset")), "assay").values)
@@ -610,7 +610,7 @@ describe("a facet with more values than are shown in its box", () => {
   it("keeps a chosen value on the panel even when nothing matches it any more", async () => {
     await withManyMethods(2)
 
-    // A keyword nothing has, so every count is zero and every unchosen
+    // A keyword nothing contains, so every count is zero and every unchosen
     // value is gone; the chosen one has to stay or it cannot be taken off.
     const view = await datasetListPage(request("/dataset?q=zzzz+assay%3Amethod-00"))
 

@@ -136,7 +136,7 @@ describe("pressing a toggle that covers many", () => {
   })
 })
 
-describe("what a press has afterwards", () => {
+describe("what a press reports afterwards", () => {
   it("reports nothing when the cart did not move", () => {
     expect(noticeOf(["JGAD000001"], ["JGAD000001"], 1)).toBeNull()
     expect(noticeOf([], [], 1)).toBeNull()

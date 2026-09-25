@@ -35,7 +35,7 @@ function screen(view: Partial<AdminResearchPageView>): string {
 }
 
 /**
- * The reason a closed control is shown over itself, or null when the control
+ * The reason shown over a closed control, or null when the control
  * named `label` is there and can be pressed. Throws when there is no such
  * control, so a test cannot pass by the control going missing.
  */

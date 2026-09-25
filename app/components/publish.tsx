@@ -377,7 +377,7 @@ function Findings({ view }: { view: PublishPageView }) {
   const messages = messagesFor(locale)
   const t = messages.admin.publish
 
-  // **The table remains when it is empty**: its columns say what was looked
+  // **The table is drawn when it is empty**: its columns say what was looked
   // for, and the one row in its place shows nothing was found.
   return (
     <Section title={t.findings} note={view.groups.length === 0 ? undefined : t.findingsNote}>

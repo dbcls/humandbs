@@ -7,9 +7,9 @@
  * tables gain rows on publish alone, so the two rules together are what keeps
  * a draft off a public page even though drafts are kept in the same database.
  *
- * Resolving a label is a separate step from deciding it is published: the pin
- * `label_pin` table reports which identity a label names — including a secondary label, which
- * is how a superseded dataset id keeps resolving — and `search_doc` reports
+ * Resolving a label is a separate step from deciding it is published: the
+ * `label_pin` table records which identity a label names — including a secondary label, which
+ * is how a superseded dataset id keeps resolving — and `search_doc` records
  * whether that identity is on the public side. Doing it the other way round
  * would make an unpublished research indistinguishable from a mistyped label,
  * which is the answer we want anyway, but it would also lose the redirect from
@@ -109,7 +109,7 @@ export async function publishedVersions(
       versionId: researchVersion.id,
       number: researchVersion.number,
       releaseDate: researchVersion.releaseDate,
-      // The row is filtered to `research-version`, which is what reports the
+      // The row is filtered to `research-version`, which is what guarantees the
       // column holds a body rather than a description.
       content: sql<ResearchContent>`${searchDoc.content}`,
     })
@@ -169,8 +169,8 @@ export interface PublishedDatasetPage extends PublishedDatasetRow {
 /**
  * The dates are read off the search row rather than resolved here. Whether the
  * content's own release date or the archive's cache applies is decided where
- * those rows are derived, so a page, a listing and the JSON API cannot respond
- * differently — and a cache refresh reaches all three at once because it
+ * those rows are derived, so a page, a listing and the JSON API cannot
+ * disagree — and a cache refresh reaches all three at once because it
  * rebuilds the rows in the same transaction.
  */
 export async function publishedDataset(
@@ -220,7 +220,7 @@ export async function publishedDatasetLabels(
 
 /**
  * The published datasets of a research that select each file of its prefix, by
- * the file's name, in label order. **Only what is published responds** — the
+ * the file's name, in label order. **Only what is published counts** — the
  * same descriptions the research's page reads — so a file a draft has chosen
  * but nobody has published is selected by nothing yet.
  */
@@ -246,12 +246,12 @@ export async function publishedFileSelections(
 /**
  * What the portal's `label_pin` table has of the datasets a research's publications
  * cite: the one chosen by identity and the one typed as an ID. **Only a
- * published dataset responds** — a pinned ID whose dataset is not out yet would
+ * published dataset counts** — a pinned ID whose dataset is not out yet would
  * otherwise tell a reader of this page that a research exists before it is
  * published — so an ID the `label_pin` table does not hold, or holds for nothing public,
  * is drawn as it was written.
  *
- * `labelById` names each cited identity by its primary ID; `humByLabel` reports,
+ * `labelById` names each cited identity by its primary ID; `humByLabel` gives,
  * for every ID either way (as typed, and as the primary ID), the research the
  * dataset belongs to.
  */

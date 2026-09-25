@@ -43,7 +43,7 @@ describe("refusedAsCrossSite", () => {
     expect(refusedAsCrossSite(request("POST", {}))).toBe(true)
   })
 
-  it("never refuses a read, whatever it has about where it came from", () => {
+  it("never refuses a read, whatever it claims about where it came from", () => {
     const site = fc.constantFrom("same-origin", "same-site", "cross-site", "none", undefined)
     const origin = fc.constantFrom("https://humandbs.dbcls.jp", "https://evil.example", "null", "garbage", undefined)
     fc.assert(fc.property(fc.constantFrom(...READS), site, origin, (method, s, o) => {

@@ -29,7 +29,7 @@ async function signIn(): Promise<string> {
 
 /**
  * An update is its version's row on the research's screen, so it is here too:
- * the draft is not shown as a row of its own, and the version's row has
+ * the draft is not shown as a row of its own, and the version's row shows
  * it — whose it is, and whether it has written anything to import.
  */
 describe("a version being updated, among the sources", () => {

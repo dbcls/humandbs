@@ -95,7 +95,7 @@ function safeDestinations() {
       // may not, so it is dropped here rather than narrowed in the check the
       // two share.
       const allowed = attribute === "src" && kept?.startsWith("#") === true ? null : kept
-      // `undefined` is how hast reports an attribute is absent; the serialiser
+      // `undefined` is how hast marks an attribute as absent; the serialiser
       // leaves it out entirely.
       node.properties = { ...node.properties, [attribute]: allowed ?? undefined }
     })
@@ -111,9 +111,9 @@ function textOf(node: Element): string {
 }
 
 /**
- * Every heading responds at an address of its own, and offers it when pointed at.
+ * Every heading has an address of its own, and offers it when pointed at.
  *
- * **The articles already request this.** The FAQ opens with a contents list of
+ * **The articles already need this.** The FAQ opens with a contents list of
  * its own headings and the guidelines cross-reference their clauses, so without
  * the ids those links point at nothing. It is also how a reader sends somebody
  * one clause of a guideline rather than a document of 16,000px.
@@ -165,14 +165,14 @@ function headingAnchors(options: { label: string | null }) {
 }
 
 /**
- * An aside that identifies itself becomes the design system's note; a quotation
+ * An aside that labels itself becomes the design system's note; a quotation
  * stays a quotation.
  *
  * **The naming is GitHub's**: a blockquote whose first line is `[!NOTE]` (or
  * TIP / IMPORTANT / WARNING / CAUTION) is an alert. Writing the marker rather than
  * inferring it from the `>` is what lets an article hold both — the FAQ quotes
  * 43 lines of the personal-information act, headings and all, and a statute
- * inside a "ⓘ" box reports the wrong thing about what it is.
+ * inside a "ⓘ" box suggests the wrong thing about what it is.
  *
  * **The word is not drawn.** A screen's note has no label either; the glyph
  * and the colour are what say which kind it is.
@@ -259,7 +259,7 @@ function alertsFromQuotes() {
       // `app.css`). Those two cannot reach a margin written as a utility —
       // utilities are ordered after components whatever the selectors say — so
       // the note has to give it up itself, or one opening or closing an article
-      // remains 16px further from the edge than a paragraph in its place.
+      // sits 16px further from the edge than a paragraph in its place.
       node.properties = {
         className: [
           REMARK_CLASSES.box,

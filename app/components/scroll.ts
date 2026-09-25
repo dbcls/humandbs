@@ -5,7 +5,7 @@
  * behind it, and sideways as well — so a jump from the page pane pulled the header
  * of the screen back into the window (which unsticks the toolbar) and could
  * drag a two-column block off its left edge. The pane is the only thing meant to
- * move, and only up and down: where the window remains is the reader's, and
+ * move, and only up and down: where the window is scrolled to is the reader's, and
  * nothing a pane holds is meant to be wider than it.
  */
 

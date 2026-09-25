@@ -183,7 +183,7 @@ describe("the refinement panel", () => {
   it("writes the ICD10 code beside a disease, ahead of the heading", () => {
     const html = render([{ code: "subjects", label: "対象者", facets: [DISEASES] }])
 
-    // The code is a key the reader can have away — it is on the dataset page
+    // The code is a key the reader can take away — it is on the dataset page
     // and in the API — and it comes first so that the codes make a column.
     expect(html).toContain("<code")
     expect(html).toContain("C34")
@@ -198,20 +198,20 @@ describe("the refinement panel", () => {
   })
 
   /*
-    **A range has no button.** Both ends validate on their own — a date the moment
+    **A range has no button.** Both ends submit on their own — a date the moment
     it has one, a number on the way out of the field — so all a button would add
     is a second way to do what has already happened. **The cost is that a range
     needs script**, which the values of a facet do not: those are all on the page
     whether anything runs or not.
   */
-  it("puts no button on a range, since both ends validate on their own", () => {
+  it("puts no button on a range, since both ends submit on their own", () => {
     const html = render([{ code: null, label: null, facets: [DATES] }])
 
     expect(html).not.toContain("<button")
     expect(html).toContain("type=\"date\"")
   })
 
-  it("has the ordering, its direction and the page size across a range", () => {
+  it("keeps the ordering, its direction and the page size across a range", () => {
     const html = render([{ code: null, label: null, facets: [DATES] }], { sort: "id", order: "asc", size: 50 })
 
     expect(html).toContain("name=\"sort\" value=\"id\"")
@@ -236,7 +236,7 @@ describe("the refinement panel", () => {
 describe("the values of a facet", () => {
   /**
    * The widest facet has 389 values. Cutting the list and offering a way to
-   * the rest costs either an address that shows something other than the
+   * the rest costs either an address that means something other than the
    * conditions in force, or a reader without script who cannot reach past the
    * cut; scrolling costs neither.
    */
@@ -257,7 +257,7 @@ describe("the values of a facet", () => {
    * words never reach the address — it changes what the reader is looking at,
    * not what the search returned.
    */
-  it("get a box to narrow them once they no longer are shown in the ceiling", () => {
+  it("get a box to narrow them once they no longer fit under the ceiling", () => {
     const html = render([{ code: null, label: null, facets: [MANY_DISEASES] }])
 
     expect(html).toContain("type=\"search\"")
@@ -270,7 +270,7 @@ describe("the values of a facet", () => {
   })
 
   /**
-   * A scrollbar does not show the list goes on — where the reader has it set to
+   * A scrollbar does not show that the list goes on — where the reader has it set to
    * appear only while scrolling, it claims no space at all. **And the shading
    * is drawn before anything measures it**, or the one thing indicating so would
    * be the thing that needs script to appear.

@@ -80,7 +80,7 @@ describe("what a state toggle shows it does", () => {
 })
 
 describe("a slot marked unsettled or not-applicable", () => {
-  it("collapses the box away and shows the state's own word in its place", () => {
+  it("collapses the box and shows the state's own word in its place", () => {
     const html = render(
       <SlotEditor
         language="ja"
@@ -131,7 +131,7 @@ describe("the dialect badge on a field's name row", () => {
   const annotations = (): FieldAnnotations => ({ at: "summary.aims", changed: false, onImport: null })
   const pair = { ja: { state: "value" as const, text: "" }, en: { state: "value" as const, text: "" } }
 
-  it("remains right after the name, before anything else on the row", () => {
+  it("is shown right after the name, before anything else on the row", () => {
     const html = render(
       <PairField label="対象" value={pair} multiline annotations={{ ...annotations(), changed: true }} locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
@@ -144,7 +144,7 @@ describe("the dialect badge on a field's name row", () => {
     expect(html.slice(name, badge)).not.toContain("ml-auto")
   })
 
-  it("is not drawn by a field with no name of its own — the heading naming it has it", () => {
+  it("is not drawn by a field with no name of its own — the heading naming it shows it", () => {
     const html = render(
       <PairField value={pair} multiline annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
@@ -153,7 +153,7 @@ describe("the dialect badge on a field's name row", () => {
     expect(section).toMatch(/<h2[^>]*>リリースノート[\s\S]*?リンクと改行[\s\S]*?<\/h2>/)
   })
 
-  it("draws no row for a field with no name, however much the review has to show — the heading has it", () => {
+  it("draws no row for a field with no name, however much the review has to show — the heading shows it", () => {
     const html = render(
       <PairField
         value={{ ja: { state: "value", text: "値" }, en: { state: "value", text: "" } }}
@@ -233,7 +233,7 @@ describe("a list of repeated elements", () => {
     expect(operations).toMatch(/<td[^>]*class="[^"]*\bpy-0\b/)
   })
 
-  it("remains no table while the list is empty — only the way to add one", () => {
+  it("draws no table while the list is empty — only the way to add one", () => {
     const html = list([])
     expect(html).not.toContain("<table")
     expect(html).toContain("追加")
@@ -275,7 +275,7 @@ describe("what an element's row shows it is short of", () => {
       .toEqual({ untranslated: false, unsettled: false })
   })
 
-  it("does not request links about translation", () => {
+  it("does not check links for translation", () => {
     expect(shortfallsOf({ id: "a", url: { ja: { state: "value", links: [{ url: "https://x" }] }, en: { state: "value", links: [] } } }))
       .toEqual({ untranslated: false, unsettled: false })
   })

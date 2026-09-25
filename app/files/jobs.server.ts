@@ -1,10 +1,10 @@
 /**
  * Moving a file between the buckets.
  *
- * **A row is not an instruction but a destination.** It reports which bucket the
+ * **A row is not an instruction but a destination.** It records which bucket the
  * file is meant to be in, so a second opinion overwrites the first instead of
- * queueing behind it — otherwise every intermediate opinion would be kept
- * out as a copy of the actual bytes, and the largest file is 146 GiB. The unique
+ * queueing behind it — otherwise every intermediate opinion would be performed
+ * as a copy of the actual bytes, and the largest file is 146 GiB. The unique
  * constraint on `(research, file name)` is what makes that true rather than
  * merely intended.
  *
@@ -16,7 +16,7 @@
  * asked for what.
  *
  * Renumbering a research is not a third kind of work. The public key has
- * the hum label, so moving the prefix is requesting every file in it to be public
+ * the hum label, so moving the prefix means asking for every file in it to be public
  * again — and the label it is moving away from is still in the `label_pin` table as a
  * secondary pin, which is how the copy that has to move is found. That is why a
  * hum label is not unpinned while its prefix holds anything (`unpinLabel`): out of
@@ -299,7 +299,7 @@ function sameRef(a: ObjectRef, b: ObjectRef): boolean {
 }
 
 /**
- * Move the file to where the job reports it belongs, and take away every copy that
+ * Move the file to where the job records it belongs, and take away every copy that
  * is somewhere else.
  *
  * The order is copy then delete, never the other way round: a process that dies
@@ -373,7 +373,7 @@ export async function recoverAbandoned(db: Database): Promise<number> {
  *
  * The three steps are separate functions rather than one because the middle of
  * them is where a second opinion can arrive: claiming, reconciling and settling
- * have to be drivable one at a time to report what happens when it does.
+ * have to be drivable one at a time to show what happens when it does.
  */
 export async function runOneJob(db: Database): Promise<boolean> {
   const job = await claimJob(db)

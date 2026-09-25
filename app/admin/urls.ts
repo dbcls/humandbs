@@ -321,7 +321,7 @@ export function adminExperimentFieldsPath(): string {
  * **The address names the field rather than the vocabulary.** Every vocabulary
  * belongs to exactly one field, so reaching the terms through the field is what
  * lets the screen be titled with what they are the terms *of* — a screen called
- * 「語彙」 can only ever be responded to with "which vocabulary?".
+ * 「語彙」 can only ever be met with "which vocabulary?".
  */
 export function adminExperimentFieldPath(keyCode: string): string {
   return `${adminExperimentFieldsPath()}/${encodeURIComponent(keyCode)}`
@@ -341,9 +341,9 @@ export function adminDocumentPath(documentId: string): string {
 }
 
 /**
- * A versioned article: the pointer that reports which revision is current, and the
+ * A versioned article: the pointer that records which revision is current, and the
  * revisions under it. The listing has one row for the whole series, so this
- * is where everything that acts on the series as a whole remains.
+ * is where everything that acts on the series as a whole is.
  */
 export function adminSeriesPath(seriesId: string): string {
   return `${adminContentsPath()}/series/${seriesId}`
@@ -385,7 +385,7 @@ export function adminContentFilesPath(): string {
 }
 
 /**
- * Where that prefix requests a signature. **No language prefix**: nothing it
+ * Where that files screen requests a signature. **No language prefix**: nothing it
  * responds with is interface text, and an upload that changed language
  * mid-transfer would be talking to a second address.
  */

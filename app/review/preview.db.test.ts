@@ -142,7 +142,7 @@ describe("opening a preview", () => {
     expect(await status(previewResearchPage(get(), "ja", token))).toBe(404)
   })
 
-  it("reports not to index it and not to pass the address on", () => {
+  it("sets headers against indexing it and passing the address on", () => {
     expect(PREVIEW_HEADERS["X-Robots-Tag"]).toContain("noindex")
     expect(PREVIEW_HEADERS["Referrer-Policy"]).toBe("no-referrer")
   })
@@ -563,7 +563,7 @@ describe("writing from a share link", () => {
     const { draftId, token } = await sharedDraft()
 
     // Answered on the same page rather than sent back: the page does not change
-    // when an indicator is pressed, and the answer is what reports it arrived.
+    // when an indicator is pressed, and the answer is what confirms it arrived.
     expect(await previewAction(post({ intent: "acknowledge", kind: "commented", name: "提供者" }), token, RESEARCH))
       .toEqual({ status: "acknowledged", kind: "commented" })
     expect(await previewAction(post({ intent: "acknowledge", kind: "approved", name: "提供者" }), token, RESEARCH))

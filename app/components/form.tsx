@@ -68,7 +68,7 @@ const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
 
 /**
  * **The focus ring is drawn over the edge rather than outside it.** Everywhere
- * else the ring remains off the element by 2px, which reads as a ring; on
+ * else the ring sits 2px off the element, which reads as a ring; on
  * something that already has a border it draws a second line 2px away from the
  * first. The row of an input is 36.4px tall (`text-sm` has a line of 22.4),
  * so the two lines land on different fractions of a physical pixel and the pair
@@ -102,7 +102,7 @@ export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs 
  *
  * **The box that took the caret shows it with its background** (`data-highlighted`,
  * `CONTROL`) until the caret leaves. The ring alone did not: it is the same ring
- * every box is shown with when the caret arrives by Tab, so a jump from the other pane
+ * every box gets when the caret arrives by Tab, so a jump from the other pane
  * focused without anything on the form indicating where. The ring keeps its one
  * colour, and the background is what differs.
  *
@@ -349,9 +349,9 @@ interface FieldLook {
    *
    * **What it has to be filled for is what the screen does with it**, which
    * is not always sending the form: an alert is saved with one language and
-   * shown only with both, and its two boxes are shown with the indicator for the showing.
+   * shown only with both, and its two boxes get the indicator for the showing.
    * The server is what refuses either way (`required` is not set on the
-   * control); the indicator shows it before anything is pressed.
+   * control); the indicator shows that before anything is pressed.
    */
   required?: string
   hint?: string
@@ -395,7 +395,7 @@ export function Field({
   placeholder?: string
   /**
    * The shape the value has to have. **The server checks it too** — this only
-   * saves the round trip and shows it before the box is left.
+   * saves the round trip and shows the problem before the box is left.
    */
   pattern?: string
   /** For a row where a visible label would leave nothing lined up with it. */
@@ -433,7 +433,7 @@ export function Field({
  * made the lines harder to read.
  *
  * **`plain` is for a value that is read as it is typed.** Nothing in it is
- * syntax, so the typeface has no work to do, and the box usually is shown beside
+ * syntax, so the typeface has no work to do, and the box is usually shown beside
  * prose it is being compared with — a different size and a different typeface there
  * makes two readings of one sentence look like two sentences.
  */
@@ -488,7 +488,7 @@ export function TextArea({
  *
  * **Not a native `<select>`.** The one part of a select the page can reach is
  * the closed box; the list it opens is drawn outside the page and matches
- * nothing else on it. What that costs is kept
+ * nothing else on it. What that costs is paid
  * here: ↑ / ↓ / Home / End walk the choices, Enter and Space choose, Escape
  * closes and hands focus back to the box. **No type-ahead** — a list long
  * enough to search is a picker with a box of its own, not a select.
@@ -635,12 +635,12 @@ export function Select({
  * a box that works.
  *
  * **The box stops at thirty lines and scrolls inside itself.** A body runs to
- * hundreds of lines, and a box that grew with it kept the row that saves
+ * hundreds of lines, and a box that grew with it pushed the row that saves
  * and the lines a save refused thousands of pixels below the top. A box that
  * took whatever room the pane had left instead grew with the window, and on a
  * tall one the row that saves sat at the foot of the pane with a gap between
  * it and the words — thirty lines is as much as is read at once, and the row
- * remains right under them. **A short body takes a shorter box**, down to 24rem,
+ * sits right under them. **A short body takes a shorter box**, down to 24rem,
  * and a short window shrinks the box to that floor before the pane scrolls
  * (`fill` down the column). The textarea that stands in for it without script
  * is thirty rows.
@@ -669,7 +669,7 @@ export function MarkdownEditor({ label, name, value, required, accepts, hint, er
    * (`codemirror.client.ts` の `highlightLines`).
    */
   refused?: { id: string, lines: number[] }
-  /** Handed the way to put the caret on a line once the editor remains, and null when it goes. */
+  /** Handed the way to put the caret on a line once the editor is mounted, and null when it goes. */
   onReady?: (goToLine: ((line: number) => void) | null) => void
 }) {
   const id = useId()
@@ -1045,7 +1045,7 @@ export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: Compo
         onInput?.(event)
       }}
       // **Sending is a way off the screen the guard must not stop**, so the
-      // hold is let go in the same event, before the router requests. A refused
+      // hold is let go in the same event, before the router asks. A refused
       // save comes back with the words still here, and the walk above takes
       // the hold again.
       onSubmit={(event) => {
@@ -1097,7 +1097,7 @@ export function Unsaved({ locale, dirty }: {
  *
  * **Nothing beside it moves when the news comes and goes.** The news appears
  * at the first character typed and goes at the save; a report that takes its
- * width only while it has a word pushes whatever remains to its right across the
+ * width only while it has a word pushes whatever is to its right across the
  * row at every keystroke that starts or ends a change. So every word it can
  * say is laid in the same grid cell, out of sight and out of the reading
  * order, and the cell is as wide as the widest of them — the one being said
@@ -1231,7 +1231,7 @@ export function Submit({
  * arrangement of the same glyph, border and text.
  *
  * **It has no margin and no width.** It is drawn inside `Answered`, which
- * decides where it remains and how wide it gets.
+ * decides where it sits and how wide it gets.
  */
 export function Result({ ok, also, children }: {
   ok: boolean
@@ -1309,7 +1309,7 @@ const Dismiss = createContext<ReactNode>(undefined)
  * save pushes the form down by the height of its own confirmation and the
  * reader loses the line they were on. Over the page nothing moves, and the
  * answer is in the same place on every screen that gives one — which is the
- * corner the public side already responds in when a dataset is marked.
+ * corner the public side already shows its result in when a dataset is marked.
  *
  * **It waits while it is being read.** The timer is held off while a pointer is
  * over the box or the focus is inside it.

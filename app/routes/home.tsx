@@ -20,7 +20,7 @@ const LATEST_NEWS = 5
  *
  * The search box sits here and in the two listings, and nowhere else. Those are
  * the places a reader starts from, and a box in the header would have to be
- * held by every page for the few who search from the middle of one.
+ * shown on every page for the few who search from the middle of one.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale

@@ -8,7 +8,7 @@
  * document titled `所属機関外利用可能サーバ（機関外サーバ）の導入について`),
  * which makes them interface text of the same kind as `i18n/messages.ts`.
  *
- * A destination is an internal path: either a slug that a document responds at,
+ * A destination is an internal path: either a slug that a document is served at,
  * or a path a route owns (`/`, `/data-use`, `/research`). The test that every
  * destination is answered by something is the only guard against a slug being
  * renamed out from under an entry — a foreign key would not have caught the

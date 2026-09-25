@@ -5,7 +5,7 @@
  * v1 merged 208 table headings into keys and then grew more by hand, so the
  * catalog it left names one step of a pipeline in six places and several steps
  * that only one research ever wrote. Here each question gets one key: a step
- * only a few research describe joins the nearest key, and a key whose name reports
+ * only a few research describe joins the nearest key, and a key whose name describes
  * something other than its values is renamed.
  *
  * **A merge keeps no heading, save in the sample processing.** Merging accepts
@@ -137,13 +137,13 @@ export function applyKeyFixes(humId: string, experiment: EsExperiment, fixes: re
 
 /** A line naming a tool that imputes or phases genotypes. */
 const IMPUTES = /imput|minimac|IMPUTE|beagle|eagle|shapeit|prephas|インピュテーション/i
-/** A line that also identifies genotype calling, which stays where it is. */
+/** A line that also mentions genotype calling, which stays where it is. */
 const CALLS = /genotyp|GenomeStudio|遺伝子型決定|ジェノタイプ|call/i
 
 /**
  * Moves the lines describing imputation out of the analysis methods into the
  * key of their own: the reference panel is the first thing a user of genotype
- * data asks about. A line that identifies genotype calling as well stays, since
+ * data asks about. A line that mentions genotype calling as well stays, since
  * it cannot be cut without rewording it.
  */
 export function moveImputationLines(experiment: EsExperiment): void {
@@ -179,7 +179,7 @@ const OTHER_ACCESSION = /\b(?:DRA|SRA|ERA|DRR|DRX|E-GEAD-|GSE|MTBKS|JPST|hum\d{4
  * key. v1's heading table resolved the two languages of one row separately and
  * sent the English half of the JGA row to the SRA key, and some NBDC rows are
  * JGA ids too. The move only fills the JGA key's side when that side is empty
- * or already reports the same.
+ * or already holds the same.
  */
 export function moveMisfiledJgaAccessions(experiment: EsExperiment): void {
   if (!experiment.data) return

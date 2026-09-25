@@ -48,7 +48,7 @@ const READ_LENGTH_KEY = "read-length"
 
 /**
  * The access type the application form's number means. 1 is unrestricted, which
- * no JGA dataset is, and 3 is an application covering both — neither reports what
+ * no JGA dataset is, and 3 is an application covering both — neither tells what
  * one dataset is, so neither is written.
  */
 const ACCESS_TERM_BY_NUMBER: ReadonlyMap<number, string> = new Map([
@@ -97,7 +97,7 @@ export interface DatasetSeed {
  * A language upstream left empty stays empty rather than becoming `unknown`:
  * a value in one language and an empty string in the other is what untranslated
  * means, and the publish check lists it as such. `unknown` is a state a curator
- * puts on a field they are still asking about, and upstream indicating nothing is
+ * puts on a field they are still asking about, and upstream stating nothing is
  * not that.
  */
 export function researchContentFrom(branch: DsBranchDetail): ResearchContent {
@@ -204,7 +204,7 @@ export function draDatasetSeed(
 
   // **The diseases are the application's, the same in every experiment**, and
   // what did not fit is said in each: every field left unsettled has the
-  // comment that reports what to settle it on.
+  // comment that explains what to settle it on.
   const diseases = diseasesOf(branch, catalog)
   const experiments = submission.groups.map((group) => {
     const id = newId()
@@ -270,9 +270,9 @@ function diseasesOf(branch: DsBranchDetail | null, catalog: CatalogWithTerms): B
  * without the point, narrow ranges spelled out, and `-` and `dummy` left out
  * rather than turned into codes.
  *
- * **The tail of a code is dropped until the vocabulary responds.** The field
+ * **The tail of a code is dropped until the vocabulary has it.** The field
  * holds ICD-10-CM, which WHO's classification cannot spell — `K75.81` is NASH —
- * and `K758` is what stands for it. A code that responds at no length is named
+ * and `K758` is what stands for it. A code that matches at no length is named
  * as not written rather than minted.
  *
  * **What is written is codes and no names.** The application form holds no word
@@ -316,7 +316,7 @@ type Built
     | { slot: null, dropped: DroppedValue[] }
 
 /**
- * Puts a built slot among `values`, which are shown at `base` in the dataset, and
+ * Puts a built slot among `values`, which sit at `base` in the dataset, and
  * notes what did not fit against the field it would have gone in.
  */
 function take(values: ValueSlot[], dropped: DroppedValue[], built: Built, base: string): void {
@@ -436,7 +436,7 @@ function named(catalog: CatalogWithTerms, keyCode: string, values: readonly stri
  *
  * **The investigator is added, never swapped in.** A provider is a structure,
  * and the draft's providers are people the curator already wrote; the
- * application's one joins the end of the list unless the draft already identifies
+ * application's one joins the end of the list unless the draft already lists
  * that person in either language.
  */
 export function applicationInput(mine: DraftInput, branch: DsBranchDetail): DraftInput {

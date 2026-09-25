@@ -69,7 +69,7 @@ describe("the catalog an editing screen gets", () => {
     expect(catalog).not.toHaveProperty("terms")
   })
 
-  it("has every term when what requests is matching against upstream", async () => {
+  it("has every term when the caller is matching against upstream", async () => {
     // Only the server side may request this: nothing of it reaches a page.
     const catalog = await loadCatalogWithTerms(db)
 
@@ -86,7 +86,7 @@ describe("resolving what a document names", () => {
     expect(terms.map((term) => term.code).sort()).toEqual(["C34", "C50"])
   })
 
-  it("requests nothing of the database when nothing is named", async () => {
+  it("runs no query when nothing is named", async () => {
     expect(await termsByIds(db, [])).toEqual([])
   })
 })

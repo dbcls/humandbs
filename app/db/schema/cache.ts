@@ -117,7 +117,7 @@ export const upstreamSource = pgEnum("upstream_source", UPSTREAM_SOURCES)
  * How each upstream fetch last went. One row per source, written by the refresh
  * itself.
  *
- * The cache tables cannot respond to this on their own. A source that has been
+ * The cache tables cannot answer this on their own. A source that has been
  * failing for a week looks exactly like one that succeeded this morning,
  * because a failed fetch deliberately leaves the previous rows untouched — so
  * without this table a stalled refresh is invisible until somebody notices a

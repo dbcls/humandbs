@@ -25,7 +25,7 @@ import { createdAt, primaryId, updatedAt } from "./common"
  * pinned in the `label_pin` table, so a research can be created before a hum number has
  * been issued and can survive one being corrected.
  *
- * **Nothing else.** When it was made is what a row of it would report — every
+ * **Nothing else.** When it was made is what a row of it would record — every
  * change to a research is a change to a version or to a draft, and the listing
  * reads its "last touched" off those.
  */
@@ -63,7 +63,7 @@ export const researchVersion = pgTable("research_version", {
 
 /**
  * The identity of a dataset. Belongs to exactly one research (composition) and
- * has no description of its own — every description is defined in the version
+ * has no description of its own — every description is stored in the version
  * that lists it, or in the draft entry being edited.
  *
  * A dataset added by a draft shares that draft's fate until it is published,
@@ -97,7 +97,7 @@ export const researchDraft = pgTable("research_draft", {
    * **An update is a state of the version, and the draft is only its vessel.**
    * The version stays out, untouched, while the draft is written; publishing
    * the draft puts it under that version's number, in its place. The research
-   * screen never shows such a draft as a draft — the version's row reports it is
+   * screen never shows such a draft as a draft — the version's row shows it as
    * being updated. One per version, and a version being updated cannot be
    * withdrawn, so the draft never outlives what it points at.
    */

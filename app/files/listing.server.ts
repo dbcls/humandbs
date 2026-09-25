@@ -66,7 +66,7 @@ export async function publicListingsOf(
  * Every public prefix at once, keyed by the hum label that identifies it.
  *
  * One listing of the whole bucket rather than one per research: the bulk stream
- * answers for every published research, and requesting the store several hundred
+ * answers for every published research, and querying the store several hundred
  * times to build one answer would make an endpoint nobody has to authenticate
  * for expensive to call.
  */

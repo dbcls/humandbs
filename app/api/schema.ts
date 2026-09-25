@@ -13,7 +13,7 @@
  * - **an optional key is a value that is not there.** Empty and unsettled both
  *   arrive as nothing, and both leave the key out
  * - **`null` means "known not to exist".** It is the only value state that
- *   survives, because it is the only one that reports something
+ *   survives, because it is the only one that conveys something
  * - **an array is always present.** A reader can take its length without
  *   checking for the key first
  */

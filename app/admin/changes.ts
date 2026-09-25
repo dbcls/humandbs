@@ -1,14 +1,14 @@
 /**
- * Where a draft reports something other than the version that is out there now.
+ * Where a draft differs from the version that is out there now.
  *
- * This is what the preview and the page beside the form mark, and it responds
+ * This is what the preview and the page beside the form mark, and it addresses
  * "what would a reader see change if this went out". So there is no base and no
  * three-way — the published version and the draft, compared with the same
  * functions the conflict banner uses, reported as the same paths.
  *
  * A research with nothing published has nothing to compare against. That is not
  * "everything changed": a first version is all new by definition, and marking
- * every field would report nothing.
+ * every field would tell the reader nothing.
  */
 
 import { diffDatasetInput } from "./dataset-diff"
@@ -54,8 +54,8 @@ export function changedDatasetFromPublished(
 /**
  * A value of the editing form as something a screen can show.
  *
- * The editor marks where the published version reports something else, and opening
- * the indicator shows what it has. Reaching a value by its path means arriving at
+ * The editor marks where the published version has something else, and opening
+ * the indicator shows the published value. Reaching a value by its path means arriving at
  * one of a handful of shapes rather than at a known type, so this recognises
  * them and gives up on anything else — an array of elements, say, where the
  * difference is membership and the honest answer is the indicator alone.

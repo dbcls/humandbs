@@ -98,7 +98,7 @@ function bodyOf(form: HTMLFormElement, name: string): string {
  *
  * **Showing it is a button rather than a box to tick.** An alert is either up
  * or it is not; a tick that takes effect at the next save leaves the screen
- * indicating one thing while the site shows another. The button has the state in
+ * indicating one thing while the site shows another. The button shows the state in
  * its word — what it offers is the other one — and pressing it saves what has
  * been typed, so there is no way to put up a sentence that is not the one on
  * the screen.
@@ -107,7 +107,7 @@ function bodyOf(form: HTMLFormElement, name: string): string {
  * condition.** The server refuses an alert with an empty side, and a control
  * that can be pressed into a refusal is one the reader only hears about
  * afterwards. While a side is empty the button cannot be pressed and shows why
- * over itself (`Button` の `disabled`); the two boxes are shown with the indicator of a box
+ * over itself (`Button` の `disabled`); each of the two boxes is marked as a box
  * that has to be filled (`form.tsx` の `required`) — for the showing, not for
  * the save, which takes one language at a time.
  *

@@ -20,7 +20,7 @@ import {
 /**
  * Taking a dataset off an application.
  *
- * **It requests first, in the site's own panel.** What goes with it is the analysis
+ * **It confirms first, in the site's own panel.** What goes with it is the analysis
  * the service ran for that dataset, so it is not a press to make by accident —
  * and the browser's own dialog is neither in the reader's language nor in any
  * of the site's styles.

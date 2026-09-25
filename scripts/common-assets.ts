@@ -9,12 +9,12 @@
  *
  * **What is fetched is what the content refers to.** The list is read out of the
  * database rather than written down here, so an article that starts pointing at
- * something else brings it along on the next run — and nothing is kept that
- * no article requests.
+ * something else brings it along on the next run — and nothing is copied that
+ * no article refers to.
  *
  * **The content type is written onto the object.** The store guesses from the
  * body when a PUT has none, and the proxy decides between showing a file and
- * downloading it by what the store responds with (`docker/nginx/default.conf`),
+ * downloading it by what the store returns (`docker/nginx/default.conf`),
  * so an image put without one would arrive as a download. An extension this does
  * not know becomes `application/octet-stream`, which the proxy sends as an
  * attachment — the safe side for anything that might hold markup.

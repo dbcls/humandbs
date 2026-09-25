@@ -1,5 +1,5 @@
 /**
- * The address a heading responds at.
+ * The address a heading is reached at.
  *
  * **Two things compute this and they may not disagree.** The renderer puts the
  * id on the heading (`markdown.server.ts`), and the migration rewrites the
@@ -9,7 +9,7 @@
  */
 
 /**
- * The address one heading responds at, built from its words.
+ * The address one heading is reached at, built from its words.
  *
  * **Words rather than a counter**: an address that survives an edit elsewhere in
  * the article is one a reader can quote. Everything that is not a letter, a

@@ -34,7 +34,7 @@ describe("Flag", () => {
     expect(new Set(looks).size).toBe(looks.length)
   })
 
-  it("is shown with the glyph the same state is shown with as an indicator and a word in a listing", () => {
+  it("uses the glyph the same state uses as an indicator and a word in a listing", () => {
     expect(STATE_FLAG).toEqual({ published: "live", scheduled: "scheduled", unpublished: "hidden" })
   })
 
@@ -44,7 +44,7 @@ describe("Flag", () => {
 })
 
 describe("Stated", () => {
-  it("draws every kind with the glyph the same kind's badge is shown with, and no colour of its own", () => {
+  it("draws every kind with the glyph the same kind's badge uses, and no colour of its own", () => {
     for (const kind of KINDS) {
       const html = renderToStaticMarkup(<Stated kind={kind}>語</Stated>)
       const badge = renderToStaticMarkup(<Flag kind={kind}>語</Flag>)

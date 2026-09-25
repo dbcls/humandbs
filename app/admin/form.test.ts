@@ -40,7 +40,7 @@ describe("what the editor is handed", () => {
 })
 
 describe("what the editor sends back", () => {
-  it("drops the half-typed text of a slot whose state reports there is no value", () => {
+  it("drops the half-typed text of a slot whose state indicates there is no value", () => {
     const input = researchContentInput(emptyResearchContent())
     input.title.ja = { state: "unknown", text: "half written" }
     input.title.en = { state: "not-applicable", text: "also half written" }

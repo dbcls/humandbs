@@ -10,7 +10,7 @@ import { messagesFor } from "~/i18n/messages"
 import { cartPath, href } from "~/public/urls"
 
 /**
- * The cart icon a listing row and the dataset page have.
+ * The cart icon on a listing row and on the dataset page.
  *
  * **One control puts a whole row in or takes it out.** A research row stands for
  * for every JGA dataset under it and the dataset page for one — the difference
@@ -25,7 +25,7 @@ import { cartPath, href } from "~/public/urls"
  * disabled toggle: an unrestricted-access dataset needs no application, and a
  * control that can never do anything is noise in every row of the table.
  *
- * The cart is defined in the browser, so on the server every indicator draws as "not in
+ * The cart is stored in the browser, so on the server every indicator draws as "not in
  * the cart" and corrects itself once the page is running. That is why the state
  * is announced (`aria-pressed`) rather than only coloured.
  */
@@ -129,7 +129,7 @@ function noticeSentence(notice: CartNotice, messages: Messages): string {
 }
 
 /**
- * What the cart shows back when it is pressed.
+ * What the cart shows when it is pressed.
  *
  * **The cart is never where the press is.** An indicator at the foot of a listing is
  * two thousand pixels below the count in the top bar, so without this the only
@@ -212,7 +212,7 @@ export function CartToast({ locale }: { locale: Locale }) {
  * `/cart` are fetched by that page from what the browser is holding; here there
  * is no fetch at all, so the panel names each dataset by the label the reader
  * pressed and hands them on to that page for anything more. **The way there
- * has nothing** — the cart is in the browser, and the address is `/cart`.
+ * has no query** — the cart is in the browser, and the address is `/cart`.
  */
 export function CartMenu({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
@@ -254,7 +254,7 @@ export function CartMenu({ locale }: { locale: Locale }) {
             </>
           )}
       {/*
-        **The way on remains whether or not anything is in the cart, and in the
+        **The way on is shown whether or not anything is in the cart, and in the
         same place either way.** How many are held is the panel's subject, not a
         reason for the way to `/cart` to be there or not — a reader who has just
         emptied the cart from this very panel would otherwise press where the

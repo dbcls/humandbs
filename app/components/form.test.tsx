@@ -69,7 +69,7 @@ describe("a box that has to be filled", () => {
     expect(html).not.toMatch(/必須<\/span><\/span><span[^>]*>markdown/)
   })
 
-  it("is shown with nothing while it need not be filled", () => {
+  it("shows no indicator while it need not be filled", () => {
     expect(render(<TextArea label="日本語" name="ja" />)).not.toContain("*")
     expect(render(<Field label="slug" name="slug" />)).not.toContain("必須")
   })

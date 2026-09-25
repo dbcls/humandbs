@@ -6,8 +6,8 @@ import { diffDatasetInput, importDatasetField } from "./dataset-diff"
 
 /**
  * The diff and the taking of a field share one path vocabulary and nothing in
- * the type system reports it: the diff names paths, the import walks a structure,
- * and a disagreement between them would leave a field that reports it changed and
+ * the type system enforces it: the diff names paths, the import walks a structure,
+ * and a disagreement between them would leave a field that is marked as changed and
  * cannot be taken. **This law is the only thing that ties them together.**
  */
 describe("the conflict diff over a dataset", () => {
@@ -40,7 +40,7 @@ describe("the conflict diff over a dataset", () => {
     }))
   })
 
-  it("does not see the text a slot kept behind a state that reports there is no value", () => {
+  it("does not see the text a slot kept behind a state that indicates there is no value", () => {
     fc.assert(fc.property(datasetContentInputArb, fc.string(), (input, leftover) => {
       const hidden = {
         ...input,

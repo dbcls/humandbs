@@ -17,8 +17,8 @@ import type { Route } from "./+types/admin-contents-series"
 import { Flag } from "~/components/flags"
 
 /**
- * One versioned article: the address readers hold, which revision it responds
- * with, and the revisions under it.
+ * One versioned article: the address readers hold, which revision it serves,
+ * and the revisions under it.
  *
  * **The pointer is moved by hand.** Publishing a revision does not move it — a
  * body is written and published over several sittings, and an address that
@@ -27,7 +27,7 @@ import { Flag } from "~/components/flags"
  *
  * **Retiring takes the pointer and every revision at once.** The revision the
  * pointer names cannot be deleted on its own, so one at a time would leave the
- * pointer shown last with nothing left to point at.
+ * pointer last, with nothing left to point at.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const view = await seriesPage(request, params.seriesId)
@@ -86,7 +86,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
 
           {/*
             **What the screen is about comes first**: the address readers hold
-            and which revision it responds with. The name of the part shows what
+            and which revision it serves. The name of the part shows what
             the address is called everywhere on this side, and the sentence
             under it shows the one thing a curator cannot work out from the
             controls — that publishing does not move it.
@@ -110,7 +110,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
           </Section>
 
           {/*
-            **Which revision the address responds with is an indicator in the listing
+            **Which revision the address serves is an indicator in the listing
             rather than a line above it.** The listing is where the reader is
             choosing one anyway, and said in both places the two drift apart the
             moment the pointer is moved.

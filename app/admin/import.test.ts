@@ -14,7 +14,7 @@ function pair(ja: string, en: string): TextPairInput {
 }
 
 describe("sourceOrDraft", () => {
-  it("imports the source's language where it reports something and keeps the draft's where it is blank", () => {
+  it("imports the source's language where it has a value and keeps the draft's where it is blank", () => {
     expect(sourceOrDraft(pair("下書き", "draft"), pair("申請", ""))).toEqual(pair("申請", "draft"))
   })
 
@@ -94,7 +94,7 @@ describe("a publication's datasets in the form", () => {
     externalIds,
   })
 
-  it("has the typed IDs with the chosen ones, since the two are one place", () => {
+  it("keeps the typed IDs with the chosen ones, since the two are one place", () => {
     const mine = draft((c) => ({ ...c, relatedPublications: [publication(["d1"], [])] }))
     const theirs = draft((c) => ({ ...c, relatedPublications: [publication([], ["JGAD000001"])] }))
 

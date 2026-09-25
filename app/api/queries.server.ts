@@ -3,7 +3,7 @@
  *
  * The single-object endpoints read the same way the public pages do
  * (`app/public/queries.server.ts`); what is here is the batched form the search
- * and the bulk stream need, so that responding for twenty researches — or for
+ * and the bulk stream need, so that a response for twenty researches — or for
  * all of them — is a fixed number of queries rather than one per row.
  *
  * **The set still comes from `search_doc` and from nowhere else.** Every query
@@ -27,7 +27,7 @@ import { latestOf } from "~/public/versions"
 
 import type { Edge } from "./dblink"
 
-/** A published research, at the version the API responds for. */
+/** A published research, at the version the API returns. */
 export interface ResearchBundle {
   researchId: string
   humLabel: string
@@ -65,7 +65,7 @@ async function publishedResearchIds(
  *
  * The version list travels with the object because that is where the research's
  * own dates live: the answer holds no separate "last modified", so the newest
- * entry here is what reports when the research last changed.
+ * entry here is what shows when the research last changed.
  */
 export async function researchBundles(
   db: Executor,

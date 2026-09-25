@@ -144,7 +144,7 @@ const TERMS = [
 /** Nothing in this fixture has values, so an empty catalog draws every place. */
 const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
 
-/** The dataset drawn as its page, which the editor is shown beside the form. */
+/** The dataset drawn as its page, which the editor shows beside the form. */
 function drawn(content: DatasetContent): DrawnDataset {
   const anchored = anchoredDatasetView({
     label: "hum0001-NHA001",
@@ -521,7 +521,7 @@ describe("the dataset editing form", () => {
     expect(html).toContain("未確定")
   })
 
-  it("implies nothing about a conflict until a save has been answered", () => {
+  it("shows nothing about a conflict until a save has been answered", () => {
     const html = render(view(described()))
 
     expect(html).not.toContain("別の場所で保存されました")
@@ -584,7 +584,7 @@ describe("the header", () => {
     expect(html).not.toContain("value=\"issue\"")
   })
 
-  it("is shown with the version it updates as a badge beside the identifier", () => {
+  it("shows the version it updates as a badge beside the identifier", () => {
     expect(render({ ...view(), updating: 3 })).toContain("v3 を更新中")
   })
 
@@ -757,7 +757,7 @@ describe("the header of the dataset's form", () => {
     expect(head).not.toContain("type=\"date\"")
   })
 
-  it("requests no release date of a portal-issued id — the publish dates it — and shows it", () => {
+  it("requires no release date for a portal-issued id — the publish dates it — and shows that", () => {
     const head = render(view()).split("role=\"tablist\"")[0] ?? ""
     expect(head).not.toContain("type=\"date\"")
     expect(head).toContain("公開日")

@@ -153,7 +153,7 @@ interface NumberFacet {
  * a facet is made of, so projecting first would delete the facets that are
  * meant to exist. Unsettled and not-applicable slots are in neither.
  *
- * Each value appears once. A dataset indicating the same thing under the same key
+ * Each value appears once. A dataset with the same value under the same key
  * in two experiments is one fact about the dataset.
  */
 function facetValuesOf(
@@ -349,7 +349,7 @@ export async function rebuildSearchDocs(
     /**
      * What the version has about it, unprojected. **The published row has
      * the content rather than the public representation**: what the catalog
-     * hides is still content, and the screens requesting "is this key still in use"
+     * hides is still content, and the screens checking "is this key still in use"
      * would find nothing if the row had already dropped it.
      */
     content: DatasetContent
@@ -475,7 +475,7 @@ export async function rebuildSearchDocs(
 
   // Identities are needed to attach the facet rows. They come back keyed by the
   // target the row is for rather than by position: `RETURNING` reports nothing
-  // about the order it responds in, and a facet hung on the wrong document is a
+  // about the order it returns rows in, and a facet hung on the wrong document is a
   // wrong answer nothing would raise.
   const idOfTarget = new Map<string, string>()
   for (let i = 0; i < docs.length; i += INSERT_CHUNK) {

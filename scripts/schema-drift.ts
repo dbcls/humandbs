@@ -1,5 +1,5 @@
 /**
- * Whether `app/db/schema/` reports something `drizzle/` does not yet.
+ * Whether `app/db/schema/` defines something `drizzle/` does not yet.
  *
  * A schema edit reaches a database only as a migration, so an edit that was
  * never generated is one no database will ever get — and the tests, which run

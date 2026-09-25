@@ -51,7 +51,7 @@ import type { Route } from "./+types/admin-research-upstream"
  * the conditions in a pane at the left, the ordering and the page size over the
  * rows, and every branch that matched counted and paged. What it narrows by is
  * its own — the status of the branch in the portal — because that is the
- * question a curator opens a row to respond.
+ * question a curator opens a row to answer.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
@@ -107,7 +107,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                   locale={locale}
                   onToggle={togglePane}
                   inForce={inForce}
-                  // The box is never alone in the pane here: the axis remains
+                  // The box is never alone in the pane here: the axis sits
                   // under it whatever the reader has asked for.
                   refineHasMore
                   refine={<Filters view={view} locale={locale} />}
@@ -183,7 +183,7 @@ interface ViewProps {
  *
  * **The box and the ticks are two forms, and each has what the other
  * holds**, because the box is one control with a submission of its own and a
- * form cannot be shown inside another.
+ * form cannot be nested inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)

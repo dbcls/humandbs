@@ -238,13 +238,13 @@ interface ViewProps {
  * conditions that are set (`search-as-typed.ts` の `conditions`).
  *
  * **Nothing here waits to be confirmed.** The field sends the query once the typing has
- * stopped and a tick sends as it is made, which is how the public pane responds.
+ * stopped and a tick sends it as it is made, which is how the public pane responds.
  * A pane that only took effect on a press leaves the rows disagreeing with the
  * conditions above them, and the reader has to press to find out which is true.
  *
  * **The box and the ticks are two forms, and each has what the other
  * holds.** The box is one control with a submission of its own, and a form
- * cannot be shown inside another.
+ * cannot be nested inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)

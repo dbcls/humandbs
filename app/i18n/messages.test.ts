@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest"
 import { messagesFor } from "./messages"
 
 /**
- * The sentence a panel reports under its name (`Confirm` の `warning`) is a
- * sentence: it reports what pressing does and closes with whether that can be
+ * The sentence a panel shows under its name (`Confirm` の `warning`) is a
+ * sentence: it states what pressing does and closes with whether that can be
  * taken back, so it ends the way a sentence does. A phrase left open reads as
  * a label, and the reader is left to guess whether the action can be undone.
  */
@@ -98,7 +98,7 @@ describe("理由の結び方", () => {
   })
 })
 
-/** Every Japanese string the interface reports, public and admin alike. */
+/** Every Japanese string the interface shows, public and admin alike. */
 const JA = warnings(messagesFor("ja"), "ja")
 
 /**
@@ -110,7 +110,7 @@ function withoutLinkTargets(text: string): string {
 }
 
 /**
- * Where a bracket remains without the half-width space the rule requests.
+ * Where a bracket appears without the half-width space the rule requires.
  * **At the start or end of the line and next to punctuation it needs none.**
  */
 function cramped(text: string): boolean {
@@ -166,7 +166,7 @@ describe("news の語", () => {
 })
 
 /**
- * What is shown where rows would be reports there are none in one form:
+ * What is shown where rows would be states there are none in one form:
  * 「{もの}はありません。」, and 「条件に合う{もの}はありません。」 when a narrowing
  * emptied the list. **Not in the past tense** — the list is empty now, not
  * "was found empty" — and not 「まだ」, which promises rows to come.
@@ -548,7 +548,7 @@ describe("押せるものの語", () => {
 
 /**
  * A word shown where a value would be is not wrapped in parentheses: the
- * quieter colour already reports it is not the value, and a bracketed word reports
+ * quieter colour already shows it is not the value, and a bracketed word states
  * the same thing twice.
  */
 describe("値が無いことを示す語", () => {
@@ -564,7 +564,7 @@ describe("値が無いことを示す語", () => {
 })
 
 /**
- * The sentence the site reports at the top of every page is an alert, and it is
+ * The sentence the site shows at the top of every page is an alert, and it is
  * called that in both areas: 「お知らせ」 is what news is called, and 「告知」 is
  * a third word for the same thing.
  */
@@ -586,7 +586,7 @@ describe("全ページの上部に出る 1 文の語", () => {
  * which button does what, by the button's own word in 「」. A word renamed on
  * the button and not in the note sends the reader looking for a button that
  * is not there — so every word the note quotes has to be a word some button
- * on the way actually has.
+ * on the way actually shows.
  */
 describe("研究の編集の「バージョンと下書き」の説明文", () => {
   const admin = messagesFor("ja").admin

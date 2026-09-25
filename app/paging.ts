@@ -1,7 +1,7 @@
 /**
  * Where a page of rows sits inside the whole result.
  *
- * **Every listing reports it the same way** — "1–20 / 675 件" — so the arithmetic
+ * **Every listing shows it the same way** — "1–20 / 675 件" — so the arithmetic
  * behind that line is one function rather than one per listing. It was written
  * out six times before, and the management screens were where the copies had
  * drifted: two of them said nothing at all and one counted a whole vocabulary

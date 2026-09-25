@@ -15,7 +15,7 @@
  * What is dropped:
  *
  * - unsettled slots, unless `keepUnsettled`. A preview keeps them because the
- *   first use of a share link is requesting a provider to fill exactly those in;
+ *   first use of a share link is asking a provider to fill exactly those in;
  *   showing the published view would hide the question. `not-applicable` is
  *   settled information and survives either way
  * - file selections naming something the listing does not contain. The listing
@@ -50,8 +50,8 @@ export interface PublicOptions {
 /**
  * How every public route derives, named once so that "the public side never
  * keeps an unsettled value" is a single thing rather than a literal repeated
- * wherever a projection is taken. **The preview reports otherwise**, and that is
- * the whole reason the option exists: a shared link is for requesting a provider to
+ * wherever a projection is taken. **The preview is the exception**, and that is
+ * the whole reason the option exists: a shared link is for asking a provider to
  * settle what is unsettled, so it is the one place the question survives.
  */
 export const PUBLISHED: PublicOptions = { keepUnsettled: false }

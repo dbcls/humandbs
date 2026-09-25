@@ -44,7 +44,7 @@ function appended(held: string, text: string): string {
   return [...lines, ...text.split("\n").filter((line) => line !== "" && !lines.includes(line))].join("\n")
 }
 
-/** Applies the edits to every dataset, and identifies any that found nothing. */
+/** Applies the edits to every dataset, and lists any that found nothing. */
 export function applyCellEdits(docs: Iterable<EsDataset>, edits: readonly CellEdit[]): void {
   const applied = new Set<CellEdit>()
   for (const doc of docs) {

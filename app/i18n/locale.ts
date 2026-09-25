@@ -1,7 +1,7 @@
 /**
  * Choosing a language for a value.
  *
- * The content type reports which of three kinds a field is (`app/content/types.ts`),
+ * The content type defines which of three kinds a field is (`app/content/types.ts`),
  * and each kind is resolved differently. A translated pair falls back to the
  * other language, because a research published with only Japanese still has to
  * render on the English page. A per-language value does not fall back, because

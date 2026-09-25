@@ -46,7 +46,7 @@ export function refusedAsCrossSite(request: Request): boolean {
   }
 }
 
-/** What a refused write is responded with. It implies nothing about why. */
+/** The response to a refused write. It gives no reason. */
 export function crossSiteRefusal(): Response {
   return new Response("Forbidden", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } })
 }

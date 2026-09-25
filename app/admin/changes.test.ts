@@ -118,7 +118,7 @@ describe("showing what the published version has at a path", () => {
 
   /**
    * A list whose membership moved has no single value to show, so the indicator
-   * is shown on its own rather than inventing one.
+   * is shown without a value rather than inventing one.
    */
   it("gives nothing for a list of elements, where the difference is the membership", () => {
     expect(describeAt(published, "grants")).toBe(null)

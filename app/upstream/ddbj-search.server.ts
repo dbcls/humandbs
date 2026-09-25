@@ -2,7 +2,7 @@
  * Asking DDBJ Search for one entry.
  *
  * This is the whole of the portal's contact with it, and the module tests
- * replace when they exercise the refresh or a draft seeded from DRA. It responds with
+ * replace when they exercise the refresh or a draft seeded from DRA. It returns
  * null for an accession DDBJ Search does not hold and throws for anything else,
  * which is the difference between "upstream does not know this" and "upstream
  * did not respond": the first drops a row, the second fails the source and leaves
@@ -18,7 +18,7 @@ export interface ArchiveEntry {
 
 /**
  * What an SRA entry has about the library it came from, narrowed to what a
- * draft reads. Every field is optional because the same shape responds for a
+ * draft reads. Every field is optional because the same shape is used for a
  * submission, which has none of them, and for an experiment, which has
  * most.
  */

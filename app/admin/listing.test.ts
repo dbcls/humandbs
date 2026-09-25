@@ -162,7 +162,7 @@ describe("the order and the page", () => {
       .toEqual(["b", "a", "unpinned"])
   })
 
-  it("runs a key the way it reads when nobody reports which way", () => {
+  it("runs a key the way it reads when nobody specifies which way", () => {
     const rows = [
       row({ researchId: "a", humLabel: "hum0001", updatedAt: "2025-01-01T00:00:00.000Z" }),
       row({ researchId: "b", humLabel: "hum0002", updatedAt: "2026-01-01T00:00:00.000Z" }),
@@ -199,7 +199,7 @@ describe("the order and the page", () => {
     expect(pageOf(rows, 3).pageCount).toBe(3)
   })
 
-  it("responds to a page beyond the end with the last one rather than with nothing", () => {
+  it("returns the last page for a page beyond the end rather than nothing", () => {
     const rows = [row()]
 
     expect(pageOf(rows, 9).page).toBe(1)

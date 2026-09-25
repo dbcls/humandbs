@@ -47,7 +47,7 @@ export function dateWindowFrom(today: string, years: number): string {
  * **A window is in force when it is the whole of the condition**: the same
  * opening day, and nothing closing it. A reader who typed those two dates by
  * hand gets the window lit, which is the same search. "All" is lit when the
- * range requests nothing, and a range that is nobody's window lights none of them.
+ * range restricts nothing, and a range that is nobody's window lights none of them.
  */
 export function dateWindows(input: {
   today: string

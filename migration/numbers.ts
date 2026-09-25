@@ -27,7 +27,7 @@
  *   by a run, not kept between them, and lines that were read by hand are
  *   matched by their exact text (`input/read-by-hand.json`). A line whose
  *   wording changed upstream falls back into the residue rather than being read
- *   as something it no longer reports, which is the safe direction — but it means
+ *   as something it no longer states, which is the safe direction — but it means
  *   the by-hand file is a starting point at cutover, not an answer
  * - **The coverage figures have to be measured again**, because whether a rule
  *   reads 90% or 60% of a key is what decides if that key should be a number at
@@ -54,7 +54,7 @@ export interface ReadNumber {
 const KANJI: Readonly<Record<string, number>> = { 万: 1e4, 億: 1e8, 兆: 1e12 }
 
 /**
- * The first colon shown outside any bracket. A value has colons of its
+ * The first colon outside any bracket. A value has colons of its
  * own — `bam [ref: hg19]` — and the first one anywhere would read those as
  * labels. Measured over the data volumes, the naive split misreads 74 lines.
  */
@@ -98,7 +98,7 @@ function noteOf(...parts: (string | undefined)[]): string | null {
 
 /**
  * The parts of the genome a count is taken over. **The one closed vocabulary
- * in these cells**: everything else a label reports — a cohort, a platform, a
+ * in these cells**: everything else a label states — a cohort, a platform, a
  * trait — is open and grows with the data, but the human genome has these
  * parts and will not grow more. v1 writes the part either before the number as
  * a label or after it in brackets, and both mean the same thing.
@@ -150,9 +150,9 @@ function named(one: ReadNumber): ReadNumber {
 }
 
 /**
- * A whole cell, line by line. An empty line reports nothing and is dropped.
+ * A whole cell, line by line. An empty line holds nothing and is dropped.
  *
- * **A reader responds with `null` when it could not read the line, and with an
+ * **A reader returns `null` when it could not read the line, and an
  * empty list when it read it and there is no number in it.** The two are not
  * the same thing: the first is work for somebody, the second is a line somebody
  * has already looked at (`ReadByHand`). Collapsing them would put every line a
@@ -233,7 +233,7 @@ function withUnit(
 
 /**
  * A spread written after the value — `28.70 ± 4.16`. The number is the first
- * one; what follows the sign reports how much it moves, which is a remark about
+ * one; what follows the sign states how much it moves, which is a remark about
  * the number rather than a second number.
  */
 function withoutSpread(rest: string): { said: string, spread: string | null } {
@@ -331,7 +331,7 @@ function topLevelSplit(line: string, marks: RegExp): string[] {
  * - `常染色体: 31.8x、X染色体: 28.0x` — two labelled facts sharing a line
  * - `61,608,817 variants(常染色体: 59,387,070、X染色体: 2,221,747)` — a total and
  *   what it is made of. All three are kept: a reader looking for the total and
- *   one looking for the part are both requesting something the cell responds to
+ *   one looking for the part are both asking for something the cell holds
  * - `101 bp もしくは 93 bp` — two readings neither of which is the value
  *
  * A width (`0.9-1.3 GB`) is a fourth shape, and is one reading rather than two:
@@ -376,7 +376,7 @@ function spread(
       return held.label === null ? [] : one(held.rest, held.label)
     })
     // The total and what it is made of are both kept: a reader looking for one
-    // and a reader looking for the other are each asking what the cell responds to.
+    // and a reader looking for the other are each asking for something the cell holds.
     if (parts.length > 1) return [...one(composite[1] ?? "", label), ...parts]
   }
 
@@ -400,7 +400,7 @@ export function numbersWithUnit(
 /**
  * The reader for a key that counts things. The unit is the key — a gene number
  * is a number of genes — so a bare figure is a value rather than a line that
- * declined to report what it measures.
+ * declined to state what it measures.
  */
 export function counts(units: readonly string[] = []) {
   return (said: string): ReadNumber[] | null =>
@@ -439,7 +439,7 @@ export function storedNumber(
  * **The key is the text itself, not a position.** A run rebuilds from the dump,
  * so there is no row to point at; and matching on the words means a line whose
  * wording changed upstream falls back into the residue rather than being read
- * as something it no longer reports. At cutover that is the safe direction, and it
+ * as something it no longer states. At cutover that is the safe direction, and it
  * is also why this file is a starting point there rather than an answer.
  *
  * An entry with nothing in `read` is not missing — it is a line somebody looked

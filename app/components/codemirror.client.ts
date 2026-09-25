@@ -6,7 +6,7 @@
  * box mounts, never on the server — which is also what keeps the editor out of
  * every page that has no body to write.
  *
- * **What it has is what a textarea cannot**: line numbers, wrapping at the
+ * **What it offers is what a textarea cannot**: line numbers, wrapping at the
  * box's own edge, the markdown's syntax characters drawn apart from the words, and the
  * caret put on a line by its number. **Tab moves focus** rather than
  * indenting: a body is prose, and a box that swallows Tab is one a keyboard
@@ -99,7 +99,7 @@ const refused = StateField.define<DecorationSet>({
  * holds, and the scroller would have nothing to scroll. **The focus ring is the box's** (`focus-within` on the container), so the
  * editor draws none of its own — neither the dotted line CodeMirror puts round
  * a focused editor nor the one the browser puts round the editable content.
- * Left on, the dotted line remains 1px inside the box's ring as a second edge.
+ * Left on, the dotted line sits 1px inside the box's ring as a second edge.
  *
  * **A refused line is tinted in the danger colour across its whole row**, the
  * gutter's number included, and the tint outranks the active line's so that

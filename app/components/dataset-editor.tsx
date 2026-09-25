@@ -19,7 +19,7 @@
  * experiment scope of the catalog runs to some ninety keys, so one experiment
  * with a fair share of them is a couple of thousand pixels of boxes and a
  * handful of them is a page nothing can be found on. Only the display is
- * switched: every field stays in the document, one save has the whole of
+ * switched: every field stays in the document, one save sends the whole of
  * it, and an indicator beside a field is addressed by path and so is unaffected by
  * which tab it is under. **The tab is not in the address** — nothing here saves
  * on its own, so a reload would cost what has been typed whatever tab it
@@ -238,7 +238,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 
   /**
    * Going to the place a banner or the page pane names (`form.tsx` の `focusField`):
-   * the field when it remains open, the nearest element that is, else the section.
+   * the field when it is open, the nearest element that is, else the section.
    */
   function goTo(path: string): void {
     focusField(form.current, path, SECTION_OF[path.split(".")[0] ?? path])
@@ -655,7 +655,7 @@ function Values({ locale, catalog, terms, scope, path, values, annotationsFor, o
         if (key === undefined) return null
         const at = `${path}.${value.keyId}`
         // **At the field name's own row, the same place every other row's
-        // delete remains** — not a control of its own set apart from the field
+        // delete sits** — not a control of its own set apart from the field
         // it acts on.
         const remove = leading.includes(value.keyId)
           ? undefined
@@ -1654,7 +1654,7 @@ export function comboKey(
  * own id is issued — the next NHA number, which nobody types, so the numbering
  * cannot be broken by hand. Both are settled by the same「割り当て」(`IdForm`),
  * at the row's height — the line
- * is a line of facts, and a 36px box among them remains taller than the words.
+ * is a line of facts, and a 36px box among them is taller than the words.
  *
  * **The dates are read, never typed.** An archive's accession is dated by the
  * archive; a portal-issued id is dated by the version that first publishes it,

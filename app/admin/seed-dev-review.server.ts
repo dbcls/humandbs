@@ -85,7 +85,7 @@ async function researchByHumLabel(db: Executor, label: string): Promise<string |
   return row?.researchId ?? null
 }
 
-/** The draft under this research already with the given memo, if there is one. */
+/** The draft under this research that already has the given memo, if there is one. */
 async function draftMarkedWith(db: Executor, researchId: string, memo: string): Promise<string | null> {
   const [row] = await db
     .select({ draftId: comment.draftId })
@@ -360,7 +360,7 @@ async function ensureOneSentenceRewritten(db: Database, draftId: string): Promis
   if (saved.status !== "saved") throw new Error(`rewriting a sentence of the updating draft: ${saved.status}`)
 }
 
-/** An empty draft marked with `memo`, made only when no draft already has that indicator. */
+/** An empty draft marked with `memo`, made only when no draft already has that memo. */
 async function ensureMarkedDraft(
   db: Database,
   researchId: string,

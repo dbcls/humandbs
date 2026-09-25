@@ -70,7 +70,7 @@ export function writtenNumber(number: NumberValue): string {
   // **A width is its two ends joined by an en dash**, the typographic mark for a
   // span rather than a subtraction — a hyphen would read as a negative number
   // beside the numbers either side of it. Only one unit is shown: the key has
-  // one, so repeating it after both ends would report the same word twice.
+  // one, so repeating it after both ends would print the same word twice.
   const high = number.inputHigh ?? null
   const shown = high === null
     ? writtenFigure(value)
@@ -91,7 +91,7 @@ export type FieldView
  * languages are different resources rather than translations, so it never falls
  * back — but it has the same four states as everything else, and both
  * `unsettled` and `not-applicable` have to survive the trip to the screen.
- * Collapsing them into an empty list is what would make a preview stop requesting.
+ * Collapsing them into an empty list is what would make a preview stop asking for them.
  */
 export type LinksView = Resolved<Link[]>
 
@@ -401,7 +401,7 @@ function valueUnderCode(
 /**
  * The access type keeps its term code alongside its label: the badge is drawn
  * differently for unrestricted and controlled data, and the label is whatever
- * the catalog reports in whichever language, so it cannot be matched against.
+ * the catalog holds in whichever language, so it cannot be matched against.
  */
 export interface TermView {
   code: string
@@ -512,7 +512,7 @@ export interface ResearchView {
   untranslated: boolean
   title: FieldView
   /**
-   * What this version has it changed. **The published pages do not draw it** —
+   * What this version records as changed. **The published pages do not draw it** —
    * it belongs to the release list, where the versions are read against each
    * other — but a preview does, because the note is part of what the provider
    * is being asked to check and there is no release list under a share link.
@@ -577,7 +577,7 @@ export interface FileListView {
 
 /**
  * One dataset a publication names, as the page draws it. **Another research's
- * dataset reports whose it is** — the ID alone reads as this research's, and a
+ * dataset shows whose it is** — the ID alone reads as this research's, and a
  * reader following it would land somewhere they did not expect.
  */
 export interface CitedDatasetView {

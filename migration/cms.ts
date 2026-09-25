@@ -15,7 +15,7 @@
  *   published, and a development database does not need the one that is not
  *
  * A slug with more than one published version becomes one document per version,
- * at the address it already responds at (`{slug}/version/{n}`) — **the newest
+ * at the address it is already served at (`{slug}/version/{n}`) — **the newest
  * included**, so none of those addresses is lost — plus a series row at the
  * version-less slug naming the newest. A slug with a single version is just a
  * document: the version machinery is an artefact of v1's CMS rather than
@@ -110,7 +110,7 @@ export interface BuiltSiteDocuments {
   series: BuiltSeries[]
 }
 
-/** Where a revision of `slug` responds. The shape the pointer looks for. */
+/** Where a revision of `slug` is served. The shape the pointer looks for. */
 export function versionSlug(slug: string, versionNumber: number): string {
   return `${slug}/version/${versionNumber}`
 }
@@ -135,7 +135,7 @@ function publishedOn(version: CmsDocumentVersion): string | null {
  * **The hour is part of the value.** 126 days have more than one announcement,
  * and which went out first is in the hour — dropping it leaves those days in
  * whatever order the rows happen to be read in. The input writes its offset,
- * and only the instant it identifies is trusted: the shift to JST is done here
+ * and only the instant it denotes is trusted: the shift to JST is done here
  * rather than by reading the digits as if they were already local.
  */
 function jstStampOf(instant: string): string {
@@ -248,8 +248,8 @@ export interface SuppliedAlertText {
  * **A banner that is up and still has a side missing stops the migration.** The
  * portal cannot write the announcement itself, and importing half of one puts
  * it on every page in a language it was not written for. One that is switched
- * off is kept as it is: it reports nothing to anybody yet, and the editor requests
- * for the other side before it can be switched on.
+ * off is kept as it is: it shows nothing to anybody yet, and the editor requires
+ * the other side before it can be switched on.
  *
  * **A banner that is up has the instant it went up** (`shownAt`), read
  * from the offset the input writes rather than from the digits as if they were

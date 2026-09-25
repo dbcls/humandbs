@@ -206,7 +206,7 @@ describe("the header row a table opens with", () => {
     the header row half as tall again. It has no word, so there is nothing to hold
     on one line — and holding one would push a fixed-width column open.
   */
-  it("requests nothing for a header that is a control rather than a word", () => {
+  it("adds nothing to a header that is a control rather than a word", () => {
     const html = header([<span key="cart" className="sr-only">カート</span>])
     expect(html).not.toContain("whitespace-nowrap")
     expect(html).toContain("w-15")
@@ -240,7 +240,7 @@ describe("a table with no rows", () => {
     expect(of("なし")).toMatch(/colspan="2"/i)
   })
 
-  it("draws an empty body where the caller shows nothing, which is most tables", () => {
+  it("draws an empty body where the caller passes nothing, which is most tables", () => {
     expect(of()).not.toMatch(/colspan/i)
   })
 
@@ -287,7 +287,7 @@ describe("where a cell sits in a row taller than it is", () => {
     four — and the reader takes a row by reading across its first line. A date
     centred against a four-line cell sits beside nothing.
   */
-  it("sits at the top unless the caller shows otherwise", () => {
+  it("sits at the top unless the caller specifies otherwise", () => {
     expect(of()).toMatch(/<td[^>]*align-top/)
     expect(of()).not.toMatch(/<td[^>]*align-middle/)
   })
@@ -298,7 +298,7 @@ describe("where a cell sits in a row taller than it is", () => {
     amount — measured on the cart at 16.4 / 17.2 / 18.0px against a middle of
     18.0. Nothing is aligned to anything, which reads as "not quite centred".
   */
-  it("centres them where the caller shows every row is one line", () => {
+  it("centres them where the caller specifies that every row is one line", () => {
     expect(of("middle")).toMatch(/<td[^>]*align-middle/)
     expect(of("middle")).not.toMatch(/<td[^>]*align-top/)
   })
@@ -416,7 +416,7 @@ describe("where a field's annotations are shown", () => {
   })
 
   /** A field just added has nothing written; its place is still a line to light and to press. */
-  it("an empty place still is a line tall, so the caret in its box lights something", () => {
+  it("an empty place is still a line tall, so the caret in its box lights something", () => {
     const html = draw(<dl><KeyValue title="細胞株" at="experiments.e.values.k">{null}</KeyValue></dl>)
     expect(html).toMatch(/<div data-field-path="experiments\.e\.values\.k" class="[^"]*\bmin-h-\[1lh\]/)
   })

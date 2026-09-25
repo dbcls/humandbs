@@ -347,7 +347,7 @@ describe("the indicator's size", () => {
 })
 
 /**
- * The one fetcher a panel shares has posting, resolving and deleting, so
+ * The one fetcher a panel shares handles posting, resolving and deleting, so
  * each control has to tell its own work from the others' by what was sent.
  */
 describe("what the shared fetcher is handling", () => {

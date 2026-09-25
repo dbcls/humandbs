@@ -210,7 +210,7 @@ const ja = {
     /**
      * The three short fields are not the research's own account of how it was
      * done and who took part: they hold what the datasets beneath it have,
-     * each made into one line. The listing and the editing form show it, which
+     * each made into one line. The listing and the editing form show that, which
      * is why they do not borrow the names above.
      */
     listingSummary: {
@@ -309,7 +309,7 @@ const ja = {
     /**
      * The management area, called what the office calls it.
      *
-     * **Not 「管理」**: that word already identifies the JGA application system the
+     * **Not 「管理」**: that word already refers to the JGA application system the
      * portal hands applicants on to, and a link in the bar reading 「管理」 was
      * read as the link into that rather than into this site's own screens.
      */
@@ -712,7 +712,7 @@ const ja = {
         "switching": "ファイルの切り替え中のため解除できません。切り替えが終わると解除できます。",
       },
       movingFiles: "ファイルの移動中",
-      /** An NHA id is issued once and cannot be typed back, so its warning shows it. */
+      /** An NHA id is issued once and cannot be typed back, so its warning states that. */
       unpinDatasetWarning: (nha: boolean) => nha
         ? "この ID は未発行になり、この ID のアドレスは開けなくなります。NHA ID の番号は再び発行されないため、同じ ID には戻せません。"
         : "この ID は未発行になり、この ID のアドレスは開けなくなります。同じ ID をもう一度割り当てれば、アドレスはまた開けます。",

@@ -5,7 +5,7 @@ import { Icon, type IconName } from "~/components/icons"
 
 /**
  * The indicators a management screen puts on some of its rows, each with the one
- * colour and the one glyph it is shown with wherever it remains.
+ * colour and the one glyph it uses wherever it is shown.
  *
  * **The colour shows what the reader does about it, and there are four
  * answers.** `danger` — it stops something, deal with it first. `warning` — it
@@ -25,7 +25,7 @@ export const FLAG = {
   changed: { tone: "accent", icon: "edit" },
   /** Where the draft and the published version say different things. */
   differs: { tone: "accent", icon: "diff" },
-  /** A question nobody has responded yet. */
+  /** A question nobody has answered yet. */
   unresolved: { tone: "accent", icon: "comment" },
   /** Questions, none of them open: the count of a place that could have one. */
   comments: { tone: "muted", icon: "comment" },
@@ -37,7 +37,7 @@ export const FLAG = {
   scheduled: { tone: "accent", icon: "clock" },
   /** What publishing refuses, or a job that failed. */
   stops: { tone: "danger", icon: "alert" },
-  /** A shortcoming: an id not issued, a value unsettled or untranslated, what publishing requests to confirm. */
+  /** A shortcoming: an id not issued, a value unsettled or untranslated, what publishing asks the curator to confirm. */
   short: { tone: "warning", icon: "warning" },
   /** A field somebody saved elsewhere after this screen was opened. */
   conflicted: { tone: "warning", icon: "edit" },
@@ -92,7 +92,7 @@ export function KindIcon({ kind }: { kind: FlagKind }) {
  * at a glance; the word is what shows which it is once the question is known.
  *
  * **The glyph is the kind's, and the colour is left out.** A state named here
- * is shown with the glyph the same state is shown with as a badge on the next screen, so the
+ * uses the glyph the same state uses as a badge on the next screen, so the
  * two cannot drift apart; the colour stays with the badge, whose job is to be
  * picked out.
  *

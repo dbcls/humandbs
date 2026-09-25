@@ -7,9 +7,9 @@
  * shareable by copying the address. Choosing a value and unchoosing it are the
  * same link, because both are just "the search with this condition toggled".
  *
- * **A facet has every value it has**, and the list scrolls inside the box
+ * **A facet lists every value it has**, and the list scrolls inside the box
  * it is shown in rather than being truncated with a way to the rest. What a way
- * to the rest would cost is either an address that reports something other than
+ * to the rest would cost is either an address that means something other than
  * the conditions in force, or a reader without script who cannot reach past
  * the cut; scrolling costs neither.
  * **The box that narrows the list is drawn in the browser** over the values
@@ -284,7 +284,7 @@ export async function facetPanel(
  * **A date the result never has keeps its box and loses its inputs.** Two
  * empty fields over a span that does not exist are a control that cannot do
  * anything — the modification dates are exactly that until the application
- * system is reachable — but taking the whole dimension away reports instead
+ * system is reachable — but taking the whole dimension away suggests instead
  * that the listing cannot be narrowed by it at all. **The box remains
  * and opens on the reason it is empty**, which is what every other dimension
  * with no values does (`categorise`).
@@ -377,7 +377,7 @@ function writtenBound(bound: string | undefined): string {
  * Facets grouped under their category heading, in the catalog's order.
  *
  * **Every facet the catalog holds is here, including the ones nothing in the
- * result has.** What a facet's box has, collapsed, is that the listing can be
+ * result has.** What a collapsed facet box shows is that the listing can be
  * narrowed by that dimension — dropping the boxes whose values came back empty
  * takes the pane apart in front of a reader who has narrowed one step too far,
  * and at nothing found it took the whole pane away: what was left was a search

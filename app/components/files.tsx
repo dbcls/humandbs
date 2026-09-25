@@ -222,7 +222,7 @@ export function FileTable({ locale, researchId, rows, humLabel, whenEmpty, selec
  *
  * **The switch is one control that offers the other side.** Which side the
  * file is on, the row already shows; the control shows where a press would
- * take it. **While a switch runs it shows it and cannot be pressed** — the
+ * take it. **While a switch runs it shows that and cannot be pressed** — the
  * bytes are being copied and a second wish in the meantime would only be
  * queued behind the first. Renaming waits for the same reason: which side to
  * rename on is not settled.
@@ -636,7 +636,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
 }
 
 /**
- * The way to take the address a file responds at.
+ * The way to copy the address a file is served at.
  *
  * **What is copied is the path rather than the whole URL.** It is written into
  * a body, and a body with the host it was written on stops working as soon

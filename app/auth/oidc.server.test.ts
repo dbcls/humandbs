@@ -229,7 +229,7 @@ describe("completeLogin: outcomes", () => {
     })
   })
 
-  /** A comment or an indicator is read by someone who wants to know who it was, and an account id does not report. */
+  /** A comment or an indicator is read by someone who wants to know who it was, and an account id does not tell them. */
   it("names the person by their own name, not their account id, when the realm gives both", async () => {
     const { cookie } = await beginLogin(null)
     vi.mocked(oidc.authorizationCodeGrant).mockResolvedValue(

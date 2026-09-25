@@ -15,7 +15,7 @@ export const SHOW_BUSY_AFTER = 200
  *
  * **Refining is not going anywhere.** Choosing a facet value, sorting, or paging
  * lands on the same path with a different query, and what changes is the middle
- * of the page — so the page stays where it is and means that the part which is
+ * of the page — so the page stays where it is and signals that the part which is
  * about to change is not the answer yet. Following a row to a research page is a
  * different path and reads as leaving, so nothing there is dimmed: the page the
  * reader is leaving has no reason to look unwell on the way out.
@@ -67,7 +67,7 @@ export function useSubmitting(): boolean {
 /**
  * Whether the action a control started is still in flight.
  *
- * **Only the control that was pressed reports it is waiting.** Every submit on
+ * **Only the control that was pressed shows it is waiting.** Every submit on
  * the page could read the same navigation, and every one would then dim
  * together; what the reader pressed is what has to respond, and the press is
  * the one thing each control knows about itself.

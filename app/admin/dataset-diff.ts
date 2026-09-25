@@ -39,14 +39,14 @@ function sameValueBody(a: ValueBody, b: ValueBody): boolean {
   if (a.kind === "text" && b.kind === "text") return sameTextPair(a.text, b.text)
   if (a.kind === "vocabulary" && b.kind === "vocabulary") {
     if (a.state !== b.state) return false
-    // Chosen terms are invisible while the state reports there is no value, the
+    // Chosen terms are invisible while the state indicates there is no value, the
     // same way half-typed text is.
     return a.state !== "value" || sameStrings(a.termIds, b.termIds)
   }
   if (a.kind === "number" && b.kind === "number") {
     if (a.state !== b.state) return false
     // What was typed and the unit it was typed in, for the same reason: neither
-    // is on screen while the state reports there is no value.
+    // is on screen while the state indicates there is no value.
     return a.state !== "value" || (a.rows.length === b.rows.length && a.rows.every((row, at) => {
       const other = b.rows[at]
       return row.label === other?.label && row.value === other.value

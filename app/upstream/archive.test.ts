@@ -12,7 +12,7 @@ describe("archiveResourceOf", () => {
     expect(archiveResourceOf(accession)).toBe(resource)
   })
 
-  it("does not guess for a JGA accession, which the application system responds for", () => {
+  it("does not guess for a JGA accession, which the application system holds the dates for", () => {
     expect(archiveResourceOf("JGAD000001")).toBeNull()
   })
 
@@ -26,7 +26,7 @@ describe("archiveResourceOf", () => {
 })
 
 describe("calendarDayOf", () => {
-  it("keeps a day that arrived as a day, which passes no time to move", () => {
+  it("keeps a day that arrived as a day, which has no time to move", () => {
     expect(calendarDayOf("2022-10-28")).toBe("2022-10-28")
   })
 
@@ -38,7 +38,7 @@ describe("calendarDayOf", () => {
     expect(calendarDayOf("2020-08-21T16:30:00Z")).toBe("2020-08-22")
   })
 
-  it.each([undefined, null, "", "   ", "not a date"])("responds with null for %s", (value) => {
+  it.each([undefined, null, "", "   ", "not a date"])("returns null for %s", (value) => {
     expect(calendarDayOf(value)).toBeNull()
   })
 })

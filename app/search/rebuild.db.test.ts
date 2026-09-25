@@ -340,7 +340,7 @@ describe("rebuildSearchDocs", () => {
     const counts = await rebuildSearchDocs(db)
 
     expect(counts.facetTerms).toBe(2)
-    // **The prose is in the index too.** Which key a value is shown under decides
+    // **The prose is in the index too.** Which key a value is filed under decides
     // whether it can be asked for by name, not whether it can be read.
     const texts = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
     expect(texts.some((row) => row.textJa.includes("内部メモ"))).toBe(true)

@@ -1,21 +1,21 @@
 /**
  * The production migration: v1 production, frozen as a snapshot, into v2.
  *
- * Unlike the development load (`run.ts`) it has everything the snapshot
+ * Unlike the development load (`run.ts`) it loads everything the snapshot
  * holds rather than only what is published — the drafts too, with the datasets
  * they list — and it corrects what v1 lost or merged on the way:
  *
  * - the line breaks and links v1's extracted text dropped are recovered from
  *   the HTML it was extracted from, where the two still agree (`richtext-html.ts`),
- *   and elsewhere from the old portal's articles, where a one-line value reports
- *   the same as a block the articles showed on several lines (`line-breaks.ts`);
+ *   and elsewhere from the old portal's articles, where a one-line value has
+ *   the same text as a block the articles showed on several lines (`line-breaks.ts`);
  * - the research v1 never took in are added, and a test research is left out
  *   (`prepare.ts`);
  * - cells v1 read wrongly out of the articles are put right by hand
  *   (`cell-edits.ts`), and experiment keys are renamed, merged and dropped by a
  *   reviewed table and by the rebuilt catalog, which gives the order and the
  *   labels (`catalog-plan.ts`);
- * - a block that several datasets kept word for word is divided among them
+ * - a block that several datasets share word for word is divided among them
  *   (`inversion.ts`);
  * - the listing's provider column has the programme each research was
  *   funded under, as the old site's listing did;
@@ -175,7 +175,7 @@ interface KeyMap {
 /**
  * The two keys the reviewed table left open. The institute that did the
  * genotyping joins the analysis methods, its one value reworded into a sentence
- * that reports what the institute did (`hand/cell-edits.json`); a template
+ * that states what the institute did (`hand/cell-edits.json`); a template
  * placeholder with no data is dropped.
  */
 const SETTLED: Record<string, KeyRule> = {
@@ -186,7 +186,7 @@ const SETTLED: Record<string, KeyRule> = {
 /**
  * v1's label table names a few rows with an instruction instead of a key. The
  * converter that reads a draft straight from the source leaves the instruction
- * shown as the key, so it is done here.
+ * in place as the key, so it is applied here.
  */
 const INSTRUCTIONS: Record<string, KeyRule> = {
   不要な項目のため削除する: { action: "drop" },
@@ -416,7 +416,7 @@ type Written = Record<"methods" | "targets" | "typeOfData", { ja: string, en: st
 
 /**
  * The listing summary written by hand for research the old listing never
- * kept, and so v1 had none to convert. A summary the snapshot holds is
+ * listed, and so v1 had none to convert. A summary the snapshot holds is
  * never replaced.
  */
 function withWrittenListings(held: Dump): Dump {

@@ -58,7 +58,7 @@ describe("reading a dataset back off the form", () => {
     })
   })
 
-  it("drops whatever was typed into a slot whose state reports there is no value", () => {
+  it("drops whatever was typed into a slot whose state indicates there is no value", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "type-of-data",

@@ -11,7 +11,7 @@ import { useSubmit } from "react-router"
  *
  * **What differs between the pane's forms is when they ask, not how.** Reading
  * the fields, dropping the empty ones and replacing the history entry is one
- * piece of work (`useAsk`); the box waits for the typing to stop, a date requests
+ * piece of work (`useAsk`); the box waits for the typing to stop, a date sends
  * the moment it has one, and a number waits until its digits are a number
  * somebody meant.
  *
@@ -41,7 +41,7 @@ export interface Ask {
  * names it. The public listings send what was typed as `k` and the server merges
  * it into the query it is one condition of (`public/lists.server.ts` の
  * `canonicalRedirect`): an empty `k` is how that one condition is lifted out,
- * and a submission leaving the field out reports something else — that this is not
+ * and a submission leaving the field out means something else — that this is not
  * a search about words — which holds the word in force. Where the box writes
  * the address's own field, an empty one is dropped like any other.
  */
@@ -81,7 +81,7 @@ export function useAsk(action: string, box: string | null = null): Ask {
  *
  * The form keeps its own `action`: without script it is what the submission
  * goes to, and it has to be named here too because the address the reader is
- * stands on is not always the one the form posts to.
+ * on is not always the one the form posts to.
  */
 export function useRefine({ action, box = null, preventScrollReset = false }: {
   action?: string
@@ -106,14 +106,14 @@ export interface SearchAsTyped {
   /**
    * Put on the `<Form>` beside the ref.
    *
-   * **A submission already determines what the timer was waiting to request**, so the
-   * timer is dropped rather than left to fire. Left standing it requests after the
+   * **A submission already sends what the timer was waiting to send**, so the
+   * timer is dropped rather than left to fire. Left in place it fires after the
    * reader has gone somewhere else, and because it replaces the history entry
    * it takes them back to this listing from wherever they had reached.
    *
    * **The press goes the same way the timer does**, through the conditions
    * rather than as the form stands: a box pressed while it is empty would
-   * otherwise write a field that reports nothing into the address, and the same
+   * otherwise write an empty field into the address, and the same
    * search would have two addresses depending on how it was asked for.
    */
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void
@@ -131,7 +131,7 @@ export interface SearchAsTyped {
  * **Two things are waited for.** That the typing has stopped, because a request
  * per keystroke is a page of results nobody read; and that the composition has
  * ended, because kana is typed as several keystrokes that are not yet a word
- * and searching for the half-written form of it responds about something nobody
+ * and searching for the half-written form of it returns results for something nobody
  * asked for.
  *
  * **This is the trigger for words, and only for words.** Letters accumulate
@@ -155,7 +155,7 @@ export function useSearchAsTyped({ action, name, enabled = true, keepEmpty = fal
 }): SearchAsTyped {
   const box = keepEmpty ? name : null
   const { form, ask } = useAsk(action, box)
-  // A press is shown where it is and pushes an entry, which is what `useRefine`
+  // A press stays where it is and pushes an entry, which is what `useRefine`
   // does for a pane; what differs is only that the timer is dropped with it.
   const press = useRefine({ action, box, preventScrollReset: enabled })
   const waiting = useRef<number | undefined>(undefined)

@@ -2,7 +2,7 @@
  * Every address the JSON API responds at, written down once.
  *
  * **The path appears here and nowhere else.** `app/routes.ts` registers what
- * this list reports and `./openapi.ts` documents what this list has, so a route
+ * this list contains and `./openapi.ts` documents what this list contains, so a route
  * and its entry in the document cannot describe different addresses. React
  * Router spells a parameter `:name` and OpenAPI spells it `{name}`; that is a
  * mechanical difference and the generator makes it.
@@ -53,12 +53,12 @@ export interface ApiEndpoint {
 /**
  * Queries that appear in the document, and are therefore promised to be
  * readable. `app/api/pages.db.test.ts` puts each of them through the parser, so
- * an example cannot go on indicating something the grammar stopped allowing.
+ * an example cannot go on showing something the grammar stopped allowing.
  */
 /**
  * Queries that appear in the document, and are therefore promised to be
  * readable. The e2e run puts each of them to a live instance, so an example
- * cannot go on indicating something the grammar stopped allowing.
+ * cannot go on showing something the grammar stopped allowing.
  */
 export const QUERY_EXAMPLES = [
   "cancer",
@@ -71,7 +71,7 @@ export const QUERY_EXAMPLES = [
 /**
  * What `?q=` takes, written for whoever reads the document rather than for this
  * file. **The grammar is only written down here**: a caller that gets it wrong
- * is responded to with a 422, and this is what it had to go on.
+ * gets a 422, and this is what it had to go on.
  */
 const QUERY_DESCRIPTION = `
 The query language, which is the one the site's own addresses use — a query written here works

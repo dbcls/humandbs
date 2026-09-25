@@ -13,7 +13,7 @@
  * Six keys are only retyped. `Policies`, `Experimental Method`, `Reagents`,
  * `Read Type`, `Reference Sequence` and `Platform` are already in the catalog as
  * free text and already on the public page; giving them a type changes how the
- * value is held, not whether it is shown. The rest are new keys shown beside
+ * value is held, not whether it is shown. The rest are new keys set beside
  * the free text they were read out of, and most of those are not shown either —
  * they exist to be filtered by, or, for most of the numbers, to be shown on the
  * dataset page and nothing more.
@@ -91,7 +91,7 @@ export interface NumberFacet {
  * analysis in two different boxes (`Variant Number` beside the diseases,
  * `Coverage` beside the machines) and split the subjects' own properties the
  * same way, with the disease and the health status apart from the sex and the
- * age. Neither split handles a question anybody requests.
+ * age. Neither split matches a question anybody asks.
  */
 export const FACET_CATEGORIES = [
   { code: "basic-info", labelJa: null, labelEn: null, position: 0 },
@@ -147,9 +147,9 @@ function makerName(vendor: string | null | undefined): string | null {
  *
  * **The table is written out rather than derived.** A slash separates machines
  * in `HiSeq 2000/2500` and belongs to the name itself in `HiSeq X Ten` and
- * `DNBSEQ-G400RS`, and what passes over to the machine after the slash is the
+ * `DNBSEQ-G400RS`, and what the machine after the slash inherits is the
  * series (`HiSeq`), the series and a letter (`NovaSeq X`), or nothing at all —
- * the string does not report which. The separator is not always a slash either:
+ * the string does not show which. The separator is not always a slash either:
  * one entry uses the Japanese comma its free text was written with.
  */
 const MODELS_WRITTEN_TOGETHER: Record<string, readonly string[]> = {
@@ -281,7 +281,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     code: "policies",
     labelJa: "利用ポリシー",
     labelEn: "Data use policy",
-    // The one thing beside the access type that reports what may be done with the
+    // The one thing beside the access type that states what may be done with the
     // data, and the two are read together. A box holding this alone repeated
     // its own name as its only entry.
     categoryCode: "basic-info",
@@ -395,7 +395,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     retyped: false,
     // The label states how the number was counted, so the values answer in the
     // same words: `個体` is a word the site itself hardly uses, and a value
-    // reading `検体` under a heading that reports `対象者数` denies the heading.
+    // reading `検体` under a heading that reads `対象者数` denies the heading.
     valueType: "vocabulary",
     read: (s) => labelled(s.subjectCountType, {
       individual: "人数",
@@ -465,7 +465,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     read: (s) => (s.platforms ?? []).flatMap((platform) => {
       const maker = makerName(platform.vendor)
       const models = modelNames(maker, platform.model)
-      // A maker with no model still identifies something the reader can refine by.
+      // A maker with no model is still something the reader can refine by.
       const written = models.length === 0
         ? [maker ?? ""]
         : models.map((model) => [maker, model].filter(Boolean).join(" "))
@@ -736,7 +736,7 @@ export const MERGED_SOURCES = new Map<string, string>([
   ["Raw Call Variant Number", "variant-number"],
 ])
 
-/** The reader for a merged cell, which counts the kind its own name reports. */
+/** The reader for a merged cell, which counts the kind given in its own name. */
 export const MERGED_READERS = new Map<string, (said: string) => ReadNumber[] | null>([
   ["SNV Number", counts(["SNVs", "SNV", "SNPs", "SNP"])],
   ["INDEL Number", counts(["indels", "indel"])],
@@ -781,7 +781,7 @@ export const TEXT_NUMBER_CODES = new Set(TEXT_NUMBERS.map((one) => one.code))
 
 /**
  * The keys that were free text in v1 and are a facet here. The free text they
- * held is not loaded: the value now is kept under the same key with a type, and
+ * held is not loaded: the value is now kept under the same key with a type, and
  * two values under one key is not something the content model can hold.
  */
 /**
@@ -826,7 +826,7 @@ export function vocabularySetSeeds(): VocabularySetSeed[] {
  * **This order becomes `position`**, which is the order the editing form lists
  * a key's values in and the order a listing cell puts them in. Makers come
  * first, so that a column of platforms reads one company's machines together;
- * the rest is by label. The order the dump happens to mention a value in reports
+ * the rest is by label. The order the dump happens to mention a value in means
  * nothing, and leaving it would make the cell's first three values — all a
  * reader sees before "and 12 more" — an accident of how rows came back.
  */
@@ -869,7 +869,7 @@ function numberValue(value: number, unit: string | null): NumberValue {
 
 /**
  * The value slots one experiment has under the typed keys. A key with
- * nothing to report is absent rather than empty: an absent slot means the question
+ * no value is absent rather than empty: an absent slot means the question
  * does not come up for this experiment, which is what v1's null meant.
  */
 export function facetValueSlots(

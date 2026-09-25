@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * The palette is the portal's own, kept over by value rather than by name:
+ * The palette is the portal's own, copied over by value rather than by name:
  * v1 called these primary / secondary / tetriary, which implies nothing about what
  * they are for, held one colour under two names twice, and misspelled tertiary.
  * Nothing else from v1's stylesheet is kept — the type scale there is built on a
@@ -124,7 +124,7 @@
    *
    * The wide one leaves the gutter and nothing else on the display the portal
    * is read on, which is what v1 gives a listing: the columns a research row
-   * has are what the width is for, and a laptop is where they run out.
+   * contains are what the width is for, and a laptop is where they run out.
    *
    * **The narrower one is not prose alone.** An article here has tables —
    * 147 of them across 22 documents, half again as wide as the paragraphs
@@ -167,7 +167,7 @@
    * loose line is a table nobody can scan. Headings go tighter still: a title
    * that wraps should read as one thing, not two.
    *
-   * **Nothing writes `leading-*`.** The size has the line height with it,
+   * **Nothing writes `leading-*`.** The size sets the line height with it,
    * so a part cannot pick a different rhythm for the same size of type.
    */
   --text-xs--line-height: 1.5;
@@ -300,7 +300,7 @@
    * including where the heading itself is one.
    *
    * **The guidelines are nested four deep** (`５．` → `５－１．` → `５－１－１`),
-   * so the levels have to stay apart past the third. Size has it, and every
+   * so the levels have to stay apart past the third. Size does that, and every
    * rung holds the same weight — the heading has only its weight to separate it
    * from the paragraph under it, and that is as true of the section level as of
    * the ones below it.

@@ -22,7 +22,7 @@ describe("the search box", () => {
     expect(html).toContain("value=\"糖尿病\"")
   })
 
-  it("has the conditions it cannot show, so submitting does not drop them", () => {
+  it("includes the conditions it cannot show, so submitting does not drop them", () => {
     const html = render(
       <SearchForm locale="ja" target="research" keyword="糖尿病" query="title:ゲノム" />,
     )
@@ -198,11 +198,11 @@ describe("the controls over a listing", () => {
     expect(html.indexOf("公開日")).toBeLessThan(html.indexOf("<div"))
   })
 
-  it("shows what the value responds to, and contains the word it draws", () => {
+  it("names what the value is for, and contains the word it draws", () => {
     const html = render(
       <PageSizeChooser locale="ja" target="research" query="" sort="id" order={null} size={50} />,
     )
-    // WCAG 2.5.3: the name has to hold the visible label, so that indicating what
+    // WCAG 2.5.3: the name has to hold the visible label, so that saying what
     // is on the control is a way of operating it.
     expect(html).toContain("aria-label=\"表示件数: 50\"")
   })
@@ -410,7 +410,7 @@ describe("the rows over a listing and under it", () => {
   for (const open of [true, false]) {
     const pane = open ? "with the pane open" : "with the pane collapsed"
 
-    it(`keeps the whole row over the rows and only the pages under them, ${pane}`, () => {
+    it(`puts the whole row over the rows and only the pages under them, ${pane}`, () => {
       const html = of(open, <p>ページ送り</p>)
       expect(count(html, "並び替え 表示件数")).toBe(1)
       expect(count(html, "ページ送り")).toBe(1)
@@ -498,7 +498,7 @@ describe("a range of days", () => {
     expect(html.match(/aria-current="true"/g)).toHaveLength(1)
   })
 
-  it("is a GET form with an end named for each day, with what it is given", () => {
+  it("is a GET form with an end named for each day, and includes what it is given", () => {
     const html = render(
       <DateRange
         locale="ja"
@@ -594,7 +594,7 @@ function toolLinks(presented: Presentation<NewsKey>): string[] {
 }
 
 describe("ListingPresented", () => {
-  it("has the ordering a form would otherwise drop, not only the page size", () => {
+  it("keeps the ordering a form would otherwise drop, not only the page size", () => {
     const html = render(<ListingPresented presented={news("title", "asc", 50)} />)
     expect(html).toContain("name=\"sort\" value=\"title\"")
     expect(html).toContain("name=\"order\" value=\"asc\"")
@@ -605,7 +605,7 @@ describe("ListingPresented", () => {
     expect(render(<ListingPresented presented={news("published", "desc")} />)).toBe("")
   })
 
-  it("has exactly what presentedQuery writes, for any presentation", () => {
+  it("contains exactly what presentedQuery writes, for any presentation", () => {
     fc.assert(fc.property(
       fc.constantFrom<NewsKey>("published", "title"),
       fc.constantFrom<"asc" | "desc">("asc", "desc"),

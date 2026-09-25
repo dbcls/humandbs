@@ -42,7 +42,7 @@ export interface FacetDefinition {
   /** Set for a number key: the unit its stored values are in. */
   canonicalUnit: string | null
   /**
-   * Whether an object with this key reports it. **A key can be filtered on
+   * Whether an object with this key shows it. **A key can be filtered on
    * without being shown** — thirteen of them are, and they are the ones the
    * panel offers as questions rather than as descriptions.
    */

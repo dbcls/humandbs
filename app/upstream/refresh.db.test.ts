@@ -180,7 +180,7 @@ describe("the dates, which two upstreams share", () => {
     })
   })
 
-  it("requests DDBJ Search only about the accessions it responds for", async () => {
+  it("queries DDBJ Search only for the accessions it holds", async () => {
     const researchId = await aResearch()
     await pinDataset(researchId, "DRA000001")
     await pinDataset(researchId, "JGAD000009")
@@ -222,7 +222,7 @@ describe("without a connection to the application system", () => {
     expect(vi.mocked(fetchCauEntries)).not.toHaveBeenCalled()
   })
 
-  it("leaves no record, because the table determines how the last fetch went", async () => {
+  it("leaves no record, because the table records how the last fetch went", async () => {
     await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date"])
 
     expect(await db.select().from(s.upstreamRefresh)).toHaveLength(0)

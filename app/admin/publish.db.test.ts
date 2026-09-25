@@ -166,7 +166,7 @@ describe("publishing a draft", () => {
     if (spare.status !== "created") throw new Error(spare.status)
     await pinDataset(spare.datasetId, "JGAD000002")
     // The order names one of the two. The other is the research's all the same,
-    // so the version has it — at the end, where what is unnamed remains.
+    // so the version has it — at the end, where what is unnamed goes.
     const draft = await readDraft(db, fixture.draftId)
     await saveDraftContent(db, { draftId: fixture.draftId, revision: draft?.revision ?? 0 }, {
       content: { ...titled("研究"), datasetIds: [fixture.datasetId] },
@@ -207,7 +207,7 @@ describe("publishing a draft", () => {
 })
 
 /**
- * The one date the portal is master of. An NHA ID has no archive to request, and
+ * The one date the portal is master of. An NHA ID has no archive to query, and
  * the day the version goes out is the only day this publish knows.
  */
 describe("the release date an NHA dataset is given", () => {
@@ -233,7 +233,7 @@ describe("the release date an NHA dataset is given", () => {
     expect((await theDescription()).releaseDate).toBe("2019-05-05")
   })
 
-  it("is not given to a dataset an archive accounts for", async () => {
+  it("is not given to a dataset an archive is responsible for", async () => {
     // A JGAD accession takes both of its dates from the application system, so
     // a date written here would be a second source for the same fact.
     const fixture = await ready()
@@ -292,7 +292,7 @@ describe("a publish that is refused", () => {
    * Any free number will do, gap or not: the sequence is not promised to be
    * unbroken.
    */
-  it("publishes under a number nothing ever kept", async () => {
+  it("publishes under a number no version ever had", async () => {
     const fixture = await ready()
 
     const outcome = await publish({ draftId: fixture.draftId, revision: fixture.revision }, 7)
@@ -338,7 +338,7 @@ describe("publishing under a number a version already holds", () => {
     expect((await theVersion()).id).toBe(first.id)
   })
 
-  it("has the descriptions of the version it was copied from, as the draft holds them", async () => {
+  it("keeps the descriptions of the version it was copied from, as the draft holds them", async () => {
     const fixture = await ready()
     await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
@@ -357,7 +357,7 @@ describe("publishing under a number a version already holds", () => {
       .toEqual({ ...described("直した記述"), releaseDate: RELEASE_DATE })
   })
 
-  it("implies nothing about a dataset it did not change", async () => {
+  it("reports nothing about a dataset it did not change", async () => {
     const fixture = await ready()
     await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
@@ -467,7 +467,7 @@ describe("the trail a publish leaves", () => {
       .select({ action: s.event.action, subjectType: s.event.subjectType, detail: s.event.detail })
       .from(s.event)
     // Consuming a draft by publishing it is not a discard: where it went is
-    // what the version event has.
+    // what the version event contains.
     expect(events.map((row) => row.action).toSorted())
       .toEqual(["pass-publish-check", "publish-dataset", "publish-version"])
     const passed = events.find((row) => row.action === "pass-publish-check")
@@ -649,7 +649,7 @@ describe("updating a version", () => {
     expect((await theVersion()).id).toBe(fixture.before.id)
   })
 
-  it("refuses a draft of its own that identifies no number, and writes nothing", async () => {
+  it("refuses a draft of its own that gives no number, and writes nothing", async () => {
     const fixture = await ready()
     const before = await counts()
 
@@ -678,7 +678,7 @@ describe("looking a publish over first", () => {
     expect(await counts()).toEqual(before)
   })
 
-  it("offers the next number, and identifies the ones versions hold", async () => {
+  it("offers the next number, and lists the ones versions hold", async () => {
     const fixture = await ready()
     await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const draftId = await copied(fixture.researchId)
@@ -730,7 +730,7 @@ describe("looking a publish over first", () => {
    * Publishing writes a version of its own, so another publish in the meantime
    * cannot have moved what this draft holds — there is no staleness to report.
    */
-  it("implies nothing about what another publish did in the meantime", async () => {
+  it("reports nothing about what another publish did in the meantime", async () => {
     const fixture = await ready()
     await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const behind = await copied(fixture.researchId)
@@ -758,7 +758,7 @@ describe("looking a publish over first", () => {
  * changed.
  */
 describe("a published dataset the draft has not written", () => {
-  it("is kept over as published, and counted as unchanged", async () => {
+  it("stays published, and is counted as unchanged", async () => {
     const fixture = await ready()
     await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const first = await theDescription()

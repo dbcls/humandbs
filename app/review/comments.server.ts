@@ -216,7 +216,7 @@ export async function acknowledgeDraft(
  * pressed first.
  *
  * **Who a reader is**: a signed-in one is their account, whatever name it
- * kept at the time — the row goes by the latest; one who did not sign in is
+ * had at the time — the row goes by the latest; one who did not sign in is
  * the name they typed, which is all there is to know them by.
  */
 export async function readAcknowledgements(

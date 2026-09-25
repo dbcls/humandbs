@@ -636,7 +636,7 @@ describe("a dataset a draft adds", () => {
     expect(event?.detail).toEqual({ researchId, label: "JGAD000999" })
   })
 
-  /** A published one whose research is found by what it has, and a dataset of it nothing else reports. */
+  /** A published one whose research is found by its text, and a dataset of it that nothing else mentions. */
   async function publishedPair() {
     const { researchId, draftId } = await createResearchWithDraft(db)
     await db.insert(s.labelPin).values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })

@@ -160,7 +160,7 @@ describe("what a research page has", () => {
     expect(ja.state === "value" && ja.value).toHaveLength(1)
   })
 
-  it("has the state of a link out to the page rather than emptying it", () => {
+  it("passes the state of a link through to the page rather than emptying it", () => {
     const unsettled = research({
       summary: {
         ...emptyResearchContent().summary,
@@ -300,7 +300,7 @@ describe("what a research page has", () => {
       ])
     })
 
-    it("draws a typed ID the `label_pin` table does not respond for as it was written, with nothing to follow", () => {
+    it("draws a typed ID the `label_pin` table has no entry for as it was written, with nothing to follow", () => {
       const row = cited(new Map(), [], ["JGAD999999"])
       expect(row?.datasets).toEqual([{ label: "JGAD999999", known: false, humLabel: null }])
     })
@@ -384,7 +384,7 @@ describe("what a dataset page has", () => {
     expect(view.experiments[0]?.values).toEqual([])
   })
 
-  it("keeps a settled 'no such value' so the row can report it", () => {
+  it("keeps a settled 'no such value' so the row can show that", () => {
     const view = dataset({
       ...emptyDatasetContent(),
       experiments: [{
@@ -637,7 +637,7 @@ describe("the provider column of the research listing", () => {
   })
 
   /**
-   * Emptying the listing is how a curator reports "the section again", so the
+   * Emptying the listing is how a curator indicates "the section again", so the
    * column has to go back rather than stay on the last thing typed into it.
    */
   it("goes back to the research's providers when the listing is emptied", () => {

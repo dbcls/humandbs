@@ -4,7 +4,7 @@
  * **A version has the description of every dataset it lists**, so there is
  * no separate place to write a description into before publishing one — it is
  * handed in here and merged into the version, the same shape a publish leaves
- * behind. Tests that only need a research to exist publicly report it in one call
+ * behind. Tests that only need a research to exist publicly do so in one call
  * rather than assembling the rows themselves, which is what keeps them from
  * drifting apart when the shape moves.
  */

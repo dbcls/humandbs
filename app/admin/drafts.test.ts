@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest"
  * every write to a draft goes through `drafts.server.ts`, and every function
  * there that changes an existing row takes the revision to check it against.
  *
- * Nothing in the type system reports it. An update written somewhere else would
+ * Nothing in the type system enforces it. An update written somewhere else would
  * compile, would pass every other test, and would silently overwrite whatever
  * somebody else had saved. So the shape of the source is what is checked here —
  * the same reason a trigger would not do, one level up.

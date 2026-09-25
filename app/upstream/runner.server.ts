@@ -1,5 +1,5 @@
 /**
- * What makes the caches refresh without anybody requesting.
+ * What makes the caches refresh without anybody asking for it.
  *
  * **It runs inside the application process; there is no separate worker.** The
  * same judgement as the file switches: the work is one long query and a few

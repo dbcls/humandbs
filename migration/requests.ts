@@ -15,7 +15,7 @@
  * keeps the question in it. Nothing is lost, because the comment has the
  * words as they were.
  *
- * **A question that reports no more than "please tell us" leaves no comment.** The
+ * **A question that asks no more than "please tell us" leaves no comment.** The
  * preview already shows an unsettled slot as a red `ご教示ください`, so the
  * comment would repeat it. A list of plain strings (grant numbers) has no state,
  * so there the question is taken out of the list and always left as a comment.
@@ -26,7 +26,7 @@ import type { CommentAnchor, RichText, Slot } from "~/content/types"
 /** The phrasings curators asked in. Each is a request, never a data value. */
 const REQUEST = /ご教示|お知らせください|ご確認|でしょうか|ますか[？?]|お願いします|ご記入/
 
-/** A request that identifies nothing beyond itself. */
+/** A request that mentions nothing beyond itself. */
 const BARE_REQUEST = /^ご教示(?:ください|下さい)。?$/
 
 export function isRequest(text: string): boolean {

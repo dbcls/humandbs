@@ -134,7 +134,7 @@ export interface DateBounds {
  *
  * These are columns of the search row rather than rows of a facet table, so the
  * span comes from the hits themselves and no join is needed. A date the result
- * never passes comes back null, and the panel then has nothing to suggest —
+ * never has comes back null, and the panel then has nothing to suggest —
  * which is the honest state while the modification dates are still arriving.
  */
 export async function dateBounds(

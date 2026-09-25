@@ -48,7 +48,7 @@ import { Flag } from "~/components/flags"
  *
  * **The screen is named after the field, not after the vocabulary.** Every
  * vocabulary belongs to exactly one field, so a screen called 「語彙」 could
- * only ever be responded with "which vocabulary?" — while 「プラットフォームで
+ * only ever be met with "which vocabulary?" — while 「プラットフォームで
  * 選べる語」 shows both what is here and what it is for (`admin/urls.ts`).
  *
  * **What the data brings in is editable; what is settled is read.** The

@@ -94,8 +94,8 @@ export interface VocabularyRow {
 /**
  * The fields screen.
  *
- * **Only the fields an analysis method has are here.** The two a dataset
- * has hold what the portal is rather than what the data brings, so the
+ * **Only the fields an analysis method has are here.** The two that belong to a
+ * dataset hold what the portal is rather than what the data brings, so the
  * migration puts them in and nothing edits them afterwards.
  *
  * **The vocabularies are not a list of their own.** Each belongs to exactly one
@@ -212,7 +212,7 @@ type Outcome = { status: "ok", moved?: Moved } | { status: CatalogProblem }
  * What the form did.
  *
  * **The answer names the action** (`did`), so that the screen can report "key を
- * 作成しました" rather than "保存しました" for everything, and a move reports
+ * 作成しました" rather than "保存しました" for everything, and a move shows
  * where the row went (`moved`) — which is also what taking it back needs.
  */
 export type CatalogResult
@@ -422,7 +422,7 @@ export async function fieldTermsPage(
 async function keyInUse(db: Executor, keyId: string): Promise<boolean> {
   const match = sql`jsonb_path_exists(content, '$.**.keyId ? (@ == $id)', ${JSON.stringify({ id: keyId })}::jsonb)`
   // Every published description is in the rows the public side reads, which is
-  // one place to request rather than one version row per version.
+  // one place to look rather than one version row per version.
   const [published] = await db
     .select({ hit: sql<number>`1` })
     .from(searchDoc)
@@ -490,7 +490,7 @@ async function usedTermIds(db: Executor): Promise<Set<string>> {
  * How many published datasets have each of the given terms.
  *
  * **Datasets only.** A research row has every term its datasets do, so
- * counting both kinds of row reports 22 where the public listing the count leads
+ * counting both kinds of row gives 22 where the public listing the count leads
  * to (`datasetsUsing`) shows 12 — and a number that does not match what it
  * opens is worse than none. Drafts are not counted either: the count is what
  * a reader of the site can find.
@@ -713,7 +713,7 @@ async function renumber(
 /**
  * The new position of every row, as one `case` over the rows being written.
  *
- * **Each branch reports what type it is.** A bare parameter reaches Postgres as
+ * **Each branch declares its type.** A bare parameter reaches Postgres as
  * `unknown`, and a `case` whose every branch is unknown has no type to write
  * into an integer column.
  */
@@ -872,7 +872,7 @@ async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
  * to point at the survivor, and the merged term goes.
  *
  * **This is what answers "still used, but should not be chosen again".**
- * Turning a term off reports only that it will not be offered; a merge also reports
+ * Turning a term off means only that it will not be offered; a merge also records
  * what to read instead, which is the half the data needs.
  *
  * **Only within one vocabulary.** Two terms of different sets are values of
@@ -880,7 +880,7 @@ async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
  * rather than tidy a spelling.
  *
  * **The draft rows move their revision on.** An editor holding one open is
- * looking at a description that no longer reports what the row has, so the next
+ * looking at a description that no longer matches the row, so the next
  * save has to be refused the same way any other outside change refuses it.
  */
 async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {

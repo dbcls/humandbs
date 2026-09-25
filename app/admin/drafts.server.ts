@@ -104,7 +104,7 @@ function one<T>(rows: T[]): T {
 }
 
 /**
- * The token a share link has. It is minted with the draft because the
+ * The token a share link contains. It is minted with the draft because the
  * column is part of the draft rather than of a table of links: turning sharing
  * off and on again has to give back the same address.
  */
@@ -170,7 +170,7 @@ export interface SeededDataset {
   /**
    * What upstream stated that the catalog has no word for. **Each is left as a
    * comment on the field it would have gone in**, written by whoever made the
-   * dataset — the field is made unsettled, and the comment is what reports what to
+   * dataset — the field is made unsettled, and the comment is what explains what to
    * settle it on, where the curator is when they do.
    */
   dropped?: readonly DroppedValue[]
@@ -672,7 +672,7 @@ export type ListingOutcome
  * The order the datasets go out in, changed by one step.
  *
  * **The order is all a draft decides about datasets** — which of them the
- * version has is the research's answer, not the draft's. The order is
+ * version includes is the research's decision, not the draft's. The order is
  * research content, so it moves the draft's revision like a save does; it is
  * changed here rather than by the editor's save because the datasets are
  * decided on their own screen.
@@ -821,7 +821,7 @@ export type ShareOutcome
     | { status: "gone" }
 
 /**
- * Turning sharing on or off, and indicating when it lapses.
+ * Turning sharing on or off, and setting when it lapses.
  *
  * **These take no revision.** Sharing is not content: nothing about it can be
  * lost by two administrators disagreeing except the setting one of them made a
@@ -928,7 +928,7 @@ export async function discardDraft(
  *
  * Without the bump, an editor holding one of these rows would save the
  * description they read, the merged term would come back in that row alone, and
- * nothing would report it — the row would point at a term the vocabulary no longer
+ * nothing would show it — the row would point at a term the vocabulary no longer
  * has.
  *
  * The condition is handed over rather than built here — which rows point at a

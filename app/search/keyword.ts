@@ -17,7 +17,7 @@
  *
  * The reverse conversion is partial on purpose. A tree can hold conditions the box has no
  * way to show — a field, a negation, a mixture of both — so the reverse
- * separates what the box can *have* from what cannot be typed into it.
+ * separates what the box can *hold* from what cannot be typed into it.
  *
  * **This is not the split between what is listed and what is not.** Everything
  * in force is listed, the typed words included (`app/public/lists.server.ts`
@@ -82,7 +82,7 @@ export function keywordToQuery(input: string): QueryNode | null {
 }
 
 export interface KeywordSplit {
-  /** What the box shows. Empty when the tree holds nothing the box can have. */
+  /** What the box shows. Empty when the tree holds nothing the box can hold. */
   keyword: string
   /** The conditions shown beside the box, each of which can be removed. */
   conditions: QueryNode[]

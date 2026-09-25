@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { stepsView } from "./steps.server"
 
-describe("where a draft is shown on its steps", () => {
+describe("a draft's progress on its steps", () => {
   it("counts the listing, the threads and the publish check as they are", () => {
     const view = stepsView({
       datasetIds: ["a", "b"],

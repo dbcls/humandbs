@@ -46,7 +46,7 @@ const dateArb = fc.option(fc.constantFrom("2020-01-01", "2024-12-31"), { nil: nu
  * All three states, so that dropping one is visible and keeping two is checked.
  * Holding a value is weighted because a translated pair draws twice: with three
  * equal states the two sides would both hold one in a ninth of the samples, and
- * the laws about untranslated pairs need both sides settled to report anything.
+ * the laws about untranslated pairs need both sides settled to test anything.
  */
 export function slotArb<T>(value: fc.Arbitrary<T>): fc.Arbitrary<Slot<T>> {
   return fc.oneof(

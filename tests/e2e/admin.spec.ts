@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 /**
- * What the management area responds to somebody who is not signed in.
+ * What the management area shows somebody who is not signed in.
  *
  * **This runs with no session at all**, which is the point: the screens under
  * `/admin` are exactly the ones a signed-in scenario could make pass by

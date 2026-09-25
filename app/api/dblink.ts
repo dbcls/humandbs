@@ -117,7 +117,7 @@ export function linksBySubject(
 /**
  * What one accession links to. Absent and unpublished both come out empty.
  *
- * It responds by grouping everything and then taking one, rather than by a
+ * It works by grouping everything and then taking one, rather than by a
  * lookup of its own: the correspondence is on the order of a thousand edges, and
  * one way of reading it means a point lookup cannot disagree with the listing.
  */

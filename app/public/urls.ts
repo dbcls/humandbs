@@ -7,13 +7,13 @@
  * Those addresses are the only reachability the portal promises, so changing
  * their shape costs everything and buys nothing.
  *
- * **Japanese has no prefix; English is kept under `/en`.** A prefix on Japanese
+ * **Japanese has no prefix; English is served under `/en`.** A prefix on Japanese
  * would put a redirect in front of every address already written down. `/ja/…`
  * still resolves, but as a redirect, so one page has one address.
  *
  * A label in a URL is resolved through the `label_pin` table rather than matched
  * against the primary label, so a dataset id that has been superseded and a hum
- * label that was corrected both keep responding — they are cited in article
+ * label that was corrected both keep resolving — they are cited in article
  * prose, in submission forms and in URL fragments, none of which can be
  * rewritten. Reaching a page by a secondary label redirects to the primary one.
  */
@@ -53,7 +53,7 @@ export const ADMIN_ROOT = "/admin"
  * The path a request asked for, without the `.data` a client navigation
  * appends. **Anything that sends the reader back to where they were builds from
  * this, not from `request.url`** — a redirect to `<path>.data` is followed as a
- * page, and no route responds to it.
+ * page, and no route handles it.
  */
 export function askedPath(pathname: string): string {
   return pathname.endsWith(DATA_SUFFIX) ? pathname.slice(0, -DATA_SUFFIX.length) : pathname
@@ -70,7 +70,7 @@ export function askedPath(pathname: string): string {
  * spells a locale and reads as Japanese. Pressing EN on the front page left it
  * in Japanese while opening `/en` directly did not, and the same suffix left a
  * `.data` on the end of every path returned from a navigation. Taking it off in
- * the one place that reads an address beats requesting forty-odd loaders to
+ * the one place that reads an address beats asking forty-odd loaders to
  * remember.
  */
 export function readLocale(pathname: string): ReadLocale {
@@ -242,7 +242,7 @@ export function applicationUrl(locale: Locale): string {
 /**
  * Where a published file is fetched from.
  *
- * **No route responds to this.** The front proxy passes `/files/…` to the store,
+ * **No route handles this.** The front proxy passes `/files/…` to the store,
  * where it is the path-style address of the public bucket — which is why the
  * key there has the hum label rather than the identity, and why the address
  * is the same one the current portal publishes. The proxy is also what adds
@@ -270,7 +270,7 @@ export function filePath(humLabel: string, name: string): string {
  *
  * **It is the first segment that is taken**, not the whole address: the routes
  * above own everything below theirs, so `news/x` is as unreachable as `news`.
- * The screen that creates a document reads this list to report it.
+ * The screen that creates a document reads this list to show that.
  */
 export const SCREEN_PATHS = [
   "/",

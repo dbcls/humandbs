@@ -11,7 +11,7 @@
  *
  * **Nothing past the prefix is read.** Every problem the old ids have comes from
  * a numbering scheme that was treated as a guarantee and then broken, so the
- * number reports which dataset and nothing about the research or the version.
+ * number encodes which dataset and nothing about the research or the version.
  */
 
 const NHA_WIDTH = 6
@@ -21,7 +21,7 @@ const NHA_WIDTH = 6
  *
  * **This one is specification**, unlike the rest of a dataset id below. It is
  * the address a reader holds (`/research/hum0588`), it identifies the prefix the files
- * are served from, and it is what the data submission applications have — so a
+ * are served from, and it is what the data submission applications contain — so a
  * spelling outside it cannot be published and cannot be linked to.
  *
  * Written unanchored so that an input can take it as its `pattern`, which
@@ -59,7 +59,7 @@ export function nhaNumber(label: string): number | null {
 /**
  * Whether an id is one the portal issued.
  *
- * **Only the primary is asked**, and a dataset with none pinned yet responds no:
+ * **Only the primary is asked**, and a dataset with none pinned yet gets no:
  * there is no spelling to read. That is the safe side, because the answer
  * decides whether a file selection can be made at all, and the datasets that
  * must not have one are the archive's.
@@ -91,8 +91,8 @@ export function isPortalIssuedId(primaryLabel: string | null): boolean {
  * - `switching` — the prefix is empty (or unknown) but a switch runs, which may
  *   still land a file in it.
  *
- * **What is unknown does not close it** — a store that did not respond reports
- * nothing about the prefix, and the refusal on pressing is what remains.
+ * **What is unknown does not close it** — a store that did not respond gives
+ * no information about the prefix, and the refusal on pressing is what remains.
  */
 export type UnpinHold = "holds-files" | "moving" | "left-behind" | "switching"
 

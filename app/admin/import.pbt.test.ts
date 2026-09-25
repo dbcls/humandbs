@@ -30,7 +30,7 @@ const LISTS = ["dataProviders", "researchProjects", "grants", "relatedPublicatio
  * the draft holds, and from nothing it opens holding the source.
  */
 describe("what the import form opens holding", () => {
-  it("is the draft itself when the source reports the same", () => {
+  it("is the draft itself when the source has the same content", () => {
     fc.assert(fc.property(draftInputArb, (mine) => {
       expect(initialImport(shape, mine, mine)).toEqual(mine)
     }))

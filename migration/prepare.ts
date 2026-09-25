@@ -130,7 +130,7 @@ const SRA_ACCESSION = /\b(?:DRA|SRA|ERA|DRR|DRX|DRS|DRP)\d{6}\b/g
 /**
  * v1 copied a cell that listed both archives' accessions into both archives'
  * keys. Where the two keys say the same thing, each keeps its own accessions.
- * A copy that identifies nothing of one archive is left as it is: emptying a key is
+ * A copy that lists nothing of one archive is left as it is: emptying a key is
  * not a correction anybody can see was right.
  */
 export function splitArchiveAccessions(experiment: EsExperiment): void {
@@ -167,7 +167,7 @@ export interface SharedSplit {
 
 /**
  * Gives each dataset its own lines of every block that several of the given
- * datasets have word for word (`inversion.ts`). The datasets are those one
+ * datasets share word for word (`inversion.ts`). The datasets are those one
  * research version lists; a cell the rules cannot settle stays whole on every
  * dataset and is listed for somebody to divide.
  */

@@ -2,7 +2,7 @@
  * What the files screen loads, and what its forms and its uploads do.
  *
  * **The bytes never come through here.** An upload checks which of its names the
- * prefix already holds, requests a signature, puts straight to the store and reports
+ * prefix already holds, requests a signature, puts straight to the store and records
  * nothing afterwards: the bucket a file sits in is the whole of its state, so
  * there is nothing to write down when one arrives.
  *
@@ -87,11 +87,11 @@ const COMMON_LISTING_SETTINGS: readonly string[] = [...LISTING_SETTINGS, "q", "f
  * The listing an operation on its rows responds with: the one it was sent from.
  *
  * **The ordering, the page size and the page come back with it.** The forms on
- * a listing post to the address they are shown on, so what the reader chose is in
+ * a listing post to the address they are on, so what the reader chose is in
  * the request's own query; dropping it put a reader who had asked for fifty rows
  * back on twenty after every delete. Only the listing's settings are kept —
  * the rest of a query is not the listing's to keep, and which names are its
- * settings is the listing's to report. A page the operation emptied is the
+ * settings is the listing's to decide. A page the operation emptied is the
  * listing's to settle, the way it settles any page past the end.
  */
 function backToListing(
@@ -123,7 +123,7 @@ export interface FilesPageView {
   rows: ListedFile[] | null
   /**
    * The published datasets that select each file on the page, by the file's
-   * name — what the research's public page has of the same file. A file no
+   * name — what the research's public page shows of the same file. A file no
    * dataset selects is not a key.
    */
   selectedBy: Record<string, string[]>
@@ -137,7 +137,7 @@ export interface FilesPageView {
   /** Which sides of the store are kept. Empty, or both, is every file. */
   states: FileState[]
   /**
-   * How many files are shown on each side, counted with the side condition off and
+   * How many files are on each side, counted with the side condition off and
    * the others on — the way every listing counts its values.
    */
   counts: Record<FileState, number>
@@ -191,7 +191,7 @@ export async function filesPage(
   const wanted = Number(asked.get("page") ?? "1")
 
   // The side is counted with its own condition off, so that a reader who
-  // picked one side can still see how many are shown on the other.
+  // picked one side can still see how many are on the other.
   const bySide = narrowedFiles(listing ?? [], { keyword, from, to })
   const narrowed = states.length === 0
     ? bySide
@@ -438,7 +438,7 @@ async function deleteFiles(
  * placed on a transfer the application does not see.
  *
  * **The first question names the files and nothing else.** A name is the key,
- * so sending one the prefix already holds replaces what is there; the screen requests
+ * so sending one the prefix already holds replaces what is there; the screen checks
  * which of its names would, before it requests any signature, and puts the
  * question to the reader.
  */

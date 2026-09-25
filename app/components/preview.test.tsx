@@ -47,7 +47,7 @@ describe("the indicators a preview draws beside a value", () => {
   })
 })
 
-describe("the indicator indicating the published version reads otherwise", () => {
+describe("the indicator showing that the published version reads otherwise", () => {
   const CHANGED = {
     changed: ["summary.aims"],
     previous: { "summary.aims": { kind: "field" as const, field: { state: "plain" as const, text: "旧い目的", untranslated: false } } },
@@ -130,7 +130,7 @@ describe("the header of a preview", () => {
     )
   }
 
-  it("shows what is asked in a card of its own, before the header bar the page is shown with", () => {
+  it("shows what is asked in a card of its own, before the page's header bar", () => {
     const html = head()
     const notice = html.indexOf("公開前のご確認をお願いいたします")
     const headerBar = html.indexOf("公開前の確認")
@@ -178,7 +178,7 @@ describe("the header of a preview", () => {
     expect(html).toMatch(/<input[^>]*name="name"[^>]*form="preview-decide"|<input[^>]*form="preview-decide"[^>]*name="name"/)
   })
 
-  it("draws the whole's entry at the size of the two indicators it is shown in a row with", () => {
+  it("draws the whole's entry at the size of the two indicators it shares a row with", () => {
     const sizeOf = (tag: string) => (/class="([^"]*)"/.exec(tag)?.[1] ?? "").split(" ")
       .filter((one) => /^(?:px|py|gap|text-(?:xs|sm|base|lg))/.test(one))
       .sort()
@@ -209,7 +209,7 @@ describe("the header of a preview", () => {
     expect(html.slice(name, login)).toContain("または")
   })
 
-  it("shows whose name the comments have once signed in, and requests neither", () => {
+  it("shows which name the comments are posted under once signed in, and asks for neither", () => {
     const html = head({ signedInName: "山田花子" })
     expect(stepsOf(html)[0]).toMatch(/DDBJ アカウント <span[^>]*bg-surface[^>]*><code[^>]*>山田花子<\/code><\/span> でログインしています/)
     // The line under the steps shows the same name at the steps' size, not the hint's.
@@ -265,7 +265,7 @@ describe("the header of a preview", () => {
 })
 
 describe("the answer to an indicator", () => {
-  it("shows the indicator reached the office, naming it by its first sentence", () => {
+  it("shows that the indicator's press reached the office, naming the indicator by its first sentence", () => {
     expect(render(<PreviewActionNotice answer={{ status: "acknowledged", kind: "commented" }} locale="ja" />))
       .toContain("「コメントを書き終えました」を事務局にお送りしました。")
     expect(render(<PreviewActionNotice answer={{ status: "acknowledged", kind: "approved" }} locale="ja" />))

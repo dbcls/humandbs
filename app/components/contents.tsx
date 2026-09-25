@@ -4,7 +4,7 @@
  *
  * **Editing and taking down are two forms, side by side rather than nested.**
  * A body that was typed but not sent travels with the form it was typed in, so
- * "take this down" cannot have it — and publishing, which sits under the body,
+ * "take this down" cannot include it — and publishing, which sits under the body,
  * takes exactly what is on screen.
  */
 
@@ -134,7 +134,7 @@ export function StateCell({ state, locale, ahead = false }: {
  * **The trigger uses the warning style** (`Confirm`): the address readers hold
  * stops responding, which is the break deleting it makes.
  *
- * **The panel does not name the slug in its title.** The box inside has it,
+ * **The panel does not name the slug in its title.** The box inside shows it,
  * and a title would disagree with the box the moment anything is typed.
  */
 export function SlugEditor({ locale, intent, name, value, hint, size, disabled }: {
@@ -440,7 +440,7 @@ function contentOf(editors: LocaleEditor[], language: Locale): ArticleContent {
  * The page a language's words make, drawn as readers would see it — and
  * nothing else: whether it is up is said in the form beside it, and a badge
  * over the page would be a word readers never see. Until the first drawing
- * arrives the saved body remains, drawn the same way by the loader.
+ * arrives the saved body is shown, drawn the same way by the loader.
  */
 function ArticlePage({ language, drawn, dated }: {
   language: Locale

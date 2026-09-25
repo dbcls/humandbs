@@ -28,7 +28,7 @@
  *   has the number of the registration that created the object and does
  *   have one
  * - **`accession` is only reached by prefix.** `LIKE 'JGAD%'` becomes a range
- *   the index responds; the equivalent regular expression does not, and turns a
+ *   the index serves; the equivalent regular expression does not, and turns a
  *   listing into twenty seconds
  * - **the application form is an EAV table with no index but its key.** Naming
  *   the keys wanted in the `WHERE` clause is what keeps the pivot to a tenth of
@@ -282,13 +282,13 @@ export async function fetchJgadDates(
  * the investigator's address out, and a later branch of the same project, or
  * the initial one's submitter where that is the investigator, is where it was
  * written. Where the initial application has no country, the newest submission
- * that has one responds — approved branches before the rest — and its state
+ * that has one is used — approved branches before the rest — and its state
  * line comes from the same submission, so the two never describe different
  * addresses.
  *
  * The end of the period follows the same care. Reaching the expiry is not the
  * same as ending: a project can expire and be extended back into use, so the
- * expiry date responds except where a closing report was approved, whose date is
+ * expiry date is used except where a closing report was approved, whose date is
  * the real end and is sometimes earlier than the expiry that was on record.
  */
 export async function fetchCauEntries(
@@ -511,7 +511,7 @@ const APPROVED = 60
 /**
  * The values a row of a listing is read from: what a branch is recognised by,
  * and nothing that would be read past. Kept apart from the rest because a
- * listing responds with every branch that matched — the aims and the methods of
+ * listing returns every branch that matched — the aims and the methods of
  * a thousand branches are a megabyte nobody looks at.
  */
 const ROW_KEYS = [
@@ -544,7 +544,7 @@ const FORM_KEYS = [...ROW_KEYS, ...DETAIL_KEYS] as const
  * number is the registration's own id, so the two are joined without reading a
  * single relation.
  *
- * **Every step reports `MATERIALIZED`.** Left to itself the planner inlines these
+ * **Every step is marked `MATERIALIZED`.** Left to itself the planner inlines these
  * into the query that reads them, and with no statistics to go on it estimates
  * one row where there are over a thousand — so the pivot below is re-run once
  * per branch, and the form components are read eight hundred thousand times
@@ -649,11 +649,11 @@ function branchRow(row: BranchRowQuery): DsBranchRow {
  * The keyword is matched against the hum label, the application number, the
  * study title and the name of the investigator — everything the row shows, so
  * that what is searched and what is read back are the same four things. An
- * empty keyword responds with the newest branches, which is what somebody who has
+ * empty keyword returns the newest branches, which is what somebody who has
  * just been told a number is looking at.
  *
  * **A null limit is every branch that matched**, which is what a listing that
- * counts and pages requests. Cutting the answer short saves nothing: the CTE
+ * counts and pages needs. Cutting the answer short saves nothing: the CTE
  * above assembles every approved branch before the cut is applied, so thirty
  * rows and all of them are the same 110ms. (`LIMIT NULL` is how Postgres spells
  * no limit at all, so the cut needs no second query.)
@@ -742,7 +742,7 @@ export async function fetchAccessionBranchId(
  * What the registration system has about datasets, read from the submitted XML
  * rather than from DDBJ Search.
  *
- * **The XML is the only source that responds before publication**, and a draft is
+ * **The XML is the only source that has the data before publication**, and a draft is
  * written for something that has not been published yet. The extraction is left
  * to the database so that the portal holds no XML parser for two elements.
  */
@@ -784,7 +784,7 @@ function joinName(first: string | null, second: string | null): string {
 /**
  * The division before the institution. The institution alone matches what the
  * old portal published for only 8% of rows; with the division in front it is
- * 65%, which is what reports the two belong together.
+ * 65%, which is what shows the two belong together.
  */
 function joinAffiliation(division: string | null, institution: string | null): string {
   return [division, institution]

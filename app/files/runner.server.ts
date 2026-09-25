@@ -41,7 +41,7 @@ async function drain(): Promise<void> {
       ran = await runOneJob(db)
     }
   } catch (error) {
-    // The loop has no caller to respond to, and a queue that stops on the first
+    // The loop has no caller to report to, and a queue that stops on the first
     // failure stops for everything. Each job records its own reason.
     console.error("the file switch loop failed", error)
   } finally {

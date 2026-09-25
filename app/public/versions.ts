@@ -7,7 +7,7 @@
  * to the highest number" as visible is exactly how v1 leaked unpublished
  * versions to the public side.
  *
- * The same rule decides what the release list has was added in a version: the
+ * The same rule decides what the release list shows as added in a version: the
  * comparison is against the previous *published* version, so a dataset that
  * arrived in a version that was later withdrawn shows up as added in the next
  * one that is still visible. There is no version the reader can open that the
@@ -40,7 +40,7 @@ export function findVersion<T extends { number: number }>(
 /**
  * Dataset identities each version added, keyed by version number. The oldest
  * published version counts everything it lists as added — there is no earlier
- * visible version to have kept them.
+ * visible version to have listed them.
  */
 export function datasetsAddedByVersion(
   versions: readonly PublishedVersion[],

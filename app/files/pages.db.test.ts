@@ -985,7 +985,7 @@ describe("the article assets", () => {
     ["to", "2026-09-30"],
   ]
 
-  it("reports which names are already in the prefix, and writes nothing to the trail for requesting", async () => {
+  it("reports which names are already in the prefix, and writes nothing to the trail for checking", async () => {
     const token = await signIn(CURATOR, true)
     await putTestObject(PUBLIC_BUCKET, at(flat("a.png")))
 
@@ -1026,7 +1026,7 @@ describe("the article assets", () => {
     expect(await names(`&from=${shifted(1)}&to=${shifted(-1)}`)).toEqual([])
   })
 
-  it("reads a day that is not one as an end left open, and reports it", async () => {
+  it("reads a day that is not one as an end left open, and reports that", async () => {
     const token = await signIn(CURATOR, true)
     await putTestObject(PUBLIC_BUCKET, at(mine("a.png")))
 
@@ -1072,7 +1072,7 @@ describe("the article assets", () => {
       .toEqual([["delete-file", at(from)], ["publish-file", at(to)]].toSorted())
   })
 
-  it("refuses a slug another file already responds at, rather than overwriting it", async () => {
+  it("refuses a slug another file is already served at, rather than overwriting it", async () => {
     const token = await signIn(CURATOR, true)
     const from = mine("a.png")
     const taken = mine("b.png")

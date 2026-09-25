@@ -79,7 +79,7 @@ describe("resolveLinks", () => {
       .toEqual({ state: "value", value: [], untranslated: false })
   })
 
-  it("has the state of the wanted language out rather than emptying it", () => {
+  it("passes the state of the wanted language through rather than emptying it", () => {
     expect(resolveLinks({ ja: filled(ja), en: UNKNOWN }, "en")).toEqual({ state: "unsettled" })
     expect(resolveLinks({ ja: filled(ja), en: NOT_APPLICABLE }, "en"))
       .toEqual({ state: "not-applicable" })
@@ -87,7 +87,7 @@ describe("resolveLinks", () => {
 })
 
 describe("resolveBilingual", () => {
-  it("shows the other language rather than nothing, and never reports untranslated", () => {
+  it("shows the other language rather than nothing, and never shows untranslated", () => {
     expect(resolveBilingual({ ja: "", en: "Upstream" }, "ja")).toBe("Upstream")
     expect(resolveBilingual({ ja: "上流", en: "" }, "en")).toBe("上流")
     expect(resolveBilingual({ ja: "", en: "" }, "ja")).toBe("")

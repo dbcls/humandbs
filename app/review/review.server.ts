@@ -184,7 +184,7 @@ export async function reviewAction(
   const done = async (): Promise<Response | ReviewActionResult> =>
     answer === "redirect" ? back() : { status: "comments", comments: await readComments(db, draftId) }
 
-  // Saving the expiry keeps sharing as it remains; the switch beside it turns
+  // Saving the expiry keeps sharing unchanged; the switch beside it turns
   // sharing on or off and saves the expiry typed with it.
   if (intent === "share" || intent === "share-on" || intent === "share-off") {
     const enabled = intent === "share" ? form.get("enabled") === "on" : intent === "share-on"

@@ -10,7 +10,7 @@ import type { CatalogView } from "~/public/view.server"
  * The vocabulary side is built from the ids a generated content actually holds,
  * so that resolving a term is exercised rather than always missing. Some are
  * left out on purpose: a key or a term the catalog does not know is dropped, and
- * a law that never saw one would not be indicating anything about that.
+ * a law that never saw one would not be testing anything about that.
  */
 
 /** Every vocabulary term id a dataset content refers to, diseases included. */

@@ -45,10 +45,10 @@ export function termCodeProblem(code: string): CodeProblem | null {
 /**
  * The code a new key or term is stored under, made from its English label.
  *
- * **Nobody is asked for it.** The code is an address the public side has
+ * **Nobody is asked for it.** The code is an address the public side uses
  * (`?q=experimental-method:atac-seq`), not a name a curator chooses — and
- * requesting one is requesting somebody to know which characters a query can hold
- * unquoted. The label already reports what the value is.
+ * asking for one is expecting somebody to know which characters a query can hold
+ * unquoted. The label already shows what the value is.
  *
  * **A vocabulary that arrives with codes of its own keeps them** — ICD10 writes
  * `C34`, and a slug made from the label would be a second name for the same
@@ -82,7 +82,7 @@ export function freeCode(wanted: string, taken: ReadonlySet<string>): string {
  * The code a new key takes: clear of the keys the catalog holds and of the
  * field names the search owns (`codeProblem`). A key labelled "Title" is stored
  * as `title-2` rather than refused — the label is the curator's to choose, and
- * the code is only where the key is defined in an address.
+ * the code is only where the key appears in an address.
  */
 export function freeKeyCode(wanted: string, held: Iterable<string>): string {
   return freeCode(wanted, new Set([...held, ...BUILT_IN_FIELDS.keys()]))

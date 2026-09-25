@@ -7,7 +7,7 @@ import type { Locale } from "~/i18n/locale"
 import { CartMenu } from "./cart"
 
 /**
- * The cart is defined in the browser, so what is reachable here is the panel as the
+ * The cart is stored in the browser, so what is reachable here is the panel as the
  * server draws it — which is the empty one, and the one every reader meets
  * first. What it looks like holding something is `tests/e2e/cart.spec.ts`.
  */

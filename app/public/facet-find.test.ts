@@ -8,7 +8,7 @@ const DISEASES = [
   { code: "C61", label: "前立腺の悪性新生物＜腫瘍＞" },
 ]
 
-/** What is left shown after the box was given these words. */
+/** What is still shown after the box was given these words. */
 function found(find: string, values = DISEASES): string[] {
   const needle = rolledUpFind(find, values)
   return values.filter((one) => matches(needle, one)).map((one) => one.code)

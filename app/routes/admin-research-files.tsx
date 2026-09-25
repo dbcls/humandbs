@@ -189,11 +189,11 @@ function at(view: FilesPageView, over: Partial<ResearchFilesQuery>): string {
  * the rule every listing follows.
  *
  * **Nothing here waits to be confirmed.** The field sends the query once the typing has
- * stopped, a window or a tick sends as it is pressed, and a day sends the moment
+ * stopped, a window or a tick sends it as it is pressed, and a day sends it the moment
  * it is whole.
  *
  * **The box, the days and the sides are three forms, and each has what the
- * others hold**, because a form cannot be shown inside another.
+ * others hold**, because a form cannot be nested inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)

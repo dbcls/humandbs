@@ -8,17 +8,17 @@
  * third value — **what will be written** — that starts from the source and is
  * edited like any field.
  *
- * **Where the source reports nothing, the draft's reading remains.** An empty
+ * **Where the source has nothing, the draft's reading remains.** An empty
  * language of a title, an empty list of links, an empty list of numbers: the
  * source leaving a blank is not the source indicating "blank", and starting the
- * written value from it would clear the draft's work without anybody requesting.
+ * written value from it would clear the draft's work without anybody asking for it.
  * A state (未確定・該当なし) is something said, and is imported.
  *
  * **An array of things with an identity is a set of rows to tick**, not one
  * value. Both sides' elements are shown in one list — the draft's in its order,
  * then the ones only the source has — and all of them start ticked, for the
- * same reason as above: an element the source lacks is not one it requests to
- * remove. An element both sides hold is compared field by field under its own
+ * same reason as above: an element the source lacks is not a request to
+ * remove it. An element both sides hold is compared field by field under its own
  * paths, so ticking it keeps whatever those rows say.
  */
 
@@ -181,7 +181,7 @@ export function initialImport<T>(shape: ImportShape<T>, mine: T, theirs: T): T {
       continue
     }
     // **One place is blank only when all of it is**: the source naming a
-    // dataset only in the typed list still reports which datasets it cites.
+    // dataset only in the typed list still shows which datasets it cites.
     const parts = [keys, ...along.map((one) => shape.keysOf(one))]
     const blank = parts.every((part) => {
       const source = readAt(theirs, part)
@@ -196,7 +196,7 @@ export function initialImport<T>(shape: ImportShape<T>, mine: T, theirs: T): T {
   return written
 }
 
-/** A value the source reports nothing with: an empty slot, or an empty list of strings. */
+/** A value in which the source has nothing: an empty slot, or an empty list of strings. */
 function blankValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length === 0
   return blankSlot(value)
@@ -205,7 +205,7 @@ function blankValue(value: unknown): boolean {
 export const RESEARCH_IMPORT: ImportShape<DraftInput> = {
   diff: diffDraftInput,
   keysOf: (path) => ["content", ...path.split(".")],
-  // Which datasets a version lists is the research's to report, and the draft
+  // Which datasets a version lists is the research's to decide, and the draft
   // holds only their order.
   skip: ["datasetIds"],
   // A publication's datasets are one place in two lists: the research's own,

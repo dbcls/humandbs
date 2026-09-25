@@ -107,7 +107,7 @@ export function queryFields(facets: readonly FacetField[]): QueryFields {
 
 /**
  * The operator a field and a value shape imply, or null when the two do not go
- * together. Deriving it means a query never identifies an operator, which keeps the
+ * together. Deriving it means a query never spells out an operator, which keeps the
  * written form close to what people already know from Lucene.
  *
  * A term takes neither a wildcard nor a range: its values are codes drawn from

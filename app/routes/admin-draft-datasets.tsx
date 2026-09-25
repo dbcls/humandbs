@@ -87,7 +87,7 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
           </Stack>
 
           {/* **The order is the public page's order**, so a row's arrows say
-              where it is shown there, and the columns are the public table's.
+              where it sits there, and the columns are the public table's.
               **The table is shown under the name with no section of its own** —
               the screen holds this one list, and the name already shows what
               it is. The table stays when empty: the column names say what
@@ -136,13 +136,13 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
 }
 
 /**
- * One dataset as this draft sees it: the public page's cells for it, where it
- * is shown in the order, and the way to take it out of the research. The id leads
+ * One dataset as this draft sees it: the public page's cells for it, its
+ * position in the order, and the way to take it out of the research. The id leads
  * to the dataset's editor rather than to its page.
  */
 function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
   row: DraftDatasetListView["rows"][number]
-  /** Where it is shown in the order the datasets go out in. */
+  /** Its position in the order the datasets go out in. */
   at: { index: number, of: number }
   locale: Locale
   researchId: string

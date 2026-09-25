@@ -117,7 +117,7 @@ type Fetcher = ReturnType<typeof useFetcher<Answer>>
 
 /**
  * Whether the fetcher a panel shares is handling a posting right now. **The
- * one fetcher has posting, resolving and deleting**, so the form cannot
+ * one fetcher handles posting, resolving and deleting**, so the form cannot
  * read "busy" off its state alone: resolving a row would then say 投稿中 beside
  * a box nobody has sent, and hold the send button shut while it did.
  */
@@ -245,7 +245,7 @@ export function CommentTimeline({ context, comments, at, fetcher, placeholder, e
  * so it is neither open nor resolved and offers nothing to resolve. It can
  * still be deleted.
  *
- * **Deleting is not asked about.** The row already is shown in a panel, and a
+ * **Deleting is not asked about.** The row is already shown in a panel, and a
  * panel over a panel leaves the reader responding to two questions at once; what
  * goes is one line whose words they have just read. The trigger is shown with the
  * warning style all the same, since there is no way to press it back.
@@ -388,7 +388,7 @@ export function groupedByAnchor(
  * the place to write reads as one more row.
  *
  * **The box empties once what was in it has been taken.** Only a posting
- * empties it: the same fetcher has resolving and deleting, and an answer
+ * empties it: the same fetcher handles resolving and deleting, and an answer
  * to those must not throw away what is being typed. A refused posting keeps
  * the words, so they can be fixed rather than typed again. **Only a posting
  * shows 投稿中 and shuts the send button** (`postingInFlight`) — a row being

@@ -10,7 +10,7 @@ export const eventAction = pgEnum("event_action", [
   "publish-dataset",
   /**
    * A version turned back into a draft. Recorded because it is the only trace
-   * left: the row moves rather than gaining a flag, so nothing else can report
+   * left: the row moves rather than gaining a flag, so nothing else can record
    * that the number was ever out.
    */
   "withdraw-version",

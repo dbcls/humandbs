@@ -108,7 +108,7 @@ describe("running a query against the published set", () => {
     expect(await labels("糖尿病 OR 肝臓")).toEqual(["hum0001", "hum0003"])
   })
 
-  it("counts a row that cannot respond as not matching, so NOT is the whole complement", async () => {
+  it("counts a row the comparison cannot decide as not matching, so NOT is the whole complement", async () => {
     const all = await labels("")
     const matching = await labels("ゲノム")
     const rest = await labels("NOT ゲノム")

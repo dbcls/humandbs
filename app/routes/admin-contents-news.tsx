@@ -137,10 +137,10 @@ interface ViewProps {
 /**
  * One announcement.
  *
- * **The title is the link**, shown first and having it, as the
+ * **The title is the link** and comes first, as the
  * identifier does on the other listings: an announcement is looked for by what
  * it shows, and the date is the value it is ordered and narrowed by rather than
- * the name it responds to.
+ * the name it goes by.
  *
  * **An announcement with nothing written yet still has to be openable**, so the
  * word for that is shown in the link's place — the date is in the next column and
@@ -175,10 +175,10 @@ function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
  * the same rule the articles and the public listings follow.
  *
  * **Nothing here waits to be confirmed.** The field sends the query once the typing has
- * stopped and a tick sends as it is made.
+ * stopped and a tick sends it as it is made.
  *
  * **The box and the ticks are two forms, and each has what the other
- * holds**, because a form cannot be shown inside another.
+ * holds**, because a form cannot be nested inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)

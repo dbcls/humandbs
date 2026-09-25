@@ -193,7 +193,7 @@ describe("normalizeQuery", () => {
 })
 
 describe("applicationUrl", () => {
-  it("requests the application system for English on an English page and for nothing on a Japanese one", () => {
+  it("asks the application system for English on an English page and for nothing on a Japanese one", () => {
     expect(applicationUrl("en")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/?lang=en")
     expect(applicationUrl("ja")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/")
   })

@@ -186,7 +186,7 @@ describe("what the review screen does", () => {
     expect(off?.expiresAt?.toISOString().slice(0, 10)).toBe("2026-12-31")
   })
 
-  it("keeps sharing as it remains when only the expiry is saved", async () => {
+  it("keeps sharing unchanged when only the expiry is saved", async () => {
     const created = await createResearchWithDraft(db)
     const token = await signIn(CURATOR, true)
     await reviewAction(postForm(token, { intent: "share-on", expiresOn: "" }), "ja", created, "redirect")
@@ -242,7 +242,7 @@ describe("what the review screen does", () => {
   })
 
   /** What an open editor needs back: the comments, and no navigation. */
-  it("returns an editing screen with the comments rather than with a redirect", async () => {
+  it("responds to an editing screen with the comments rather than with a redirect", async () => {
     const created = await createResearchWithDraft(db)
     const token = await signIn(CURATOR, true)
 

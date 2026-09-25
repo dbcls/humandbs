@@ -34,14 +34,14 @@ const NAMES_ICD10 = /ICD\s*-?\s*10\s*[:：]?\s*/i
 const BETWEEN = /[、,，;；]/
 
 /**
- * The name that belongs to an annotation, taken from the text shown between
+ * The name that belongs to an annotation, taken from the text between
  * the previous annotation and this one.
  *
  * **A line names several diseases in a row** (`胆道がん(ICD10: C221)、乳がん
  * (ICD10: C50)`), so reading from the start of the line would give the second
  * disease the first one's name as well. What is kept is the part closest to the
  * code, with the labels the articles put in front of it removed — a list
- * marker, the `【JGAS000009】` an article uses to report which submission a group
+ * marker, the `【JGAS000009】` an article uses to mark which submission a group
  * came from, and an identifier standing in for the case (`HNC1:`).
  */
 function nameBefore(fragment: string): string {
@@ -62,7 +62,7 @@ function nameBefore(fragment: string): string {
  * `42疾患(ICD10 code) 不整脈(I499)、気管支喘息(J459)、…`.
  *
  * **The heading is not a disease** — the diseases are what follows it, and they
- * do not repeat `ICD10` in every bracket. An announcement therefore reports two
+ * do not repeat `ICD10` in every bracket. An announcement therefore means two
  * things: drop this one, and read the rest of the line's brackets as codes.
  */
 const ANNOUNCEMENT = /^codes?$/i
@@ -70,7 +70,7 @@ const ANNOUNCEMENT = /^codes?$/i
 /** The diseases one language of one field names, in the order written. */
 export function mentionsIn(text: string): DiseaseMention[] {
   const mentions: DiseaseMention[] = []
-  // **An announcement carries past the line it is shown on.** The heading is a
+  // **An announcement carries past the line it sits on.** The heading is a
   // line of its own and the diseases fill the lines under it.
   let announced = false
   for (const line of text.split("\n")) {
@@ -119,7 +119,7 @@ export interface DiseaseSeed {
  * counts are kept in the free text, not here.
  */
 export function diseasesIn(ja: string, en: string): DiseaseSeed[] {
-  // An annotation shown on its own leaves nothing to call the disease, and
+  // An annotation on its own leaves nothing to call the disease, and
   // an empty string on the value would read as a name that is blank.
   const named = (name: string | undefined): string | null =>
     name === undefined || name === "" ? null : name

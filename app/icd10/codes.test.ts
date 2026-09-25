@@ -81,7 +81,7 @@ describe("resolving a code against the dictionary", () => {
     expect(icd10Resolve("c34.9", known)).toBe("C349")
   })
 
-  it("drops the tail until the dictionary responds", () => {
+  it("drops the tail until the dictionary has a match", () => {
     // The five-character codes in the data are ICD-10-CM: `K75.81` is NASH,
     // which WHO's ICD-10 cannot write.
     expect(icd10Resolve("K75.81", known)).toBe("K758")

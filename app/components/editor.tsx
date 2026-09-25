@@ -171,7 +171,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 
   /**
    * Going to the place a banner or the page pane names (`form.tsx` の `focusField`):
-   * the field when it remains open on the form, the element's row when the field
+   * the field when it is open on the form, the element's row when the field
    * is written in a panel that is not open (`ItemList`), else the section.
    */
   function goTo(path: string): void {
@@ -660,7 +660,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               locale={locale}
               panesControl={panes.control}
               // **Memo, the whole, then what is still open** — from what only
-              // the office reads to what the office has to respond.
+              // the office reads to what the office has to reply to.
               notes={(
                 <>
                   <DraftNote context={review.context} comments={memoComments(view.review.comments)} />
@@ -723,7 +723,7 @@ function DraftOverview({ locale, researchId, draftId }: {
  * being typed.
  *
  * Either language, whichever is written: this is a curator being shown what the
- * table will show, and a name written only in Japanese still responds to that.
+ * table will show, and a name written only in Japanese still serves for that.
  */
 function writtenNames(providers: DataProviderInput[], locale: Locale): string {
   const written = providers
@@ -775,7 +775,7 @@ function RepeatingSection<T extends { id: string }>({
 }) {
   return (
     // The list is the section's one field, so the heading is its name and
-    // has what the review shows about the list.
+    // shows what the review has found about the list.
     <Section id={id} title={title} flags={<FieldFlags annotations={annotationsFor(id)} locale={locale} />}>
       <ItemList
         path={id}
@@ -793,13 +793,13 @@ function RepeatingSection<T extends { id: string }>({
   )
 }
 
-/** The words for the two states a side can be shown with instead of a value (`admin.editor.stateChoice`). */
+/** The words for the two states a side can be set to instead of a value (`admin.editor.stateChoice`). */
 type StateWords = Record<Exclude<SlotState, "value">, string>
 
 /**
  * What one side of a value shows in a line: its text, or the word for the
- * state it is shown with instead. A side marked unsettled or not applicable has no
- * text to show, and a row indicating 未入力 for it would show the curator has not
+ * state it is set to instead. A side marked unsettled or not applicable has no
+ * text to show, and a row showing 未入力 for it would suggest the curator has not
  * answered when they have.
  */
 function sideLine(side: TextInput, states: StateWords): { text: string, isState: boolean } {
@@ -812,7 +812,7 @@ function pairLine(pair: { ja: TextInput, en: TextInput }, states: StateWords): {
   return ja.text !== "" ? ja : sideLine(pair.en, states)
 }
 
-/** A line as a table cell: a state's word in the muted style a collapsed field is shown with (`fields.tsx`), a value as it is. */
+/** A line as a table cell: a state's word in the muted style of a collapsed field (`fields.tsx`), a value as it is. */
 function lineCell(line: { text: string, isState: boolean }): ReactNode {
   return line.isState ? <span className="text-ink-muted">{line.text}</span> : line.text
 }

@@ -2,7 +2,7 @@
  * Which datasets a draft publishes, and in what order.
  *
  * **A dataset belongs to the research, not to a version**: a draft does not
- * choose which of them the next version has. It has every dataset the
+ * choose which of them the next version includes. It includes every dataset the
  * research has, and all the draft decides is the order.
  *
  * **What another draft made is not among them.** It has never been out, so it
@@ -18,7 +18,7 @@ export interface DraftDataset {
  * The research's datasets this draft publishes, in the draft's order.
  *
  * **The order names what it knows and no more.** One the draft has not named
- * yet is shown after the ones it has, in the order it arrived; one it identifies that
+ * yet comes after the ones it has, in the order it arrived; one it names that
  * the research no longer has falls out. Neither is a fault to report: the order
  * is written as rows are moved, and datasets come and go by their own
  * operations.

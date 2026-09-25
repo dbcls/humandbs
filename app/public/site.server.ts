@@ -9,7 +9,7 @@
  * **A locale that is not published is a 404, not a fallback.** Publication is
  * per locale here — the rule that it goes by version rather than by language is
  * a statement about versions — so a document that exists only in Japanese
- * answers only in Japanese, and the English address for it reports it.
+ * answers only in Japanese, and the English address for it shows that.
  *
  * **A slug resolves to a document, or to the revision a series names.** The
  * version-less address of a guideline holds no body of its own; it responds with
@@ -51,7 +51,7 @@ export async function findDocument(slug: string, locale: Locale): Promise<Articl
       eq(documentContent.locale, locale),
       eq(documentContent.published, true),
     ))
-    // A document responds at its own slug before it responds as somebody's
+    // A document is matched at its own slug before it is matched as somebody's
     // current revision, so one address cannot resolve to two pages. The two
     // cannot both exist — the save path refuses it — and this settles what
     // happens if they ever do.
@@ -109,7 +109,7 @@ const NEWS_PER_PAGE = 20
  * read by date.
  */
 /**
- * The half of "is this readable" that the announcement itself responds: it is
+ * The half of "is this readable" that the announcement itself answers: it is
  * dated, and the date has come.
  *
  * **The stored value is a JST wall clock, and "now" is read in the same
@@ -142,7 +142,7 @@ export async function newsList(
            OR ${newsContent.content} ->> 'body' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\')`]),
   )
 
-  // Counted rather than responded with "is there one more page": the reader is
+  // Counted rather than checked with "is there one more page": the reader is
   // told how many announcements there are, and the page links need to know how
   // far the listing goes to offer the far end of it.
   const [counted] = await db
@@ -232,9 +232,9 @@ export interface AlertView {
   /**
    * The reader's language had nothing, so what is shown here is the other one.
    *
-   * **Shown rather than hidden**: what the office is indicating today reaches more
+   * **Shown rather than hidden**: what the office announces today reaches more
    * readers in a language some of them cannot read than in none at all. The
-   * screen reports which language it is, so that a reader who cannot read it knows
+   * screen shows which language it is, so that a reader who cannot read it knows
    * that is why rather than wondering what they are looking at.
    */
   untranslated: boolean
@@ -247,7 +247,7 @@ export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
     .from(alert)
     .where(eq(alert.active, true))
     // The id breaks the tie: alerts written in one statement share a
-    // timestamp, and the v7 id has the order they were made in.
+    // timestamp, and the v7 id encodes the order they were made in.
     .orderBy(alert.createdAt, alert.id)
 
   return rows

@@ -361,7 +361,7 @@ describe("the terms of a vocabulary", () => {
     const termId = await term(setId, "C91")
     const before = only(await db.select().from(s.vocabularyTerm))
 
-    // A code filed under the wrong disease is corrected on the value that identifies
+    // A code filed under the wrong disease is corrected on the value that refers to
     // it, not by renaming the classification.
     expect(await catalogAction(post(token, {
       intent: "update-term",
@@ -372,7 +372,7 @@ describe("the terms of a vocabulary", () => {
     expect(only(await db.select().from(s.vocabularyTerm))).toEqual(before)
   })
 
-  it("refuses to delete a term in use, and keeps it for the data that identifies it", async () => {
+  it("refuses to delete a term in use, and keeps it for the data that refers to it", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await vocabulary("assay")
     const termId = await term(setId, "wgs")
@@ -457,7 +457,7 @@ describe("the terms of a vocabulary", () => {
       .toEqual([["wes", 0, false], ["wgs", 0, true]])
   })
 
-  it("lists every term, whatever an address kept from before queries about their state", async () => {
+  it("lists every term, whatever an address kept from before filters on their state", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await vocabulary("assay")
     await fieldFor("assay", setId)
@@ -563,7 +563,7 @@ describe("narrowing the fields listing", () => {
     expect(view.counts.types).toEqual({ text: 1, vocabulary: 1, number: 1, disease: 0 })
   })
 
-  it("drops a condition the address has that identifies nothing", async () => {
+  it("drops a condition the address has that refers to nothing", async () => {
     const token = await signIn(CURATOR, true)
     await threeFields()
 
@@ -680,7 +680,7 @@ describe("merging one term into another", () => {
     await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into }))
 
     // **This is what the merge rests on.** The editor is still holding the
-    // description it read, which identifies a term that no longer exists; saving it
+    // description it read, which refers to a term that no longer exists; saving it
     // would put the merged value back and undo the merge in that one row.
     const stale = await saveDatasetEntry(
       db,
@@ -768,7 +768,7 @@ describe("merging one term into another", () => {
 
     await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into }))
 
-    // Counted twice, the facet would report the dataset holds this value twice.
+    // Counted twice, the facet would show the dataset holds this value twice.
     expect(chosenIn(only(await db.select().from(s.researchVersion)).content)).toEqual([into])
   })
 

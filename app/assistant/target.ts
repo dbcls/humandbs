@@ -102,7 +102,7 @@ export function hasBody(method: string): boolean {
 /**
  * Whether a request came from the portal's own pages.
  *
- * **The framework requests this of every page's action and cannot request it here.**
+ * **The framework requires this of every page's action and cannot require it here.**
  * React Router refuses a mutation whose `Origin` names another site, but only
  * for the routes that render something; a route responding with data alone
  * never reaches that check. The root middleware now closes that gap for every

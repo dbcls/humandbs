@@ -497,7 +497,7 @@ describe("the screen that starts a research from an application", () => {
     return { researchId: made.researchId, draftId: made.draftId }
   }
 
-  /** A row `searchDsBranches` could respond with, shaped like the mocked one. */
+  /** A row `searchDsBranches` could return, shaped like the mocked one. */
   function branchRow(overrides: Partial<DsBranchRow> = {}): DsBranchRow {
     return {
       applicationId: branch.applicationId,
@@ -555,7 +555,7 @@ describe("the screen that starts a research from an application", () => {
         .toHaveBeenLastCalledWith(expect.anything(), expect.anything(), "hum0600", null)
     })
 
-    it("reads no branches and requests upstream nothing before a hum is issued", async () => {
+    it("reads no branches and sends upstream no query before a hum is issued", async () => {
       const token = await signIn()
       const made = await createResearchFromUpstream(db, seed(null, []), CURATOR)
       if (made.status !== "created") throw new Error(made.status)
@@ -602,7 +602,7 @@ describe("the screen that starts a research from an application", () => {
       expect(source.applicationId).toBe(BRANCH)
       expect(view.chosen?.theirs.content.title.ja).toEqual({ state: "value", text: "ゲノム解析" })
       // The branch's own hum (hum0522) is not the draft's (hum0600) — kept so
-      // the form can report it, rather than pretending they agree.
+      // the form can show it, rather than pretending they agree.
       expect(view.humLabel).toBe("hum0600")
       expect(source.branch.humLabel).toBe("hum0522")
     })

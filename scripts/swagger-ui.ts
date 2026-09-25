@@ -3,7 +3,7 @@
  *
  * The library ships as files under `node_modules`, and the page loading them is
  * plain HTML rather than part of the application's tree (`app/api/docs.ts`), so
- * nothing in the build would otherwise pass them anywhere. Copying them into
+ * nothing in the build would otherwise copy them anywhere. Copying them into
  * `public/` is what serves them: as they are by the dev server, and into
  * `build/client/` by a build.
  *

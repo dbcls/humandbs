@@ -13,7 +13,7 @@
  * keeps that rebuild to a single pass.
  *
  * A source with no connection to reach is skipped, not failed, and leaves no
- * record: the table determines how the last fetch went, and no fetch was made.
+ * record: the table records how the last fetch went, and no fetch was made.
  */
 
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm"
@@ -117,7 +117,7 @@ async function fetchSource(
   }
 
   // The three below are only reached with a connection; the caller skips them
-  // otherwise, and this reports it to the type checker rather than by comment.
+  // otherwise, and this makes that known to the type checker rather than by comment.
   if (pool === null || applicationDb === null) {
     throw new Error("the application system is not configured")
   }
@@ -155,7 +155,7 @@ async function fetchSource(
 }
 
 /**
- * The dates DDBJ Search responds for, for the accessions the portal has pinned.
+ * The dates DDBJ Search holds for the accessions the portal has pinned.
  *
  * Unlike the JGA half this cannot take everything upstream holds — there is no
  * listing, only one request per accession — so the set is what the `label_pin` table

@@ -9,7 +9,7 @@
  *
  * **The state is kept only for the federations listed in `REGIONS`**, where a
  * state or province makes its own law on the use of personal data, so the
- * state reports something about the terms a user works under. Elsewhere the
+ * state matters to the terms a user works under. Elsewhere the
  * address line is dropped whatever it holds.
  *
  * Anything the tables do not recognise is shown as upstream wrote it, in both

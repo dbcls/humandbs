@@ -380,7 +380,7 @@ describe("a cell holding a table about several datasets", () => {
 
   /**
    * The whole point of dropping a line is that it is written down where it
-   * belongs. A line naming a dataset that never reports it is the only copy there
+   * belongs. A line naming a dataset that never states it itself is the only copy there
    * is, and it stays until somebody has looked at it.
    */
   it("keeps a line the dataset it identifies does not have itself", () => {
@@ -438,7 +438,7 @@ describe("a cell read by the load's own reader", () => {
     expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["healthy adults", "Japanese"])
   })
 
-  it("drops a line about a sibling when the sibling reports it, reading both through the reader", () => {
+  it("drops a line about a sibling when the sibling has the same line, reading both through the reader", () => {
     const table = "JGAD000001: 88 GB|JGAD000002: 32 GB"
     const siblings = [dumpRow(cell(table), "JGAD000001", null), dumpRow(cell(table), "JGAD000002", null)]
     expect(lines(datasetOf(siblings, "JGAD000001", recovering))).toEqual(["JGAD000001: 88 GB"])

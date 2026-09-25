@@ -5,7 +5,7 @@ import { calendarDayOf } from "./archive"
 
 /**
  * Upstream responds with dates in more than one shape and the portal stores one:
- * a calendar day cut in JST. These are the laws that reports holds whatever the
+ * a calendar day cut in JST. These are the laws that hold whatever the
  * instant.
  */
 const instants = fc.date({

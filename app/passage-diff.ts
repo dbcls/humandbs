@@ -9,7 +9,7 @@
  * Japanese sentence has none and changes whole.
  *
  * **A short run the two share between two changes is merged into them.** A
- * common particle or a lone space left shown between a deletion and an
+ * common particle or a lone space left over between a deletion and an
  * insertion splits one rewrite into two, and the reader has to put it back
  * together.
  */
@@ -201,7 +201,7 @@ function lcs(a: readonly string[], b: readonly string[]): DiffPart[] {
 }
 
 /**
- * Merges a short shared run shown between changes into them: the run is
+ * Merges a short shared run between changes into them: the run is
  * dropped from the one side and added to the other, so each side still reads
  * as its own text.
  */

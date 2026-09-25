@@ -4,7 +4,7 @@
  * v1 used the English display string as the identity of a molecular-data key,
  * so renaming a key broke every value stored under it. Here the identity is a
  * code and both labels are display only. `content-keys.json` is the v1 default
- * catalog kept over unchanged — it is hand-written knowledge, not something
+ * catalog copied over unchanged — it is hand-written knowledge, not something
  * derivable from the data.
  *
  * **A key's type is what makes it a facet, except for a number key with no
@@ -146,7 +146,7 @@ export function contentKeySeeds(
       return
     }
 
-    // A cell that identifies more than one quantity becomes more than one key
+    // A cell that holds more than one quantity becomes more than one key
     // (`facets.ts` の `NUMBER_SPLITS`) — `Coverage` is a depth and a breadth.
     // The spelling resolves to the first, which is enough to tell a value read
     // out of this cell from free text nobody typed under the key any more.
@@ -235,7 +235,7 @@ export function contentKeySeeds(
     keys.push(base)
   })
 
-  // The keys v1 had no place for. **They are shown beside the free text they were
+  // The keys v1 had no place for. **They sit beside the free text they were
   // read out of rather than replacing it**, so the same fact is written twice
   // until a migration reads the prose into them — thirteen keys are in that
   // state.

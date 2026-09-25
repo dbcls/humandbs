@@ -414,7 +414,7 @@ export async function contentsPage(request: Request): Promise<ContentsView> {
  *
  * Everything that acts on a series as a whole is here rather than in the
  * listing — moving the pointer, adding a revision, retiring the lot. A listing
- * with them holds a row that is a form, which is a row that cannot be
+ * that included them would hold a row that is a form, which is a row that cannot be
  * scanned beside its neighbours.
  */
 export async function seriesPage(request: Request, seriesId: string): Promise<SeriesView | null> {
@@ -436,7 +436,7 @@ export async function seriesPage(request: Request, seriesId: string): Promise<Se
 export async function alertsPage(request: Request): Promise<AlertsView> {
   await requireCapability(request, "manage-site-content")
   // The last time each alert was put up, as the JST day (`AlertRow`). The
-  // trail is the one place that knows: the row only reports whether it is up now.
+  // trail is the one place that knows: the row only records whether it is up now.
   const lastShown = getDb()
     .select({
       subjectId: event.subjectId,
@@ -454,7 +454,7 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
     // **Two alerts made in the same moment still have an order.** Rows written
     // in one statement share a timestamp, and ordering by the time alone hands
     // them back in whatever order they happen to lie in — which moves as soon as
-    // one of them is saved. The id is a v7, so it has the order they were
+    // one of them is saved. The id is a v7, so it encodes the order they were
     // made in.
     .orderBy(asc(alert.createdAt), asc(alert.id))
 
@@ -544,7 +544,7 @@ export async function documentPage(
  * up to.
  *
  * **The two statements are the same two whatever the reader has asked for.**
- * The pane reports how many rows each of its values would leave, which is a count
+ * The pane shows how many rows each of its values would leave, which is a count
  * over the announcements the other conditions leave rather than over the page —
  * so the page is sliced here, as it is for the articles.
  *
@@ -558,7 +558,7 @@ async function newsRows(db: Executor): Promise<NewsRow[]> {
       id: news.id,
       publishedAt: news.publishedAt,
       // **Read in the clock the value is written in.** The column holds a JST
-      // wall clock, so comparing it against a bare `now()` would respond by the
+      // wall clock, so comparing it against a bare `now()` would depend on the
       // zone the database happens to run in. An undated item is not scheduled —
       // it is unwritten, and there is no moment it is waiting for.
       scheduled: sql<boolean>`coalesce(${news.publishedAt} > (now() at time zone 'Asia/Tokyo'), false)`,
@@ -850,7 +850,7 @@ async function repointSeries(
     .where(idIs(document.id, documentId))
     .limit(1)
   if (target === undefined) return { status: "unknown-target" }
-  // Only a revision of this series may be named: the pointer reports which version
+  // Only a revision of this series may be named: the pointer records which version
   // is current, not which page to show.
   if (versionNumberIn(series.slug, target.slug) === null) return { status: "not-a-revision" }
 
@@ -1025,7 +1025,7 @@ function subjectOf(target: ContentTarget): { type: "document" | "news", detail: 
 
 /**
  * The first write to a locale. **The insert is conditional**: a form that
- * kept no revision is indicating "there was no row when I was drawn", and if
+ * sent no revision means "there was no row when I was drawn", and if
  * there is one now that claim is as stale as a revision that no longer matches.
  */
 async function insertLocale(
@@ -1244,7 +1244,7 @@ async function deleteItem(tx: Executor, target: ContentTarget, actor: Actor): Pr
   // **A revision's screen goes back to its series, not to the listing.** The
   // listing has no row for a revision, and the curator who took one out is
   // looking at the rest of them. Read before the row goes, since the slug is
-  // what reports which series it was under.
+  // what records which series it was under.
   const owner = target.kind === "document"
     ? (await tx.select({ id: documentSeries.id, slug: documentSeries.slug }).from(documentSeries))
         .find((one) => versionNumberIn(one.slug, target.slug) !== null)

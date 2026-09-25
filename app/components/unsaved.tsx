@@ -1,16 +1,16 @@
 /**
- * Unsent work, and the way off a screen that requests before losing it.
+ * Unsent work, and the way off a screen that confirms before losing it.
  *
  * **One place holds who has unsent work, and one guard reads it.** A screen
  * may hold several forms at once — an alert per language, a language per
  * article, a row's panel over a table — and the router takes one blocker at a
- * time; so each form shows here whether it is holding anything, and the guard
- * shown in the area's layout is the one thing that requests the router to wait.
+ * time; so each form records here whether it is holding anything, and the guard
+ * placed in the area's layout is the one thing that makes the router wait.
  *
  * **The guard reads the live answer, not a rendered one.** Sending a form is a
  * navigation too, and the form lets go of its hold in the same event that
  * sends it; a blocker holding a value captured at the last render would still
- * stop the save. Reading the set itself at the moment of requesting means letting
+ * stop the save. Reading the set itself at the moment of the check means letting
  * go takes effect before the router looks.
  *
  * **Two ways off, two askers.** A way inside the area is a router navigation

@@ -196,7 +196,7 @@ const PageWidthContext = createContext<PageWidth | null>(null)
  * **It exists for the management area**, where the answer is the same on every
  * screen and is a property of the area rather than of any one of them: the
  * shell sets it once, and a screen added later is held to the window without
- * having to know that. A screen that identifies a width still wins, which is how a
+ * having to know that. A screen that specifies a width still wins, which is how a
  * reading measure stays available anywhere.
  */
 export function PageWidthDefault({ width, children }: {
@@ -229,7 +229,7 @@ export function Page({ width, children }: {
  * every screen, so a trail is written as what lies between the front page and
  * this one. It sits on the tint above the white box, which is where v1 puts it.
  * The front page itself has none: it is the root, and a trail of one step
- * naming the page you are on shows nothing.
+ * naming the page you are on tells the reader nothing.
  */
 export function Crumbs({ locale, trail = [], current }: {
   locale: Locale
@@ -262,7 +262,7 @@ export function PageHeader({ tone = "deep", level = "h1", kicker, label, childre
    * The step the name takes.
    *
    * **A header bar drawn inside another screen is not that screen's name.** The pane
-   * beside an editor's form has the published page whole, header bar and all —
+   * beside an editor's form shows the published page whole, header bar and all —
    * left at `h1` the screen has two names, and the first one a reader is handed
    * is an identifier rather than what the screen is for.
    */
@@ -298,7 +298,7 @@ export function Card({ under = true, fill = false, children }: {
   /**
    * Stand exactly as tall as the box this is in and hand the room down as a
    * column (`base.tsx` の `Stack` の `fill`) — for a pane whose one long field
-   * is to scroll on its own rather than have the pane's length. When the
+   * is to scroll on its own rather than take the pane's length. When the
    * window is too low for the column's floors, what does not fit runs past
    * this box and the pane scrolls it.
    */
@@ -334,7 +334,7 @@ export function Section({ title, note, at, aside, fill = false, children }: {
    * reader could not have worked out from "公開バージョン", and nothing that
    * repeats it.
    *
-   * **One string is one line.** A note that shows several things is given as
+   * **One string is one line.** A note that covers several things is given as
    * several strings, one per thing, so that a line ends where a thought does
    * and not where the window happens to — five sentences run together across
    * the width of a table are read as a paragraph, and a paragraph under a
@@ -346,7 +346,7 @@ export function Section({ title, note, at, aside, fill = false, children }: {
   /**
    * What is shown beside the name: the badge naming the notation of a section's
    * one field (`fields.tsx` の `Section`), which has no name row of its own to
-   * have it.
+   * show it on.
    */
   aside?: ReactNode
   /** Take the room left in the column above (`base.tsx` の `Stack` の `fill`). */
@@ -390,7 +390,7 @@ export function Section({ title, note, at, aside, fill = false, children }: {
  * also why they are not simply set full width: the page is 1,344px across, which
  * is eighty Japanese characters to a line.
  *
- * **A value stays whole in its column unless it shows `split`** (`KeyValue`).
+ * **A value stays whole in its column unless it is marked `split`** (`KeyValue`).
  * Split at the foot of one, a sentence continued at the head of the other can
  * read as a second answer, so short values keep together. A value long enough
  * to outweigh all the others together — a study's methods at twenty lines,
@@ -430,7 +430,7 @@ export function Pairs({ children }: { children: ReactNode }) {
  * research, `database` for a dataset.
  *
  * **The indicator is chosen by what the identifier points at, never by where it
- * remains**: the same ID is shown in a listing, a table of a page and a table of
+ * is shown**: the same ID is shown in a listing, a table of a page and a table of
  * publications, and an indicator picked per place gives one thing two styles. **The
  * icon is muted** — the identifier already has the link's colour, and a
  * brand icon beside it would make two things in one row shine alike.
@@ -570,11 +570,11 @@ export function Fact({ name, children }: { name: ReactNode, children: ReactNode 
 /**
  * A label and its value.
  *
- * **A value that shows `split` may run from the foot of one column to the head
+ * **A value marked `split` may run from the foot of one column to the head
  * of the next** (`Pairs`), but its label never stays behind on its own: a
  * label at the foot of a column with its value at the head of the other reads
  * as a label with nothing under it. Keeping the two together is a rule a flex
- * column cannot pass across a column break, so a split pair is laid out as
+ * column cannot keep across a column break, so a split pair is laid out as
  * plain blocks, with the gap the stack would have given it.
  */
 export function KeyValue({ title, at, split = false, children }: {
@@ -638,7 +638,7 @@ export function KeyValue({ title, at, split = false, children }: {
 const ICON_COLUMN = "w-15"
 
 /**
- * Where a frozen column remains — not how wide it is.
+ * Where a frozen column sits — not how wide it is.
  *
  * **No width here at all.** What a listing freezes first is an indicator on one side
  * and a name on the other, and the two are nothing like the same width; the
@@ -664,7 +664,7 @@ const STUCK = [
  * already travelled: 164px of a 1,200px sweep is 13.7% along, and the two meet
  * as a vertical seam down the header.
  *
- * **So the cell takes the same sweep, pushed left by where the cell remains.**
+ * **So the cell takes the same sweep, pushed left by where the cell sits.**
  * The size is written out because the origin has to be the table's, not the
  * cell's; without it the sweep would be as wide as the cell and run its whole
  * range inside 60px.
@@ -725,7 +725,7 @@ const CONTROL_ON_FIRST_LINE = "pt-1.25"
  * letting the table overflow, and without the ceiling one long summary makes
  * every other column unreadably narrow.
  *
- * **A table with no rows is still the table**, and `whenEmpty` is what remains
+ * **A table with no rows is still the table**, and `whenEmpty` is what is shown
  * where the rows would be. Swapping the whole table for a box of prose loses the
  * column names, which are what say what was being looked for, and moves
  * everything below it — a reader who narrowed one step too far has to work out
@@ -906,14 +906,14 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
                   100.4px, and a floor big enough for the longer one is 28px of
                   space nobody uses in the other.
 
-                  **A header that is a control still requests nothing.** An indicator
+                  **A header that is a control still gets none of this.** An indicator
                   is 36px against a line of 22.4px, so the padding a word needs
                   would make the header row half as tall again — which is what made the
                   two listings, drawn from the same frame, open with header rows of two
                   different heights. It has no word, so keeping a word on one
                   line cannot widen it either.
 
-                  **The header row centres what it holds, whatever `align` shows.** That
+                  **The header row centres what it holds, whatever `align` specifies.** That
                   choice is about the rows, where a cell may run to three or four
                   lines and top is the only edge they share. **A header is one
                   line by decision** (the word does not wrap), so it has no such
@@ -991,7 +991,7 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
    * row's top, and a 24px control centred on a 22.4px line sits 5px down.
    *
    * The two differ in width. **An `icon` is one glyph**, so the column is a
-   * fixed 60px wherever it remains — left to the content it came out 60px in one
+   * fixed 60px wherever it sits — left to the content it came out 60px in one
    * listing and 74px in the next. **A `control` has a word**, so its width
    * is the word's; what it shares with an indicator is only the missing padding.
    */
@@ -1015,7 +1015,7 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
    *
    * **The first frozen column has none** — `ICON_COLUMN` fixes it, because the
    * second reads that width as its own `left`. **The second one needs a floor of
-   * its own**: `STUCK` shows where it remains, not how wide it is, and what it
+   * its own**: `STUCK` specifies where it sits, not how wide it is, and what it
    * holds differs between the listings. Left to the content the width follows
    * whatever rows a page happens to hold, which moves the start of the sideways
    * scroll every time a page is turned.
@@ -1090,7 +1090,7 @@ export function Empty({ children }: { children: ReactNode }) {
  * the same row as the ordering, how many rows a page holds and the export, and
  * a row of controls in three styles reads as three unrelated facilities — the
  * edge also settles one that was under the requirement, `line` on white coming
- * to 2.09:1 against the 3:1 the site requests of anything you can operate.
+ * to 2.09:1 against the 3:1 the site requires of anything you can operate.
  *
  * **The corner is 4px because the box is not full of anything.** A digit is
  * 7.8px inside 36px — the box is 4.6 times the width of what it holds, and
@@ -1265,7 +1265,7 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
  * **There is no range to give.** A listing that is never paginated shows
  * the whole of what it counts, so the bare total is the answer rather than the
  * half-truth it would be over twenty rows of six hundred. It is shown where
- * `Paging` remains, so that the one place a reader looks for a count is the same
+ * `Paging` sits, so that the one place a reader looks for a count is the same
  * on every listing — a table that cannot page is still a table somebody wants
  * to know the size of.
  */
@@ -1314,8 +1314,8 @@ function Prose({ text }: { text: RichText }) {
  *
  * `unsettled` only ever arrives from a preview, and it is drawn as the empty
  * frame it is: the question is what the reader is being shown, and a blank
- * would look like a value nobody thought worth filling in. **The frame requests
- * rather than names a state** — the reader is a provider, and what the office
+ * would look like a value nobody thought worth filling in. **The frame poses the question
+ * rather than naming a state** — the reader is a provider, and what the office
  * wants from them at this slot is the value.
  */
 export function Value({ field, locale }: { field: FieldView, locale: Locale }) {

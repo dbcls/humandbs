@@ -184,9 +184,9 @@ const CALLOUT_DEFAULT = "TIP"
  * **Three of the thirty-four are one of these**: the FAQ has forty-three
  * lines of the personal-information act, and the sharing guidelines have the
  * sample wording for a consent form in both languages. All three run to
- * thousands of characters under headings of their own, and none of them reports
+ * thousands of characters under headings of their own, and none of them states
  * which kind of callout it is — so what they are drawn as is only ever the
- * default. **A statute inside a "ⓘ" box reports the wrong thing about what it is**
+ * default. **A statute inside a "ⓘ" box misrepresents what it is**
  * (`app/public/markdown.server.ts`), so these take the box with no glyph.
  *
  * Only the default is overridden. A kind somebody wrote down is a decision, and

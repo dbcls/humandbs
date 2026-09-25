@@ -54,7 +54,7 @@ vi.mock("~/files/store.server", async (importOriginal) => {
  * database.
  *
  * These are the wiring: the parts are tested on their own, and what can still
- * break is a screen that reads unpublished content without requesting the
+ * break is a screen that reads unpublished content without requiring the
  * capability, or a save that writes something the author never sent.
  */
 const db = getDb()
@@ -276,7 +276,7 @@ describe("the listing", () => {
     })
 
     // Nothing here is published, so narrowing to what is leaves no rows — and
-    // the status axis still has to report what the other value would give.
+    // the status axis still has to show what the other value would give.
     const view = await researchListPage(get(token, "/admin/research?status=published"), "ja")
 
     expect(view.rows).toHaveLength(0)
@@ -296,7 +296,7 @@ describe("the listing", () => {
     await db.insert(s.labelPin).values({ kind: "dataset", label, datasetId, isPrimary: true })
   }
 
-  it("reads an address that still requests a shortcoming as requesting nothing", async () => {
+  it("reads an address that still filters on a shortcoming as filtering on nothing", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId } = await createResearchWithDraft(db)
     await db.insert(s.dataset).values({ researchId })
@@ -309,7 +309,7 @@ describe("the listing", () => {
 })
 
 describe("opening a draft", () => {
-  it("responds to a draft reached under a different research as one that is not there", async () => {
+  it("treats a draft reached under a different research as one that is not there", async () => {
     const token = await signIn(CURATOR, true)
     const { draftId } = await createResearchWithDraft(db)
     const other = await createResearchWithDraft(db)
@@ -320,7 +320,7 @@ describe("opening a draft", () => {
     expect(response.status).toBe(404)
   })
 
-  it("responds to an address that cannot name a row the same way", async () => {
+  it("treats an address that cannot name a row the same way", async () => {
     const token = await signIn(CURATOR, true)
 
     expect((await thrown(() =>
@@ -552,7 +552,7 @@ describe("the research screen's forms", () => {
     expect(await db.select().from(s.researchVersion)).toHaveLength(1)
   })
 
-  it("responds not found for a version the research does not hold", async () => {
+  it("returns not found for a version the research does not hold", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId } = await createResearchWithDraft(db)
     await seedVersion(db, { researchId, number: 1 })
@@ -653,7 +653,7 @@ describe("the research screen's forms", () => {
 })
 
 describe("the research screen's table", () => {
-  it("counts a draft's datasets and has what its publish check would stop", async () => {
+  it("counts a draft's datasets and includes what its publish check would stop", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
 
@@ -696,7 +696,7 @@ describe("the research screen's table", () => {
     await createDatasetInDraft(db, { draftId: updating.id, revision: 1 }, researchId)
 
     const view = await researchDetailPage(get(token, "/x"), "ja", researchId)
-    // The version's own row still reports what is published — two — while the
+    // The version's own row still shows what is published — two — while the
     // count that moved is read off the updating draft the same way a plain
     // draft's is, not stored a second time on the version.
     expect(view.versions.find((row) => row.id === versionId)?.datasets).toBe(2)
@@ -795,7 +795,7 @@ describe("what the research screen knows of its prefixes", () => {
     expect(prefixes.toSorted()).toEqual([publicPrefix(NEW), publicPrefix(OLD)].toSorted())
   })
 
-  it("leaves what the store did not respond unknown and still draws the page", async () => {
+  it("leaves what the store did not return unknown and still draws the page", async () => {
     const { token, researchId } = await research()
     await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
     vi.mocked(listPrefix).mockRejectedValue(new Error("the store did not answer"))
@@ -1216,7 +1216,7 @@ describe("the dataset screens of a draft", () => {
     expect(shownOf(untouched?.id)).toMatchObject({ typeOfData: null, accessType: null, datePublished: null })
   })
 
-  it("has a dataset it creates, and takes a published one out of the research", async () => {
+  it("includes a dataset it creates, and takes a published one out of the research", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     const params = { researchId, draftId }
@@ -1309,7 +1309,7 @@ describe("the dataset screens of a draft", () => {
     expect(issued.nextNhaId).toBeNull()
     expect(issued.portalIssued).toBe(true)
 
-    // A dataset that has an id is not offered issuing, so requesting is not an input the screen made.
+    // A dataset that has an id is not offered issuing, so asking for one is not an input the screen made.
     expect((await thrown(() => datasetLabelAction(postForm(token, "/x", { intent: "issue" }), first))).status)
       .toBe(400)
     // The one the second screen showed was overtaken; the answer names the one given.
@@ -1346,7 +1346,7 @@ describe("the dataset screens of a draft", () => {
       .toEqual([b, a])
   })
 
-  it("has a published dataset without anybody listing it, and never another draft's", async () => {
+  it("includes a published dataset without anybody listing it, and never another draft's", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     // One that is out: `originDraftId` is null, which is what publishing leaves.
@@ -1360,11 +1360,11 @@ describe("the dataset screens of a draft", () => {
 
     expect(view.rows.map((row) => row.id)).toEqual([out.id])
     expect(view.rows.map((row) => row.id)).not.toContain(theirs.id)
-    // Nothing was written to report it: the order stays empty until somebody moves a row.
+    // Nothing was written to record it: the order stays empty until somebody moves a row.
     expect((await readDraft(db, draftId))?.content.datasetIds).toEqual([])
   })
 
-  it("refuses a step that identifies no direction, and one aimed at another research's dataset", async () => {
+  it("refuses a step that specifies no direction, and one aimed at another research's dataset", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
     const other = await createResearchWithDraft(db)
@@ -1452,7 +1452,7 @@ describe("the publish screen", () => {
     const view = await publishPage(get(token, "/x"), "ja", { researchId, draftId })
 
     expect(view.blocks).toHaveLength(2)
-    // Each dataset it identifies is drawn as its row, not left to its identity.
+    // Each dataset it lists is drawn as its row, not left to its identity.
     for (const block of view.blocks) expect(view.datasetRows[block.datasetId ?? ""]).toBeDefined()
 
     expect(view.nextNhaId).toBe("NHA000001")

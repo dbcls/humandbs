@@ -96,11 +96,11 @@ export function icd10CodesIn(raw: string): string[] {
 
 /**
  * The code the dictionary holds for what was written, found by **dropping the
- * tail until it responds**. Null when even the three-character root is unknown.
+ * tail until it matches**. Null when even the three-character root is unknown.
  *
  * **The five-character codes in the data are not typos.** They are ICD-10-CM,
- * which identifies diseases WHO's ICD-10 cannot — `K75.81` is NASH, `I45.81` is long
- * QT syndrome. Rounding them loses the distinction the code kept, but not
+ * which distinguishes diseases WHO's ICD-10 cannot — `K75.81` is NASH, `I45.81` is long
+ * QT syndrome. Rounding them loses the distinction the code made, but not
  * the disease: the value keeps the name the article wrote.
  */
 export function icd10Resolve(written: string, known: (code: string) => boolean): string | null {

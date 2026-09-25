@@ -86,7 +86,7 @@ interface Arrangement {
  *
  * **Each pane is a box that scrolls inside itself, and the pair is as tall as
  * the window.** Reading one beside the other is the whole point, and a single
- * scroll would have both away together. **The pair sticks to the top of the
+ * scroll would move both away together. **The pair sticks to the top of the
  * window**, so scrolling takes the bar away and leaves two panes filling the
  * screen — which is what somebody writing is looking at most of the time. The
  * height is the window's rather than a number measured on the way past, so
@@ -135,7 +135,7 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
   }, [])
 
   // Left to right, the way the panes themselves stand: a list that starts with
-  // "both" requests the reader to find the arrangement they are looking at.
+  // "both" makes the reader find the arrangement they are looking at.
   const shows = [
     { id: "left", label: words.left },
     { id: "both", label: words.both },

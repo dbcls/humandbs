@@ -116,13 +116,13 @@ const researchContentInputSchema = z.object({
   datasetIds: z.array(z.uuid()),
 })
 
-/** What one save has. The revision is what the update is checked against. */
+/** What one save contains. The revision is what the update is checked against. */
 export const saveDraftSchema = z.object({
   revision: z.number().int().nonnegative(),
   content: researchContentInputSchema,
 })
 
-/** Whatever was typed is dropped once the state reports there is no value. */
+/** Whatever was typed is dropped once the state indicates there is no value. */
 export function textSlot(input: TextInput): Slot<string> {
   return input.state === "value" ? { state: "value", value: input.text } : { state: input.state }
 }
@@ -132,14 +132,14 @@ function textPair(pair: TextPairInput): TranslatedText {
 }
 
 /**
- * One name for the listing's provider column, or null where the element reports
+ * One name for the listing's provider column, or null where the element holds
  * nothing in either language and is not waiting on an answer either — a card
  * somebody added and left alone.
  *
- * **A blank one cannot be kept.** An empty list is how the column reports "the
+ * **A blank one cannot be kept.** An empty list is how the column means "the
  * research's own providers" (`app/public/view.server.ts` の `listingProviders`),
  * so an element holding nothing would quietly replace those names with a blank
- * cell, and neither the publish check nor the form has anything to report about a
+ * cell, and neither the publish check nor the form has anything to flag about a
  * field that is legitimately empty.
  */
 function listingProvider(input: ListingProviderInput): ListingProvider | null {

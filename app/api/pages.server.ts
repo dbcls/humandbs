@@ -272,7 +272,7 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   }
 
   // **The direction is asked for apart from the key** (`app/search/sort.ts`), so
-  // a caller that wants the other end of a listing reports it instead of counting
+  // a caller that wants the other end of a listing asks for it instead of counting
   // its way to the last page. A direction that is neither is refused for the
   // same reason an ordering that cannot be given is.
   const wanted = url.searchParams.get("order")
@@ -309,7 +309,7 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   })
 }
 
-/** The batched read responds in its own order; the ranking is what was asked for. */
+/** The batched read returns rows in its own order; the ranking is what was asked for. */
 function inOrder<T extends { id: string }>(objects: readonly T[], order: readonly string[]): T[] {
   const byId = new Map(objects.map((object) => [object.id, object]))
   return order.flatMap((id) => {

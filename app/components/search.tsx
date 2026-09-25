@@ -19,7 +19,7 @@ import { DEFAULT_SORT, defaultOrder, SORT_KEYS, type SortOrder } from "~/search/
 import { Card, Code, Crumbs, Page, Paging } from "./page"
 
 /**
- * The search box is a GET form. It has the keywords under `k` and whatever
+ * The search box is a GET form. It sends the keywords under `k` and whatever
  * conditions the box cannot show under `q`, and the listing responds with a
  * redirect to the address the two make together — so the box works with
  * JavaScript turned off and a result can be shared by copying the address.
@@ -64,7 +64,7 @@ const SEARCH_FIELD = {
  * leaves 6px of field above and below it at `large` and 1.2px at `compact`.
  *
  * **The press stays 36px everywhere**: where the disc is smaller
- * than that, a pseudo-element passes the target out to it. So what changes
+ * than that, a pseudo-element extends the target out to it. So what changes
  * with the field is the paint, and the one thing a rule is written about — how
  * small a control may be — does not change at all.
  */
@@ -90,7 +90,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
   placeholder: string
   submit: string
   /**
-   * The front page requests with a large one; over a listing it sits at `normal`,
+   * The front page searches with a large one; over a listing it sits at `normal`,
    * and `compact` is for a box sharing its line with something else.
    */
   size?: keyof typeof SEARCH_FIELD
@@ -113,7 +113,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
    * condition, and writing it would leave the same listing with two addresses.
    */
   keepEmpty?: boolean
-  /** What the form has to have that the box does not show. */
+  /** What the form has to send that the box does not show. */
   children?: ReactNode
 }) {
   const { form, onSubmit, field: typed } = useSearchAsTyped({
@@ -247,7 +247,7 @@ export function SearchForm({
  *
  * **The pane is three blocks, and only on a wide screen are they adjacent.**
  * What names it comes first, then the box and the conditions in force — they
- * are how the reader requests and how the reader undoes, and both have to be
+ * are how the reader searches and how the reader undoes, and both have to be
  * reachable without reading the result first. The twenty-odd dimensions come
  * last: collapsed they are a list of names, and a narrow screen that put them
  * ahead of the result would spend three screens of scrolling on a vocabulary
@@ -302,7 +302,7 @@ export function RefinableList({
   /**
    * How many conditions are narrowing the listing.
    *
-   * **What the collapsed pane has to have**: the conditions themselves are shown in
+   * **What the collapsed pane has to show**: the conditions themselves are shown in
    * the pane, so a collapsible naming nothing would leave a reader looking at a
    * narrowed result with nothing on screen admitting to the narrowing.
    */
@@ -313,7 +313,7 @@ export function RefinableList({
    * Whether anything is shown under the box in the first group.
    *
    * **A block separates two groups, and there are two only when the first one
-   * holds more than the way to request.** With nothing in force, the box and the
+   * holds more than the way to search.** With nothing in force, the box and the
    * dimensions are one column of controls with a box at its head, and the step
    * between them is the one inside a group.
    */
@@ -411,7 +411,7 @@ export function RefinableList({
         {foot}
       </div>
       {/* **The pane is two groups, and the space between them is the widest in
-          it.** What it requests with — the box and the conditions in force — is one
+          it.** What it searches with — the box and the conditions in force — is one
           thing, and the dimensions it can narrow by are another; at the step
           that separates the parts of each, the two read as one long column of
           unrelated controls. **With nothing in force there is only one group**,
@@ -507,13 +507,13 @@ export function RefineAxis({ label, children }: { label: string, children: React
  * **One piece for the public facets and the management panes**: a reader who
  * learned it over the publication dates finds the same thing over the files. The windows are links, so choosing one is going
  * to the address it identifies — which window is lit is settled where the address
- * was made (`~/search/date-window`). The ends are a GET form that requests the
- * moment either holds a day, and **the form has what the listing holds
+ * was made (`~/search/date-window`). The ends are a GET form that submits the
+ * moment either holds a day, and **the form sends what the listing holds
  * beside the range** (`children`), since a GET form replaces the whole query.
  */
 export function DateRange({ locale, action, windows, from, to, names = { from: "from", to: "to" }, children }: {
   locale: Locale
-  /** Where the form requests, which is the listing's own address. */
+  /** Where the form is sent, which is the listing's own address. */
   action: string
   windows: readonly DateWindow[]
   /** The day in force at each end, or empty when that end is open. */
@@ -521,7 +521,7 @@ export function DateRange({ locale, action, windows, from, to, names = { from: "
   to: string
   /** What the two ends are called in the address. */
   names?: { from: string, to: string }
-  /** The fields the form has to have that the range does not show. */
+  /** The fields the form has to send that the range does not show. */
   children?: ReactNode
 }) {
   const messages = messagesFor(locale).search.refine
@@ -534,7 +534,7 @@ export function DateRange({ locale, action, windows, from, to, names = { from: "
             <Link
               key={window.label}
               to={window.href}
-              // The reader is shown in the pane when they press, beside a
+              // The reader is in the pane when they press, beside a
               // result they are watching change; landing at the top of the
               // page would take both out of sight (`components/facets.tsx`).
               preventScrollReset
@@ -564,9 +564,9 @@ export function DateRange({ locale, action, windows, from, to, names = { from: "
 /**
  * One end of a range of days.
  *
- * **It requests the moment it holds a day**: a
+ * **It submits the moment it holds a day**: a
  * date field hands over a whole day or nothing, and most readers hand it over
- * in one press on the picker, so there is nothing to wait for. Clearing it requests
+ * in one press on the picker, so there is nothing to wait for. Clearing it submits
  * too, since an empty end is the end left open.
  *
  * **Its name is shown over it rather than beside it.** The two ends of a range of
@@ -595,7 +595,7 @@ function RefineDate({ name, label, value, ask }: {
         // `CONTROL` sizes itself against a 14px line (`form.tsx`); left to the
         // browser's own default for a bare `type="date"` field the line is
         // 16px and the box comes out 38px against the 36.4px every other
-        // `CONTROL` in the site is shown at.
+        // `CONTROL` in the site has.
         className={`w-full ${CONTROL} text-sm`}
       />
     </label>
@@ -649,15 +649,15 @@ function paneOpenOnServer(): boolean {
 /**
  * Whether the pane of conditions is showing what it holds.
  *
- * **It is not in the address.** What an address has is what would change the
+ * **It is not in the address.** What an address contains is what would change the
  * rows in the table — the search, the ordering, how many rows a page holds,
  * which page. Collapsing the pane beside them changes none of it, so an address
- * with the collapsible would hand whoever it was sent to a screen collapsed the way
+ * holding the collapsed state would hand whoever it was sent to a screen collapsed the way
  * this reader happened to leave it.
  *
  * **`sessionStorage` rather than `localStorage`**, for the reason the cart uses
  * it: a collapsible is part of what somebody is doing now rather than a setting they
- * pass between visits.
+ * keep between visits.
  */
 export function usePaneOpen(): [boolean, () => void] {
   const open = useSyncExternalStore(subscribePane, readPaneOpen, paneOpenOnServer)
@@ -922,10 +922,10 @@ export type ListingPaging = Omit<ComponentProps<typeof Paging>, "locale">
 /**
  * Everything about how the result is presented, in one row over the table:
  * the ordering, how many rows a page holds, the count and the way through the
- * pages. Under the table remains `Paging` alone, with the same `paging`.
+ * pages. Under the table sits `Paging` alone, with the same `paging`.
  *
  * `at` returns the listing's own address under a presentation, on its first
- * page; everything else the reader chose is the screen's to have.
+ * page; everything else the reader chose is the screen's to keep.
  */
 export function ListingTools<K extends string>({ locale, presented, at, paging }: {
   locale: Locale
@@ -1106,7 +1106,7 @@ function ExportLinks({ locale, target, query, sort }: {
   locale: Locale
   target: "research" | "dataset"
   query: string
-  /** The ordering to have, or `null` when nobody asked for one. */
+  /** The ordering to keep, or `null` when nobody asked for one. */
   sort: string | null
 }) {
   const messages = messagesFor(locale)
@@ -1166,7 +1166,7 @@ export function ListingScreen({ view, target, heading, panel, empty, children }:
       size: view.requestedSize,
     }))
   /*
-    The pane: the way to request, what is narrowing the answer, and the same search
+    The pane: the way to search, what is narrowing the answer, and the same search
     over the other listing. It is built here rather than inside the panel
     because the panel is what a parse error leaves empty, and a reader whose
     query did not parse needs the box more than anyone.

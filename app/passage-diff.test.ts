@@ -72,7 +72,7 @@ describe("diffSentences", () => {
     expect(rows).toHaveLength(2)
   })
 
-  it("shows a sentence only one side has on its own line", () => {
+  it("puts a sentence only one side has on its own line", () => {
     const rows = diffSentences("一つ目。", "一つ目。二つ目。")
     expect(rows).toEqual([
       { kind: "same", text: "一つ目。" },

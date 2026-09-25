@@ -60,7 +60,7 @@ export interface ListingPresentation {
 export function FacetPanel({ locale, target, query, presented, panel }: {
   locale: Locale
   target: SearchTarget
-  /** The current query, which the range form has to have unchanged. */
+  /** The current query, which the range form has to pass on unchanged. */
   query: string
   presented: ListingPresentation
   panel: FacetPanelView | null
@@ -167,8 +167,8 @@ function Facet({ locale, target, query, presented, facet, open }: {
                 </Form>
               )
           : facet.values.length === 0
-            // **A dimension nothing in the result has still is shown in the
-            // pane** (`facets.server.ts`), so opening it has to show why it is
+            // **A dimension nothing in the result has a value for is still shown in
+            // the pane** (`facets.server.ts`), so opening it has to show why it is
             // empty. Left blank it reads as a box that failed to draw.
             ? <Empty>{messages.none}</Empty>
             : <Values locale={locale} values={facet.values} kind={facet.kind} />}
@@ -193,7 +193,7 @@ const VALUES_SHOWN = 9
  *
  * **The list scrolls rather than being truncated.** The widest facet has
  * 389 values; cutting it and offering a way to the rest costs either an address
- * that shows something other than the conditions in force, or a reader without
+ * that means something other than the conditions in force, or a reader without
  * script who cannot reach past the visible part.
  *
  * **The box narrows what is already on the page**, so it queries the server for
@@ -279,7 +279,7 @@ function Values({ locale, values, kind }: {
 /**
  * A link that narrows the listing beside it rather than going anywhere.
  *
- * **The reader is shown in the panel when they choose**, often well down it,
+ * **The reader is in the panel when they choose**, often well down it,
  * and the panel is beside a result they are watching change. Landing at the top
  * of the document — which is what a new address means by default — takes both
  * the value just chosen and the rows it left out of sight, so the one thing the
@@ -326,7 +326,7 @@ function PresentationFields({ query, presented }: {
  *
  * **Neither end has a button, and the two ask at different moments.**
  *
- * **A date requests the moment it has one.** The control hands over a whole date or
+ * **A date submits the moment it has one.** The control hands over a whole date or
  * nothing at all, and the way most readers give it one is a single gesture in
  * the picker — so there is nothing to wait for, and the presets above it
  * already work this way.
@@ -338,9 +338,9 @@ function PresentationFields({ query, presented }: {
  * useless answers. Measured on the read length, an upper bound typed as `150`
  * passes 4 rows and 13 rows before reaching 827; the smallest probe number in
  * the data is 450, so typing it returns "nothing found" twice first. So the
- * form requests on the way out of the field, **and only if the value is not the one
+ * form submits on the way out of the field, **and only if the value is not the one
  * already in force** — tabbing through a pane must not re-ask what it is
- * already showing. Enter requests too, since a form with two fields and no button
+ * already showing. Enter submits too, since a form with two fields and no button
  * would otherwise do nothing with it.
  */
 function Bound({ name, label, value, ask }: {

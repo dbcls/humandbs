@@ -12,8 +12,8 @@
  * administrator see one list rather than two, and what makes the correspondence
  * between the buckets solvable from `(researchId, humLabel)` alone.
  *
- * Nothing here reaches the store. What a bucket holds is the store's to report;
- * this module only reports what the answer means.
+ * Nothing here reaches the store. What a bucket holds is for the store to answer;
+ * this module only works out what the answer means.
  */
 
 export const PUBLIC_BUCKET = "files"
@@ -40,7 +40,7 @@ export const DOWNLOAD_TTL_SECONDS = 5 * 60
 /** Above this a single PUT is a bad bet, and the upload is split into parts. */
 export const MULTIPART_THRESHOLD = 64 * 1024 * 1024
 
-/** What each part of a multipart upload has. Also the store's own minimum. */
+/** The size of each part of a multipart upload. Also the store's own minimum. */
 export const MULTIPART_PART_SIZE = 64 * 1024 * 1024
 
 /** How many parts are in flight at once. Measured throughput flattens here. */
@@ -103,7 +103,7 @@ export function commonPrefix(): string {
 }
 
 /**
- * A name a file may respond under, once it is in a prefix.
+ * A name a file may be served under, once it is in a prefix.
  *
  * **It may have `/`.** The `common/` prefix keeps the article assets under the
  * shape they already had (`/files/common/dac/DAC_summary-1.pdf`), so a slug
@@ -114,7 +114,7 @@ export function commonPrefix(): string {
  * reads as: an empty segment, a `.` or a `..` walking out of the prefix, or a
  * control character, which survives the signature and comes back out in a
  * header. Code units are the right unit for that last one — a control
- * character is one of them, and splitting the name into graphemes would report
+ * character is one of them, and splitting the name into graphemes would reveal
  * nothing more.
  */
 export function isFileSlug(slug: string): boolean {
@@ -242,7 +242,7 @@ export interface FileFilter {
  * The files a filter leaves, in the order they were given.
  *
  * **The words are looked for in the slug and nowhere else** — it is the one
- * thing a row reports about a file that a curator can have typed — and every word
+ * thing a row shows about a file that a curator can have typed — and every word
  * separated by whitespace has to appear, as in the other listings' boxes
  * (`app/admin/listing.ts`). Case does not count: a slug is written in lower
  * case and what is typed need not be.
@@ -311,8 +311,8 @@ export function formatSize(bytes: number): string {
     value /= 1000
     unit += 1
   }
-  // One decimal until the number is three digits: 78.9 MB reports something 79 MB
-  // does not, while 157.0 GB reports nothing 157 GB does not.
+  // One decimal until the number is three digits: 78.9 MB conveys something 79 MB
+  // does not, while 157.0 GB conveys nothing 157 GB does not.
   const shown = unit === 0 ? String(Math.round(value)) : value.toFixed(value < 100 ? 1 : 0)
   return `${shown} ${UNITS[unit]}`
 }

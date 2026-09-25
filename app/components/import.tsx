@@ -229,7 +229,7 @@ export function ImportForm<T>({ locale, parts, mine, theirs, sourceLabel, revisi
  *
  * **The two sides read as the fields' do** (`CompareTable`), an element to a
  * line by its name — one only the draft has is struck out on the left, one
- * only the source has added on the right, and one both have remains untinted.
+ * only the source has added on the right, and one both have is left untinted.
  * A table of ticks said the same with a blank cell for "not there" and a box
  * nobody had named. **What the written value keeps is a list of boxes named
  * for what they do**, each indicating where the element is now; a change inside

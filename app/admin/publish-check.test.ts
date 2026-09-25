@@ -98,7 +98,7 @@ describe("what is listed and passed", () => {
     expect(countFindings(findings)).toEqual({ untranslated: 1 })
   })
 
-  it("implies nothing about a pair nobody has started", () => {
+  it("reports nothing about a pair nobody has started", () => {
     expect(check({ content: withTitle(filled(""), filled("")) }).findings).toEqual([])
   })
 
@@ -113,7 +113,7 @@ describe("what is listed and passed", () => {
    * what this draft holds. The publish check has nothing to warn about here, and a draft
    * that wants to see another version compares against it in the editor.
    */
-  it("implies nothing about what other publishes did", () => {
+  it("reports nothing about what other publishes did", () => {
     const findings = check({ datasets: [dataset()] }).findings
 
     expect(findings).toEqual([])
@@ -198,7 +198,7 @@ describe("files a dataset selects", () => {
     expect(findings).toEqual([{ kind: "private-file", datasetId: "d1", fileName: "closed.zip" }])
   })
 
-  it("implies nothing about a selected file a reader can already fetch", () => {
+  it("reports nothing about a selected file a reader can already fetch", () => {
     const findings = check({
       datasets: [selecting(["open.zip"])],
       privateFiles: new Set(["closed.zip"]),
@@ -207,7 +207,7 @@ describe("files a dataset selects", () => {
     expect(findings).toEqual([])
   })
 
-  it("implies nothing about a selection the prefix does not hold at all", () => {
+  it("reports nothing about a selection the prefix does not hold at all", () => {
     // The selection is a note over the listing rather than a claim that the
     // file exists, so a name in neither bucket simply does not draw.
     const findings = check({
@@ -227,7 +227,7 @@ describe("files a dataset selects", () => {
     expect(findings.map((finding) => finding.kind)).toEqual(["private-file", "private-file"])
   })
 
-  it("implies nothing about a dataset with no description to hold a selection", () => {
+  it("reports nothing about a dataset with no description to hold a selection", () => {
     const findings = check({
       datasets: [dataset({ content: null })],
       privateFiles: new Set(["closed.zip"]),

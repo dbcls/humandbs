@@ -14,7 +14,7 @@
  * "updating v2".
  *
  * The draft is consumed rather than kept. A version that also survived as a
- * draft would be the same content in two places with nothing to report which is
+ * draft would be the same content in two places with nothing to show which is
  * the real one; continuing means copying a version into a new draft.
  *
  * Publishing writes the draft as it is and merges nothing. A draft has
@@ -67,10 +67,10 @@ export interface PublishRequest {
   /**
    * The number this version will have: any whole number no version holds.
    * **Null for an update**, which has the number of the version it updates
-   * and takes no other — the draft reports which version that is.
+   * and takes no other — the draft records which version that is.
    */
   number: number | null
-  /** The day the version reports it went out. */
+  /** The day the version records as its release. */
   releaseDate: string
   /** The administrator has seen the listed findings and passed them. */
   acknowledged: boolean
@@ -212,7 +212,7 @@ async function readSnapshotOf(
   const draftId = draft.id
 
   // **One at a time.** A transaction is a single connection, so requesting the
-  // five at once wins no time and requests the driver to start a query on a client
+  // five at once wins no time and makes the driver start a query on a client
   // that is already running one.
   const humLabels = await tx
     .select({ label: labelPin.label })
@@ -284,8 +284,8 @@ async function readSnapshotOf(
  * puts them in (`admin/datasets.ts`). **The draft does not choose which of them
  * go** — they belong to the research — so this is every one of them but those
  * another draft made. `null` content is a dataset nobody has described: the
- * publish check reports it, and passing means publishing it empty rather than leaving a
- * dataset the listing names and the reader cannot open.
+ * publish check flags it, and passing means publishing it empty rather than
+ * leaving a dataset the listing names and the reader cannot open.
  */
 function publishCheckDatasets(snapshot: PublishSnapshot): PublishCheckDataset[] {
   // A stable order for whatever the draft has not named: the map comes from a
@@ -320,7 +320,7 @@ function nextNumber(versions: readonly VersionRow[]): number {
  * number from one that no version holds now. **A held number is never taken
  * over this way** — the one road under a held number is the update, and only
  * the draft opened for that version travels it. A number nothing ever
- * kept is allowed; the sequence is not promised to be unbroken.
+ * had is allowed; the sequence is not promised to be unbroken.
  */
 function isFreeNumber(snapshot: PublishSnapshot, number: number): boolean {
   return Number.isInteger(number)
@@ -444,7 +444,7 @@ export async function publishPreview(
 /**
  * The publish check as it stands for a draft, read without a lock and without writing.
  *
- * **Every screen of the draft reports the publish check's status**, not only the
+ * **Every screen of the draft shows the publish check's status**, not only the
  * confirmation: the step indicator counts what would stop a publish and what
  * would have to be confirmed. It is advice, the same as the confirmation
  * screen's — what a publish is allowed to do is decided under the lock.
@@ -612,7 +612,7 @@ export async function publishDraft(
  * **Recorded against the dataset rather than read out of the version's own
  * event**, because the identity outlives the versions: "when did this
  * description last move, and by what" is a question about the dataset, and
- * responding to it from the versions would mean diffing every one of them.
+ * answering it from the versions would mean diffing every one of them.
  */
 async function recordDatasetChanges(
   tx: Transaction,
@@ -655,7 +655,7 @@ function unchanged(published: DatasetContent, next: DatasetContent): boolean {
  * later publish leaves it alone because it is no longer missing.
  *
  * **The date is written once, by the version that first releases the dataset.**
- * A description passed into v4 by the draft it was copied into already has its
+ * A description brought into v4 by the draft it was copied into already has its
  * day, so v4 does not stamp its own over it.
  */
 function withReleaseDate(

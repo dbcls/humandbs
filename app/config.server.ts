@@ -52,9 +52,9 @@ export interface ApplicationDbConfig {
  *
  * **Optional, and an origin rather than a URL with a path.** The service runs
  * beside the portal inside the compose network and is not published, so an
- * environment without it is a normal environment and the screen reports it rather
+ * environment without it is a normal environment and the screen shows that rather
  * than failing. The path is the service's own; the portal only knows the
- * address it is kept at.
+ * address it is served at.
  */
 export interface AppConfig {
   /** What the application connects as. It cannot alter or erase the event log. */
@@ -151,7 +151,7 @@ function readApplicationDb(env: Env): ApplicationDbConfig | null {
     ? DEFAULT_APPLICATION_DB_SCHEMA
     : configured
   // The name goes into the queries as an identifier, which no parameter can
-  // pass, so the shape is checked once here rather than trusted at each use.
+  // hold, so the shape is checked once here rather than trusted at each use.
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(schema)) {
     throw new ConfigError("HUMANDBS_JGA_DB_SCHEMA must be a plain identifier")
   }

@@ -231,7 +231,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
       typeOfData: prose(listingSummary?.typeOfData, read),
       // Empty, which is what makes the listing read the research's own
       // providers. v1 draws the column from the same names, so a table built
-      // this way reports what v1's reports; a copy taken here would instead be a
+      // this way shows what v1's shows; a copy taken here would instead be a
       // second set of names that no one had chosen and that would not follow a
       // correction made to the first.
       dataProviders: [],
@@ -256,7 +256,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
  * over the dump: 18,272 labelled lines, of which **94.9% name a sibling rather
  * than the dataset whose cell they sit in**.
  *
- * Left as they are, every one of those values is defined in as many places as the
+ * Left as they are, every one of those values is stored in as many places as the
  * research has datasets, and an editor correcting one has to find the rest.
  *
  * **A line is dropped only where the dataset it identifies has the same line
@@ -276,7 +276,7 @@ function lineKey(label: string, sourceKey: string, lang: Language, said: string)
   return [label, sourceKey, lang, said].join(LINE_PART)
 }
 
-/** What a line has, and the datasets its label names, if any. */
+/** What a line states, and the datasets its label names, if any. */
 function readLine(line: string, labels: ReadonlySet<string>): {
   said: string
   about: string[]
@@ -291,7 +291,7 @@ function readLine(line: string, labels: ReadonlySet<string>): {
 }
 
 /**
- * The first colon shown outside any bracket. A value has colons of its
+ * The first colon outside any bracket. A value has colons of its
  * own — `bam [ref: hg19]` — and splitting on the first one anywhere would read
  * those as labels.
  */
@@ -313,7 +313,7 @@ function plainLines(value: EsRichText | null | undefined, lang: Language, read: 
 }
 
 /**
- * Every line each dataset reports about itself, which is what makes a copy a copy.
+ * Every line each dataset states about itself, which is what makes a copy a copy.
  * Given the reader the load builds prose with, the lines are the ones it reads.
  */
 export function ownLines(datasets: readonly PublishedDataset[], read?: ProseReader): ReadonlySet<string> {
@@ -348,11 +348,11 @@ export interface DatasetContentInput {
   typeOfDataKeyCode: string
   /** Every dataset label in the dump, so a line's label can be recognised. */
   datasetLabels: ReadonlySet<string>
-  /** What each dataset has about itself (`ownLines`). */
+  /** What each dataset states about itself (`ownLines`). */
   ownLines: ReadonlySet<string>
   /**
    * Where the lines no rule could read are collected. **They are not dropped
-   * quietly**: a cell that reports something this cannot hold as a number is work
+   * quietly**: a cell that states something this cannot hold as a number is work
    * for somebody, and the list is what that work is done from.
    */
   unread: { dataset: string, sourceKey: string, line: string }[]
@@ -370,7 +370,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   const stays = (sourceKey: string, lang: Language, line: string): boolean => {
     const { said, about } = readLine(line, input.datasetLabels)
     if (about.length === 0 || about.includes(dataset.label)) return true
-    // Only where every dataset it identifies reports the same thing itself. Anything
+    // Only where every dataset it identifies has the same line itself. Anything
     // else is the one copy of that value, wherever it happens to sit.
     return !about.every((label) => input.ownLines.has(lineKey(label, sourceKey, lang, said)))
   }
@@ -388,7 +388,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
     const staying = input.readProse(value, lang)
       .filter((line) => stays(sourceKey, lang, line.map((span) => span.text).join("")))
     // A dropped line can leave two paragraph breaks side by side, or one at an
-    // edge; neither reports anything.
+    // edge; neither means anything.
     const joined: RichText = []
     for (const line of staying) {
       if (line.length > 0 || (joined.at(-1)?.length ?? 0) > 0) joined.push(line)
@@ -472,10 +472,10 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
         // **A key with no canonical unit converts nothing.** Its unit is the
         // kind of thing counted — SNVs, indels, fold coverage — not a scale,
         // so the unit written is the unit stored. Running those through the
-        // converter requests it to turn `SNVs` into null, which it refuses, and
+        // converter would have it turn `SNVs` into null, which it refuses, and
         // the value would disappear without a word.
         const stored = read.flatMap((raw) => {
-          // A row labelled with the dataset it is already filed under reports
+          // A row labelled with the dataset it is already filed under adds
           // nothing: the label existed to tell sibling rows apart, and those
           // have gone to the datasets they were about (`ownLines`).
           const one = raw.label === dataset.label ? { ...raw, label: null } : raw
@@ -562,7 +562,7 @@ export interface AccessionDateRow {
  * In production a batch takes these from upstream. Here the nearest thing the
  * dump holds is the release date of the first published version that listed the
  * dataset, which is not what the archive has — but the cache being empty is
- * worse than it being approximate: the whole design reports a reader never sees an
+ * worse than it being approximate: the whole design assumes a reader never sees an
  * unfilled cache, and a development database that has one puts that case back
  * into every screen. `source` records where the values came from, so nothing
  * mistakes them for the archive's own.

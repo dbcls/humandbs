@@ -10,7 +10,7 @@ import { BOOTSTRAP_ACTOR } from "./events.server"
 import { createSession, sessionCookie } from "./session.server"
 
 /**
- * Deriving who is requesting, against the development database.
+ * Deriving who is making the request, against the development database.
  *
  * The one that matters is "access removed between requests": authorisation is
  * read on every request precisely so that it can change without waiting for a

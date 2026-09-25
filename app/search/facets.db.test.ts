@@ -262,7 +262,7 @@ describe("counting the facets of a result", () => {
     })
   })
 
-  it("implies nothing about a date the result never has", async () => {
+  it("reports no span for a date the result never has", async () => {
     // The panel draws no control at all for this, rather than two empty fields
     // over a span that does not exist.
     expect(await dateBounds(db, query("assay:rna-seq"))).toEqual({
@@ -296,7 +296,7 @@ describe("filtering by a date, which is a column rather than a facet row", () =>
 /**
  * What `/api/fields` offers as values. **The offer is a promise**: a caller that
  * takes a value from it and writes it into a query gets rows back, so a value
- * nothing has must not appear.
+ * no row has must not appear.
  */
 describe("the values a query may name", () => {
   it("offers a term at the root of its tree, which is the level a query can name", async () => {
@@ -315,7 +315,7 @@ describe("the values a query may name", () => {
 
     // Defined in the vocabulary and used by nobody
     expect(codes).not.toContain("unused")
-    // The level below a root: real, kept, and not nameable
+    // The level below a root: real, in use, and not nameable
     expect(codes).not.toContain("C341")
   })
 

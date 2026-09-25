@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest"
  * The shape `docs/` has to keep so that a newcomer can read all of it.
  *
  * The docs hold invariants, boundaries, contracts, procedures and non-goals.
- * What the code can report for itself — sizes, lists of screens, how a thing came
+ * What the code can show by itself — sizes, lists of screens, how a thing came
  * to be — grows with every change, and a set of files nobody can read end to
  * end tells nobody anything. These limits are what stop that growth.
  *

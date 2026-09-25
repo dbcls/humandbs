@@ -4,7 +4,7 @@ import { join, relative } from "node:path"
 import { describe, expect, it } from "vitest"
 
 /**
- * A comment states the constraint it cares about itself and is shown alone —
+ * A comment states the constraint it cares about itself and is self-contained —
  * it does not send the reader to a doc for the meaning. A pointer into the
  * doc tree breaks the moment that tree is reorganized, silently, since
  * nothing ties the comment to the section it named.

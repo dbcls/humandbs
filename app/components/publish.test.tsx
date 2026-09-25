@@ -225,7 +225,7 @@ describe("the publish screen", () => {
   })
 
   /** Advice, not a publish check: the button is live whatever the review shows. */
-  it("shows what the review is shown at — the link, who pressed which indicator — without stopping the publish", () => {
+  it("shows how far the review has got — the link, who pressed which indicator — without stopping the publish", () => {
     const html = render(view({
       review: {
         shared: true,
@@ -260,7 +260,7 @@ describe("the publish screen", () => {
       },
     }))
     const review = html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開前に確かめるもの</h2>"))
-    // One table per indicator, both standing, the empty one indicating nobody pressed.
+    // One table per indicator, both drawn, the empty one showing that nobody pressed.
     expect(review.match(/<table/g)).toHaveLength(2)
     expect(review.match(/>名前<\/th>/g)).toHaveLength(2)
     expect(review).toContain(">最後に押した日時</th>")

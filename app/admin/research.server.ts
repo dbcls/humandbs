@@ -10,9 +10,9 @@
  *
  * **What survives is the event**, which is why it has no foreign key. The
  * labels are written into its detail before the rows go: afterwards nothing
- * else can report which hum this was.
+ * else records which hum this was.
  *
- * **A research whose prefixes hold files is not deleted.** The files are defined in the
+ * **A research whose prefixes hold files is not deleted.** The files are kept in the
  * store, which no cascade reaches: the public ones would keep responding at
  * `/files/hum…/`, and whichever research is given that number next would list
  * them as its own. Each file is deleted from the files screen first, where
@@ -48,7 +48,7 @@ export async function deleteResearch(
 
     // Only hum labels hang off a research; a dataset id hangs off its dataset.
     // **One at a time**: a transaction is one connection, so requesting both at
-    // once wins nothing and requests the driver to run a query on a busy client.
+    // once wins nothing and makes the driver run a query on a busy client.
     const pins = await tx
       .select({ label: labelPin.label })
       .from(labelPin)

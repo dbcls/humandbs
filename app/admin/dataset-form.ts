@@ -3,7 +3,7 @@
  *
  * It relates to `DatasetContent` as `form.ts` relates to `ResearchContent`, and
  * for the same two reasons: prose is markdown while a person is typing it, and
- * a slot keeps its text whatever its state reports, so that marking a value
+ * a slot keeps its text whatever its state is, so that marking a value
  * unsettled does not eat what was half written.
  *
  * **A value has the kind of its catalog key.** The kind is stored with the
@@ -98,7 +98,7 @@ export function labelCandidatesFor(code: string): readonly string[] {
  * One disease as it is typed: **which terms name it, and what it is called.**
  *
  * The names are empty strings rather than nulls for the same reason the number
- * rows hold strings — that is what a text box has — and become nulls on the
+ * rows hold strings — that is what a text box holds — and become nulls on the
  * way in. **A row naming no term is an ordinary row**: a disease no
  * classification holds is one somebody still has to be able to write.
  */
@@ -122,7 +122,7 @@ export type ValueBody
     | { kind: "number", state: SlotState, rows: NumberRow[] }
     /**
      * **A row that identifies nothing at all is dropped on save**, the same way an
-     * empty number field is: a disease with neither a term nor a name reports
+     * empty number field is: a disease with neither a term nor a name means
      * nothing, and a key left with no rows loses its slot.
      */
     | { kind: "disease", state: SlotState, diseases: DiseaseRow[] }

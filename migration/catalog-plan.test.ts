@@ -71,7 +71,7 @@ describe("moveImputationLines", () => {
     expect(text(e, "Imputation", "en")).toBe("Minimac4 (1000 Genomes)")
   })
 
-  it("leaves a line that identifies genotype calling as well, since it cannot be cut", () => {
+  it("leaves a line that mentions genotype calling as well, since it cannot be cut", () => {
     const e = experiment({ "Analysis Methods": cell("GenomeStudio for genotyping, minimac3 for imputation") })
     moveImputationLines(e)
 
@@ -106,7 +106,7 @@ describe("moveMisfiledJgaAccessions", () => {
     expect(e.data).toEqual({ [SRA]: cell(mixed) })
   })
 
-  it("does not overwrite a JGA key that reports something else", () => {
+  it("does not overwrite a JGA key that holds something else", () => {
     const e = experiment({ [JGA]: cell("JGAD000001"), [SRA]: cell("JGAD000002") })
     moveMisfiledJgaAccessions(e)
 

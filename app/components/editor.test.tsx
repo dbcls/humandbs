@@ -15,7 +15,7 @@ import { emptyPair } from "./fields"
 /** Nothing in this fixture has values, so an empty catalog draws every place. */
 const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
 
-/** The draft drawn as its page, which the editor is shown beside the form. */
+/** The draft drawn as its page, which the editor shows beside the form. */
 function drawn(): DrawnDraft {
   const anchored = anchoredResearchView({
     humLabel: "hum0001",
@@ -132,7 +132,7 @@ describe("the editing form", () => {
     expect(both).not.toContain("未翻訳")
   })
 
-  it("implies nothing about a conflict or refused markup until a save has been answered", () => {
+  it("shows nothing about a conflict or refused markup until a save has been answered", () => {
     const html = render(view())
 
     expect(html).not.toContain("別の場所で保存されました")
@@ -166,7 +166,7 @@ describe("the rows of a list", () => {
     for (const label of ["編集", "上へ", "下へ", "削除"]) expect(grants).toContain(`aria-label="${label}"`)
   })
 
-  it("shows the state a value is shown with — 該当なし, 未確定 — in the table rather than 未入力", () => {
+  it("shows a value's state — 該当なし, 未確定 — in the table rather than 未入力", () => {
     const marked = (state: "unknown" | "not-applicable") => {
       const made = emptyPair()
       made.ja.state = state
@@ -228,7 +228,7 @@ describe("the header", () => {
     expect(html).toContain("ID 未発行")
   })
 
-  it("is shown with the version it updates as a badge beside the identifier, and none for an ordinary draft", () => {
+  it("shows the version it updates as a badge beside the identifier, and none for an ordinary draft", () => {
     expect(render({ ...view(), updating: 3 })).toContain("v3 を更新中")
     expect(render(view())).not.toContain("を更新中")
   })
@@ -272,7 +272,7 @@ describe("the header", () => {
 describe("the toolbar", () => {
   /**
    * **Left to right: save, its status, the memo, the whole, what is still
-   * open, then the pane switch at the far end.** The unsaved notice remains
+   * open, then the pane switch at the far end.** The unsaved notice sits
    * to save's own right.
    */
   it("keeps one order: save, its status, memo, whole, open comments, the pane switch", () => {
@@ -396,7 +396,7 @@ describe("a section of one prose field", () => {
 
 /**
  * The version's differences are shown over the form once, as the import's own
- * list with each place as the way there; nothing else of the review remains
+ * list with each place as the way there; nothing else of the review is shown
  * there.
  */
 describe("the form against the published version", () => {
@@ -411,7 +411,7 @@ describe("the form against the published version", () => {
     expect(form).not.toMatch(/<button[^>]*>(?:(?!<\/button>).)*取り込み/s)
   })
 
-  it("remains only while something differs, and never shows the review's own things there", () => {
+  it("is shown only while something differs, and never shows the review's own things there", () => {
     const html = render(view())
     const form = html.slice(html.indexOf("role=\"tablist\""))
     expect(form).not.toContain("か所違います")

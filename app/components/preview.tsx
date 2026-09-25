@@ -39,7 +39,7 @@ import { firstSentence } from "./review"
 
 export function PreviewResearchScreen({ view, answer }: {
   view: PreviewResearchPageView
-  /** What a form posted from the page itself was responded to with. */
+  /** What the response was to a form posted from the page itself. */
   answer: PreviewActionResult | undefined
 }) {
   const locale = view.locale
@@ -193,7 +193,7 @@ export function FieldAnnotations({ context, at, view, comments, heading, fieldLa
  * **The request is a card of its own, above the page.** Merged into the page's
  * box it was shown between the header bar and the first section, and the page no longer
  * read as the published page it is meant to be checked as. Below it the page
- * is shown with exactly what a published one does — the header bar, then the white box.
+ * looks exactly like a published one — the header bar, then the white box.
  *
  * **The steps come first and are written out**, numbered, rather than drawn as
  * a chart: a provider opening the link for the first time has to know what is
@@ -271,8 +271,8 @@ export function PreviewHead({ shell, label, locale, problem, whole, children }: 
  *
  * **Saying who they are comes first**: a comment is refused without a name,
  * and a reader who learns that only on posting has to type the comment twice.
- * Signed in, the step shows whose name the comments will have instead of
- * requesting one. **The "変更あり" badge is explained only where it can
+ * Signed in, the step shows which name the comments will be posted under instead of
+ * asking for one. **The "変更あり" badge is explained only where it can
  * appear** — on a draft that updates a published version; elsewhere the
  * sentence describes nothing on the page. **The datasets are a step of their
  * own**: each has a page of its own, reached from the research's table, and a
@@ -307,7 +307,7 @@ export function stepsFor(shell: PreviewShell): ReactNode[] {
 /**
  * The name of the account a reader is signed in with, set as code — an
  * identifier the account holder chose, which a sentence around it should not
- * be read into — on the tint inline code is shown with in the site's articles.
+ * be read into — on the tint inline code has in the site's articles.
  */
 function AccountName({ name }: { name: string }) {
   return <Code className="rounded bg-surface px-1">{name}</Code>

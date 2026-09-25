@@ -112,13 +112,13 @@ describe("the share", () => {
     expect(off).not.toContain("type=\"checkbox\"")
   })
 
-  it("keeps sharing as it remains when only the expiry is saved", () => {
+  it("keeps sharing as it is when only the expiry is saved", () => {
     expect(render(view({ share: open }))).toMatch(/<input type="hidden" name="enabled" value="on"/)
     expect(render(view({ share: closed }))).toMatch(/<input type="hidden" name="enabled" value=""/)
   })
 
   /** What the expiry means is said by the state, not by a rule under the box. */
-  it("shows the expiry as it is shown beside the state, and writes no rule under the box", () => {
+  it("shows the current expiry beside the state, and writes no rule under the box", () => {
     expect(render(view({ share: open }))).toContain("期限はありません。")
     expect(render(view({ share: { ...open, expiresOn: "2026-12-31" } }))).toContain("2026-12-31 まで開けます。")
     // Not shared, the expiry implies nothing about what opens.

@@ -76,7 +76,7 @@ describe("reading a member of a zip", () => {
 
   // A caller that silently got nothing would replace the dictionary with an
   // empty one, and every code would then read as not existing.
-  it("refuses rather than responding with nothing when the member is not there", async () => {
+  it("refuses rather than returning nothing when the member is not there", async () => {
     const zip = await archive([{ name: "codes.txt", body: "x", deflate: true }])
     await expect(readZipMember(zip, "missing.txt")).rejects.toThrow("missing.txt")
   })

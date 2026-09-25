@@ -101,9 +101,9 @@ export interface ObjectRef {
 }
 
 /**
- * Whether the store is responsible for both buckets.
+ * Whether the store serves both buckets.
  *
- * **Both, because a bucket is the published state.** A store that is responsible for
+ * **Both, because a bucket is the published state.** A store that serves
  * one of them can neither publish a file nor take one back, and a missing
  * bucket is not created as a side effect of writing to it — so a health check
  * that only proved the endpoint is up would pass on a store the app cannot use.

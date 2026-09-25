@@ -266,7 +266,7 @@ describe("running a switch", () => {
     expect(await privateKeys()).toEqual([`${privatePrefix(researchId)}a.zip`])
   })
 
-  it("responds false when there is nothing waiting", async () => {
+  it("returns false when there is nothing waiting", async () => {
     await research(label())
 
     expect(await runOneJob(db)).toBe(false)

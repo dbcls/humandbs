@@ -7,10 +7,10 @@
  * the frame a page sits in and the way a content value is drawn, and the
  * screen-shaped files above it hold the arrangements.
  *
- * **The look is kept over from the previous portal, the code is not.** The
+ * **The look is brought over from the previous portal, the code is not.** The
  * header bar and the white box under it, the ruled heading over a listing, the
  * outlined pill buttons, the trapezoid pair of tabs — those are what make a
- * reader recognise the site, so they are reproduced. What is *not* kept over
+ * reader recognise the site, so they are reproduced. What is *not* brought over
  * is v1's vocabulary: it drew rounded corners twenty ways, held four separate
  * badge implementations, and used its own palette and Tailwind's side by side.
  * There is no v1 to defer to on those, so each is decided once, here.
@@ -49,7 +49,7 @@ export function Stack({ gap = "normal", as: Tag = "div", at, fill = false, child
   /**
    * Take the room the column this is shown in has left, and no more, where the
    * column is as tall as the window and one thing inside it is to scroll on
-   * its own. Every box on the way down from the column to that thing shows it,
+   * its own. Every box on the way down from the column to that thing sets it,
    * or the room stops there. **"No more" is the `min-h-0`**: a flex item is
    * otherwise never shorter than what it holds, and the length of the thing
    * that should scroll would become the length of every box above it.
@@ -144,7 +144,7 @@ function Remark({ box, icon, iconClass = "", live = false, action, children }: {
  * **A header bar is for a page about one thing that has a name of its own** — this
  * research, this dataset, this draft. A listing or an article gets a `Heading`
  * instead. Keeping the two apart is what makes the header bar mean something: v1 does
- * the same, and a site where every page opens with the same bar shows nothing
+ * the same, and a site where every page opens with the same bar conveys nothing
  * with it.
  *
  * `deep` is the subject itself, `brand` the sections and tables under it,
@@ -178,7 +178,7 @@ export function HeaderBar({ tone = "brand", className = "", children }: {
 }
 
 /**
- * Where the indicator remains, and how far the word sits from it.
+ * Where the indicator sits, and how far the word sits from it.
  *
  * **The gap is forced in one and chosen in the other.** Hung out through the
  * card's padding, the indicator has to leave exactly enough for the words to land
@@ -229,7 +229,7 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
    */
   look?: keyof typeof HEADING_LOOK
   /**
-   * Where the indicator remains (`PANE_RULE`): hung out through a card's padding, or
+   * Where the indicator sits (`PANE_RULE`): hung out through a card's padding, or
    * at the start of the line for a heading that opens no card.
    */
   rule?: keyof typeof PANE_RULE
@@ -308,14 +308,14 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
  * rule and the brand colour are what the site already uses to show "this identifies
  * what follows", and reusing them costs the reader nothing to learn.
  *
- * **The line under it always spans the pane. Where the rule remains is a
+ * **The line under it always spans the pane. Where the rule sits is a
  * choice**, and there are two of them (`PANE_RULE`). The line is the pane's;
  * the rule belongs either to the card or to the thing it identifies.
  */
 export function PaneHeading({ title, level = "h2", rule = "edge", children }: {
   title: string
   level?: "h2" | "h3"
-  /** Where the indicator remains. */
+  /** Where the indicator sits. */
   rule?: keyof typeof PANE_RULE
   /** What belongs on the right of the same line, if anything. */
   children?: ReactNode
@@ -396,7 +396,7 @@ export function Badge({
       <span
         // **The line inside is the height of the type, not of a line of prose.**
         // A badge holds one short label and never wraps, so the 18px line
-        // `text-xs` has would leave 2px of air above and below the word
+        // `text-xs` sets would leave 2px of air above and below the word
         // inside a box that already has padding for it.
         className={`inline-flex items-center gap-1 text-nowrap border px-2 py-0.5 text-xs leading-3.5 ${
           pill ? "rounded-full" : "rounded"
@@ -535,7 +535,7 @@ interface ButtonLook {
    * **In the row of controls above a listing**, which is the one place a
    * control is fully rounded (`LISTING_CONTROL`, and `Chooser` beside it).
    *
-   * **Where it remains, not how it should look.** As a taste the round end was
+   * **Where it is placed, not how it should look.** As a taste the round end was
    * asked for in five places that are not a listing — the cart's two, the words
    * offered under the search box, a term in the editor — and the shape stopped
    * indicating anything. **The page numbers stay square inside the same header bar** for a
@@ -906,7 +906,7 @@ export function ReorderButtons({ at, of, labels, onMove, render }: {
  * instead** (`Chooser`). Shown, they cost a row of the screen each time.
  *
  * **One answer can be the quiet one** (`quiet`): chosen, it is drawn as chosen
- * but not filled. An editor requests the same three-way question of every box it
+ * but not filled. An editor asks the same three-way question of every box it
  * holds, and nearly every box gives the ordinary answer — filled, that answer
  * would put a brand fill on every field and the one that saves would be lost
  * among them.
@@ -1064,7 +1064,7 @@ export function CopyButton({ text, label, done, size = "sm", listing = false, ti
 
 /**
  * How a link out of a truncated block is drawn — whether it leads somewhere
- * (`MoreLink`) or opens the rest where it remains (`Clamped`).
+ * (`MoreLink`) or opens the rest in place (`Clamped`).
  *
  * **An arrow rather than a rule under the words.** It is not a link in a
  * sentence but a link out of the block it closes, and it sits where a reader
@@ -1097,7 +1097,7 @@ const MORE = "group/link inline-flex items-center gap-0.5 whitespace-nowrap font
  * **It is not `MORE` with the arrow taken off.** The two spell the same three
  * utilities today, but they answer to different things: `MORE` is a way onward
  * and its other half is what holds the chevron beside the word, while this is a
- * way to undo and has nothing. Merging one into the other would show the two
+ * way to undo and holds nothing. Merging one into the other would show the two
  * must always be set alike, which nobody has decided — and there is no third
  * place in the public screens spelling either of them out by hand, so the pair
  * is not a duplication anybody has to keep in step.
@@ -1513,8 +1513,8 @@ export function SwitchTabs({ label, tabs }: {
  * The tabs a long form is split into.
  *
  * **Only the display is switched: every field stays in the document**, so one
- * save has the whole form and nothing an editor typed can be lost by moving
- * between tabs. That is also why a tab has to be able to have an indicator — an
+ * save sends the whole form and nothing an editor typed can be lost by moving
+ * between tabs. That is also why a tab has to be able to show an indicator — an
  * unsaved change, a difference from the published version, an unread comment,
  * a problem the save reported — since the reader cannot see the section it is
  * in.
@@ -1671,7 +1671,7 @@ export const PALE = {
 /**
  * A part of a panel that can be collapsed away.
  *
- * A `<details>`, so the markup has what is open, the browser tells
+ * A `<details>`, so the markup records what is open, the browser tells
  * assistive software about it, and a page with no script collapses as well as one
  * with it.
  *
@@ -1696,7 +1696,7 @@ export function collapsibleOpen(shown: boolean, reason: boolean): boolean {
 }
 
 /**
- * The indicator of something that opens where it remains: a chevron that turns down
+ * The indicator of something that opens in place: a chevron that turns down
  * while its `<details>` (named `group/collapsible`) is open. **Not `Chevron`** — this
  * one turns rather than moves, being a collapsible rather than a link somewhere.
  */
@@ -2040,7 +2040,7 @@ export function Toast({ label, announce, at = "headerBar", children }: {
  * is said once under the name, in the reading colour. How a value is written
  * is said under the box it is written in, in the quieter one (`form.tsx` の
  * `hint`). Neither shows the other's thing, so a reader who has learned where
- * each remains knows what each is before reading it.
+ * each sits knows what each is before reading it.
  *
  * **Nothing is inside it until it is open.** A submit button left in a closed
  * panel is still the form's default button, so pressing Enter in a box
@@ -2057,10 +2057,10 @@ export function Toast({ label, announce, at = "headerBar", children }: {
  * not where it belongs.
  *
  * **It is one width, not the width of its words — and the same one whether it
- * requests or is written in.** These are shown over screens that have nothing else to
+ * shows a question or is written in.** These are shown over screens that have nothing else to
  * look at, so a panel drawn to fit a short sentence came out 288px against the
  * 448px of the one beside it, and the same question changed size with the
- * length of the answer. A panel that requests and a panel with fields in it are
+ * length of the answer. A panel that shows a question and a panel with fields in it are
  * opened from the same screen, and at two sizes they read as two kinds of
  * thing; at one, the reader sees the same panel every time and reads what is
  * different about it. The width is the one two language boxes stacked can be

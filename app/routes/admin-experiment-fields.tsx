@@ -292,7 +292,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
  *
  * **What the row shows is what the field is; what it can be made into is behind
  * the panel.** Everything on the line is read at a glance down a column — the
- * code, the two labels, what it holds, where it remains, whether it is drawn —
+ * code, the two labels, what it holds, its place in the order, whether it is drawn —
  * and none of it is a control that a scanning eye has to step over.
  */
 /**
@@ -316,7 +316,7 @@ const TYPE_ICON: Record<CatalogKeyRow["valueType"], IconName> = {
 function Row({ entry, ordered, at, of, locale }: {
   entry: CatalogKeyRow
   ordered: boolean
-  /** Where the row remains, which is what shows whether it can still move. */
+  /** The row's place in the order, which is what shows whether it can still move. */
   at: number
   of: number
   locale: Locale
@@ -511,10 +511,10 @@ function Undo({ moved, label }: { moved: Moved, label: string }) {
  * the same rule the other listings follow.
  *
  * **Nothing here waits to be confirmed.** The field sends the query once the typing has
- * stopped and a tick sends as it is made.
+ * stopped and a tick sends it as it is made.
  *
  * **The box and the ticks are two forms, and each has what the other
- * holds**, because a form cannot be shown inside another.
+ * holds**, because a form cannot be nested inside another.
  */
 function Filters({ view, locale }: {
   view: Route.ComponentProps["loaderData"]

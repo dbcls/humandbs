@@ -153,7 +153,7 @@ describe("the query of the address being read", () => {
     }))
   })
 
-  it("has the same pairs it was given", () => {
+  it("keeps the same pairs it was given", () => {
     fc.assert(fc.property(queryPairs, (pairs) => {
       expect([...new URLSearchParams(normalizeQuery(looseSpelling(pairs)))]).toEqual(pairs)
     }))

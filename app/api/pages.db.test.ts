@@ -275,7 +275,7 @@ describe("the correspondence supplied to DDBJ Search", () => {
   })
 })
 
-describe("what apiSearch responds about its own parameters", () => {
+describe("what apiSearch returns about its own parameters", () => {
   async function problemType(answer: Response): Promise<{ status: number, type: string }> {
     expect(answer.headers.get("content-type")).toBe("application/problem+json; charset=utf-8")
     const problem = await body(answer) as { status: number, type: string }
@@ -388,7 +388,7 @@ describe("what apiSearch responds about its own parameters", () => {
  * The usage records are a cache of an upstream table, and the key that matches
  * a cached row to that table is the one column in it no reader may see.
  * Types cannot hold that: the column is there and the projection simply has
- * to not have it, so this is what reports it does not.
+ * to not have it, so this is what checks it does not.
  */
 describe("the usage project a cached usage record came from", () => {
   it("appears in no answer, though the row it came from has it", async () => {

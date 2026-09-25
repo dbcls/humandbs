@@ -111,7 +111,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
             does over the research listing: it is the one thing a reader comes
             here to do that is not "open one of these".
 
-            **It requests in a panel rather than in a row of its own.** A slug is
+            **The slug is entered in a panel rather than in a row of its own.** A slug is
             the whole of what it takes, and a box for it standing open on the
             screen is a second place to type on a screen whose subject is
             everything else.
@@ -216,11 +216,11 @@ function Row({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
  * the same rule the research listing and the public ones follow.
  *
  * **Nothing here waits to be confirmed.** The field sends the query once the typing has
- * stopped and a tick sends as it is made. A pane that only took effect on a
+ * stopped and a tick sends it as it is made. A pane that only took effect on a
  * press leaves the rows disagreeing with the conditions above them.
  *
  * **The box and the ticks are two forms, and each has what the other
- * holds**, because a form cannot be shown inside another.
+ * holds**, because a form cannot be nested inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)

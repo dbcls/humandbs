@@ -24,7 +24,7 @@ describe("the diseases a line names", () => {
     }
   })
 
-  it("drops what is shown in front of the name but is not part of it", () => {
+  it("drops what comes before the name but is not part of it", () => {
     expect(mentionsIn("【JGAS000009】神経筋変性疾患(ICD10: G12)")[0]?.name).toBe("神経筋変性疾患")
     expect(mentionsIn("HNC1: 声門上がん(ICD10: C32.1)")[0]?.name).toBe("声門上がん")
     expect(mentionsIn("・大腸がん(ICD10: C18)")[0]?.name).toBe("大腸がん")
@@ -44,7 +44,7 @@ describe("the diseases a line names", () => {
     expect(mentionsIn("42 disease (ICD10 code)")).toEqual([])
   })
 
-  it("reads the codes under an announcement that is shown on its own line", () => {
+  it("reads the codes under an announcement that sits on its own line", () => {
     const held = mentionsIn([
       "40疾患(ICD10 code)",
       "不整脈(I499)、気管支喘息(J459)、",
@@ -58,7 +58,7 @@ describe("the diseases a line names", () => {
     ])
   })
 
-  it("keeps a disease whose annotation reports there is no code", () => {
+  it("keeps a disease whose annotation states there is no code", () => {
     expect(mentionsIn("【JGAS000331】舞踏症(ICD10: N/A)")).toEqual([{ codes: [], name: "舞踏症" }])
   })
 

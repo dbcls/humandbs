@@ -30,7 +30,7 @@ export interface FieldReviewData {
 
 /**
  * A place's review, beside its name (`page.tsx` の `Annotate`): the comment
- * button, and after it the indicator indicating the published version reads otherwise.
+ * button, and after it the indicator showing that the published version reads otherwise.
  */
 export function FieldReview({ review, at, fieldLabel, drawn }: {
   review: FieldReviewData

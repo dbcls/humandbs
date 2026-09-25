@@ -132,7 +132,7 @@ describe("the table in the panel", () => {
     expect(/\bchecked=""/.test(head(picker(["a.txt"], "a.txt")))).toBe(true)
   })
 
-  it("shows it when the window matches nothing, and the table header's checkbox cannot be pressed", () => {
+  it("shows a message when the window matches nothing, and the table header's checkbox cannot be pressed", () => {
     const html = picker([], "zzz")
     expect(html).toContain("条件に合うファイルはありません。")
     expect(head(html)).toContain("disabled=\"\"")

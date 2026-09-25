@@ -107,7 +107,7 @@ describe("what a seeded draft writes", () => {
     }))
   })
 
-  it("marks a field unsettled only where upstream stated a value that fits no choice, and identifies that value against it", () => {
+  it("marks a field unsettled only where upstream stated a value that fits no choice, and records that value against it", () => {
     fc.assert(fc.property(seedArb, dsBranchArb, ({ seed }, branch) => {
       const named = new Set(seed.dropped.flatMap((value) => value.at === null ? [] : [value.at]))
       const places = [
@@ -159,7 +159,7 @@ describe("what a seeded draft writes", () => {
     }))
   })
 
-  it("never identifies a value it also wrote", () => {
+  it("never records as unsettled a value it also wrote", () => {
     fc.assert(fc.property(seedArb, ({ seed }) => {
       const written = new Set(
         slotsOf(seed.content)

@@ -15,7 +15,7 @@
  *
  * **The library is copied into `public/` before a build** rather than imported,
  * because an import would be handed to the bundler and this page is not built:
- * it is a string. What `public/` holds is served as it remains, which is what a
+ * it is a string. What `public/` holds is served as it is, which is what a
  * stylesheet needs — anything else arrives claiming to be JavaScript and a
  * browser will not style a page with it.
  */

@@ -8,12 +8,12 @@ import {
 } from "./target"
 
 /**
- * Hands a request on to the assistant and returns what it responds.
+ * Hands a request on to the assistant and returns its response.
  *
  * **This is the whole of the portal's part.** The assistant holds no
  * authorisation of its own and is not published outside the compose network, so
  * the guard in front of this call is the only one there is — and the two
- * invariants that keeps are worth indicating plainly: the route requests
+ * invariants that keeps are worth stating plainly: the route requires
  * `use-assistant` before calling this, and nothing else in the portal calls the
  * service at all.
  *
@@ -49,7 +49,7 @@ export async function forwardToAssistant(request: Request, rest: string): Promis
       // Required by the runtime whenever a body is a stream; without it the
       // request is refused before it is sent.
       ...(sending ? { duplex: "half" } : {}),
-      // An answer is passed on as it remains, so a redirect is the assistant's
+      // An answer is passed on as it is, so a redirect is the assistant's
       // to give rather than something to resolve on its behalf.
       redirect: "manual",
       // A reader who closes the tab stops the work: without this the service

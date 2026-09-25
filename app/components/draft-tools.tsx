@@ -27,7 +27,7 @@ import { Flag } from "./flags"
  *
  * **The first line is the same name row every screen has** (`Heading`):
  * the role, the identifier beside it, and the back link on the right. An
- * updating draft is shown with its version as a badge beside the identifier rather
+ * updating draft shows its version as a badge beside the identifier rather
  * than merging it into the name, because it is a fact about the draft's
  * state and not part of what the screen is called.
  *
@@ -104,7 +104,7 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
   return (
     <div
       ref={card}
-      // **Under the strip that responds to an operation** (`base.tsx` の `Toast`,
+      // **Under the strip that reports an operation's result** (`base.tsx` の `Toast`,
       // z-30): the card is held at the top of the window, which is where the
       // answer floats, and the answer is the newer of the two.
       className={`sticky top-0 z-20 bg-white motion-safe:transition-[padding] motion-safe:duration-150 ${
@@ -392,7 +392,7 @@ export function useDraftEditing<T>({
   const [conflict, setConflict] = useState<{ theirs: T, changed: string[] } | null>(null)
   const [saved, setSaved] = useState(false)
 
-  // What the pending save kept, so that a success can record it as the
+  // What the pending save sent, so that a success can record it as the
   // version the server now holds without depending on what has been typed since.
   const [sent, setSent] = useState<T>(initial)
   const [answered, setAnswered] = useState<DraftAnswer<T> | null>(null)

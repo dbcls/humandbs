@@ -27,9 +27,9 @@ import { DEFAULT_SORT, defaultOrder, type SortKey, type SortOrder } from "~/sear
  *
  * **Taking a version back is not a third state.** It leaves the version in
  * place with its number spent and its `published` false, so a research whose
- * versions have all been taken back remains exactly where one that never had any
- * remains: nothing of it is readable. Which versions exist and which of them are
- * out is the research's own screen to report.
+ * versions have all been taken back is in exactly the state of one that never
+ * had any: nothing of it is readable. Which versions exist and which of them
+ * are out is the research's own screen to show.
  */
 export type AdminStatus = "published" | "unpublished"
 
@@ -180,7 +180,7 @@ export function pageOf<Row>(
  * result instead, every value a reader has not chosen reads 0, and an axis that
  * has already been used cannot be told from one that leads nowhere — so the
  * second value of an axis would look unreachable the moment the first is
- * ticked. **The other axes stay on**, so a number reports what the pane is about
+ * ticked. **The other axes stay on**, so a number shows what the pane is about
  * to do rather than what the whole table holds.
  *
  * Which rows those are is the listing's own business, so the caller hands in

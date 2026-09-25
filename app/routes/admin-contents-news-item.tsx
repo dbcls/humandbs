@@ -66,7 +66,7 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
   const save = messagesFor(locale).admin.editor.save
 
   /*
-    **The date is the announcement's rather than a language's**, so it remains
+    **The date is the announcement's rather than a language's**, so it is
     in the header with the name rather than in a language's form, and the page
     beside the form shows the day under the title the way the public page does.
 
@@ -123,7 +123,7 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
             // **What takes the whole announcement away is shown beside its
             // name**, next to the back link, rather than among the languages:
             // an announcement is made before anything is written into it,
-            // and a control that is kept on the last written language is out
+            // and a control placed on the last written language is out
             // of reach exactly when there is nothing to keep.
             <Form method="post">
               <Confirm
