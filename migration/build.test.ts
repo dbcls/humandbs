@@ -502,6 +502,52 @@ describe("a cell read by the load's own reader", () => {
     const one = [dumpRow(cell("first|~|second"), "JGAD000001", null)]
     expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["first", "", "second"])
   })
+
+  it("reads each dataset's lines with the reader given for it", () => {
+    const table = "JGAD000001: 88 GB|JGAD000002: 32 GB"
+    const siblings = [dumpRow(cell(table), "JGAD000001", null), dumpRow(cell(table), "JGAD000002", null)]
+    const readFor = (one: PublishedDataset): ProseReader => (one.label === "JGAD000002" ? recovering : (value) => [[{ text: value?.text ?? "" }]])
+
+    const keys = [...ownLines(siblings, undefined, readFor)]
+
+    // JGAD000001's reader keeps the cell one line; JGAD000002's reads each row as a line.
+    expect(keys.filter((key) => key.startsWith("JGAD000001")).map((key) => key.endsWith("88 GB|JGAD000002: 32 GB"))).toEqual([true, true])
+    expect(keys.filter((key) => key.startsWith("JGAD000002")).map((key) => key.endsWith("32 GB") && !key.includes("88 GB"))).toEqual([true, true])
+  })
+})
+
+describe("the type of data", () => {
+  const typed = (readTypeOfData?: (text: string, lang: "ja" | "en") => ReturnType<ProseReader>) => {
+    const one = dumpRow({ typeOfData: { ja: "NGS(Exome) SNP-chip", en: "NGS (Exome) SNP-chip" } }, "JGAD000001", null)
+    const content = buildDatasetContent({
+      dataset: one,
+      keyIdByCode: KEY_IDS,
+      codeBySourceKey: CODE_BY_SOURCE,
+      termIdBySetAndCode: TERM_IDS,
+      knownCode: () => false,
+      accessCriteriaKeyCode: "access-criteria",
+      typeOfDataKeyCode: "type-of-data",
+      datasetLabels: new Set([one.label]),
+      ownLines: new Set(),
+      unread: [],
+      byHand: new Map(),
+      readTypeOfData,
+    })
+    return content.values.find((slot) => slot.keyId === "key-type")?.value
+  }
+
+  it("is the string v1 stored, read as it is, without a reader", () => {
+    expect(typed()).toEqual({ kind: "text", text: { ja: filled([[{ text: "NGS(Exome) SNP-chip" }]]), en: filled([[{ text: "NGS (Exome) SNP-chip" }]]) } })
+  })
+
+  it("is what the reader makes of the string, in each language", () => {
+    const read = (text: string, lang: "ja" | "en") => (lang === "ja" ? [[{ text: "NGS（Exome）" }], [{ text: "SNP-chip" }]] : [[{ text }]])
+
+    expect(typed(read)).toEqual({ kind: "text", text: {
+      ja: filled([[{ text: "NGS（Exome）" }], [{ text: "SNP-chip" }]]),
+      en: filled([[{ text: "NGS (Exome) SNP-chip" }]]),
+    } })
+  })
 })
 
 describe("the disease of one row of a disease-by-disease table", () => {

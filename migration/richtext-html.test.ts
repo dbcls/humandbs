@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest"
 
-import { recoverRichText, type RecoverContext } from "./richtext-html"
+import type { Element } from "hast"
+
+import { parseFragment, recoverRichText, richTextFromCell, type RecoverContext } from "./richtext-html"
+
+/** An element holding the HTML, standing for a page's table cell. */
+const cellOf = (html: string): Element => {
+  const [cell] = parseFragment(`<div>${html}</div>`).children
+  if (cell?.type !== "element") throw new Error("expected an element")
+  return cell
+}
 
 describe("recoverRichText", () => {
   describe("no rawHtml to compare against", () => {
@@ -364,5 +373,74 @@ describe("recoverRichText", () => {
       })
       expect(result).toEqual({ value: [[{ text: "analysis（HRD）" }]], source: "rawHtml" })
     })
+  })
+
+  describe("a page cell with the same words", () => {
+    const withCell = (html: string, asked: string[] = []): RecoverContext => ({
+      pageCell: (plain) => {
+        asked.push(plain)
+        return cellOf(html)
+      },
+    })
+
+    it("builds a leaf with no rawHtml from the cell, as the page wrote it", () => {
+      const result = recoverRichText({ text: "NGS(Exome) SNP-chip", rawHtml: null, lang: "ja" }, withCell("NGS（Exome）<br>SNP-chip"))
+
+      expect(result).toEqual({ value: [[{ text: "NGS（Exome）" }], [{ text: "SNP-chip" }]], source: "page" })
+    })
+
+    it("builds a leaf whose rawHtml disagrees from the cell", () => {
+      const result = recoverRichText({ text: "腎がん (ICD10: C64) : 7症例", rawHtml: "<p>別の値</p>", lang: "ja" }, withCell("<p>腎がん（ICD10：C64）：7症例</p>"))
+
+      expect(result).toEqual({ value: [[{ text: "腎がん（ICD10：C64）：7症例" }]], source: "page" })
+    })
+
+    it("builds a leaf from the cell even where rawHtml agrees, since v1's copy may have lost the cell's paragraphs", () => {
+      const result = recoverRichText(
+        { text: "健常者: 3名 単離したCD4+ T細胞", rawHtml: "<span>健常者：3名 単離したCD4+ T細胞</span>", lang: "ja" },
+        withCell("<p>健常者：3名</p><p>単離したCD4+ T細胞</p>"),
+      )
+
+      expect(result).toEqual({ value: [[{ text: "健常者：3名" }], [{ text: "単離したCD4+ T細胞" }]], source: "page" })
+    })
+
+    it("reads a leaf from its rawHtml where no cell has the words", () => {
+      const result = recoverRichText({ text: "解析 (HRD) を実施", rawHtml: "<p>解析（HRD）を実施</p>", lang: "ja" }, { pageCell: () => null })
+
+      expect(result).toEqual({ value: [[{ text: "解析（HRD）を実施" }]], source: "rawHtml" })
+    })
+
+    it("stays on `text` where no cell has the words", () => {
+      const result = recoverRichText({ text: "plain text", rawHtml: null, lang: "en" }, { pageCell: () => null })
+
+      expect(result).toEqual({ value: [[{ text: "plain text" }]], source: "text" })
+    })
+
+    it("asks for nothing for a value nobody filled in", () => {
+      const asked: string[] = []
+      recoverRichText({ text: "", rawHtml: null, lang: "ja" }, withCell("x", asked))
+
+      expect(asked).toEqual([])
+    })
+  })
+})
+
+describe("richTextFromCell", () => {
+  it("reads the line breaks the page showed, and not the ones the source HTML wraps at", () => {
+    expect(richTextFromCell(cellOf("<p>SAIGE software was used\r\nwith age</p>\r\n<p>METAL</p>")).value)
+      .toEqual([[{ text: "SAIGE software was used with age" }], [{ text: "METAL" }]])
+  })
+
+  it("keeps a no-break space as content", () => {
+    expect(richTextFromCell(cellOf("a\u00a0b")).value).toEqual([[{ text: "a\u00a0b" }]])
+  })
+
+  it("keeps the words of a link to a place on the same page, and not the link", () => {
+    expect(richTextFromCell(cellOf("NGS（<a href=\"#Exome\">Exome</a>）")).value).toEqual([[{ text: "NGS（Exome）" }]])
+  })
+
+  it("keeps a link to another site", () => {
+    expect(richTextFromCell(cellOf("<a href=\"https://ddbj.nig.ac.jp/\">DDBJ</a>")).value)
+      .toEqual([[{ text: "DDBJ", href: "https://ddbj.nig.ac.jp/" }]])
   })
 })

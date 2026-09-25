@@ -315,16 +315,22 @@ function plainLines(value: EsRichText | null | undefined, lang: Language, read: 
 
 /**
  * Every line each dataset states about itself, which is what makes a copy a copy.
- * Given the reader the load builds prose with, the lines are the ones it reads.
+ * Given the reader the load builds prose with, the lines are the ones it reads;
+ * `readFor` gives a dataset a reader of its own, as the load does.
  */
-export function ownLines(datasets: readonly PublishedDataset[], read?: ProseReader): ReadonlySet<string> {
+export function ownLines(
+  datasets: readonly PublishedDataset[],
+  read?: ProseReader,
+  readFor?: (dataset: PublishedDataset) => ProseReader,
+): ReadonlySet<string> {
   const labels = new Set(datasets.map((one) => one.label))
   const keys = new Set<string>()
   for (const one of datasets) {
+    const reader = readFor?.(one) ?? read
     for (const experiment of one.doc.experiments ?? []) {
       for (const [sourceKey, value] of Object.entries(experiment.data ?? {})) {
         for (const lang of LANGUAGES) {
-          for (const line of plainLines(value[lang], lang, read)) {
+          for (const line of plainLines(value[lang], lang, reader)) {
             const { said, about } = readLine(line, labels)
             if (about.includes(one.label)) keys.add(lineKey(one.label, sourceKey, lang, said))
           }
@@ -369,6 +375,8 @@ export interface DatasetContentInput {
   labelTranslations?: LabelTranslations
   /** The same reader `ownLines` was given, if any. */
   readProse?: ProseReader
+  /** The type of data as rich text, from the plain string v1 stored. Absent, the string is read as it is (`richTextFromPlain`). */
+  readTypeOfData?: (text: string, lang: Language) => RichText
 }
 
 /**
@@ -473,14 +481,15 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   }
 
   const typeOfDataKeyId = keyIdByCode.get(input.typeOfDataKeyCode)
+  const readTypeOfData = input.readTypeOfData ?? richTextFromPlain
   if (typeOfDataKeyId && (doc.typeOfData?.ja || doc.typeOfData?.en)) {
     values.push({
       keyId: typeOfDataKeyId,
       value: {
         kind: "text",
         text: {
-          ja: held(richTextFromPlain(doc.typeOfData.ja ?? "")),
-          en: held(richTextFromPlain(doc.typeOfData.en ?? "")),
+          ja: held(readTypeOfData(doc.typeOfData.ja ?? "", "ja")),
+          en: held(readTypeOfData(doc.typeOfData.en ?? "", "en")),
         },
       },
     })

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { RichText, Slot } from "~/content/types"
 
-import { cleanseCharacters, cleanseContent, cleanseEnglish, cleanseMarkdown, cleanseRich, noCounts, splitGrantIds } from "./cleansing"
+import { cleanseCharacters, cleanseContent, cleanseEnglish, cleanseMarkdown, cleanseRich, noCounts, pairedBrackets, splitGrantIds } from "./cleansing"
 
 const lines = (...texts: string[]): RichText => texts.map((text) => text === "" ? [] : [{ text }])
 const prose = (...texts: string[]): Slot<RichText> => ({ state: "value", value: lines(...texts) })
@@ -75,6 +75,19 @@ describe("cleanseCharacters", () => {
     expect(cleanseCharacters("疾患群:\u00a0\u00a0 \u00a0自己免疫疾患", noCounts())).toBe("疾患群: 自己免疫疾患")
   })
 
+  it("makes a full-width space, or a run of spaces holding one, one space", () => {
+    expect(cleanseCharacters("凍結検体\u3000腫瘍組織", noCounts())).toBe("凍結検体 腫瘍組織")
+    expect(cleanseCharacters("< 1000、もしくは \u3000\u3000> 4000", noCounts())).toBe("< 1000、もしくは > 4000")
+  })
+
+  it("makes a kana and the voicing mark typed after it one letter", () => {
+    expect(cleanseCharacters("\u3053\u3099教示く\u305f\u3099さい \u30cf\u309aネル", noCounts())).toBe("ご教示ください パネル")
+  })
+
+  it("makes a full-width slash ASCII", () => {
+    expect(cleanseCharacters("PBMC／CD4+ T細胞", noCounts())).toBe("PBMC/CD4+ T細胞")
+  })
+
   it("removes control characters but keeps line breaks and tabs", () => {
     expect(cleanseCharacters("a\u0005b\u0006\nc\td", noCounts())).toBe("ab\nc\td")
   })
@@ -100,8 +113,28 @@ describe("cleanseCharacters", () => {
 
 describe("cleanseEnglish", () => {
   it("makes full-width brackets, colons and commas ASCII", () => {
-    expect(cleanseEnglish("GenCall software（GenomeStudio）", noCounts())).toBe("GenCall software(GenomeStudio)")
+    expect(cleanseEnglish("GenCall software（GenomeStudio）", noCounts())).toBe("GenCall software (GenomeStudio)")
     expect(cleanseEnglish("Patients：Autoimmune，Allergy、Other", noCounts())).toBe("Patients: Autoimmune, Allergy, Other")
+  })
+
+  it("puts the space English puts before an opening bracket", () => {
+    expect(cleanseEnglish("JGAD000275：14.3 GB（fastq）", noCounts())).toBe("JGAD000275: 14.3 GB (fastq)")
+    expect(cleanseEnglish("minimac（ver. 0.1.1） [imputation]", noCounts())).toBe("minimac (ver. 0.1.1) [imputation]")
+  })
+
+  it("puts no space where a bracket opens the text, follows a space, or follows another opening bracket", () => {
+    expect(cleanseEnglish("（bam, fastq）", noCounts())).toBe("(bam, fastq)")
+    expect(cleanseEnglish("NGS （Exome）", noCounts())).toBe("NGS (Exome)")
+    expect(cleanseEnglish("[（x）]", noCounts())).toBe("[(x)]")
+  })
+
+  it("puts a space after a closing bracket a word follows, and none before punctuation", () => {
+    expect(cleanseEnglish("A（x）B", noCounts())).toBe("A (x) B")
+    expect(cleanseEnglish("A（x）, B（y）.", noCounts())).toBe("A (x), B (y).")
+  })
+
+  it("leaves ASCII brackets as they were written", () => {
+    expect(cleanseEnglish("KMT2A(MLL), WT1(WT-1)", noCounts())).toBe("KMT2A(MLL), WT1(WT-1)")
   })
 
   it("does not leave a space inside a bracket", () => {
@@ -109,7 +142,45 @@ describe("cleanseEnglish", () => {
   })
 })
 
+describe("pairedBrackets", () => {
+  it("closes a bracket with the width it was opened with", () => {
+    expect(pairedBrackets("ウイルスキャプチャーシーケンス（NGS)、Exome（NGS）", noCounts())).toBe("ウイルスキャプチャーシーケンス（NGS）、Exome（NGS）")
+    expect(pairedBrackets("【JGAS000646】Cyclin O (CCNO）バリアント", noCounts())).toBe("【JGAS000646】Cyclin O (CCNO)バリアント")
+  })
+
+  it("pairs the inner brackets first", () => {
+    expect(pairedBrackets("VCMM（Shigemizu et al. Sci Rep (2013))", noCounts())).toBe("VCMM（Shigemizu et al. Sci Rep (2013)）")
+  })
+
+  it("leaves pairs that each keep one width, whichever it is", () => {
+    const text = "アルツハイマー病（AD）とサロゲートマーカー (surrogate marker)、KMT2A(MLL)"
+    expect(pairedBrackets(text, noCounts())).toBe(text)
+  })
+
+  it("leaves a closing bracket with nothing open, and an opening one never closed", () => {
+    expect(pairedBrackets("1) 同義変異 （未確定", noCounts())).toBe("1) 同義変異 （未確定")
+  })
+
+  it("counts a string once however many brackets it closes", () => {
+    const counts = noCounts()
+    pairedBrackets("（a)（b)", counts)
+    pairedBrackets("（a）", counts)
+    expect(counts.brackets).toBe(1)
+  })
+})
+
 describe("cleanseContent", () => {
+  it("closes brackets on the Japanese side only, across the spans of a line", () => {
+    const span = (text: string, href?: string) => (href === undefined ? { text } : { text, href })
+    const { content } = cleanseContent({ text: {
+      ja: { state: "value", value: [[span("VCMM（"), span("Shigemizu et al. (2013)", "https://doi.org/x"), span(")")]] },
+      en: { state: "value", value: [[span("VCMM（Shigemizu et al. (2013))")]] },
+    } })
+
+    expect(content.text.ja).toEqual({ state: "value", value: [[span("VCMM（"), span("Shigemizu et al. (2013)", "https://doi.org/x"), span("）")]] })
+    expect(content.text.en).toEqual({ state: "value", value: [[span("VCMM (Shigemizu et al. (2013))")]] })
+  })
+
   it("applies the English rules to the English side of a pair only", () => {
     const { content } = cleanseContent({ text: { ja: prose("疾患群：自己免疫疾患"), en: prose("Patients：Autoimmune") } })
 
@@ -168,8 +239,8 @@ describe("cleanseMarkdown", () => {
     expect(cleanseMarkdown("***Dataset ID:&#x20;***", render, noCounts())).toBe("***Dataset ID:&#x20;***")
   })
 
-  it("makes full-width letters and digits ASCII when that only changes the characters shown", () => {
-    expect(cleanseMarkdown("**１．　健常者**", render, noCounts())).toBe("**1．　健常者**")
+  it("makes full-width letters, digits and spaces ASCII when that only changes the characters shown", () => {
+    expect(cleanseMarkdown("**１．　健常者**", render, noCounts())).toBe("**1． 健常者**")
   })
 
   it("keeps a body whose ASCII digits would start a list", () => {

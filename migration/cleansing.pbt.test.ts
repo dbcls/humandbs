@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest"
 
 import type { RichText } from "~/content/types"
 
-import { cleanseCharacters, cleanseContent, cleanseRich, noCounts } from "./cleansing"
+import { cleanseCharacters, cleanseContent, cleanseEnglish, cleanseRich, noCounts, pairedBrackets } from "./cleansing"
 
 /** Text built from the characters the rules act on, and ones they must leave. */
 const pieceArb = fc.constantFrom(
-  "a", "B", "3", "ＡＢ", "１２", "⽇", " ", "　", " ", "\\_", "（", "）", "、", "がん", "\u0005", "\t", "-",
+  "a", "B", "3", "ＡＢ", "１２", "⽇", " ", "　", " ", "\\_", "（", "）", "、", "がん", "\u0005", "\t", "-", "こ\u3099", "\u309a",
 )
 const textArb = fc.array(pieceArb, { maxLength: 6 }).map((pieces) => pieces.join(""))
 const spanArb = fc.record({ text: textArb, href: fc.option(fc.constant("https://example.org/ＡＢ"), { nil: undefined }) })
@@ -54,10 +54,61 @@ describe("cleanseCharacters", () => {
     }))
   })
 
-  it("leaves no full-width letter or digit, Kangxi radical or control character other than a tab", () => {
+  it("leaves no full-width letter, digit, slash or space, Kangxi radical or control character other than a tab", () => {
     fc.assert(fc.property(textArb, (text) => {
       // eslint-disable-next-line no-control-regex
-      expect(cleanseCharacters(text, noCounts())).not.toMatch(/[０-９Ａ-Ｚａ-ｚ⼀-⿟\u0000-\u0008\u000b-\u001f]/)
+      expect(cleanseCharacters(text, noCounts())).not.toMatch(/[０-９Ａ-Ｚａ-ｚ／\u3000⼀-⿟\u0000-\u0008\u000b-\u001f]/)
+    }))
+  })
+
+  it("leaves no kana and voicing mark that are one letter apart", () => {
+    fc.assert(fc.property(textArb, (text) => {
+      const pairs = cleanseCharacters(text, noCounts()).match(/[\u3041-\u30ff][\u3099\u309a]/g) ?? []
+      expect(pairs.filter((pair) => pair.normalize("NFC").length === 1)).toEqual([])
+    }))
+  })
+})
+
+/** Text of brackets of both widths among words. */
+const bracketsArb = fc.array(fc.constantFrom("（", "）", "(", ")", "a", "がん", " "), { maxLength: 12 }).map((pieces) => pieces.join(""))
+
+describe("pairedBrackets", () => {
+  it("changes only the width of closing brackets", () => {
+    fc.assert(fc.property(bracketsArb, (text) => {
+      const folded = (s: string) => s.replace(/）/g, ")")
+      expect(folded(pairedBrackets(text, noCounts()))).toBe(folded(text))
+    }))
+  })
+
+  it("changes nothing the second time", () => {
+    fc.assert(fc.property(bracketsArb, (text) => {
+      const once = pairedBrackets(text, noCounts())
+      const counts = noCounts()
+      expect(pairedBrackets(once, counts)).toBe(once)
+      expect(counts.brackets).toBe(0)
+    }))
+  })
+
+  it("leaves text whose brackets all have one width as it is", () => {
+    fc.assert(fc.property(bracketsArb, (text) => {
+      const half = text.replace(/（/g, "(").replace(/）/g, ")")
+      expect(pairedBrackets(half, noCounts())).toBe(half)
+    }))
+  })
+})
+
+describe("cleanseEnglish", () => {
+  it("leaves no full-width bracket and no space inside a bracket", () => {
+    fc.assert(fc.property(bracketsArb, (text) => {
+      const out = cleanseEnglish(text, noCounts())
+      expect(out).not.toMatch(/[（）]|\( | \)/)
+    }))
+  })
+
+  it("changes nothing the second time", () => {
+    fc.assert(fc.property(bracketsArb, (text) => {
+      const once = cleanseEnglish(text, noCounts())
+      expect(cleanseEnglish(once, noCounts())).toBe(once)
     }))
   })
 })

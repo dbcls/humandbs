@@ -50,9 +50,17 @@ export interface RecoverContext {
    * map supplied at all, drops the link and keeps its visible text.
    */
   articleAliases?: ReadonlyMap<string, string>
+  /**
+   * The cell of the old portal's research page that has the words of a leaf's
+   * text, given as the leaf's folded plain text (`research-pages.ts`). A leaf
+   * with such a cell is built from it: `text` is what v1 rewrote, and `rawHtml`
+   * a copy that has at times lost the cell's paragraphs. Absent, or finding
+   * none, the leaf is read from `rawHtml` and `text` as below.
+   */
+  pageCell?: (plain: string, lang: Lang) => Element | null
 }
 
-export type RecoverSource = "rawHtml" | "text" | "split"
+export type RecoverSource = "rawHtml" | "text" | "split" | "page"
 
 export interface RecoveredRichText {
   value: RichText
@@ -493,7 +501,27 @@ function build(tree: Root, ctx: RecoverContext): Built {
     : { value, note: `dropped ${dropped} link(s) with no resolvable v2 destination` }
 }
 
-function withSource(built: Built, source: "rawHtml" | "split"): RecoveredRichText {
+/**
+ * A text node's whitespace as a page shows it: a run of spaces, tabs and line
+ * breaks is one space. A no-break space is content and stays.
+ */
+function collapsed(node: ElementContent): ElementContent {
+  if (node.type === "text") return { ...node, value: node.value.replace(/[ \t\r\n\f]+/g, " ") }
+  if (node.type !== "element") return node
+  return { ...node, children: node.children.map(collapsed) }
+}
+
+/**
+ * A table cell of the old portal's page as rich text: its paragraphs and
+ * `<br>` are lines, its links resolved the way `rawHtml`'s are. The source
+ * HTML wraps its lines where the editor did, which the page never showed, so
+ * whitespace is collapsed first.
+ */
+export function richTextFromCell(cell: Element, ctx: RecoverContext = {}): { value: RichText, note?: string } {
+  return build({ type: "root", children: cell.children.map(collapsed) }, ctx)
+}
+
+function withSource(built: Built, source: "rawHtml" | "split" | "page"): RecoveredRichText {
   return built.note === undefined
     ? { value: built.value, source }
     : { value: built.value, source, note: built.note }
@@ -506,16 +534,19 @@ function withSource(built: Built, source: "rawHtml" | "split"): RecoveredRichTex
 /**
  * Recovers a v2 rich text from a v1 `{text, rawHtml}` leaf.
  *
- * `rawHtml` is used whenever it has the same content as `text`: either the
- * whole value agrees, or — where an older bug packed several rows into one
- * `rawHtml` — exactly one of its `"\n"`-separated rows agrees. Otherwise the
- * leaf falls back to parsing `text` as markdown, the way `migration/build.ts`
- * already does, and the result has a note so a caller can list it for a
- * person to check.
+ * A leaf the old portal's page has a cell for, with the same words, is built
+ * from that cell (`ctx.pageCell`). Otherwise `rawHtml` is used whenever it has
+ * the same content as `text`: either the whole value agrees, or — where an
+ * older bug packed several rows into one `rawHtml` — exactly one of its
+ * `"\n"`-separated rows agrees. Otherwise the leaf falls back to parsing
+ * `text` as markdown, the way `migration/build.ts` already does, and the
+ * result has a note so a caller can list it for a person to check.
  */
 export function recoverRichText(input: RecoverInput, ctx: RecoverContext = {}): RecoveredRichText {
   const { text, rawHtml, lang } = input
   const targetPlain = plainOfMarkdown(text, lang)
+  const cell = targetPlain === "" ? null : ctx.pageCell?.(targetPlain, lang) ?? null
+  if (cell !== null) return withSource(richTextFromCell(cell, ctx), "page")
 
   if (rawHtml === null || rawHtml.trim() === "") {
     return { value: richTextFromMarkdown(text), source: "text" }

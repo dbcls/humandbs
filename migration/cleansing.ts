@@ -9,15 +9,22 @@
  *   open or close the value (`app/content/parse.server.ts`). The old articles
  *   spaced paragraphs with lines holding a single no-break space and indented
  *   with runs of them, and both came across as characters
- * - **one character for one letter.** Full-width letters and digits become
- *   ASCII, a run of no-break spaces becomes one space, and the Kangxi radicals a copy out of a PDF leaves behind (`⽇` for
+ * - **one character for one letter.** Full-width letters, digits and slashes
+ *   become ASCII, a run of spaces holding a no-break or a full-width space
+ *   becomes one space, a kana followed by a separate voicing mark (`こ` and
+ *   U+3099, which a copy from some editors leaves) becomes the one letter, and
+ *   the Kangxi radicals a copy out of a PDF leaves behind (`⽇` for
  *   `日`) become the ideographs they look like
+ * - **brackets that close as they open.** On the Japanese side a bracket closed
+ *   with the other width (`（NGS)`) is closed with the width it was opened with.
+ *   Pairs that each keep one width stay as written, whichever width it is
  * - **no characters from the text's former formats**: control characters, and
  *   the backslash v1 put in front of markdown's punctuation (`reference\_accession`)
  * - **no link syntax in a value that cannot hold a link.** A title shows
  *   `[text](url)` as it is written, so only the text is kept
  * - **English punctuation in English.** Full-width brackets, colons and commas
- *   typed into the English side become their ASCII forms
+ *   typed into the English side become their ASCII forms, with the space English
+ *   puts before an opening bracket and after a closing one a word follows
  * - **one grant number per entry.** Numbers written into one entry with commas
  *   between them (`5144, 5274, 5393`) become an entry each
  * - **no instructions for the old page.** The lines under a list of dataset
@@ -33,8 +40,10 @@ import type { Line, RichText } from "~/content/types"
 export interface CleansingCounts {
   /** Prose values whose lines changed shape. */
   prose: number
-  /** Strings with a full-width letter or digit, a Kangxi radical, a control character or a no-break space. */
+  /** Strings with a full-width letter, digit or slash, a separate voicing mark, a Kangxi radical, a control character, a no-break or a full-width space. */
   characters: number
+  /** Japanese values with a bracket closed with the other width. */
+  brackets: number
   /** Strings with a markdown escape. */
   escapes: number
   /** Single-line values that held link syntax. */
@@ -52,7 +61,7 @@ export interface CleansingCounts {
 }
 
 export function noCounts(): CleansingCounts {
-  return { prose: 0, characters: 0, escapes: 0, linkSyntax: 0, english: 0, instructions: 0, references: 0, keptBodies: 0, grantIds: 0 }
+  return { prose: 0, characters: 0, brackets: 0, escapes: 0, linkSyntax: 0, english: 0, instructions: 0, references: 0, keptBodies: 0, grantIds: 0 }
 }
 
 /** Keys whose strings are matched elsewhere as written. */
@@ -74,14 +83,18 @@ const STATES = new Set(["value", "unknown", "not-applicable"])
 
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
-/** A run of spaces holding a no-break space: the old pages' indents and alignment. */
-const NO_BREAK_SPACES = / *\u00a0[\u00a0 ]*/g
-const FULL_WIDTH_ALNUM = /[０-９Ａ-Ｚａ-ｚ]/g
+/** A run of spaces holding a no-break or a full-width space: the old pages' indents and alignment. */
+const WIDE_SPACES = / *[\u00a0\u3000][\u00a0\u3000 ]*/g
+const FULL_WIDTH_ALNUM = /[０-９Ａ-Ｚａ-ｚ／]/g
 const RADICALS = /[⺀-⻿⼀-⿟]/g
+/** A kana and the combining voicing mark after it. */
+const SEPARATE_VOICING = /[\u3041-\u30ff][\u3099\u309a]/g
 const MARKDOWN_ESCAPE = /\\([_*[\]#`.>])/g
 const LINK_SYNTAX = /\[([^\]]+)\]\((?:https?:\/\/|\/)[^)\s]*\)/g
-const FULL_WIDTH_PUNCTUATION = /[（）：，、\u3000]/g
-const ASCII_OF: Record<string, string> = { "（": "(", "）": ")", "：": ": ", "，": ", ", "、": ", ", "\u3000": " " }
+const FULL_WIDTH_PUNCTUATION = /[：，、\u3000]/g
+const ASCII_OF: Record<string, string> = { "：": ": ", "，": ", ", "、": ", ", "\u3000": " " }
+/** What may stand before an opening bracket without a space: the start, a space, or another opening bracket. */
+const OPENS_TIGHT = /[\s(（[［「]/
 
 /**
  * A line that only tells the reader to click a link above it. Every variant is a
@@ -96,8 +109,9 @@ const INSTRUCTIONS = [
 export function cleanseCharacters(text: string, counts: CleansingCounts): string {
   const characters = text
     .replace(CONTROL, "")
-    .replace(NO_BREAK_SPACES, " ")
+    .replace(WIDE_SPACES, " ")
     .replace(FULL_WIDTH_ALNUM, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(SEPARATE_VOICING, (kana) => kana.normalize("NFC"))
     .replace(RADICALS, (c) => c.normalize("NFKC"))
   if (characters !== text) counts.characters += 1
   const unescaped = characters.replace(MARKDOWN_ESCAPE, "$1")
@@ -108,12 +122,61 @@ export function cleanseCharacters(text: string, counts: CleansingCounts): string
 /** An English string with its full-width punctuation made ASCII. */
 export function cleanseEnglish(text: string, counts: CleansingCounts): string {
   const ascii = text
+    .replace(/（/g, (_, at: number, whole: string) => (at === 0 || OPENS_TIGHT.test(whole[at - 1] ?? "") ? "(" : " ("))
+    .replace(/）/g, (_, at: number, whole: string) => (/[A-Za-z0-9]/.test(whole[at + 1] ?? "") ? ") " : ")"))
     .replace(FULL_WIDTH_PUNCTUATION, (c) => ASCII_OF[c] ?? c)
     .replace(/ {2,}/g, " ")
     .replace(/\( /g, "(")
     .replace(/ \)/g, ")")
   if (ascii !== text) counts.english += 1
   return ascii
+}
+
+const OPENING = new Set(["(", "（"])
+const CLOSING = new Set([")", "）"])
+const WIDTH_OF_OPENING: Record<string, { close: string }> = { "(": { close: ")" }, "（": { close: "）" } }
+
+/**
+ * Where each bracket closed with the other width sits in `text`, and the
+ * bracket it should be. A closing bracket with nothing open is left alone.
+ */
+function misclosed(text: string): Map<number, string> {
+  const open: string[] = []
+  const found = new Map<number, string>()
+  Array.from(text).forEach((char, at) => {
+    if (OPENING.has(char)) open.push(char)
+    else if (CLOSING.has(char)) {
+      const opening = open.pop()
+      const close = opening === undefined ? undefined : WIDTH_OF_OPENING[opening]?.close
+      if (close !== undefined && close !== char) found.set(at, close)
+    }
+  })
+  return found
+}
+
+/** A Japanese string with every bracket closed with the width it was opened with. */
+export function pairedBrackets(text: string, counts: CleansingCounts): string {
+  const found = misclosed(text)
+  if (found.size === 0) return text
+  counts.brackets += 1
+  return Array.from(text, (char, at) => found.get(at) ?? char).join("")
+}
+
+/** The same for prose, where a pair may open in one span and close in the next (a link inside brackets). */
+function pairedBracketsRich(rich: RichText, counts: CleansingCounts): RichText {
+  const out = rich.map((line) => {
+    const found = misclosed(line.map((span) => span.text).join(""))
+    if (found.size === 0) return line
+    let offset = 0
+    return line.map((span) => {
+      const chars = Array.from(span.text)
+      const text = chars.map((char, at) => found.get(offset + at) ?? char).join("")
+      offset += chars.length
+      return { ...span, text }
+    })
+  })
+  if (out.some((line, at) => line !== rich[at])) counts.brackets += 1
+  return out
 }
 
 function isInstruction(line: Line): boolean {
@@ -189,14 +252,14 @@ export function cleanseContent<T>(content: T): { content: T, counts: CleansingCo
   const walk = (node: unknown, english: boolean): unknown => {
     if (typeof node === "string") {
       const cleaned = cleanseCharacters(node, counts)
-      return english ? cleanseEnglish(cleaned, counts) : cleaned
+      return english ? cleanseEnglish(cleaned, counts) : pairedBrackets(cleaned, counts)
     }
     if (isRichText(node)) {
       const spans = node.map((line) => line.map((span) => ({
         ...span,
-        text: walk(span.text, english) as string,
+        text: english ? walk(span.text, english) as string : cleanseCharacters(span.text, counts),
       })))
-      return cleanseRich(spans, counts)
+      return cleanseRich(english ? spans : pairedBracketsRich(spans, counts), counts)
     }
     if (Array.isArray(node)) return node.map((one) => walk(one, english))
     if (typeof node !== "object" || node === null) return node
@@ -238,7 +301,9 @@ const REFERENCE = /&#(?:x([0-9a-fA-F]+)|(\d+));/g
 function letters(text: string): string {
   return text
     .replace(CONTROL, "")
+    .replace(/\u3000/g, " ")
     .replace(FULL_WIDTH_ALNUM, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(SEPARATE_VOICING, (kana) => kana.normalize("NFC"))
     .replace(RADICALS, (c) => c.normalize("NFKC"))
 }
 

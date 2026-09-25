@@ -5,10 +5,15 @@
  * holds rather than only what is published — the drafts too, with the datasets
  * they list — and it corrects what v1 lost or merged on the way:
  *
- * - the line breaks and links v1's extracted text dropped are recovered from
- *   the HTML it was extracted from, where the two still agree (`richtext-html.ts`),
- *   and elsewhere from the old portal's articles, where a one-line value has
- *   the same text as a block the articles showed on several lines (`line-breaks.ts`);
+ * - a dataset's table values and type of data are built from the cell of its
+ *   research's page in the old portal that has the same words, as the page
+ *   wrote them (`research-pages.ts`); v1 rewrote the brackets, colons and line
+ *   breaks of the text it kept;
+ * - elsewhere the line breaks and links v1's extracted text dropped are
+ *   recovered from the HTML it was extracted from, where the two still agree
+ *   (`richtext-html.ts`), and from the old portal's articles, where a one-line
+ *   value has the same text as a block the articles showed on several lines
+ *   (`line-breaks.ts`);
  * - the research v1 never took in are added, and a test research is left out
  *   (`prepare.ts`);
  * - cells v1 read wrongly out of the articles are put right by hand
@@ -50,6 +55,7 @@ import type {
   DatasetContent,
   ListingProvider,
   ResearchContent,
+  RichText,
   VersionContent,
 } from "~/content/types"
 import { closePools, getOwnerDb } from "~/db/client.server"
@@ -81,6 +87,7 @@ import { applyCellEdits, type CellEdit } from "./cell-edits"
 import { applyListingEdits, type ListingEdit } from "./listing-edits"
 import { applyProviderSplits, type ProviderSplit } from "./providers"
 import { applySearchableFixes, type SearchableFix } from "./searchable-fixes"
+import { applyTypeOfDataFixes, type TypeOfDataFix } from "./type-of-data-fixes"
 import { applyVocabularyFixes, readVocabularyPlan, type VocabularyFix } from "./vocabulary-plan"
 import { VOCABULARY_FACETS } from "./facets"
 import { cleanseCharacters, cleanseContent, cleanseMarkdown, noCounts, type CleansingCounts } from "./cleansing"
@@ -127,12 +134,14 @@ import {
   splitSharedExperiments,
   type KeyRule,
 } from "./prepare"
-import { lineDictionary, restoreLineBreaksIn, type LineDictionary } from "./line-breaks"
+import { lineDictionary, restoreLineBreaks, type LineDictionary } from "./line-breaks"
 import { readRelinks, relink, type Relink } from "./links"
 import { assignNhaIds, MISSPELT } from "./nha"
 import { requestComments, settleRequests } from "./requests"
 import { applySiteEdits, type SiteEdit } from "./site-edits"
-import { recoverRichText, type RecoverContext } from "./richtext-html"
+import { researchPages, type PageArticle, type Preferred, type ResearchPages } from "./research-pages"
+import { richTextFromPlain } from "./richtext"
+import { recoverRichText, richTextFromCell, type RecoverContext } from "./richtext-html"
 import { loadDatasetStudies, loadHumAccessions } from "./upstream"
 
 const INPUT = join(import.meta.dirname, "input", "l12")
@@ -265,35 +274,83 @@ function articleAliases(): Map<string, string> {
   return aliases
 }
 
-/** The blocks the old portal's articles, published and draft, showed on several lines. */
-function articleLines(): LineDictionary {
-  const bodies: string[] = []
-  for (const site of ["prod", "staging"]) {
-    const raw = readFileSync(join(INPUT, "joomla", `${site}.ndjson`), "utf8")
-    for (const line of raw.split("\n")) {
-      if (line.trim() === "") continue
-      bodies.push((JSON.parse(line) as { introtext: string }).introtext)
-    }
-  }
-  return lineDictionary(bodies)
+/** The old portal's articles on one site, published and draft (`joomla/{prod,staging}.ndjson`). */
+function oldArticles(site: "prod" | "staging"): PageArticle[] {
+  const raw = readFileSync(join(INPUT, "joomla", `${site}.ndjson`), "utf8")
+  return raw.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as PageArticle)
 }
 
 interface Recovery {
+  /** The reader for what is not a table: the research's own prose. */
   read: ProseReader
+  /**
+   * The reader for one research's datasets, which builds a table value v1 kept
+   * only as text from the cell of the research's page with the same words.
+   */
+  readIn: (humId: string, preferred: Preferred) => ProseReader
+  /** The type of data of one research's datasets, from the data ID table of its page where one has the words. */
+  typeOfDataIn: (humId: string, preferred: Preferred) => (text: string, lang: "ja" | "en") => RichText
   counts: Record<string, number>
+  typeOfData: Record<"page" | "text", number>
   notes: string[]
+  /** Paragraphs read from v1's text cut where the articles' lines end (`line-breaks.ts`). */
+  lineBreaksRestored: () => number
 }
 
-function recovery(ctx: RecoverContext): Recovery {
+/**
+ * The readers of the load. **A value built from a cell of its research's page
+ * has no line breaks put back from the articles**: it has the lines the page
+ * showed, and cutting it where another page broke the same words would show
+ * lines the page never had. A value read from v1's text or from the HTML v1
+ * kept, which has at times lost its paragraphs too, has them put back.
+ *
+ * A reader reads each value once, so a value `ownLines` and the build both
+ * read is counted once.
+ */
+function recovery(ctx: RecoverContext, pages: ResearchPages, lines: LineDictionary): Recovery {
   const counts: Record<string, number> = {}
+  const typeOfData = { page: 0, text: 0 }
   const notes: string[] = []
-  const read: ProseReader = (value, lang) => {
-    const recovered = recoverRichText({ text: value?.text ?? "", rawHtml: value?.rawHtml ?? null, lang }, ctx)
-    counts[recovered.source] = (counts[recovered.source] ?? 0) + 1
-    if (recovered.note !== undefined) notes.push(recovered.note)
-    return recovered.value
+  let restored = 0
+  const cutFromArticles = (rich: RichText): RichText => {
+    const cut = restoreLineBreaks(rich, lines)
+    restored += cut.restored
+    return cut.rich
   }
-  return { read, counts, notes }
+  const reader = (context: RecoverContext): ProseReader => {
+    const read = { ja: new WeakMap<object, RichText>(), en: new WeakMap<object, RichText>() }
+    return (value, lang) => {
+      const held = value == null ? undefined : read[lang].get(value)
+      if (held !== undefined) return held
+      const recovered = recoverRichText({ text: value?.text ?? "", rawHtml: value?.rawHtml ?? null, lang }, context)
+      counts[recovered.source] = (counts[recovered.source] ?? 0) + 1
+      if (recovered.note !== undefined) notes.push(recovered.note)
+      const rich = recovered.source === "page" ? recovered.value : cutFromArticles(recovered.value)
+      if (value != null) read[lang].set(value, rich)
+      return rich
+    }
+  }
+  const readers = new Map<string, ProseReader>()
+  const readIn = (humId: string, preferred: Preferred): ProseReader => {
+    const key = `${humId}/${preferred.version}/${preferred.site}`
+    const held = readers.get(key)
+    if (held !== undefined) return held
+    const made = reader({ ...ctx, pageCell: (plain, lang) => pages.tableValue(humId, lang, plain, preferred) })
+    readers.set(key, made)
+    return made
+  }
+  const typeOfDataIn = (humId: string, preferred: Preferred) => (text: string, lang: "ja" | "en"): RichText => {
+    const cell = text.trim() === "" ? null : pages.typeOfData(humId, lang, text, preferred)
+    if (cell === null) {
+      typeOfData.text += 1
+      return cutFromArticles(richTextFromPlain(text))
+    }
+    typeOfData.page += 1
+    const built = richTextFromCell(cell, ctx)
+    if (built.note !== undefined) notes.push(built.note)
+    return built.value
+  }
+  return { read: reader(ctx), readIn, typeOfDataIn, counts, typeOfData, notes, lineBreaksRestored: () => restored }
 }
 
 interface ListingCell {
@@ -524,6 +581,12 @@ function relinks(): Map<string, Relink> {
   return existsSync(path) ? readRelinks(readFileSync(path, "utf8")) : new Map<string, Relink>()
 }
 
+/** The version number a draft's version id names (`hum0290-v3`); its `version` may carry a suffix (`v3-joomla`). */
+function draftNumber(humVersionId: string): number | null {
+  const found = /-v(\d+)$/.exec(humVersionId)
+  return found === null ? null : Number(found[1])
+}
+
 function copied(datasets: readonly PublishedDataset[]): PublishedDataset[] {
   return datasets.map((one) => ({ ...one, doc: structuredClone(one.doc) }))
 }
@@ -538,6 +601,9 @@ async function load() {
   }
   if (existsSync(join(INPUT, "hand", "searchable-fixes.json"))) {
     applySearchableFixes(held.datasetsByKey.values(), readJson("hand", "searchable-fixes.json") as SearchableFix[])
+  }
+  if (existsSync(join(INPUT, "hand", "type-of-data.json"))) {
+    applyTypeOfDataFixes(held.datasetsByKey.values(), readJson("hand", "type-of-data.json") as TypeOfDataFix[])
   }
   if (existsSync(join(INPUT, "hand", "data-providers.json"))) {
     const versions = new Set([...held.versions, ...held.publishedVersions, ...held.latestVersion.values()])
@@ -570,21 +636,22 @@ async function load() {
     return datasets
   })
 
-  const prose = recovery({ articleAliases: articleAliases() })
+  const articles = { prod: oldArticles("prod"), staging: oldArticles("staging") }
+  const prose = recovery(
+    { articleAliases: articleAliases() },
+    researchPages([{ site: "prod", articles: articles.prod }, { site: "staging", articles: articles.staging }]),
+    lineDictionary([...articles.prod, ...articles.staging].map((article) => article.introtext)),
+  )
   const listing = listingProviders((readJson("listing-providers.json") as ListingProviders))
   const cms = siteContent()
   const moved = relinks()
   const followed = new Set<string>()
-  const lineBreaks = articleLines()
   const vocabulary = readVocabularyPlan(join(INPUT, "hand", "vocabulary"))
   const fixesApplied = new Set<VocabularyFix>()
-  let lineBreaksRestored = 0
   let notApplicable = 0
   const cleansing = noCounts()
   const linked = <T>(content: T): T => {
-    const cut = restoreLineBreaksIn(content, lineBreaks)
-    lineBreaksRestored += cut.restored
-    const result = relink(cut.content, moved)
+    const result = relink(content, moved)
     for (const url of result.used) followed.add(url)
     const marked = markNotApplicable(result.content)
     notApplicable += marked.marked
@@ -684,8 +751,8 @@ async function load() {
     const selected = fileSeed()
     // The key each vocabulary's values are under, for the fixes to find.
     const keyCodeOfSet = new Map(VOCABULARY_FACETS.map((facet) => [facet.setCode, facet.code]))
-    const describe = (one: PublishedDataset, siblings: ReadonlySet<string>): DatasetContent => {
-      const fixed = applyVocabularyFixes(describeFromDump(one, siblings), vocabulary.fixes, {
+    const describe = (one: PublishedDataset, siblings: ReadonlySet<string>, preferred: Preferred): DatasetContent => {
+      const fixed = applyVocabularyFixes(describeFromDump(one, siblings, preferred), vocabulary.fixes, {
         hum: one.humId,
         datasetId: one.label,
         keyIdOfSet: (setCode) => keyIdByCode.get(keyCodeOfSet.get(setCode) ?? setCode),
@@ -694,7 +761,7 @@ async function load() {
       for (const fix of fixed.applied) fixesApplied.add(fix)
       return { ...fixed.dataset, fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [] }
     }
-    const describeFromDump = (one: PublishedDataset, siblings: ReadonlySet<string>): DatasetContent => buildDatasetContent({
+    const describeFromDump = (one: PublishedDataset, siblings: ReadonlySet<string>, preferred: Preferred): DatasetContent => buildDatasetContent({
       dataset: one,
       keyIdByCode,
       codeBySourceKey,
@@ -708,13 +775,20 @@ async function load() {
       unread,
       byHand: hand,
       labelTranslations: numberLabels,
-      readProse: prose.read,
+      readProse: prose.readIn(one.humId, preferred),
+      readTypeOfData: prose.typeOfDataIn(one.humId, preferred),
     })
 
-    const publishedLines = ownLines(published, prose.read)
+    // A published dataset is described once, by the document the research's
+    // latest version pins, so its page is the one v1 read it from.
+    const publishedPreferred = (humId: string): Preferred => ({
+      version: versionNumber(held.latestVersion.get(humId)?.version),
+      site: "prod",
+    })
+    const publishedLines = ownLines(published, undefined, (one) => prose.readIn(one.humId, publishedPreferred(one.humId)))
     const descriptionOfDataset = new Map(published.map((one) => [
       identityOf(datasetIdByLabel, one.label, "dataset"),
-      describe(one, publishedLines),
+      describe(one, publishedLines, publishedPreferred(one.humId)),
     ]))
 
     const versions = held.publishedVersions.filter((v) => researchIdByHum.has(v.humId))
@@ -781,11 +855,13 @@ async function load() {
         .returning({ id: researchDraft.id })
       if (row === undefined) throw new Error(`the draft of ${humId} was not inserted`)
 
-      const lines = ownLines(datasets, prose.read)
+      // A draft's datasets were read from the draft's own page, on the site drafts were written on.
+      const preferred: Preferred = { version: draftNumber(draft.version.humVersionId), site: "staging" }
+      const lines = ownLines(datasets, undefined, (one) => prose.readIn(one.humId, preferred))
       const said = requestComments({ kind: "research" }, asking.asked)
       const entries = datasets.map((one) => {
         const datasetId = identityOf(datasetIdByLabel, one.label, "dataset")
-        const described = settleRequests(linked(describe(one, lines)))
+        const described = settleRequests(linked(describe(one, lines, preferred)))
         said.push(...requestComments({ kind: "dataset", datasetId }, described.asked))
         return { draftId: row.id, datasetId, content: described.content }
       })
@@ -843,10 +919,10 @@ async function load() {
   })
 
   const unfollowed = [...moved.keys()].filter((url) => !followed.has(url))
-  return { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, cleansing, relinked: { followed: followed.size, unfollowed } }
+  return { counts, selection, drafts, review, prose, notApplicable, cleansing, relinked: { followed: followed.size, unfollowed } }
 }
 
-const { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, cleansing, relinked } = await load()
+const { counts, selection, drafts, review, prose, notApplicable, cleansing, relinked } = await load()
 
 mkdirSync(OUT, { recursive: true })
 const written = (name: string, value: unknown) => {
@@ -870,7 +946,8 @@ console.log("prose read from    ", prose.counts)
 console.log("unread number lines", counts.unread.length, written("unread-numbers.json", counts.unread))
 console.log("cells to divide    ", review.length, written("inversion-review.json", review))
 console.log("prose notes        ", prose.notes.length, written("prose-notes.json", prose.notes))
-console.log("line breaks from the articles", lineBreaksRestored, "paragraphs")
+console.log("type of data from   ", prose.typeOfData)
+console.log("line breaks from the articles", prose.lineBreaksRestored(), "paragraphs")
 console.log("NA made not-applicable", notApplicable)
 console.log("cleansed content   ", cleansing)
 console.log("cleansed site      ", siteCleansing)
