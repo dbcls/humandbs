@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { Element } from "hast"
 
-import { parseFragment, recoverRichText, richTextFromCell, type RecoverContext } from "./richtext-html"
+import { parseFragment, plainAsV1, recoverRichText, richTextFromCell, type RecoverContext } from "./richtext-html"
 
 /** An element holding the HTML, standing for a page's table cell. */
 const cellOf = (html: string): Element => {
@@ -375,6 +375,40 @@ describe("recoverRichText", () => {
     })
   })
 
+  describe("a passage of the research's page with the same words", () => {
+    it("builds a leaf from the passage, as the page wrote it, where no cell has the words", () => {
+      const asked: string[] = []
+      const result = recoverRichText(
+        { text: "脳腫瘍 (グリオーマ) の解析 次の行", rawHtml: "<p>脳腫瘍（グリオーマ）の解析 次の行</p>", lang: "ja" },
+        {
+          pageCell: () => null,
+          pagePassage: (plain) => {
+            asked.push(plain)
+            return [[{ text: "脳腫瘍（グリオーマ）の解析" }], [{ text: "次の行" }]]
+          },
+        },
+      )
+
+      expect(result).toEqual({ value: [[{ text: "脳腫瘍（グリオーマ）の解析" }], [{ text: "次の行" }]], source: "page" })
+      expect(asked).toEqual(["脳腫瘍 (グリオーマ) の解析 次の行"])
+    })
+
+    it("takes a cell with the words before a passage", () => {
+      const result = recoverRichText(
+        { text: "NGS(Exome)", rawHtml: null, lang: "ja" },
+        { pageCell: () => cellOf("NGS（Exome）"), pagePassage: () => [[{ text: "NGS (Exome)" }]] },
+      )
+
+      expect(result).toEqual({ value: [[{ text: "NGS（Exome）" }]], source: "page" })
+    })
+
+    it("reads a leaf as before where no passage has the words", () => {
+      const result = recoverRichText({ text: "解析 (HRD) を実施", rawHtml: "<p>解析（HRD）を実施</p>", lang: "ja" }, { pagePassage: () => null })
+
+      expect(result).toEqual({ value: [[{ text: "解析（HRD）を実施" }]], source: "rawHtml" })
+    })
+  })
+
   describe("a page cell with the same words", () => {
     const withCell = (html: string, asked: string[] = []): RecoverContext => ({
       pageCell: (plain) => {
@@ -442,5 +476,13 @@ describe("richTextFromCell", () => {
   it("keeps a link to another site", () => {
     expect(richTextFromCell(cellOf("<a href=\"https://ddbj.nig.ac.jp/\">DDBJ</a>")).value)
       .toEqual([[{ text: "DDBJ", href: "https://ddbj.nig.ac.jp/" }]])
+  })
+})
+
+describe("plainAsV1", () => {
+  it("folds rich text into the one line v1 folded its text into, without the bullets typed at the start of a line", () => {
+    expect(plainAsV1([[{ text: "脳腫瘍（グリオーマ）：解析" }], [{ text: "- 次の" }, { text: "行", href: "https://example.org/" }]], "ja"))
+      .toBe("脳腫瘍 (グリオーマ) : 解析 次の行")
+    expect(plainAsV1([[{ text: "Parkinson’s disease（PD）" }]], "en")).toBe("Parkinson's disease(PD)")
   })
 })

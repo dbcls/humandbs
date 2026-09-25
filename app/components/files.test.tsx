@@ -4,6 +4,7 @@ import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import type { ListedFile } from "~/files/prefix"
+import { fileListQuery } from "~/public/urls"
 
 import { FileName, FileTable, Downloads, UploadPanel, type DownloadRow } from "./files"
 
@@ -34,9 +35,15 @@ function downloads(rows: DownloadRow[], humLabel: string | null = "hum0009"): st
       rangeTo={rows.length}
       page={1}
       pageCount={1}
-      at={(to) => `?files=${to}`}
+      size={20}
+      at={fileListQuery}
     />,
   )
+}
+
+/** The names over the columns, in order. */
+function heads(html: string): string[] {
+  return [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((th) => th[1] ?? "")
 }
 
 function entry(over: Partial<ListedFile> = {}): ListedFile {
@@ -58,23 +65,74 @@ describe("the download list", () => {
     expect(html).not.toContain("?files=")
   })
 
-  it("counts and pages once the files run past one page", () => {
-    const html = render(
+  function paged(total: number, size: 20 | 50 | 100, page = 1): string {
+    const pageCount = Math.max(1, Math.ceil(total / size))
+    return render(
       <Downloads
         locale="ja"
         humLabel="hum0009"
         rows={[{ name: "a.zip", size: 1, isPublic: true }]}
-        total={101}
+        total={total}
+        rangeFrom={(page - 1) * size + 1}
+        rangeTo={Math.min(page * size, total)}
+        page={page}
+        pageCount={pageCount}
+        size={size}
+        at={fileListQuery}
+      />,
+    )
+  }
+
+  it("counts and pages once the files run past one page", () => {
+    const html = paged(101, 20)
+
+    expect(html).toContain("1–20 / 101")
+    expect(html).toContain("?files=2")
+  })
+
+  it("offers the page sizes once the files run past the smallest page, and none at or under it", () => {
+    expect(paged(21, 20)).toContain("表示件数")
+    expect(paged(20, 20)).not.toContain("表示件数")
+  })
+
+  it("keeps offering the page sizes when a larger size puts every file on one page", () => {
+    const html = paged(45, 50)
+
+    expect(html).toContain("表示件数")
+    expect(html).toContain("1–45 / 45")
+  })
+
+  it("keeps a chosen page size across the page steps, and leaves the default out of the address", () => {
+    expect(paged(250, 50)).toContain("href=\"/?files=2&amp;fileRows=50\"")
+    expect(paged(250, 20)).toContain("href=\"/?files=2\"")
+  })
+
+  it("returns to the first page when a page size is chosen", () => {
+    const html = paged(250, 20, 3)
+
+    expect(html).toContain("href=\"/?files=1&amp;fileRows=100\"")
+    expect(html).toContain("href=\"/?files=1\"")
+  })
+
+  it("offers the list of every file's address where one is given, and nothing where none is", () => {
+    const listed = render(
+      <Downloads
+        locale="ja"
+        humLabel="hum0009"
+        rows={[{ name: "a.zip", size: 1, isPublic: true }]}
+        total={1}
         rangeFrom={1}
-        rangeTo={100}
+        rangeTo={1}
         page={1}
-        pageCount={2}
-        at={(to) => `?files=${to}`}
+        pageCount={1}
+        size={20}
+        at={fileListQuery}
+        urlList="/research/hum0009/files.txt"
       />,
     )
 
-    expect(html).toContain("1–100 / 101")
-    expect(html).toContain("?files=2")
+    expect(listed).toMatch(/<a[^>]*href="\/research\/hum0009\/files\.txt"[^>]*download=""[^>]*>[\s\S]*URL の一覧のダウンロード/)
+    expect(downloads([{ name: "a.zip", size: 1, isPublic: true }])).not.toContain("files.txt")
   })
 
   it("links a public file at the address the proxy serves it from", () => {
@@ -126,11 +184,31 @@ describe("the download list", () => {
     expect(downloads([{ name: "a.zip", size: 78_895_250, isPublic: true }])).toContain("78.9 MB")
   })
 
-  it("puts the size heading on the right, where the digits of the column end", () => {
+  it("sets the size and its heading to the left, as every column is", () => {
     const html = downloads([{ name: "a.zip", size: 1000, isPublic: true }])
-    const heading = /<th[^>]*class="([^"]*)"[^>]*>サイズ<\/th>/.exec(html)
 
-    expect(heading?.[1]).toContain("text-right")
+    expect(html).not.toContain("text-right")
+  })
+
+  it("puts the size after the name and the datasets last", () => {
+    const html = render(
+      <Downloads
+        locale="ja"
+        humLabel="hum0009"
+        rows={[{ name: "a.zip", size: 1000, isPublic: true }]}
+        total={1}
+        rangeFrom={1}
+        rangeTo={1}
+        page={1}
+        pageCount={1}
+        size={20}
+        at={fileListQuery}
+        selectedBy={() => "NHA000001"}
+      />,
+    )
+
+    expect(heads(html)).toEqual(["ファイル名", "サイズ", "データセット ID"])
+    expect(html).toMatch(/1\.0 KB<\/td><td[^>]*>NHA000001<\/td><\/tr>/)
   })
 
   it("sets the sizes in figures of one width, so that the digits line up down the column", () => {
@@ -163,14 +241,12 @@ describe("the research's file table", () => {
         [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
     }
 
-    it("is shown between the name and the size, under the name the public list gives it", () => {
-      const heads = [...table({}).matchAll(/<th[^>]*>([^<]*)<\/th>/g)].slice(0, 3).map((th) => th[1])
-
-      expect(heads).toEqual(["ファイル名", "データセット ID", "サイズ"])
+    it("follows the name and the size, as in the public list, under the name the public list gives it", () => {
+      expect(heads(table({})).slice(0, 3)).toEqual(["ファイル名", "サイズ", "データセット ID"])
     })
 
     it("leads to each dataset's public page in a new tab", () => {
-      const cell = cells(table({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[1] ?? ""
+      const cell = cells(table({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[2] ?? ""
 
       expect(cell).toContain("href=\"/dataset/NHA000001\"")
       expect(cell).toContain("href=\"/dataset/NHA000002\"")
@@ -178,7 +254,7 @@ describe("the research's file table", () => {
     })
 
     it("leaves the cell empty for a file no dataset selects", () => {
-      expect(cells(table({ "a.zip": ["NHA000001"] }))[1]?.[1]).toBe("")
+      expect(cells(table({ "a.zip": ["NHA000001"] }))[1]?.[2]).toBe("")
     })
 
     it("is not there at all when nothing was said about selections", () => {

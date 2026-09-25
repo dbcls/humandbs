@@ -122,6 +122,42 @@ describe("buildResearchContent", () => {
     ])
   })
 
+  it("reads the single-line values through the text reader, but not the title", () => {
+    const content = buildResearchContent({
+      version: version({
+        title: { ja: "題名 (1)", en: "Title" },
+        dataProvider: [{ name: { ja: { text: "山田 太郎" } }, organization: { name: { ja: { text: "大学 (本部)" } } } }],
+        researchProject: [{ name: { ja: { text: "計画 (A)" } } }],
+        grant: [{ title: { ja: "課題 (B)" }, agency: { name: { ja: "機関 (C)" } }, id: ["16H06279"] }],
+        relatedPublication: [{ title: { en: "Parkinson's" } }],
+      }),
+      listingSummary: null,
+      datasetIdByLabel: new Map(),
+      readText: (text, lang) => lang === "ja" ? text.replace(/ \(/g, "（").replace(/\)/g, "）") : text.toUpperCase(),
+    })
+
+    expect(value(content.title.ja)).toBe("題名 (1)")
+    expect(value(first(content.dataProviders).organization.name.ja)).toBe("大学（本部）")
+    expect(value(first(content.researchProjects).name.ja)).toBe("計画（A）")
+    expect(value(first(content.grants).title.ja)).toBe("課題（B）")
+    expect(value(first(content.grants).agency.name.ja)).toBe("機関（C）")
+    expect(first(content.grants).grantIds).toEqual(["16H06279"])
+    expect(value(first(content.relatedPublications).title)).toBe("PARKINSON'S")
+  })
+
+  it("reads the listing summary through the listing's reader and the research's prose through its own", () => {
+    const content = buildResearchContent({
+      version: version({ summary: { aims: { ja: { text: "目的" } } } }),
+      listingSummary: { methods: { ja: { text: "配列決定" } } },
+      datasetIdByLabel: new Map(),
+      readProse: (leaf) => [[{ text: `research: ${leaf?.text ?? ""}` }]],
+      readListing: (leaf) => [[{ text: `listing: ${leaf?.text ?? ""}` }]],
+    })
+
+    expect(value(content.summary.aims.ja)).toEqual([[{ text: "research: 目的" }]])
+    expect(value(content.listingSummary.methods.ja)).toEqual([[{ text: "listing: 配列決定" }]])
+  })
+
   it("keeps a publication title single-valued, preferring the English side", () => {
     const content = build(version({
       relatedPublication: [{ title: { ja: "和文", en: "English" } }],

@@ -27,7 +27,7 @@ import { humLabelOf } from "~/admin/queries.server"
 import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
 import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
-import { adminListing, listingRows, fileListOf, readFilePage } from "~/files/listing.server"
+import { adminListing, listingRows, fileListOf, readFilePage, readFileRows } from "~/files/listing.server"
 import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -38,6 +38,7 @@ import {
   publishedDatasetLabels,
 } from "~/public/queries.server"
 import { askedPath } from "~/public/urls"
+import { PAGE_SIZE } from "~/search/page-size"
 import {
   ACCESS_TYPE_KEY,
   PLATFORM_KEY,
@@ -332,7 +333,7 @@ export async function drawDraft(
     ]),
     humByLabel: cited.humByLabel,
     cau: projected.cau,
-    files: fileListOf(listing, readFilePage(new URL(request.url))),
+    files: fileListOf(listing, readFilePage(new URL(request.url)), readFileRows(new URL(request.url))),
   }, locale, catalog)
 
   const row = researchListRowView({
@@ -419,7 +420,7 @@ async function publishedResearchAnchors(
     datasetLabelById: labelOf,
     cau: [],
     // Only the anchors of this are read, and no file has one.
-    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+    files: { rows: [], total: 0, page: 1, pageCount: 1, size: PAGE_SIZE, rangeFrom: 0, rangeTo: 0 },
   }, locale, catalog).byAnchor
 }
 

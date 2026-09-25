@@ -18,10 +18,16 @@
  * - **brackets that close as they open.** On the Japanese side a bracket closed
  *   with the other width (`（NGS)`) is closed with the width it was opened with.
  *   Pairs that each keep one width stay as written, whichever width it is
- * - **no characters from the text's former formats**: control characters, and
+ * - **no characters from the text's former formats**: control characters and
+ *   zero-width spaces, and
  *   the backslash v1 put in front of markdown's punctuation (`reference\_accession`)
  * - **no link syntax in a value that cannot hold a link.** A title shows
  *   `[text](url)` as it is written, so only the text is kept
+ * - **ASCII quote marks and dashes.** Typographic quotes (`’`, `“”`) and every
+ *   dash (`–`, `—`, `―`, the full-width `－`) are what a copy out of a PDF or a
+ *   word processor leaves, and search does not take them for `'`, `"` and `-`
+ *   (`Parkinson’s` is not found by `Parkinson's`). The long vowel mark `ー` is a
+ *   letter and is kept
  * - **English punctuation in English.** Full-width brackets, colons and commas
  *   typed into the English side become their ASCII forms, with the space English
  *   puts before an opening bracket and after a closing one a word follows
@@ -58,10 +64,12 @@ export interface CleansingCounts {
   keptBodies: number
   /** Grant number entries that held several numbers. */
   grantIds: number
+  /** Strings with a typographic quote mark or a dash. */
+  punctuation: number
 }
 
 export function noCounts(): CleansingCounts {
-  return { prose: 0, characters: 0, brackets: 0, escapes: 0, linkSyntax: 0, english: 0, instructions: 0, references: 0, keptBodies: 0, grantIds: 0 }
+  return { prose: 0, characters: 0, brackets: 0, escapes: 0, linkSyntax: 0, english: 0, instructions: 0, references: 0, keptBodies: 0, grantIds: 0, punctuation: 0 }
 }
 
 /** Keys whose strings are matched elsewhere as written. */
@@ -82,7 +90,7 @@ const KEPT_AS_WRITTEN = new Set([
 const STATES = new Set(["value", "unknown", "not-applicable"])
 
 // eslint-disable-next-line no-control-regex
-const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g
+const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b\ufeff]/g
 /** A run of spaces holding a no-break or a full-width space: the old pages' indents and alignment. */
 const WIDE_SPACES = / *[\u00a0\u3000][\u00a0\u3000 ]*/g
 const FULL_WIDTH_ALNUM = /[０-９Ａ-Ｚａ-ｚ／]/g
@@ -117,6 +125,16 @@ export function cleanseCharacters(text: string, counts: CleansingCounts): string
   const unescaped = characters.replace(MARKDOWN_ESCAPE, "$1")
   if (unescaped !== characters) counts.escapes += 1
   return unescaped
+}
+
+const QUOTE_OF: Record<string, string> = { "‘": "'", "’": "'", "“": "\"", "”": "\"" }
+const DASHES = /[‐‑‒–—―－]/g
+
+/** A string with its typographic quote marks and dashes made ASCII. */
+export function cleansePunctuation(text: string, counts: CleansingCounts): string {
+  const ascii = text.replace(/[‘’“”]/g, (c) => QUOTE_OF[c] ?? c).replace(DASHES, "-")
+  if (ascii !== text) counts.punctuation += 1
+  return ascii
 }
 
 /** An English string with its full-width punctuation made ASCII. */
@@ -235,9 +253,14 @@ function isSlot(node: unknown): node is { state: string, value?: unknown } {
     && STATES.has((node as { state?: unknown }).state as string)
 }
 
-/** A string or a list of strings: what a key kept as written holds. `url` also names a pair of link lists. */
+/**
+ * A string, a list of strings or a slot holding a string (`doi`): what a key
+ * kept as written holds. `url` also names a pair of link lists.
+ */
 function isWritten(node: unknown): boolean {
-  return typeof node === "string" || (Array.isArray(node) && node.every((one) => typeof one === "string"))
+  return typeof node === "string"
+    || (Array.isArray(node) && node.every((one) => typeof one === "string"))
+    || (isSlot(node) && typeof node.value === "string")
 }
 
 /** `{ ja, en }` where both sides are slots: a translated pair. */
@@ -251,13 +274,13 @@ export function cleanseContent<T>(content: T): { content: T, counts: CleansingCo
   const counts = noCounts()
   const walk = (node: unknown, english: boolean): unknown => {
     if (typeof node === "string") {
-      const cleaned = cleanseCharacters(node, counts)
+      const cleaned = cleansePunctuation(cleanseCharacters(node, counts), counts)
       return english ? cleanseEnglish(cleaned, counts) : pairedBrackets(cleaned, counts)
     }
     if (isRichText(node)) {
       const spans = node.map((line) => line.map((span) => ({
         ...span,
-        text: english ? walk(span.text, english) as string : cleanseCharacters(span.text, counts),
+        text: english ? walk(span.text, english) as string : cleansePunctuation(cleanseCharacters(span.text, counts), counts),
       })))
       return cleanseRich(english ? spans : pairedBracketsRich(spans, counts), counts)
     }
@@ -269,16 +292,16 @@ export function cleanseContent<T>(content: T): { content: T, counts: CleansingCo
       if (plain !== text) counts.linkSyntax += 1
       return { ...node, value: plain }
     }
-    const grant = node as { grantIds?: unknown }
-    if (Array.isArray(grant.grantIds) && grant.grantIds.every((one) => typeof one === "string")) {
-      const walked = Object.fromEntries(Object.entries(node).map(([key, value]) => [key, walk(value, english)])) as { grantIds: string[] }
-      return { ...walked, grantIds: splitGrantIds(walked.grantIds, counts) }
-    }
     if (isTranslated(node)) {
       return { ...node, ja: walk(node.ja, false), en: walk(node.en, true) }
     }
-    return Object.fromEntries(Object.entries(node).map(([key, value]) =>
-      [key, KEPT_AS_WRITTEN.has(key) && isWritten(value) ? value : walk(value, english)]))
+    const walked = Object.fromEntries(Object.entries(node).map(([key, value]) =>
+      [key, KEPT_AS_WRITTEN.has(key) && isWritten(value) ? value : walk(value, english)])) as { grantIds?: unknown }
+    const { grantIds } = walked
+    if (Array.isArray(grantIds) && grantIds.every((one) => typeof one === "string")) {
+      return { ...walked, grantIds: splitGrantIds(grantIds, counts) }
+    }
+    return walked
   }
   return { content: walk(content, false) as T, counts }
 }

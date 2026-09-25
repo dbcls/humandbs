@@ -86,13 +86,22 @@ function prose(value: EsBilingualRich | null | undefined, read: ProseReader): Tr
   }
 }
 
+/**
+ * How one language of a v1 value v2 holds as a single line becomes the line.
+ * The default keeps v1's text; a load that has the pages v1 read it from
+ * passes its own.
+ */
+export type TextReader = (value: string, lang: "ja" | "en") => string
+
+const textAsV1Wrote: TextReader = (value) => value
+
 /** A v1 rich field that v2 holds as a value, which is its text without markup. */
-function valueText(value: EsBilingualRich | null | undefined): TranslatedText {
-  return { ja: held(value?.ja?.text ?? ""), en: held(value?.en?.text ?? "") }
+function valueText(value: EsBilingualRich | null | undefined, read: TextReader): TranslatedText {
+  return { ja: held(read(value?.ja?.text ?? "", "ja")), en: held(read(value?.en?.text ?? "", "en")) }
 }
 
-function plainText(value: EsBilingual | null | undefined): TranslatedText {
-  return { ja: held(value?.ja ?? ""), en: held(value?.en ?? "") }
+function plainText(value: EsBilingual | null | undefined, read: TextReader = textAsV1Wrote): TranslatedText {
+  return { ja: held(read(value?.ja ?? "", "ja")), en: held(read(value?.en ?? "", "en")) }
 }
 
 /** The language that has a value wins; when both do they agree in the data. */
@@ -183,37 +192,43 @@ export interface ResearchContentInput {
    */
   humOfLabel?: ReadonlyMap<string, string>
   readProse?: ProseReader
+  /** The reader of the listing summary, which the old portal wrote on the listing rather than on the research's page. */
+  readListing?: ProseReader
+  /** The reader of the values held as a single line: providers, projects, grants and publication titles. */
+  readText?: TextReader
 }
 
 export function buildResearchContent(input: ResearchContentInput): ResearchContent {
   const { version: rv, listingSummary, datasetIdByLabel, humOfLabel } = input
   const read = input.readProse ?? proseFromText
+  const readListing = input.readListing ?? read
+  const readText = input.readText ?? textAsV1Wrote
   const own = (label: string): boolean => humOfLabel === undefined || humOfLabel.get(label) === rv.humId
 
   const dataProviders: DataProvider[] = (rv.dataProvider ?? []).map((p, i) => ({
     id: `data-provider-${i + 1}`,
-    name: valueText(p.name),
+    name: valueText(p.name, readText),
     organization: {
-      name: valueText(p.organization?.name),
+      name: valueText(p.organization?.name, readText),
     },
   }))
 
   const researchProjects: ResearchProject[] = (rv.researchProject ?? []).map((p, i) => ({
     id: `research-project-${i + 1}`,
-    name: valueText(p.name),
+    name: valueText(p.name, readText),
     url: localizedLinks([p.url?.ja], [p.url?.en], `research-project-${i + 1}-url`),
   }))
 
   const grants: Grant[] = (rv.grant ?? []).map((g, i) => ({
     id: `grant-${i + 1}`,
-    title: plainText(g.title),
-    agency: { name: plainText(g.agency?.name) },
+    title: plainText(g.title, readText),
+    agency: { name: plainText(g.agency?.name, readText) },
     grantIds: g.id ?? [],
   }))
 
   const relatedPublications: RelatedPublication[] = (rv.relatedPublication ?? []).map((p, i) => ({
     id: `publication-${i + 1}`,
-    title: single(p.title?.en, p.title?.ja),
+    title: single(p.title?.en && readText(p.title.en, "en"), p.title?.ja && readText(p.title.ja, "ja")),
     doi: single(p.doi),
     ...publicationDatasets(p.datasetIds ?? [], datasetIdByLabel, own),
   }))
@@ -227,9 +242,9 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
       url: localizedLinks(rv.summary?.url?.ja ?? [], rv.summary?.url?.en ?? [], "summary-url"),
     },
     listingSummary: {
-      methods: prose(listingSummary?.methods, read),
-      targets: prose(listingSummary?.targets, read),
-      typeOfData: prose(listingSummary?.typeOfData, read),
+      methods: prose(listingSummary?.methods, readListing),
+      targets: prose(listingSummary?.targets, readListing),
+      typeOfData: prose(listingSummary?.typeOfData, readListing),
       // Empty, which is what makes the listing read the research's own
       // providers. v1 draws the column from the same names, so a table built
       // this way shows what v1's shows; a copy taken here would instead be a

@@ -251,9 +251,10 @@ const ja = {
     noDatasetsAddedInRelease: "追加されたデータセットはありません。",
     noDatasets: "公開されているデータセットはありません。",
     datasetsAreCurrent: "データセットの一覧はこのバージョンのものですが、各データセットの内容は現在のものを表示しています。",
-    downloads: "ダウンロード",
+    downloads: "非制限公開ファイル",
     downloadName: "ファイル名",
     downloadSize: "サイズ",
+    downloadUrlList: "URL の一覧のダウンロード",
   },
   dataset: {
     datasetId: "データセット ID",
@@ -266,7 +267,7 @@ const ja = {
     accessType: "アクセス制限",
     experiments: "解析手法",
     noExperiments: "解析手法の情報はありません。",
-    files: "このデータセットに紐づくファイル",
+    files: "このデータセットに紐づく非制限公開ファイル",
   },
   cart: {
     heading: "利用申請の対象となるデータセット",
@@ -1596,9 +1597,10 @@ const en: Messages = {
     noDatasetsAddedInRelease: "No datasets were added.",
     noDatasets: "This version lists no published datasets.",
     datasetsAreCurrent: "The list is the one this version published; each dataset's content is shown as it is now.",
-    downloads: "Downloads",
+    downloads: "Unrestricted-access files",
     downloadName: "File",
     downloadSize: "Size",
+    downloadUrlList: "Download the URL list",
   },
   dataset: {
     datasetId: "Dataset ID",
@@ -1611,7 +1613,7 @@ const en: Messages = {
     accessType: "Access type",
     experiments: "Analysis method",
     noExperiments: "No information on analysis methods.",
-    files: "Files linked to this dataset",
+    files: "Unrestricted-access files linked to this dataset",
   },
   cart: {
     heading: "Datasets for your access application",

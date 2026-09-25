@@ -170,7 +170,7 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
             onChange={(event) => { onTick(event.target.checked ? [...others, ...names] : others) }}
           />,
           files.name,
-          { text: files.size, align: "right" },
+          files.size,
           files.updatedAt,
           files.state,
         ]}
@@ -191,7 +191,7 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
               />
             </Td>
             <Td floor="min-w-56"><FileName name={entry.name} /></Td>
-            <Td nowrap className="text-right tabular-nums">{formatSize(entry.size)}</Td>
+            <Td nowrap className="tabular-nums">{formatSize(entry.size)}</Td>
             <Td nowrap>{dayInJst(entry.updatedAt)}</Td>
             <Td nowrap>
               {entry.isPublic

@@ -2,7 +2,7 @@ import type { Element } from "hast"
 import { describe, expect, it } from "vitest"
 
 import { parseFragment } from "./richtext-html"
-import { asV1Stored, researchPages, sameWords, tableRows, type PageArticle } from "./research-pages"
+import { alike, asV1Stored, researchPages, sameWords, tableRows, type PageArticle } from "./research-pages"
 
 const DATA_ID_TABLE = (rows: string) => `<table><thead><tr><th>データID</th><th>内容</th><th>制限</th><th>公開日</th></tr></thead><tbody>${rows}</tbody></table>`
 const DATA_ID_TABLE_EN = (rows: string) => `<table><thead><tr><th>Dataset ID</th><th>Type of Data</th><th>Criteria</th><th>Release Date</th></tr></thead><tbody>${rows}</tbody></table>`
@@ -169,5 +169,129 @@ describe("researchPages", () => {
 
       expect(textOf(pages.typeOfData("hum0001", "ja", "NGS(Exome)", { version: 1, site: "prod" }))).toBe("NGS （Exome）")
     })
+  })
+})
+
+describe("researchPages passages", () => {
+  const at = { version: 1, site: "prod" } as const
+  const first = (pages: ReturnType<typeof researchPages>, text: string, lang: "ja" | "en" = "ja", preferred: { version: number | null, site: "prod" | "staging" } = at) =>
+    [...pages.passages("hum0001", lang, text, preferred)][0] ?? null
+
+  it("gives the rest of a line after a field name, with the brackets the page wrote", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1", "<p><strong>目的：</strong>脳腫瘍（グリオーマ）の解析</p>")] }])
+
+    expect(first(pages, "脳腫瘍 (グリオーマ) の解析")).toEqual([[{ text: "脳腫瘍（グリオーマ）の解析" }]])
+  })
+
+  it("gives the lines the page showed where v1 made one line", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1", "<p><strong>対象：</strong>A症例</p><p>B症例</p><p><strong>方法：</strong>C</p>")] }])
+
+    expect(first(pages, "A症例 B症例")).toEqual([[{ text: "A症例" }], [{ text: "B症例" }]])
+  })
+
+  it("keeps the page's links", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1", "<p>詳細は<a href=\"https://example.org/\">こちら</a>（2020）</p>")] }])
+
+    expect(first(pages, "詳細はこちら (2020)")).toEqual([[{ text: "詳細は" }, { text: "こちら", href: "https://example.org/" }, { text: "（2020）" }]])
+  })
+
+  it("keeps the bullets typed before the lines, which v1's text leaves out", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1", "<p><strong>対象：</strong>- A症例</p><p>- B症例</p>")] }])
+
+    expect(first(pages, "A症例 B症例")).toEqual([[{ text: "- A症例" }], [{ text: "- B症例" }]])
+  })
+
+  it("finds a list v1 made one line, whose bullets after the first are inside the line", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1_release note", "<p>- RNAs are provided.</p><p>- DNAs are provided.</p>", { catid: 16 })] }])
+
+    expect(first(pages, "RNAs are provided. - DNAs are provided.", "en")).toEqual([[{ text: "- RNAs are provided." }], [{ text: "- DNAs are provided." }]])
+  })
+
+  it("gives a stretch that is a whole line before one inside a line", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1", "<p>X社の研究（A）</p><table><tr><td>研究(A)</td></tr></table>")] }])
+
+    expect([...pages.passages("hum0001", "ja", "研究 (A)", at)]).toEqual([[[{ text: "研究(A)" }]], [[{ text: "研究（A）" }]]])
+  })
+
+  it("reads a release note page as well as the research page", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1_release note", "<h2>hum0001.v1</h2><p>RNA（fastq）を提供</p>")] }])
+
+    expect(first(pages, "RNA (fastq) を提供")).toEqual([[{ text: "RNA（fastq）を提供" }]])
+  })
+
+  it("gives the preferred version's page first, then the nearest", () => {
+    const pages = researchPages([{ site: "prod", articles: [
+      page("hum0001.v1", "<p>研究（A）</p>"),
+      page("hum0001.v2", "<p>研究(A)</p>"),
+      page("hum0001.v4", "<p>研究 （A）</p>"),
+    ] }])
+
+    expect(first(pages, "研究 (A)", "ja", { version: 2, site: "prod" })).toEqual([[{ text: "研究(A)" }]])
+    expect(first(pages, "研究 (A)", "ja", { version: 3, site: "prod" })).toEqual([[{ text: "研究 （A）" }]])
+  })
+
+  it("gives nothing for another research, the other language or other words", () => {
+    const pages = researchPages([{ site: "prod", articles: [page("hum0001.v1", "<p>研究（A）</p>")] }])
+
+    expect([...pages.passages("hum0002", "ja", "研究 (A)", at)]).toEqual([])
+    expect([...pages.passages("hum0001", "en", "研究 (A)", at)]).toEqual([])
+    expect([...pages.passages("hum0001", "ja", "研究 (B)", at)]).toEqual([])
+    expect([...pages.passages("hum0001", "ja", "", at)]).toEqual([])
+  })
+})
+
+describe("researchPages listingCell", () => {
+  const listing = (rows: string, over: Partial<PageArticle> = {}) => page("利用可能な研究データ一覧", `<table><tbody>${rows}</tbody></table>`, over)
+  const listed = (hum: string, cell: string) => `<tr><th><a href="#">${hum}.v1</a></th><td>題名</td><td>${cell}</td></tr>`
+
+  it("finds the cell of the research's row with the words, commas aside", () => {
+    const pages = researchPages([{ site: "prod", articles: [
+      listing(listed("hum0001", "<p>NGS</p><p>（Exome）</p><p>メチル化アレイ</p>")),
+      page("List of All Research Projects", `<table>${listed("hum0001", "<p>NGS</p><p>(Exome, RNA-seq)</p><p>Methylation array</p>")}</table>`, { catid: 16 }),
+    ] }])
+
+    expect(textOf(pages.listingCell("hum0001", "ja", "NGS （Exome） メチル化アレイ", "prod"))).toBe("NGS（Exome）メチル化アレイ")
+    expect(textOf(pages.listingCell("hum0001", "en", "NGS (Exome, RNA-seq), Methylation array", "prod"))).toBe("NGS(Exome, RNA-seq)Methylation array")
+  })
+
+  it("finds nothing in another research's row", () => {
+    const pages = researchPages([{ site: "prod", articles: [listing(listed("hum0002", "NGS"))] }])
+
+    expect(pages.listingCell("hum0001", "ja", "NGS", "prod")).toBeNull()
+  })
+
+  it("takes the given site's listing first", () => {
+    const pages = researchPages([
+      { site: "prod", articles: [listing(listed("hum0001", "NGS （Exome）"))] },
+      { site: "staging", articles: [listing(listed("hum0001", "NGS（Exome）"))] },
+    ])
+
+    expect(textOf(pages.listingCell("hum0001", "ja", "NGS (Exome)", "staging"))).toBe("NGS（Exome）")
+    expect(textOf(pages.listingCell("hum0001", "ja", "NGS (Exome)", "prod"))).toBe("NGS （Exome）")
+  })
+})
+
+describe("alike", () => {
+  it("keeps the space between two letters when spaced, and drops v1's spacing around brackets and colons", () => {
+    expect(alike("宇佐美 真一", "宇佐美真一", "spaced")).toBe(false)
+    expect(alike("基盤研究 (B) : 12", "基盤研究(B):12", "spaced")).toBe(true)
+    expect(alike("Shinichi Usami", "ShinichiUsami", "spaced")).toBe(false)
+  })
+
+  it("drops every space when bare, and commas too when commas aside", () => {
+    expect(alike("宇佐美 真一", "宇佐美真一", "bare")).toBe(true)
+    expect(alike("NGS (Exome), Methylation array", "NGS (Exome) Methylation array", "bare")).toBe(false)
+    expect(alike("NGS (Exome), Methylation array", "NGS (Exome) Methylation array", "commas aside")).toBe(true)
+  })
+
+  it("does not count markup, superscript forms or full-width letters as writing", () => {
+    expect(alike("A<br />B&nbsp;C", "A B C", "bare")).toBe(true)
+    expect(alike("CD4⁺ 1.73m²", "CD4+ 1.73m2", "spaced")).toBe(true)
+    expect(alike("若手研究 (Ａ)", "若手研究 (A)", "spaced")).toBe(true)
+  })
+
+  it("counts other characters", () => {
+    expect(alike("fastq、bam", "fastq,bam", "bare")).toBe(false)
+    expect(alike("4＋3", "4+3", "bare")).toBe(false)
   })
 })

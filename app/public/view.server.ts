@@ -41,6 +41,8 @@ import {
   type Locale,
   type Resolved,
 } from "~/i18n/locale"
+import type { PageSize } from "~/search/page-size"
+
 import { href } from "./urls"
 
 /**
@@ -599,6 +601,8 @@ export interface FileListView {
   total: number
   page: number
   pageCount: number
+  /** How many rows a page holds. */
+  size: PageSize
   /** 1-based positions of the shown rows within the whole prefix. */
   rangeFrom: number
   rangeTo: number

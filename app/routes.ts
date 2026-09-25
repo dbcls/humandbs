@@ -233,10 +233,22 @@ const api = [
   route(DOCS_PATH, DOCS_FILE),
 ]
 
+/**
+ * The URL lists of a research's and a dataset's public files, registered once:
+ * like a file's own address (`filePath`), a list is the same in both languages.
+ * A static last segment ranks above `research/:humId/:version`, so `files.txt`
+ * is never read as a version.
+ */
+const fileLists = [
+  route("research/:humId/files.txt", "routes/research-file-list.ts"),
+  route("dataset/:datasetId/files.txt", "routes/dataset-file-list.ts"),
+]
+
 export default [
   route("healthz", "routes/healthz.ts"),
   ...auth,
   ...api,
+  ...fileLists,
   ...editing,
   ...management,
   ...pages("ja"),

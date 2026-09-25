@@ -8,8 +8,10 @@ import { messagesFor } from "~/i18n/messages"
 import { toPlainText } from "~/content/richtext"
 import {
   datasetPath,
+  fileListQuery,
   href,
   listPath,
+  researchFileListPath,
   researchPath,
   researchVersionsPath,
 } from "~/public/urls"
@@ -121,7 +123,7 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
             )}
       </PageHeader>
 
-      <Card><ResearchBody view={view} locale={locale} cart /></Card>
+      <Card><ResearchBody view={view} locale={locale} cart urlList={researchFileListPath(view.humLabel)} /></Card>
     </Page>
   )
 }
@@ -138,7 +140,7 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
  * `datasetHref` exists because a draft's datasets may have no id pinned yet:
  * a preview addresses them by identity, the public page by label.
  */
-export function ResearchBody({ view, locale, datasetHref, releaseNote = false, cart = false, writtenOnly = false }: {
+export function ResearchBody({ view, locale, datasetHref, releaseNote = false, cart = false, writtenOnly = false, urlList }: {
   view: ResearchView
   locale: Locale
   datasetHref?: (ref: { id: string | null, label: string }) => string | null
@@ -164,6 +166,11 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
    * what the provider is being asked to check.
    */
   releaseNote?: boolean
+  /**
+   * Where the addresses of the research's public files are listed. The
+   * published page has one; a preview's files are not public yet.
+   */
+  urlList?: string
 }) {
   const messages = messagesFor(locale)
   const t = messages.research
@@ -251,9 +258,11 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             rangeTo={view.files.rangeTo}
             page={view.files.page}
             pageCount={view.files.pageCount}
+            size={view.files.size}
             // Only the query string changes, so the same links work from the
             // published address and from a preview without either being named.
-            at={(to) => `?files=${to}`}
+            at={fileListQuery}
+            urlList={urlList}
             // The datasets are named and led to the way the dataset table above
             // names them — a preview's dataset with no label yet is the same
             // "データセット ID N" in both — and a file none selects has an

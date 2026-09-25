@@ -58,6 +58,12 @@ export interface RecoverContext {
    * none, the leaf is read from `rawHtml` and `text` as below.
    */
   pageCell?: (plain: string, lang: Lang) => Element | null
+  /**
+   * The stretch of the old portal's research page or release note page with
+   * the words of a leaf's text, given as the leaf's folded plain text
+   * (`research-pages.ts`). Looked up where no cell has them, the same way.
+   */
+  pagePassage?: (plain: string, lang: Lang) => RichText | null
 }
 
 export type RecoverSource = "rawHtml" | "text" | "split" | "page"
@@ -83,7 +89,7 @@ const URL_MASK_CLOSE = "\u0002"
  * non-breaking space vs a plain one) compares equal. A URL is masked out
  * first so nothing inside one is touched.
  */
-function normalizeForComparison(value: string, lang: Lang): string {
+export function normalizeForComparison(value: string, lang: Lang): string {
   const raw = value.trim()
   if (raw === "") return ""
 
@@ -149,6 +155,15 @@ function plainOfMarkdown(markdown: string, lang: Lang): string {
   t = unescapeMarkdown(t)
   t = t.replace(/\r\n?|\n/g, " ")
   return normalizeForComparison(t, lang)
+}
+
+/**
+ * Rich text folded the way `plainOfMarkdown` folds v1's text: one line, the
+ * bullets typed at the start of a line left out. Equal to a leaf's folded text,
+ * whitespace aside, the rich text is what v1 would have stored as that text.
+ */
+export function plainAsV1(rich: RichText, lang: Lang): string {
+  return normalizeForComparison(rich.map((line) => line.map((span) => span.text).join("").replace(HAND_WRITTEN_BULLET, "")).join(" "), lang)
 }
 
 /** Any hast node found either directly under `Root` or under an `Element`. */
@@ -547,6 +562,8 @@ export function recoverRichText(input: RecoverInput, ctx: RecoverContext = {}): 
   const targetPlain = plainOfMarkdown(text, lang)
   const cell = targetPlain === "" ? null : ctx.pageCell?.(targetPlain, lang) ?? null
   if (cell !== null) return withSource(richTextFromCell(cell, ctx), "page")
+  const passage = targetPlain === "" ? null : ctx.pagePassage?.(targetPlain, lang) ?? null
+  if (passage !== null) return { value: passage, source: "page" }
 
   if (rawHtml === null || rawHtml.trim() === "") {
     return { value: richTextFromMarkdown(text), source: "text" }

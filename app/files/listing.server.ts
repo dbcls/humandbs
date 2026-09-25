@@ -14,10 +14,13 @@
 
 import type { Executor } from "~/db/client.server"
 import type { FileListView, FileRowView } from "~/public/view.server"
+import type { PageSize } from "~/search/page-size"
 
 import {
   commonPrefix,
   composeListing,
+  filePageOf,
+  fileRowsOf,
   pageOfFiles,
   privatePrefix,
   PRIVATE_BUCKET,
@@ -174,13 +177,14 @@ export function listingRows(entries: readonly ListedFile[] | null): FileRowView[
  * empty listing, which the page draws as no download section — the same as a
  * prefix that holds nothing, and the honest answer in both cases.
  */
-export function fileListOf(rows: readonly FileRowView[], page: number): FileListView {
-  const paged = pageOfFiles(rows, page)
+export function fileListOf(rows: readonly FileRowView[], page: number, size: PageSize): FileListView {
+  const paged = pageOfFiles(rows, page, size)
   return {
     rows: paged.rows,
     total: paged.total,
     page: paged.page,
     pageCount: paged.pageCount,
+    size,
     rangeFrom: paged.rangeFrom,
     rangeTo: paged.rangeTo,
   }
@@ -188,6 +192,10 @@ export function fileListOf(rows: readonly FileRowView[], page: number): FileList
 
 /** The page a `?files=` parameter requests. Anything unreadable is the first. */
 export function readFilePage(url: URL): number {
-  const wanted = Number(url.searchParams.get("files") ?? "1")
-  return Number.isInteger(wanted) && wanted >= 1 ? wanted : 1
+  return filePageOf(url.searchParams)
+}
+
+/** The page size a `?fileRows=` parameter requests. Anything but an offered size is the default. */
+export function readFileRows(url: URL): PageSize {
+  return fileRowsOf(url.searchParams)
 }

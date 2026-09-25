@@ -13,6 +13,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { fileDownloadHref } from "~/admin/urls"
 import { datasetPath, filePath, href } from "~/public/urls"
+import { PAGE_SIZE, type PageSize } from "~/search/page-size"
 
 import {
   Button,
@@ -27,6 +28,7 @@ import { SlugEditor } from "./contents"
 import { Submit } from "./form"
 import { Icon } from "./icons"
 import { DatasetIds, Paging, Table, Td } from "./page"
+import { FileListTools } from "./search"
 import { Flag, Stated } from "./flags"
 
 /**
@@ -53,8 +55,10 @@ export function Downloads<Row extends DownloadRow>({
   rangeTo,
   page,
   pageCount,
+  size,
   at,
   selectedBy,
+  urlList,
 }: {
   locale: Locale
   /** Null while nothing has been pinned, which is only ever the case in a preview. */
@@ -66,25 +70,53 @@ export function Downloads<Row extends DownloadRow>({
   rangeTo: number
   page: number
   pageCount: number
-  at: (page: number) => string
+  /** How many rows a page holds. */
+  size: PageSize
+  /** The address of a page under a page size, or the default size for `null`. */
+  at: (page: number, size: PageSize | null) => string
   /**
    * The datasets that select a file, as the cell of its own column. Left out
    * where the list is one dataset's selection already — every row would name
    * the page it is on.
    */
   selectedBy?: (row: Row) => ReactNode
+  /**
+   * Where the addresses of every file in the list are fetched from, one to a
+   * line. Only where every row is public: a preview's rows are not yet.
+   */
+  urlList?: string
 }) {
   const messages = messagesFor(locale)
   const t = messages.research
+  const written = size === PAGE_SIZE ? null : size
+  // **The tools are there once the list is longer than the smallest page**,
+  // not once it has a second page: a reader who chose a hundred has one page
+  // and still needs the choice to go back. At or under the smallest page there
+  // is nothing to page or choose, and a count over a handful of rows reads as
+  // a listing's tools on a page's section.
+  const tools = total > PAGE_SIZE
 
   return (
     <Stack gap="tight">
+      {(urlList !== undefined || tools) && (
+        <FileListTools
+          locale={locale}
+          urlList={urlList}
+          sizing={tools
+            ? {
+                size,
+                at: (chosen) => at(1, chosen),
+                paging: { total, from: rangeFrom, to: rangeTo, page, pageCount, at: (to) => at(to, written) },
+              }
+            : null}
+        />
+      )}
       {/* `whenEmpty` は要らない — 配布するものが無い研究では、この節ごと描かれない
           (`research.tsx` / `dataset.tsx`)。 */}
       <Table headers={[
         t.downloadName,
+        t.downloadSize,
         ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
-        { text: t.downloadSize, align: "right" },
       ]}
       >
         {rows.map((row) => (
@@ -103,14 +135,13 @@ export function Downloads<Row extends DownloadRow>({
                   )
                 : <NotPublicYet locale={locale} humLabel={humLabel} name={row.name} />}
             </Td>
+            <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
             {selectedBy !== undefined && <Td nowrap>{selectedBy(row)}</Td>}
-            <Td nowrap className="text-right tabular-nums">{formatSize(row.size)}</Td>
           </tr>
         ))}
       </Table>
-      {/* **One page is not paged, and not counted.** The table holds few
-          enough rows to count at a glance (most prefixes hold five or fewer),
-          and a count under it reads as a listing's tools on a page's section. */}
+      {/* Under the table the page steps alone, as under a listing: the choice of
+          size is made once, above, before the rows are read. */}
       {pageCount > 1 && (
         <div className="flex justify-end">
           <Paging
@@ -120,7 +151,8 @@ export function Downloads<Row extends DownloadRow>({
             to={rangeTo}
             page={page}
             pageCount={pageCount}
-            at={at}
+            at={(to) => at(to, written)}
+            inPlace
           />
         </div>
       )}
@@ -198,8 +230,8 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
       align="middle"
       headers={[
         t.name,
+        t.size,
         ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
-        { text: t.size, align: "right" },
         t.updatedAt,
         t.state,
       ]}
@@ -259,6 +291,7 @@ function FileRow({ row, researchId, humLabel, origin, locale, selectedBy }: {
   return (
     <tr>
       <Td floor="min-w-56"><FileName name={row.name} /></Td>
+      <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
       {selectedBy !== undefined && (
         <Td nowrap>
           {/* A published dataset has a public page, and it opens in a new tab
@@ -273,7 +306,6 @@ function FileRow({ row, researchId, humLabel, origin, locale, selectedBy }: {
           )}
         </Td>
       )}
-      <Td nowrap className="text-right tabular-nums">{formatSize(row.size)}</Td>
       <Td nowrap>{dayInJst(row.updatedAt)}</Td>
       <Td nowrap>
         <State locale={locale} entry={row} />

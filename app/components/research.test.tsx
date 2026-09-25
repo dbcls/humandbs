@@ -26,7 +26,7 @@ import { ResearchBody, ResearchListTable, ResearchVersionPage, runsLong } from "
  * losing it because a bucket was unreachable would be the wrong trade.
  */
 
-const NOTHING: ResearchFileListView = { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 }
+const NOTHING: ResearchFileListView = { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 }
 
 const NO_LINKS: LinksView = { state: "value", value: [], untranslated: false }
 
@@ -77,7 +77,7 @@ function renderPreview(links: LinksView): string {
 
 describe("the research page", () => {
   it("leaves the download section out when the prefix holds nothing to offer", () => {
-    expect(render(NOTHING)).not.toContain("ダウンロード")
+    expect(render(NOTHING)).not.toContain("非制限公開ファイル")
   })
 
   it("draws the section, with the range within the whole prefix rather than the page", () => {
@@ -88,9 +88,10 @@ describe("the research page", () => {
       rangeTo: 100,
       page: 1,
       pageCount: 2,
+      size: 20,
     })
 
-    expect(html).toContain("ダウンロード")
+    expect(html).toContain("非制限公開ファイル")
     expect(html).toContain("1–100 / 101 件")
   })
 
@@ -102,9 +103,26 @@ describe("the research page", () => {
       rangeTo: 100,
       page: 1,
       pageCount: 2,
+      size: 20,
     })
 
     expect(html).toContain("href=\"/?files=2\"")
+  })
+
+  it("offers the list of every public file's address on the published page, and none in a preview", () => {
+    const files: ResearchFileListView = {
+      rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
+      total: 1,
+      rangeFrom: 1,
+      rangeTo: 1,
+      page: 1,
+      pageCount: 1,
+      size: 20,
+    }
+    const Preview = createRoutesStub([{ path: "/", Component: () => <ResearchBody view={view(files)} locale="ja" /> }])
+
+    expect(render(files)).toContain("href=\"/research/hum0001/files.txt\"")
+    expect(renderToStaticMarkup(<Preview initialEntries={["/"]} />)).not.toContain("files.txt")
   })
 })
 
@@ -116,7 +134,7 @@ describe("the dataset column of the download list", () => {
     rows: ResearchFileListView["rows"],
     datasetHref?: (ref: { id: string | null, label: string }) => string | null,
   ): string {
-    const files = { rows, total: rows.length, page: 1, pageCount: 1, rangeFrom: 1, rangeTo: rows.length }
+    const files: ResearchFileListView = { rows, total: rows.length, page: 1, pageCount: 1, size: 20, rangeFrom: 1, rangeTo: rows.length }
     const Stub = createRoutesStub([{
       path: "/",
       Component: () => (
@@ -126,20 +144,20 @@ describe("the dataset column of the download list", () => {
     return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
   }
 
-  /** The cells of the download table, row by row: name, datasets, size. */
+  /** The cells of the download table, row by row: name, size, datasets. */
   function downloadCells(html: string): string[][] {
-    const table = html.slice(html.indexOf(">ダウンロード<"))
+    const table = html.slice(html.indexOf(">非制限公開ファイル<"))
     const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(table)?.[1] ?? ""
     return [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((tr) =>
       [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
   }
 
-  it("heads the column between the name and the size", () => {
+  it("heads the column after the name and the size", () => {
     const html = withDatasets([], [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }])
-    const heads = [...html.slice(html.indexOf(">ダウンロード<")).matchAll(/<th[^>]*>([^<]*)<\/th>/g)]
+    const heads = [...html.slice(html.indexOf(">非制限公開ファイル<")).matchAll(/<th[^>]*>([^<]*)<\/th>/g)]
       .slice(0, 3).map((th) => th[1])
 
-    expect(heads).toEqual(["ファイル名", "データセット ID", "サイズ"])
+    expect(heads).toEqual(["ファイル名", "サイズ", "データセット ID"])
   })
 
   it("links each dataset that selects the file to its page", () => {
@@ -147,7 +165,7 @@ describe("the dataset column of the download list", () => {
       [{ ...ROW, id: "d1", label: "NHA000001" }, { ...ROW, id: "d2", label: "NHA000002" }],
       [{ name: "a.zip", size: 1, isPublic: true, datasets: [0, 1] }],
     )
-    const [cell] = downloadCells(html)[0]?.slice(1, 2) ?? []
+    const [cell] = downloadCells(html)[0]?.slice(2, 3) ?? []
 
     expect(cell).toContain("href=\"/dataset/NHA000001\"")
     expect(cell).toContain("href=\"/dataset/NHA000002\"")
@@ -159,7 +177,7 @@ describe("the dataset column of the download list", () => {
       [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
     )
 
-    expect(downloadCells(html)[0]?.[1]).toBe("")
+    expect(downloadCells(html)[0]?.[2]).toBe("")
   })
 
   it("names a dataset without a label the way the dataset table does, and leads where the preview shows", () => {
@@ -168,7 +186,7 @@ describe("the dataset column of the download list", () => {
       [{ name: "a.zip", size: 1, isPublic: false, datasets: [1] }],
       (ref) => `/preview/x/dataset/${ref.id ?? ""}`,
     )
-    const cell = downloadCells(html)[0]?.[1] ?? ""
+    const cell = downloadCells(html)[0]?.[2] ?? ""
 
     expect(cell).toContain("データセット ID 2")
     expect(cell).toContain("href=\"/preview/x/dataset/d2\"")
@@ -178,7 +196,7 @@ describe("the dataset column of the download list", () => {
     const datasets = Array.from({ length: 5 }, (_, at) => ({ ...ROW, id: `d${at}`, label: `NHA00000${at + 1}` }))
     const html = withDatasets(datasets, [{ name: "a.zip", size: 1, isPublic: true, datasets: [0, 1, 2, 3, 4] }])
 
-    expect(downloadCells(html)[0]?.[1]).toContain("他 2 件")
+    expect(downloadCells(html)[0]?.[2]).toContain("他 2 件")
   })
 })
 
@@ -415,6 +433,7 @@ describe("the body beside the form", () => {
     rangeTo: 1,
     page: 1,
     pageCount: 1,
+    size: 20,
   }
   const t = messagesFor("ja").research
 

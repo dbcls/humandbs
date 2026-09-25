@@ -64,7 +64,7 @@ async function publish(
   })
 }
 
-const ja = { locale: "ja", filePage: 1 } as const
+const ja = { locale: "ja", filePage: 1, fileRows: 20 } as const
 
 /** The thrown answer of a loader, so its status and headers can be read. */
 async function caught(load: () => Promise<unknown>): Promise<Response> {
@@ -158,7 +158,7 @@ describe("a research page", () => {
     await rebuildSearchDocs(db)
 
     const redirect = await caught(() =>
-      researchPage({ locale: "en", humId: "hun0001", wanted: "latest", filePage: 1 }))
+      researchPage({ locale: "en", humId: "hun0001", wanted: "latest", filePage: 1, fileRows: 20 }))
 
     expect(redirect.headers.get("location")).toBe("/en/research/hum0001")
   })
@@ -328,6 +328,21 @@ describe("the download list", () => {
     expect(first.files.total).toBe(21)
     expect(first.files.pageCount).toBe(2)
     expect(second.files.rows).toHaveLength(1)
+  })
+
+  it("holds as many names on a page as the page size asks for", async () => {
+    const researchId = await createResearch(HUM)
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    for (let at = 0; at < 21; at += 1) {
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${String(at).padStart(4, "0")}.zip`)
+    }
+
+    const view = await researchPage({ ...ja, humId: HUM, wanted: "latest", fileRows: 50 })
+
+    expect(view.files.rows).toHaveLength(21)
+    expect(view.files.pageCount).toBe(1)
+    expect(view.files.size).toBe(50)
   })
 
   it("keeps only the dataset selections the prefix holds", async () => {

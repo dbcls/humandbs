@@ -17,6 +17,7 @@ import { publicDatasetContent, publicResearch, PUBLISHED } from "~/content/publi
 import { fileListOf, publicListing, publicRows } from "~/files/listing.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
+import type { PageSize } from "~/search/page-size"
 
 import {
   controlledAccessUsers,
@@ -59,6 +60,8 @@ export interface ResearchPageRequest {
   wanted: number | "latest"
   /** Which page of the download list. The prefix is the only long thing here. */
   filePage: number
+  /** How many rows a page of the download list holds. */
+  fileRows: PageSize
 }
 
 export async function researchPage(request: ResearchPageRequest): Promise<ResearchView> {
@@ -125,7 +128,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     datasetLabelById,
     humByLabel: cited.humByLabel,
     cau: projected.cau,
-    files: fileListOf(publicRows(listing), request.filePage),
+    files: fileListOf(publicRows(listing), request.filePage, request.fileRows),
   }, request.locale, catalog)
 }
 

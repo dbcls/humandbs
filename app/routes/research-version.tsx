@@ -1,5 +1,5 @@
 import { ResearchVersionPage } from "~/components/research"
-import { readFilePage } from "~/files/listing.server"
+import { readFilePage, readFileRows } from "~/files/listing.server"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { researchPage } from "~/public/pages.server"
@@ -14,7 +14,8 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   // `v01` — one version has one address.
   if (wanted === null) throw new Response(null, { status: 404, statusText: "Not Found" })
   const filePage = readFilePage(new URL(request.url))
-  const view = await researchPage({ locale, humId: params.humId, wanted, filePage })
+  const fileRows = readFileRows(new URL(request.url))
+  const view = await researchPage({ locale, humId: params.humId, wanted, filePage, fileRows })
   return { locale, view }
 }
 

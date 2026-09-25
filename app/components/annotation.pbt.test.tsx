@@ -84,7 +84,7 @@ function researchAnchors(content: ResearchContent, datasets: { id: string, label
     })),
     datasetLabelById: new Map(datasets.map((row) => [row.id, row.label])),
     cau: [],
-    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+    files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
   }, "ja", catalog)
 
   // As a preview draws it, which is the only reader of the indicators: the

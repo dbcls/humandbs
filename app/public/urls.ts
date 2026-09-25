@@ -116,6 +116,29 @@ export function datasetPath(datasetLabel: string): string {
   return `/dataset/${encodeURIComponent(datasetLabel)}`
 }
 
+/**
+ * The addresses of every public file a research or a dataset has, one to a
+ * line, for a tool to fetch them all. **It takes no language prefix**, for the
+ * reason `filePath` does not: the list is the same in both languages.
+ */
+export function researchFileListPath(humLabel: string): string {
+  return `${researchPath(humLabel)}/files.txt`
+}
+
+export function datasetFileListPath(datasetLabel: string): string {
+  return `${datasetPath(datasetLabel)}/files.txt`
+}
+
+/**
+ * The query of one page of a file list. The page is always written, and the
+ * page size only when it is not the default, as a listing writes `?size=`.
+ */
+export function fileListQuery(page: number, size: number | null): string {
+  const search = new URLSearchParams({ files: String(page) })
+  if (size !== null) search.set("fileRows", String(size))
+  return `?${search.toString()}`
+}
+
 export function listPath(target: "research" | "dataset"): string {
   return target === "research" ? "/research" : "/dataset"
 }

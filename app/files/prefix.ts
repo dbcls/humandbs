@@ -19,6 +19,7 @@
 export const PUBLIC_BUCKET = "files"
 import { dayInJst } from "~/dates"
 import { pageRange } from "~/paging"
+import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 
 export const PRIVATE_BUCKET = "private"
 
@@ -294,6 +295,21 @@ export function pageOfFiles<T>(rows: readonly T[], page: number, size = FILES_PA
     pageCount,
     ...pageRange(wanted, size, rows.length),
   }
+}
+
+/** The page of a file list the address asks for (`?files=`). Anything unreadable is the first. */
+export function filePageOf(params: URLSearchParams): number {
+  const wanted = Number(params.get("files") ?? "1")
+  return Number.isInteger(wanted) && wanted >= 1 ? wanted : 1
+}
+
+/**
+ * How many rows a page of a file list holds (`?fileRows=`): one of the sizes a
+ * listing offers, and the default for anything else.
+ */
+export function fileRowsOf(params: URLSearchParams): PageSize {
+  const asked = Number(params.get("fileRows"))
+  return isPageSize(asked) ? asked : PAGE_SIZE
 }
 
 const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]

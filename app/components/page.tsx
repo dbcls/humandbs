@@ -719,6 +719,13 @@ const CONTROL_ON_FIRST_LINE = "pt-1.25"
  * otherwise, and a table that took only strings pushed those columns into
  * having no header at all.
  *
+ * **Every column is set to the left, numbers included.** A table takes the
+ * width of its card and hands what its columns do not need out among them, so
+ * a column of sizes can be three times as wide as its values; set to the right,
+ * they sit against the far edge, away from the name they belong to. Nor would
+ * the digits compare if they were lined up: a size is written in the unit that
+ * suits it (2.2 GB, 910 MB).
+ *
  * **The table is allowed to be wider than the page** and scrolls inside its own
  * box. A cell has a floor as well as a ceiling: without the floor a narrow
  * screen squeezes a column of titles down to one character per line rather than
@@ -734,21 +741,8 @@ const CONTROL_ON_FIRST_LINE = "pt-1.25"
  * window: the floors are held by `Td`, so a table of one wide cell stops
  * travelling sideways for as long as it has no rows.
  */
-/**
- * A column name that sits over numbers: the name goes to the right, where the
- * digits end, so the column reads as one thing from its head to its foot.
- */
-export interface NumericHeader {
-  text: string
-  align: "right"
-}
-
-function isNumericHeader(header: ReactNode | NumericHeader): header is NumericHeader {
-  return typeof header === "object" && header !== null && "align" in header
-}
-
 export function Table({ headers: named, children, stuck = 0, whenEmpty, align = "top", actions }: {
-  headers: (ReactNode | NumericHeader)[]
+  headers: ReactNode[]
   /**
    * The rows end in a column of things to press, **named for anyone hearing the
    * row read aloud and nowhere else** — a word over a column of icons is a
@@ -927,9 +921,9 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
                     // Which column a value belongs to, for a reader who hears
                     // the row rather than seeing it line up under the name.
                     scope="col"
-                    className={`px-3 align-middle font-semibold ${typeof header === "string" || isNumericHeader(header) ? "whitespace-nowrap py-1.5" : `${CEILING} ${ICON_COLUMN} py-0`} ${isNumericHeader(header) ? "text-right" : ""} ${index < stuck ? `${STUCK[index] ?? ""} ${HEADER_BAR_FILL.brand} ${STUCK_HEADER_BAR[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                    className={`px-3 align-middle font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${CEILING} ${ICON_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${HEADER_BAR_FILL.brand} ${STUCK_HEADER_BAR[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                   >
-                    {isNumericHeader(header) ? header.text : header}
+                    {header}
                   </th>
                 ))}
               </tr>
@@ -1157,7 +1151,7 @@ function offeredPages(page: number, pageCount: number, nearest: number): number[
   return [...offered].sort((a, b) => a - b)
 }
 
-export function PageLinks({ label, page, pageCount, at, previous, next, most }: {
+export function PageLinks({ label, page, pageCount, at, previous, next, most, inPlace = false }: {
   label: string
   page: number
   pageCount: number
@@ -1166,8 +1160,15 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
   next: string
   /** At most this many page numbers, where the room for them is short. */
   most?: number
+  /**
+   * The pages are of one section rather than of the screen (`Paging`'s
+   * `inPlace`): a step keeps the scroll where it is and replaces the history
+   * entry instead of adding one.
+   */
+  inPlace?: boolean
 }) {
   if (pageCount <= 1) return null
+  const stay = inPlace ? { preventScrollReset: true, replace: true } : {}
 
   // The two steps are drawn as arrows rather than words: they sit in a row of
   // numbers, and a word among them is read as one more place to go rather than
@@ -1175,7 +1176,7 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-1 text-sm">
       {page > 1 && (
-        <Link to={at(page - 1)} aria-label={previous} title={previous} className={PAGE_STEP}>
+        <Link to={at(page - 1)} {...stay} aria-label={previous} title={previous} className={PAGE_STEP}>
           <Chevron dir="left" />
         </Link>
       )}
@@ -1186,10 +1187,10 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
                 {number}
               </span>
             )
-          : <Link key={number} to={at(number)} className={PAGE_STEP}>{number}</Link>
+          : <Link key={number} to={at(number)} {...stay} className={PAGE_STEP}>{number}</Link>
       ))}
       {page < pageCount && (
-        <Link to={at(page + 1)} aria-label={next} title={next} className={PAGE_STEP}>
+        <Link to={at(page + 1)} {...stay} aria-label={next} title={next} className={PAGE_STEP}>
           <Chevron dir="right" />
         </Link>
       )}
@@ -1215,7 +1216,7 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
  * route that read that number out of a `.server` module could not be split
  * from its loader.
  */
-export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
+export function Paging({ locale, total, from, to, page, pageCount, at, most, inPlace }: {
   locale: Locale
   total: number
   /** 1-based positions of the shown rows within the whole result. */
@@ -1226,6 +1227,15 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
   at: (page: number) => string
   /** At most this many page numbers, where the room for them is short. */
   most?: number
+  /**
+   * The rows are one section of a page rather than the page, as a research's
+   * files are. **A step keeps the reader where they are**: the section is
+   * somewhere down the page, and a step that scrolled to the top would leave
+   * them looking for the table they were paging. **It replaces the history
+   * entry**, so that the back button leaves the page instead of stepping back
+   * through the section's pages.
+   */
+  inPlace?: boolean
 }) {
   const messages = messagesFor(locale)
   // **The gap is a third of what separates the pair from the rest of the row.**
@@ -1253,6 +1263,7 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
         previous={messages.search.previousPage}
         next={messages.search.nextPage}
         most={most}
+        inPlace={inPlace}
       />
     </div>
   )

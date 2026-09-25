@@ -3,10 +3,10 @@ import { useSearchParams } from "react-router"
 import { Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
-import { pageOfFiles } from "~/files/prefix"
+import { filePageOf, fileRowsOf, pageOfFiles } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
+import { datasetFileListPath, fileListQuery, href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
 import type { DatasetView } from "~/public/view.server"
 
 import { Downloads } from "./files"
@@ -60,6 +60,7 @@ export function DatasetPage({ view, locale }: { view: DatasetView, locale: Local
           view={view}
           locale={locale}
           researchHref={href(locale, researchPath(view.humLabel))}
+          urlList={datasetFileListPath(view.label)}
         />
       </Card>
     </Page>
@@ -77,23 +78,28 @@ export function DatasetPage({ view, locale }: { view: DatasetView, locale: Local
  * from, so a comment about the access type is a comment about that slot however
  * the page chose to draw it.
  */
-export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDataAnchor }: {
+export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDataAnchor, urlList }: {
   view: DatasetView
   locale: Locale
   researchHref: string
   /** Where the two placed values are anchored, when the catalog knows the keys. */
   accessAnchor?: string | null
   typeOfDataAnchor?: string | null
+  /**
+   * Where the addresses of the files the dataset selects are listed. The
+   * published page has one; a preview's files are not public yet.
+   */
+  urlList?: string
 }) {
   const messages = messagesFor(locale)
   const t = messages.dataset
   // The selection is cut here rather than on the server: the view is built by
   // every screen that draws a dataset (the page, the preview, the editor's
   // pane), and the page asked for is only ever the address's. It is the same
-  // parameter and the same size as the research's download list.
+  // parameters as the research's download list.
   const [params] = useSearchParams()
-  const wanted = Number(params.get("files") ?? "1")
-  const files = pageOfFiles(view.files, Number.isInteger(wanted) ? wanted : 1)
+  const size = fileRowsOf(params)
+  const files = pageOfFiles(view.files, filePageOf(params), size)
 
   return (
     <Stack gap="block">
@@ -156,7 +162,9 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
             rangeTo={files.rangeTo}
             page={files.page}
             pageCount={files.pageCount}
-            at={(to) => `?files=${to}`}
+            size={size}
+            at={fileListQuery}
+            urlList={urlList}
           />
         </Section>
       )}

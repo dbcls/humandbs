@@ -59,6 +59,26 @@ describe("a dataset's files", () => {
     expect(names(html)).toEqual([`f${String(FILES_PAGE_SIZE + 1).padStart(3, "0")}.txt`])
   })
 
+  it("holds as many files on a page as the address asks for", () => {
+    expect(names(render(60, "/dataset/NHA000001?fileRows=50"))).toHaveLength(50)
+  })
+
+  it("reads a page size the list does not offer as the default one", () => {
+    expect(names(render(60, "/dataset/NHA000001?fileRows=30"))).toHaveLength(FILES_PAGE_SIZE)
+  })
+
+  it("offers the list of the files' addresses only where it is given one", () => {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => (
+        <DatasetBody view={view(1)} locale="ja" researchHref="/research/hum0001" urlList="/dataset/NHA000001/files.txt" />
+      ),
+    }])
+
+    expect(renderToStaticMarkup(<Stub initialEntries={["/dataset/NHA000001"]} />)).toContain("href=\"/dataset/NHA000001/files.txt\"")
+    expect(render(1)).not.toContain("files.txt")
+  })
+
   it("reads an address it cannot read as the nearest page, and never loses or repeats a file", () => {
     fc.assert(fc.property(
       fc.integer({ min: 1, max: 3 * FILES_PAGE_SIZE }),

@@ -29,7 +29,7 @@ function drawn(): DrawnDraft {
     datasets: [],
     datasetLabelById: new Map(),
     cau: [],
-    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+    files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
   }, "ja", NO_CATALOG)
   const row = researchListRowView({
     humLabel: "hum0001",

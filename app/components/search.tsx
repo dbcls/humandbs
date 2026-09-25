@@ -889,10 +889,12 @@ function SortChoice<K extends string>({ locale, sort, at }: {
  * at is at a different place in a differently sized listing, and the honest
  * answer to "show me a hundred at a time" is the first hundred.
  */
-function SizeChoice({ locale, size, at }: {
+function SizeChoice({ locale, size, at, inPlace = false }: {
   locale: Locale
   size: number
-  at: (size: number | null) => string
+  at: (size: PageSize | null) => string
+  /** The rows are one section of a page (`Paging`'s `inPlace`): the choice replaces the history entry. */
+  inPlace?: boolean
 }) {
   const messages = messagesFor(locale)
   return (
@@ -902,6 +904,7 @@ function SizeChoice({ locale, size, at }: {
           key={option}
           to={at(option === PAGE_SIZE ? null : option)}
           preventScrollReset
+          replace={inPlace}
           aria-current={option === size ? "true" : undefined}
           className={option === size ? MENU_ITEM_HERE : MENU_ITEM}
         >
@@ -945,6 +948,40 @@ export function ListingTools<K extends string>({ locale, presented, at, paging }
       )}
       <SizeChoice locale={locale} size={presented.size} at={(size) => at({ ...written, size })} />
       <Paging locale={locale} {...paging} />
+    </div>
+  )
+}
+
+/**
+ * The row over a research's or a dataset's file list: the list of every file's
+ * address on the left, and on the right how many rows a page holds, the count
+ * and the page steps — the same controls as over a listing
+ * (`ListingTools`), with the steps kept in place (`Paging`'s `inPlace`).
+ * Under the table sits `Paging` alone, with the same `paging`.
+ *
+ * `sizing` is left out where the list is no longer than the smallest page:
+ * there is nothing to page or choose.
+ */
+export function FileListTools({ locale, urlList, sizing }: {
+  locale: Locale
+  /** Where the addresses of every file in the list are fetched from, one to a line. */
+  urlList?: string
+  sizing: { size: PageSize, at: (size: PageSize | null) => string, paging: ListingPaging } | null
+}) {
+  const messages = messagesFor(locale)
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      {urlList !== undefined && (
+        <ButtonLink to={urlList} external download listing icon={<Icon name="download" />}>
+          {messages.research.downloadUrlList}
+        </ButtonLink>
+      )}
+      {sizing !== null && (
+        <div className={`ml-auto ${TOOLS_ROW}`}>
+          <SizeChoice locale={locale} size={sizing.size} at={sizing.at} inPlace />
+          <Paging locale={locale} {...sizing.paging} inPlace />
+        </div>
+      )}
     </div>
   )
 }

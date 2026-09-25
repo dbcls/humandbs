@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { RichText, Slot } from "~/content/types"
 
-import { cleanseCharacters, cleanseContent, cleanseEnglish, cleanseMarkdown, cleanseRich, noCounts, pairedBrackets, splitGrantIds } from "./cleansing"
+import { cleanseCharacters, cleanseContent, cleanseEnglish, cleanseMarkdown, cleansePunctuation, cleanseRich, noCounts, pairedBrackets, splitGrantIds } from "./cleansing"
 
 const lines = (...texts: string[]): RichText => texts.map((text) => text === "" ? [] : [{ text }])
 const prose = (...texts: string[]): Slot<RichText> => ({ state: "value", value: lines(...texts) })
@@ -92,6 +92,10 @@ describe("cleanseCharacters", () => {
     expect(cleanseCharacters("a\u0005b\u0006\nc\td", noCounts())).toBe("ab\nc\td")
   })
 
+  it("removes zero-width spaces", () => {
+    expect(cleanseCharacters("Medicine\u200b, Center\ufeff、\u200bNanyang", noCounts())).toBe("Medicine, Center、Nanyang")
+  })
+
   it("removes markdown's escapes", () => {
     expect(cleanseCharacters("reference\\_accession: GCF\\_000001405.13 \\[DNA\\]", noCounts()))
       .toBe("reference_accession: GCF_000001405.13 [DNA]")
@@ -108,6 +112,28 @@ describe("cleanseCharacters", () => {
     cleanseCharacters("ＡＢ\\_", counts)
     cleanseCharacters("plain", counts)
     expect(counts).toMatchObject({ characters: 1, escapes: 1 })
+  })
+})
+
+describe("cleansePunctuation", () => {
+  it("makes typographic quote marks ASCII", () => {
+    expect(cleansePunctuation("Parkinson’s ‘quantifier.pl’ “benign”", noCounts())).toBe("Parkinson's 'quantifier.pl' \"benign\"")
+  })
+
+  it("makes every dash a hyphen-minus", () => {
+    expect(cleansePunctuation("Hardy–Weinberg Hardy‒Weinberg Multi‐institutional data—including ― 追加解析 ― 研究助成－がん領域", noCounts()))
+      .toBe("Hardy-Weinberg Hardy-Weinberg Multi-institutional data-including - 追加解析 - 研究助成-がん領域")
+  })
+
+  it("keeps the long vowel mark and the minus sign", () => {
+    expect(cleansePunctuation("データベース −80℃", noCounts())).toBe("データベース −80℃")
+  })
+
+  it("counts a string once", () => {
+    const counts = noCounts()
+    cleansePunctuation("’–”", counts)
+    cleansePunctuation("plain", counts)
+    expect(counts.punctuation).toBe(1)
   })
 })
 
@@ -217,6 +243,24 @@ describe("cleanseContent", () => {
 
   it("cleans the strings of lists that are not prose, such as grant numbers", () => {
     expect(cleanseContent({ grantIds: ["ＪＰ１９ｄｍ", "16H06279"] }).content).toEqual({ grantIds: ["JP19dm", "16H06279"] })
+  })
+
+  it("makes quote marks and dashes ASCII on both sides of a pair and in prose, but not in addresses", () => {
+    const input = {
+      title: { ja: { state: "value", value: "“Clinical Sequencing”の有用性" }, en: { state: "value", value: "Parkinson’s disease" } },
+      text: { ja: prose("血小板減少－：196症例"), en: prose("Hardy–Weinberg") },
+      grantIds: ["H22－難治-一般-058"],
+      doi: { state: "value", value: "https://doi.org/10.1/a–b" },
+    }
+    const { content, counts } = cleanseContent(input)
+
+    expect(content).toEqual({
+      title: { ja: { state: "value", value: "\"Clinical Sequencing\"の有用性" }, en: { state: "value", value: "Parkinson's disease" } },
+      text: { ja: prose("血小板減少-：196症例"), en: prose("Hardy-Weinberg") },
+      grantIds: ["H22-難治-一般-058"],
+      doi: input.doi,
+    })
+    expect(counts.punctuation).toBe(5)
   })
 })
 

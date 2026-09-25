@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import type { RichText } from "~/content/types"
 
-import { cleanseCharacters, cleanseContent, cleanseEnglish, cleanseRich, noCounts, pairedBrackets } from "./cleansing"
+import { cleanseCharacters, cleanseContent, cleanseEnglish, cleansePunctuation, cleanseRich, noCounts, pairedBrackets } from "./cleansing"
 
 /** Text built from the characters the rules act on, and ones they must leave. */
 const pieceArb = fc.constantFrom(
@@ -131,6 +131,21 @@ describe("cleanseContent", () => {
       const hrefs = (node: unknown) => new Set(JSON.stringify(node).match(/"href":"[^"]*"/g) ?? [])
       const before = hrefs({ values: pairs })
       for (const href of hrefs(cleanseContent({ values: pairs }).content)) expect(before.has(href)).toBe(true)
+    }))
+  })
+})
+
+const punctuationArb = fc.array(fc.constantFrom("a", "が", "ー", "−", " ", "‘", "’", "“", "”", "‐", "‑", "‒", "–", "—", "―", "－", "'", "\"", "-"), { maxLength: 8 })
+  .map((pieces) => pieces.join(""))
+
+describe("cleansePunctuation", () => {
+  it("leaves no typographic quote mark or dash, keeps every other character, and changes nothing the second time", () => {
+    fc.assert(fc.property(punctuationArb, (text) => {
+      const once = cleansePunctuation(text, noCounts())
+      expect(once).not.toMatch(/[‘’“”‐‑‒–—―－]/)
+      expect(once.length).toBe(text.length)
+      expect(once.replace(/['"-]/g, "")).toBe(text.replace(/[‘’“”‐‑‒–—―－'"-]/g, ""))
+      expect(cleansePunctuation(once, noCounts())).toBe(once)
     }))
   })
 })

@@ -73,7 +73,7 @@ function viewOf(content: ResearchContent, locale: "ja" | "en" = "en", cau: CauUs
     datasets: [],
     datasetLabelById: new Map(),
     cau,
-    files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+    files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
   }, locale, catalog)
 }
 
@@ -183,7 +183,7 @@ describe("what a research page has", () => {
       datasets: [],
       datasetLabelById: new Map(),
       cau: [],
-      files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+      files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
     }, "ja", catalog)).toMatchObject({ isLatest: false, versionLabel: "hum0001-v1" })
   })
 
@@ -205,7 +205,7 @@ describe("what a research page has", () => {
       datasets: [],
       datasetLabelById: new Map([["known", "JGAD000001"]]),
       cau: [],
-      files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+      files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
     }, "ja", catalog)
     expect(view.relatedPublications[0]?.datasetLabels).toEqual(["JGAD000001"])
   })
@@ -231,6 +231,7 @@ describe("what a research page has", () => {
           total: names.length,
           page: 1,
           pageCount: 1,
+          size: 20,
           rangeFrom: 1,
           rangeTo: names.length,
         },
@@ -259,9 +260,9 @@ describe("what a research page has", () => {
         datasets: [],
         datasetLabelById: new Map(),
         cau: [],
-        files: { rows: [], total: 250, page: 3, pageCount: 3, rangeFrom: 201, rangeTo: 250 },
+        files: { rows: [], total: 250, page: 3, pageCount: 3, size: 20, rangeFrom: 201, rangeTo: 250 },
       }, "ja", catalog)
-      expect(view.files).toEqual({ rows: [], total: 250, page: 3, pageCount: 3, rangeFrom: 201, rangeTo: 250 })
+      expect(view.files).toEqual({ rows: [], total: 250, page: 3, pageCount: 3, size: 20, rangeFrom: 201, rangeTo: 250 })
     })
   })
 
@@ -280,7 +281,7 @@ describe("what a research page has", () => {
         datasetLabelById: new Map([["mine", "JGAD000001"], ["theirs", "JGAD000009"]]),
         humByLabel,
         cau: [],
-        files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+        files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
       }, "ja", catalog).relatedPublications[0]
     }
 
@@ -318,7 +319,7 @@ describe("what a research page has", () => {
         datasets: [],
         datasetLabelById: new Map([["mine", "JGAD000001"]]),
         cau: [],
-        files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
+        files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
       }, "ja", catalog)
       expect(view.relatedPublications[0]?.datasets).toEqual([{ label: "JGAD000001", known: true, humLabel: null }])
     })
