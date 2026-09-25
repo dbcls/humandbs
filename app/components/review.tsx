@@ -31,7 +31,7 @@ import { Editing, Field, Submit, Unsaved } from "./form"
 import { Flag } from "./flags"
 import { Icon } from "./icons"
 import { Card, Page, Section, Table, Td } from "./page"
-import { researchFieldLabel } from "./research-fields"
+import { placeName } from "./places"
 
 /**
  * The first sentence of an indicator's words, which is what a heading quotes: the
@@ -83,20 +83,8 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
     signedInName: view.signedInName,
   }
 
-  /**
-   * **The places are named as the open-comments panel names them** — a field
-   * of the research by its label, a dataset by its id — never by a path.
-   */
-  const nameOf = (anchor: CommentAnchor): string => {
-    switch (anchor.kind) {
-      case "research-field":
-        return researchFieldLabel(anchor.path, locale) ?? anchor.path
-      case "dataset-field":
-        return view.datasetLabels[anchor.datasetId] ?? editor.unpinnedDataset
-      default:
-        return editor.whole
-    }
-  }
+  /** **The places are named as the open-comments panel names them** (`places.ts`). */
+  const nameOf = (anchor: CommentAnchor): string => placeName(anchor, view.places, locale)
   const groups = groupedByAnchor(view.comments, nameOf)
 
   return (
@@ -191,6 +179,7 @@ function Share({ view }: { view: ReviewPageView }) {
             text={() => new URL(share.url, window.location.href).href}
             label={t.copy}
             done={messages.copied}
+            byHand={messages.copyByHand}
           />
           <Form method="post" className="ml-auto">
             <Confirm

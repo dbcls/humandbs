@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Form } from "react-router"
 
 import { documentAction, documentPage } from "~/admin/contents.server"
-import { adminContentsPath, adminSeriesPath } from "~/admin/urls"
+import { adminDocumentsPath, adminSeriesPath } from "~/admin/urls"
 import { Confirm, Stack } from "~/components/base"
 import { contentsSaid, SlugEditor, useArticlePanes } from "~/components/contents"
 import { DraftHead } from "~/components/draft-tools"
@@ -13,7 +13,7 @@ import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 
-import type { Route } from "./+types/admin-contents-document"
+import type { Route } from "./+types/admin-document"
 
 /**
  * One document: its slug, and each language's body and published state, with
@@ -75,7 +75,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
           aside={slug}
           updating={null}
           back={{
-            to: href(locale, seriesOf === null ? adminContentsPath() : adminSeriesPath(seriesOf.id)),
+            to: href(locale, seriesOf === null ? adminDocumentsPath() : adminSeriesPath(seriesOf.id)),
             label: seriesOf === null ? t.backToList : t.backToSeries,
             icon: "chevron-left",
           }}
@@ -96,7 +96,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
               )}
               {/* **What takes the whole article away is shown beside its name**,
                   next to the back link, rather than among the languages
-                  (`admin-contents-news-item.tsx`). **The revision a series points
+                  (`admin-news-item.tsx`). **The revision a series points
                   at has no such control**: the version-less address has to keep
                   responding, and the way to take it down is the series' own
                   screen, which takes the pointer with it. */}

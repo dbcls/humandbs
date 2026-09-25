@@ -13,7 +13,7 @@ import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 
-import type { Route } from "./+types/admin-contents-news-item"
+import type { Route } from "./+types/admin-news-item"
 
 /**
  * One announcement: the day it is dated, and each language's body and published

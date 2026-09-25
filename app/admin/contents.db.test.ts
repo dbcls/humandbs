@@ -28,7 +28,7 @@ import {
 import { today } from "~/dates"
 import {
   adminAlertPath,
-  adminContentsPath,
+  adminDocumentsPath,
   adminDocumentPath,
   adminNewsListPath,
   adminNewsPath,
@@ -117,7 +117,7 @@ async function slugOf(documentId: string): Promise<string> {
 describe("認可", () => {
   it("admin でなければ開けない", async () => {
     const token = await signIn(READER, false)
-    expect((await thrown(() => contentsPage(get(token, adminContentsPath())))).status).toBe(403)
+    expect((await thrown(() => contentsPage(get(token, adminDocumentsPath())))).status).toBe(403)
   })
 })
 
@@ -125,7 +125,7 @@ describe("slug", () => {
   it("route で使われているアドレスは取れない", async () => {
     const token = await signIn(CURATOR, true)
     const result = await contentsAction(
-      post(token, adminContentsPath(), { intent: "create-document", slug: "news/2026" }),
+      post(token, adminDocumentsPath(), { intent: "create-document", slug: "news/2026" }),
     )
     expect(result.status).toBe("reserved-slug")
   })
@@ -136,7 +136,7 @@ describe("slug", () => {
     await db.insert(s.documentSeries).values({ slug: "x", currentId: revision })
 
     const result = await contentsAction(
-      post(token, adminContentsPath(), { intent: "create-document", slug: "x" }),
+      post(token, adminDocumentsPath(), { intent: "create-document", slug: "x" }),
     )
     expect(result.status).toBe("duplicate-slug")
   })
@@ -462,7 +462,7 @@ describe("バージョン", () => {
     expect(await findDocument("x", "ja")).not.toBeNull()
     expect(await findDocument("x", "en")).toBeNull()
 
-    const view = await contentsPage(get(token, adminContentsPath()))
+    const view = await contentsPage(get(token, adminDocumentsPath()))
     expect(view.unanswered).toEqual([{ slug: "x", locales: ["en"] }])
   })
 
@@ -493,7 +493,7 @@ describe("バージョン", () => {
       id,
     ))
     expect(redirected.status).toBe(302)
-    expect(redirected.headers.get("location")).toContain(adminContentsPath())
+    expect(redirected.headers.get("location")).toContain(adminDocumentsPath())
     expect(await db.select().from(s.document)).toHaveLength(0)
     expect(await db.select().from(s.documentContent)).toHaveLength(0)
 
@@ -523,7 +523,7 @@ describe("バージョン", () => {
     ))
     expect(redirected.status).toBe(302)
     expect(redirected.headers.get("location")).toContain(adminSeriesPath(series.id))
-    expect(redirected.headers.get("location")).not.toContain(adminContentsPath() + "?")
+    expect(redirected.headers.get("location")).not.toContain(adminDocumentsPath() + "?")
     expect((await db.select().from(s.document)).map((one) => one.slug)).toEqual(["x/version/1"])
   })
 
@@ -1034,7 +1034,7 @@ describe("画面", () => {
     await makeDocument("nbdc-policy")
     await makeDocument("policy-japan")
 
-    const view = await contentsPage(get(token, `${adminContentsPath()}?q=POLICY`))
+    const view = await contentsPage(get(token, `${adminDocumentsPath()}?q=POLICY`))
     expect(view.rows.map((row) => row.kind === "document" ? row.document.slug : "")).toEqual([
       "nbdc-policy",
       "policy-japan",
@@ -1052,7 +1052,7 @@ describe("画面", () => {
     await publishSide(jaOnly, "ja")
 
     const view = await contentsPage(
-      get(token, `${adminContentsPath()}?ja=published&en=unpublished`),
+      get(token, `${adminDocumentsPath()}?ja=published&en=unpublished`),
     )
     expect(view.rows.map((row) => row.kind === "document" ? row.document.slug : "")).toEqual(["aim"])
   })
@@ -1063,7 +1063,7 @@ describe("画面", () => {
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
     await makeDocument("faq")
 
-    const view = await contentsPage(get(token, `${adminContentsPath()}?versioning=versioned`))
+    const view = await contentsPage(get(token, `${adminDocumentsPath()}?versioning=versioned`))
     expect(view.rows.map((row) => row.kind === "series" ? row.series.slug : "")).toEqual(["x"])
   })
 
@@ -1076,7 +1076,7 @@ describe("画面", () => {
     await publishSide(jaOnly, "ja")
     await makeDocument("neither")
 
-    const view = await contentsPage(get(token, `${adminContentsPath()}?ja=published`))
+    const view = await contentsPage(get(token, `${adminDocumentsPath()}?ja=published`))
 
     expect(view.rows).toHaveLength(2)
     // 自分の項目の条件は外して数えるので、日本語を絞っても両方の値に件数がある。
@@ -1094,7 +1094,7 @@ describe("画面", () => {
     await publishSide(policy, "ja")
     await makeDocument("policy-japan")
 
-    const view = await contentsPage(get(token, `${adminContentsPath()}?q=policy`))
+    const view = await contentsPage(get(token, `${adminDocumentsPath()}?q=policy`))
     expect(view.counts.ja).toEqual({ published: 1, unpublished: 1 })
   })
 

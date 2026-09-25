@@ -25,8 +25,8 @@ import { messagesFor } from "~/i18n/messages"
 import {
   adminAlertPath,
   adminAssistantPath,
-  adminContentFilesPath,
-  adminContentsPath,
+  adminFilesPath,
+  adminDocumentsPath,
   adminExperimentFieldsPath,
   adminNewsListPath,
   adminPath,
@@ -107,7 +107,7 @@ const BAR: {
     heading: (words) => words.templates.heading,
   },
   {
-    path: adminContentsPath(),
+    path: adminDocumentsPath(),
     label: (words) => words.contents.heading,
     heading: (words) => words.contents.heading,
   },
@@ -122,7 +122,7 @@ const BAR: {
     heading: (words) => words.contents.news.heading,
   },
   {
-    path: adminContentFilesPath(),
+    path: adminFilesPath(),
     label: (words) => words.contents.files.heading,
     heading: (words) => words.contents.files.heading,
   },
@@ -232,10 +232,10 @@ export function adminTasks(locale: Locale): AdminTask[] {
     {
       title: tasks.contents.title,
       links: [
-        { path: adminContentsPath(), label: words.contents.heading, icon: SUBJECT_ICON.article },
+        { path: adminDocumentsPath(), label: words.contents.heading, icon: SUBJECT_ICON.article },
         { path: adminAlertPath(), label: words.contents.alert.heading, icon: SUBJECT_ICON.alert },
         { path: adminNewsListPath(), label: tasks.contents.news, icon: SUBJECT_ICON.news },
-        { path: adminContentFilesPath(), label: words.contents.files.heading, icon: SUBJECT_ICON.staticFile },
+        { path: adminFilesPath(), label: words.contents.files.heading, icon: SUBJECT_ICON.staticFile },
       ],
     },
     {

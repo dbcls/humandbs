@@ -1,6 +1,6 @@
 import { fileDownload } from "~/files/pages.server"
 
-import type { Route } from "./+types/admin-files-download"
+import type { Route } from "./+types/admin-research-files-download"
 
 /**
  * Where a row of the files screen fetches a private file. It responds with a

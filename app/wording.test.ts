@@ -155,9 +155,6 @@ const TEST_NAME = /^\s*(?:it|describe|test)(?:\.each\(.*?\))?\(\s*["'`]/
 /** Test names in any form: `test.describe(`, `describe.skipIf(x)(`, and the name line of a multi-line `it.each([...])(`. */
 const ANY_TEST_NAME = /^\s*(?:(?:it|describe|test)(?:\.\w+(?:\(.*?\))?)*|\]\))\(\s*["'`]/
 
-/** Dev-only screens whose text is checked on every line, since it never reaches the i18n messages. */
-const DEV_ONLY_FILES = new Set(["app/routes/dev-ui.tsx"])
-
 /** Files whose lines list the banned words as data. */
 const JA_RULE_FILES = new Set([SELF, "app/docs.test.ts", "app/i18n/messages.test.ts"])
 
@@ -182,7 +179,7 @@ function isHashCommented(file: string): boolean {
 
 /** The part of a line that describes code: the whole of a comment line or test name, else a trailing comment. */
 function descriptivePart(line: string, file: string): string {
-  if (DEV_ONLY_FILES.has(file) || isDescriptive(line, file) || ANY_TEST_NAME.test(line)) return line
+  if (isDescriptive(line, file) || ANY_TEST_NAME.test(line)) return line
   const trailing = isHashCommented(file) ? /\s#\s(.*)$/.exec(line) : /\s(?:\/\/|\{?\/\*)\s(.*)$/.exec(line)
   return trailing?.[1] ?? ""
 }
@@ -275,7 +272,6 @@ describe("wording", () => {
     ].join("\n")
     expect(japaneseViolations(allowed, "app/allowed.tsx")).toEqual([])
     expect(japaneseViolations("# 枠の中に置く", "compose.yml")).toHaveLength(1)
-    expect(japaneseViolations("  [\"entry\", \"入り口\"],", "app/routes/dev-ui.tsx")).toHaveLength(1)
   })
 
   it("コードとコメントに比喩の語が無い", () => {

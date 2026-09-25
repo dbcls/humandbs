@@ -236,7 +236,7 @@ describe("a list of repeated elements", () => {
   it("draws no table while the list is empty — only the way to add one", () => {
     const html = list([])
     expect(html).not.toContain("<table")
-    expect(html).toContain("追加")
+    expect(html).toContain("助成金情報の追加")
   })
 })
 

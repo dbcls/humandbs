@@ -586,7 +586,7 @@ export function Select({
             if (disabled) event.preventDefault()
           }}
           className={`${CONTROL} ${edge(error)} flex w-full list-none items-center justify-between gap-2 marker:content-none ${
-            disabled ? "cursor-default opacity-50" : "cursor-pointer"
+            disabled ? "opacity-50" : ""
           }`}
           {...invalid(id, error)}
         >

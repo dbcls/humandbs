@@ -653,15 +653,12 @@ describe("the research screen's forms", () => {
 })
 
 describe("the research screen's table", () => {
-  it("counts a draft's datasets and includes what its publish check would stop", async () => {
+  it("counts a draft's datasets", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
 
     const before = await researchDetailPage(get(token, "/x"), "ja", researchId)
-    const empty = before.reviews.find((row) => row.draftId === draftId)
-    expect(empty?.datasets).toBe(0)
-    // No research ID is pinned yet, which the publish check always stops on.
-    expect(empty?.blocks).toBeGreaterThan(0)
+    expect(before.reviews.find((row) => row.draftId === draftId)?.datasets).toBe(0)
 
     await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
 

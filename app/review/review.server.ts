@@ -16,9 +16,10 @@
 import { redirect } from "react-router"
 
 import { reissueShareToken, setDraftSharing } from "~/admin/drafts.server"
-import { humLabelOf, readDraft, researchDatasets } from "~/admin/queries.server"
+import { readDraft, researchDatasets } from "~/admin/queries.server"
 import { adminDraftReviewPath } from "~/admin/urls"
 import { requireCapability } from "~/auth/actor.server"
+import type { PlaceSources } from "~/components/places"
 import { loadConfig, publicOrigin } from "~/config.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -35,9 +36,9 @@ import {
   setCommentResolved,
   type AcknowledgementView,
 } from "./comments.server"
+import { placeSources } from "./places.server"
 import { readShare } from "./queries.server"
 import { isShareExpired, isShareOpen, shareExpiryDay, shareExpiryOf } from "./share"
-import { draftSteps, type DraftStepsView } from "~/admin/steps.server"
 import { previewPath } from "./urls"
 
 function notFound(): never {
@@ -94,14 +95,12 @@ export interface ReviewPageView {
    * question. What has been resolved is read in the panel of its own place.
    */
   comments: CommentView[]
-  /** What each of the research's datasets is called, to name the place a comment is about. */
-  datasetLabels: Record<string, string | null>
+  /** What names the places the comments are on (`components/places.ts`). */
+  places: PlaceSources
   unresolved: number
   acknowledgements: AcknowledgementView[]
-  /** The number of the version the draft updates, which identifies the last step. */
+  /** The number of the version the draft updates. */
   updating: number | null
-  /** The draft's facts (datasets, sharing, publish check), as the research's screen and the header of the editor read them; the share and the threads are this screen's own. */
-  steps: DraftStepsView
 }
 
 export async function reviewPage(
@@ -111,32 +110,29 @@ export async function reviewPage(
 ): Promise<ReviewPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [share, comments, acknowledgements, humLabel, datasets] = await Promise.all([
+  const [share, comments, acknowledgements, places] = await Promise.all([
     readShare(db, draftId),
     readComments(db, draftId),
     readAcknowledgements(db, draftId),
-    humLabelOf(db, researchId),
-    researchDatasets(db, researchId),
+    placeSources(db, researchId, draftId, draft.content, locale),
   ])
   if (share === null) notFound()
 
   const shareNow = shareView(share, locale, publicOrigin(loadConfig(process.env).auth))
   const unresolved = unresolvedCount(comments)
-  const steps = await draftSteps(db, researchId, draftId, draft.content, { shared: shareNow.open, unresolved })
 
   return {
     locale,
     researchId,
     draftId,
-    humLabel,
+    humLabel: places.humLabel,
     signedInName: actor.name,
     share: shareNow,
     unresolved,
     comments: comments.filter((one) => one.anchor.kind !== "memo" && !one.resolved),
-    datasetLabels: Object.fromEntries(datasets.map((row) => [row.id, row.label])),
+    places,
     acknowledgements,
     updating: draft.updating?.number ?? null,
-    steps,
   }
 }
 

@@ -8,6 +8,9 @@ import type { CommentView } from "~/review/comments"
 import type { ReviewPageView } from "~/review/review.server"
 
 import { ReviewScreen } from "./review"
+import type { PlaceSources } from "./places"
+
+const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
 
 const RESEARCH_ID = "00000000-0000-0000-0000-000000000001"
 const DRAFT_ID = "00000000-0000-0000-0000-000000000002"
@@ -21,11 +24,10 @@ function view(over: Partial<ReviewPageView> = {}): ReviewPageView {
     signedInName: "curator",
     share: { url: "https://example.invalid/preview/tok", enabled: false, open: false, expired: false, expiresOn: null },
     comments: [],
-    datasetLabels: {},
+    places: NO_PLACES,
     unresolved: 0,
     acknowledgements: [],
     updating: null,
-    steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
     ...over,
   }
 }
@@ -160,12 +162,22 @@ describe("the open comments", () => {
         said("c4", { kind: "dataset-field", datasetId: "d1", path: "values.x" }, "区分は？"),
         said("c5", { kind: "dataset-field", datasetId: "d2", path: "values.y" }, "未発行のもの"),
       ],
-      datasetLabels: { d1: "JGAD000001", d2: null },
+      places: {
+        ...NO_PLACES,
+        humLabel: "hum0001",
+        datasets: [{ id: "d1", label: "JGAD000001", number: 1 }, { id: "d2", label: null, number: 2 }],
+        keyLabels: { x: "区分", y: "対象" },
+      },
       unresolved: 5,
     }))
     const places = [...html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)].map((one) => (one[1] ?? "").replace(/<[^>]+>/g, ""))
     // The place's name, then how many are open there.
-    expect(places).toEqual(["目的2", "全体へのコメント1", "JGAD0000011", "ID 未発行1"])
+    expect(places).toEqual([
+      "hum0001 / 研究概要 / 目的2",
+      "全体へのコメント1",
+      "JGAD000001 / 区分1",
+      "データセット ID 2 (ID 未発行) / 対象1",
+    ])
     expect(html).not.toContain("summary.aims")
     expect(html).not.toContain("values.")
     // Nothing leads away from the list, and nothing is written here.

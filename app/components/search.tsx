@@ -183,7 +183,7 @@ export function SearchBox({ action, name, value, label, placeholder, submit, siz
         type="submit"
         aria-label={submit}
         title={submit}
-        className={`absolute inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full text-white hover:brightness-90 ${HEADER_BAR_FILL.accent} ${SEARCH_DISC[size]} ${size === "large" ? "right-1.5" : "right-1"}`}
+        className={`absolute inline-flex shrink-0 items-center justify-center rounded-full text-white hover:brightness-90 ${HEADER_BAR_FILL.accent} ${SEARCH_DISC[size]} ${size === "large" ? "right-1.5" : "right-1"}`}
       >
         <Icon name="search" className={SEARCH_GLYPH[size]} />
       </button>
@@ -390,7 +390,7 @@ export function RefinableList({
                   type="button"
                   onClick={onToggle}
                   aria-expanded="true"
-                  className="group/link inline-flex cursor-pointer items-center gap-0.5 font-semibold text-brand text-sm"
+                  className="group/link inline-flex items-center gap-0.5 font-semibold text-brand text-sm"
                 >
                   <Chevron dir="left" />
                   {messages.search.refine.collapse}
@@ -466,7 +466,7 @@ function PaneExpand({ locale, inForce, onToggle }: {
       aria-expanded="false"
       aria-label={name}
       title={name}
-      className={`inline-flex min-h-tap min-w-tap cursor-pointer items-center justify-center gap-1 rounded px-2 hover:bg-surface-hover ${LISTING_CONTROL}`}
+      className={`inline-flex min-h-tap min-w-tap items-center justify-center gap-1 rounded px-2 hover:bg-surface-hover ${LISTING_CONTROL}`}
     >
       <Icon name="filter" aria-hidden="true" />
       <CountBubble count={inForce} tone="brand" />
@@ -1127,6 +1127,7 @@ function ExportLinks({ locale, target, query, sort }: {
         text={async () => (await fetch(at("copy"))).text()}
         label={messages.search.exportCopy}
         done={messages.copied}
+        byHand={messages.copyByHand}
       />
       <ButtonLink to={at("tsv")} external listing icon={<Icon name="download" />}>
         {messages.search.exportTsv}

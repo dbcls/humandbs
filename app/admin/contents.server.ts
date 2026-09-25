@@ -39,7 +39,7 @@ import { stampFromLocalInput, today } from "~/dates"
 import { axisCounts, pageOf, type ListingPage } from "./listing"
 import { readPage } from "./pages.server"
 import {
-  adminContentsPath,
+  adminDocumentsPath,
   adminDocumentPath,
   adminNewsListPath,
   adminNewsPath,
@@ -940,7 +940,7 @@ async function deleteSeries(tx: Executor, seriesId: string, actor: Actor): Promi
       },
     })
   }
-  return { status: "ok", goTo: adminContentsPath() }
+  return { status: "ok", goTo: adminDocumentsPath() }
 }
 
 async function createAlert(tx: Executor): Promise<ContentsResult> {
@@ -1273,7 +1273,7 @@ async function deleteItem(tx: Executor, target: ContentTarget, actor: Actor): Pr
     status: "ok",
     goTo: target.kind !== "document"
       ? adminNewsListPath()
-      : owner === undefined ? adminContentsPath() : adminSeriesPath(owner.id),
+      : owner === undefined ? adminDocumentsPath() : adminSeriesPath(owner.id),
   }
 }
 

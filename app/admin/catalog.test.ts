@@ -7,6 +7,7 @@ import {
   filterKeyRows,
   freeCode,
   freeKeyCode,
+  keyLabelProblem,
   moved,
   movedTo,
   termCodeProblem,
@@ -255,5 +256,63 @@ describe("narrowing the fields listing", () => {
   it("narrows nothing when every value of the axis is ticked", () => {
     expect(found({ types: ["text", "vocabulary", "number", "disease"] }))
       .toEqual(["platform", "read-length", "targets"])
+  })
+})
+
+describe("how a key is named (keyLabelProblem)", () => {
+  it("accepts the names the portal's typed keys have", () => {
+    for (const [ja, en] of [
+      ["カバレッジ (深度)", "Coverage (depth)"],
+      ["疾患", "Disease (ICD-10)"],
+      ["腫瘍/非腫瘍", "Tumor / normal"],
+      ["表現型データの有無", "Phenotype data"],
+      ["実験方法", "Experimental method"],
+      ["加工データの種類", "Processed data type"],
+      ["ChIP-seq の種類", "ChIP-seq target"],
+    ]) {
+      expect(keyLabelProblem(ja ?? "", en ?? "", true), `${ja} / ${en}`).toBeNull()
+    }
+  })
+
+  it("refuses full-width brackets, and half-width ones without a space around them", () => {
+    expect(keyLabelProblem("TCRレパトア解析方法（ソフトウェア）", "TCR repertoire analysis method (software)", false)).toBe("label-brackets")
+    expect(keyLabelProblem("カバレッジ(深度)", "Coverage (depth)", false)).toBe("label-brackets")
+    expect(keyLabelProblem("カバレッジ (深度)", "Coverage (depth)of", false)).toBe("label-brackets")
+  })
+
+  it("refuses a unit in brackets", () => {
+    expect(keyLabelProblem("リード長 (bp)", "Read length (bp)", true)).toBe("label-unit")
+    expect(keyLabelProblem("総データ量", "Total data volume (GB)", true)).toBe("label-unit")
+    expect(keyLabelProblem("対象者数 (人)", "Number of subjects", true)).toBe("label-unit")
+  })
+
+  it("refuses a name that ends in 〜の別 or 〜の単位", () => {
+    expect(keyLabelProblem("腫瘍の別", "Tumor", true)).toBe("label-relational")
+    expect(keyLabelProblem("総データ量の単位", "Data volume unit", false)).toBe("label-relational")
+  })
+
+  it("refuses title case in a typed key's English name, keeping acronyms and inner capitals", () => {
+    expect(keyLabelProblem("リード長", "Read Length", true)).toBe("label-case")
+    expect(keyLabelProblem("リード長", "read length", true)).toBe("label-case")
+    expect(keyLabelProblem("解析方法", "Analysis methods (Software)", true)).toBe("label-case")
+    expect(keyLabelProblem("解析", "RNA-seq and Hi-C method", true)).toBeNull()
+  })
+
+  it("leaves a free-text key's English case alone, since it may be named after an archive", () => {
+    expect(keyLabelProblem("Sequence Read Archive Accession", "Sequence Read Archive Accession", false)).toBeNull()
+  })
+
+  it("finds the same problem whichever language the brackets are in", () => {
+    fc.assert(fc.property(fc.boolean(), fc.boolean(), (inJa, typed) => {
+      const bad = "名前（括弧）"
+      expect(keyLabelProblem(inJa ? bad : "名前", inJa ? "Name" : bad, typed)).toBe("label-brackets")
+    }))
+  })
+
+  it("accepts any sentence-case name made of small words after a capital", () => {
+    const word = fc.stringMatching(/^[a-z]{1,8}$/)
+    fc.assert(fc.property(fc.stringMatching(/^[A-Z][a-z]{0,8}$/), fc.array(word, { maxLength: 4 }), (first, rest) => {
+      expect(keyLabelProblem("名前", [first, ...rest].join(" "), true)).toBeNull()
+    }))
   })
 })

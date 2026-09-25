@@ -21,14 +21,6 @@ async function routesUnder(nodeEnv: string): Promise<string> {
 }
 
 describe("the route list", () => {
-  it("leaves the parts catalogue out of a production build", async () => {
-    expect(await routesUnder("production")).not.toContain("dev/ui")
-  })
-
-  it("registers the parts catalogue anywhere else", async () => {
-    expect(await routesUnder("development")).toContain("dev/ui")
-  })
-
   it("registers the public pages in both languages either way", async () => {
     for (const nodeEnv of ["production", "development"]) {
       const registered = await routesUnder(nodeEnv)

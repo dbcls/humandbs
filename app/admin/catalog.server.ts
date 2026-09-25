@@ -52,7 +52,9 @@ import {
   termCodeProblem,
   TERM_SORT,
   TERM_SORT_KEYS,
+  keyLabelProblem,
   type KeyFilter,
+  type KeyLabelProblem,
   type KeyValueType,
   type TermSortKey,
 } from "./catalog"
@@ -192,6 +194,7 @@ export type CatalogProblem
     | "in-use"
     | "not-editable"
     | "unknown-target"
+    | KeyLabelProblem
 
 /** Everything the screens may request of the catalog, by the name the form sends. */
 export type CatalogIntent
@@ -664,6 +667,9 @@ async function createKey(db: Executor, form: FormData): Promise<Outcome> {
   const labelJa = text(form, "labelJa")
   const labelEn = text(form, "labelEn")
   if (labelJa === "" || labelEn === "") return { status: "missing-label" }
+  // What an administrator adds is free text (below).
+  const badly = keyLabelProblem(labelJa, labelEn, false)
+  if (badly !== null) return { status: badly }
   // The code is made from the English label and never typed (`catalog.ts` の
   // `codeFrom`), so a label with nothing a code can hold is the one refusal
   // left; a spelling already taken moves on to the next free one instead.
@@ -695,6 +701,9 @@ async function updateKey(db: Executor, form: FormData): Promise<Outcome> {
   if (labelJa === "" || labelEn === "") return { status: "missing-label" }
   const refused = await refusedKey(db, id)
   if (refused !== null) return refused
+  const [key] = await db.select({ valueType: contentKey.valueType }).from(contentKey).where(eq(contentKey.id, id)).limit(1)
+  const badly = keyLabelProblem(labelJa, labelEn, key !== undefined && key.valueType !== "text")
+  if (badly !== null) return { status: badly }
   /*
     **Which box a field's facet sits in is not edited here.** The panel's groups
     are part of what the portal is rather than of what the data brings, so the

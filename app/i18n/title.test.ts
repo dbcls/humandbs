@@ -114,7 +114,7 @@ describe("adminArea", () => {
 describe("画面の title", () => {
   it("どの画面も windowTitle を通し、管理画面は adminWindowTitle を通す", async () => {
     const names = (await readdir(ROUTES))
-      .filter((name) => name.endsWith(".tsx") && !name.includes(".test.") && name !== "dev-ui.tsx")
+      .filter((name) => name.endsWith(".tsx") && !name.includes(".test."))
     const offenders: string[] = []
     for (const name of names) {
       const text = await readFile(path.join(ROUTES, name), "utf8")

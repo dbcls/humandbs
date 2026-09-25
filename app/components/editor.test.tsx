@@ -11,6 +11,9 @@ import type { DrawnDraft } from "~/review/preview.server"
 
 import { DraftEditor } from "./editor"
 import { emptyPair } from "./fields"
+import type { PlaceSources } from "./places"
+
+const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
 
 /** Nothing in this fixture has values, so an empty catalog draws every place. */
 const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
@@ -61,7 +64,7 @@ function view(produce: (input: DraftInput) => void = () => undefined): AdminDraf
     },
     page: drawn(),
     updating: null,
-    steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
+    places: NO_PLACES,
   }
 }
 
@@ -234,10 +237,7 @@ describe("the header", () => {
   })
 
   it("leads to this draft's other screens in one order — import, datasets, review, publish — by name only", () => {
-    const html = render({
-      ...view(),
-      steps: { datasets: 3, shared: true, unresolved: 4, blocks: 0, findings: 2 },
-    })
+    const html = render(view())
     const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
     const at = (needle: string) => {
       const found = head.indexOf(needle)

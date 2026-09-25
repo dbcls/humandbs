@@ -171,9 +171,7 @@ curl -D - -o /dev/null http://localhost:8080/files/hum0009/example.zip   # 応�
 
 - 規則を変えるときはテストを変える。例外を足すなら、その理由もテストに書く。
 - 画面の文言は `app/i18n/messages.ts` に置く。ドメインの語の意味は [concepts.md](concepts.md) に従う。
-- 部品の一覧は `http://localhost:8080/dev/ui` (`app/routes/dev-ui.tsx`) で見られる。部品は多くの画面で共有しているので、見た目を変えたら変更の前後をここで見比べる。
-- 部品の一覧は本番の build には入らない。`app/routes.ts` が `NODE_ENV` で分け、`app/routes.test.ts` がそれを確かめる。
-- 部品の一覧に並ぶ行は、開発用データから 1 度取って固定したもの (`app/routes/dev-ui.data.ts`) である。一覧の行の型が変わったら手で取り直す。
+- 部品は多くの画面で共有しているので、見た目を変えたら、その部品を使う画面を開いて変更の前後を見比べる。
 
 ## e2e
 

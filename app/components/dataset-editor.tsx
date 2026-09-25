@@ -114,6 +114,7 @@ import {
 } from "./fields"
 import { focusField, focusElement } from "./form"
 import { Flag } from "./flags"
+import { placeExperiments, placeName, type PlaceSources } from "./places"
 
 /**
  * How many candidates the term picker offers at once. A vocabulary can hold
@@ -155,19 +156,6 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
    * indicator is addressed by, the same one the field itself is written at
    * (`fields.tsx` の `FieldAnnotations`).
    */
-  /**
-   * A field of this dataset as the open-comments panel names it: the field's
-   * label, and for a field of an experiment, the experiment's label before it.
-   */
-  function pathName(path: string): string {
-    const label = fieldLabelFor(path) ?? path
-    const [head, id] = path.split(".")
-    if (head !== "experiments" || id === undefined) return label
-    const experiment = view.input.experiments.find((one) => one.id === id)
-    const name = experiment === undefined || experiment.label.text === "" ? t.unnamedExperiment : experiment.label.text
-    return `${name} — ${label}`
-  }
-
   function fieldLabelFor(path: string): string | undefined {
     const [head, ...rest] = path.split(".")
     if (head === "releaseDate") return t.releaseDate
@@ -256,6 +244,12 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   }
 
   const input = editing.value
+  // The places are named from what the form holds, so an experiment renamed
+  // before saving is called what the screen shows.
+  const places: PlaceSources = {
+    ...view.places,
+    experiments: { ...view.places.experiments, [view.datasetId]: placeExperiments(input) },
+  }
   // The copy just made, which opens so the curator starts on what differs.
   const [copied, setCopied] = useState<string | null>(null)
   const marked = conflictedPaths(editing)
@@ -473,16 +467,14 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
               locale={locale}
               panesControl={panes.control}
               // **The open questions about this dataset, in the panel the
-              // research's own form opens** — cut by field, since the dataset
-              // is the whole of what is written here. The memo and the whole
-              // belong to the draft, and are the research's form to open.
+              // research's own form opens.** The memo and the whole belong to
+              // the draft, and are the research's form to open.
               notes={(
                 <OpenComments
                   context={review.context}
                   comments={view.review.comments.filter((one) =>
                     one.anchor.kind === "dataset-field" && one.anchor.datasetId === view.datasetId)}
-                  nameOf={(anchor) => anchor.kind === "dataset-field" ? pathName(anchor.path) : editor.whole}
-                  perField
+                  nameOf={(anchor) => placeName(anchor, places, locale)}
                 />
               )}
               dirty={editing.dirty}
@@ -1601,7 +1593,7 @@ function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, ren
               onMouseDown={(event) => { event.preventDefault() }}
               onMouseEnter={() => { setActive(index) }}
               onClick={() => { choose(option) }}
-              className={`flex cursor-pointer items-baseline gap-2 px-4 py-2 text-sm ${index === at ? "bg-surface-hover" : ""}`}
+              className={`flex items-baseline gap-2 px-4 py-2 text-sm ${index === at ? "bg-surface-hover" : ""}`}
             >
               {render(option)}
             </li>
@@ -1789,7 +1781,7 @@ function ExperimentCard({ locale, index, count, summary, note, open, onMove, onC
   return (
     <div className="relative rounded border border-line">
       <details open={shown} onToggle={(event) => { setShown(event.currentTarget.open) }} className="group/collapsible">
-        <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 py-1.5 pr-44 pl-4 text-sm marker:content-none">
+        <summary className="flex min-h-12 list-none items-center gap-2 py-1.5 pr-44 pl-4 text-sm marker:content-none">
           <CollapsibleChevron />
           <span className="text-ink-muted text-xs">{index + 1}</span>
           <span className="min-w-0 truncate font-semibold">{summary}</span>

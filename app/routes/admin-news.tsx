@@ -24,7 +24,7 @@ import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 
-import type { Route } from "./+types/admin-contents-news"
+import type { Route } from "./+types/admin-news"
 
 /**
  * The announcements, newest first, unpublished ones included.

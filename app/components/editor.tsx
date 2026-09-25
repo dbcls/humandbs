@@ -27,7 +27,6 @@ import type {
   DataProviderInput,
   DraftInput,
   LinksPairInput,
-  SlotState,
   TextInput,
   ResearchContentInput,
 } from "~/admin/form"
@@ -58,6 +57,7 @@ import { Badge, Stack } from "./base"
 import { DraftHead, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote, OpenComments, WholeNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
+import { pairLine, placeName, placeRows, sideLine, type StateWords } from "./places"
 import { ResearchBody, ResearchListTable } from "./research"
 import { CitableTable, datasetName, GrantIds, IdList, LinksField, researchFieldLabel } from "./research-fields"
 import {
@@ -179,25 +179,12 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   }
 
   /**
-   * What to call the place an open comment is about (`OpenComments`).
-   *
-   * **The screen's own words, never a path.** `summary.aims` and
-   * `values.01a0…` are how the content addresses a place, not how anybody
-   * reading the panel knows it; a field this form draws is called what its
-   * label calls it, and a field of a dataset is called by that dataset, which
-   * is the screen it is written on.
+   * What to call the place an open comment is about (`OpenComments`,
+   * `places.ts`). The rows are read from what the form holds, so a row moved or
+   * renamed before saving is called what the screen shows.
    */
   function nameOf(anchor: CommentAnchor): string {
-    switch (anchor.kind) {
-      case "research-field":
-        return fieldLabelFor(anchor.path) ?? anchor.path
-      case "dataset-field": {
-        const dataset = view.datasets.find((one) => one.id === anchor.datasetId)
-        return dataset?.label ?? t.unpinnedDataset
-      }
-      default:
-        return t.whole
-    }
+    return placeName(anchor, { ...view.places, rows: placeRows(content, locale) }, locale)
   }
 
   /**
@@ -791,25 +778,6 @@ function RepeatingSection<T extends { id: string }>({
       </ItemList>
     </Section>
   )
-}
-
-/** The words for the two states a side can be set to instead of a value (`admin.editor.stateChoice`). */
-type StateWords = Record<Exclude<SlotState, "value">, string>
-
-/**
- * What one side of a value shows in a line: its text, or the word for the
- * state it is set to instead. A side marked unsettled or not applicable has no
- * text to show, and a row showing 未入力 for it would suggest the curator has not
- * answered when they have.
- */
-function sideLine(side: TextInput, states: StateWords): { text: string, isState: boolean } {
-  return side.state === "value" ? { text: side.text, isState: false } : { text: states[side.state], isState: true }
-}
-
-/** The Japanese side, or the English while the Japanese side is a value with nothing typed. */
-function pairLine(pair: { ja: TextInput, en: TextInput }, states: StateWords): { text: string, isState: boolean } {
-  const ja = sideLine(pair.ja, states)
-  return ja.text !== "" ? ja : sideLine(pair.en, states)
 }
 
 /** A line as a table cell: a state's word in the muted style of a collapsed field (`fields.tsx`), a value as it is. */

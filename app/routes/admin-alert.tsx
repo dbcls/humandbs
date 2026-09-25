@@ -11,7 +11,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
 
-import type { Route } from "./+types/admin-contents-alert"
+import type { Route } from "./+types/admin-alert"
 import { Flag } from "~/components/flags"
 
 /**

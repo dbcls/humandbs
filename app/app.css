@@ -264,6 +264,25 @@
   :focus-visible {
     @apply outline-2 outline-focus outline-offset-2;
   }
+
+  /*
+   * **What can be pressed shows the pointing hand, and what cannot be pressed
+   * shows that it cannot — decided here, not on each control.** Tailwind's
+   * reset gives a button the arrow, so a control drawn without the shared
+   * button part kept the arrow wherever the class was left off, and a disabled
+   * control showed the arrow on some screens and the no-entry sign on others.
+   * A control shown but not pressable (`aria-disabled`) counts as disabled.
+   * `:where` keeps these at no specificity, so a state drawn on top of them
+   * (a pane that is loading shows `cursor-progress`) still wins.
+   */
+  :where(button, [role="button"], [role="tab"], [role="option"], summary, select, label:has(> input:is([type="checkbox"], [type="radio"])), input:is([type="checkbox"], [type="radio"], [type="file"])) {
+    cursor: pointer;
+  }
+
+  :where(button, select, input, textarea):disabled,
+  :where([aria-disabled="true"]) {
+    cursor: not-allowed;
+  }
 }
 
 /*

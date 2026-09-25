@@ -1,6 +1,6 @@
 import { articlePreviewAction } from "~/admin/contents.server"
 
-import type { Route } from "./+types/admin-contents-preview"
+import type { Route } from "./+types/admin-document-preview"
 
 /**
  * The typed body of an article or an announcement, drawn as its page for the

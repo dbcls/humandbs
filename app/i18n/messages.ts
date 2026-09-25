@@ -37,6 +37,8 @@ const ja = {
   newTab: " (新しいタブで開きます)",
   /** What a copy control shows in place of its name while the copy is fresh. */
   copied: "コピーしました",
+  /** Asked above the text when it could not be put on the clipboard. */
+  copyByHand: "クリップボードにコピーできませんでした。選択されている文字列をコピーしてください。",
   unsettled: "未確定",
   untranslatedNotice: "このページには未翻訳の項目があります。もう一方の言語の内容を表示しています。",
   globalNavigation: "グローバルナビゲーション",
@@ -796,7 +798,7 @@ const ja = {
       emptyDisease: "空のままだと、この項目は保存されない。",
       experiments: "解析手法",
       experimentLabel: "表示ラベル",
-      unnamedExperiment: "表示ラベル未入力",
+      unnamedExperiment: "未入力",
       addExperiment: "解析手法の追加",
       copyExperiment: "解析手法の複製",
     },
@@ -847,6 +849,24 @@ const ja = {
       memoEmpty: "メモはありません。",
       memoPlaceholder: "メモを書く",
       whole: "全体へのコメント",
+      /**
+       * The words of a place's name in the open-comments panel (`components/places.ts`).
+       * A row is its number from 1 and what its first column shows; null is a first
+       * column with nothing in it.
+       */
+      placeRow: (number: number, first: string | null) => `行${number} (${first ?? "未入力"})`,
+      /** A row or an experiment the comment was left on that is no longer there. */
+      placeRemoved: "削除済み",
+      /** A dataset the comment was left on that the research no longer has. */
+      placeRemovedDataset: "データセット (削除済み)",
+      placeUnpinnedResearch: "研究 (ID 未発行)",
+      /** A dataset with no ID, by its row in the research's dataset table; null is one the draft does not list. */
+      placeUnpinnedDataset: (number: number | null) =>
+        number === null ? "データセット (ID 未発行)" : `データセット ID ${number} (ID 未発行)`,
+      /** An experiment, by its number from 1 on the dataset's page and its name; null is no name yet. */
+      placeExperiment: (number: number, name: string | null) => `解析手法 ${number} (${name ?? "未入力"})`,
+      /** An experiment the comment was left on that the dataset no longer has. */
+      placeRemovedExperiment: "解析手法 (削除済み)",
       wholeHint: "研究全体について提供者とやり取りする場所である。共有リンクを持つ人にも見える。",
       wholeEmpty: "全体へのコメントはありません。",
       openComments: "未解決のコメント",
@@ -889,7 +909,6 @@ const ja = {
           ? "空のあいだは、提供者情報の研究代表者がそのまま一覧に表示される。"
           : `空のあいだは、提供者情報の研究代表者がそのまま一覧に表示される (現在は「${names}」)。`,
       listingProvidersOwn: "一覧はここに書いた名前だけを表示する。提供者情報は変わらない。",
-      add: "追加",
       edit: "編集",
       /** An element's panel is named for the list it belongs to, never for what is written in it. */
       addElementTitle: (list: string) => `${list}の追加`,
@@ -1188,6 +1207,10 @@ const ja = {
         "in-use": "公開中のバージョンか下書きが使っているため削除できません。",
         "not-editable": "この画面からは変えられません。",
         "unknown-target": "対象が見つかりません。",
+        "label-brackets": "括弧は半角の ( ) で書き、前後に半角の空白を入れてください。",
+        "label-unit": "単位は名前に入れないでください。数値は入力された単位で表示されるため、見出しの単位と食い違います。",
+        "label-relational": "「〜の別」「〜の単位」は使わず、値を表す名詞で書いてください。",
+        "label-case": "絞り込みの項目の英語の名前は、文頭だけ大文字で書いてください。DNA や ICD-10 のような略称はそのままで構いません。",
       },
     },
     contents: {
@@ -1417,6 +1440,7 @@ const en: Messages = {
   notApplicable: "Not applicable",
   newTab: " (opens in a new tab)",
   copied: "Copied",
+  copyByHand: "Could not copy to the clipboard. Copy the selected text instead.",
   unsettled: "Unsettled",
   untranslatedNotice: "Some items on this page are untranslated. The other language is shown instead.",
   otherLanguageOnly: "Japanese only",

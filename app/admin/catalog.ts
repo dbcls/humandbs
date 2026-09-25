@@ -175,6 +175,47 @@ export function isKeyValueType(value: string): value is KeyValueType {
   return (KEY_VALUE_TYPES as readonly string[]).includes(value)
 }
 
+/**
+ * What is wrong with how a key is named, as far as a program can tell.
+ *
+ * A key's name is the heading of its column on the public page and, for a
+ * typed key, the name of a refinement. The rules a program can check are
+ * checked here; the rest (a heading is singular, ja and en name the same thing)
+ * are the writer's.
+ *
+ * - **Brackets are half-width with a space before and after** (`Coverage (depth)`),
+ *   as everywhere else on the site.
+ * - **No unit in brackets.** A number is shown in the unit it was written in
+ *   (`73 TB`), so a heading naming one unit contradicts the values under it.
+ * - **No 〜の別 or 〜の単位.** A key is named for what its values are.
+ * - **English in sentence case, for a typed key** — the first letter capital
+ *   and no word after it capitalised, an acronym or a spelling with capitals
+ *   inside (`ICD-10`, `RNA-seq`, `ChIP-seq`) kept as it is. Free-text keys are
+ *   left out: several are named after an archive (`Sequence Read Archive
+ *   Accession`), which a program cannot tell from a word written in title case.
+ */
+export type KeyLabelProblem = "label-brackets" | "label-unit" | "label-relational" | "label-case"
+
+const UNIT_IN_BRACKETS = /\(\s*(?:bp|kbp?|Mbp?|Gbp?|[KMGT]B|%|x|×|reads?|塩基|人|名|件|本|個)\s*\)/i
+
+export function keyLabelProblem(labelJa: string, labelEn: string, typed: boolean): KeyLabelProblem | null {
+  for (const label of [labelJa, labelEn]) {
+    if (/[（）]/.test(label) || /\S\(/.test(label) || /\)[^\s)]/.test(label)) return "label-brackets"
+    if (UNIT_IN_BRACKETS.test(label)) return "label-unit"
+  }
+  if (/の(?:別|単位)$/.test(labelJa.trim())) return "label-relational"
+  if (typed && !isSentenceCase(labelEn)) return "label-case"
+  return null
+}
+
+/** The first letter a capital, and no later word a capital followed only by small letters. */
+function isSentenceCase(label: string): boolean {
+  const words = label.trim().split(/\s+/).map((word) => word.replace(/^[([]+|[)\],.:;]+$/g, ""))
+  const [first = "", ...rest] = words
+  if (/^[a-z]/.test(first)) return false
+  return rest.every((word) => !/^[A-Z][a-z]+$/.test(word))
+}
+
 /** Whether a field is drawn on the public analysis-method table. */
 /**
  * The orders the terms of one field can be read in.

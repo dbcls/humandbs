@@ -15,7 +15,7 @@ staging と production は、この repo から作った image で動く。配�
 | `tools` | すべての依存と source。TypeScript を tsx で動かす | `migrate`、`tools` |
 
 - 配置する container に schema の owner の接続を渡さない。`app` に渡すのは `humandbs_app` (操作の記録を書き換えられない role) の URL だけで、owner の URL は `migrate` と `tools` にだけ渡す。1 回だけ行う操作 (admin の追加と削除、bucket の作成、ICD10 の取り込み、データの移行) は `tools` で実行する。例は `podman-compose run --rm -T tools npm run admin:list` である。
-- dev サーバーを配置に使わない。vite は知らないホスト名の要求を拒否し、`react-router-serve` は `NODE_ENV` が production でないと例外の stack trace を返し、部品の一覧 (`/dev/ui`) は build したものにだけ入らないためである。待ち受ける port は dev サーバーと同じなので、nginx の設定は 1 つで済む。
+- dev サーバーを配置に使わない。vite は知らないホスト名の要求を拒否し、`react-router-serve` は `NODE_ENV` が production でないと例外の stack trace を返すためである。待ち受ける port は dev サーバーと同じなので、nginx の設定は 1 つで済む。
 - 静的ファイルは proxy が返す。proxy の image にあるファイルはそこから返し、無いものは `app` に渡す。`app` の image も同じファイルを含むので、proxy に無いファイルも返せる。`/assets/` の下はファイル名に中身の hash が入るので長いキャッシュの期限を付け、それ以外 (アイコン、`robots.txt`) と画面には付けない。
 - 圧縮も proxy が行う。nginx の image は `gzip` が off なので、`docker/nginx/default.conf` で on にしている。
 - 安全のための header (CSP・`X-Frame-Options`・`nosniff`・`Referrer-Policy`) は、proxy がすべての応答に付ける。値は `docker/nginx/default.conf` にある。アプリが自分で `Referrer-Policy` を決めた応答 (共有リンク) はその値を残す。配信するファイルの header は [files.md](files.md) の「配信の安全」にある。

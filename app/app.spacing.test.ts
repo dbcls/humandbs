@@ -130,10 +130,10 @@ describe("縦の間隔", () => {
    * 一覧がそれで、下に来るのは節ではなく pane の見出し — 見出しが 2 つ続く形に
    * 節と節の距離を空けると h1 だけが離れて見える。公開側の一覧も同じ理由で `normal` で、
    * 両者は同じ形の 2 つの部分になる。**`common/` のファイル一覧も同じ**
-   * (`routes/admin-contents-files.tsx`)。節を 1 つも持たない画面で、h1 の下に
+   * (`routes/admin-files.tsx`)。節を 1 つも持たない画面で、h1 の下に
    * 来るのはアップロード欄そのもの — アップロード欄には自前の余白があるので、32px を空けると
    * 字から字までは 48px になる。**アラートの画面も節を持たない**
-   * (`routes/admin-contents-alert.tsx`)。h1 の下に来るのは 1 件目のアラートで、
+   * (`routes/admin-alert.tsx`)。h1 の下に来るのは 1 件目のアラートで、
    * それが開くのは名前ではなく自分の状態のチップ。
    *
    * **編集画面の上部の欄は `Card` ではなく自前の要素** (`components/draft-tools.tsx` の
@@ -147,7 +147,7 @@ describe("縦の間隔", () => {
     const offenders: string[] = []
     for (const file of await managementFiles()) {
       const text = await readFile(path.join(ROOT, file), "utf8")
-      const sectionless = file.endsWith("admin-contents-alert.tsx")
+      const sectionless = file.endsWith("admin-alert.tsx")
       const wanted = /<RefinableList\b/.test(text) || sectionless || text.includes("= useArticlePanes(")
         ? "normal"
         : "block"
@@ -480,7 +480,7 @@ describe("一覧の件数とページ送り", () => {
       .filter(({ text }) => /<PageLinks\b/.test(text))
       .map(({ name }) => name)
       .sort()
-    expect(writers).toEqual(["components/page.tsx", "routes/dev-ui.tsx"])
+    expect(writers).toEqual(["components/page.tsx"])
   })
 
   // 並び替えの向きと 1 ページの件数を画面ごとに組むと、既定の向きをアドレスに書く・絞り込みの form が
@@ -572,7 +572,7 @@ describe("ボタンの色と形", () => {
       .filter(({ text }) => /<(?:Button|ButtonLink|CopyButton)\b[^>]*\slisting\b(?!=\{listing\})/s.test(text))
       .map(({ name }) => name)
       .sort()
-    expect(styled).toEqual(["components/search.tsx", "routes/dev-ui.tsx"])
+    expect(styled).toEqual(["components/search.tsx"])
   })
 
   /**
@@ -594,7 +594,6 @@ describe("ボタンの色と形", () => {
   it("塗りのボタンは 1 つのファイルに 1 つまで", async () => {
     const filled = /variant=(?:"primary"|\{[^}]*"primary"[^}]*\})/g
     const twice = (await everySource())
-      .filter(({ name }) => !name.includes("dev-ui"))
       .map(({ name, text }) => ({ name, n: (text.match(filled) ?? []).length }))
       .filter(({ n }) => n > 1)
     expect(twice).toEqual([])
@@ -704,7 +703,7 @@ describe("見出しの行の並び", () => {
     expect(drawnByHand).toEqual([])
     const users = screens.filter(({ text }) => /<SlugEditor\b/.test(text)).map(({ name }) => name).sort()
     // The research box changes names on the same panel, from `components/files.tsx`.
-    expect(users).toEqual(["routes/admin-contents-document.tsx", "routes/admin-contents-files.tsx"])
+    expect(users).toEqual(["routes/admin-document.tsx", "routes/admin-files.tsx"])
   })
 
   it("出る経路、他所への経路、この画面への操作、取り消せない操作の順に並ぶ", async () => {
@@ -962,7 +961,7 @@ describe("ダイアログの幅・文・見出し", () => {
         }
         // A word from messages, however it is reached (`t.xTitle`, a call
         // wrapping a value, `t.deleteResearchTitle(view.humLabel ?? t.heading)`),
-        // or a sentence written out as a literal (`dev-ui.tsx`'s catalogue).
+        // or a sentence written out as a literal.
         const namesAWord = (rootPattern?.test(title.value) ?? false) || /["'`][^"'`]+["'`]/.test(title.value)
         if (!namesAWord) offenders.push(`${name} (${kind}): title={${title.value}}`)
       }
@@ -1328,7 +1327,7 @@ describe("押せるもののアイコン", () => {
   it("アイコンの無いボタンは、キャンセル・中止・閉じるだけ", async () => {
     const files = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
       .map(({ name }) => name)
-      .filter((name) => !name.includes("dev-ui") && name !== "components/base.tsx")
+      .filter((name) => name !== "components/base.tsx")
     const ja = messagesFor("ja")
     const en = messagesFor("en")
     const OUT = new Set([ja.admin.cancel, ja.comment.close, en.comment.close])
@@ -1352,7 +1351,6 @@ describe("押せるもののアイコン", () => {
    */
   it("押せるものの children に Icon / Chevron を置かない", async () => {
     const files = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
-      .filter(({ name }) => !name.includes("dev-ui"))
     const offenders: string[] = []
     let read = 0
     for (const { name, text } of files) {
@@ -1460,6 +1458,32 @@ describe("chip と件数の丸", () => {
  * **One way onto the clipboard** (`base.tsx` の `CopyButton`). The four copies
  * each wrote their own, and answered the press two different ways.
  */
+/**
+ * **The cursor is decided once, in `app.css`**: a control that can be pressed
+ * shows the pointing hand and one that cannot shows `not-allowed`. A class on a
+ * control would be a second answer to the same question. The three left are
+ * what the stylesheet cannot see: the box around a disabled button that shows
+ * why (the button inside takes no pointer), a place in the preview that
+ * takes the caret to its field, and a pane that is loading.
+ */
+describe("カーソル", () => {
+  it("押せるかどうかのカーソルは app.css の規則だけが決める", async () => {
+    const found = (await everySource()).flatMap(({ name, text }) =>
+      [...text.matchAll(/\bcursor-[a-z-]+/g)].map((match) => `${name}: ${match[0]}`))
+    expect(found.sort()).toEqual([
+      "components/base.tsx: cursor-not-allowed",
+      "components/base.tsx: cursor-progress",
+      "components/page.tsx: cursor-pointer",
+    ])
+  })
+
+  it("app.css が押せる要素に pointer、押せない要素に not-allowed を当てる", async () => {
+    const css = await readFile(path.join(ROOT, "app.css"), "utf8")
+    expect(css).toMatch(/:where\(button, \[role="button"\][^{]*\{\s*cursor: pointer;/)
+    expect(css).toMatch(/:disabled,\s*:where\(\[aria-disabled="true"\]\) \{\s*cursor: not-allowed;/)
+  })
+})
+
 describe("クリップボード", () => {
   it("clipboard.writeText を書くのは base.tsx だけ", async () => {
     const writing = (await everySource())
@@ -1731,7 +1755,7 @@ describe("下書きの画面上部の欄とツールバー", () => {
   })
 
   it("記事とお知らせはツールバー (ArticleTools) を画面上部の欄に渡し、sticky は自分でも contents.tsx でも書かない", async () => {
-    const routeNames = ["routes/admin-contents-document.tsx", "routes/admin-contents-news-item.tsx"]
+    const routeNames = ["routes/admin-document.tsx", "routes/admin-news-item.tsx"]
     const routes = await Promise.all(routeNames.map(async (name) => ({
       name, text: await readFile(path.join(ROOT, name), "utf8"),
     })))
@@ -1754,7 +1778,7 @@ describe("下書きの画面上部の欄とツールバー", () => {
  * answer said four different ways.
  */
 describe("部品への集約", () => {
-  const screens = async () => (await everySource()).filter(({ name }) => name !== "routes/dev-ui.tsx")
+  const screens = async () => await everySource()
 
   it("キーワード欄の placeholder と送信ボタンの語は、どの一覧でも「キーワード検索」と「検索」", async () => {
     const offenders: string[] = []

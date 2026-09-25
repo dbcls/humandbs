@@ -361,6 +361,39 @@ describe("the keys an administrator may take away", () => {
   })
 })
 
+describe("how a key is named", () => {
+  it("refuses a unit in a new key's name and adds nothing", async () => {
+    const token = await signIn(CURATOR, true)
+
+    const result = await catalogAction(post(token, { intent: "create-key", scope: "experiment", labelJa: "深度 (x)", labelEn: "Depth (x)" }))
+
+    expect(result).toEqual({ status: "label-unit" })
+    expect(await db.select().from(s.contentKey)).toHaveLength(0)
+  })
+
+  it("refuses title case when a typed key is renamed, and keeps its name", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("assay")
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({ code: "assay", scope: "experiment", valueType: "vocabulary", labelJa: "手法", labelEn: "Assay", vocabularySetId: setId })
+      .returning({ id: s.contentKey.id }))
+
+    const result = await catalogAction(post(token, { intent: "update-key", keyId, labelJa: "実験方法", labelEn: "Experimental Method" }))
+
+    expect(result).toEqual({ status: "label-case" })
+    expect(only(await db.select().from(s.contentKey)).labelEn).toBe("Assay")
+  })
+
+  it("leaves a free-text key's English case to the writer, since it may be an archive's name", async () => {
+    const token = await signIn(CURATOR, true)
+    const keyId = await freeTextKey("sra")
+
+    const result = await catalogAction(post(token, { intent: "update-key", keyId, labelJa: "Sequence Read Archive Accession", labelEn: "Sequence Read Archive Accession" }))
+
+    expect(result).toMatchObject({ status: "ok" })
+  })
+})
+
 describe("the terms of a vocabulary", () => {
   it("refuses to reword an ICD10 term: its heading is the classification's, not the portal's", async () => {
     const token = await signIn(CURATOR, true)

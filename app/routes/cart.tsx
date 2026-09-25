@@ -196,7 +196,7 @@ function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale
         <Stack gap="tight">
           <span>{messages.cart.stepCopy}</span>
           <div className="flex flex-wrap items-center gap-3">
-            <CopyButton text={payload} label={messages.cart.copy} done={messages.copied} />
+            <CopyButton text={payload} label={messages.cart.copy} done={messages.copied} byHand={messages.copyByHand} />
           </div>
           {/*
             The JSON is what the button copies, not something to read — it is

@@ -342,13 +342,14 @@ const ANCHOR_ICON: Record<CommentAnchor["kind"], IconName> = {
 }
 
 /**
- * What a comment is about, as one key. **A dataset is one place, not one per
- * field**: its fields are written on that dataset's own screen, so a reader of
- * this panel is told which dataset to open rather than which box inside it.
+ * What a comment is about, as one key: the place it is on. **A field of a
+ * dataset is a place of its own on every screen**, named the same way
+ * everywhere (`places.ts`), so the review screen tells a reader which field to
+ * open as well as which dataset.
  */
-function groupKey(anchor: CommentAnchor, perField: boolean): string {
+function groupKey(anchor: CommentAnchor): string {
   if (anchor.kind === "research-field") return `research:${anchor.path}`
-  if (anchor.kind === "dataset-field") return perField ? `dataset:${anchor.datasetId}:${anchor.path}` : `dataset:${anchor.datasetId}`
+  if (anchor.kind === "dataset-field") return `dataset:${anchor.datasetId}:${anchor.path}`
   return anchor.kind
 }
 
@@ -360,18 +361,11 @@ function groupKey(anchor: CommentAnchor, perField: boolean): string {
 export function groupedByAnchor(
   comments: readonly CommentView[],
   nameOf: (anchor: CommentAnchor) => string,
-  /**
-   * Cut a dataset by its fields. **On the dataset's own screen** the dataset is
-   * the whole of what is being written, so the place a reader wants named is
-   * the field; everywhere else it is which dataset to open.
-   */
-  perField = false,
 ): CommentGroup[] {
   const groups = new Map<string, CommentGroup>()
   for (const one of comments) {
-    const key = groupKey(one.anchor, perField)
-    const icon = perField && one.anchor.kind === "dataset-field" ? "type" : ANCHOR_ICON[one.anchor.kind]
-    const held = groups.get(key) ?? { key, kind: one.anchor.kind, icon, name: nameOf(one.anchor), comments: [] }
+    const key = groupKey(one.anchor)
+    const held = groups.get(key) ?? { key, kind: one.anchor.kind, icon: ANCHOR_ICON[one.anchor.kind], name: nameOf(one.anchor), comments: [] }
     held.comments.push(one)
     groups.set(key, held)
   }
@@ -603,13 +597,11 @@ export function WholeNote({ context, comments, words, size = "xs" }: {
  * and the way there is shown over each row.
  * A memo line is never open: it is a note, not a question.
  */
-export function OpenComments({ context, comments, nameOf, perField = false }: {
+export function OpenComments({ context, comments, nameOf }: {
   context: CommentContext
   comments: readonly CommentView[]
-  /** What to call the place a comment is about, in the screen's own words. */
+  /** What to call the place a comment is about (`places.ts` の `placeName`). */
   nameOf: (anchor: CommentAnchor) => string
-  /** Cut a dataset by its fields (`groupedByAnchor`). */
-  perField?: boolean
 }) {
   const t = messagesFor(context.locale).admin.editor
   const fetcher = useFetcher<Answer>()
@@ -619,7 +611,7 @@ export function OpenComments({ context, comments, nameOf, perField = false }: {
   const close = () => {
     setHeld(false)
   }
-  const groups = groupedByAnchor(shown, nameOf, perField)
+  const groups = groupedByAnchor(shown, nameOf)
 
   return (
     <>

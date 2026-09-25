@@ -14,6 +14,9 @@ import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
 import type { DrawnDataset } from "~/review/preview.server"
 
 import { CandidateWords, ChoicesLink, comboKey, copiedExperiment, DatasetEditor } from "./dataset-editor"
+import type { PlaceSources } from "./places"
+
+const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
 
 const TEXT_KEY = "00000000-0000-0000-0000-0000000000a1"
 const VOCAB_KEY = "00000000-0000-0000-0000-0000000000a2"
@@ -178,7 +181,7 @@ function view(
     draftId: "00000000-0000-0000-0000-000000000002",
     datasetId: "00000000-0000-0000-0000-000000000003",
     humLabel: "hum0001",
-    steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
+    places: NO_PLACES,
     datasetLabel: portalIssued ? "NHA000001" : "JGAD000001",
     datasetPinId: "00000000-0000-0000-0000-000000000004",
     nextNhaId: null,
@@ -659,7 +662,7 @@ describe("the toolbar", () => {
       said("research", { kind: "research-field", path: "title" }),
       said("whole", { kind: "draft" }),
     ]
-    const html = render({ ...base, steps: { datasets: 0, shared: false, unresolved: 9, blocks: 0, findings: 0 } })
+    const html = render(base)
     expect([...html.matchAll(/aria-label="表示 pane"/g)]).toHaveLength(1)
     const entry = html.slice(html.indexOf(">未解決のコメント"), html.indexOf("</button>", html.indexOf(">未解決のコメント")))
     expect(entry).toMatch(/>2</)
@@ -935,5 +938,14 @@ describe("adding an item", () => {
     expect(card).toMatch(/<a href="\/admin\/experiment-fields" target="_blank"[^>]*>[\s\S]*解析手法の表/)
     const datasetOnly = render(view(described()))
     expect(datasetOnly).not.toContain("href=\"/admin/experiment-fields\"")
+  })
+})
+
+describe("an experiment's card with no name", () => {
+  it("shows 未入力 as its name, the word the place of a comment on it uses", () => {
+    const html = render(view({ ...emptyDatasetContent(), experiments: [{ id: "e1", label: filled(""), values: [] }] }))
+    const summary = html.slice(html.indexOf("<summary"), html.indexOf("</summary>"))
+    expect(summary).toContain("未入力")
+    expect(summary).not.toContain("表示ラベル")
   })
 })

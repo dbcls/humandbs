@@ -244,7 +244,7 @@ function AccountControl({ account, locale, managing }: {
       <Form method="post" action="/auth/logout">
         <button
           type="submit"
-          className="w-full cursor-pointer px-4 py-2 text-left text-sm hover:bg-surface-hover"
+          className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
         >
           {messages.account.logOut}
         </button>

@@ -149,6 +149,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                     researchId={view.researchId}
                     rows={view.rows}
                     humLabel={view.humLabel}
+                    origin={view.origin}
                     selectedBy={view.selectedBy}
                     whenEmpty={inForce === 0 ? t.empty : t.noMatch}
                   />

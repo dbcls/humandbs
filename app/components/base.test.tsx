@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, CountBubble, Collapsible, collapsibleOpen, IconButton, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, IconButton, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -377,7 +377,7 @@ describe("a count riding on a control (CountBubble)", () => {
 })
 
 describe("copying (CopyButton)", () => {
-  const html = render(<CopyButton text="hum0001" label="コピー" done="コピーしました" />)
+  const html = render(<CopyButton text="hum0001" label="コピー" done="コピーしました" byHand="手でコピー" />)
 
   it("holds both words in one cell before anything is pressed, so responding does not change its width", () => {
     const cell = /<span class="grid">([\s\S]*?)<\/span><\/button>/.exec(html)?.[1] ?? ""
@@ -399,7 +399,8 @@ describe("an icon-only control that cannot be pressed (IconButton)", () => {
     const html = render(<IconButton name="chevron-up" label="上へ" disabled />)
     const classes = /class="([^"]*)"/.exec(html)?.[1]?.split(/\s+/) ?? []
     expect(classes).toContain("disabled:opacity-50")
-    expect(classes).toContain("disabled:cursor-default")
+    // The cursor comes from the stylesheet's rule for a disabled control, not from a class here.
+    expect(classes.filter((one) => one.includes("cursor-"))).toEqual([])
     // The hover fill is kept for a control that can be pressed.
     expect(classes.filter((one) => one.startsWith("hover:"))).toEqual([])
     expect(classes).toContain("enabled:hover:bg-surface-hover")
@@ -434,5 +435,63 @@ describe("moving a row (ReorderButtons)", () => {
     expect(buttons(inForm).every((one) => one.includes("type=\"submit\""))).toBe(true)
     const inPage = render(<ReorderButtons at={1} of={3} labels={{ up: "上へ", down: "下へ" }} onMove={() => undefined} />)
     expect(buttons(inPage).every((one) => one.includes("type=\"button\""))).toBe(true)
+  })
+})
+
+describe("copyText", () => {
+  function methods(over: Partial<Parameters<typeof copyText>[1]> = {}) {
+    const calls: string[] = []
+    return {
+      calls,
+      given: {
+        clipboard: {
+          writeText: (text: string) => {
+            calls.push(`clipboard:${text}`)
+            return Promise.resolve()
+          },
+        },
+        copySelection: (text: string) => {
+          calls.push(`selection:${text}`)
+          return true
+        },
+        show: (text: string) => { calls.push(`show:${text}`) },
+        ...over,
+      },
+    }
+  }
+
+  it("uses the Clipboard API when there is one and it accepts", async () => {
+    const { calls, given } = methods()
+    await expect(copyText("/files/a.txt", given)).resolves.toBe("copied")
+    expect(calls).toEqual(["clipboard:/files/a.txt"])
+  })
+
+  it("copies the selection when the page has no Clipboard API (plain http)", async () => {
+    const { calls, given } = methods({ clipboard: undefined })
+    await expect(copyText("x", given)).resolves.toBe("copied")
+    expect(calls).toEqual(["selection:x"])
+  })
+
+  it("copies the selection when the Clipboard API refuses", async () => {
+    const { calls, given } = methods({ clipboard: { writeText: () => Promise.reject(new Error("denied")) } })
+    await expect(copyText("x", given)).resolves.toBe("copied")
+    expect(calls).toEqual(["selection:x"])
+  })
+
+  it("shows the text when the selection copy reports failure too", async () => {
+    const { calls, given } = methods({ clipboard: undefined, copySelection: () => false })
+    await expect(copyText("x", given)).resolves.toBe("shown")
+    expect(calls).toEqual(["show:x"])
+  })
+
+  it("shows the text when the selection copy throws", async () => {
+    const { calls, given } = methods({
+      clipboard: undefined,
+      copySelection: () => {
+        throw new Error("no document")
+      },
+    })
+    await expect(copyText("x", given)).resolves.toBe("shown")
+    expect(calls).toEqual(["show:x"])
   })
 })

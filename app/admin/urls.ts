@@ -332,12 +332,12 @@ export function adminExperimentFieldPath(keyCode: string): string {
  * a slug is an address readers hold, it can be corrected, and the screen that
  * corrects it cannot be reached through the value it is about to change.
  */
-export function adminContentsPath(): string {
+export function adminDocumentsPath(): string {
   return "/admin/documents"
 }
 
 export function adminDocumentPath(documentId: string): string {
-  return `${adminContentsPath()}/${documentId}`
+  return `${adminDocumentsPath()}/${documentId}`
 }
 
 /**
@@ -346,7 +346,7 @@ export function adminDocumentPath(documentId: string): string {
  * is where everything that acts on the series as a whole is.
  */
 export function adminSeriesPath(seriesId: string): string {
-  return `${adminContentsPath()}/series/${seriesId}`
+  return `${adminDocumentsPath()}/series/${seriesId}`
 }
 
 /**
@@ -380,7 +380,7 @@ export function adminArticlePreviewPath(): string {
 }
 
 /** The `common/` prefix: the images and PDFs the article bodies link to. */
-export function adminContentFilesPath(): string {
+export function adminFilesPath(): string {
   return "/admin/files"
 }
 
@@ -389,8 +389,8 @@ export function adminContentFilesPath(): string {
  * responds with is interface text, and an upload that changed language
  * mid-transfer would be talking to a second address.
  */
-export function contentFileUploadPath(): string {
-  return `${adminContentFilesPath()}/upload`
+export function adminFilesUploadPath(): string {
+  return `${adminFilesPath()}/upload`
 }
 
 /**

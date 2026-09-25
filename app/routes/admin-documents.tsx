@@ -9,7 +9,7 @@ import {
 } from "~/admin/contents"
 import { contentsAction, contentsPage } from "~/admin/contents.server"
 import {
-  adminContentsPath,
+  adminDocumentsPath,
   adminDocumentPath,
   adminSeriesPath,
   contentsQuery,
@@ -28,7 +28,7 @@ import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
 
-import type { Route } from "./+types/admin-contents"
+import type { Route } from "./+types/admin-documents"
 
 /**
  * The articles: the bodies readers hold addresses for, and the pointer each
@@ -225,7 +225,7 @@ function Row({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
   const t = messages.admin.contents
-  const to = href(locale, adminContentsPath())
+  const to = href(locale, adminDocumentsPath())
   const { form, ask } = useAsk(to)
 
   return (
@@ -293,7 +293,7 @@ function Filters({ view, locale }: ViewProps) {
  * kept, and the page is the first one unless the page is what changes.
  */
 function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<ContentsListingQuery>): string {
-  return href(locale, adminContentsPath() + contentsQuery({
+  return href(locale, adminDocumentsPath() + contentsQuery({
     keyword: view.keyword,
     versioning: view.versioning,
     ja: view.ja,

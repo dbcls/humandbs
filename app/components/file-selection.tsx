@@ -8,6 +8,7 @@ import { messagesFor } from "~/i18n/messages"
 
 import { Button, ButtonLink, Dialog, PANE_LABEL, Stack } from "./base"
 import { Stated } from "./flags"
+import { FileName } from "./files"
 import { CONTROL } from "./form"
 import { Icon } from "./icons"
 import { Empty, Table, Td } from "./page"
@@ -189,7 +190,7 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
                 }}
               />
             </Td>
-            <Td className="break-all" floor="min-w-56">{entry.name}</Td>
+            <Td floor="min-w-56"><FileName name={entry.name} /></Td>
             <Td nowrap className="text-right tabular-nums">{formatSize(entry.size)}</Td>
             <Td nowrap>{dayInJst(entry.updatedAt)}</Td>
             <Td nowrap>

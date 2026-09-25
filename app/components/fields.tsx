@@ -629,7 +629,7 @@ export function ItemList<T extends { id: string }>({
         </Table>
       )}
       <AddElement
-        label={t.add}
+        label={t.addElementTitle(title)}
         onClick={() => {
           const empty = makeEmpty()
           onChange([...items, empty])

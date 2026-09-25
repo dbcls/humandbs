@@ -2,7 +2,7 @@ import { Form, Link } from "react-router"
 
 import { nextVersionNumber } from "~/admin/contents"
 import { seriesAction, seriesPage } from "~/admin/contents.server"
-import { adminContentsPath, adminDocumentPath } from "~/admin/urls"
+import { adminDocumentsPath, adminDocumentPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Confirm, Heading, Note, Stack } from "~/components/base"
 import { contentsSaid, StateCell } from "~/components/contents"
@@ -13,7 +13,7 @@ import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
 import { href } from "~/public/urls"
 
-import type { Route } from "./+types/admin-contents-series"
+import type { Route } from "./+types/admin-document-series"
 import { Flag } from "~/components/flags"
 
 /**
@@ -58,12 +58,12 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
         <Stack gap="block">
           {/* **What takes the whole series away is shown beside its name**, next
               to the back link, the way an article's or an announcement's does
-              (`admin-contents-news-item.tsx`): it acts on the series rather
+              (`admin-news-item.tsx`): it acts on the series rather
               than on any one revision, so it belongs with what identifies the
               series rather than under the revisions. */}
           <Heading title={t.seriesHeading} aside={series.slug}>
             <AdminBack
-              to={href(locale, adminContentsPath())}
+              to={href(locale, adminDocumentsPath())}
               label={t.backToList}
               icon="chevron-left"
             />

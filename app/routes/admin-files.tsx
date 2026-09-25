@@ -1,8 +1,8 @@
 import { data, Form } from "react-router"
 
 import {
-  adminContentFilesPath,
-  contentFileUploadPath,
+  adminFilesPath,
+  adminFilesUploadPath,
   filesQuery,
   type FilesListingQuery,
 } from "~/admin/urls"
@@ -32,7 +32,7 @@ import { adminWindowTitle } from "~/i18n/title"
 import { dateWindows } from "~/search/date-window"
 import { filePath, href, readLocale } from "~/public/urls"
 
-import type { Route } from "./+types/admin-contents-files"
+import type { Route } from "./+types/admin-files"
 
 /**
  * The `common/` prefix: the images and PDFs a document body links to.
@@ -111,7 +111,7 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
 
           <UploadPanel
             locale={locale}
-            endpoint={contentFileUploadPath()}
+            endpoint={adminFilesUploadPath()}
             threshold={view.multipartThreshold}
             partSize={view.partSize}
           />
@@ -154,7 +154,7 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
                     whenEmpty={inForce === 0 ? t.none : t.noMatch}
                   >
                     {view.rows.map((row) => (
-                      <Row key={row.name} row={row} locale={locale} />
+                      <Row key={row.name} row={row} origin={view.origin} locale={locale} />
                     ))}
                   </Table>
                 </RefinableList>
@@ -181,7 +181,7 @@ interface ViewProps {
  * ordering nobody has seen yet is not where anyone meant to land.
  */
 function at(view: CommonFilesView, over: Partial<FilesListingQuery>): string {
-  return href(view.locale, adminContentFilesPath() + filesQuery({
+  return href(view.locale, adminFilesPath() + filesQuery({
     keyword: view.keyword,
     from: view.from,
     to: view.to,
@@ -205,7 +205,7 @@ function at(view: CommonFilesView, over: Partial<FilesListingQuery>): string {
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
   const t = messages.admin.contents.files
-  const to = href(locale, adminContentFilesPath())
+  const to = href(locale, adminFilesPath())
   // The same four windows the public dates offer, opening from today and
   // lifting only the days — the words typed stay in force.
   const windows = dateWindows({
@@ -298,7 +298,7 @@ function paging(view: CommonFilesView): ListingPaging {
  * something at the foot of the table is a way to delete the wrong file — the
  * thing pressed names nothing, and the rows it was chosen from have scrolled.
  */
-function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
+function Row({ row, origin, locale }: { row: StoredNode, origin: string, locale: Locale }) {
   const messages = messagesFor(locale)
   const t = messages.admin.contents.files
   const address = filePath("common", row.name)
@@ -312,7 +312,7 @@ function Row({ row, locale }: { row: StoredNode, locale: Locale }) {
       <Td nowrap>{dayInJst(row.updatedAt)}</Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
-          <CopyAddress address={address} locale={locale} />
+          <CopyAddress address={address} origin={origin} locale={locale} />
           <Form method="post">
             <input type="hidden" name="from" value={row.name} />
             {/* Everything shown in a row is the row's size, not the

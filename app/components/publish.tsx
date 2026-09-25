@@ -18,7 +18,7 @@ import { Answer, Checkbox, CONTROL, Field, Submit } from "./form"
 import { Icon } from "./icons"
 import { Card, Empty, Fact, Facts, Page, Section, Table, Td } from "./page"
 import { DatasetCells, datasetColumns } from "./research"
-import { researchFieldLabel } from "./research-fields"
+import { placeName } from "./places"
 import { PressedBy, pressedTitle } from "./review"
 
 /**
@@ -307,12 +307,8 @@ function Review({ view }: { view: PublishPageView }) {
     canResolve: true,
     signedInName: review.signedInName,
   }
-  // The screen's own words for a place, as the editing screen calls it.
-  const nameOf = (anchor: CommentAnchor): string => {
-    if (anchor.kind === "research-field") return researchFieldLabel(anchor.path, locale) ?? anchor.path
-    if (anchor.kind === "dataset-field") return review.datasetLabels[anchor.datasetId] ?? messages.admin.editor.unpinnedDataset
-    return messages.admin.editor.whole
-  }
+  // A place is called what every screen listing open comments calls it (`places.ts`).
+  const nameOf = (anchor: CommentAnchor): string => placeName(anchor, review.places, locale)
 
   return (
     <Section title={t.review} note={t.reviewNote}>

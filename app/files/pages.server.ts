@@ -19,12 +19,13 @@ import type { Actor } from "~/auth/capabilities"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { mapConcurrently } from "~/concurrency"
 import { getDb } from "~/db/client.server"
+import { loadConfig, publicOrigin } from "~/config.server"
 import { dayFromInput, today } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 import { href } from "~/public/urls"
 
-import { adminContentFilesPath, adminResearchFilesPath } from "~/admin/urls"
+import { adminFilesPath, adminResearchFilesPath } from "~/admin/urls"
 import { humLabelOf } from "~/admin/queries.server"
 import { publishedFileSelections } from "~/public/queries.server"
 
@@ -119,6 +120,8 @@ export interface FilesPageView {
   locale: Locale
   researchId: string
   humLabel: string | null
+  /** The site's public origin, which a copied address is written on (`publicOrigin`). */
+  origin: string
   /** Null when the store did not respond; the screen reports it and offers nothing. */
   rows: ListedFile[] | null
   /**
@@ -203,6 +206,7 @@ export async function filesPage(
     locale,
     researchId: id,
     humLabel,
+    origin: publicOrigin(loadConfig(process.env).auth),
     rows: listing === null ? null : page.rows,
     selectedBy: Object.fromEntries(page.rows.flatMap((row) => {
       const labels = selections.get(row.name)
@@ -611,6 +615,8 @@ export async function fileDownload(
 
 export interface CommonFilesView {
   locale: Locale
+  /** The site's public origin, which a copied address is written on (`publicOrigin`). */
+  origin: string
   /** Null when the store did not respond; the screen reports it and offers nothing. */
   rows: StoredNode[] | null
   /** The words looked for in the slug, as typed. Empty when none were. */
@@ -664,6 +670,7 @@ export async function commonFilesPage(
 
   return {
     locale,
+    origin: publicOrigin(loadConfig(process.env).auth),
     rows: listing === null ? null : page.rows,
     keyword,
     from,
@@ -713,7 +720,7 @@ export async function commonFilesAction(
     }
   })
 
-  return backToListing(request, locale, adminContentFilesPath(), COMMON_LISTING_SETTINGS)
+  return backToListing(request, locale, adminFilesPath(), COMMON_LISTING_SETTINGS)
 }
 
 /**
@@ -742,7 +749,7 @@ async function renameCommonFile(
   const slug = to.trim()
   if (!isFileSlug(from)) badRequest()
   if (!isFileSlug(slug)) return { status: "malformed-slug" }
-  if (slug === from) return backToListing(request, locale, adminContentFilesPath(), COMMON_LISTING_SETTINGS)
+  if (slug === from) return backToListing(request, locale, adminFilesPath(), COMMON_LISTING_SETTINGS)
 
   const at = (name: string): ObjectRef => ({ bucket: PUBLIC_BUCKET, key: commonPrefix() + name })
   if (await objectExists(at(slug))) return { status: "slug-taken" }
@@ -767,7 +774,7 @@ async function renameCommonFile(
     })
   })
 
-  return backToListing(request, locale, adminContentFilesPath(), COMMON_LISTING_SETTINGS)
+  return backToListing(request, locale, adminFilesPath(), COMMON_LISTING_SETTINGS)
 }
 
 /**

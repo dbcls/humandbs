@@ -80,41 +80,41 @@ const management = [
       "routes/admin-experiment-field-terms.tsx",
       { id: "admin-experiment-field-terms" },
     ),
-    route("admin/documents", "routes/admin-contents.tsx", { id: "admin-contents" }),
+    route("admin/documents", "routes/admin-documents.tsx", { id: "admin-documents" }),
     // Before the identity, so that `series` is a screen rather than a document
     // that could never be found.
     route(
       "admin/documents/series/:seriesId",
-      "routes/admin-contents-series.tsx",
-      { id: "admin-contents-series" },
+      "routes/admin-document-series.tsx",
+      { id: "admin-document-series" },
     ),
     // Before the identity, so that `preview` is a way rather than a document
     // that could never be found.
-    route("admin/documents/preview", "routes/admin-contents-preview.ts"),
+    route("admin/documents/preview", "routes/admin-document-preview.ts"),
     route(
       "admin/documents/:documentId",
-      "routes/admin-contents-document.tsx",
-      { id: "admin-contents-document" },
+      "routes/admin-document.tsx",
+      { id: "admin-document" },
     ),
     route(
       "admin/alert",
-      "routes/admin-contents-alert.tsx",
-      { id: "admin-contents-alert" },
+      "routes/admin-alert.tsx",
+      { id: "admin-alert" },
     ),
     route(
       "admin/news",
-      "routes/admin-contents-news.tsx",
-      { id: "admin-contents-news" },
+      "routes/admin-news.tsx",
+      { id: "admin-news" },
     ),
     route(
       "admin/news/:newsId",
-      "routes/admin-contents-news-item.tsx",
-      { id: "admin-contents-news-item" },
+      "routes/admin-news-item.tsx",
+      { id: "admin-news-item" },
     ),
     route(
       "admin/files",
-      "routes/admin-contents-files.tsx",
-      { id: "admin-contents-files" },
+      "routes/admin-files.tsx",
+      { id: "admin-files" },
     ),
     route("admin/research", "routes/admin-research-list.tsx", { id: "admin-research-list" }),
     // Before the identity, so that `upstream` is a screen rather than a research
@@ -197,9 +197,9 @@ const editing = [
     "routes/admin-draft-dataset-page.ts",
   ),
   route("admin/terms", "routes/admin-terms.ts"),
-  route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
-  route("admin/research/:researchId/files/download", "routes/admin-files-download.ts"),
-  route("admin/files/upload", "routes/admin-contents-files-upload.ts"),
+  route("admin/research/:researchId/files/upload", "routes/admin-research-files-upload.ts"),
+  route("admin/research/:researchId/files/download", "routes/admin-research-files-download.ts"),
+  route("admin/files/upload", "routes/admin-files-upload.ts"),
   /**
    * The assistant's API, handed on unchanged to a service that holds no
    * authorisation of its own. **Registered once**, beside the others here:
@@ -233,33 +233,11 @@ const api = [
   route(DOCS_PATH, DOCS_FILE),
 ]
 
-/**
- * The parts catalogue, which is not part of the site.
- *
- * `/dev/ui` draws every part against real rows so that a change to one of them
- * can be looked at rather than reasoned about. **It is left out of the
- * production build entirely** rather than hidden behind a check at request
- * time: a setting can be got wrong, and a route that is not registered cannot
- * be reached. In production the address falls through to the catch-all and is
- * answered like any slug that does not exist — `dev` is reserved in
- * `SCREEN_PATHS`, so a document cannot take it and change that in one
- * environment but not the other.
- *
- * **`npm run build` sets `NODE_ENV` itself** (`package.json`) rather than
- * trusting what it inherits: the container the image is built in has
- * `NODE_ENV=development`, so a build reading the ambient value would have put
- * the catalogue into the deployed server.
- */
-const dev = process.env.NODE_ENV === "production"
-  ? []
-  : [route("dev/ui", "routes/dev-ui.tsx")]
-
 export default [
   route("healthz", "routes/healthz.ts"),
   ...auth,
   ...api,
   ...editing,
-  ...dev,
   ...management,
   ...pages("ja"),
   ...prefix("en", pages("en")),

@@ -1,10 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import type { ListedFile } from "~/files/prefix"
 
-import { FileTable, Downloads, UploadPanel, type DownloadRow } from "./files"
+import { FileName, FileTable, Downloads, UploadPanel, type DownloadRow } from "./files"
 
 /**
  * What the two lists put on the page.
@@ -112,7 +113,7 @@ describe("the download list", () => {
   it("shows the address a file that is not public yet will have", () => {
     const html = downloads([{ name: "closed.zip", size: 1, isPublic: false }])
 
-    expect(html).toContain("/files/hum0009/closed.zip")
+    expect(html.replaceAll("<wbr/>", "")).toContain("/files/hum0009/closed.zip")
   })
 
   it("links nothing at all before a hum label has been pinned", () => {
@@ -146,6 +147,7 @@ describe("the research's file table", () => {
       return render(
         <FileTable
           locale="ja"
+          origin="https://humandbs.example"
           researchId={RESEARCH}
           humLabel="hum0009"
           rows={[entry({ name: "a.zip" }), entry({ name: "b.zip", isPublic: false })]}
@@ -184,10 +186,11 @@ describe("the research's file table", () => {
     })
   })
 
-  it("offers to copy the address of a public file, and of no other", () => {
+  it("offers to copy the whole URL of a public file, on the site's public origin, and of no other", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
@@ -195,12 +198,12 @@ describe("the research's file table", () => {
     )
 
     expect([...html.matchAll(/アドレスのコピー/g)]).toHaveLength(1)
-    expect(html).toContain("title=\"/files/hum0009/open.zip\"")
-    expect(html).not.toContain("title=\"/files/hum0009/closed.zip\"")
+    expect(html).toContain("title=\"https://humandbs.example/files/hum0009/open.zip\"")
+    expect(html).not.toContain("title=\"https://humandbs.example/files/hum0009/closed.zip\"")
   })
 
   it("names nothing to copy while the research has no label, since no address responds", () => {
-    const html = render(<FileTable locale="ja" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "open.zip" })]} />)
+    const html = render(<FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "open.zip" })]} />)
 
     expect(html).not.toContain("アドレスをコピー")
   })
@@ -209,6 +212,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
@@ -223,6 +227,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" })]}
@@ -240,6 +245,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "説明 (1).zip", isPublic: false })]}
@@ -255,7 +261,7 @@ describe("the research's file table", () => {
 
   it("offers a download for a private file while the research has no label", () => {
     const html = render(
-      <FileTable locale="ja" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "a.zip", isPublic: false })]} />,
+      <FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "a.zip", isPublic: false })]} />,
     )
 
     expect(html).toContain(`/admin/research/${RESEARCH}/files/download?name=a.zip`)
@@ -265,6 +271,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
@@ -280,6 +287,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ isPublic: false, pending: { action: "publish", failed: false, lastError: null } })]}
@@ -296,6 +304,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ pending: { action: "unpublish", failed: true, lastError: "copy refused" } })]}
@@ -313,6 +322,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        origin="https://humandbs.example"
         researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "a.zip" }), entry({ name: "b.zip" })]}
@@ -325,13 +335,13 @@ describe("the research's file table", () => {
   })
 
   it("changes the name on the one panel every slug is changed in", () => {
-    const html = render(<FileTable locale="ja" researchId={RESEARCH} humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
+    const html = render(<FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
 
     expect(html).toContain("slug の編集")
   })
 
   it("does not offer deletion until it has been asked for twice", () => {
-    const html = render(<FileTable locale="ja" researchId={RESEARCH} humLabel="hum0009" rows={[entry()]} />)
+    const html = render(<FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel="hum0009" rows={[entry()]} />)
 
     expect(html).not.toContain("value=\"delete\"")
   })
@@ -349,5 +359,27 @@ describe("the upload panel", () => {
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(html).toContain("ファイルの選択")
     expect(html).not.toContain("上書き")
+  })
+})
+
+describe("FileName", () => {
+  it("offers a break after each / and _ and nowhere inside a word", () => {
+    expect(render(<FileName name="supplement/hum0005_variant_counts.tsv" />))
+      .toBe("supplement/<wbr/>hum0005_<wbr/>variant_<wbr/>counts.tsv")
+  })
+
+  it("offers no break after a leading /, which would leave it alone on a line", () => {
+    expect(render(<FileName name="/files/hum0009/a.zip" />)).toBe("/files/<wbr/>hum0009/<wbr/>a.zip")
+  })
+
+  it("leaves a name with no separator whole", () => {
+    expect(render(<FileName name="README.txt" />)).toBe("README.txt")
+  })
+
+  it("draws every character of the name, in order", () => {
+    fc.assert(fc.property(fc.string(), (name) => {
+      const html = render(<FileName name={name} />).replaceAll("<wbr/>", "")
+      expect(html).toBe(renderToStaticMarkup(<>{name}</>))
+    }))
   })
 })

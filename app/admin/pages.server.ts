@@ -78,6 +78,7 @@ import {
   saveDraftContent,
   type ListingChange,
 } from "./drafts.server"
+import { draftDatasets } from "./datasets"
 import { researchContentInput, type DraftInput } from "./form"
 import { researchContentOf, saveDraftSchema } from "./form.server"
 import {
@@ -89,7 +90,6 @@ import {
 import { isHumLabel } from "./labels"
 import { issueNhaId, nextNhaId, pinLabel, promotePin, unpinLabel } from "./labels.server"
 import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
-import { draftSteps, researchDraftSteps, type DraftStepsView } from "./steps.server"
 import {
   adminResearch,
   adminResearchIndex,
@@ -98,6 +98,7 @@ import {
   draftDatasetRows,
   humLabelOf,
   loadEditableCatalog,
+  ownedDatasets,
   termsByIds,
   readDatasetEntry,
   readDraft,
@@ -146,7 +147,10 @@ import {
   versionAgainst,
   type DraftReviewSummary,
 } from "~/review/queries.server"
-import { isShareExpired } from "~/review/share"
+import type { PlaceSources } from "~/components/places"
+import { unresolvedCount } from "~/review/comments"
+import { placeSources } from "~/review/places.server"
+import { isShareExpired, isShareOpen } from "~/review/share"
 
 export function notFound(): never {
   throw new Response(null, { status: 404, statusText: "Not Found" })
@@ -297,17 +301,13 @@ export interface AdminResearchVersionRow extends AdminVersionRow {
 
 /**
  * A draft's review, widened with what the research screen's table draws
- * beside it: how many datasets it lists and what the publish check would report.
+ * beside it: how many datasets it lists.
  * **The share and the threads stay a `DraftReviewSummary`** — this only adds
  * to it, the way the table only adds two columns to what the row already
  * shows.
  */
 export interface AdminDraftReviewRow extends DraftReviewSummary {
   datasets: number
-  /** What the publish check would stop. */
-  blocks: number
-  /** What the publish check would ask the editor to confirm. */
-  findings: number
 }
 
 export interface AdminResearchPageView {
@@ -321,7 +321,7 @@ export interface AdminResearchPageView {
   labels: { id: string, label: string, isPrimary: boolean, holdsFiles: boolean | null }[]
   versions: AdminResearchVersionRow[]
   drafts: AdminDraftRow[]
-  /** Whether a link is out there for each draft, what is unanswered, and what its publish check found. */
+  /** Whether a link is out there for each draft, what is unanswered, and how many datasets it lists. */
   reviews: AdminDraftReviewRow[]
   /** What the prefix holds. Null when the store did not respond. */
   fileSummary: { count: number, bytes: number } | null
@@ -385,17 +385,16 @@ export async function researchDetailPage(
   }))
   const holds = [listing === null ? null : listing.length > 0, ...retiredHolds.values()]
 
-  const drafts = draftRecords.flatMap((record) =>
-    record === null ? [] : [{ id: record.id, content: record.content }])
-  const steps = await researchDraftSteps(db, id, drafts, reviews)
+  // The research's datasets are read once for every draft: each draft
+  // publishes all of them but what another draft made (`admin/datasets.ts`).
+  const owned = await ownedDatasets(db, id)
+  const datasetCounts = new Map(draftRecords.flatMap((record) =>
+    record === null ? [] : [[record.id, draftDatasets(owned, record.id, record.content.datasetIds).length]]))
 
   return {
     locale,
     researchId: id,
-    reviews: reviews.map((row) => {
-      const found = steps.get(row.draftId)
-      return { ...row, datasets: found?.datasets ?? 0, blocks: found?.blocks ?? 0, findings: found?.findings ?? 0 }
-    }),
+    reviews: reviews.map((row) => ({ ...row, datasets: datasetCounts.get(row.draftId) ?? 0 })),
     fileSummary: listing === null
       ? null
       : { count: listing.length, bytes: listing.reduce((sum, entry) => sum + entry.size, 0) },
@@ -501,6 +500,8 @@ export interface AdminDraftPageView {
    */
   citable: DatasetRowView[]
   review: ReviewAnnotationsView
+  /** What names the places the comments are on (`components/places.ts`); the form's rows are put over it. */
+  places: PlaceSources
   /**
    * The draft drawn as the page it is going to be, which the editor places
    * beside the form. It is the same drawing the share link shows, so that the
@@ -513,8 +514,6 @@ export interface AdminDraftPageView {
    * of its own is offered the publish.
    */
   updating: number | null
-  /** The draft's progress on each of its steps (`DraftSteps`). */
-  steps: DraftStepsView
 }
 
 /**
@@ -546,12 +545,12 @@ export async function draftEditorPage(
   // Every reading of "what differs" on this screen is against the same
   // version: the one the draft updates, or else the newest out.
   const published = await versionAgainst(db, draft)
-  const [humLabel, datasets, comments, page, steps] = await Promise.all([
+  const [humLabel, datasets, comments, page, places] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
     readComments(db, draftId),
     drawDraft(request, locale, { researchId, draftId, content: draft.content, updating: draft.updating }),
-    draftSteps(db, researchId, draftId, draft.content),
+    placeSources(db, researchId, draftId, draft.content, locale),
   ])
 
   const listed = await draftDatasetIds(db, draftId, researchId, draft.content.datasetIds)
@@ -584,7 +583,7 @@ export async function draftEditorPage(
     },
     page,
     updating: draft.updating?.number ?? null,
-    steps,
+    places,
   }
 }
 
@@ -604,9 +603,8 @@ export interface DraftDatasetListView {
     edited: boolean
     shown: DatasetRowView | null
   })[]
-  /** The number of the version the draft updates, which identifies the last step. */
+  /** The number of the version the draft updates. */
   updating: number | null
-  steps: DraftStepsView
 }
 
 export async function draftDatasetListPage(
@@ -616,11 +614,10 @@ export async function draftDatasetListPage(
 ): Promise<DraftDatasetListView> {
   const { db, researchId, draftId, draft } = await draftOf(request, params)
 
-  const [humLabel, rows, changed, steps] = await Promise.all([
+  const [humLabel, rows, changed] = await Promise.all([
     humLabelOf(db, researchId),
     draftDatasetRows(db, draftId, researchId, draft.content.datasetIds),
     changedDatasets(db, draftId, researchId, draft.updating?.versionId ?? null),
-    draftSteps(db, researchId, draftId, draft.content),
   ])
   const shown = await draftDatasetRowViews(db, draftId, rows.map((row) => row.id), locale)
 
@@ -632,7 +629,6 @@ export async function draftDatasetListPage(
     revision: draft.revision,
     rows: rows.map((row) => ({ ...row, edited: changed.has(row.id), shown: shown.get(row.id) ?? null })),
     updating: draft.updating?.number ?? null,
-    steps,
   }
 }
 
@@ -708,8 +704,8 @@ export interface DatasetEditorView {
   draftId: string
   datasetId: string
   humLabel: string | null
-  /** The draft's progress on each of its steps (`DraftSteps`). */
-  steps: DraftStepsView
+  /** What names the places the comments are on (`components/places.ts`); the form's experiments are put over it. */
+  places: PlaceSources
   datasetLabel: string | null
   /** The `label_pin` row behind the label, which is what unpinning names. */
   datasetPinId: string | null
@@ -777,13 +773,13 @@ export async function datasetEditorPage(
   // not a dataset this draft could be editing.
   if (row === undefined) notFound()
 
-  const [entry, published, humLabel, catalog, comments, steps] = await Promise.all([
+  const [entry, published, humLabel, catalog, comments, places] = await Promise.all([
     readDatasetEntry(db, draftId, datasetId),
     readPublishedDataset(db, researchId, datasetId, draft.updating?.versionId ?? null),
     humLabelOf(db, researchId),
     loadEditableCatalog(db),
     readComments(db, draftId),
-    draftSteps(db, researchId, draftId, draft.content),
+    placeSources(db, researchId, draftId, draft.content, locale),
   ])
   const listing = await adminListing(db, researchId, humLabel)
 
@@ -816,7 +812,7 @@ export async function datasetEditorPage(
     nextNhaId: row.pinId === null ? await nextNhaId(db) : null,
     published: row.published,
     updating: draft.updating?.number ?? null,
-    steps,
+    places,
     revision: entry?.revision ?? null,
     input,
     page,
@@ -1214,8 +1210,8 @@ export interface PublishReviewView {
   comments: CommentView[]
   /** The name a comment is signed with here. */
   signedInName: string | null
-  /** Each dataset's id, which is what the panel calls a place on a dataset (null: none yet). */
-  datasetLabels: Record<string, string | null>
+  /** What names the places the comments are on (`components/places.ts`). */
+  places: PlaceSources
 }
 
 export interface PublishDatasetChangeView {
@@ -1231,8 +1227,6 @@ export interface PublishPageView {
   researchId: string
   draftId: string
   humLabel: string | null
-  /** The draft's progress on each of its steps (`DraftSteps`); the publish check is this screen's own. */
-  steps: DraftStepsView
   revision: number
   /** The number offered first: one past the highest a version holds. */
   nextNumber: number
@@ -1279,7 +1273,6 @@ export async function publishPage(
 
   const preview = await publishPreview(db, draftId, await privateNames(researchId))
   if (preview === null) notFound()
-  const steps = await draftSteps(db, researchId, draftId, draft.content, { publishCheck: preview.publishCheck })
 
   const labelOf = new Map(preview.datasetLabels.map((row) => [row.datasetId, row.label]))
   const naming = (datasetId: string): string =>
@@ -1291,11 +1284,12 @@ export async function publishPage(
     ...preview.publishCheck.blocks.flatMap((block) => block.kind === "dataset-id-missing" ? [block.datasetId] : []),
     ...preview.datasetChanges.map((change) => change.datasetId),
   ]
-  const [shown, acknowledgements, comments, share] = await Promise.all([
+  const [shown, acknowledgements, comments, share, places] = await Promise.all([
     draftDatasetRowViews(db, draftId, [...new Set(named)], locale),
     readAcknowledgements(db, draftId),
     readComments(db, draftId),
     readShare(db, draftId),
+    placeSources(db, researchId, draftId, draft.content, locale),
   ])
 
   return {
@@ -1321,7 +1315,6 @@ export async function publishPage(
       naming,
     }),
     findingCount: preview.publishCheck.findings.length,
-    steps,
     researchFields: preview.researchFields,
     reordered: preview.reordered,
     datasetChanges: preview.datasetChanges.map((change) => ({
@@ -1333,13 +1326,13 @@ export async function publishPage(
     updatingReleaseDate: preview.updating?.releaseDate ?? null,
     datasetRows: Object.fromEntries(shown),
     review: {
-      shared: steps.shared,
+      shared: share !== null && isShareOpen({ enabled: share.enabled, expiresAt: share.expiresAt }, new Date()),
       expired: share !== null && isShareExpired({ enabled: share.enabled, expiresAt: share.expiresAt }, new Date()),
-      unresolved: steps.unresolved,
+      unresolved: unresolvedCount(comments),
       acknowledgements,
       comments,
       signedInName: actor.name,
-      datasetLabels: Object.fromEntries(preview.datasetLabels.map((row) => [row.datasetId, row.label])),
+      places,
     },
   }
 }

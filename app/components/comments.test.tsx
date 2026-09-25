@@ -173,16 +173,15 @@ describe("the open comments, gathered under their places", () => {
     return "全体"
   }
 
-  it("makes one group per place, and a dataset is one place however many fields", () => {
+  it("makes one group per place, a field of a dataset being a place of its own", () => {
     const groups = groupedByAnchor([
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k1" }, false),
       comment({ kind: "research-field", path: "title" }, false),
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k2" }, false),
+      comment({ kind: "dataset-field", datasetId: "d1", path: "values.k1" }, false),
     ], named)
 
-    expect(groups.map((group) => group.name))
-      .toEqual(["データセット:d1", "研究:title"])
-    expect(groups[0]?.comments).toHaveLength(2)
+    expect(groups.map((group) => group.comments.length)).toEqual([2, 1, 1])
   })
 
   it("keeps the order the places were first spoken about", () => {
@@ -215,20 +214,21 @@ describe("the open comments, gathered under their places", () => {
     expect(groups).toHaveLength(2)
   })
 
-  /** On a dataset's own screen the dataset is the whole of what is written, so its fields are the places. */
-  it("cuts a dataset by its fields when asked, marking each as a field", () => {
+  /** A field of a dataset is a place of its own on every screen, named the same way everywhere. */
+  it("keeps each field of a dataset a place of its own, with the dataset's icon", () => {
     const fields = [
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k1" }, false),
       comment({ kind: "dataset-field", datasetId: "d1", path: "experiments.e1.values.k2" }, false),
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k1" }, false),
+      comment({ kind: "dataset-field", datasetId: "d2", path: "values.k1" }, false),
     ]
-    const byField = groupedByAnchor(fields, (anchor) => anchor.kind === "dataset-field" ? anchor.path : "", true)
-    expect(byField.map((group) => [group.name, group.comments.length])).toEqual([["values.k1", 2], ["experiments.e1.values.k2", 1]])
-    expect(byField.map((group) => group.icon)).toEqual(["type", "type"])
-
-    const whole = groupedByAnchor(fields, named)
-    expect(whole).toHaveLength(1)
-    expect(whole[0]?.icon).toBe("database")
+    const byField = groupedByAnchor(fields, (anchor) => anchor.kind === "dataset-field" ? `${anchor.datasetId}:${anchor.path}` : "")
+    expect(byField.map((group) => [group.name, group.comments.length])).toEqual([
+      ["d1:values.k1", 2],
+      ["d1:experiments.e1.values.k2", 1],
+      ["d2:values.k1", 1],
+    ])
+    expect(byField.map((group) => group.icon)).toEqual(["database", "database", "database"])
   })
 })
 

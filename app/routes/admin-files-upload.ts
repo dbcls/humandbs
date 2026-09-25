@@ -1,19 +1,16 @@
-import { fileUploadAction } from "~/files/pages.server"
+import { commonUploadAction } from "~/files/pages.server"
 
 import type { Route } from "./+types/admin-files-upload"
 
 /**
- * Where the files screen requests the signatures of one upload.
+ * Where the signatures of one upload to the `common/` prefix are requested.
  *
- * **No bytes come through here.** What is handed back accepts exactly one file —
- * this key, this content type, this many bytes — and the browser puts to it
- * directly. That signature is the whole of what can be imposed on a transfer
- * the application never sees.
+ * **No bytes come through here**, the same as for a research's prefix. What
+ * differs is where they land: this prefix is public, so an upload is a change to
+ * what readers can fetch and is written into the audit trail.
  *
- * It has no language prefix: nothing it responds with is interface text, and an
- * upload whose page changed language mid-transfer would otherwise be talking to
- * a second address.
+ * It has no language prefix: nothing it responds with is interface text.
  */
-export async function action({ request, params }: Route.ActionArgs) {
-  return fileUploadAction(request, params.researchId)
+export async function action({ request }: Route.ActionArgs) {
+  return commonUploadAction(request)
 }

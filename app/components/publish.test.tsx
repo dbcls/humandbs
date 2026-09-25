@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest"
 import type { PublishPageView, PublishResult } from "~/admin/pages.server"
 
 import { PublishConfirmation } from "./publish"
+import type { PlaceSources } from "./places"
+
+const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
 
 /**
  * The screen has one job the server cannot do for it: making the difference
@@ -27,14 +30,13 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     blocks: [],
     groups: [],
     findingCount: 0,
-    steps: { datasets: 0, shared: false, unresolved: 0, blocks: 0, findings: 0 },
     researchFields: 0,
     datasetChanges: [],
     reordered: false,
     comparedWith: 1,
     updatingReleaseDate: null,
     datasetRows: {},
-    review: { shared: false, expired: false, unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", datasetLabels: {} },
+    review: { shared: false, expired: false, unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", places: NO_PLACES },
     ...over,
   }
 }
@@ -234,7 +236,7 @@ describe("the publish screen", () => {
         acknowledgements: [{ kind: "approved", name: "山田太郎", bySignedIn: true, createdAt: "2026-09-20T01:00:00Z", count: 1 }],
         comments: [],
         signedInName: "curator",
-        datasetLabels: {},
+        places: NO_PLACES,
       },
     }))
 
@@ -256,7 +258,7 @@ describe("the publish screen", () => {
         acknowledgements: [{ kind: "approved", name: "山田太郎", bySignedIn: true, createdAt: "2026-09-20T01:00:00Z", count: 3 }],
         comments: [],
         signedInName: "curator",
-        datasetLabels: {},
+        places: NO_PLACES,
       },
     }))
     const review = html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開前に確かめるもの</h2>"))
@@ -270,7 +272,7 @@ describe("the publish screen", () => {
   })
 
   it("shows a link past its date as expired, apart from a draft never shared", () => {
-    const base = { unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", datasetLabels: {} }
+    const base = { unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", places: NO_PLACES }
     const review = (html: string) => html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開</h2>"))
     const expired = review(render(view({ review: { ...base, shared: false, expired: true } })))
     expect(expired).toContain("共有の期限切れ")
@@ -293,7 +295,7 @@ describe("the publish screen", () => {
       createdAt: "2026-09-20T01:00:00Z",
     }
     const html = render(view({
-      review: { shared: true, expired: false, unresolved: 1, acknowledgements: [], comments: [comment], signedInName: "curator", datasetLabels: {} },
+      review: { shared: true, expired: false, unresolved: 1, acknowledgements: [], comments: [comment], signedInName: "curator", places: NO_PLACES },
     }))
     const review = html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開</h2>"))
     // The panel's trigger: a button, with the count on it, not a link away.

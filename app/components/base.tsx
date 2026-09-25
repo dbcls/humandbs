@@ -14,8 +14,6 @@
  * is v1's vocabulary: it drew rounded corners twenty ways, held four separate
  * badge implementations, and used its own palette and Tailwind's side by side.
  * There is no v1 to defer to on those, so each is decided once, here.
- *
- * Every part is drawn against real rows at `/dev/ui`.
  */
 
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react"
@@ -519,9 +517,9 @@ export type ButtonSize = keyof typeof BUTTON_SIZE
 function buttonClass(look: Required<Omit<ButtonLook, "icon">>) {
   const { variant, size, listing, onHeaderBar, className } = look
   return [
-    "group/link inline-flex cursor-pointer items-center justify-center border font-medium no-underline transition-colors",
+    "group/link inline-flex items-center justify-center border font-medium no-underline transition-colors",
     listing ? "rounded-full" : "rounded",
-    "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100",
+    "disabled:opacity-50 disabled:hover:brightness-100",
     onHeaderBar ? BUTTON_ON_HEADER_BAR[variant] : BUTTON_VARIANT[variant],
     BUTTON_SIZE[size],
     className,
@@ -827,7 +825,7 @@ export function IconButton({ name, label, pressed, fill = false, titled = true, 
       aria-label={label}
       title={titled ? label : undefined}
       aria-pressed={pressed}
-      className={`inline-flex size-tap shrink-0 cursor-pointer items-center justify-center rounded transition-colors disabled:cursor-default disabled:opacity-50 ${look}`}
+      className={`inline-flex size-tap shrink-0 items-center justify-center rounded transition-colors disabled:opacity-50 ${look}`}
       {...rest}
     >
       <Icon name={name} className="text-base" />
@@ -951,7 +949,7 @@ export function Choice<T extends string>({ label, value, options, onChange, size
           // The ends are rounded on the option rather than clipped by the box:
           // a square corner cut by a round edge leaves the border showing as a
           // bare upright, which is not the shape either of them is drawing.
-          className={`cursor-pointer border border-brand font-medium transition-colors ${BUTTON_SIZE[size]} ${
+          className={`border border-brand font-medium transition-colors ${BUTTON_SIZE[size]} ${
             at === 0 ? "" : "-ml-px"
           } ${pill && at === 0 ? "rounded-l-full pl-4" : ""} ${
             pill && at === options.length - 1 ? "rounded-r-full pr-4" : ""
@@ -1001,6 +999,74 @@ export function PanelButton({ icon, label, onClick, children }: {
 }
 
 /**
+ * The methods a copy can use to get text onto the clipboard, tried in order by `copyText`.
+ * Passed in so the order can be checked without a browser.
+ */
+export interface ClipboardMethods {
+  /** The Clipboard API. Absent outside a secure context, such as a page served over plain http. */
+  clipboard: { writeText: (text: string) => Promise<void> } | undefined
+  /** A selection copied with `execCommand`, true when the browser reports that it copied. */
+  copySelection: (text: string) => boolean
+  /** The text shown selected in a dialog, for the reader to copy by hand. */
+  show: (text: string) => void
+}
+
+/**
+ * Puts text on the clipboard, and returns whether it got there or had to be
+ * shown to the reader instead.
+ *
+ * **A press always leads somewhere.** The Clipboard API is missing over plain
+ * http and can refuse even where it exists, so the older selection copy is
+ * tried next, and when that fails too the text is shown for the reader to copy
+ * by hand. A copy that failed without a word left the reader pasting whatever
+ * was on the clipboard before.
+ */
+export async function copyText(text: string, methods: ClipboardMethods): Promise<"copied" | "shown"> {
+  if (methods.clipboard !== undefined) {
+    try {
+      await methods.clipboard.writeText(text)
+      return "copied"
+    } catch {
+      // Refused (no permission, the document not focused): the selection copy below.
+    }
+  }
+  let copied: boolean
+  try {
+    copied = methods.copySelection(text)
+  } catch {
+    copied = false
+  }
+  if (copied) return "copied"
+  methods.show(text)
+  return "shown"
+}
+
+/**
+ * The selection copy: a hidden textarea holding the text, selected and copied.
+ * Focus goes back to where it was, since selecting moves it into the textarea.
+ */
+function copySelection(text: string): boolean {
+  const before = document.activeElement
+  const area = document.createElement("textarea")
+  area.value = text
+  area.readOnly = true
+  area.setAttribute("aria-hidden", "true")
+  area.style.position = "fixed"
+  area.style.top = "0"
+  area.style.left = "0"
+  area.style.opacity = "0"
+  document.body.append(area)
+  area.select()
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- the only copy that works outside a secure context
+    return document.execCommand("copy")
+  } finally {
+    area.remove()
+    if (before instanceof HTMLElement) before.focus()
+  }
+}
+
+/**
  * The way to put something on the clipboard.
  *
  * **Copying leaves nothing on the screen, so the control accounts for it.** On
@@ -1018,12 +1084,18 @@ export function PanelButton({ icon, label, onClick, children }: {
  *
  * `text` may be a function for something that has to be fetched or built at
  * the moment of copying (the rows of a search, an address made absolute).
+ *
+ * **When the text cannot be put on the clipboard, it is shown instead**
+ * (`copyText`), selected, with `byHand` above it; the control does not claim it
+ * was copied.
  */
-export function CopyButton({ text, label, done, size = "sm", listing = false, title }: {
+export function CopyButton({ text, label, done, byHand, size = "sm", listing = false, title }: {
   text: string | (() => string | Promise<string>)
   label: string
   /** What the control shows while the copy is fresh. */
   done: string
+  /** What the reader is asked above the text when it could only be shown to them. */
+  byHand: string
   size?: ButtonSize
   listing?: boolean
   /** What is copied, shown to a pointer — where it is not on the screen already. */
@@ -1035,7 +1107,13 @@ export function CopyButton({ text, label, done, size = "sm", listing = false, ti
     if (timer.current !== null) window.clearTimeout(timer.current)
   }, [])
   async function copy() {
-    await navigator.clipboard.writeText(typeof text === "string" ? text : await text())
+    const written = typeof text === "string" ? text : await text()
+    const outcome = await copyText(written, {
+      clipboard: typeof navigator.clipboard === "undefined" ? undefined : navigator.clipboard,
+      copySelection,
+      show: (shown) => { window.prompt(byHand, shown) },
+    })
+    if (outcome === "shown") return
     setCopied(true)
     if (timer.current !== null) window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => {
@@ -1235,7 +1313,7 @@ export function ValueChip({ remove, disabled = false, onRemove, children }: {
       type="button"
       disabled={disabled}
       onClick={onRemove}
-      className="inline-flex cursor-pointer items-center gap-1 rounded border border-line-strong bg-white px-2 py-0.5 text-ink-muted text-xs leading-3.5 transition-colors hover:bg-surface-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded border border-line-strong bg-white px-2 py-0.5 text-ink-muted text-xs leading-3.5 transition-colors hover:bg-surface-hover hover:text-ink disabled:opacity-50"
     >
       {children}
       <Icon name="close" aria-hidden="true" />
@@ -1593,7 +1671,7 @@ export function SectionTabs({ label, tabs, current, onSelect, scope, aside }: {
           aria-controls={`tabpanel-${tabbedAs(scope, tab.id)}`}
           tabIndex={tab.id === current ? 0 : -1}
           onClick={() => { onSelect(tab.id) }}
-          className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-b-[3px] px-4 py-2 text-sm ${
+          className={`-mb-px inline-flex items-center gap-1.5 border-b-[3px] px-4 py-2 text-sm ${
             tab.id === current
               ? "border-brand font-semibold text-brand"
               : "border-transparent text-ink-muted hover:text-ink"
@@ -1732,7 +1810,7 @@ export function Collapsible({ summary, note, open = false, children }: {
       onToggle={(event) => { setShown(event.currentTarget.open) }}
       className="group/collapsible"
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 font-semibold text-sm marker:content-none">
+      <summary className="flex list-none items-center justify-between gap-2 py-2 font-semibold text-sm marker:content-none">
         <span className="flex items-center gap-1.5">
           <CollapsibleChevron />
           {summary}
@@ -1787,7 +1865,7 @@ export function Clamped({ items, shown = 3, more, less }: {
           type="button"
           aria-expanded={open}
           onClick={() => { setOpen(!open) }}
-          className={`${MORE} cursor-pointer`}
+          className={MORE}
         >
           {open ? less : more(rest)}
           {/* Turned to point back the way it came, so that the one drawing shows
@@ -1862,7 +1940,7 @@ export function Excerpt({ more, less, children }: {
           type="button"
           aria-expanded={open}
           onClick={() => { setOpen(!open) }}
-          className={`${MORE} cursor-pointer`}
+          className={MORE}
         >
           {open ? less : more}
           <Icon name="chevron-right" aria-hidden="true" className={open ? "-rotate-90" : ""} />
@@ -2554,7 +2632,7 @@ export function Menu({ label, icon = "more", glyph, round = false, filled = fals
       <summary
         aria-label={word ? undefined : label}
         title={word ? undefined : label}
-        className={`relative inline-flex cursor-pointer list-none items-center justify-center gap-1.5 marker:content-none hover:bg-surface-hover ${
+        className={`relative inline-flex list-none items-center justify-center gap-1.5 marker:content-none hover:bg-surface-hover ${
           value !== undefined
             // A control naming a choice is a step shallower than a button, and a
             // step narrower on the side the caret is: the row it

@@ -61,7 +61,7 @@ draft (editing) --publish--> research version + search rows --> public pages / s
 | JSON API の応答の形 | `app/api/schema.ts` と、そこから作る `/api/openapi.json` |
 | 画面の文言 (日本語と英語) | `app/i18n/messages.ts` |
 | route と URL | `app/routes.ts` |
-| 画面の部品と見た目の規則 | `app/components/`、`/dev/ui`、規則のテスト ([development.md](development.md)) |
+| 画面の部品と見た目の規則 | `app/components/`、規則のテスト ([development.md](development.md)) |
 
 ## ディレクトリ
 

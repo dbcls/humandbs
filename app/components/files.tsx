@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type ReactNode } from "react"
+import { Fragment, useRef, useState, type DragEvent, type ReactNode } from "react"
 import { Form } from "react-router"
 
 import { mapConcurrently } from "~/concurrency"
@@ -89,7 +89,7 @@ export function Downloads<Row extends DownloadRow>({
       >
         {rows.map((row) => (
           <tr key={row.name}>
-            <Td className="break-all">
+            <Td>
               {/* **A name that fetches is shown with the download icon** — pressing it
                   starts a download rather than opening a page, and the indicator shows
                   so before the press. A name not public yet fetches nothing and
@@ -98,7 +98,7 @@ export function Downloads<Row extends DownloadRow>({
                 ? (
                     <a href={filePath(humLabel, row.name)}>
                       <Icon name="download" aria-hidden="true" className="mr-1" />
-                      {row.name}
+                      <FileName name={row.name} />
                     </a>
                   )
                 : <NotPublicYet locale={locale} humLabel={humLabel} name={row.name} />}
@@ -143,13 +143,14 @@ function NotPublicYet({ locale, humLabel, name }: {
   return (
     <Stack gap="tight">
       <span>
-        {name}
+        <FileName name={name} />
         {" "}
         <Flag kind="hidden">{t.fileNotPublic}</Flag>
       </span>
       {humLabel !== null && (
         <span className="text-ink-muted text-xs">
-          {`${t.fileWillBeAt}: ${filePath(humLabel, name)}`}
+          {`${t.fileWillBeAt}: `}
+          <FileName name={filePath(humLabel, name)} />
         </span>
       )}
     </Stack>
@@ -170,12 +171,14 @@ function NotPublicYet({ locale, humLabel, name }: {
  * download is shown beside the name as an act of its own, and a file nobody
  * outside can reach offers neither it nor its address.
  */
-export function FileTable({ locale, researchId, rows, humLabel, whenEmpty, selectedBy }: {
+export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpty, selectedBy }: {
   locale: Locale
   /** The research whose prefix this is: a private file is fetched through it. */
   researchId: string
   rows: readonly ListedFile[]
   humLabel: string | null
+  /** The site's public origin, which a copied address is written on. */
+  origin: string
   /** What to show in place of the rows when there are none. The prefix's own word by default. */
   whenEmpty?: string
   /**
@@ -208,6 +211,7 @@ export function FileTable({ locale, researchId, rows, humLabel, whenEmpty, selec
           row={row}
           researchId={researchId}
           humLabel={humLabel}
+          origin={origin}
           locale={locale}
           selectedBy={selectedBy === undefined ? undefined : (selectedBy[row.name] ?? [])}
         />
@@ -231,10 +235,11 @@ export function FileTable({ locale, researchId, rows, humLabel, whenEmpty, selec
  * makes, so the trigger uses the same style and the same panel every slug is
  * changed in (`SlugEditor`).
  */
-function FileRow({ row, researchId, humLabel, locale, selectedBy }: {
+function FileRow({ row, researchId, humLabel, origin, locale, selectedBy }: {
   row: ListedFile
   researchId: string
   humLabel: string | null
+  origin: string
   locale: Locale
   selectedBy: readonly string[] | undefined
 }) {
@@ -253,7 +258,7 @@ function FileRow({ row, researchId, humLabel, locale, selectedBy }: {
 
   return (
     <tr>
-      <Td className="break-all" floor="min-w-56">{row.name}</Td>
+      <Td floor="min-w-56"><FileName name={row.name} /></Td>
       {selectedBy !== undefined && (
         <Td nowrap>
           {/* A published dataset has a public page, and it opens in a new tab
@@ -286,7 +291,7 @@ function FileRow({ row, researchId, humLabel, locale, selectedBy }: {
               {t.download}
             </ButtonLink>
           )}
-          {reachable && <CopyAddress address={address} locale={locale} />}
+          {reachable && <CopyAddress address={address} origin={origin} locale={locale} />}
           <Form method="post">
             <input type="hidden" name="name" value={row.name} />
             <Submit
@@ -636,22 +641,48 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
 }
 
 /**
+ * A file's name, broken only after `/` and `_`.
+ *
+ * **A name is not cut inside a word.** Names are long runs of letters with no
+ * spaces, and letting the browser break anywhere split `variant_counts` into
+ * `variant_c` and `ounts`. After a separator the two halves still read as parts
+ * of the name; a part too long for the column widens the column rather than
+ * being cut.
+ */
+export function FileName({ name }: { name: string }) {
+  const parts = name.split(/(?<=.[/_])/)
+  return (
+    <>
+      {parts.map((part, at) => (
+        <Fragment key={at}>
+          {at > 0 && <wbr />}
+          {part}
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
+/**
  * The way to copy the address a file is served at.
  *
- * **What is copied is the path rather than the whole URL.** It is written into
- * a body, and a body with the host it was written on stops working as soon
- * as the same content is read anywhere else. The path is shown to a pointer,
- * since the row names the file rather than the address.
+ * **What is copied is the whole URL**, on the site's public origin — the one
+ * the share link is written on — rather than the host of the screen it is
+ * copied from, so an address copied on a server reached by another name still
+ * opens for whoever it is handed to. The URL is shown to a pointer, since the
+ * row names the file rather than the address.
  */
-export function CopyAddress({ address, locale }: { address: string, locale: Locale }) {
+export function CopyAddress({ address, origin, locale }: { address: string, origin: string, locale: Locale }) {
   const messages = messagesFor(locale)
+  const url = new URL(address, origin).href
   return (
     <CopyButton
       size="row"
-      text={address}
-      title={address}
+      text={url}
+      title={url}
       label={messages.admin.files.copyAddress}
       done={messages.copied}
+      byHand={messages.copyByHand}
     />
   )
 }
