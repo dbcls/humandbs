@@ -23,7 +23,7 @@ export type AnchorSubject
   = | { kind: "research" }
     | { kind: "dataset", datasetId: string }
 
-/** An anchor that names a place inside the content, rather than the draft. */
+/** An anchor that identifies a place inside the content, rather than the draft. */
 export type FieldAnchor = Exclude<CommentAnchor, { kind: "draft" } | { kind: "memo" }>
 
 export const RESEARCH: AnchorSubject = { kind: "research" }

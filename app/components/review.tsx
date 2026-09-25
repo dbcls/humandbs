@@ -2,7 +2,7 @@
  * The management side of a review.
  *
  * One screen per draft: the link that was handed out, what is still waiting
- * for an answer, and who has pressed which of the two marks. The open comments
+ * for an answer, and who has pressed which of the two indicators. The open comments
  * are the ones the editing screens' panel lists, in the same places and the
  * same rows; what has been resolved is read in the panel of its own place. The
  * memo is not among them: it is the editing screen's own note, not a question.
@@ -25,7 +25,7 @@ import type { Locale } from "~/i18n/locale"
 
 import { AdminBack } from "./admin"
 import { Confirm, CopyButton, Heading, PANE_LABEL, Stack } from "./base"
-import { Author, groupedByPlace, PlaceGroups, type CommentContext } from "./comments"
+import { Author, groupedByAnchor, AnchorGroups, type CommentContext } from "./comments"
 import { SHOWING } from "./contents"
 import { Editing, Field, Submit, Unsaved } from "./form"
 import { Flag } from "./flags"
@@ -34,22 +34,22 @@ import { Card, Page, Section, Table, Td } from "./page"
 import { researchFieldLabel } from "./research-fields"
 
 /**
- * The first sentence of a mark's words, which is what a heading quotes: the
+ * The first sentence of an indicator's words, which is what a heading quotes: the
  * whole of it is a request to the office, and the first sentence is the part
- * that says which mark it is.
+ * that shows which button it is.
  */
 export function firstSentence(words: string): string {
   return words.split(/。|\. /)[0] ?? words
 }
 
-/** 「「{マークの 1 文目}」を押した人」 — the name the marks' tables go by, wherever they stand. */
+/** 「「{マークの 1 文目}」を押した人」 — the name the indicators' tables go by, wherever they stand. */
 export function pressedTitle(kind: AcknowledgementView["kind"], locale: Locale): string {
   const messages = messagesFor(locale)
   return messages.preview.pressedBy(firstSentence(kind === "commented" ? messages.preview.commented : messages.preview.approved))
 }
 
 /**
- * Who pressed one of the two marks: a row per person, with when they last
+ * Who pressed one of the two indicators: a row per person, with when they last
  * pressed and how many times. **A reader presses again on each round**, so a
  * row per press would be the same name over and over; and a name and a time
  * squeezed into one chip leaves nowhere for the count. The review screen and
@@ -97,7 +97,7 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
         return editor.whole
     }
   }
-  const groups = groupedByPlace(view.comments, nameOf)
+  const groups = groupedByAnchor(view.comments, nameOf)
 
   return (
     <Page>
@@ -119,10 +119,10 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
               is written here and no way leads to the place — an answer belongs
               in the panel of the place it answers. */}
           <Section title={editor.openComments}>
-            <PlaceGroups context={context} groups={groups} />
+            <AnchorGroups context={context} groups={groups} />
           </Section>
 
-          {/* **The two marks are two tables**, since they answer two different
+          {/* **The two indicators are two tables**, since they answer two different
               questions — whose turn it is, and whether anything is left to fix.
               A reader presses again on each round, so a row is a person, with
               when they last pressed and how many times; the same person can
@@ -165,7 +165,7 @@ function Share({ view }: { view: ReviewPageView }) {
           {share.expired && <Flag kind="short">{t.expired}</Flag>}
           {share.open ? t.shareOn : t.shareOff}
           {/* **What the expiry means is said as what it is now**, beside the
-              state, rather than as a rule under the box: an empty box reads
+              state, rather than as a rule under the box: an empty field reads
               back here as no expiry. */}
           {share.enabled && !share.expired && (share.expiresOn === null ? t.expiryNone : t.expiryUntil(share.expiresOn))}
         </p>
@@ -205,13 +205,13 @@ function Share({ view }: { view: ReviewPageView }) {
         </div>
 
         {/* **Sharing is a switch, the way an alert's showing is**: the button
-            says what it would do — the other state — and takes effect as it is
+            shows what it would do — the other state — and takes effect as it is
             pressed, saving the expiry typed with it; a tick that waited for
-            the save would leave the screen saying one thing while the link does
-            another. The save beside it keeps sharing as it stands.
+            the save would leave the screen indicating one thing while the link does
+            another. The save beside it keeps sharing as it remains.
 
-            **One line.** The box's name stands beside it as a word rather than
-            as a label over it, and what an empty box means is said by the
+            **One line.** The box's name is shown beside it as a word rather than
+            as a label over it, and what an empty field means is said by the
             state above — a name above and a rule below made the row three
             lines tall for one date. */}
         <Editing method="post" className="flex flex-wrap items-center gap-3 text-sm">

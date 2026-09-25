@@ -12,14 +12,14 @@ const SEPARATOR = " | "
  * A tab shows only its first few words, so the narrowest name goes first, and
  * two pages of the same research open side by side differ in the words that
  * are still visible. The breadcrumb's first step, the front page, is left out:
- * the site name at the end already says it.
+ * the site name at the end already reports it.
  *
  * **A step that is not there falls out** rather than being stood in for, and a
  * step that repeats the one before it is said once — the listing an area opens
  * on is both the screen and the area.
  *
  * **The subject is which one, not how many.** A listing puts the number of rows
- * beside its name, and a count in a window's name says nothing about which
+ * beside its name, and a count in a window's name implies nothing about which
  * window it is.
  */
 export function windowTitle(

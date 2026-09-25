@@ -22,7 +22,7 @@ describe("the search box", () => {
     expect(html).toContain("value=\"糖尿病\"")
   })
 
-  it("carries the conditions it cannot show, so submitting does not drop them", () => {
+  it("has the conditions it cannot show, so submitting does not drop them", () => {
     const html = render(
       <SearchForm locale="ja" target="research" keyword="糖尿病" query="title:ゲノム" />,
     )
@@ -176,10 +176,10 @@ describe("paging", () => {
 })
 
 /*
-  The ordering and the size are chosen from a control that says what is chosen
+  The ordering and the size are chosen from a control that shows what is chosen
   now, rather than from a row of every alternative. What that has to hold on to
   is that the current one is readable without opening anything, and that the
-  name a screen reader announces says what the value is an answer to.
+  name a screen reader announces shows what the value is an answer to.
 */
 describe("the controls over a listing", () => {
   it("names what is chosen now, so the row can be read without opening it", () => {
@@ -198,11 +198,11 @@ describe("the controls over a listing", () => {
     expect(html.indexOf("公開日")).toBeLessThan(html.indexOf("<div"))
   })
 
-  it("says what the value answers, and contains the word it draws", () => {
+  it("shows what the value responds to, and contains the word it draws", () => {
     const html = render(
       <PageSizeChooser locale="ja" target="research" query="" sort="id" order={null} size={50} />,
     )
-    // WCAG 2.5.3: the name has to hold the visible label, so that saying what
+    // WCAG 2.5.3: the name has to hold the visible label, so that indicating what
     // is on the control is a way of operating it.
     expect(html).toContain("aria-label=\"表示件数: 50\"")
   })
@@ -237,7 +237,7 @@ describe("how many rows a page holds", () => {
 
   /*
     The size is a condition on the listing like the query and the ordering, so
-    every link that stays in the listing has to carry it. Dropping it anywhere
+    every link that stays in the listing has to have it. Dropping it anywhere
     is a listing that resets itself when the reader turns a page.
   */
   it("survives turning a page", () => {
@@ -273,11 +273,11 @@ describe("how many rows a page holds", () => {
     )
     expect(html).toContain("sort=datePublished&amp;size=50")
     // The default ordering names itself by not being written down, which leaves
-    // the link to it carrying the size and nothing else.
+    // the link to it with the size and nothing else.
     expect(html).toContain("\"/research?size=50\"")
   })
 
-  it("is carried by the box, so searching again keeps it", () => {
+  it("is held by the box, so searching again keeps it", () => {
     const html = render(
       <SearchForm locale="ja" target="research" keyword="" query="" rows={50} />,
     )
@@ -288,7 +288,7 @@ describe("how many rows a page holds", () => {
 
 /*
   The direction is a condition on the listing exactly as the size is, so the
-  same links have to carry it. What it must not do is outlive the key it
+  same links have to have it. What it must not do is outlive the key it
   belongs to: the box starts a new search, and a new search is read the way its
   key is read.
 */
@@ -324,7 +324,7 @@ describe("which way the ordering runs", () => {
   })
 
   /*
-    Every key has two ends worth asking for, so the welded half is always there
+    Every key has two ends worth requesting, so the welded half is always there
     — the ordering that had only one (relevance) is no longer among them
     (`app/search/sort.ts`).
   */
@@ -339,7 +339,7 @@ describe("which way the ordering runs", () => {
   /*
     The same rule the size is written under: an address holds what differs from
     the default, so a reader who asked for nothing is browsing at `/research`
-    and every link on the page says the ordering only when somebody chose one.
+    and every link on the page shows the ordering only when somebody chose one.
   */
   it("writes the ordering it is not, and leaves the default out of the address", () => {
     const html = render(
@@ -389,7 +389,7 @@ describe("the rows over a listing and under it", () => {
       open={open}
       busy={false}
       locale="ja"
-      onToggle={() => { /* nothing to fold here */ }}
+      onToggle={() => { /* nothing to collapse here */ }}
       inForce={0}
       refine={<p>条件</p>}
       refineHasMore={false}
@@ -405,12 +405,12 @@ describe("the rows over a listing and under it", () => {
   /*
     The foot of a page is where a reader goes looking for the next one; the
     ordering and the page size send them back to the top of page one. Both
-    layouts are asked, since the folded pane draws the listing on its own.
+    layouts are asked, since the collapsed pane draws the listing on its own.
   */
   for (const open of [true, false]) {
-    const pane = open ? "with the pane open" : "with the pane folded"
+    const pane = open ? "with the pane open" : "with the pane collapsed"
 
-    it(`stands the whole row over the rows and only the pages under them, ${pane}`, () => {
+    it(`keeps the whole row over the rows and only the pages under them, ${pane}`, () => {
       const html = of(open, <p>ページ送り</p>)
       expect(count(html, "並び替え 表示件数")).toBe(1)
       expect(count(html, "ページ送り")).toBe(1)
@@ -418,7 +418,7 @@ describe("the rows over a listing and under it", () => {
       expect(html.indexOf("ページ送り")).toBeGreaterThan(html.indexOf("hum0001"))
     })
 
-    it(`puts nothing under a listing that is not cut into pages, ${pane}`, () => {
+    it(`puts nothing under a listing that is not paginated, ${pane}`, () => {
       for (const nothing of [undefined, null]) {
         const html = of(open, nothing)
         const after = html.slice(html.indexOf("hum0001"))
@@ -457,21 +457,21 @@ describe("a listing waiting for the answer to replace it", () => {
     expect(html).toContain("facet")
   })
 
-  it("goes pale and says so, and the pointer says which way to read it", () => {
+  it("goes pale and shows it, and the pointer shows which way to read it", () => {
     const html = of(true)
     expect(html).toContain("aria-busy=\"true\"")
     expect(html).toContain("opacity-60")
     expect(html).toContain("cursor-progress")
   })
 
-  it("carries none of that while it is showing an answer", () => {
+  it("has none of that while it is showing an answer", () => {
     const html = of(false)
     expect(html).toContain("aria-busy=\"false\"")
     expect(html).not.toContain("opacity-60")
     expect(html).not.toContain("cursor-progress")
   })
 
-  /* Both states carry it, so a state that outlives the delay by 40ms fades
+  /* Both states have it, so a state that outlives the delay by 40ms fades
      rather than blinking. */
   it("fades in and out of it", () => {
     expect(of(true)).toContain("transition-opacity")
@@ -498,7 +498,7 @@ describe("a range of days", () => {
     expect(html.match(/aria-current="true"/g)).toHaveLength(1)
   })
 
-  it("is a GET form with an end named for each day, carrying what it is given", () => {
+  it("is a GET form with an end named for each day, with what it is given", () => {
     const html = render(
       <DateRange
         locale="ja"
@@ -523,14 +523,14 @@ describe("a range of days", () => {
   })
 })
 
-describe("the fold of the refinement pane", () => {
+describe("the collapse control of the refinement pane", () => {
   const at = (address: string): string => {
     const element = (
       <RefinableList
         open
         busy={false}
         locale="ja"
-        onToggle={() => { /* nothing to fold here */ }}
+        onToggle={() => { /* nothing to collapse here */ }}
         inForce={0}
         refine={<p>条件</p>}
         refineHasMore={false}
@@ -543,23 +543,23 @@ describe("the fold of the refinement pane", () => {
     const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
     return renderToStaticMarkup(<Stub initialEntries={[address]} />)
   }
-  const fold = (html: string): string => /<button[^>]*aria-expanded="true"[^>]*>/.exec(html)?.[0] ?? ""
+  const toggle = (html: string): string => /<button[^>]*aria-expanded="true"[^>]*>/.exec(html)?.[0] ?? ""
 
-  it("wears the bordered face in the management area, where no bare word is pressed", () => {
-    expect(fold(at("/admin/research"))).toMatch(/\bborder\b/)
-    expect(fold(at("/admin"))).toMatch(/\bborder\b/)
+  it("uses the bordered style in the management area, where no bare word is pressed", () => {
+    expect(toggle(at("/admin/research"))).toMatch(/\bborder\b/)
+    expect(toggle(at("/admin"))).toMatch(/\bborder\b/)
   })
 
   it("keeps the bare word on a public listing", () => {
-    expect(fold(at("/research"))).not.toMatch(/\bborder\b/)
-    expect(fold(at("/en/research"))).not.toMatch(/\bborder\b/)
+    expect(toggle(at("/research"))).not.toMatch(/\bborder\b/)
+    expect(toggle(at("/en/research"))).not.toMatch(/\bborder\b/)
     // An address that only begins with the same letters is not the management area.
-    expect(fold(at("/administration"))).not.toMatch(/\bborder\b/)
+    expect(toggle(at("/administration"))).not.toMatch(/\bborder\b/)
   })
 })
 
 /*
-  The management listings' row of tools and what their narrowing forms carry.
+  The management listings' row of tools and what their narrowing forms have.
   The announcements are the awkward case: every key runs newest-first in the
   bare address, and the title still opens at A.
 */
@@ -594,7 +594,7 @@ function toolLinks(presented: Presentation<NewsKey>): string[] {
 }
 
 describe("ListingPresented", () => {
-  it("carries the ordering a form would otherwise drop, not only the page size", () => {
+  it("has the ordering a form would otherwise drop, not only the page size", () => {
     const html = render(<ListingPresented presented={news("title", "asc", 50)} />)
     expect(html).toContain("name=\"sort\" value=\"title\"")
     expect(html).toContain("name=\"order\" value=\"asc\"")
@@ -605,7 +605,7 @@ describe("ListingPresented", () => {
     expect(render(<ListingPresented presented={news("published", "desc")} />)).toBe("")
   })
 
-  it("carries exactly what presentedQuery writes, for any presentation", () => {
+  it("has exactly what presentedQuery writes, for any presentation", () => {
     fc.assert(fc.property(
       fc.constantFrom<NewsKey>("published", "title"),
       fc.constantFrom<"asc" | "desc">("asc", "desc"),
@@ -646,7 +646,7 @@ describe("ListingTools", () => {
     expect(links).toContain("/admin/news?sort=title&order=asc&size=50")
   })
 
-  it("draws no ordering for a listing whose order is itself what it says", () => {
+  it("draws no ordering for a listing whose order is itself what it shows", () => {
     const html = render(
       <ListingTools
         locale="ja"

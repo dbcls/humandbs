@@ -1,5 +1,5 @@
 /**
- * The screens that start a draft from what an upstream system already says.
+ * The screens that start a draft from what an upstream system already has.
  *
  * Two systems answer here and they are read directly rather than through the
  * caches: those hold what is public, and a draft is written for something that
@@ -7,12 +7,12 @@
  *
  * **The connection is opened for the request and closed with it.** The daily
  * refresh does the same; holding a connection into another project's production
- * database open to answer a screen somebody opens a few times a month would be
+ * database open to respond to a screen somebody opens a few times a month would be
  * paying rent for nothing.
  *
  * **What was looked at and what is created are two separate reads.** The form
  * sends which datasets to make and nothing else, and the values are fetched
- * again. Carrying them through the form would mean writing content the browser
+ * again. Passing them through the form would mean writing content the browser
  * handed over rather than content upstream states, and upstream moves on the
  * scale of a day.
  */
@@ -52,16 +52,16 @@ import {
 import {
   axisCounts,
   BRANCH_SORT,
-  BRANCH_STANDINGS,
+  BRANCH_STATUSES,
   branchOrder,
-  branchStanding,
+  branchStatusOf,
   filterBranchRows,
   isBranchSortKey,
-  isBranchStanding,
+  isBranchStatus,
   pageOf,
   sortBranchRows,
   type BranchSortKey,
-  type BranchStanding,
+  type BranchStatus,
 } from "./listing"
 import { actorOf, badRequest, identity, notFound, readPage } from "./pages.server"
 import {
@@ -108,7 +108,7 @@ export type SeededField = "title" | "aims" | "methods" | "targets" | "provider"
 
 /**
  * **The value itself rather than whether there is one.** This is read before
- * anything is written, and "ja あり" answers a question nobody has — what a
+ * anything is written, and "ja あり" handles a question nobody has — what a
  * curator is deciding is whether these words belong in the research, which
  * cannot be told from their presence.
  */
@@ -135,7 +135,7 @@ export interface UpstreamChoiceView {
   datasets: DatasetChoiceView[]
   /** What upstream stated that the catalog has no word for. */
   dropped: DroppedValue[]
-  /** Experiments DDBJ Search did not answer for, named. */
+  /** Experiments DDBJ Search did not respond for, named. */
   unreachable: string[]
 }
 
@@ -144,13 +144,13 @@ export interface UpstreamResearchView {
   /** False where this deployment cannot reach the application system at all. */
   connected: boolean
   keyword: string
-  standings: BranchStanding[]
+  branchStatuses: BranchStatus[]
   /**
    * How many branches each choice of the pane would leave, counted the way the
    * public panel counts (`app/admin/listing.ts` の `axisCounts`).
    */
   counts: {
-    standings: Record<BranchStanding, number>
+    branchStatuses: Record<BranchStatus, number>
   }
   sort: BranchSortKey
   order: SortOrder
@@ -164,16 +164,16 @@ export interface UpstreamResearchView {
   rangeTo: number
 }
 
-/** The research a branch's hum label already names. */
+/** The research a branch's hum label already identifies. */
 export interface UpstreamHolderView {
   researchId: string
   humLabel: string
 }
 
 /**
- * One branch: what taking it would bring, and — where the hum already names a
+ * One branch: what importing it would bring, and — where the hum already identifies a
  * research — the way there. **Only a new research is written from here**;
- * taking the branch into a research that exists is done from that research's
+ * importing the branch into a research that exists is done from that research's
  * own draft.
  */
 export interface UpstreamBranchPageView {
@@ -198,7 +198,7 @@ export interface UpstreamDatasetView {
   humLabel: string | null
 }
 
-/** What either screen answers with when it could not do as it was asked. */
+/** What either screen responds with when it could not do as it was asked. */
 export type UpstreamResult
   = | { status: "taken", label: string }
     | { status: "conflict" }
@@ -214,7 +214,7 @@ interface Connection {
  * The application system, for as long as one request needs it.
  *
  * Answering null rather than throwing is what makes a deployment with no
- * connection an ordinary deployment: the screen says it cannot reach the
+ * connection an ordinary deployment: the screen reports it cannot reach the
  * system, and the half of it that reads DDBJ Search still works.
  */
 async function withApplicationDb<T>(run: (at: Connection) => Promise<T>): Promise<T | null> {
@@ -228,7 +228,7 @@ async function withApplicationDb<T>(run: (at: Connection) => Promise<T>): Promis
   }
 }
 
-/** Which research each hum label already names. */
+/** Which research each hum label already identifies. */
 async function humHolders(
   db: Executor,
   labels: readonly string[],
@@ -244,7 +244,7 @@ async function humHolders(
 /**
  * Which research each dataset accession already belongs to. The pin names a
  * dataset and the dataset names the research, which is what a screen offering
- * to create it has to say.
+ * to create it has to report.
  */
 async function datasetHolders(
   db: Executor,
@@ -348,9 +348,9 @@ function dedupe(dropped: readonly DroppedValue[]): DroppedValue[] {
 // === starting a research ===
 
 /**
- * The applications a draft can be taken from, newest approval first.
+ * The applications a draft can be imported from, newest approval first.
  *
- * **Every branch the word matched is read, and the page is cut here rather than
+ * **Every branch the word matched is read, and the page is sliced here rather than
  * upstream.** One of the two things a curator narrows by — whether the portal
  * already holds the hum label — is the portal's own answer about the branch,
  * which the application system has no way to know. Reading all of them costs
@@ -368,7 +368,7 @@ export async function upstreamResearchPage(
   const url = new URL(request.url)
   const keyword = url.searchParams.get("q") ?? ""
   const filter = {
-    standings: url.searchParams.getAll("standing").filter(isBranchStanding),
+    branchStatuses: url.searchParams.getAll("status").filter(isBranchStatus),
   }
   const askedSort = url.searchParams.get("sort")
   const sort = isBranchSortKey(askedSort) ? askedSort : BRANCH_SORT
@@ -386,7 +386,7 @@ export async function upstreamResearchPage(
       connected: false,
       ...presented,
       counts: {
-        standings: axisCounts([], BRANCH_STANDINGS, () => false),
+        branchStatuses: axisCounts([], BRANCH_STATUSES, () => false),
       },
       rows: [],
       total: 0,
@@ -404,12 +404,12 @@ export async function upstreamResearchPage(
     size,
   )
   // The axis is counted with its own condition lifted, so that a second
-  // standing is still reachable after the first has been ticked.
+  // status is still reachable after the first has been ticked.
   const counts = {
-    standings: axisCounts(
-      filterBranchRows(found, { ...filter, standings: [] }),
-      BRANCH_STANDINGS,
-      (row, standing) => branchStanding(row) === standing,
+    branchStatuses: axisCounts(
+      filterBranchRows(found, { ...filter, branchStatuses: [] }),
+      BRANCH_STATUSES,
+      (row, branchStatus) => branchStatusOf(row) === branchStatus,
     ),
   }
   return {
@@ -427,12 +427,12 @@ export async function upstreamResearchPage(
 }
 
 /**
- * One branch: what it would bring, and — where the hum already names a
+ * One branch: what it would bring, and — where the hum already identifies a
  * research — the way there.
  *
  * **The branch is read whether or not a keyword would find it.** An address
  * naming a branch is followed on its own, so a screen reached from elsewhere
- * still answers for the branch it names.
+ * still responds for the branch it identifies.
  */
 export async function upstreamBranchPage(
   request: Request,
@@ -471,8 +471,8 @@ export async function upstreamBranchPage(
 /**
  * Starting a research from a branch.
  *
- * **The only thing written here.** Where the hum already names a research,
- * this screen offers no form at all — taking the branch into that research's
+ * **The only thing written here.** Where the hum already identifies a research,
+ * this screen offers no form at all — importing the branch into that research's
  * own draft is done from there.
  */
 export async function upstreamBranchAction(
@@ -521,7 +521,7 @@ export async function upstreamBranchAction(
 /**
  * What a typed accession can add to a draft. **A branch is not chosen here** —
  * a whole application goes in through the table of this research's own
- * branches, on the screen that takes an application in
+ * branches, on the screen that imports an application
  * (`upstreamDraftPage`).
  *
  * A DRA accession is answered without the application system, which is why the
@@ -643,7 +643,7 @@ export async function upstreamDatasetAction(
 }
 
 /**
- * This research's own branches, newest approval first, for the take-in
+ * This research's own branches, newest approval first, for the import
  * screen's table. Null where the application system cannot be reached.
  */
 export async function applicationBranches(
@@ -688,12 +688,12 @@ export async function readApplication(db: Executor, applicationId: string): Prom
 
 /**
  * Writing what the curator decided for a branch: the content as written on the
- * face, and the datasets ticked, in one transaction (`applyUpstreamToDraft`).
+ * form, and the datasets ticked, in one transaction (`applyUpstreamToDraft`).
  *
  * **The datasets are read again**; the form sends which accessions to create
  * and nothing else (the header of this file).
  */
-export async function takeApplication(
+export async function importApplication(
   db: Parameters<typeof applyUpstreamToDraft>[0],
   at: { draftId: string, revision: number },
   seed: { researchId: string, applicationId: string, content: ResearchContent, accessions: ReadonlySet<string> },
@@ -724,7 +724,7 @@ export async function takeApplication(
 // === shared ===
 
 /**
- * Seeding writes content and pins labels, so it asks for both. Asking once here
+ * Seeding writes content and pins labels, so it requests both. Asking once here
  * rather than at each write is what keeps a screen from offering a button that
  * would be refused halfway through.
  */

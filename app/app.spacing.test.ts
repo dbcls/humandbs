@@ -3,7 +3,7 @@
  *
  * `app.contrast.test.ts` is the same idea for colour: a requirement nobody can
  * check by looking at one screen, held by something that reads the source. What
- * is here is the pair of rules that kept slipping — the screens each carrying
+ * is here is the pair of rules that kept slipping — the screens each with
  * their own margins, and the same box being drawn with a different corner in
  * every file.
  */
@@ -84,7 +84,7 @@ const MANAGEMENT_PARTS = [
   "components/publish.tsx",
   "components/review.tsx",
   "components/research-fields.tsx",
-  "components/take.tsx",
+  "components/import.tsx",
   "components/upstream.tsx",
 ]
 
@@ -124,24 +124,24 @@ describe("縦の間隔", () => {
   /**
    * カードの中でいちばん外側にある `Stack` は、h1 とその下に続くものの距離を
    * 決めている。ここだけが `normal` の画面があると、同じ関係が 32px と 16px の
-   * 2 通りになり、画面を渡り歩く人には理由の無い差として残る。
+   * 2 通りになり、複数の画面を行き来する人には理由の無い差として残る。
    *
-   * **h1 の下に節の名前が来ない画面だけが `normal`。** 絞り込み pane がある
+   * **h1 の下に節の名前が無い画面だけが `normal`。** 絞り込み pane がある
    * 一覧がそれで、下に来るのは節ではなく pane の見出し — 見出しが 2 つ続く形に
-   * 節と節の距離を空けると h1 だけが浮く。公開側の一覧も同じ理由で `normal` で、
-   * 両者は同じ形の 2 つの区画になる。**`common/` の枠も同じ**
+   * 節と節の距離を空けると h1 だけが離れて見える。公開側の一覧も同じ理由で `normal` で、
+   * 両者は同じ形の 2 つの部分になる。**`common/` のファイル一覧も同じ**
    * (`routes/admin-contents-files.tsx`)。節を 1 つも持たない画面で、h1 の下に
-   * 来るのは upload の枠そのもの — 枠は自分の余白を持つので、32px を空けると
+   * 来るのはアップロード欄そのもの — アップロード欄には自前の余白があるので、32px を空けると
    * 字から字までは 48px になる。**アラートの画面も節を持たない**
    * (`routes/admin-contents-alert.tsx`)。h1 の下に来るのは 1 件目のアラートで、
    * それが開くのは名前ではなく自分の状態のチップ。
    *
-   * **編集画面の上部の区画は `Card` ではなく自前の枠** (`components/draft-tools.tsx` の
-   * `DraftHead`) で、この規則の外にある — 留まるとツールの行 1 行にまとまる枠で、行の
-   * あいだは `Stack` の既定。**記事とお知らせの編集画面の上部の区画は `normal`**
-   * (`useArticlePanes` を呼ぶ画面) — 名前の行とツールの行のあいだに、名前を持つ節
+   * **編集画面の上部の欄は `Card` ではなく自前の要素** (`components/draft-tools.tsx` の
+   * `DraftHead`) で、この規則の外にある — sticky で留まるとツールバー 1 行にまとまる欄で、行の
+   * あいだは `Stack` の既定。**記事とお知らせの編集画面の上部の欄は `normal`**
+   * (`useArticlePanes` を呼ぶ画面) — 見出しの行とツールバーのあいだに、名前の付いた節
    * (バージョン管理・公開日時) が表示される。h1 の 8px 下に節の名前が乗ると h1 の 2 行目に
-   * 読め、32px 空けると Band が節を囲む区画のように見える。
+   * 読め、32px 空けると HeaderBar が節を囲むカードのように見える。
    */
   it("管理画面のカードは block で始まる — 絞り込む一覧と編集画面のバーだけが違う", async () => {
     const offenders: string[] = []
@@ -203,8 +203,8 @@ describe("管理画面の幅", () => {
 /**
  * The corners a box may have. `rounded` and `rounded-full` are
  * the two anything may take; `rounded-lg` belongs to what a 4px corner
- * disappears on — the ways in on the front page, and the listing tabs, which
- * carry no edge and sit against a face barely lighter than their own — so it is
+ * disappears on — the call-to-action buttons on the front page, and the listing tabs, which
+ * have no edge and sit against a surface barely lighter than their own — so it is
  * allowed where the parts are written and refused where the screens are.
  *
  * **Naming a corner does not get a utility out of either rule.** `rounded-tr-lg`
@@ -243,14 +243,14 @@ describe("角丸", () => {
   })
 
   /**
-   * The inner outline of a box that carries a line is rounded by the radius
-   * less the width of the line: 3px inside a 4px box drawn with 1px. A band
+   * The inner outline of a box that has a line is rounded by the radius
+   * less the width of the line: 3px inside a 4px box drawn with 1px. A header bar
    * given the same `rounded-t` is a pixel rounder than the corner it sits in,
-   * and the ground shows through the crescent between them. The box clips it
+   * and the background shows through the crescent between them. The box clips it
    * instead, which is the one radius that cannot disagree with itself.
    */
-  it("枠線のある枠に敷いた Band は、枠の側で切る", async () => {
-    const nested = /className="([^"]*\bborder\b[^"]*)"\s*>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)?<Band\b([^>]*)>/g
+  it("枠線のある要素に敷いた HeaderBar は、外側の要素で角を切る", async () => {
+    const nested = /className="([^"]*\bborder\b[^"]*)"\s*>\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)?<HeaderBar\b([^>]*)>/g
     const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
     const found: string[] = []
     const offenders: string[] = []
@@ -258,10 +258,10 @@ describe("角丸", () => {
       let match = nested.exec(text)
       while (match !== null) {
         const box = match[1] ?? ""
-        const band = match[2] ?? ""
+        const attributes = match[2] ?? ""
         found.push(`${name}: ${box}`)
         if (!box.split(/\s+/).includes("overflow-hidden")) offenders.push(`${name}: ${box}`)
-        if (/\brounded/.test(band)) offenders.push(`${name}: <Band${band}>`)
+        if (/\brounded/.test(attributes)) offenders.push(`${name}: <HeaderBar${attributes}>`)
         match = nested.exec(text)
       }
     }
@@ -291,7 +291,7 @@ describe("文字の大きさ", () => {
  * corner, so the strip's top edge sits `tan(angle) x height` to the right of
  * where it started. **A strip narrower than that never reaches the tab's own
  * left edge at the top**, and the silhouette up there becomes the box's square
- * corner standing beside the rounded one — with a wedge of the page showing
+ * corner shown beside the rounded one — with a wedge of the page showing
  * between this tab and the one behind it, since the strip is also what laps
  * over that join.
  *
@@ -305,7 +305,7 @@ describe("文字の大きさ", () => {
  * whose borders are collapsed paints its cells as part of its own background —
  * where a shadow asked for on a cell never reaches the screen. **Nothing about
  * that shows up anywhere it can be seen from**: the computed style still
- * carries the shadow, so the only way to notice is to measure the colour of the
+ * has the shadow, so the only way to notice is to measure the colour of the
  * pixels that should have been shaded.
  */
 /**
@@ -337,8 +337,8 @@ describe("表の縁", () => {
 
 /**
  * The vertical alignment of a row, the frozen columns, the sideways scrollbar
- * kept in sync with a second one above the fold — all of it lives in `Table` /
- * `Td`, and a screen that writes its own `<table>` gets none of it and answers
+ * kept in sync with a second one above the fold — all of it is defined in `Table` /
+ * `Td`, and a screen that writes its own `<table>` gets none of it and responds
  * to no rule here either.
  */
 describe("表そのもの", () => {
@@ -358,7 +358,7 @@ describe("表そのもの", () => {
  * What can be pressed on the control welded to a `Chooser` is stated, not
  * measured off the box it sits in. Written as an inset it followed the pill
  * silently: a step of padding off the value beside it and the 36px this has to
- * reach became 34.4, with nothing on the screen to say so.
+ * reach became 34.4, with nothing on the screen to report it.
  */
 describe("溶接された操作の押せる範囲", () => {
   it("Chooser の高さから引き算せず、36px と決める", async () => {
@@ -372,10 +372,10 @@ describe("溶接された操作の押せる範囲", () => {
 
 /**
  * The bar at the top is one part in two states — a public page draws the
- * navigation, a management screen does not — so what stands in its row has to
+ * navigation, a management screen does not — so what is shown in its row has to
  * be one height. The pills, the cart and the account are 36px; a destination
  * left on its own line box came to 38.4 and made the header 2.4px taller
- * wherever the navigation was drawn, carrying the wordmark, its name and the
+ * wherever the navigation was drawn, with the wordmark, its name and the
  * controls 1.2px with it. **Two and a half pixels are not
  * something looking at it finds**, which is why the height is read out of the
  * source instead.
@@ -396,11 +396,11 @@ describe("ヘッダの行の高さ", () => {
 /**
  * A part of a page and a part of an article are named by the same level of
  * heading, so a reader moving between them meets one h2 rather than two.
- * **The size and the mark are what they share; the colour is
+ * **The size and the indicator are what they share; the colour is
  * not.** The pair is written in two files — one a component, one a
  * stylesheet — which is the only reason it can drift.
  */
-describe("見出しの段", () => {
+describe("見出しの階層", () => {
   it("節の名前は、部品と記事で同じ大きさと棒を取る", async () => {
     const parts = await readFile(path.join(ROOT, "components/page.tsx"), "utf8")
     const styles = await readFile(path.join(ROOT, "app.css"), "utf8")
@@ -417,11 +417,11 @@ describe("見出しの段", () => {
   /**
    * An article is running prose full of links, so a coloured line in one is
    * read as a link before it is read as a heading. Colour is left to links and
-   * the mark says "heading" instead — which also means every rung holds the
+   * the indicator reports "heading" instead — which also means every rung holds the
    * same weight, since weight is then the only thing separating a heading from
    * the paragraph under it.
    */
-  it("記事の見出しは色を持たず、weight も段で変えない", async () => {
+  it("記事の見出しに色を付けず、weight も階層で変えない", async () => {
     const styles = await readFile(path.join(ROOT, "app.css"), "utf8")
     for (const level of ["h2", "h3"]) {
       const look = new RegExp(String.raw`\.markdown ${level} \{ @apply ([^;]*);`).exec(styles)?.[1]
@@ -440,7 +440,7 @@ describe("タブの斜辺", () => {
 
   /**
    * An arc begins a radius away from the corner it rounds, so the strip has to
-   * stand at least that far clear of the box before the corner can be the thing
+   * are shown at least that far clear of the box before the corner can be the thing
    * that draws the silhouette. Short of it, the first pixels down from the top
    * are the box's own square edge — a nub beside the curve.
    */
@@ -453,8 +453,8 @@ describe("タブの斜辺", () => {
 /**
  * **件数とページ送りは 1 つのまとまり。** どちらも「いま何ページ目の何件を見ているか」を表すので、
  * 同じ場所にまとめる。**それを守らせる方法は「近くに書く」ではなく
- * 「1 か所でしか書けないようにする」** — 件数を各画面が書いていた間、5 つの管理画面が 5 通りの
- * 出し方をしていて、うち 2 つは何も出していなかった。
+ * 「1 か所でしか書けないようにする」** — 各画面が件数を書けると、画面ごとに出し方がずれ、
+ * 出し忘れる画面も出る。
  */
 describe("一覧の件数とページ送り", () => {
   it("件数を出すのは Paging だけ", async () => {
@@ -484,7 +484,7 @@ describe("一覧の件数とページ送り", () => {
   })
 
   // 並び替えの向きと 1 ページの件数を画面ごとに組むと、既定の向きをアドレスに書く・絞り込みの form が
-  // 並びを運ばない、の 2 つが 1 画面ずつずれていく (`search.tsx` の `ListingTools` / `ListingPresented`)。
+  // 並び順を引き継がない、の 2 つが 1 画面ずつずれていく (`search.tsx` の `ListingTools` / `ListingPresented`)。
   it("並び替えと 1 ページの件数を組むのは search.tsx だけ", async () => {
     const sources = [...await sourcesUnder("components"), ...await sourcesUnder("routes")]
     const building = sources
@@ -494,7 +494,7 @@ describe("一覧の件数とページ送り", () => {
     expect(building).toEqual(["components/search.tsx"])
   })
 
-  it("管理画面の絞り込みの form が並びと件数を運ぶのは ListingPresented だけ", async () => {
+  it("管理画面の絞り込みの form が並び順と件数を引き継ぐのは ListingPresented だけ", async () => {
     const files = [...await managementFiles(), "components/search.tsx"]
     const carrying: string[] = []
     for (const file of files) {
@@ -523,7 +523,7 @@ describe("パネルの閉じ方", () => {
   })
 })
 
-/** The three numbers the slope is made of, read from where each one lives. */
+/** The three numbers the slope is made of, read from where each one is kept. */
 async function slope(): Promise<{ width: number, shear: number, radius: number }> {
   const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
   const angle = /-skew-x-\[(\d+(?:\.\d+)?)deg\]/.exec(parts)?.[1]
@@ -561,33 +561,33 @@ async function everySource(): Promise<{ name: string, text: string }[]> {
 
 describe("ボタンの色と形", () => {
   /**
-   * The round end is where a control stands, not how it should look — the band
+   * The round end is where a control remains, not how it should look — the header bar
    * of controls above a listing, and nowhere else (`base.tsx` の `ButtonLook`).
    * Asked for as a taste it had spread to five places that are not a listing,
-   * and the shape had stopped saying anything.
+   * and the shape had stopped indicating anything.
    */
   it("丸いのは一覧の操作列にいるものだけ", async () => {
-    const wearing = (await everySource())
+    const styled = (await everySource())
       // A part handing its caller's choice on (`listing={listing}`) is not a place.
       .filter(({ text }) => /<(?:Button|ButtonLink|CopyButton)\b[^>]*\slisting\b(?!=\{listing\})/s.test(text))
       .map(({ name }) => name)
       .sort()
-    expect(wearing).toEqual(["components/search.tsx", "routes/dev-ui.tsx"])
+    expect(styled).toEqual(["components/search.tsx", "routes/dev-ui.tsx"])
   })
 
   /**
-   * **The filled face is the one thing a screen is asking for**, so a file that
+   * **The filled style is the one thing a screen is requesting**, so a file that
    * draws two of them has stopped ranking anything. Counted per file rather than
    * per screen because a part is drawn inside whichever screen imports it; the
    * catalogue is exempt, being a page of samples rather than a screen with an
    * errand.
    *
-   * **A face chosen in an expression counts the same as one written out.** Read
+   * **A style chosen in an expression counts the same as one written out.** Read
    * for the literal alone, a switch handing `primary` to whichever option is
    * current passed as a single filled button and drew one per field.
    *
    * **`accent` is a fill and is not counted here**, because it is not the
-   * screen ranking anything: it is worn by a save that is holding something
+   * screen ranking anything: it is shown by a save that is holding something
    * unsent, so how many appear is decided by what has been typed. A screen with
    * four things to edit can be waiting on all four.
    */
@@ -601,19 +601,19 @@ describe("ボタンの色と形", () => {
   })
 
   /**
-   * **What is chosen is not what should be pressed.** A state wearing a face
-   * spends the ranking the faces exist to carry, so the control that holds one
-   * is `Choice`, whose options divide a box rather than standing as buttons of
+   * **What is chosen is not what should be pressed.** A state shown in a style
+   * spends the ranking the styles exist to have, so the control that holds one
+   * is `Choice`, whose options divide a box rather than shown as buttons of
    * their own.
    */
   it("選んだ状態を Button の色で表さない", async () => {
-    const wearing = (await everySource())
+    const styled = (await everySource())
       .filter(({ text }) => /<Button(?:Link)?\b[^>]*\saria-pressed\b/s.test(text))
       .map(({ name }) => name)
-    expect(wearing).toEqual([])
+    expect(styled).toEqual([])
   })
 
-  /** The palette itself, so that a face nobody uses cannot quietly come back. */
+  /** The palette itself, so that a style nobody uses cannot quietly come back. */
   it("色は 4 つしかない", async () => {
     const parts = await readFile(path.join(ROOT, "components/base.tsx"), "utf8")
     const union = /export type ButtonVariant = ([^\n]*)/.exec(parts)?.[1]
@@ -622,10 +622,10 @@ describe("ボタンの色と形", () => {
   })
 })
 
-describe("名前の行の並び", () => {
+describe("見出しの行の並び", () => {
   /**
-   * The kinds of thing that stand to the right of a screen's name, in the one
-   * order they keep: the way out, the ways
+   * The kinds of thing that are shown to the right of a screen's name, in the one
+   * order they keep: the cancel button, the
    * elsewhere, what acts on the screen, and last what cannot be undone.
    * `Dialog` is counted as an act because the only ones on a name row open a
    * form that makes something.
@@ -667,7 +667,7 @@ describe("名前の行の並び", () => {
     return found
   }
 
-  it("ダイアログの中で画面が文を書かず、足元の行も描かない — どちらもダイアログのもの", async () => {
+  it("ダイアログの中に画面が文とボタンの行を描かない — どちらも Dialog が描く", async () => {
     const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
       .filter(({ name }) => name !== "components/base.tsx")
     const sentences = sources
@@ -682,7 +682,7 @@ describe("名前の行の並び", () => {
     expect(sources.flatMap(({ text }) => panels(text)).length).toBeGreaterThan(5)
   })
 
-  it("値が無いセルを横棒で描かない — 語で言うか、空にするかの 2 つ", async () => {
+  it("値が無いセルを横棒で描かない — 語で表示するか、空にするかの 2 つ", async () => {
     const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
     // A dash handed over in place of a value (`?? "—"`, `|| "-"`), or drawn on
     // its own as an element's whole text. React keys are not shown to anyone,
@@ -695,7 +695,7 @@ describe("名前の行の並び", () => {
     expect(dashed).toEqual([])
   })
 
-  it("slug を打ち直すダイアログは 1 つの部品で、画面が自分では描かない", async () => {
+  it("slug を入力し直すダイアログは 1 つの部品で、画面が自分では描かない", async () => {
     const screens = await sourcesUnder("routes")
     // A screen that reaches for the panel's words is drawing the panel itself.
     const drawnByHand = screens
@@ -729,11 +729,11 @@ describe("名前の行の並び", () => {
   /**
    * The draft's two rows keep their own order in one row each, instead of a
    * `Heading`'s children. Neither is a
-   * `nameRows` row — the head's own `Heading` is self-closing, and the tools
+   * `nameRows` row — the header's own `Heading` is self-closing, and the tools
    * row is not a `Heading` at all — so both are checked here by where each
    * part sits in `draft-tools.tsx`'s own markup.
    */
-  it("DraftHead の行に出る経路は 1 本だけある — 事実は 2 行目、名前の行には無い", async () => {
+  it("DraftHead の行に出る経路は 1 本だけある — 事実は 2 行目、見出しの行には無い", async () => {
     const text = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
     const start = text.indexOf("export function DraftHead")
     expect(start).toBeGreaterThan(-1)
@@ -743,7 +743,7 @@ describe("名前の行の並び", () => {
   })
 
   /**
-   * Under the table of versions and drafts, the one thing to press stands at
+   * Under the table of versions and drafts, the one thing to press is shown at
    * the left edge — where the rows begin, and where every other section of
    * the research's screen puts what it offers. Pushed to the right end it sits
    * under the row's buttons and reads as one more of them.
@@ -761,7 +761,7 @@ describe("名前の行の並び", () => {
    * Every row that has a draft — a draft's own, and a version being updated
    * in one — offers the draft's screens in the order the work goes: write it,
    * show it, publish it; what throws something away comes last. The review
-   * is offered even though the review cell has nothing to press: it says only
+   * is offered even though the review cell has nothing to press: it reports only
    * whether the draft is shared.
    */
   describe("研究の編集の行の操作", () => {
@@ -772,33 +772,33 @@ describe("名前の行の並び", () => {
       expect(start).toBeGreaterThan(-1)
       return text.slice(start, text.indexOf("\n}\n", start))
     }
-    const inOrder = (text: string, marks: readonly string[]): void => {
-      const at = marks.map((mark) => text.indexOf(mark))
+    const inOrder = (text: string, needles: readonly string[]): void => {
+      const at = needles.map((needle) => text.indexOf(needle))
       expect(at.every((one) => one > -1)).toBe(true)
       expect(at).toEqual([...at].sort((a, b) => a - b))
     }
 
-    it("レビュー・公開の順で下書きの画面へ渡る", async () => {
-      inOrder(bodyOf(await source(), "DraftWays"), ["adminDraftReviewPath(", "adminDraftPublishPath("])
+    it("レビュー・公開の順で下書きの画面へ移動する", async () => {
+      inOrder(bodyOf(await source(), "DraftLinks"), ["adminDraftReviewPath(", "adminDraftPublishPath("])
     })
 
     it("下書きの行は 編集・レビューと公開・削除", async () => {
       const row = bodyOf(await source(), "DraftRow")
-      inOrder(row.slice(row.indexOf("holds=\"control\"")), ["adminDraftPath(", "<DraftWays", "intent=\"discard-draft\""])
+      inOrder(row.slice(row.indexOf("holds=\"control\"")), ["adminDraftPath(", "<DraftLinks", "intent=\"discard-draft\""])
     })
 
     it("更新中のバージョンの行も 編集のすぐ後にレビューと公開がある", async () => {
       const row = bodyOf(await source(), "VersionRow")
       inOrder(row.slice(row.indexOf("holds=\"control\"")), [
         "adminDraftPath(",
-        "<DraftWays",
+        "<DraftLinks",
         "intent=\"copy-version\"",
         "intent=\"discard-draft\"",
         "intent=\"withdraw-version\"",
       ])
     })
 
-    it("表は不備の列を持たず、行は数を chip で持たない", async () => {
+    it("表に不備の列は無く、行の数を chip で表示しない", async () => {
       const text = await source()
       expect(text).not.toContain("t.problems")
       expect(text).not.toMatch(/<Flag kind="(unresolved|stops|short)"/)
@@ -806,17 +806,17 @@ describe("名前の行の並び", () => {
 
     /**
      * The count is the only way from this table to a row's datasets, so it
-     * wears the face of a way to another screen at the row's size — a bare
+     * is styled as a link to another screen at the row's size — a bare
      * number in the link colour reads as one more fact of the row.
      */
-    it("データセットの件数は行の大きさの WayTo で、素の link にしない", async () => {
+    it("データセットの件数は行の大きさの ScreenLink で、素の link にしない", async () => {
       const body = bodyOf(await source(), "Datasets")
-      expect(body).toMatch(/<WayTo\b[^>]*\bsize="row"/)
+      expect(body).toMatch(/<ScreenLink\b[^>]*\bsize="row"/)
       expect(body).not.toMatch(/<Link\b/)
     })
   })
 
-  it("DraftTools の行は、保存・その状態・パネルの入口・切り替えの順に並ぶ", async () => {
+  it("DraftTools の行は、保存・その状態・パネルを開くボタン・切り替えの順に並ぶ", async () => {
     const text = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
     const start = text.indexOf("export function DraftTools")
     expect(start).toBeGreaterThan(-1)
@@ -923,7 +923,7 @@ describe("ダイアログの幅・文・見出し", () => {
   /**
    * The local names a file's messages reach a `title` / `note` / `warning`
    * through: bound straight to `messagesFor(…)`, derived from one already
-   * bound (`const detail = messages.admin.detail`), or carried down as a prop
+   * bound (`const detail = messages.admin.detail`), or passed down as a prop
    * named for the slice it holds (`words: AssistantWords`).
    */
   function messageRootsIn(text: string): Set<string> {
@@ -946,7 +946,7 @@ describe("ダイアログの幅・文・見出し", () => {
     return roots
   }
 
-  it("title は空文字でも裸の識別子だけでもなく、messages の語を持つ", async () => {
+  it("title は空文字でも裸の識別子だけでもなく、messages の語を使う", async () => {
     const offenders: string[] = []
     let total = 0
     for (const { name, text } of await dialogSources()) {
@@ -976,7 +976,7 @@ describe("ダイアログの幅・文・見出し", () => {
    * `note` / `warning` whose key happens not to end in "Warning" is held to
    * the same rule `app/i18n/messages.test.ts`'s「警告の文は句点で結ぶ」applies —
    * that file belongs to the words, not to this one, so the check for `Dialog`
-   * の `note` lives here instead of being added there.
+   * の `note` is kept here instead of being added there.
    */
   it("Dialog の note と Confirm の warning は句点で終わり「いま」で始まらない", async () => {
     function flatten(node: unknown, at: string): [string, string][] {
@@ -1141,16 +1141,16 @@ function attrValue(attrs: string, prop: string): AttrFound {
   return m[1] !== undefined ? { literal: m[1] } : { expr: m[2] ?? "" }
 }
 
-/** The `IconName` an icon-carrying prop resolves to, or `undefined` for one this cannot read. */
+/** The `IconName` an icon-passing prop resolves to, or `undefined` for one this cannot read. */
 function iconAt(attrs: string, prop: string, fallback?: string): string | undefined {
   const found = attrValue(attrs, prop)
   if (found === undefined) return fallback
   if ("literal" in found) return found.literal
   const nested = /<Icon\s+name="([\w-]+)"/.exec(found.expr)
   if (nested !== null) return nested[1]
-  // A way's mark is drawn by `Chevron` (`base.tsx`), which names its direction rather than the glyph.
-  const way = /<Chevron\s+dir="(left|right)"/.exec(found.expr)
-  return way === null ? undefined : `chevron-${way[1]}`
+  // A link's chevron is drawn by `Chevron` (`base.tsx`), which identifies its direction rather than the glyph.
+  const direction = /<Chevron\s+dir="(left|right)"/.exec(found.expr)
+  return direction === null ? undefined : `chevron-${direction[1]}`
 }
 
 function wordAt(attrs: string, prop: string, assigns: Assign[], atIndex: number, ja: unknown): string | undefined {
@@ -1177,10 +1177,10 @@ function wordInChildren(children: string | null, assigns: Assign[], atIndex: num
 }
 
 /**
- * **The glyph on a pressable control names the kind of deed, not the screen**.
+ * **The glyph on a pressable control names the kind of action, not the screen**.
  * A word ending in one of the endings below is naming one of the kinds
  * `components/icons.tsx` の `ACTION_ICON` has a fixed glyph for, so the glyph
- * the control carries has exactly one right answer once the word is read.
+ * the control shows has exactly one right answer once the word is read.
  */
 describe("押せるもののアイコン", () => {
   // Longest ending first, so "非表示" is not read as "表示" with a prefix left over.
@@ -1197,9 +1197,9 @@ describe("押せるもののアイコン", () => {
     "上書き": "publish",
     "公開停止": "withdraw",
     "取り下げ": "withdraw",
-    "取り込み": "takeIn",
-    // A file brought down to the reader's machine comes the same way a value is taken in.
-    "ダウンロード": "takeIn",
+    "取り込み": "importData",
+    // A file brought down to the reader's machine comes the same way a value is imported.
+    "ダウンロード": "importData",
     "割り当て": "assign",
     "張り替え": "assign",
     "primary に変更": "assign",
@@ -1237,8 +1237,8 @@ describe("押せるもののアイコン", () => {
   /**
    * Every pressable the given files draw, with its word and glyph where they
    * can be read. **A glyph drawn by the part itself counts as the part's** —
-   * `Confirm` carries `trash` unless told otherwise, `ButtonLink newTab` draws
-   * `external`, and a way (`way`, `WayTo`) ends in a chevron.
+   * `Confirm` has `trash` unless told otherwise, `ButtonLink newTab` draws
+   * `external`, and a way (`way`, `ScreenLink`) ends in a chevron.
    */
   async function pressables(files: readonly string[]): Promise<Pressed[]> {
     const ja = messagesFor("ja")
@@ -1246,9 +1246,9 @@ describe("押せるもののアイコン", () => {
     for (const name of files) {
       const text = await readFile(path.join(ROOT, name), "utf8")
       const assigns = findAssignments(text)
-      for (const component of [...PRESSABLE, "WayTo"] as const) {
+      for (const component of [...PRESSABLE, "ScreenLink"] as const) {
         for (const usage of findUsages(text, component)) {
-          // A panel drawn open by its caller (`held`) has no way in to press.
+          // A panel drawn open by its caller (`held`) has no trigger to press.
           if ((component === "Dialog" || component === "Confirm") && /\bheld=/.test(usage.attrs)) continue
           const atIndex = text.indexOf(usage.attrs)
           const word = component === "Confirm"
@@ -1263,9 +1263,9 @@ describe("押せるもののアイコン", () => {
               : component === "ButtonLink" && /\bnewTab\b/.test(usage.attrs)
                 ? "external"
                 : iconAt(usage.attrs, "icon")
-          const iconless = component !== "Confirm" && component !== "IconButton" && component !== "WayTo"
+          const iconless = component !== "Confirm" && component !== "IconButton" && component !== "ScreenLink"
             && !/\bicon=/.test(usage.attrs)
-            && !(component === "ButtonLink" && /\b(newTab|way)\b/.test(usage.attrs))
+            && !(component === "ButtonLink" && /\b(newTab|chevron)\b/.test(usage.attrs))
           found.push({ file: name, component, word, icon, iconless })
         }
       }
@@ -1278,8 +1278,8 @@ describe("押せるもののアイコン", () => {
     let matched = 0
 
     for (const one of await pressables(await managementFiles())) {
-      // A way names the screen it leads to, not a deed (`WayTo`).
-      if (one.component === "WayTo") continue
+      // A link names the screen it leads to, not an action (`ScreenLink`).
+      if (one.component === "ScreenLink") continue
       if (one.word === undefined) continue // resolved from something dynamic — not counted
       const action = actionFor(one.word)
       if (action === undefined) continue // not one of the rule's endings
@@ -1290,14 +1290,14 @@ describe("押せるもののアイコン", () => {
     }
 
     expect(offenders).toEqual([])
-    // The rule has something to hold: this many admin controls carry a rule-covered word.
+    // The rule has something to hold: this many admin controls have a rule-covered word.
     expect(matched).toBeGreaterThan(40)
   })
 
   /**
-   * **The other way round: a deed's glyph is not borrowed.** A control wearing
-   * `lock` or `trash` says it withdraws or deletes before its word is read, so
-   * a word that is not one of those deeds under that glyph is the glyph lying
+   * **The other way round: an action's glyph is not borrowed.** A control shown with
+   * `lock` or `trash` reports it withdraws or deletes before its word is read, so
+   * a word that is not one of those actions under that glyph is the glyph lying
    * — the merge that wore the resolve's tick, the reissue that wore the bin.
    */
   it("操作のアイコンが付いているものの語は、そのアイコンの操作を表す", async () => {
@@ -1306,7 +1306,7 @@ describe("押せるもののアイコン", () => {
     let matched = 0
 
     for (const one of await pressables(await managementFiles())) {
-      if (one.component === "WayTo") continue
+      if (one.component === "ScreenLink") continue
       if (one.icon === undefined || !glyphs.has(one.icon)) continue
       if (one.word === undefined) continue // resolved from something dynamic — not counted
       matched += 1
@@ -1321,11 +1321,11 @@ describe("押せるもののアイコン", () => {
   })
 
   /**
-   * **Only the way out carries no glyph**. A row of worded buttons where one is bare reads
+   * **Only the cancel button has no glyph**. A row of worded buttons where one is bare reads
    * the bare one as another kind of thing; the one kind that should read so is
-   * the way out of a panel or a transfer, which does nothing but stop.
+   * the cancel button of a panel or a transfer, which does nothing but stop.
    */
-  it("アイコンを持たない押せるものは、キャンセル・中止・閉じるだけ", async () => {
+  it("アイコンの無いボタンは、キャンセル・中止・閉じるだけ", async () => {
     const files = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
       .map(({ name }) => name)
       .filter((name) => !name.includes("dev-ui") && name !== "components/base.tsx")
@@ -1340,7 +1340,7 @@ describe("押せるもののアイコン", () => {
       if (one.word === undefined || !OUT.has(one.word)) offenders.push(`${one.file} [${one.component}] "${one.word ?? "?"}"`)
     }
     expect(offenders).toEqual([])
-    // The rule has something to hold: the ways out it lets through are there.
+    // The rule has something to hold: the cancel buttons it lets through are there.
     expect(bare).toBeGreaterThan(0)
   })
 
@@ -1370,9 +1370,9 @@ describe("押せるもののアイコン", () => {
 })
 
 /**
- * **A state is said by `Flag` or `Stated`, never as bare words**. Written as text in a cell, "未発行" wears whatever colour
+ * **A state is said by `Flag` or `Stated`, never as bare words**. Written as text in a cell, "未発行" is shown with whatever colour
  * the cell happens to have, and the same fact on the next screen is a badge;
- * named by kind, it wears the one colour and glyph that kind has everywhere.
+ * named by kind, it is shown with the one colour and glyph that kind has everywhere.
  */
 describe("状態の語", () => {
   const ja = messagesFor("ja")
@@ -1390,7 +1390,7 @@ describe("状態の語", () => {
     t.contents.published, t.contents.scheduled,
   ])
 
-  /** The element a child expression or text stands directly in, or null where it cannot be read. */
+  /** The element a child expression or text remains directly in, or null where it cannot be read. */
   function parentTag(text: string, at: number): string | null {
     const before = text.slice(Math.max(0, at - 600), at)
     return /<([A-Z]?[\w.]+)\b[^<>]*>\s*$/.exec(before)?.[1] ?? null
@@ -1470,8 +1470,8 @@ describe("クリップボード", () => {
 })
 
 /**
- * A way's mark moves the way it points (`base.tsx` の `Chevron`). A screen drawing the glyph itself would draw one that stands
- * still beside ones that move, and the motion would stop saying anything.
+ * A link's chevron moves the way it points (`base.tsx` の `Chevron`). A screen drawing the glyph itself would draw one that remains
+ * still beside ones that move, and the motion would stop indicating anything.
  */
 describe("向きのあるアイコン", () => {
   it("chevron-left / chevron-right を Icon で直に描くのは base.tsx だけ — 他は Chevron", async () => {
@@ -1484,34 +1484,34 @@ describe("向きのあるアイコン", () => {
   })
 
   /**
-   * **A way to another screen wears the bordered face**: `WayTo`, `AdminBack` or a
+   * **A link to another screen uses the bordered style**: `ScreenLink`, `AdminBack` or a
    * `ButtonLink`, all of which are the group the chevron moves with. A screen
-   * that names the group by hand is dressing a bare word as a way — the word
+   * that identifies the group by hand is dressing a bare word as a way — the word
    * reads as the note beside it and is found by pressing it.
    */
-  it("管理画面は group/way を手で付けない — 別の画面への経路は WayTo / ButtonLink で描く", async () => {
+  it("管理画面は group/link を手で付けない — 別の画面への経路は ScreenLink / ButtonLink で描く", async () => {
     const offenders: string[] = []
     for (const file of await managementFiles()) {
       const text = await readFile(path.join(ROOT, file), "utf8")
-      if (text.includes("group/way")) offenders.push(file)
+      if (text.includes("group/link")) offenders.push(file)
     }
     expect(offenders).toEqual([])
   })
 })
 
 /**
- * **A mark on some rows takes its colour and glyph from its kind**
+ * **An indicator on some rows takes its colour and glyph from its kind**
  * (`components/flags.tsx`). A screen that
  * chose them itself would give the same fact a second look on the next screen.
- * What is left to `Badge` is not a mark of that sort: a label on a band, a
+ * What is left to `Badge` is not an indicator of that sort: a label on a header bar, a
  * value drawn round (`pill`), a count beside its own glyph, and the key's type,
  * which is a kind with a glyph per type.
  */
 describe("状態のバッジ", () => {
   const ALLOWED = [
-    /^<Badge\s+(onBand|pill)\b/,
+    /^<Badge\s+(onHeaderBar|pill)\b/,
     /\{[\w.]+\.length\}<\/Badge>$/,
-    /^<Badge icon=\{<Icon name=\{TYPE_MARK\[/,
+    /^<Badge icon=\{<Icon name=\{TYPE_ICON\[/,
   ]
 
   it("管理画面は Badge を直に描かず、マークは Flag の種類で指定する", async () => {
@@ -1531,17 +1531,17 @@ describe("状態のバッジ", () => {
 /**
  * **The management area has no bare words to press**.
  * A word set beside a button in the link colour reads as a note on that button,
- * and is found to be a way only by pressing it. A way to another screen wears
- * the bordered face (`WayTo`, `AdminBack`, `ButtonLink`); a link stays bare only
+ * and is found to be a link only by pressing it. A link to another screen is shown with
+ * the bordered style (`ScreenLink`, `AdminBack`, `ButtonLink`); a link stays bare only
  * where it is a value — an id or a count in a table's cell — and there it
- * carries no class of its own.
+ * has no class of its own.
  */
 describe("字だけの経路", () => {
   /**
    * A class on a link is how a bare word gets dressed as a control — sized to
    * sit beside a button, or given the link colour it would have had anyway. The
-   * classes that are not that: a face (`border`), a wrapper around a badge
-   * (`no-underline`), and a value underlined where it stands (`underline`).
+   * classes that are not that: a style (`border`), a wrapper around a badge
+   * (`no-underline`), and a value underlined where it remains (`underline`).
    */
   it("管理画面の link は、素の語に大きさや色だけを加えて操作の位置に置かない", async () => {
     const offenders: string[] = []
@@ -1566,9 +1566,9 @@ describe("字だけの経路", () => {
 })
 
 /**
- * **A tag standing over a control answers to its own wrapper and nothing else**
- * (`base.tsx` の `TOOLTIP`). An unnamed `group-hover` answers to any ancestor
- * marked `group`, and a fold drawn around a form of marks then shows every tag
+ * **A tag shown over a control responds to its own wrapper and nothing else**
+ * (`base.tsx` の `TOOLTIP`). An unnamed `group-hover` responds to any ancestor
+ * marked `group`, and a collapsible drawn around a form of toggles then shows every tag
  * in it at once while the pointer is anywhere inside.
  */
 describe("ツールチップの group", () => {
@@ -1627,10 +1627,10 @@ describe("メニューの 1 行", () => {
 
 describe("送信中のアイコン", () => {
   /**
-   * **A control that sent a deed waits in place, and the parts draw that**:
+   * **A control that sent an action waits in place, and the parts draw that**:
    * the spinner turns in the icon's box of the
    * pressed `Submit` or `Confirm`, and a screen that drew one of its own would
-   * be a second way of saying the same thing — or a way of saying it in a
+   * be a second way of indicating the same thing — or a way of indicating it in a
    * place that moves.
    */
   it("spinner を描くのは Submit と Confirm だけで、画面は描かない", async () => {
@@ -1646,11 +1646,11 @@ describe("送信中のアイコン", () => {
   })
 
   /**
-   * The spinner stands in the icon's box, so a submit without an icon would
+   * The spinner is shown in the icon's box, so a submit without an icon would
    * grow by one box at the moment it is pressed — and everything beside it
    * would move.
    */
-  it("Submit はアイコンを持つ — spinner が表示される場所がそこにしか無い", async () => {
+  it("Submit にはアイコンがある — spinner が表示される場所がそこにしか無い", async () => {
     const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
     const bare: string[] = []
     for (const { name, text } of sources) {
@@ -1666,7 +1666,7 @@ describe("送信中のアイコン", () => {
 
   /**
    * A listing narrowed by its pane goes quiet for as long as the loader takes;
-   * `useBusyHere` says so after 200ms on the public side, and a management
+   * `useBusyHere` reports it after 200ms on the public side, and a management
    * listing that pinned `busy` to false said nothing however long it took.
    */
   it("一覧の busy を false に固定しない — useBusyHere が示す", async () => {
@@ -1681,13 +1681,13 @@ describe("送信中のアイコン", () => {
 
 /**
  * **A draft's five screens read from the same three-section shape**
- * rather than from a strip of steps: the
+ * rather than from a step indicator: the
  * head names the screen and — for the research editor only — this draft's
- * other faces as facts, and the tools row is the one thing that stays while
+ * other screens as facts, and the toolbar is the one thing that stays while
  * typing.
  */
-describe("下書きの上部の区画とツールの行", () => {
-  /** The five screens' own files — not `draft-tools.tsx` or `admin.tsx`, which draw the shape the five stand in. */
+describe("下書きの画面上部の欄とツールバー", () => {
+  /** The five screens' own files — not `draft-tools.tsx` or `admin.tsx`, which draw the shape the five are shown in. */
   async function draftScreenSources(): Promise<{ name: string, text: string }[]> {
     const routes = (await sourcesUnder("routes")).filter(({ name }) => name.startsWith("routes/admin-draft"))
     const parts = ["components/dataset-editor.tsx", "components/editor.tsx", "components/publish.tsx", "components/review.tsx"]
@@ -1697,19 +1697,19 @@ describe("下書きの上部の区画とツールの行", () => {
     return [...routes, ...components]
   }
 
-  it("下書きの 5 画面のどこにも段の列 (DraftSteps) は無い", async () => {
+  it("下書きの 5 画面のどこにも stepper (DraftSteps) は無い", async () => {
     const drawn = (await draftScreenSources())
       .filter(({ text }) => /<DraftSteps\b/.test(text))
       .map(({ name }) => name)
     expect(drawn).toEqual([])
   })
 
-  it("ツールの行 (DraftTools) を描くのは editor と dataset-editor の 2 つで、sticky は上部の区画 (DraftHead) だけが管理する", async () => {
+  it("ツールバー (DraftTools) を描くのは editor と dataset-editor の 2 つで、sticky は画面上部の欄 (DraftHead) だけが管理する", async () => {
     const sources = await draftScreenSources()
     const drawsTools = sources.filter(({ text }) => /<DraftTools\b/.test(text)).map(({ name }) => name).sort()
     expect(drawsTools).toEqual(["components/dataset-editor.tsx", "components/editor.tsx"])
-    // Five画面 own files never write `sticky` themselves — it is `DraftHead`'s alone (`draft-tools.tsx`),
-    // the card that folds to the tools row and stays.
+    // The five screens' own files never write `sticky` themselves — it is `DraftHead`'s alone (`draft-tools.tsx`),
+    // the card that collapses to the toolbar and stays.
     const stickyHere = sources.filter(({ text }) => /\bsticky\b/.test(text)).map(({ name }) => name)
     expect(stickyHere).toEqual([])
     const tools = await readFile(path.join(ROOT, "components/draft-tools.tsx"), "utf8")
@@ -1718,26 +1718,26 @@ describe("下書きの上部の区画とツールの行", () => {
     expect(tools.match(/\bsticky\b/g)).toHaveLength(1)
   })
 
-  it("上部の区画の 2 行目の経路は WayTo (枠のボタン + 語の後ろの chevron) で、番号を持たない", async () => {
+  it("画面上部の欄の 2 行目のリンクは ScreenLink (outline のボタン + 語の後ろの chevron) で、番号は付かない", async () => {
     const text = await readFile(path.join(ROOT, "components/editor.tsx"), "utf8")
     const start = text.indexOf("function DraftOverview")
     expect(start).toBeGreaterThan(-1)
     const end = text.indexOf("\nfunction ", start + 1)
     const body = text.slice(start, end === -1 ? undefined : end)
-    expect([...body.matchAll(/<WayTo\b/g)]).toHaveLength(4)
-    // The transition mark is `WayTo`'s own; the row draws neither a chevron nor a step number itself.
+    expect([...body.matchAll(/<ScreenLink\b/g)]).toHaveLength(4)
+    // The transition chevron is `ScreenLink`'s own; the row draws neither a chevron nor a step number itself.
     expect(body).not.toContain("chevron-right")
     expect(body).not.toMatch(/>\s*\{at \+ 1\}\s*</)
   })
 
-  it("記事とお知らせはツールの行 (ArticleTools) を上部の区画に渡し、sticky は自分でも contents.tsx でも書かない", async () => {
+  it("記事とお知らせはツールバー (ArticleTools) を画面上部の欄に渡し、sticky は自分でも contents.tsx でも書かない", async () => {
     const routeNames = ["routes/admin-contents-document.tsx", "routes/admin-contents-news-item.tsx"]
     const routes = await Promise.all(routeNames.map(async (name) => ({
       name, text: await readFile(path.join(ROOT, name), "utf8"),
     })))
     const handsTools = routes.filter(({ text }) => text.includes("tools={panes.tools}")).map(({ name }) => name)
     expect(handsTools).toEqual(routeNames)
-    // The head (`DraftHead`) is what sticks; neither screen nor `ArticleTools` writes `sticky`.
+    // The header (`DraftHead`) is what sticks; neither screen nor `ArticleTools` writes `sticky`.
     const stickyHere = routes.filter(({ text }) => /\bsticky\b/.test(text)).map(({ name }) => name)
     expect(stickyHere).toEqual([])
 
@@ -1756,14 +1756,14 @@ describe("下書きの上部の区画とツールの行", () => {
 describe("部品への集約", () => {
   const screens = async () => (await everySource()).filter(({ name }) => name !== "routes/dev-ui.tsx")
 
-  it("探す窓の薄い字と送る語は、どの一覧でも「キーワード検索」と「検索」", async () => {
+  it("キーワード欄の placeholder と送信ボタンの語は、どの一覧でも「キーワード検索」と「検索」", async () => {
     const offenders: string[] = []
     let boxes = 0
     for (const { name, text } of await screens()) {
       if (name === "components/search.tsx") continue
       for (const { attrs } of findUsages(text, "SearchBox")) {
         boxes += 1
-        if (!attrs.includes("placeholder={messages.search.boxHint}")) offenders.push(`${name}: placeholder`)
+        if (!attrs.includes("placeholder={messages.search.searchHint}")) offenders.push(`${name}: placeholder`)
         if (!attrs.includes("submit={messages.search.submit}")) offenders.push(`${name}: submit`)
       }
     }
@@ -1771,7 +1771,7 @@ describe("部品への集約", () => {
     expect(boxes).toBeGreaterThan(5)
   })
 
-  it("行の上げ下げは ReorderButtons だけが描き、押せない見た目は IconButton が自分で持つ", async () => {
+  it("行の上げ下げは ReorderButtons だけが描き、押せない見た目は IconButton 自身が定義する", async () => {
     const offenders: string[] = []
     for (const { name, text } of await screens()) {
       if (name === "components/base.tsx") continue
@@ -1784,8 +1784,8 @@ describe("部品への集約", () => {
     expect(offenders).toEqual([])
   })
 
-  // 管理画面の表。公開の研究のページの節 (提供者・助成金 …) は「節は空でも残り、無いことを 1 文で示す」
-  // 側の形で、ここでは見ない。
+  // 管理画面の表だけを見る。公開の研究のページの節 (提供者・助成金 …) は、空でも節を残して
+  // 無いことを 1 文で示す形なので、ここでは見ない。
   it("管理画面の空の一覧は表ごと差し替えず、Table の whenEmpty が 1 行で示す", async () => {
     const offenders: string[] = []
     for (const name of await managementFiles()) {
@@ -1796,7 +1796,7 @@ describe("部品への集約", () => {
     expect(offenders).toEqual([])
   })
 
-  it("識別子の先頭のアイコン (book / database) を字の隣に置くのは IdMark だけ", async () => {
+  it("識別子の先頭のアイコン (book / database) を字の隣に置くのは IdWithIcon だけ", async () => {
     const offenders: string[] = []
     for (const { name, text } of await screens()) {
       if (name === "components/page.tsx") continue
@@ -1807,7 +1807,7 @@ describe("部品への集約", () => {
     expect(offenders).toEqual([])
   })
 
-  it("操作の応答を枠に入れるのは Answer だけ — 画面は Answered も Result も直に描かない", async () => {
+  it("操作結果を枠線で囲んで表示するのは Answer だけ — 画面は Answered も Result も直に描かない", async () => {
     const writers = (await screens())
       .filter(({ text }) => /<(Answered|Result)\b/.test(text))
       .map(({ name }) => name)
@@ -1853,9 +1853,9 @@ describe("部品への集約", () => {
     expect(offenders).toEqual([])
   })
 
-  it("Band 付きの枠は BandBox — 画面は Band を枠に自分で敷かない", async () => {
+  it("HeaderBar 付きのカードは HeaderBarSection — 画面は HeaderBar をカードに自分で敷かない", async () => {
     const offenders = (await screens())
-      .filter(({ name, text }) => name !== "components/page.tsx" && /<Band\b/.test(text))
+      .filter(({ name, text }) => name !== "components/page.tsx" && /<HeaderBar\b/.test(text))
       .map(({ name }) => name)
     expect(offenders).toEqual([])
   })

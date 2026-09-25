@@ -27,14 +27,14 @@ x-app-environment: &app-environment
   HUMANDBS_JGA_DATABASE_URL: ${HUMANDBS_JGA_DATABASE_URL:-}
   HUMANDBS_JGA_DB_SCHEMA: ${HUMANDBS_JGA_DB_SCHEMA:-}
   # The assistant, which is reached only from here. Absent unless the
-  # service below is up, in which case its screen says so.
+  # service below is up, in which case its screen shows it.
   HUMANDBS_ASSISTANT_ORIGIN: ${HUMANDBS_ASSISTANT_ORIGIN:-}
 
 services:
   # Not published. Everything that needs a connection — psql, the schema
   # changes, the tests — runs in a container, and a published port is reached
   # through nat PREROUTING without passing the host's INPUT rules, so one would
-  # be open whatever the firewall says.
+  # be open whatever the firewall allows.
   db:
     image: docker.io/groonga/pgroonga:4.0.8-debian-18
     environment:
@@ -120,7 +120,7 @@ services:
     init: true
 
   # The same image for everything else an operator runs once: the admin list,
-  # the buckets, the ICD10 import, the data migration and the file carry. It
+  # the buckets, the ICD10 import, the data migration and the file have. It
   # has the owner's connection as well, which the served application does not.
   # `migration/input/` is not in the image (it is kept out of the repository),
   # so it is mounted here.
@@ -146,7 +146,7 @@ services:
       target: runtime
     environment:
       <<: *app-environment
-    # `/healthz` answers 503 when the database or the store is unreachable.
+    # `/healthz` responds with 503 when the database or the store is unreachable.
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))\""]
       interval: 30s
@@ -171,7 +171,7 @@ services:
 
   # The application assistant. **Not published, and holding no authorisation of
   # its own** — the portal proxies to it after deciding who may reach it, which
-  # is the only way in. A published port would be a second
+  # is the only route in. A published port would be a second
   # one, so it has none.
   #
   # **On a network of its own with the application**, so that it cannot reach
@@ -225,7 +225,7 @@ services:
     init: true
 
   # nginx with its configuration and the client half of the build baked in, so
-  # that it answers the static files and the application only renders pages
+  # that it serves the static files and the application only renders pages
   # and the API. Built from the same sources as `app`, and replaced with it.
   proxy:
     build:

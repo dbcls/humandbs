@@ -34,7 +34,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 /**
- * **The window's name says which announcement this is, and the screen does
+ * **The window's name shows which announcement this is, and the screen does
  * not.** On the screen the title is already there, in the box it is typed into,
  * so a copy of it beside the heading is the same words twice — and one that
  * moves as the reader types. A window has nothing else: two announcements open
@@ -66,9 +66,9 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
   const save = messagesFor(locale).admin.editor.save
 
   /*
-    **The date is the announcement's rather than a language's**, so it stands
-    in the head with the name rather than in a language's form, and the page
-    beside the form says the day under the title the way the public page does.
+    **The date is the announcement's rather than a language's**, so it remains
+    in the header with the name rather than in a language's form, and the page
+    beside the form shows the day under the title the way the public page does.
 
     **The clock in the box is the one the announcement goes out on** (JST), and
     a reader with no way to check which zone that is would have to guess from
@@ -110,9 +110,9 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
     <Page>
       <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Stack>
-        {/* **The head is left for the announcement, and folds to its tools
+        {/* **The header is left for the announcement, and collapses to its tools
             row while typing** (`draft-tools.tsx` の `DraftHead`). Its second
-            line carries the publish date — the one thing here that belongs
+            line has the publish date — the one thing here that belongs
             to the announcement rather than to a language. */}
         <DraftHead
           locale={locale}
@@ -120,10 +120,10 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
           updating={null}
           back={{ to: href(locale, adminNewsListPath()), label: t.news.backToList, icon: "chevron-left" }}
           headExtra={(
-            // **What takes the whole announcement away stands beside its
-            // name**, next to the way back, rather than among the languages:
+            // **What takes the whole announcement away is shown beside its
+            // name**, next to the back link, rather than among the languages:
             // an announcement is made before anything is written into it,
-            // and a control that lives on the last written language is out
+            // and a control that is kept on the last written language is out
             // of reach exactly when there is nothing to keep.
             <Form method="post">
               <Confirm

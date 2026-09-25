@@ -34,13 +34,13 @@ export const vocabularySet = pgTable("vocabulary_set", {
 /**
  * A term. English is required, Japanese optional: whether a concept is written
  * in Japanese in Japanese articles varies within a single facet, not between
- * facets, so a missing `labelJa` is not a defect and the publish gate does not
+ * facets, so a missing `labelJa` is not a defect and the publish check does not
  * list it as untranslated.
  *
  * Renaming changes the label only. Data references the id, so nothing has to be
  * rewritten and no reference can break.
  *
- * **`maker` is the part of the label that names who made the thing**, where the
+ * **`maker` is the part of the label that identifies who made the thing**, where the
  * value is a product — a sequencer, a kit. It is held apart because the same
  * maker heads dozens of labels and a reader picking a machine out of a column
  * is reading "whose" and "which" as two things; the label itself stays whole,
@@ -93,7 +93,7 @@ export const contentValueType = pgEnum("content_value_type", [
 ])
 
 /**
- * The catalog of keys a dataset or an experiment can carry values under. It is
+ * The catalog of keys a dataset or an experiment can have values under. It is
  * the identity of a key: the label is display only, so renaming never touches
  * stored data.
  *
@@ -126,7 +126,7 @@ export const contentKey = pgTable("content_key", {
   multiple: boolean().notNull().default(false),
   /**
    * Set for `number` keys. Input offers `inputUnits` and the value is converted
-   * to `canonicalUnit` on save, so conversion lives in one place and everything
+   * to `canonicalUnit` on save, so conversion is defined in one place and everything
    * downstream — the public page, the facet, the API — sees converted values
    * only. The unit chosen at input is kept alongside, because a conversion that
    * later turns out to be wrong cannot be redone without it.

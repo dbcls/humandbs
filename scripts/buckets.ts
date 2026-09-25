@@ -11,7 +11,7 @@
 import { CreateBucketCommand, ListBucketsCommand, S3Client } from "@aws-sdk/client-s3"
 
 import { loadConfig } from "~/config.server"
-import { PRIVATE_BUCKET, PUBLIC_BUCKET } from "~/files/box"
+import { PRIVATE_BUCKET, PUBLIC_BUCKET } from "~/files/prefix"
 
 const { store } = loadConfig(process.env)
 

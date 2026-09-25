@@ -21,11 +21,11 @@ import { AnnotationLayer } from "./page"
 import { ResearchBody } from "./research"
 
 /**
- * The law that keeps the marks honest.
+ * The law that keeps the indicators honest.
  *
  * Two things have to agree on the same set of anchors: the view builder, which
  * records what each place holds so that a preview can show the published value
- * there, and the components, which draw the mark. They cannot be tied together
+ * there, and the components, which draw the indicator. They cannot be tied together
  * by a type — one walks content, the other writes JSX — so the tie is this:
  * **every anchor a page draws is one the view recorded**, and with nothing left
  * empty the two sets are equal.
@@ -87,7 +87,7 @@ function researchAnchors(content: ResearchContent, datasets: { id: string, label
     files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
   }, "ja", catalog)
 
-  // As a preview draws it, which is the only reader of the marks: the
+  // As a preview draws it, which is the only reader of the indicators: the
   // published page draws a subset (it leaves out the release note).
   const drawn = drawnAnchors(() => (
     <ResearchBody view={anchored.view} locale="ja" releaseNote />

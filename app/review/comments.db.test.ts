@@ -67,7 +67,7 @@ async function saidAt(
 }
 
 describe("a comment", () => {
-  it("stands at its place in the order it was said, with the next one under it rather than inside it", async () => {
+  it("is shown at its place in the order it was said, with the next one under it rather than inside it", async () => {
     const { draftId } = await draft()
     await saidAt(draftId, "summary.aims", "対象は何名ですか")
     await saidAt(draftId, "summary.aims", "確認します", CURATOR)
@@ -234,12 +234,12 @@ describe("deleting a comment", () => {
   })
 })
 
-describe("the marks a reader leaves on a draft", () => {
+describe("the indicators a reader leaves on a draft", () => {
   /**
    * A reader presses again on each round of the review, so every press is kept
-   * and the screen reads one row per person and mark, with how many times.
+   * and the screen reads one row per person and button, with how many times.
    */
-  it("gathers a signed-in reader's presses of one mark into one row, counted, under the latest name", async () => {
+  it("gathers a signed-in reader's presses of one indicator into one row, counted, under the latest name", async () => {
     const { draftId } = await draft()
 
     await acknowledgeDraft(db, { draftId, kind: "commented", actor: CURATOR })
@@ -281,8 +281,8 @@ describe("the marks a reader leaves on a draft", () => {
     ])
   })
 
-  /** The two marks answer different questions, so one reader has a row under each. */
-  it("keeps the two marks apart for the same reader — a first round's and a second's", async () => {
+  /** The two indicators answer different questions, so one reader has a row under each. */
+  it("keeps the two indicators apart for the same reader — a first round's and a second's", async () => {
     const { draftId } = await draft()
 
     await acknowledgeDraft(db, { draftId, kind: "commented", actor: PROVIDER })

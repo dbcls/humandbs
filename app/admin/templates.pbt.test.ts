@@ -14,7 +14,7 @@ import type { CatalogWithTerms } from "./queries.server"
 import { draDatasetSeed, jgadDatasetSeed, researchContentFrom, type DatasetSeed } from "./templates"
 
 /**
- * The laws a seeded draft obeys, whatever an upstream system happens to say.
+ * The laws a seeded draft obeys, whatever an upstream system happens to report.
  *
  * The first two are what stops a template from writing content the editing
  * screen would then refuse: a slot under a key the catalog does not hold, or a
@@ -107,7 +107,7 @@ describe("what a seeded draft writes", () => {
     }))
   })
 
-  it("marks a field unsettled only where upstream stated a value that fits no choice, and names that value against it", () => {
+  it("marks a field unsettled only where upstream stated a value that fits no choice, and identifies that value against it", () => {
     fc.assert(fc.property(seedArb, dsBranchArb, ({ seed }, branch) => {
       const named = new Set(seed.dropped.flatMap((value) => value.at === null ? [] : [value.at]))
       const places = [
@@ -159,7 +159,7 @@ describe("what a seeded draft writes", () => {
     }))
   })
 
-  it("never names a value it also wrote", () => {
+  it("never identifies a value it also wrote", () => {
     fc.assert(fc.property(seedArb, ({ seed }) => {
       const written = new Set(
         slotsOf(seed.content)

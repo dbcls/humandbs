@@ -16,7 +16,7 @@
  * ancestors, so the root of a term is the term; a hierarchical one rolls its
  * children up, which is what puts one bucket per 3-character ICD10 code in a
  * panel instead of six hundred. **The level below a root is never counted** —
- * the panel has no way of asking for it.
+ * the panel has no way of requesting it.
  */
 
 import { sql, type SQL } from "drizzle-orm"
@@ -80,7 +80,7 @@ function termCount(row: TermRow): TermCount {
   }
 }
 
-/** Every value of the given facets that at least one matching row carries. */
+/** Every value of the given facets that at least one matching row has. */
 export async function countTerms(
   db: Executor,
   query: SearchQuery,
@@ -134,7 +134,7 @@ export interface DateBounds {
  *
  * These are columns of the search row rather than rows of a facet table, so the
  * span comes from the hits themselves and no join is needed. A date the result
- * never carries comes back null, and the panel then has nothing to suggest —
+ * never passes comes back null, and the panel then has nothing to suggest —
  * which is the honest state while the modification dates are still arriving.
  */
 export async function dateBounds(

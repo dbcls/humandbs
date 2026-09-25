@@ -118,8 +118,8 @@ async function load() {
     const unread: { dataset: string, sourceKey: string, line: string }[] = []
     const hand = byHand(readByHand())
 
-    // **Built once, folded into every version that lists it.** The dump gives a
-    // dataset one description, and each version that published it carries a
+    // **Built once, merged into every version that lists it.** The dump gives a
+    // dataset one description, and each version that published it has a
     // copy of that description from here on — so the migration writes the same
     // value into every version, and later corrections part company there.
     const descriptionOfDataset = new Map(datasets.map((d) => [
@@ -178,7 +178,7 @@ async function load() {
 
     // The upstream correspondence is a cache of somebody else's table, so it is
     // loaded whole rather than cut down to what this dump happens to hold: the
-    // difference between the two is exactly what the publish gate checks for,
+    // difference between the two is exactly what the publish check looks for,
     // and what the supply endpoint leaves out.
     const upstream = loadHumAccessions()
     await insertChunked(upstream, (chunk) => tx.insert(humAccession).values(chunk))

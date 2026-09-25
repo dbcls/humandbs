@@ -1,8 +1,8 @@
 /**
- * Every address the JSON API answers at, written down once.
+ * Every address the JSON API responds at, written down once.
  *
  * **The path appears here and nowhere else.** `app/routes.ts` registers what
- * this list says and `./openapi.ts` documents what this list says, so a route
+ * this list reports and `./openapi.ts` documents what this list has, so a route
  * and its entry in the document cannot describe different addresses. React
  * Router spells a parameter `:name` and OpenAPI spells it `{name}`; that is a
  * mechanical difference and the generator makes it.
@@ -32,7 +32,7 @@ export type ApiTag = "research" | "dataset" | "search" | "dblink" | "meta"
 export interface ApiEndpoint {
   /** As React Router registers it, without a leading slash. */
   path: string
-  /** The route module that answers it. */
+  /** The route module that responds to it. */
   file: string
   operationId: string
   tag: ApiTag
@@ -46,19 +46,19 @@ export interface ApiEndpoint {
     schema: z.ZodType
     description: string
   }
-  /** Statuses other than 200. Each answers with a problem document. */
+  /** Statuses other than 200. Each responds with a problem document. */
   problems: (404 | 422)[]
 }
 
 /**
  * Queries that appear in the document, and are therefore promised to be
  * readable. `app/api/pages.db.test.ts` puts each of them through the parser, so
- * an example cannot go on saying something the grammar stopped allowing.
+ * an example cannot go on indicating something the grammar stopped allowing.
  */
 /**
  * Queries that appear in the document, and are therefore promised to be
  * readable. The e2e run puts each of them to a live instance, so an example
- * cannot go on saying something the grammar stopped allowing.
+ * cannot go on indicating something the grammar stopped allowing.
  */
 export const QUERY_EXAMPLES = [
   "cancer",
@@ -71,10 +71,10 @@ export const QUERY_EXAMPLES = [
 /**
  * What `?q=` takes, written for whoever reads the document rather than for this
  * file. **The grammar is only written down here**: a caller that gets it wrong
- * is answered with a 422, and this is what it had to go on.
+ * is responded to with a 422, and this is what it had to go on.
  */
 const QUERY_DESCRIPTION = `
-The query language, which is the one the site's own addresses carry — a query written here works
+The query language, which is the one the site's own addresses use — a query written here works
 in the browser and back.
 
 A Lucene subset, spelled the way ddbj-search-api's db-portal spells it.
@@ -171,7 +171,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
     tag: "research",
     summary: "One published version of a research",
     description:
-      "A version that was never published, or has been withdrawn, answers 404 like a number that "
+      "A version that was never published, or has been withdrawn, returns 404 like a number that "
       + "was never issued. Every version that can be asked for is listed on the research.",
     params: humId.extend({
       version: z.string().meta({ description: "The version, written `v3` as in the page's URL." }),
@@ -187,7 +187,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
     summary: "Search published datasets",
     description:
       "Each hit is the whole dataset. The query is the one the research listing takes — the "
-      + "search rows of a research carry the values of its datasets, so a query can be moved "
+      + "search rows of a research include the values of its datasets, so a query can be moved "
       + "between the two listings and keeps its meaning.",
     query: searchQuery,
     response: { mediaType: JSON_MEDIA, schema: datasetSearchSchema, description: "Matches." },
@@ -230,7 +230,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
     summary: "The fields a query may name, and the values they take",
     description:
       "Everything `?q=` can be written against. A `term` field lists the values the published "
-      + "set carries, so a value taken from here always matches something; a `number` field "
+      + "set has, so a value taken from here always matches something; a `number` field "
       + "gives the unit its values are stored in. The catalog is the list — a key typed as a "
       + "vocabulary, a number or a disease is a field, and no other key is.",
     response: {
@@ -291,6 +291,6 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
 export const OPENAPI_PATH = "api/openapi.json"
 export const OPENAPI_FILE = "routes/api-openapi.ts"
 
-/** Where the document is drawn (`./docs.ts`). A page, so it answers with HTML. */
+/** Where the document is drawn (`./docs.ts`). A page, so it responds with HTML. */
 export const DOCS_PATH = "api/docs"
 export const DOCS_FILE = "routes/api-docs.ts"

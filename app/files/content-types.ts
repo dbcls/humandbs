@@ -1,6 +1,6 @@
 /**
  * The Content-Type an object is stored with when nothing else supplies one
- * (`scripts/common-assets.ts`, carrying in files that have no browser-guessed
+ * (`scripts/common-assets.ts`, with in files that have no browser-guessed
  * type of their own). The proxy reads that stored Content-Type back to decide
  * inline display (`docker/nginx/default.conf`), which is why SVG is
  * deliberately absent here — it is markup, and an inline one would run on the

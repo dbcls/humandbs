@@ -24,12 +24,12 @@ describe("conditions", () => {
       .toEqual([["q", "cancer"], ["sort", "date"]])
   })
 
-  it("空の欄は落ちる", () => {
+  it("空の欄は除かれる", () => {
     expect(pairs(conditions(form(["q", "cancer"], ["rangeFrom", ""]), null)))
       .toEqual([["q", "cancer"]])
   })
 
-  it("両端の空いた範囲は、両方とも落ちる", () => {
+  it("両端の空いた範囲は、両方とも除かれる", () => {
     expect(pairs(conditions(form(["rangeKey", "age"], ["rangeFrom", ""], ["rangeTo", ""]), null)))
       .toEqual([["rangeKey", "age"]])
   })
@@ -39,7 +39,7 @@ describe("conditions", () => {
       .toEqual([["q", "cancer"], ["k", ""]])
   })
 
-  it("box を指定しても、box 以外の空の欄は落ちる", () => {
+  it("box を指定しても、box 以外の空の欄は除かれる", () => {
     expect(pairs(conditions(form(["k", ""], ["sort", ""], ["size", "50"]), "k")))
       .toEqual([["k", ""], ["size", "50"]])
   })

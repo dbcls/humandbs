@@ -59,7 +59,7 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
 
-  // Folded, the way back into the pane says how much is in force, because the
+  // Collapsed, the button that reopens the pane shows how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.dating.length
@@ -85,13 +85,13 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
       <Card under={false}>
         <Stack gap="normal">
           {/*
-            **The way to make one stands with the name of the screen**, as it
+            **The button that makes one is shown with the name of the screen**, as it
             does over the articles: it is the one thing a reader comes here to
             do that is not "open one of these".
 
-            **It asks nothing first.** An announcement is made empty and
+            **It requests nothing first.** An announcement is made empty and
             written on its own screen, so the control is the act rather than a
-            way into a panel.
+            trigger of a panel.
           */}
           <Heading title={t.news.heading}>
             <Form method="post">
@@ -106,7 +106,7 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}
-            // The box is never alone in the pane here: three axes stand under it
+            // The box is never alone in the pane here: three axes are shown under it
             // whatever the reader has asked for.
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
@@ -137,13 +137,13 @@ interface ViewProps {
 /**
  * One announcement.
  *
- * **The title is the way in**, standing first and carrying the link, as the
+ * **The title is the link**, shown first and having it, as the
  * identifier does on the other listings: an announcement is looked for by what
- * it says, and the date is the value it is ordered and narrowed by rather than
- * the name it answers to.
+ * it shows, and the date is the value it is ordered and narrowed by rather than
+ * the name it responds to.
  *
  * **An announcement with nothing written yet still has to be openable**, so the
- * word for that stands in the link's place — the date is in the next column and
+ * word for that is shown in the link's place — the date is in the next column and
  * would be the same thing twice.
  */
 function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
@@ -157,7 +157,7 @@ function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
       </Td>
       {/* **A date still ahead is read in the language columns**, as the
           state 「公開予定」: what the date holds back is each published
-          language, and the column that says a language is up is the one
+          language, and the column that shows a language is up is the one
           that has to say it is not up yet. */}
       <Td nowrap>
         {row.publishedAt === null
@@ -174,11 +174,11 @@ function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
  * GET forms, so a narrowed listing has an address that can be kept and shared —
  * the same rule the articles and the public listings follow.
  *
- * **Nothing here waits to be confirmed.** The box asks once the typing has
- * stopped and a tick asks as it is made.
+ * **Nothing here waits to be confirmed.** The field sends the query once the typing has
+ * stopped and a tick sends as it is made.
  *
- * **The box and the ticks are two forms, and each carries what the other
- * holds**, because a form cannot stand inside another.
+ * **The box and the ticks are two forms, and each has what the other
+ * holds**, because a form cannot be shown inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
@@ -193,7 +193,7 @@ function Filters({ view, locale }: ViewProps) {
         name="q"
         value={view.keyword}
         label={t.news.find}
-        placeholder={messages.search.boxHint}
+        placeholder={messages.search.searchHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped
@@ -248,7 +248,7 @@ function Filters({ view, locale }: ViewProps) {
 
 /**
  * This listing under a different setting. Everything the reader chose is
- * carried, and the page is the first one unless the page is what changes.
+ * kept, and the page is the first one unless the page is what changes.
  */
 function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<NewsListingQuery>): string {
   return href(locale, adminNewsListPath() + newsQuery({
@@ -286,7 +286,7 @@ function presentation(view: ViewProps["view"], locale: Locale): Presentation<New
   }
 }
 
-/** The count and the way through the pages, over the rows and again under them. */
+/** The count and the pagination, over the rows and again under them. */
 function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
   return {
     total: view.total,

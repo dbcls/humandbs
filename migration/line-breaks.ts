@@ -8,10 +8,10 @@
  * stays one long line. The articles themselves are still there, so every block
  * of them that spans more than one line — a table cell with several rows of
  * text, a paragraph broken by `<br>` — is collected, and a one-line value that
- * says the same thing as one of those blocks is cut where the block's lines
+ * reports the same thing as one of those blocks is cut where the block's lines
  * end.
  *
- * "Says the same thing" is compared on the characters alone: whitespace is
+ * "Reports the same thing" is compared on the characters alone: whitespace is
  * dropped and full-width forms and quote marks folded, since v1 rewrote those
  * on the way. No word is changed; only the places the lines end are taken from
  * the article. A value two different blocks would cut differently is left as

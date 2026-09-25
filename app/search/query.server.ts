@@ -12,7 +12,7 @@
  *
  * `NOT` is made total with `coalesce`. A date comparison against a row with no
  * date is unknown rather than false, and "everything that does not match" has
- * to include the rows that could not answer.
+ * to include the rows that could not respond.
  */
 
 import { sql, type SQL } from "drizzle-orm"
@@ -67,8 +67,8 @@ export interface SearchRequest extends SearchQuery {
   /** 1-based. Out of range gives an empty page rather than an error. */
   page: number
   /**
-   * How many rows to answer with. **Left out means the default**, which is what
-   * the JSON API leaves it as — a caller that never asks for a size cannot be
+   * How many rows to respond with. **Left out means the default**, which is what
+   * the JSON API leaves it as — a caller that never requests a size cannot be
    * given a different one by a change here.
    */
   size?: PageSize
@@ -102,7 +102,7 @@ function likePattern(value: string): string {
  * test rather than to a comparison on the search row.
  *
  * **A term matches its own rows and the rows of everything beneath it.** The
- * ancestors are carried on the facet row, so asking for a 3-character ICD10 code
+ * ancestors are kept on the facet row, so requesting a 3-character ICD10 code
  * finds the datasets filed under a 4-character one without walking the tree at
  * query time. The chosen term is looked up by its code inside the key's own set,
  * which means a code naming no term matches nothing — the honest answer for a
@@ -196,8 +196,8 @@ function compile(node: QueryNode, query: SearchQuery): SQL {
 }
 
 /**
- * The matching rows, named `hits`. The identity is carried alongside the rest
- * because the facet counts are aggregates over exactly this set — asking twice
+ * The matching rows, named `hits`. The identity is kept alongside the rest
+ * because the facet counts are aggregates over exactly this set — requesting twice
  * with two different sets is how a count could disagree with its own listing.
  */
 export function hitsCte(query: SearchQuery): SQL {
@@ -253,8 +253,8 @@ export async function countMatches(db: Executor, query: SearchQuery): Promise<nu
 /**
  * **A page past the end is empty, not the last one.** Something reading the
  * search a page at a time stops when a page comes back with nothing in it, and
- * answering the last page over again is an answer that never runs out. A screen
- * that would rather show the last page asks for it (`app/public/lists.server.ts`).
+ * returning the last page over again is an answer that never runs out. A screen
+ * that would rather show the last page requests it (`app/public/lists.server.ts`).
  */
 export async function searchDocs(db: Executor, request: SearchRequest): Promise<SearchResult> {
   const total = await countMatches(db, request)

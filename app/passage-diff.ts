@@ -4,12 +4,12 @@
  *
  * **The unit is a word in English and a character in Japanese** — a run of
  * letters and digits is one piece, and anything else (a kana, a kanji, a
- * space, a mark) is a piece on its own. Compared by character, an English
+ * space, an indicator) is a piece on its own. Compared by character, an English
  * sentence lights up a letter at a time; compared by space-separated words, a
  * Japanese sentence has none and changes whole.
  *
- * **A short run the two share between two changes is folded into them.** A
- * common particle or a lone space left standing between a deletion and an
+ * **A short run the two share between two changes is merged into them.** A
+ * common particle or a lone space left shown between a deletion and an
  * insertion splits one rewrite into two, and the reader has to put it back
  * together.
  */
@@ -28,8 +28,8 @@ export interface DiffPart {
  */
 const MAX_CELLS = 4_000_000
 
-/** Shared runs of fewer pieces than this between two changes are folded into them. */
-const FOLD_BELOW = 3
+/** Shared runs of fewer pieces than this between two changes are merged into them. */
+const MERGE_BELOW = 3
 
 /** A run of letters and digits that are not Japanese, or any one character. */
 const PIECE = /(?:(?![\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])[\p{L}\p{N}_])+|[\s\S]/gu
@@ -55,13 +55,13 @@ export function diffText(before: string, after: string): DiffPart[] {
 
   const parts: DiffPart[] = []
   push(parts, "same", a.slice(0, head).join(""))
-  for (const part of fold(middle(middleA, middleB))) push(parts, part.kind, part.text)
+  for (const part of mergeShortRuns(middle(middleA, middleB))) push(parts, part.kind, part.text)
   push(parts, "same", a.slice(a.length - tail).join(""))
   return parts
 }
 
 /**
- * A text cut into sentences, each keeping what ends it — the full stop, the
+ * A text split into sentences, each keeping what ends it — the full stop, the
  * spaces after an English one, the line break — so that the pieces put back
  * together are the text.
  *
@@ -84,7 +84,7 @@ export function sentences(text: string): string[] {
       at += 1
       continue
     }
-    // What follows the stop — more of the same marks, the spaces, the line
+    // What follows the stop — more of the same indicators, the spaces, the line
     // breaks — belongs to the sentence it closes.
     while (end < text.length && /[\s。！？.!?]/.test(text.charAt(end))) end += 1
     out.push(text.slice(start, end))
@@ -112,7 +112,7 @@ export type SentenceRow
  * which one sentence moved marks the whole paragraph; and a sentence that
  * stayed put is what lets the reader find their place on both sides. **What is
  * left between two kept sentences is paired in order** — the first sentence
- * dropped against the first one added — and the rest stands on one side only.
+ * dropped against the first one added — and the rest is shown on one side only.
  */
 export function diffSentences(before: string, after: string): SentenceRow[] {
   const a = sentences(before)
@@ -201,16 +201,16 @@ function lcs(a: readonly string[], b: readonly string[]): DiffPart[] {
 }
 
 /**
- * Folds a short shared run standing between changes into them: the run is
+ * Merges a short shared run shown between changes into them: the run is
  * dropped from the one side and added to the other, so each side still reads
  * as its own text.
  */
-function fold(parts: readonly DiffPart[]): DiffPart[] {
+function mergeShortRuns(parts: readonly DiffPart[]): DiffPart[] {
   let current = regroup(parts)
   for (;;) {
     const at = current.findIndex((part, index) =>
       part.kind === "same"
-      && pieces(part.text).length < FOLD_BELOW
+      && pieces(part.text).length < MERGE_BELOW
       && index > 0 && index < current.length - 1)
     if (at === -1) return current
     const next: DiffPart[] = []
@@ -228,7 +228,7 @@ function fold(parts: readonly DiffPart[]): DiffPart[] {
 
 /**
  * Within each stretch between two shared runs, the deletions come first and the
- * insertions after, so that a fold does not leave the stretch interleaved.
+ * insertions after, so that a merge does not leave the stretch interleaved.
  */
 function regroup(parts: readonly DiffPart[]): DiffPart[] {
   const out: DiffPart[] = []

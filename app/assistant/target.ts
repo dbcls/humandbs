@@ -5,14 +5,14 @@
  * checked without a service to talk to. The rule is short because the portal
  * deliberately knows nothing about the assistant's API: what arrives after
  * `/admin/assistant/api/` is the service's own address, and the portal's part
- * is to say where the service is and to refuse what would leave it.
+ * is to report where the service is and to refuse what would leave it.
  */
 
 /**
  * **A segment that climbs out of the API is refused rather than resolved.**
  * `new URL()` would happily fold `applications/../../healthz` into a path
  * outside the prefix, which would make the proxy a way to reach whatever else
- * the service answers at — and a service written on the promise that it is only
+ * the service responds at — and a service written on the promise that it is only
  * ever reached through here has no reason to guard its other addresses.
  *
  * An empty rest is the API's own root, which is a legitimate address.
@@ -59,7 +59,7 @@ const REQUEST_HEADERS_DROPPED = new Set([
  * The headers an answer keeps on its way out.
  *
  * **`set-cookie` is dropped**: a cookie from the assistant would be set on the
- * portal's own origin, which is where the session cookie lives.
+ * portal's own origin, which is where the session cookie is kept.
  *
  * **The encoding and the length are dropped** because `fetch` has already
  * undone the first and the body being passed on may no longer match the second.
@@ -93,8 +93,8 @@ function copyExcept(headers: Headers, dropped: ReadonlySet<string>): Headers {
   return kept
 }
 
-/** Whether a method may carry one. `fetch` refuses a body on the two that may not. */
-export function carriesBody(method: string): boolean {
+/** Whether a method may have one. `fetch` refuses a body on the two that may not. */
+export function hasBody(method: string): boolean {
   const named = method.toUpperCase()
   return named !== "GET" && named !== "HEAD"
 }
@@ -102,9 +102,9 @@ export function carriesBody(method: string): boolean {
 /**
  * Whether a request came from the portal's own pages.
  *
- * **The framework asks this of every page's action and cannot ask it here.**
+ * **The framework requests this of every page's action and cannot request it here.**
  * React Router refuses a mutation whose `Origin` names another site, but only
- * for the routes that render something; a route answering with data alone
+ * for the routes that render something; a route responding with data alone
  * never reaches that check. The root middleware now closes that gap for every
  * non-GET write before any route sees it (`auth/csrf.ts`). This is a second,
  * narrower check kept on this one route, which hands a body on to a service

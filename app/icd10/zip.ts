@@ -3,7 +3,7 @@
  *
  * WHO distributes the classification as a zip holding three files, of which one
  * is wanted. That is the only reason this exists — a dependency for a format
- * read once at setup is not worth carrying, and the two compression methods a
+ * read once at setup is not worth keeping, and the two compression methods a
  * zip of text uses are both in the platform already.
  */
 
@@ -33,7 +33,7 @@ export async function readZipMember(archive: Uint8Array, name: string): Promise<
   if (view.getUint32(member.offset, true) !== LOCAL_FILE_HEADER) {
     throw new Error(`${name} does not start with a local file header`)
   }
-  // The local header repeats the name and may carry a different extra field
+  // The local header repeats the name and may have a different extra field
   // from the central one, so its own lengths decide where the bytes begin.
   const start = member.offset + 30
     + view.getUint16(member.offset + 26, true)

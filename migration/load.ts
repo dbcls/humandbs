@@ -50,7 +50,7 @@ export function readByHand(): ReadByHand[] {
 
 /**
  * The banner translations somebody wrote, for the announcements the old CMS
- * holds in one language. Optional the same way, and `buildAlerts` says which
+ * holds in one language. Optional the same way, and `buildAlerts` reports which
  * one is missing when a banner that is up has no entry here.
  */
 export function suppliedAlertText(): SuppliedAlertText[] {
@@ -138,7 +138,7 @@ export async function seedCatalog(
   )
 
   // The classification has to be on disk before this runs; the import script
-  // leaves it there (`docs/development.md` の「ICD10 の語彙を入れる」). Nothing
+  // leaves it there (`npm run icd10:import`). Nothing
   // is written yet, so stopping here leaves the previous data as it was.
   const classification = heldIcd10Entries()
   if (classification === null) {
@@ -297,7 +297,7 @@ export async function loadSiteContent(tx: Executor, cms: CmsDump = loadCms()) {
       .returning({ id: alert.id }),
   )
 
-  // The editing screen says since when an alert has been up by reading the
+  // The editing screen reports since when an alert has been up by reading the
   // trail, so one that comes across standing is put up there as well — under
   // the reserved actor, at the instant the input holds for it.
   await insertChunked(

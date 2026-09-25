@@ -3,15 +3,15 @@
  *
  * **No icon package is a dependency.** What an icon set gives is a few hundred
  * glyphs behind a bundler; what the portal needs is the two dozen below, and
- * carrying them by value keeps the page free of a second styling system and the
+ * having them by value keeps the page free of a second styling system and the
  * build free of a tree-shaking question.
  *
  * The outlines are Lucide's (ISC, © Lucide Contributors), which is the set the
  * previous portal drew with — so a reader who knew that site meets the same
  * shapes here.
  *
- * **An icon carries no meaning of its own.** Every glyph is `aria-hidden`, so a
- * control that shows nothing but an icon has to name itself: the label lives on
+ * **An icon has no meaning of its own.** Every glyph is `aria-hidden`, so a
+ * control that shows nothing but an icon has to name itself: the label is kept on
  * the button or the link, never in the drawing.
  */
 
@@ -80,7 +80,7 @@ export type IconName
 
 const NODES: Record<IconName, ReactNode> = {
   /*
-    Books standing on a shelf, one of them leaning: the previous portal marked a
+    Books shown on a shelf, one of them leaning: the previous portal marked a
     research this way, and more than one book is what tells it from a document.
 
     **Standing rather than stacked.** Books lying one on top of another are two
@@ -247,7 +247,7 @@ const NODES: Record<IconName, ReactNode> = {
     </>
   ),
   /*
-    Two ways in and one way on: the term being folded goes into the other, and
+    Two arrows in and one arrow on: the term being merged goes into the other, and
     whatever pointed at it follows.
   */
   "merge": (
@@ -309,7 +309,7 @@ const NODES: Record<IconName, ReactNode> = {
   ),
   /*
     A plus over a minus: where a value reads otherwise than the version that is
-    out there, and the way into the two side by side.
+    out there, and the line into the two side by side.
   */
   "diff": (
     <>
@@ -333,7 +333,7 @@ const NODES: Record<IconName, ReactNode> = {
   /*
     The four shapes a value can take (`/admin/experiment-fields`). Each stands
     beside its word rather than alone — at 14px `type` and `list` are both
-    strokes on a page, and what tells them apart is the T standing over the
+    strokes on a page, and what tells them apart is the T shown over the
     first one.
   */
   "type": (
@@ -493,9 +493,9 @@ const NODES: Record<IconName, ReactNode> = {
 export const ICON_NAMES = Object.keys(NODES) as IconName[]
 
 /**
- * What glyph a kind of deed takes, wherever a control does one.
+ * What glyph a kind of action takes, wherever a control does one.
  *
- * **The glyph says the kind of deed, not the screen.** A screen picks a
+ * **The glyph shows the kind of action, not the screen.** A screen picks a
  * `key` for what its control does and gets the glyph for free, rather than
  * naming a glyph itself — which is how two screens end up drawing "作成" two
  * different ways. `create` covers both 作る and 追加: the two differ in what
@@ -504,7 +504,7 @@ export const ICON_NAMES = Object.keys(NODES) as IconName[]
  *
  * **Taking something off the page is `lock`, whichever way it goes** — a
  * version withdrawn and an article unpublished leave the same thing behind, a
- * page nobody outside can read, and that is the glyph the state wears.
+ * page nobody outside can read, and that is the glyph the state is shown with.
  * Showing and hiding (`eye` / `eye-off`) is a switch that is pressed back.
  */
 export const ACTION_ICON = {
@@ -514,7 +514,7 @@ export const ACTION_ICON = {
   publish: "upload",
   withdraw: "lock",
   search: "search",
-  takeIn: "download",
+  importData: "download",
   assign: "link",
   show: "eye",
   hide: "eye-off",
@@ -534,12 +534,12 @@ export const ACTION_ICON = {
 
 /**
  * What glyph a kind of thing takes, wherever it is named — the entries of the
- * area's front page, the mark before an identifier, the way to a screen about
+ * area's front page, the indicator before an identifier, the link to a screen about
  * it.
  *
- * **A thing is not a deed and not a state.** The three tables — this one,
- * `ACTION_ICON` and the marks in `components/flags.tsx` — share a glyph only
- * where the deed makes the state or acts on the thing, so a glyph seen in one
+ * **A thing is not an action and not a state.** The three tables — this one,
+ * `ACTION_ICON` and the indicators in `components/flags.tsx` — share a glyph only
+ * where the action makes the state or acts on the thing, so a glyph seen in one
  * place cannot mean something unrelated in another (`components/icons.test.ts`).
  */
 export const SUBJECT_ICON = {
@@ -577,9 +577,9 @@ export function Icon({ name, className = "" }: { name: IconName, className?: str
 }
 
 /**
- * The mark of a deed in flight.
+ * The indicator of an action in flight.
  *
- * **It is drawn in the box the control's own icon stands in**, so nothing
+ * **It is drawn in the box the control's own icon is shown in**, so nothing
  * around the control moves while it waits: the name stays, the width stays,
  * and the only thing that changes is inside a box that was already there.
  */

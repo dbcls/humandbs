@@ -20,7 +20,7 @@ const LATEST_NEWS = 5
  *
  * The search box sits here and in the two listings, and nowhere else. Those are
  * the places a reader starts from, and a box in the header would have to be
- * carried by every page for the few who search from the middle of one.
+ * held by every page for the few who search from the middle of one.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
@@ -45,7 +45,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         Each box is as tall as what is in it. A grid stretches its cells to the
         tallest by default, which puts whichever column is shorter inside a
         panel of empty white — it was the announcements when they were five
-        titles, and the introduction once they carried the opening of each
+        titles, and the introduction once they kept the opening of each
         article as well.
       */}
       <div className="grid items-start gap-6 lg:grid-cols-[2fr_1fr]">
@@ -67,7 +67,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               The same pair the two screens they lead to open with, at the same
               width: the front page is where a reader decides which half of the
               site they are in, and a button that stretched to half the card
-              would say that the choice is as wide as the page.
+              would show that the choice is as wide as the page.
             */}
             <ActionRow>
               <ActionButton
@@ -98,7 +98,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <aside>
           <Card under={false}>
             <Stack gap="normal">
-              {/* The way to the whole listing is on the heading rather than
+              {/* The link to the whole listing is on the heading rather than
                   under the last entry: it belongs to the box, not to the list. */}
               <Heading level="h2" title={messages.news.latest}>
                 <MoreLink to={href(locale, newsPath())}>{messages.news.all}</MoreLink>

@@ -7,13 +7,13 @@
  * Those addresses are the only reachability the portal promises, so changing
  * their shape costs everything and buys nothing.
  *
- * **Japanese has no prefix; English lives under `/en`.** A prefix on Japanese
+ * **Japanese has no prefix; English is kept under `/en`.** A prefix on Japanese
  * would put a redirect in front of every address already written down. `/ja/…`
  * still resolves, but as a redirect, so one page has one address.
  *
- * A label in a URL is resolved through the pin ledger rather than matched
+ * A label in a URL is resolved through the `label_pin` table rather than matched
  * against the primary label, so a dataset id that has been superseded and a hum
- * label that was corrected both keep answering — they are cited in article
+ * label that was corrected both keep responding — they are cited in article
  * prose, in submission forms and in URL fragments, none of which can be
  * rewritten. Reaching a page by a secondary label redirects to the primary one.
  */
@@ -37,7 +37,7 @@ export interface ReadLocale {
 }
 
 /**
- * What a client navigation appends to the address it asks for. The router
+ * What a client navigation appends to the address it requests. The router
  * strips it before it matches a route, but the request's own URL keeps it.
  */
 const DATA_SUFFIX = ".data"
@@ -53,7 +53,7 @@ export const ADMIN_ROOT = "/admin"
  * The path a request asked for, without the `.data` a client navigation
  * appends. **Anything that sends the reader back to where they were builds from
  * this, not from `request.url`** — a redirect to `<path>.data` is followed as a
- * page, and no route answers it.
+ * page, and no route responds to it.
  */
 export function askedPath(pathname: string): string {
   return pathname.endsWith(DATA_SUFFIX) ? pathname.slice(0, -DATA_SUFFIX.length) : pathname
@@ -70,7 +70,7 @@ export function askedPath(pathname: string): string {
  * spells a locale and reads as Japanese. Pressing EN on the front page left it
  * in Japanese while opening `/en` directly did not, and the same suffix left a
  * `.data` on the end of every path returned from a navigation. Taking it off in
- * the one place that reads an address beats asking forty-odd loaders to
+ * the one place that reads an address beats requesting forty-odd loaders to
  * remember.
  */
 export function readLocale(pathname: string): ReadLocale {
@@ -87,9 +87,9 @@ export function readLocale(pathname: string): ReadLocale {
 /**
  * Turns an internal path into the address it has in a given language.
  *
- * **The management area has one address and it carries no language.** Its
+ * **The management area has one address and it has no language.** Its
  * screens are written for the people who run the portal and exist in Japanese
- * only, so a prefixed address would be a second address answering nothing.
+ * only, so a prefixed address would be a second address serving nothing.
  * **Screens under it still link out to the public side**, and those keep their
  * prefix — what decides is the path being built, not the screen doing the
  * building.
@@ -169,8 +169,8 @@ export function searchQuery(params: SearchParams): string {
  * **The same address does not arrive as the same characters on both sides.** A
  * comma, a colon and a bracket are legal in a query unencoded, so a browser
  * keeps `?q=a,b` as it is while the page is rendered on the server from
- * `?q=a%2Cb` — two spellings of one search. Anything that carries the current
- * query into a link (the language pair, the way back after signing in) then
+ * `?q=a%2Cb` — two spellings of one search. Anything that has the current
+ * query into a link (the language pair, the return address after signing in) then
  * draws one address on the server and a different one in the browser, and every
  * page reached by a hand-written address hydrates with a mismatch.
  *
@@ -231,7 +231,7 @@ export function jgaEntryUrl(accession: string): string {
 /**
  * Where a submission or a use is applied for. The application system is one
  * address for both, and **it picks its language from `lang`, not from the
- * browser**, so an English page has to ask for English or its reader lands on
+ * browser**, so an English page has to request English or its reader lands on
  * the Japanese form.
  */
 export function applicationUrl(locale: Locale): string {
@@ -242,9 +242,9 @@ export function applicationUrl(locale: Locale): string {
 /**
  * Where a published file is fetched from.
  *
- * **No route answers this.** The front proxy passes `/files/…` to the store,
+ * **No route responds to this.** The front proxy passes `/files/…` to the store,
  * where it is the path-style address of the public bucket — which is why the
- * key there carries the hum label rather than the identity, and why the address
+ * key there has the hum label rather than the identity, and why the address
  * is the same one the current portal publishes. The proxy is also what adds
  * `nosniff` and the disposition, so nothing may link past it.
  *
@@ -270,7 +270,7 @@ export function filePath(humLabel: string, name: string): string {
  *
  * **It is the first segment that is taken**, not the whole address: the routes
  * above own everything below theirs, so `news/x` is as unreachable as `news`.
- * The screen that creates a document reads this list to say so.
+ * The screen that creates a document reads this list to report it.
  */
 export const SCREEN_PATHS = [
   "/",
@@ -315,7 +315,7 @@ function humLabelIn(pattern: RegExp, segment: string): string | null {
  * The path a legacy address resolves to, or null if it is not one.
  *
  * These are the addresses the old Joomla site published and the bare hum label
- * DDBJ Search links to. All of them answer with a page rather than a dead end,
+ * DDBJ Search links to. All of them respond with a page rather than a dead end,
  * and the resolution happens on the server — v1 rescued them with a redirect
  * issued by the browser, which never reached a client that does not run
  * JavaScript.

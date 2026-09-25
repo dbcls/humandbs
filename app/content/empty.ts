@@ -13,9 +13,9 @@ import type {
  * Every named field is present and holds an empty value in both languages
  * rather than being absent or `unknown`. An empty value means "nobody has
  * filled this in", which is a different thing from "there is a value but it is
- * not settled" (`unknown`, which the publish gate lists) and from "there is no
+ * not settled" (`unknown`, which the publish check lists) and from "there is no
  * value" (`not-applicable`, which is settled and gets rendered). Each language
- * carries its own state, so a new content starts with both of them empty.
+ * has its own state, so a new content starts with both of them empty.
  */
 export function emptyResearchContent(): ResearchContent {
   return {

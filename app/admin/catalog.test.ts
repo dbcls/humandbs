@@ -72,7 +72,7 @@ describe("the code a new key or term is stored under", () => {
   })
 
   /* A label with nothing a code can hold leaves an empty one, and an empty code
-     is what `termCodeProblem` already refuses — so the screen answers with the
+     is what `termCodeProblem` already refuses — so the screen responds with the
      same problem it would for a code typed by hand. */
   it("leaves nothing to refuse when the label holds no letters or digits", () => {
     expect(codeFrom("―")).toBe("")
@@ -80,7 +80,7 @@ describe("the code a new key or term is stored under", () => {
     expect(termCodeProblem(codeFrom("メチル化アレイ"))).toBe("malformed")
   })
 
-  /* Whatever the label holds, what comes out is a code a query can carry
+  /* Whatever the label holds, what comes out is a code a query can have
      unquoted — that is the one thing the generated side must not get wrong. */
   it("never makes a code the query language would refuse", () => {
     for (const label of ["ATAC-seq", "a:b", "x (y) [z]", "q?w*e", "back\\slash", "'quoted'"]) {
@@ -92,7 +92,7 @@ describe("the code a new key or term is stored under", () => {
   /* A key is made from its label the same way, and a key's code has the
      stricter shape of the two — so whatever the label held, what comes out
      must be empty or pass the key's rule, or a key could be stored under a
-     code the address cannot carry. */
+     code the address cannot have. */
   it("is empty or a well-formed key code, whatever the label holds", () => {
     fc.assert(fc.property(fc.string({ unit: "grapheme" }), (label) => {
       const code = codeFrom(label)
@@ -114,7 +114,7 @@ describe("the first free spelling of a code", () => {
     expect(freeCode("atac-seq", new Set(["atac-seq", "atac-seq-3"]))).toBe("atac-seq-2")
   })
 
-  it("never answers with a spelling the set holds, and never reshapes the wanted one", () => {
+  it("never responds with a spelling the set holds, and never reshapes the wanted one", () => {
     fc.assert(fc.property(
       fc.stringMatching(/^[a-z][a-z0-9-]{0,8}$/),
       fc.array(fc.stringMatching(/^[a-z][a-z0-9-]{0,10}$/), { maxLength: 30 }),
@@ -177,7 +177,7 @@ describe("putting an entry at a place", () => {
   })
 
   /* Whatever is asked, what comes back is the same rows once each, and the
-     one that was moved stands where it was put — the two things a table's
+     one that was moved ends up where it was put — the two things a table's
      positions must be able to rely on. */
   it("keeps every row once and puts the moved one where it was asked", () => {
     fc.assert(fc.property(
@@ -238,7 +238,7 @@ describe("narrowing the fields listing", () => {
     expect(found({ keyword: "targets ターゲット" })).toEqual([])
   })
 
-  it("asks the same whatever the case and the surrounding space", () => {
+  it("requests the same whatever the case and the surrounding space", () => {
     expect(found({ keyword: "  PLATFORM  " })).toEqual(["platform"])
   })
 

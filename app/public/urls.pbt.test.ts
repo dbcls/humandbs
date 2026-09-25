@@ -19,7 +19,7 @@ const locale = fc.constantFrom(...LOCALES)
  * An internal path: what `href` prefixes and `readLocale` gives back.
  *
  * **It cannot end in `.data`.** That suffix is what a client navigation appends
- * to the address it asks for, and `readLocale` takes one off so that a loader
+ * to the address it requests, and `readLocale` takes one off so that a loader
  * reading the request's own URL sees the address rather than the request. An
  * address that ends in it would come back one suffix shorter; none does, and a
  * document slug that did could not be reached by a link either.
@@ -52,13 +52,13 @@ describe("the locale in an address", () => {
   })
 
   /**
-   * A link is followed by asking for the same address with `.data` on the end,
+   * A link is followed by requesting the same address with `.data` on the end,
    * and what reaches a loader keeps it. **Reading a page through a link and
    * reading it by opening its address have to give the same answer** — the
    * front page came back in Japanese after pressing EN because `/en.data` has
    * no segment left that spells a locale.
    */
-  it("is the same one a client navigation asks for", () => {
+  it("is the same one a client navigation requests", () => {
     fc.assert(fc.property(locale, internalPath, (wanted, path) => {
       const read = readLocale(`${href(wanted, path)}.data`)
       expect(read.locale).toBe(wanted)
@@ -84,7 +84,7 @@ describe("a version address", () => {
 })
 
 describe("legacy resolution", () => {
-  it("sends every address it claims to a research page of the label it names", () => {
+  it("sends every address it claims to a research page of the label it identifies", () => {
     const suffix = fc.constantFrom("", "-latest", "-latest-release", "-v3", "-v3-release")
     fc.assert(fc.property(humLabel, suffix, (label, tail) => {
       const target = legacyTarget(`/${label}${tail}`)
@@ -93,7 +93,7 @@ describe("legacy resolution", () => {
     }))
   })
 
-  it("never claims an address that already names a page of the site", () => {
+  it("never claims an address that already identifies a page of the site", () => {
     fc.assert(fc.property(humLabel, (label) => {
       expect(legacyTarget(researchPath(label))).toBeNull()
       expect(legacyTarget(researchVersionPath(label, 2))).toBeNull()
@@ -153,7 +153,7 @@ describe("the query of the address being read", () => {
     }))
   })
 
-  it("carries the same pairs it was given", () => {
+  it("has the same pairs it was given", () => {
     fc.assert(fc.property(queryPairs, (pairs) => {
       expect([...new URLSearchParams(normalizeQuery(looseSpelling(pairs)))]).toEqual(pairs)
     }))

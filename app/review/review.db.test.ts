@@ -20,7 +20,7 @@ import { reviewAction, reviewPage } from "./review.server"
  * for `edit-content`; a signed-in reader without it gets 403 rather than a
  * redirect, because signing in again would not change the answer.
  *
- * The same action serves two callers and answers them differently: the review
+ * The same action serves two callers and handles them differently: the review
  * screen takes a redirect, and an editing screen takes the comments, because
  * it is holding unsaved work and must not navigate.
  */
@@ -170,7 +170,7 @@ describe("what the review screen does", () => {
     expect(closed?.token).toBe(before?.token)
   })
 
-  /** The switch turns sharing on or off whatever the form says, and saves the expiry typed with it. */
+  /** The switch turns sharing on or off whatever the form has, and saves the expiry typed with it. */
   it("turns sharing on and off with the switch, saving the expiry typed beside it", async () => {
     const created = await createResearchWithDraft(db)
     const token = await signIn(CURATOR, true)
@@ -186,7 +186,7 @@ describe("what the review screen does", () => {
     expect(off?.expiresAt?.toISOString().slice(0, 10)).toBe("2026-12-31")
   })
 
-  it("keeps sharing as it stands when only the expiry is saved", async () => {
+  it("keeps sharing as it remains when only the expiry is saved", async () => {
     const created = await createResearchWithDraft(db)
     const token = await signIn(CURATOR, true)
     await reviewAction(postForm(token, { intent: "share-on", expiresOn: "" }), "ja", created, "redirect")
@@ -224,7 +224,7 @@ describe("what the review screen does", () => {
     expect(one?.resolvedBy).toBe("curator")
   })
 
-  it("deletes a comment from the editing screen and answers with what is left", async () => {
+  it("deletes a comment from the editing screen and responds with what is left", async () => {
     const created = await createResearchWithDraft(db)
     const taken = await saidAt(created.draftId, "title", "消す")
     await saidAt(created.draftId, "title", "残す")
@@ -242,7 +242,7 @@ describe("what the review screen does", () => {
   })
 
   /** What an open editor needs back: the comments, and no navigation. */
-  it("answers an editing screen with the comments rather than with a redirect", async () => {
+  it("returns an editing screen with the comments rather than with a redirect", async () => {
     const created = await createResearchWithDraft(db)
     const token = await signIn(CURATOR, true)
 

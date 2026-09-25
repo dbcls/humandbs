@@ -121,7 +121,7 @@ function written(reader: Reader, node: Nodes): string {
   return reader.source.slice(start, end).replace(/\\([!-/:-@[-`{-~])/g, "$1")
 }
 
-/** The text of a link, which is one span however many nodes carried it. */
+/** The text of a link, which is one span however many nodes kept it. */
 function linkText(nodes: PhrasingContent[], reader: Reader): string {
   const parts = nodes.map((node) => {
     if (node.type === "text") return node.value
@@ -157,10 +157,10 @@ function walk(node: RootContent, reader: Reader): void {
 }
 
 /**
- * The tree the source says. Every source has one.
+ * The tree the source reports. Every source has one.
  *
  * **Each line is read on its own.** The tree is lines, and a construct that
- * spans lines in markdown would carry one line's reading into the next: a line
+ * spans lines in markdown would pass one line's reading into the next: a line
  * opening with `>` continues as a quote through the line under it, and the
  * link on that line then comes back as the characters it was written with. A
  * line read alone keeps its own links whatever the line above began with.

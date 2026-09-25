@@ -85,7 +85,7 @@ export function joinText(
 /**
  * Whether one check passed.
  *
- * **Only what did not pass carries a colour.** A report is read to find the
+ * **Only what did not pass has a colour.** A report is read to find the
  * things to look at, and a page where every answer is coloured has nothing
  * standing out on it — which is also why the site keeps no colour for "this is
  * fine".
@@ -124,7 +124,7 @@ export function ChecklistStatus({
 
 /**
  * An address the service reported, opened in a new tab with the site's own
- * mark and words for that (`page.tsx` の `ExternalLink`); without one, its
+ * icon and words for that (`page.tsx` の `ExternalLink`); without one, its
  * label or the word for a missing value.
  */
 export function LinkedValue({

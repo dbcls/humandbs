@@ -18,7 +18,7 @@ describe("richTextFromMarkdown", () => {
     ])
   })
 
-  it("turns a link into one span carrying its destination", () => {
+  it("turns a link into one span with its destination", () => {
     expect(richTextFromMarkdown("see [JGAD000234](https://ddbj.nig.ac.jp/x) for it")).toEqual([
       [
         { text: "see " },

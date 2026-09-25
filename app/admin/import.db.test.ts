@@ -8,7 +8,7 @@ import { emptyDatabase } from "~/db/empty.server"
 import { seedVersion } from "~/db/seed"
 
 import { createResearchWithDraft, draftUpdating } from "./drafts.server"
-import { takePage } from "./take.server"
+import { importPage } from "./import.server"
 
 const db = getDb()
 const SIGNED_IN = { sub: "0f3a-1b2c", name: "curator", idToken: "an-id-token" }
@@ -29,8 +29,8 @@ async function signIn(): Promise<string> {
 
 /**
  * An update is its version's row on the research's screen, so it is here too:
- * the draft does not stand as a row of its own, and the version's row carries
- * it — whose it is, and whether it has written anything to take.
+ * the draft is not shown as a row of its own, and the version's row has
+ * it — whose it is, and whether it has written anything to import.
  */
 describe("a version being updated, among the sources", () => {
   async function updated() {
@@ -40,17 +40,17 @@ describe("a version being updated, among the sources", () => {
     if (update.status !== "opened") throw new Error(update.status)
     const token = await signIn()
     const get = (at: string, query = "") => new Request(
-      `http://localhost:8080/admin/research/${researchId}/draft/${at}/take${query}`,
+      `http://localhost:8080/admin/research/${researchId}/draft/${at}/import${query}`,
       { headers: new Headers({ cookie: sessionCookie(token).split(";")[0] ?? "" }) },
     )
     return { researchId, draftId, updateId: update.draftId, get }
   }
 
-  it("folds the update into its version's row, for the update itself and for any other draft", async () => {
+  it("merges the update into its version's row, for the update itself and for any other draft", async () => {
     const at = await updated()
 
     for (const from of [at.updateId, at.draftId]) {
-      const view = await takePage(at.get(from), "ja", { researchId: at.researchId, draftId: from })
+      const view = await importPage(at.get(from), "ja", { researchId: at.researchId, draftId: from })
       expect(view.rows.filter((row) => row.kind === "draft").map((row) => row.id)).not.toContain(at.updateId)
       const version = view.rows.find((row) => row.kind === "version")
       expect(version?.kind === "version" ? version.update?.id : null).toBe(at.updateId)
@@ -58,10 +58,10 @@ describe("a version being updated, among the sources", () => {
   })
 
   /** Chosen from another draft, the update is named by the time its version's row shows — it has no row of its own. */
-  it("takes the update from its version's row, with the time and the version it is named by", async () => {
+  it("imports the update from its version's row, with the time and the version it is named by", async () => {
     const at = await updated()
 
-    const view = await takePage(
+    const view = await importPage(
       at.get(at.draftId, `?draft=${at.updateId}`),
       "ja",
       { researchId: at.researchId, draftId: at.draftId },

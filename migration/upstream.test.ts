@@ -24,7 +24,7 @@ describe("attaching the study a dataset sits under", () => {
     expect(studyOf(rows, "JGAD000001")).toBe("JGAS000001")
   })
 
-  it("drops an edge into a study the cache does not carry", () => {
+  it("drops an edge into a study the cache does not have", () => {
     // The edge is drawn over everything registered; the cache holds only what
     // is published, so this would put an accession nobody can open on a page.
     const rows = humAccessionRows(
@@ -61,7 +61,7 @@ describe("attaching the study a dataset sits under", () => {
     expect(studyOf(rows, "JGAD000001")).toBe("JGAS000001")
   })
 
-  it("ignores an edge whose dataset the cache does not carry", () => {
+  it("ignores an edge whose dataset the cache does not have", () => {
     const rows = humAccessionRows(
       [study("JGAS000001")],
       [["JGAD000404", "JGAS000001"]],
@@ -80,7 +80,7 @@ describe("the correspondence the development data is seeded with", () => {
     expect(new Set(rows.map((row) => row.accession)).size).toBe(rows.length)
   })
 
-  it("names only accessions the cache itself carries", () => {
+  it("names only accessions the cache itself has", () => {
     const published = new Set(studies.map((row) => row.accession))
     const dangling = datasets
       .filter((row) => row.study !== null && !published.has(row.study))

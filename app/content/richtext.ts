@@ -7,7 +7,7 @@
  * is the page itself, which takes the tree and renders it — a serialiser to an
  * HTML string would only add an escaping routine to own.
  *
- * - **plain** is what the JSON API answers with and what the full-text column
+ * - **plain** is what the JSON API responds with and what the full-text column
  *   is built from. A line becomes a line; nothing is inserted between spans,
  *   because a span boundary is not a word boundary (`1.73m` + `²`)
  * - **markdown** is what the editor is handed back. A single newline is a line
@@ -138,7 +138,7 @@ const BLOCK_OPENER = /^(?:(>)|(#)(?=#{0,5}(?:\s|$))|([-+*])(?=\s)|\d{1,9}([.)])(
 /**
  * A line that holds a link **does not open with a block**: read as a quote or
  * a list, the line is kept as the characters it was written with
- * (`parse.server.ts`), and its links with it. The opening mark is escaped so
+ * (`parse.server.ts`), and its links with it. The opening marker is escaped so
  * the line reads as the text and links the tree holds. A line with no link
  * goes out bare — it comes back as the same characters either way.
  */
@@ -146,8 +146,8 @@ function plainLine(markdown: string, line: Line): string {
   if (!line.some((span) => span.href !== undefined)) return markdown
   const opener = BLOCK_OPENER.exec(markdown)
   if (opener === null) return markdown
-  const mark = (opener.slice(1) as (string | undefined)[]).find((group) => group !== undefined) ?? ""
-  const at = opener[0].lastIndexOf(mark)
+  const marker = (opener.slice(1) as (string | undefined)[]).find((group) => group !== undefined) ?? ""
+  const at = opener[0].lastIndexOf(marker)
   return `${markdown.slice(0, at)}\\${markdown.slice(at)}`
 }
 

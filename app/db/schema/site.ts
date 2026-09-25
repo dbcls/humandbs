@@ -20,11 +20,11 @@ export const locale = pgEnum("locale", ["ja", "en"])
 
 /**
  * A page of site content. **No versions and no pins** — the version machinery,
- * the ledger and fixes apply to research only, and site content is not part of
+ * the `label_pin` table and fixes apply to research only, and site content is not part of
  * the public search either.
  *
  * Each revision of a guideline is a document of its own, at the address it
- * already answers at (`{slug}/version/{n}`), including the current one. Each is
+ * already responds at (`{slug}/version/{n}`), including the current one. Each is
  * a self-contained text, and treating them as versions of one thing is what
  * left the English side of several of them as empty shells.
  */
@@ -65,9 +65,9 @@ export const documentContent = pgTable("document_content", {
  * so the current guideline exists once rather than as two copies that drift.
  * An admin moves the pointer; nothing does it on publish.
  *
- * `currentId` is NOT NULL and the row it names cannot be deleted, because this
+ * `currentId` is NOT NULL and the row it identifies cannot be deleted, because this
  * slug is baked into submission metadata held elsewhere and has to keep
- * answering. What is left to run into is a target that is unpublished in one
+ * responding. What is left to run into is a target that is unpublished in one
  * language, which the management screen reports.
  *
  * **The slug space spans this table and `document`**, so uniqueness across the
@@ -86,7 +86,7 @@ export const documentSeries = pgTable("document_series", {
  * date rather than a page with a slug. It gets a draft because the current
  * system has no way to hold an unpublished one.
  *
- * **`publishedAt` carries a JST value in a column with no zone**, and it says
+ * **`publishedAt` has a JST value in a column with no zone**, and it reports
  * two things at once: where the item sits in the order, and whether it is
  * public at all — one dated ahead of now is not shown yet. Holding the value
  * the way it is written and read means no conversion anywhere, and the
@@ -115,7 +115,7 @@ export const newsContent = pgTable("news_content", {
 
 /**
  * The site-wide alert. On or off, with no schedule: the two alerts the
- * current site carries both leave their window empty, and a window would make
+ * current site has both leave their window empty, and a window would make
  * "is this shown" a question with two answers to combine.
  *
  * Navigation is not here. It is a constant in `app/public/navigation.ts`,

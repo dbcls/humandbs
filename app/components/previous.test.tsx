@@ -55,7 +55,7 @@ describe("CompareTable", () => {
     expect(html.indexOf("公開中の v4")).toBeLessThan(html.indexOf("この下書き"))
   })
 
-  it("says a state in words and marks the other side whole, since the two cannot be compared piece by piece", () => {
+  it("shows a state in words and marks the other side whole, since the two cannot be compared piece by piece", () => {
     const html = draw(
       <CompareTable
         locale="ja"
@@ -185,7 +185,7 @@ describe("RowsCompare", () => {
     expect(html).not.toMatch(/bg-diff-/)
   })
 
-  it("says how many rows each side holds, a side holding none included", () => {
+  it("shows how many rows each side holds, a side holding none included", () => {
     const html = draw(
       <RowsCompare
         locale="ja"

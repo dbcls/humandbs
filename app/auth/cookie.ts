@@ -1,5 +1,5 @@
 /**
- * The name the signed-in session is carried under.
+ * The name the signed-in session is kept under.
  *
  * **It is on its own so that something outside the application can read it.**
  * The e2e run hands a browser a session it did not sign in for

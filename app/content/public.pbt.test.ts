@@ -14,7 +14,7 @@ const PREVIEW: PublicOptions = { keepUnsettled: true }
  */
 const STRUCTURAL = new Set(["state", "kind"])
 
-/** Every non-empty string a value carries, ignoring the discriminators. */
+/** Every non-empty string a value has, ignoring the discriminators. */
 function strings(value: unknown, into = new Set<string>()): Set<string> {
   if (typeof value === "string") {
     if (value !== "") into.add(value)
@@ -74,7 +74,7 @@ describe("publicResearchContent", () => {
     }))
   })
 
-  it("carries no string the content does not have", () => {
+  it("has no string the content does not have", () => {
     fc.assert(fc.property(researchContentArb, modeArb, (content, options) => {
       const source = strings(content)
       for (const value of strings(publicResearchContent(content, options))) {
@@ -110,7 +110,7 @@ describe("publicDatasetContent", () => {
     }))
   })
 
-  it("carries no string the content does not have", () => {
+  it("has no string the content does not have", () => {
     fc.assert(fc.property(
       datasetContentArb, filesArb, modeArb,
       (content, files, options) => {

@@ -1,10 +1,10 @@
 /**
  * Fixture drafts that put the review screens into the states a curator meets
- * in practice: open questions, marks, fields nobody has settled or translated
+ * in practice: open questions, review presses, fields nobody has settled or translated
  * yet, and a dataset nobody has pinned an accession to.
  *
  * **Idempotent by a marker, not by clearing anything first.** Each draft this
- * makes carries an administrators' memo whose body is fixed; finding that memo
+ * makes has an administrators' memo whose body is fixed; finding that memo
  * under a research is how a rerun recognises a draft it already made and
  * leaves it alone, rather than growing a second one every time this is run.
  * Nothing here writes a row outside the functions `drafts.server.ts` and
@@ -48,11 +48,11 @@ import {
 } from "./drafts.server"
 import { draftDatasetIds, ownedDatasets, readDatasetEntry, readDraft, readPublishedDataset } from "./queries.server"
 
-const MARK = "[seed-dev-review]"
-const REVIEW_DRAFT_MEMO = `${MARK} レビュー画面確認用の共有 draft`
+const SEED_TAG = "[seed-dev-review]"
+const REVIEW_DRAFT_MEMO = `${SEED_TAG} レビュー画面確認用の共有 draft`
 const REVIEW_DRAFT_NOTE = "提供者からの回答待ち。次回定例で状況を確認する。"
-const EMPTY_DRAFT_MEMO = `${MARK} 空の draft（レビュー画面確認用）`
-const EXPIRED_SHARE_MEMO = `${MARK} 期限切れの共有リンクを持つ draft（レビュー画面確認用）`
+const EMPTY_DRAFT_MEMO = `${SEED_TAG} 空の draft（レビュー画面確認用）`
+const EXPIRED_SHARE_MEMO = `${SEED_TAG} 期限切れの共有リンクを持つ draft（レビュー画面確認用）`
 
 /** Well in the past, and fixed rather than relative to now — it only has to stay expired. */
 const PAST_SHARE_EXPIRY = new Date("2025-01-01T00:00:00Z")
@@ -64,7 +64,7 @@ const PROVIDER_A = { sub: null, name: "データ提供者 A" }
 const PROVIDER_B = { sub: null, name: "データ提供者 B" }
 
 export interface SeedReviewResult {
-  /** hum0127: a shared draft carrying comments, marks and unsettled fields. */
+  /** hum0127: a shared draft with comments, review presses and unsettled fields. */
   reviewDraftId: string
   /** hum0127: a published dataset the review draft describes otherwise, if the research has one. */
   changedDatasetId: string | null
@@ -85,7 +85,7 @@ async function researchByHumLabel(db: Executor, label: string): Promise<string |
   return row?.researchId ?? null
 }
 
-/** The draft under this research already carrying the given memo, if there is one. */
+/** The draft under this research already with the given memo, if there is one. */
 async function draftMarkedWith(db: Executor, researchId: string, memo: string): Promise<string | null> {
   const [row] = await db
     .select({ draftId: comment.draftId })
@@ -160,7 +160,7 @@ function reviewDraftContent(): ResearchContent {
 /**
  * hum0127's shared review draft: field comments (two open, one resolved, one
  * of them on a dataset's value slot), two comments on the draft as a whole,
- * two memos, both kinds of mark from different people, and three datasets —
+ * two memos, both kinds of review press from different people, and three datasets —
  * two of the research's own and one this draft made, still unpinned.
  */
 async function ensureReviewDraft(db: Database, researchId: string): Promise<string> {
@@ -360,7 +360,7 @@ async function ensureOneSentenceRewritten(db: Database, draftId: string): Promis
   if (saved.status !== "saved") throw new Error(`rewriting a sentence of the updating draft: ${saved.status}`)
 }
 
-/** An empty draft marked with `memo`, made only when no draft already carries that mark. */
+/** An empty draft marked with `memo`, made only when no draft already has that indicator. */
 async function ensureMarkedDraft(
   db: Database,
   researchId: string,

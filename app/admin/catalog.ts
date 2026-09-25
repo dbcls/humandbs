@@ -45,10 +45,10 @@ export function termCodeProblem(code: string): CodeProblem | null {
 /**
  * The code a new key or term is stored under, made from its English label.
  *
- * **Nobody is asked for it.** The code is an address the public side carries
+ * **Nobody is asked for it.** The code is an address the public side has
  * (`?q=experimental-method:atac-seq`), not a name a curator chooses — and
- * asking for one is asking somebody to know which characters a query can hold
- * unquoted. The label already says what the value is.
+ * requesting one is requesting somebody to know which characters a query can hold
+ * unquoted. The label already reports what the value is.
  *
  * **A vocabulary that arrives with codes of its own keeps them** — ICD10 writes
  * `C34`, and a slug made from the label would be a second name for the same
@@ -82,7 +82,7 @@ export function freeCode(wanted: string, taken: ReadonlySet<string>): string {
  * The code a new key takes: clear of the keys the catalog holds and of the
  * field names the search owns (`codeProblem`). A key labelled "Title" is stored
  * as `title-2` rather than refused — the label is the curator's to choose, and
- * the code is only where the key lives in an address.
+ * the code is only where the key is defined in an address.
  */
 export function freeKeyCode(wanted: string, held: Iterable<string>): string {
   return freeCode(wanted, new Set([...held, ...BUILT_IN_FIELDS.keys()]))
@@ -128,7 +128,7 @@ export const SETTLED_VOCABULARIES: ReadonlySet<string> = new Set([
  * consecutive.
  *
  * **A place that is not there leaves the order alone**, as does an entry that
- * is not: what a screen can ask for is bounded by what it was showing, and a
+ * is not: what a screen can request is bounded by what it was showing, and a
  * request from a stale screen should do nothing rather than something else.
  */
 export function movedTo<T extends { id: string }>(
@@ -163,7 +163,7 @@ export function moved<T extends { id: string }>(
  * What a field of an analysis method holds.
  *
  * **Only the four an experiment field can be typed as are here.** `single` and
- * `accession` belong to the two fields a dataset carries, which this screen
+ * `accession` belong to the two fields a dataset has, which this screen
  * does not show (`catalog.server.ts`) — an axis offering them would hold values
  * that can never leave anything.
  */
@@ -189,7 +189,7 @@ export const TERM_SORT_KEYS = ["code", "label"] as const
 export type TermSortKey = typeof TERM_SORT_KEYS[number]
 export const TERM_SORT: TermSortKey = "code"
 
-/** What the listing reads off a field. The screen's row carries more. */
+/** What the listing reads off a field. The screen's row has more. */
 export interface KeyFilterRow {
   code: string
   labelJa: string

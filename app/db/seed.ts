@@ -1,10 +1,10 @@
 /**
  * Seeding published rows in the database tests.
  *
- * **A version carries the description of every dataset it lists**, so there is
+ * **A version has the description of every dataset it lists**, so there is
  * no separate place to write a description into before publishing one — it is
- * handed in here and folded into the version, the same shape a publish leaves
- * behind. Tests that only need a research to exist publicly say so in one call
+ * handed in here and merged into the version, the same shape a publish leaves
+ * behind. Tests that only need a research to exist publicly report it in one call
  * rather than assembling the rows themselves, which is what keeps them from
  * drifting apart when the shape moves.
  */
@@ -28,7 +28,7 @@ export async function seedResearch(db: Executor, humLabel: string): Promise<stri
   return id
 }
 
-/** A dataset identity with its accession pinned. It carries no description. */
+/** A dataset identity with its accession pinned. It has no description. */
 export async function seedDataset(
   db: Executor,
   researchId: string,

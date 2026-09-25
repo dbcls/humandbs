@@ -61,7 +61,7 @@ async function createDataset(
   return id
 }
 
-/** What the next version will say about each dataset, until it folds them in. */
+/** What the next version will report about each dataset, until it merges them in. */
 const descriptions = new Map<string, DatasetContent>()
 
 async function publish(
@@ -116,7 +116,7 @@ describe("the research listing", () => {
     expect(view.rows.map((row) => row.humLabel)).toEqual(["hum0001"])
   })
 
-  it("says how many the other listing matches for the same conditions", async () => {
+  it("reports how many the other listing matches for the same conditions", async () => {
     const researchId = await createResearch("hum0001")
     const first = await createDataset(researchId, "JGAD000001", "ATAC-seq")
     const second = await createDataset(researchId, "JGAD000002", "ATAC-seq")
@@ -131,7 +131,7 @@ describe("the research listing", () => {
 
   /*
     **It counts the search, not the words in it.** Following it goes to the
-    address the pair of tabs goes to, and that carries every condition in
+    address the pair of tabs goes to, and that has every condition in
     force — so a count taken from the typed words alone would name a number of
     rows the reader does not find on arriving. The count and the listing it
     counts are asserted against each other here for that reason.
@@ -214,8 +214,8 @@ describe("the research listing", () => {
 
   /*
     **Lifting everything lifts the words too.** They are one of the conditions
-    listed, and a control saying it takes all of them off while one stays is
-    saying something untrue about the list directly above it.
+    listed, and a control indicating it takes all of them off while one stays is
+    indicating something untrue about the list directly above it.
   */
   it("empties the box as well when everything in force is lifted", async () => {
     const researchId = await createResearch("hum0001")
@@ -228,7 +228,7 @@ describe("the research listing", () => {
     expect(view.clearHref).toBe("/research")
   })
 
-  it("answers a query it cannot read with the failure rather than with everything", async () => {
+  it("handles a query it cannot read with the failure rather than with everything", async () => {
     const researchId = await createResearch("hum0001")
     await publish(researchId, 1, [], "研究題目")
     await rebuildSearchDocs(db)
@@ -242,7 +242,7 @@ describe("the research listing", () => {
 
   /**
    * The ordering a reader is reading in may not change under them for having
-   * refined: an ordering that only some queries can carry would come and go
+   * refined: an ordering that only some queries can have would come and go
    * with the shape of the query.
    */
   it("opens on the newest change, whether or not words were searched for", async () => {
@@ -283,7 +283,7 @@ describe("the dataset listing", () => {
 })
 
 describe("a search submitted from the box", () => {
-  it("is answered with the address it should have, so it can be shared", async () => {
+  it("is responded with the address it should have, so it can be shared", async () => {
     const answer = await canonicalRedirect(
       new URL("http://localhost/research?k=NGS%28Exome%29"),
       "research",
@@ -382,7 +382,7 @@ describe("a search submitted from the box", () => {
  * end.
  *
  * **One of the three names no code at all**, which is the state the disease
- * type exists for: it carries a name and nothing to count it by.
+ * type exists for: it has a name and nothing to count it by.
  */
 async function withDiseases(): Promise<void> {
   const { id: setId } = only(await db.insert(s.vocabularySet)
@@ -457,7 +457,7 @@ describe("refining a listing", () => {
 
     const view = await datasetListPage(request("/dataset"))
 
-    // C349 is what the dataset carries; the root is what the panel offers.
+    // C349 is what the dataset has; the root is what the panel offers.
     const disease = facetOf(view, "disease")
     expect(disease.values.map((value) => [value.code, value.count]))
       .toEqual([["C34", 1], ["C61", 1]])
@@ -484,7 +484,7 @@ describe("refining a listing", () => {
     }
   })
 
-  it("answers a listing asked for with year 0000 with the failure rather than failing", async () => {
+  it("responds to a listing asked for with year 0000 with the failure rather than failing", async () => {
     await withDiseases()
 
     const view = await datasetListPage(request(`/dataset?q=${encodeURIComponent("date_published:[0000-01-01 TO *]")}`))
@@ -505,7 +505,7 @@ describe("refining a listing", () => {
 
     const view = await datasetListPage(request("/dataset?q=disease%3AC34"))
 
-    // One row matches, and the value that is not chosen still says what it
+    // One row matches, and the value that is not chosen still reports what it
     // would add — a count taken under the whole query would be zero and gone.
     expect(view.total).toBe(1)
     expect(facetOf(view, "disease").values.map((value) => [value.code, value.count]))
@@ -531,7 +531,7 @@ describe("refining a listing", () => {
     const view = await datasetListPage(request("/dataset?q=disease%3AC34"))
 
     // The code rides along, the same as on the panel: a disease is filed under
-    // a key the reader can carry away, where a platform's code is a slug.
+    // a key the reader can take away, where a platform's code is a slug.
     expect(view.conditions.map((chip) => `${chip.field ?? ""}/${chip.code ?? "-"}/${chip.value}`))
       .toEqual(["疾患/C34/気管支及び肺の悪性新生物"])
     expect(view.conditions.map((chip) => chip.href)).toEqual(["/dataset"])
@@ -540,13 +540,13 @@ describe("refining a listing", () => {
   it("offers the roots and nothing below them", async () => {
     await withDiseases()
 
-    // Not a way down the tree: C349 is what one of the datasets carries, and
+    // Not a way down the tree: C349 is what one of the datasets has, and
     // the panel still offers only the root it rolls up to.
     const disease = facetOf(await datasetListPage(request("/dataset")), "disease")
     expect(disease.values.map((value) => value.code)).toEqual(["C34", "C61"])
   })
 
-  it("keeps a disease that names no code off the panel and in the full text", async () => {
+  it("keeps a disease that identifies no code off the panel and in the full text", async () => {
     await withDiseases()
 
     // Three datasets are published and two of them are countable: the facet is
@@ -557,7 +557,7 @@ describe("refining a listing", () => {
   })
 })
 
-describe("a facet with more values than stand in its box", () => {
+describe("a facet with more values than are shown in its box", () => {
   /** A flat vocabulary with more terms than the box can hold at once. */
   async function withManyMethods(count: number): Promise<void> {
     const { id: setId } = only(await db.insert(s.vocabularySet)
@@ -597,10 +597,10 @@ describe("a facet with more values than stand in its box", () => {
   }
 
   /**
-   * The list scrolls inside its box rather than being cut short, so nothing
+   * The list scrolls inside its box rather than being truncated, so nothing
    * here decides how much of it the reader can reach.
    */
-  it("carries every one of them", async () => {
+  it("has every one of them", async () => {
     await withManyMethods(11)
 
     expect(facetOf(await datasetListPage(request("/dataset")), "assay").values)
@@ -610,7 +610,7 @@ describe("a facet with more values than stand in its box", () => {
   it("keeps a chosen value on the panel even when nothing matches it any more", async () => {
     await withManyMethods(2)
 
-    // A keyword nothing carries, so every count is zero and every unchosen
+    // A keyword nothing has, so every count is zero and every unchosen
     // value is gone; the chosen one has to stay or it cannot be taken off.
     const view = await datasetListPage(request("/dataset?q=zzzz+assay%3Amethod-00"))
 

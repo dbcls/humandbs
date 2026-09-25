@@ -42,13 +42,13 @@ export const middleware: Route.MiddlewareFunction[] = [
 
 /**
  * The language is read from the address rather than from a header or a cookie,
- * so a page has one language whoever asks for it and a link can name the
+ * so a page has one language whoever requests it and a link can name the
  * language it points at.
  *
  * The alert is loaded here because it belongs to every page. It is one small
- * read, and asking each loader for it instead would mean a page that forgot it
+ * read, and querying each loader for it instead would mean a page that forgot it
  * silently stops announcing. The header's account area is here for the same
- * reason; a request with no session cookie asks the database nothing at all.
+ * reason; a request with no session cookie queries the database for nothing at all.
  *
  * **Only the name and whether the person is an administrator leave the server.**
  * Capabilities are derived per request where they are checked, and putting them
@@ -72,7 +72,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 /**
- * The site's own marks, served from `public/` and carried over from v1 as they
+ * The site's own indicators, served from `public/` and kept from v1 as they
  * are — a favicon is the one thing a reader recognises in a row of tabs, so
  * changing it would be changing the site rather than rebuilding it.
  */
@@ -89,17 +89,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const data = useRouteLoaderData<typeof loader>("root")
   const locale = data?.locale ?? DEFAULT_LOCALE
   /**
-   * **The management area wears a different frame**, and which one is read from
+   * **The management area is shown with a different frame**, and which one is read from
    * the address rather than from the route that matched: this sits above the
    * route tree and is drawn for the error boundary too, where no loader has
-   * run. What it drops is what the portal says to its readers — the global
+   * run. What it drops is what the portal shows to its readers — the global
    * navigation, the notices and the sitemap — none of which is addressed to
    * somebody who came here to edit, and which together take 550px of every
    * screen's height before any of its own content begins.
    *
    * **The address alone is not enough.** Every screen under `/admin` demands a
    * session, but an address under it that matches no screen falls through to
-   * the catch-all and answers 404 without one — so the frame and its
+   * the catch-all and responds with 404 without one — so the frame and its
    * destinations would be drawn for anybody who typed a wrong address. Reading
    * the account as well means a stranger gets the portal's own 404, with the
    * navigation that lets them leave it.
@@ -134,8 +134,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         below them instead it moves with however many notices are up that day.
       */}
       {/*
-        **The photograph is the portal's, and a management screen does not wear
-        it.** It is the subject a reader meets on the way in; under a table of
+        **The photograph is the portal's, and a management screen is not shown with
+        it.** It is the subject a reader meets first; under a table of
         397 rows it is texture behind text and nothing else.
       */}
       <body
@@ -146,15 +146,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <SiteHeader locale={locale} account={data?.account ?? null} managing={managing} />
         {/*
           **Keyed on the path so that going to another page raises them again.**
-          This stands outside the outlet, so a client-side navigation does not
+          This is shown outside the outlet, so a client-side navigation does not
           unmount it and what a reader closed here would stay closed for the
           rest of the visit — which is the one thing closing a notice must not
           mean.
         */}
         {/*
           **Not over a share link's page either.** What is there is a draft
-          being checked before it is published, and an alert speaks to the
-          site's readers about the site — standing over the draft it reads as
+          being checked before it is published, and an alert addresses the
+          site's readers about the site — shown over the draft it reads as
           part of what is being checked.
         */}
         {!managing && !isPreviewPath(path) && (
@@ -162,7 +162,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
         <div className="flex-1">
           {/*
-            What the cart says back when it is pressed. **It belongs to the
+            What the cart shows back when it is pressed. **It belongs to the
             page's own content rather than to the window**: it sticks to the top
             of this box, so it lies over the first rows of whatever listing
             raised it and follows the reader down. Put in a corner of the window

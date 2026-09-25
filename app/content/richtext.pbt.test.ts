@@ -20,7 +20,7 @@ describe("toPlainText", () => {
     }))
   })
 
-  it("carries the text of the spans and nothing besides the line breaks", () => {
+  it("has the text of the spans and nothing besides the line breaks", () => {
     fc.assert(fc.property(richTextArb, (rich) => {
       const spans = rich.flatMap((line) => line.map((span) => span.text)).join("")
       expect(toPlainText(rich).replaceAll("\n", "")).toBe(spans)

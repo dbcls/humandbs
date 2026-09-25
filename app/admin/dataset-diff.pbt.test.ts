@@ -2,19 +2,19 @@ import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { datasetContentInputArb } from "./arbitraries/draft"
-import { diffDatasetInput, takeDatasetField } from "./dataset-diff"
+import { diffDatasetInput, importDatasetField } from "./dataset-diff"
 
 /**
  * The diff and the taking of a field share one path vocabulary and nothing in
- * the type system says so: the diff names paths, the take walks a structure,
- * and a disagreement between them would leave a field that says it changed and
+ * the type system reports it: the diff names paths, the import walks a structure,
+ * and a disagreement between them would leave a field that reports it changed and
  * cannot be taken. **This law is the only thing that ties them together.**
  */
 describe("the conflict diff over a dataset", () => {
   it("leaves nothing to report once every field it reported has been taken", () => {
     fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (mine, theirs) => {
       const taken = diffDatasetInput(mine, theirs)
-        .reduce((into, path) => takeDatasetField(into, theirs, path), mine)
+        .reduce((into, path) => importDatasetField(into, theirs, path), mine)
 
       expect(diffDatasetInput(taken, theirs)).toEqual([])
     }))
@@ -40,7 +40,7 @@ describe("the conflict diff over a dataset", () => {
     }))
   })
 
-  it("does not see the text a slot kept behind a state that says there is no value", () => {
+  it("does not see the text a slot kept behind a state that reports there is no value", () => {
     fc.assert(fc.property(datasetContentInputArb, fc.string(), (input, leftover) => {
       const hidden = {
         ...input,
@@ -65,7 +65,7 @@ describe("the conflict diff over a dataset", () => {
     }))
   })
 
-  it("names a slot only one side carries as a change to the list, not to the slot", () => {
+  it("names a slot only one side has as a change to the list, not to the slot", () => {
     fc.assert(fc.property(datasetContentInputArb, (input) => {
       fc.pre(input.values.length > 0)
       const dropped = { ...input, values: input.values.slice(1) }

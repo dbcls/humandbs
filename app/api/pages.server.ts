@@ -1,5 +1,5 @@
 /**
- * What each endpoint of the JSON API answers.
+ * What each endpoint of the JSON API responds with.
  *
  * Every one of them ends at `apiResearch` or `apiDataset` (`./view.ts`), so a
  * single object, a search hit and a line of the bulk stream are the same thing
@@ -10,10 +10,10 @@
  * a citation gains nothing from a second round trip, and the answer names the
  * primary label anyway, so the caller learns which one is current from the body.
  *
- * **A box that the store did not list is an empty box here.** The public page
+ * **A prefix that the store did not list is an empty prefix here.** The public page
  * drops its download section when the store is silent, but an answer whose
  * shape depended on whether an unrelated system replied would be worse than one
- * that says the listing is empty — and the listing is not what the API promises
+ * that reports the listing is empty — and the listing is not what the API promises
  * to be complete.
  */
 
@@ -26,7 +26,7 @@ import {
   type StoredFile,
 } from "~/content/public"
 import { getDb } from "~/db/client.server"
-import { everyPublicBox, publicBoxesOf } from "~/files/listing.server"
+import { everyPublicListing, publicListingsOf } from "~/files/listing.server"
 import { parsePageNumber } from "~/paging"
 import {
   loadCatalog,
@@ -147,10 +147,10 @@ export async function researchEntry(
   const version = wanted === "latest" ? latest : findVersion(versions, wanted)
   if (version === null) return problemResponse(notFound(request, "research-version"))
 
-  const [context, cau, boxes, labels] = await Promise.all([
+  const [context, cau, listings, labels] = await Promise.all([
     contextOf(),
     cauByHumLabel(db, [resolved.primaryLabel]),
-    publicBoxesOf([resolved.primaryLabel]),
+    publicListingsOf([resolved.primaryLabel]),
     publishedDatasetLabels(db, citedDatasetIds(version.content)),
   ])
 
@@ -166,7 +166,7 @@ export async function researchEntry(
     context,
     labels,
     cau,
-    files: boxes.get(resolved.primaryLabel) ?? [],
+    files: listings.get(resolved.primaryLabel) ?? [],
   }))
 }
 
@@ -188,7 +188,7 @@ export async function researchVersionEntry(
 async function researchObjects(
   bundles: readonly ResearchBundle[],
   context: ApiContext,
-  boxes: ReadonlyMap<string, StoredFile[]>,
+  listings: ReadonlyMap<string, StoredFile[]>,
 ): Promise<ApiResearch[]> {
   if (bundles.length === 0) return []
   const db = getDb()
@@ -200,7 +200,7 @@ async function researchObjects(
     context,
     labels,
     cau,
-    files: boxes.get(bundle.humLabel) ?? [],
+    files: listings.get(bundle.humLabel) ?? [],
   }))
 }
 
@@ -233,17 +233,17 @@ export async function datasetEntry(request: Request, datasetId: string): Promise
   const [bundle] = await datasetBundles(db, [resolved.id])
   if (bundle === undefined) return problemResponse(notFound(request, "dataset"))
 
-  const [context, boxes] = await Promise.all([contextOf(), publicBoxesOf([bundle.humLabel])])
-  return jsonResponse(datasetObject(bundle, boxes.get(bundle.humLabel) ?? [], context))
+  const [context, listings] = await Promise.all([contextOf(), publicListingsOf([bundle.humLabel])])
+  return jsonResponse(datasetObject(bundle, listings.get(bundle.humLabel) ?? [], context))
 }
 
 function datasetObjects(
   bundles: readonly DatasetBundle[],
   context: ApiContext,
-  boxes: ReadonlyMap<string, StoredFile[]>,
+  listings: ReadonlyMap<string, StoredFile[]>,
 ): ApiDataset[] {
   return bundles.map((bundle) =>
-    datasetObject(bundle, boxes.get(bundle.humLabel) ?? [], context))
+    datasetObject(bundle, listings.get(bundle.humLabel) ?? [], context))
 }
 
 // --- search ---------------------------------------------------------------
@@ -272,7 +272,7 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   }
 
   // **The direction is asked for apart from the key** (`app/search/sort.ts`), so
-  // a caller that wants the other end of a listing says so instead of counting
+  // a caller that wants the other end of a listing reports it instead of counting
   // its way to the last page. A direction that is neither is refused for the
   // same reason an ordering that cannot be given is.
   const wanted = url.searchParams.get("order")
@@ -294,11 +294,11 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   const context = await contextOf()
   const ranking = result.hits.map((hit) =>
     target === "research" ? hit.humLabel : hit.datasetLabel ?? "")
-  const boxes = await publicBoxesOf(result.hits.map((hit) => hit.humLabel))
+  const listings = await publicListingsOf(result.hits.map((hit) => hit.humLabel))
   const ids = result.hits.map((hit) => hit.targetId)
   const hits: (ApiResearch | ApiDataset)[] = target === "research"
-    ? await researchObjects(await researchBundles(db, ids), context, boxes)
-    : datasetObjects(await datasetBundles(db, ids), context, boxes)
+    ? await researchObjects(await researchBundles(db, ids), context, listings)
+    : datasetObjects(await datasetBundles(db, ids), context, listings)
 
   return jsonResponse({
     total: result.total,
@@ -309,7 +309,7 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   })
 }
 
-/** The batched read answers in its own order; the ranking is what was asked for. */
+/** The batched read responds in its own order; the ranking is what was asked for. */
 function inOrder<T extends { id: string }>(objects: readonly T[], order: readonly string[]): T[] {
   const byId = new Map(objects.map((object) => [object.id, object]))
   return order.flatMap((id) => {
@@ -374,10 +374,10 @@ export async function searchFields(): Promise<Response> {
 
 export async function apiBulk(target: SearchTarget): Promise<Response> {
   const db = getDb()
-  const [context, boxes] = await Promise.all([contextOf(), everyPublicBox()])
+  const [context, listings] = await Promise.all([contextOf(), everyPublicListing()])
   const objects: (ApiResearch | ApiDataset)[] = target === "research"
-    ? await researchObjects(await researchBundles(db, null), context, boxes)
-    : datasetObjects(await datasetBundles(db, null), context, boxes)
+    ? await researchObjects(await researchBundles(db, null), context, listings)
+    : datasetObjects(await datasetBundles(db, null), context, listings)
 
   return ndjsonResponse([...objects].sort((a, b) => a.id.localeCompare(b.id)))
 }

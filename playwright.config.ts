@@ -11,22 +11,22 @@ import { SESSION_COOKIE } from "./app/auth/cookie"
  * without being written twice.
  *
  * **The two projects are the two kinds of reader.** A file named `.user.spec.ts`
- * needs somebody signed in and carries the stored session; everything else is
+ * needs somebody signed in and has the stored session; everything else is
  * the anonymous reader, and runs with no session at all so that a page which
  * only works while signed in cannot pass by accident.
  */
 const baseURL = process.env.HUMANDBS_E2E_BASE_URL ?? "http://proxy:8080"
 
 /**
- * The session the signed-in scenarios carry.
+ * The session the signed-in scenarios have.
  *
  * **A browser cannot sign in from out here.** The identity provider is a third
  * party with a login page of its own, and a scenario that drove it would be
  * testing that page rather than these screens — so the session is made on the
  * instance (`npm run e2e:session`) and handed over in the environment.
  *
- * Without it the cookie jar is empty, and the screens that need one answer with
- * a redirect to sign in: the scenarios say so and skip. **What they must not do
+ * Without it the cookie jar is empty, and the screens that need one respond with
+ * a redirect to sign in: the scenarios report it and skip. **What they must not do
  * is pass** — which is why the cookie is the only thing this adds.
  */
 export const SIGNED_IN = process.env.HUMANDBS_E2E_SESSION ?? ""
@@ -58,7 +58,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60_000,
   // **What is being driven may be across a network.** The default of five
-  // seconds is a local figure; a deployment answering a search takes longer
+  // seconds is a local figure; a deployment responding to a search takes longer
   // than that often enough to fail a scenario that is not broken.
   expect: { timeout: 15_000 },
   reporter: "list",

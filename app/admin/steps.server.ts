@@ -1,10 +1,10 @@
 /**
- * Where a draft stands on each of its steps, for the strip every screen of a
- * draft carries.
+ * A draft's progress on each of its steps, for the step indicator every screen of a
+ * draft has.
  *
  * **The states are facts the screens already know how to find**, gathered in
  * one place so that the four screens say the same thing: the listing's
- * length, the share and the threads the review screen reads, and the gate the
+ * length, the share and the threads the review screen reads, and the publish check the
  * confirmation screen runs. A screen that has some of them already hands them
  * in rather than reading them twice.
  */
@@ -18,14 +18,14 @@ import { readShare, type DraftReviewSummary } from "~/review/queries.server"
 import { isShareOpen } from "~/review/share"
 
 import { draftDatasets } from "./datasets"
-import type { PublishGate } from "./gate"
-import { draftGate } from "./publish.server"
+import type { PublishCheck } from "./publish-check"
+import { draftPublishCheck } from "./publish.server"
 import { draftDatasetIds, ownedDatasets } from "./queries.server"
 
 export interface DraftStepsView {
   /** How many datasets the version would list. */
   datasets: number
-  /** Whether the share link answers right now. */
+  /** Whether the share link responds right now. */
   shared: boolean
   /** Comments nobody has closed. The memo is not counted: it is a note, not a question. */
   unresolved: number
@@ -39,14 +39,14 @@ export function stepsView(input: {
   datasetIds: readonly string[]
   shared: boolean
   unresolved: number
-  gate: PublishGate | null
+  publishCheck: PublishCheck | null
 }): DraftStepsView {
   return {
     datasets: input.datasetIds.length,
     shared: input.shared,
     unresolved: input.unresolved,
-    blocks: input.gate?.blocks.length ?? 0,
-    findings: input.gate?.findings.length ?? 0,
+    blocks: input.publishCheck?.blocks.length ?? 0,
+    findings: input.publishCheck?.findings.length ?? 0,
   }
 }
 
@@ -55,30 +55,30 @@ export async function draftSteps(
   researchId: string,
   draftId: string,
   content: ResearchContent,
-  known: { gate?: PublishGate, shared?: boolean, unresolved?: number } = {},
+  known: { publishCheck?: PublishCheck, shared?: boolean, unresolved?: number } = {},
 ): Promise<DraftStepsView> {
-  const [shared, unresolved, gate] = await Promise.all([
+  const [shared, unresolved, publishCheck] = await Promise.all([
     known.shared ?? sharedNow(db, draftId),
     known.unresolved ?? unresolvedNow(db, draftId),
-    known.gate ?? gateNow(db, researchId, draftId),
+    known.publishCheck ?? publishCheckNow(db, researchId, draftId),
   ])
   return stepsView({
     datasetIds: await draftDatasetIds(db, draftId, researchId, content.datasetIds),
     shared,
     unresolved,
-    gate,
+    publishCheck,
   })
 }
 
 /**
- * Where every draft of a research stands, read once for the whole research
+ * Where every draft of a research remains, read once for the whole research
  * rather than once per draft — the research screen's table, which shows every
  * draft's steps at the same time.
  *
  * **The private bucket is asked once and given to all**, the way
- * `draftReviewSummaries` asks the comment table once for every draft rather
- * than once per draft: a research with six drafts asking the file store six
- * times for the same listing would be five wasted round trips. The gate
+ * `draftReviewSummaries` requests the comment table once for every draft rather
+ * than once per draft: a research with six drafts requesting the file store six
+ * times for the same listing would be five wasted round trips. The publish check
  * itself still runs once per draft — it is read under that draft's own row —
  * but it no longer reads the store to do it.
  */
@@ -93,14 +93,14 @@ export async function researchDraftSteps(
   // The research's datasets are read once for every draft: each draft
   // publishes all of them but what another draft made (`admin/datasets.ts`).
   const owned = await ownedDatasets(db, researchId)
-  const gates = await Promise.all(drafts.map((draft) => draftGate(db, draft.id, privateFiles)))
+  const publishChecks = await Promise.all(drafts.map((draft) => draftPublishCheck(db, draft.id, privateFiles)))
   return new Map(drafts.map((draft, at) => {
     const review = reviewOf.get(draft.id)
     return [draft.id, stepsView({
       datasetIds: draftDatasets(owned, draft.id, draft.content.datasetIds).map((row) => row.id),
       shared: review?.shared ?? false,
       unresolved: review?.unresolved ?? 0,
-      gate: gates[at] ?? null,
+      publishCheck: publishChecks[at] ?? null,
     })]
   }))
 }
@@ -115,13 +115,13 @@ async function unresolvedNow(db: Database, draftId: string): Promise<number> {
 }
 
 /**
- * The gate as the strip counts it.
+ * The publish check as the step indicator counts it.
  *
- * **The store not answering is not a reason to leave every screen of the
- * draft without its strip.** The file finding is then left out of the count;
- * the confirmation screen, which cannot do without it, asks the store itself.
+ * **The store not responding is not a reason to leave every screen of the
+ * draft without its step indicator.** The file finding is then left out of the count;
+ * the confirmation screen, which cannot do without it, requests the store itself.
  */
-async function gateNow(db: Database, researchId: string, draftId: string): Promise<PublishGate | null> {
+async function publishCheckNow(db: Database, researchId: string, draftId: string): Promise<PublishCheck | null> {
   const privateFiles = await privateNames(researchId).catch(() => new Set<string>())
-  return draftGate(db, draftId, privateFiles)
+  return draftPublishCheck(db, draftId, privateFiles)
 }

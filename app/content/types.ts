@@ -1,8 +1,8 @@
 /**
  * The shape of everything stored as content.
  *
- * Content lives in JSONB columns, so these types are the only place that says
- * which fields are translated, which carry a single language-independent value,
+ * Content is defined in JSONB columns, so these types are the only place that reports
+ * which fields are translated, which have a single language-independent value,
  * and which hold a separate value per language. There is no second list of that
  * classification anywhere — a list would drift from the types.
  *
@@ -15,14 +15,14 @@
  * empty this makes four ways a field appears; a value slot adds a fifth by being
  * absent from the list altogether.
  *
- * `unknown` is what the publish gate enumerates: a value that should exist but
+ * `unknown` is what the publish check enumerates: a value that should exist but
  * has not been settled. **Empty is a different thing** — nobody has touched it
  * yet, which is what a required-field check looks for. Emptiness is a value
  * rather than a state of its own, so that "the empty state" and "the empty
  * value" never become two ways of writing the same thing.
  *
  * `not-applicable` is settled information — the value does not exist — so the
- * gate leaves it alone and the public page renders it as an explicit "not
+ * publish check leaves it alone and the public page renders it as an explicit "not
  * applicable" rather than hiding the row.
  */
 export type Slot<T>
@@ -31,7 +31,7 @@ export type Slot<T>
     | { state: "not-applicable" }
 
 /**
- * A plain pair of languages, carrying no state.
+ * A plain pair of languages, with no state.
  *
  * This is for what curators do not edit: the cache of an upstream system, whose
  * two languages are whatever upstream has, and site content, which has neither
@@ -43,7 +43,7 @@ export interface Bilingual {
 }
 
 /**
- * A translated pair. **Each language carries its own state**, because a field
+ * A translated pair. **Each language has its own state**, because a field
  * can be settled in one language while still being a question in the other —
  * the published data has `ご教示ください(英語タイトル)` sitting in `en` while
  * `ja` holds a value.
@@ -54,7 +54,7 @@ export interface Bilingual {
  * Untranslated is derived rather than stored: both languages hold a value and
  * exactly one of them is empty. Where the states differ — a value on one side,
  * `unknown` on the other — it counts as unsettled instead, so one missing value
- * is never listed twice by the publish gate.
+ * is never listed twice by the publish check.
  */
 export interface TranslatedText {
   ja: Slot<string>
@@ -67,7 +67,7 @@ export interface TranslatedText {
  * superscript, no raw HTML.
  *
  * `text` never contains a newline. A line break is a line, which is the only
- * thing the structure above a span says.
+ * thing the structure above a span reports.
  */
 export interface Span {
   text: string
@@ -82,7 +82,7 @@ export type Line = Span[]
  * separates paragraphs; the empty rich text is `[]`.
  *
  * Prose is held this way rather than as markdown so that the set of things a
- * curator may write is the type itself. A markdown string says nothing about
+ * curator may write is the type itself. A markdown string implies nothing about
  * its own contents until it is parsed, which puts the allowed set in two places
  * — the check at save time and the sanitiser at render time — and lets raw HTML
  * arrive on the portal's own origin. Input is still written as markdown and
@@ -123,7 +123,7 @@ export interface Link {
  * one number could only keep such a cell as prose. Prose cannot be filtered by,
  * so a second key was minted beside it holding the number alone, and the same
  * fact ended up in two places for an editor to keep in step. Measured over the
- * dump, more than half of what these keys carry is several numbers: 77% of the
+ * dump, more than half of what these keys have is several numbers: 77% of the
  * variant counts and 56% of the data volumes run to more than one line.
  *
  * The index needed nothing for this — `search_facet_number` has always been one
@@ -147,7 +147,7 @@ export interface NumberValue {
    * The upper end of a value written as a width — `0.9-1.3 GB`, `85〜120 GB` —
    * converted the same way `value` is. **Optional rather than always present**,
    * so that every place a bare number was ever written on its own continues to
-   * compile and needs no escort of a field it never had anything to say about.
+   * compile and needs no escort of a field it never had anything to report about.
    * Absent and `null` mean the same thing: there is no upper end. Code that
    * builds a `NumberValue` writes `null` explicitly; only values from before
    * this field existed omit it.
@@ -158,26 +158,26 @@ export interface NumberValue {
   /**
    * What qualifies the number without being part of it — `平均`, the assembly a
    * count was made against, the format a volume is in. Kept apart from the
-   * label because it says nothing about which number this is.
+   * label because it implies nothing about which number this is.
    */
   note: string | null
 }
 
 /**
  * A value under a catalog key. The `kind` mirrors `content_key.value_type`, so
- * a value carries enough to be rendered without reading the catalog, and
+ * a value has enough to be rendered without reading the catalog, and
  * writing one whose kind disagrees with its key is rejected at the write path.
  *
  * **The state sits inside**: translated prose holds one per language,
  * everything else holds one. Putting a state on the slot as well would be a
- * second place to say the same thing.
+ * second place to report the same thing.
  */
 /**
  * One disease an experiment studied: **what a classification calls it, and what
  * the article called it.**
  *
  * The two names answer different questions and neither replaces the other. The
- * terms carry the classification's own heading, which is what makes a disease
+ * terms have the classification's own heading, which is what makes a disease
  * countable — every value under `C34` is the same disease to a facet. The name
  * is what the article wrote, and that is what a reader reads: `NASH`, not
  * `その他の明示された炎症性肝疾患`.
@@ -188,7 +188,7 @@ export interface NumberValue {
  * study took. Hanging the name on the term would collapse them.
  *
  * **The terms may be none, and may span sets.** A disease no classification
- * names is an ordinary value with a name only, and a rare disease can carry
+ * names is an ordinary value with a name only, and a rare disease can have
  * both an ICD10 term and a term of another classification. Nothing here knows
  * which classification a term belongs to: the set is the classification.
  */
@@ -206,7 +206,7 @@ export type ContentValue
     /**
      * **In the value state the list is never empty.** A key holding no number
      * at all is a key with no slot, and the write path drops it rather than
-     * storing a value that says nothing (`app/admin/dataset-form.server.ts`).
+     * storing a value that reports nothing (`app/admin/dataset-form.server.ts`).
      */
     | { kind: "number", values: Slot<NumberValue[]> }
     /** Same rule as the numbers: an empty list is a slot that should not exist. */
@@ -263,7 +263,7 @@ export interface ResearchContent {
  * What a published version holds: the body, with the description of every
  * dataset it lists written out inside it.
  *
- * **A version answers for its own moment without asking anything else.**
+ * **A version accounts for its own moment without requesting anything else.**
  * Opening an old one shows the datasets of that time described as they were
  * described then, so a later correction does not reach backwards.
  *
@@ -276,13 +276,13 @@ export interface VersionContent extends Omit<ResearchContent, "datasetIds"> {
   datasets: PublishedDataset[]
 }
 
-/** A dataset as a version carries it: which one it is, and how it read then. */
+/** A dataset as a version has it: which one it is, and how it read then. */
 export interface PublishedDataset extends DatasetContent {
   datasetId: string
 }
 
 /**
- * A name the listing puts in the provider column. Carries an identity for the
+ * A name the listing puts in the provider column. Has an identity for the
  * same reason the sections below do: the editor addresses an element by it, so
  * that reordering the list does not move what points at one.
  */
@@ -292,10 +292,10 @@ export interface ListingProvider {
 }
 
 /**
- * Array elements carry an identity because comments address them.
+ * Array elements have an identity because comments address them.
  *
  * **A name and an affiliation, and nothing the page does not show.** Contact
- * details and an address were once carried here without being rendered; a
+ * details and an address were once kept here without being rendered; a
  * value the page does not show is one more box to fill and one more way for
  * it to leak, and nothing else.
  */
@@ -334,27 +334,27 @@ export interface RelatedPublication {
   /**
    * Dataset IDs written by hand: another research's dataset, or an accession
    * the portal does not hold. Kept as written and looked up in the portal's
-   * ledger when drawn, so one that is registered later is found then. Absent
+   * `label_pin` table when drawn, so one that is registered later is found then. Absent
    * means none.
    */
   externalIds?: string[]
 }
 
 /**
- * What a dataset holds. The identity carries no version of its own: a
+ * What a dataset holds. The identity has no version of its own: a
  * description belongs to the research version that lists it, so two versions
  * can describe the same dataset differently and each stays right for its own
  * moment.
  */
 export interface DatasetContent {
   /**
-   * Only NHA IDs carry a date here. Dates for external accessions come from the
+   * Only NHA IDs have a date here. Dates for external accessions come from the
    * archive cache, so storing one would be a second source for the same fact.
    */
   releaseDate: string | null
   /**
    * A set of names selected from the nodes the research's bucket lists,
-   * written in the box's own order (by name). A note on top of that listing,
+   * written in the prefix's own order (by name). A note on top of that listing,
    * not a claim that the files exist: the listing is the only source, so a
    * selection pointing at something absent renders as nothing.
    */
@@ -368,7 +368,7 @@ export interface Experiment {
   id: string
   /**
    * Free text taken from the line above the table in the source article. It is
-   * a display label, not a controlled term — the facet vocabulary lives in
+   * a display label, not a controlled term — the facet vocabulary is defined in
    * `values` under a catalog key.
    */
   label: Slot<string>
@@ -398,7 +398,7 @@ export interface AlertContent {
  * slot is a path like any other place, only the subject has to be named.
  *
  * **Two anchors name no place.** `draft` is the draft as a whole — what a
- * reader has to say about the research rather than about one field — and a
+ * reader has to report about the research rather than about one field — and a
  * share link shows and accepts it like any field. `memo` is the administrators'
  * own note about the work: what the draft is for, who was telephoned, why
  * publishing is waiting. A share link neither shows one nor accepts one, and a
@@ -411,7 +411,7 @@ export type CommentAnchor
     | { kind: "dataset-field", datasetId: string, path: string }
 
 /**
- * What a reader of a share link says about the draft as a whole, apart from a
+ * What a reader of a share link reports about the draft as a whole, apart from a
  * comment: that they have finished commenting and it is the office's turn to
  * read, or that there is nothing left to fix. Neither is an approval —
  * publishing is an administrator's own decision.

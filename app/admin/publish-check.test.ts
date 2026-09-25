@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 
-import { countFindings, publishGate, type GateDataset, type GateInput } from "./gate"
+import { countFindings, checkPublish, type PublishCheckDataset, type PublishCheckInput } from "./publish-check"
 
 /**
  * The two kinds of check, and the line between them.
@@ -15,8 +15,8 @@ import { countFindings, publishGate, type GateDataset, type GateInput } from "./
 
 const NO_UPSTREAM = new Map<string, string>()
 
-function gate(over: Partial<GateInput> = {}) {
-  return publishGate({
+function check(over: Partial<PublishCheckInput> = {}) {
+  return checkPublish({
     humLabel: "hum0001",
     content: emptyResearchContent(),
     datasets: [],
@@ -31,7 +31,7 @@ function gate(over: Partial<GateInput> = {}) {
  * only ones that fire: an upstream accession with an empty cache is upstream
  * not knowing it, which is a finding of its own.
  */
-function dataset(over: Partial<GateDataset> = {}): GateDataset {
+function dataset(over: Partial<PublishCheckDataset> = {}): PublishCheckDataset {
   return {
     datasetId: "d1",
     label: "hum0001-NHA001",
@@ -50,11 +50,11 @@ function withValue(value: DatasetContent["values"][number]): DatasetContent {
 
 describe("what stops a publish", () => {
   it("is a research with no hum label pinned", () => {
-    expect(gate({ humLabel: null }).blocks).toEqual([{ kind: "hum-label-missing" }])
+    expect(check({ humLabel: null }).blocks).toEqual([{ kind: "hum-label-missing" }])
   })
 
   it("is a dataset in the version with no dataset id pinned", () => {
-    const blocks = gate({
+    const blocks = check({
       datasets: [dataset({ datasetId: "a" }), dataset({ datasetId: "b", label: null })],
     }).blocks
 
@@ -62,13 +62,13 @@ describe("what stops a publish", () => {
   })
 
   it("is nothing at all once both are pinned", () => {
-    expect(gate({ datasets: [dataset()] }).blocks).toEqual([])
+    expect(check({ datasets: [dataset()] }).blocks).toEqual([])
   })
 })
 
 describe("what is listed and passed", () => {
   it("names every unsettled value, in the research and in its datasets alike", () => {
-    const found = gate({
+    const found = check({
       content: withTitle({ state: "unknown" }, filled("t")),
       datasets: [dataset({
         content: withValue({ keyId: "k1", value: { kind: "single", value: { state: "unknown" } } }),
@@ -87,34 +87,34 @@ describe("what is listed and passed", () => {
   })
 
   it("counts a pair with a value on one side and a question on the other as unsettled only", () => {
-    const findings = gate({ content: withTitle(filled("ある"), { state: "unknown" }) }).findings
+    const findings = check({ content: withTitle(filled("ある"), { state: "unknown" }) }).findings
 
     expect(countFindings(findings)).toEqual({ unsettled: 1 })
   })
 
   it("counts a pair with a value on one side and nothing on the other as untranslated only", () => {
-    const findings = gate({ content: withTitle(filled("ある"), filled("")) }).findings
+    const findings = check({ content: withTitle(filled("ある"), filled("")) }).findings
 
     expect(countFindings(findings)).toEqual({ untranslated: 1 })
   })
 
-  it("says nothing about a pair nobody has started", () => {
-    expect(gate({ content: withTitle(filled(""), filled("")) }).findings).toEqual([])
+  it("implies nothing about a pair nobody has started", () => {
+    expect(check({ content: withTitle(filled(""), filled("")) }).findings).toEqual([])
   })
 
   it("names a dataset the version lists and nobody has described", () => {
-    const findings = gate({ datasets: [dataset({ content: null })] }).findings
+    const findings = check({ datasets: [dataset({ content: null })] }).findings
 
     expect(findings).toEqual([{ kind: "empty-dataset", datasetId: "d1" }])
   })
 
   /**
    * Publishing writes a version of its own, so no other publish can have moved
-   * what this draft holds. The gate has nothing to warn about here, and a draft
+   * what this draft holds. The publish check has nothing to warn about here, and a draft
    * that wants to see another version compares against it in the editor.
    */
-  it("says nothing about what other publishes did", () => {
-    const findings = gate({ datasets: [dataset()] }).findings
+  it("implies nothing about what other publishes did", () => {
+    const findings = check({ datasets: [dataset()] }).findings
 
     expect(findings).toEqual([])
   })
@@ -124,7 +124,7 @@ describe("checking the pins against the application system", () => {
   const loaded = (pairs: [string, string][]) => new Map(pairs)
 
   it("names an accession the application system does not know", () => {
-    const findings = gate({
+    const findings = check({
       datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000999", "hum0001"]]),
     }).findings
@@ -135,7 +135,7 @@ describe("checking the pins against the application system", () => {
   })
 
   it("names an accession the application system gives to another research", () => {
-    const findings = gate({
+    const findings = check({
       datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000001", "hum0777"]]),
     }).findings
@@ -148,8 +148,8 @@ describe("checking the pins against the application system", () => {
     }])
   })
 
-  it("says nothing when the two agree", () => {
-    const findings = gate({
+  it("reports nothing when the two agree", () => {
+    const findings = check({
       datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000001", "hum0001"]]),
     }).findings
@@ -158,7 +158,7 @@ describe("checking the pins against the application system", () => {
   })
 
   it("leaves alone the ids no application system issues", () => {
-    const findings = gate({
+    const findings = check({
       datasets: [
         dataset({ datasetId: "a", label: "hum0001-NHA001" }),
         dataset({ datasetId: "b", label: "DRA000001" }),
@@ -171,7 +171,7 @@ describe("checking the pins against the application system", () => {
   })
 
   it("cannot compare anything for a research with no hum label of its own", () => {
-    const findings = gate({
+    const findings = check({
       humLabel: null,
       datasets: [dataset({ label: "JGAD000001" })],
       upstream: loaded([["JGAD000001", "hum0777"]]),
@@ -182,7 +182,7 @@ describe("checking the pins against the application system", () => {
 })
 
 describe("files a dataset selects", () => {
-  function selecting(names: string[], datasetId = "d1"): GateDataset {
+  function selecting(names: string[], datasetId = "d1"): PublishCheckDataset {
     return dataset({
       datasetId,
       content: { ...emptyDatasetContent(), fileSelection: names },
@@ -190,7 +190,7 @@ describe("files a dataset selects", () => {
   }
 
   it("lists a selected file that is still in the private bucket", () => {
-    const findings = gate({
+    const findings = check({
       datasets: [selecting(["closed.zip"])],
       privateFiles: new Set(["closed.zip"]),
     }).findings
@@ -198,8 +198,8 @@ describe("files a dataset selects", () => {
     expect(findings).toEqual([{ kind: "private-file", datasetId: "d1", fileName: "closed.zip" }])
   })
 
-  it("says nothing about a selected file a reader can already fetch", () => {
-    const findings = gate({
+  it("implies nothing about a selected file a reader can already fetch", () => {
+    const findings = check({
       datasets: [selecting(["open.zip"])],
       privateFiles: new Set(["closed.zip"]),
     }).findings
@@ -207,10 +207,10 @@ describe("files a dataset selects", () => {
     expect(findings).toEqual([])
   })
 
-  it("says nothing about a selection the box does not hold at all", () => {
+  it("implies nothing about a selection the prefix does not hold at all", () => {
     // The selection is a note over the listing rather than a claim that the
     // file exists, so a name in neither bucket simply does not draw.
-    const findings = gate({
+    const findings = check({
       datasets: [selecting(["gone.zip"])],
       privateFiles: new Set(["closed.zip"]),
     }).findings
@@ -219,7 +219,7 @@ describe("files a dataset selects", () => {
   })
 
   it("lists one file once per dataset that selects it, because each is a place to look", () => {
-    const findings = gate({
+    const findings = check({
       datasets: [selecting(["closed.zip"], "d1"), selecting(["closed.zip"], "d2")],
       privateFiles: new Set(["closed.zip"]),
     }).findings
@@ -227,8 +227,8 @@ describe("files a dataset selects", () => {
     expect(findings.map((finding) => finding.kind)).toEqual(["private-file", "private-file"])
   })
 
-  it("says nothing about a dataset with no description to hold a selection", () => {
-    const findings = gate({
+  it("implies nothing about a dataset with no description to hold a selection", () => {
+    const findings = check({
       datasets: [dataset({ content: null })],
       privateFiles: new Set(["closed.zip"]),
     }).findings
@@ -237,7 +237,7 @@ describe("files a dataset selects", () => {
   })
 
   it("never stops the publish over a file", () => {
-    const blocks = gate({
+    const blocks = check({
       datasets: [selecting(["closed.zip"])],
       privateFiles: new Set(["closed.zip"]),
     }).blocks

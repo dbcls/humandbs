@@ -10,8 +10,8 @@ import { applicationUrl, href, readLocale } from "~/public/urls"
 import type { Route } from "./+types/data-use"
 
 /**
- * Where a user starts. The first way in is the portal's own research list, so
- * it is an internal address rather than the absolute one the CMS page carried —
+ * Where a user starts. The first link is to the portal's own research list, so
+ * it is an internal address rather than the absolute one the CMS page kept —
  * that link named the production host, which sent readers of any other
  * deployment to production.
  */

@@ -6,7 +6,7 @@ import type { Route } from "./+types/admin-draft-comments"
 /**
  * What an open editor posts a comment to.
  *
- * It answers with the draft's comments rather than a redirect: the editing
+ * It responds with the draft's comments rather than a redirect: the editing
  * screens hold work that has not been saved, and a redirect would navigate away
  * from it. The review screen posts the same intents to its own page.
  */

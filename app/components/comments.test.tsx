@@ -12,9 +12,9 @@ import {
   CommentTimeline,
   type CommentContext,
   DraftNote,
-  groupedByPlace,
+  groupedByAnchor,
   OpenComments,
-  PlaceGroup,
+  AnchorGroup,
   postingInFlight,
   WholeNote,
 } from "./comments"
@@ -49,10 +49,10 @@ function comment(anchor: CommentAnchor, resolved = false): CommentView {
   }
 }
 
-/** The text only the opened panel's body carries — absent from the closed trigger. */
+/** The text only the opened panel's body has — absent from the closed trigger. */
 const PANEL_BODY_TEXT = "コメントを書く"
 
-describe("the mark beside a field's comments", () => {
+describe("the indicator beside a field's comments", () => {
   it("names itself plainly when the caller has no field name to give", () => {
     const html = render(<CommentSpot context={CONTEXT} at={AT} comments={[]} />)
     expect(html).toContain("title=\"コメント\"")
@@ -93,13 +93,13 @@ describe("the mark beside a field's comments", () => {
 })
 
 describe("the entry for the draft's memo", () => {
-  it("names itself and carries no count while empty", () => {
+  it("names itself and has no count while empty", () => {
     const html = render(<DraftNote context={CONTEXT} comments={[]} />)
     expect(html).toContain("メモ")
     expect(html).not.toMatch(/>\d+</)
   })
 
-  it("carries a count once there is a line, never coloured — a memo answers no question", () => {
+  it("has a count once there is a line, never coloured — a memo responds to no question", () => {
     const html = render(
       <DraftNote context={CONTEXT} comments={[comment({ kind: "memo" })]} />,
     )
@@ -109,7 +109,7 @@ describe("the entry for the draft's memo", () => {
 })
 
 describe("the entry for comments on the draft as a whole", () => {
-  it("names itself and carries no count while empty", () => {
+  it("names itself and has no count while empty", () => {
     const html = render(<WholeNote context={CONTEXT} comments={[]} />)
     expect(html).toContain("全体へのコメント")
     expect(html).not.toMatch(/>\d+</)
@@ -153,7 +153,7 @@ describe("the entry for the open comments", () => {
     expect(html).toContain("text-accent")
   })
 
-  it("leaves resolved questions and memo lines out of the count, and carries none while nothing is open", () => {
+  it("leaves resolved questions and memo lines out of the count, and has none while nothing is open", () => {
     const html = render(
       <OpenComments
         context={CONTEXT}
@@ -174,7 +174,7 @@ describe("the open comments, gathered under their places", () => {
   }
 
   it("makes one group per place, and a dataset is one place however many fields", () => {
-    const groups = groupedByPlace([
+    const groups = groupedByAnchor([
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k1" }, false),
       comment({ kind: "research-field", path: "title" }, false),
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k2" }, false),
@@ -186,7 +186,7 @@ describe("the open comments, gathered under their places", () => {
   })
 
   it("keeps the order the places were first spoken about", () => {
-    const groups = groupedByPlace([
+    const groups = groupedByAnchor([
       comment({ kind: "draft" }, false),
       comment({ kind: "research-field", path: "summary.aims" }, false),
       comment({ kind: "draft" }, false),
@@ -196,8 +196,8 @@ describe("the open comments, gathered under their places", () => {
     expect(groups.map((group) => group.comments.length)).toEqual([2, 1])
   })
 
-  it("carries the kind of each place, so its mark can be drawn", () => {
-    const groups = groupedByPlace([
+  it("has the kind of each place, so its indicator can be drawn", () => {
+    const groups = groupedByAnchor([
       comment({ kind: "research-field", path: "title" }, false),
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k1" }, false),
       comment({ kind: "draft" }, false),
@@ -207,7 +207,7 @@ describe("the open comments, gathered under their places", () => {
   })
 
   it("keeps two fields of the research apart", () => {
-    const groups = groupedByPlace([
+    const groups = groupedByAnchor([
       comment({ kind: "research-field", path: "title" }, false),
       comment({ kind: "research-field", path: "summary.aims" }, false),
     ], named)
@@ -222,42 +222,42 @@ describe("the open comments, gathered under their places", () => {
       comment({ kind: "dataset-field", datasetId: "d1", path: "experiments.e1.values.k2" }, false),
       comment({ kind: "dataset-field", datasetId: "d1", path: "values.k1" }, false),
     ]
-    const byField = groupedByPlace(fields, (anchor) => anchor.kind === "dataset-field" ? anchor.path : "", true)
+    const byField = groupedByAnchor(fields, (anchor) => anchor.kind === "dataset-field" ? anchor.path : "", true)
     expect(byField.map((group) => [group.name, group.comments.length])).toEqual([["values.k1", 2], ["experiments.e1.values.k2", 1]])
-    expect(byField.map((group) => group.mark)).toEqual(["type", "type"])
+    expect(byField.map((group) => group.icon)).toEqual(["type", "type"])
 
-    const whole = groupedByPlace(fields, named)
+    const whole = groupedByAnchor(fields, named)
     expect(whole).toHaveLength(1)
-    expect(whole[0]?.mark).toBe("database")
+    expect(whole[0]?.icon).toBe("database")
   })
 })
 
 describe("one place in the open comments", () => {
   const group = (_kind: CommentAnchor["kind"], anchor: CommentAnchor, count: number) => {
-    const made = groupedByPlace(Array.from({ length: count }, () => comment(anchor, false)), () => "ID 未発行")[0]
+    const made = groupedByAnchor(Array.from({ length: count }, () => comment(anchor, false)), () => "ID 未発行")[0]
     if (made === undefined) throw new Error("no group")
     return made
   }
 
-  it("names the place in a band at the body's size and colour, with its mark and its count", () => {
+  it("names the place in a header at the body's size and colour, with its indicator and its count", () => {
     const html = render(
-      <PlaceGroup context={CONTEXT} group={group("dataset-field", { kind: "dataset-field", datasetId: "d1", path: "values.k1" }, 2)} />,
+      <AnchorGroup context={CONTEXT} group={group("dataset-field", { kind: "dataset-field", datasetId: "d1", path: "values.k1" }, 2)} />,
     )
-    const band = /<h3 class="([^"]*)">(.*?)<\/h3>/.exec(html)
-    expect(band?.[1]).toContain("bg-surface")
-    expect(band?.[1]).toContain("text-ink")
-    expect(band?.[1]).not.toContain("text-ink-muted")
-    expect(band?.[1]).not.toContain("text-xs")
-    expect(band?.[2]).toContain("ID 未発行")
-    expect(band?.[2]).toMatch(/>2</)
+    const header = /<h3 class="([^"]*)">(.*?)<\/h3>/.exec(html)
+    expect(header?.[1]).toContain("bg-surface")
+    expect(header?.[1]).toContain("text-ink")
+    expect(header?.[1]).not.toContain("text-ink-muted")
+    expect(header?.[1]).not.toContain("text-xs")
+    expect(header?.[2]).toContain("ID 未発行")
+    expect(header?.[2]).toMatch(/>2</)
   })
 
   it("marks a dataset and a field of the research differently", () => {
-    const mark = (kind: CommentAnchor["kind"], anchor: CommentAnchor): string =>
-      /<h3[^>]*>(<svg.*?<\/svg>)/.exec(render(<PlaceGroup context={CONTEXT} group={group(kind, anchor, 1)} />))?.[1] ?? ""
-    const dataset = mark("dataset-field", { kind: "dataset-field", datasetId: "d1", path: "values.k1" })
-    const field = mark("research-field", { kind: "research-field", path: "title" })
-    const whole = mark("draft", { kind: "draft" })
+    const iconOf = (kind: CommentAnchor["kind"], anchor: CommentAnchor): string =>
+      /<h3[^>]*>(<svg.*?<\/svg>)/.exec(render(<AnchorGroup context={CONTEXT} group={group(kind, anchor, 1)} />))?.[1] ?? ""
+    const dataset = iconOf("dataset-field", { kind: "dataset-field", datasetId: "d1", path: "values.k1" })
+    const field = iconOf("research-field", { kind: "research-field", path: "title" })
+    const whole = iconOf("draft", { kind: "draft" })
 
     expect(dataset).not.toBe("")
     expect(new Set([dataset, field, whole]).size).toBe(3)
@@ -265,7 +265,7 @@ describe("one place in the open comments", () => {
 
   it("closes the place in a border, and draws every row of it", () => {
     const html = render(
-      <PlaceGroup context={CONTEXT} group={group("research-field", { kind: "research-field", path: "title" }, 3)} />,
+      <AnchorGroup context={CONTEXT} group={group("research-field", { kind: "research-field", path: "title" }, 3)} />,
     )
     expect(html).toMatch(/^<section class="[^"]*\bborder\b/)
     expect(html.match(/<p class="whitespace-pre-wrap/g)).toHaveLength(3)
@@ -289,7 +289,7 @@ describe("one comment in the panel", () => {
     expect(html).not.toContain("anonymous")
   })
 
-  it("says an open question is open, and offers an administrator resolving and deleting", () => {
+  it("shows an open question is open, and offers an administrator resolving and deleting", () => {
     const html = render(<CommentRow context={CONTEXT} comment={comment(FIELD_ANCHOR)} />)
     expect(html).toContain("未解決")
     expect(html).toMatch(/解決<\/button>/)
@@ -326,7 +326,7 @@ describe("the box for the next comment", () => {
     expect(reader).toContain("投稿する")
   })
 
-  it("says what goes in the box, and asks a signed-out reader for a name", () => {
+  it("shows what goes in the box, and requests a name from a signed-out reader", () => {
     const html = render(<CommentTimeline context={READER} comments={[]} at={AT} placeholder={PANEL_BODY_TEXT} />)
     expect(html).toContain(`placeholder="${PANEL_BODY_TEXT}"`)
     expect(html).toContain("name=\"name\"")
@@ -338,7 +338,7 @@ describe("the box for the next comment", () => {
   })
 })
 
-describe("the mark's size", () => {
+describe("the indicator's size", () => {
   it("is drawn at the height of a line, and widens only what a finger has to find", () => {
     const html = render(<CommentSpot context={CONTEXT} at={AT} comments={[]} />)
     expect(html).not.toContain("min-h-tap")
@@ -347,10 +347,10 @@ describe("the mark's size", () => {
 })
 
 /**
- * The one fetcher a panel shares carries posting, resolving and deleting, so
+ * The one fetcher a panel shares has posting, resolving and deleting, so
  * each control has to tell its own work from the others' by what was sent.
  */
-describe("what the shared fetcher is carrying", () => {
+describe("what the shared fetcher is handling", () => {
   function carrying(state: "idle" | "submitting" | "loading", fields: Record<string, string> | null) {
     const formData = fields === null ? undefined : new FormData()
     for (const [name, value] of Object.entries(fields ?? {})) formData?.set(name, value)

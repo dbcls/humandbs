@@ -52,11 +52,11 @@ describe("runHealthChecks", () => {
   })
 
   it("starts every probe before waiting on any of them", async () => {
-    const gate: PromiseWithResolvers<void> = Promise.withResolvers()
+    const release: PromiseWithResolvers<void> = Promise.withResolvers()
     let started = 0
     const probe = async () => {
       started += 1
-      await gate.promise
+      await release.promise
     }
 
     const pending = runHealthChecks([
@@ -66,7 +66,7 @@ describe("runHealthChecks", () => {
     await Promise.resolve()
 
     expect(started).toBe(2)
-    gate.resolve()
+    release.resolve()
     await pending
   })
 

@@ -9,7 +9,7 @@ const doc = (humId: string, data: Record<string, ReturnType<typeof cell>>): EsDa
 })
 
 describe("applyCellEdits", () => {
-  it("puts the headings back into a cell several rows were folded into, in every version that holds it", () => {
+  it("puts the headings back into a cell several rows were merged into, in every version that holds it", () => {
     const docs = [
       doc("hum0014", { "Analysis Methods": cell("GenomeStudio\nPLINK2", "GenomeStudio\nPLINK2") }),
       doc("hum0014", { "Analysis Methods": cell("GenomeStudio\nPLINK2", "x") }),

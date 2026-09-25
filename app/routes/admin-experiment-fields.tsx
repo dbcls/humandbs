@@ -106,7 +106,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
 
-  // Folded, the way back into the pane says how much is in force, because the
+  // Collapsed, the button that reopens the pane shows how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1) + view.types.length
 
@@ -114,7 +114,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
     **The order is only offered over the whole listing.** A field's place is its
     place in the public table, so "up" means the field above it there — which,
     in a narrowed listing, is a row that is not on screen. Rather than let a
-    press move a row past rows nobody can see, the column stands only while
+    press move a row past rows nobody can see, the column remains only while
     nothing is in force.
   */
   const ordered = inForce === 0
@@ -126,7 +126,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
 
     **A dropped row is shown where it was dropped until the server has said
     so.** The drop is one write (`move-key-to`), and the listing the loader
-    sends back after it is the order of record — so the placed order stands
+    sends back after it is the order of record — so the placed order remains
     only while that answer is on its way, and nothing here has to be put back.
   */
   const submit = useSubmit()
@@ -157,24 +157,24 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
     const row = rows.find((one) => one.id === id)
     return row === undefined ? String(id) : catalogLabel(row, locale)
   }
-  const placeOf = (id: UniqueIdentifier) => rows.findIndex((one) => one.id === id) + 1
+  const destinationOf = (id: UniqueIdentifier) => rows.findIndex((one) => one.id === id) + 1
   // What a listener hears: the row by its label, and the place by its number
-  // out of how many, since the row's own label says nothing about where it is.
+  // out of how many, since the row's own label implies nothing about where it is.
   const announcements: Announcements = {
     onDragStart: ({ active }) => t.dragStart(naming(active.id)),
     onDragOver: ({ active, over }) =>
-      over === null ? undefined : t.dragOver(naming(active.id), placeOf(over.id), rows.length),
+      over === null ? undefined : t.dragOver(naming(active.id), destinationOf(over.id), rows.length),
     onDragEnd: ({ active, over }) =>
       over === null
         ? t.dragCancel(naming(active.id))
-        : t.dragEnd(naming(active.id), placeOf(over.id), rows.length),
+        : t.dragEnd(naming(active.id), destinationOf(over.id), rows.length),
     onDragCancel: ({ active }) => t.dragCancel(naming(active.id)),
   }
   // Told to the context so that the ids it writes into the markup are the same
   // on the server and in the browser.
   const dnd = useId()
 
-  // **The answer says what was done, and a move says where the row went** —
+  // **The answer shows what was done, and a move shows where the row went** —
   // the row by its label and the place by its number, as the drag announced it.
   const said = (answer: { did: CatalogIntent, moved?: Moved }) =>
     answer.moved === undefined
@@ -194,8 +194,8 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
       <Card under={false}>
         <Stack gap="normal">
           {/*
-            **The way to make one stands with the name of the screen**, as it
-            does over the other listings, and it asks in a panel: a field takes
+            **The button that makes one is shown with the name of the screen**, as it
+            does over the other listings, and it requests in a panel: a field takes
             two labels before it exists, and two boxes standing open under the
             table are two places to type on a screen whose subject is
             everything else.
@@ -210,7 +210,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
               >
                 {/* **No code is asked for.** It is made from the English
                     label (`admin/catalog.ts` の `codeFrom`) — an address
-                    the public side carries, not a name to choose. */}
+                    the public side has, not a name to choose. */}
                 <LanguagePair>
                   <Field label={t.labelJa} name="labelJa" width="w-full" />
                   <Field label={t.labelEn} name="labelEn" width="w-full" />
@@ -225,7 +225,7 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}
-            // The box is never alone in the pane here: three axes stand under it
+            // The box is never alone in the pane here: three axes are shown under it
             // whatever the reader has asked for.
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
@@ -290,21 +290,21 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
 /**
  * One field.
  *
- * **What the row says is what the field is; what it can be made into is behind
+ * **What the row shows is what the field is; what it can be made into is behind
  * the panel.** Everything on the line is read at a glance down a column — the
- * code, the two labels, what it holds, where it stands, whether it is drawn —
+ * code, the two labels, what it holds, where it remains, whether it is drawn —
  * and none of it is a control that a scanning eye has to step over.
  */
 /**
- * The mark a type is drawn with.
+ * The icon a type is drawn with.
  *
  * **What a key holds is a shape before it is a word**, and the shapes are what
  * separate the four kinds at a glance: strokes on a page for prose, a bulleted
  * set for a value picked from one, a number sign for a measured one, a trace
- * for the one vocabulary that carries a tree. A key that names something
- * elsewhere takes the link's mark rather than a shape of its own.
+ * for the one vocabulary that has a tree. A key that identifies something
+ * elsewhere takes the link's icon rather than a shape of its own.
  */
-const TYPE_MARK: Record<CatalogKeyRow["valueType"], IconName> = {
+const TYPE_ICON: Record<CatalogKeyRow["valueType"], IconName> = {
   text: "type",
   single: "check",
   accession: "link",
@@ -316,7 +316,7 @@ const TYPE_MARK: Record<CatalogKeyRow["valueType"], IconName> = {
 function Row({ entry, ordered, at, of, locale }: {
   entry: CatalogKeyRow
   ordered: boolean
-  /** Where the row stands, which is what says whether it can still move. */
+  /** Where the row remains, which is what shows whether it can still move. */
   at: number
   of: number
   locale: Locale
@@ -346,7 +346,7 @@ function Row({ entry, ordered, at, of, locale }: {
     >
       {/* **A name's column starts at 144px, a sentence's at 160**: a label of
           a few words falls to a second line and stays readable, and the two
-          of them beside five columns that cannot fold are what has to give
+          of them beside five columns that cannot collapse are what has to give
           for the table to fit a 1280px window. */}
       <Td floor="min-w-36">{entry.labelJa}</Td>
       <Td floor="min-w-36">{entry.labelEn}</Td>
@@ -355,7 +355,7 @@ function Row({ entry, ordered, at, of, locale }: {
             are the pair the pane narrows by; the box says the cell holds a
             category of the field rather than something that happened to it.
             Muted, because nothing here is to be picked out of the rows. */}
-        <Badge icon={<Icon name={TYPE_MARK[entry.valueType]} aria-hidden="true" />}>
+        <Badge icon={<Icon name={TYPE_ICON[entry.valueType]} aria-hidden="true" />}>
           {entry.canonicalUnit === null
             ? t.types[entry.valueType]
             : `${t.types[entry.valueType]} (${entry.canonicalUnit})`}
@@ -370,7 +370,7 @@ function Row({ entry, ordered, at, of, locale }: {
           **Both kinds of vocabulary have the screen; only one may be changed
           there.** What a settled vocabulary holds is fixed by what the portal
           is, so its screen refuses every write (`catalog.server.ts`) and draws
-          no control — and the word here says so before the press rather than
+          no control — and the word here shows it before the press rather than
           after it. */}
       <Td nowrap>
         {entry.terms === null
@@ -392,7 +392,7 @@ function Row({ entry, ordered, at, of, locale }: {
           : t.usedCount(entry.used)}
       </Td>
       {ordered && (
-        <Td holds="mark">
+        <Td holds="icon">
           <span className="flex gap-1">
             {/* **The handle is the only place the row can be taken hold of**:
                 the row has other things to press, and a row that can be dragged
@@ -427,7 +427,7 @@ function Row({ entry, ordered, at, of, locale }: {
       )}
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
-          {/* **The save answers what the panel holds**: a row is opened to read
+          {/* **The save determines what the panel holds**: a row is opened to read
               it as often as to change it, and a save that can always be pressed
               says nothing about whether there is anything to send. */}
           <Editing method="post">
@@ -443,12 +443,12 @@ function Row({ entry, ordered, at, of, locale }: {
               icon={<Icon name="edit" />}
               action={() => (
                 <>
-                  {/* **The filled face belongs to the screen's own act**, which
+                  {/* **The filled style belongs to the screen's own act**, which
                       is making a field; a row's save is the ordinary one. */}
                   <Submit intent="update-key" icon={<Icon name="save" />} saves>
                     {t.save}
                   </Submit>
-                  {/* The face says there is something to send to whoever is
+                  {/* The style shows there is something to send to whoever is
                       looking at it; this says it to whoever is not. */}
                   <Unsaved locale={locale} />
                 </>
@@ -472,7 +472,7 @@ function Row({ entry, ordered, at, of, locale }: {
                 warning={t.removeKeyWarning}
                 confirm={t.removeConfirm}
                 size="row"
-                // The way in stays where it is and says why it cannot be
+                // The trigger stays where it is and shows why it cannot be
                 // pressed: a control that vanishes leaves a reader looking
                 // for it, and one that opens only to be refused wastes the press.
                 disabled={entry.inUse ? t.inUseKey : undefined}
@@ -510,11 +510,11 @@ function Undo({ moved, label }: { moved: Moved, label: string }) {
  * GET forms, so a narrowed listing has an address that can be kept and shared —
  * the same rule the other listings follow.
  *
- * **Nothing here waits to be confirmed.** The box asks once the typing has
- * stopped and a tick asks as it is made.
+ * **Nothing here waits to be confirmed.** The field sends the query once the typing has
+ * stopped and a tick sends as it is made.
  *
- * **The box and the ticks are two forms, and each carries what the other
- * holds**, because a form cannot stand inside another.
+ * **The box and the ticks are two forms, and each has what the other
+ * holds**, because a form cannot be shown inside another.
  */
 function Filters({ view, locale }: {
   view: Route.ComponentProps["loaderData"]
@@ -537,7 +537,7 @@ function Filters({ view, locale }: {
         name="q"
         value={view.keyword}
         label={t.find}
-        placeholder={messages.search.boxHint}
+        placeholder={messages.search.searchHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped
@@ -556,7 +556,7 @@ function Filters({ view, locale }: {
               <Checkbox
                 key={one}
                 label={t.types[one]}
-                icon={<Icon name={TYPE_MARK[one]} aria-hidden="true" className="mr-1 text-ink-muted" />}
+                icon={<Icon name={TYPE_ICON[one]} aria-hidden="true" className="mr-1 text-ink-muted" />}
                 name="type"
                 value={one}
                 checked={view.types.includes(one)}

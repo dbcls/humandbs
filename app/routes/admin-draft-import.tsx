@@ -1,14 +1,14 @@
 import { data, Form } from "react-router"
 
-import { takeAction, takePage } from "~/admin/take.server"
+import { importAction, importPage } from "~/admin/import.server"
 import type { UpstreamBranchView } from "~/admin/templates.server"
-import { adminDraftPath, adminDraftTakePath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
-import { AdminBack, WayTo } from "~/components/admin"
+import { adminDraftPath, adminDraftImportPath, adminUpstreamResearchPath, upstreamQuery } from "~/admin/urls"
+import { AdminBack, ScreenLink } from "~/components/admin"
 import { ButtonLink, Heading, Note, Stack } from "~/components/base"
 import { Answer, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section, Table, Td } from "~/components/page"
-import { ApplicationDatasets, ApplicationWarning, researchParts, sourceName, SourceTable, TakeFace } from "~/components/take"
+import { ApplicationDatasets, ApplicationWarning, researchParts, sourceName, SourceTable, ImportForm } from "~/components/import"
 import { BranchCells, BranchDialog, UpstreamNotConnected } from "~/components/upstream"
 import { minuteInJst } from "~/dates"
 import type { Locale } from "~/i18n/locale"
@@ -17,51 +17,51 @@ import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { useRefine } from "~/search-as-typed"
 
-import type { Route } from "./+types/admin-draft-take"
+import type { Route } from "./+types/admin-draft-import"
 
 /** How many registered datasets a row opens with before it counts the rest. */
 
 /**
- * Taking values into a draft from a version, another draft or an
+ * Importing values into a draft from a version, another draft or an
  * application.
  *
  * **Without a source chosen, this is the table of sources**: the research's
  * versions and drafts in the one table the research's own screen draws them in,
  * and this research's application branches with the box to type an ID that
  * has no hum label yet. Choosing one turns the same screen into the three-row
- * face, whose way back is to the table.
+ * form, whose back link leads to the table.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
-  return takePage(request, locale, params)
+  return importPage(request, locale, params)
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
-  const result = await takeAction(request, locale, params)
+  const result = await importAction(request, locale, params)
   return result instanceof Response ? result : data(result, { status: 409 })
 }
 
 export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
   return [
-    { title: adminWindowTitle(messages, location.pathname, loaderData.chosen === null ? messages.admin.take.heading : messages.admin.take.chosenHeading, loaderData.humLabel) },
+    { title: adminWindowTitle(messages, location.pathname, loaderData.chosen === null ? messages.admin.import.heading : messages.admin.import.chosenHeading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },
   ]
 }
 
-export default function AdminDraftTake({ loaderData, actionData }: Route.ComponentProps) {
+export default function AdminDraftImport({ loaderData, actionData }: Route.ComponentProps) {
   const view = loaderData
   const locale = view.locale
   const messages = messagesFor(locale)
-  const t = messages.admin.take
-  const here = adminDraftTakePath(view.researchId, view.draftId)
+  const t = messages.admin.import
+  const here = adminDraftImportPath(view.researchId, view.draftId)
   const chosen = view.chosen
   const application = chosen?.source.kind === "application" ? chosen.source : null
 
   return (
     <Page>
-      {/* Only a refusal is answered: taking it in leaves for the draft. */}
+      {/* Only a refusal is answered: importing it leaves for the draft. */}
       <Answer
         answer={actionData}
         locale={locale}
@@ -80,9 +80,9 @@ export default function AdminDraftTake({ loaderData, actionData }: Route.Compone
                 </Heading>
               )
             : (
-                // **Once a source is chosen, the name says what is being done
-                // and where from**, and the one way out is back to the choice:
-                // leaving for the draft is what taking it in does.
+                // **Once a source is chosen, the name shows what is being done
+                // and where from**, and the one back link returns to the choice:
+                // leaving for the draft is what importing it does.
                 <Heading
                   title={t.chosenHeading}
                   aside={view.humLabel ?? undefined}
@@ -96,9 +96,9 @@ export default function AdminDraftTake({ loaderData, actionData }: Route.Compone
             ? <Sources view={view} here={here} />
             : (
                 <Stack gap="block">
-                  <TakeFace
-                    // A new source is a new face: what was written against
-                    // the last one does not carry over.
+                  <ImportForm
+                    // A new source is a new form: what was written against
+                    // the last one does not persist.
                     key={JSON.stringify(chosen.source.kind === "application"
                       ? chosen.source.applicationId
                       : chosen.source)}
@@ -127,7 +127,7 @@ export default function AdminDraftTake({ loaderData, actionData }: Route.Compone
 function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], here: string }) {
   const locale = view.locale
   const messages = messagesFor(locale)
-  const t = messages.admin.take
+  const t = messages.admin.import
   const templates = messages.admin.templates
   const refine = useRefine({ action: href(locale, here) })
 
@@ -155,9 +155,9 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                       research's; it is looked up in the listing and its ID
                       pasted into the box below. */}
                   <div>
-                    <WayTo to={href(locale, adminUpstreamResearchPath())} icon="inbox">
+                    <ScreenLink to={href(locale, adminUpstreamResearchPath())} icon="inbox">
                       {templates.heading}
-                    </WayTo>
+                    </ScreenLink>
                   </div>
                   {view.application.unknown !== null && <Note kind="warning">{templates.unknown(view.application.unknown)}</Note>}
                   <Form
@@ -173,7 +173,7 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                       width="w-64"
                     />
                     {/* **The word is what the press leads to**: an ID found
-                        opens the same face a row's 取り込み opens. */}
+                        opens the same form a row's 取り込み opens. */}
                     <Submit variant="primary" icon={<Icon name="download" />}>{t.choose}</Submit>
                   </Form>
                   {/* **The columns are the listing's**, less the two every row
@@ -204,7 +204,7 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
   )
 }
 
-/** One of this research's own branches: what it registered, and the way to take it in. */
+/** One of this research's own branches: what it registered, and the link to import it. */
 function BranchRow({ row, here, locale }: {
   row: UpstreamBranchView
   here: string
@@ -221,7 +221,7 @@ function BranchRow({ row, here, locale }: {
           size="row"
           icon={<Icon name="download" />}
         >
-          {messages.admin.take.choose}
+          {messages.admin.import.choose}
         </ButtonLink>
       </Td>
     </tr>

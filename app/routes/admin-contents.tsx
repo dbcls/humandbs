@@ -32,10 +32,10 @@ import type { Route } from "./+types/admin-contents"
 
 /**
  * The articles: the bodies readers hold addresses for, and the pointer each
- * guideline's version-less address carries.
+ * guideline's version-less address has.
  *
  * **One row per address, whether or not it has versions.** The revisions of a
- * guideline hang off its pointer rather than standing beside it, and what acts
+ * guideline hang off its pointer rather than being shown beside it, and what acts
  * on a series as a whole — moving the pointer, adding a revision, retiring the
  * lot — is on the series' own screen.
  *
@@ -47,7 +47,7 @@ import type { Route } from "./+types/admin-contents"
  *
  * **A version-less address whose current revision is not published in some
  * language is reported above the listing.** That address is baked into
- * submission metadata held elsewhere and has to keep answering, and the pointer
+ * submission metadata held elsewhere and has to keep responding, and the pointer
  * is the one way it can stop.
  */
 export async function loader({ request }: Route.LoaderArgs) {
@@ -81,7 +81,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
 
-  // Folded, the way back into the pane says how much is in force, because the
+  // Collapsed, the button that reopens the pane shows how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.versioning.length
@@ -107,11 +107,11 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
       <Card under={false}>
         <Stack gap="normal">
           {/*
-            **The way to make one stands with the name of the screen**, as it
+            **The button that makes one is shown with the name of the screen**, as it
             does over the research listing: it is the one thing a reader comes
             here to do that is not "open one of these".
 
-            **It asks in a panel rather than in a row of its own.** A slug is
+            **It requests in a panel rather than in a row of its own.** A slug is
             the whole of what it takes, and a box for it standing open on the
             screen is a second place to type on a screen whose subject is
             everything else.
@@ -141,7 +141,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}
-            // The box is never alone in the pane here: three axes stand under it
+            // The box is never alone in the pane here: three axes are shown under it
             // whatever the reader has asked for.
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
@@ -176,8 +176,8 @@ interface ViewProps {
 }
 
 /**
- * One address. **A series wears the state of the revision it points at**, since
- * that is what its address answers with; each revision's own state is on the
+ * One address. **A series is shown with the state of the revision it points at**, since
+ * that is what its address responds with; each revision's own state is on the
  * screen that lists them.
  *
  * **The number of revisions is a number.** What it counts is the column's name,
@@ -215,12 +215,12 @@ function Row({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
  * GET forms, so a narrowed listing has an address that can be kept and shared —
  * the same rule the research listing and the public ones follow.
  *
- * **Nothing here waits to be confirmed.** The box asks once the typing has
- * stopped and a tick asks as it is made. A pane that only took effect on a
+ * **Nothing here waits to be confirmed.** The field sends the query once the typing has
+ * stopped and a tick sends as it is made. A pane that only took effect on a
  * press leaves the rows disagreeing with the conditions above them.
  *
- * **The box and the ticks are two forms, and each carries what the other
- * holds**, because a form cannot stand inside another.
+ * **The box and the ticks are two forms, and each has what the other
+ * holds**, because a form cannot be shown inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
@@ -235,7 +235,7 @@ function Filters({ view, locale }: ViewProps) {
         name="q"
         value={view.keyword}
         label={t.find}
-        placeholder={messages.search.boxHint}
+        placeholder={messages.search.searchHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped
@@ -290,7 +290,7 @@ function Filters({ view, locale }: ViewProps) {
 
 /**
  * This listing under a different setting. Everything the reader chose is
- * carried, and the page is the first one unless the page is what changes.
+ * kept, and the page is the first one unless the page is what changes.
  */
 function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<ContentsListingQuery>): string {
   return href(locale, adminContentsPath() + contentsQuery({
@@ -313,7 +313,7 @@ function presentation(view: ViewProps["view"]): Presentation<string> {
   return { size: view.size }
 }
 
-/** The count and the way through the pages, over the rows and again under them. */
+/** The count and the pagination, over the rows and again under them. */
 function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
   return {
     total: view.total,

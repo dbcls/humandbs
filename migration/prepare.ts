@@ -130,7 +130,7 @@ const SRA_ACCESSION = /\b(?:DRA|SRA|ERA|DRR|DRX|DRS|DRP)\d{6}\b/g
 /**
  * v1 copied a cell that listed both archives' accessions into both archives'
  * keys. Where the two keys say the same thing, each keeps its own accessions.
- * A copy that names nothing of one archive is left as it is: emptying a key is
+ * A copy that identifies nothing of one archive is left as it is: emptying a key is
  * not a correction anybody can see was right.
  */
 export function splitArchiveAccessions(experiment: EsExperiment): void {
@@ -167,7 +167,7 @@ export interface SharedSplit {
 
 /**
  * Gives each dataset its own lines of every block that several of the given
- * datasets carry word for word (`inversion.ts`). The datasets are those one
+ * datasets have word for word (`inversion.ts`). The datasets are those one
  * research version lists; a cell the rules cannot settle stays whole on every
  * dataset and is listed for somebody to divide.
  */
@@ -186,10 +186,10 @@ export function splitSharedExperiments(
 
   const stats: SplitStats = { split: 0, shared: 0, review: 0, hand: 0 }
   const review: ReviewItem[] = []
-  for (const carriers of blocks.values()) {
-    const labels = [...new Set(carriers.map((one) => one.label))]
+  for (const holders of blocks.values()) {
+    const labels = [...new Set(holders.map((one) => one.label))]
     if (labels.length < 2) continue
-    const [sample] = carriers
+    const [sample] = holders
     if (sample === undefined) continue
     const result = splitSharedBlock(blockDataFromEs(sample.experiment.data), labels, jgasToJgad, byHand)
     stats.split += result.stats.split
@@ -198,7 +198,7 @@ export function splitSharedExperiments(
     stats.hand += result.stats.hand
     review.push(...result.review)
 
-    for (const { label, experiment } of carriers) {
+    for (const { label, experiment } of holders) {
       const own = result.perDataset.get(label)
       if (own === undefined || !experiment.data) continue
       for (const [key, value] of Object.entries(experiment.data)) {

@@ -32,7 +32,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 import { loadConfig, publicOrigin } from "~/config.server"
 
-import { PRIVATE_BUCKET, PUBLIC_BUCKET, type StoredNode } from "./box"
+import { PRIVATE_BUCKET, PUBLIC_BUCKET, type StoredNode } from "./prefix"
 
 /** How long a signature a browser is about to use stays good for. */
 const UPLOAD_TTL_SECONDS = 60 * 60
@@ -94,9 +94,9 @@ export interface ObjectRef {
 }
 
 /**
- * Whether the store answers for both buckets.
+ * Whether the store is responsible for both buckets.
  *
- * **Both, because a bucket is the published state.** A store that answers for
+ * **Both, because a bucket is the published state.** A store that is responsible for
  * one of them can neither publish a file nor take one back, and a missing
  * bucket is not created as a side effect of writing to it — so a health check
  * that only proved the endpoint is up would pass on a store the app cannot use.
@@ -112,7 +112,7 @@ export async function pingStore(): Promise<void> {
  *
  * No delimiter is passed, so a key with a separator in it comes back as a name
  * with a separator in it. That is deliberate: `common/dac/DAC_summary-1.pdf` is
- * one file to a reader, and hiding it behind a folder the box has no other
+ * one file to a reader, and hiding it behind a folder the prefix has no other
  * notion of would take it out of the listing.
  */
 export async function listPrefix(bucket: Bucket, prefix: string): Promise<StoredNode[]> {
@@ -157,8 +157,8 @@ export async function objectExists(ref: ObjectRef): Promise<boolean> {
 /**
  * Whether the store said "not there" rather than "not allowed" or "not now".
  *
- * The private bucket answers 403 for an absent object as well as a present one,
- * but that is what an anonymous reader sees; a request carrying credentials
+ * The private bucket responds with 403 for an absent object as well as a present one,
+ * but that is what an anonymous reader sees; a request with credentials
  * gets 404. Anything else has to keep the job alive so it is retried.
  */
 function isMissing(error: unknown): boolean {
@@ -220,7 +220,7 @@ export interface MultipartUpload {
  * Starting and finishing stay here because they need the credentials; only the
  * parts are signed away. The content type is fixed at the start and lands on
  * the finished object, so the same guarantee holds as for a single PUT — except
- * for the length, which no part carries and the store therefore cannot pin.
+ * for the length, which no part has and the store therefore cannot pin.
  */
 export async function beginMultipart(
   ref: ObjectRef,

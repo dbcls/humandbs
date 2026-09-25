@@ -26,11 +26,11 @@ describe("the length of one read", () => {
     expect(readLengthOf(entry({ spotLength: "150" }), "SINGLE")).toBe(150)
   })
 
-  it("answers nothing for a layout that is neither, rather than guessing", () => {
+  it("responds with nothing for a layout that is neither, rather than guessing", () => {
     expect(readLengthOf(entry({ spotLength: "300" }), null)).toBeNull()
   })
 
-  it("answers nothing when no spot length is stated", () => {
+  it("responds with nothing when no spot length is stated", () => {
     expect(readLengthOf(entry({}), "SINGLE")).toBeNull()
   })
 
@@ -59,14 +59,14 @@ describe("reading one experiment", () => {
     expect(experimentOf(entry({ libraryStrategy: [] })).strategy).toBe("")
   })
 
-  it("drops instrument models that are blank rather than carrying them", () => {
+  it("drops instrument models that are blank rather than with them", () => {
     const read = experimentOf(entry({ instrumentModel: ["Illumina HiSeq 2500", "  ", ""] }))
 
     expect(read.instrumentModels).toEqual(["Illumina HiSeq 2500"])
   })
 })
 
-describe("folding a submission's libraries into experiments", () => {
+describe("grouping a submission's libraries into experiments", () => {
   const paired = (strategy: string, model: string, readLength: number | null) => ({
     strategy,
     instrumentModels: [model],

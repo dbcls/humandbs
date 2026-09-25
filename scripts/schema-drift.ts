@@ -1,5 +1,5 @@
 /**
- * Whether `app/db/schema/` says something `drizzle/` does not yet.
+ * Whether `app/db/schema/` reports something `drizzle/` does not yet.
  *
  * A schema edit reaches a database only as a migration, so an edit that was
  * never generated is one no database will ever get — and the tests, which run
@@ -18,7 +18,7 @@ import { join, relative } from "node:path"
 
 const ROOT = join(import.meta.dirname, "..")
 const MIGRATIONS = join(ROOT, "drizzle")
-/** drizzle-kit reads `--out` relative to the working directory whatever it is given, so the copy lives inside the repository. */
+/** drizzle-kit reads `--out` relative to the working directory whatever it is given, so the copy is kept inside the repository. */
 const SCRATCH = join(ROOT, "node_modules", ".cache")
 const NOTHING_TO_GENERATE = "No schema changes"
 

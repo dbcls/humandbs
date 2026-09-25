@@ -3,7 +3,7 @@
  * numbers, the datasets a publication cites — and what each place in the
  * content is called.
  *
- * **Two screens write these**: the research's own form and the take-in face,
+ * **Two screens write these**: the research's own form and the import form,
  * which writes the one value it is deciding with the same control the form
  * uses. A second copy would be a second place for the two to drift apart.
  */
@@ -16,7 +16,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
 import { Button, IconButton, Stack } from "./base"
-import { FieldHead, LanguageMark, type Marks, newId, StateSwitch } from "./fields"
+import { FieldHead, LanguageLabel, type FieldAnnotations, newId, StateSwitch } from "./fields"
 import { CONTROL } from "./form"
 import { Icon } from "./icons"
 import { Empty, Table, Td } from "./page"
@@ -103,18 +103,18 @@ export const PROSE_PATHS: readonly string[] = [
  * and the pair
  * read as two columns of a table rather than as one value written twice.
  */
-export function LinksField({ label, value, marks, locale, onChange }: {
+export function LinksField({ label, value, annotations, locale, onChange }: {
   label?: string
   value: LinksPairInput
-  marks: Marks
+  annotations: FieldAnnotations
   locale: Locale
   onChange: (next: LinksPairInput) => void
 }) {
   const t = messagesFor(locale).admin.editor
 
   return (
-    <Stack gap="tight" at={marks.at}>
-      <FieldHead label={label} marks={marks} locale={locale} />
+    <Stack gap="tight" at={annotations.at}>
+      <FieldHead label={label} annotations={annotations} locale={locale} />
       <div className="flex flex-col gap-2">
         {(["ja", "en"] as const).map((language) => {
           const side = value[language]
@@ -124,7 +124,7 @@ export function LinksField({ label, value, marks, locale, onChange }: {
           return (
             <Stack key={language} gap="tight">
               <div className="flex items-center justify-between gap-2">
-                <LanguageMark language={language} />
+                <LanguageLabel language={language} />
                 <StateSwitch
                   state={side.state}
                   onChange={(state) => { onChange({ ...value, [language]: { ...side, state } }) }}
@@ -188,14 +188,14 @@ export function LinksField({ label, value, marks, locale, onChange }: {
  * The numbers a grant is known by.
  *
  * They are plain strings with no identity of their own, so a row is addressed by
- * where it stands — which is also why the whole list is one path to the diff and
- * carries one mark rather than one per number.
+ * where it remains — which is also why the whole list is one path to the diff and
+ * has one indicator rather than one per number.
  */
-export function GrantIds({ label, locale, value, marks, onChange }: {
+export function GrantIds({ label, locale, value, annotations, onChange }: {
   label?: string
   locale: Locale
   value: string[]
-  marks: Marks
+  annotations: FieldAnnotations
   onChange: (next: string[]) => void
 }) {
   const t = messagesFor(locale).admin.editor
@@ -206,7 +206,7 @@ export function GrantIds({ label, locale, value, marks, onChange }: {
       addLabel={t.addGrantId}
       locale={locale}
       value={value}
-      marks={marks}
+      annotations={annotations}
       onChange={onChange}
     />
   )
@@ -217,28 +217,28 @@ export function GrantIds({ label, locale, value, marks, onChange }: {
  * publication names beyond this research's own.
  *
  * **A box per ID, not one box of commas** — an ID is copied from somewhere else
- * one at a time, and a box holding one says where it ends without a separator
+ * one at a time, and a box holding one shows where it ends without a separator
  * to get wrong.
  */
-export function IdList({ label, itemLabel, addLabel, hint, placeholder, locale, value, marks, onChange }: {
+export function IdList({ label, itemLabel, addLabel, hint, placeholder, locale, value, annotations, onChange }: {
   label?: string
   /** What each box is called for whoever reaches it by keyboard. */
   itemLabel: string
   addLabel: string
   /** What goes in the boxes and how, said under them. */
   hint?: string
-  /** The shape of one ID, shown in an empty box. */
+  /** The shape of one ID, shown in an empty field. */
   placeholder?: string
   locale: Locale
   value: string[]
-  marks: Marks
+  annotations: FieldAnnotations
   onChange: (next: string[]) => void
 }) {
   const t = messagesFor(locale).admin.editor
 
   return (
-    <Stack gap="tight" at={marks.at}>
-      <FieldHead label={label} marks={marks} locale={locale} />
+    <Stack gap="tight" at={annotations.at}>
+      <FieldHead label={label} annotations={annotations} locale={locale} />
       <div className="md:max-w-md">
         <Stack gap="tight">
           {value.map((id, at) => (
@@ -288,7 +288,7 @@ export function datasetName(row: ResearchDatasetRow, locale: Locale): string {
  *
  * **The same columns as the page** (`research.tsx` の `DatasetCells`): a
  * curator choosing which datasets a paper used tells them apart by what they
- * hold and when they came out, and an ID alone says neither. **The box in the
+ * hold and when they came out, and an ID alone shows neither. **The box in the
  * head takes all of them or none** — a paper often covers every dataset of
  * its research, and ticking twenty boxes one by one is where one gets missed.
  */
@@ -303,7 +303,7 @@ export function CitableTable({ locale, datasets, selected, onChange }: {
 
   const ids = datasets.map((row) => row.id ?? "")
   const chosen = ids.filter((id) => selected.includes(id)).length
-  // What the table does not list stays chosen either way: the box speaks for
+  // What the table does not list stays chosen either way: the box represents
   // these rows and nothing else.
   const others = selected.filter((id) => !ids.includes(id))
 
@@ -316,7 +316,7 @@ export function CitableTable({ locale, datasets, selected, onChange }: {
           type="checkbox"
           aria-label={messages.admin.editor.pickAll}
           checked={chosen === ids.length}
-          // Some but not all: the box says so rather than claiming either.
+          // Some but not all: the box shows it rather than claiming either.
           ref={(box) => { if (box !== null) box.indeterminate = chosen > 0 && chosen < ids.length }}
           onChange={(event) => { onChange(event.target.checked ? [...others, ...ids] : others) }}
         />,
@@ -328,7 +328,7 @@ export function CitableTable({ locale, datasets, selected, onChange }: {
         const name = row.label === "" ? messages.admin.editor.unpinnedDataset : row.label
         return (
           <tr key={id}>
-            <Td holds="mark">
+            <Td holds="icon">
               <input
                 type="checkbox"
                 aria-label={name}

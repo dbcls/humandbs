@@ -17,7 +17,7 @@ import type { Route } from "./+types/admin-contents-series"
 import { Flag } from "~/components/flags"
 
 /**
- * One versioned article: the address readers hold, which revision it answers
+ * One versioned article: the address readers hold, which revision it responds
  * with, and the revisions under it.
  *
  * **The pointer is moved by hand.** Publishing a revision does not move it — a
@@ -27,7 +27,7 @@ import { Flag } from "~/components/flags"
  *
  * **Retiring takes the pointer and every revision at once.** The revision the
  * pointer names cannot be deleted on its own, so one at a time would leave the
- * pointer standing last with nothing left to point at.
+ * pointer shown last with nothing left to point at.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const view = await seriesPage(request, params.seriesId)
@@ -56,10 +56,10 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
       <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Card under={false}>
         <Stack gap="block">
-          {/* **What takes the whole series away stands beside its name**, next
-              to the way back, the way an article's or an announcement's does
+          {/* **What takes the whole series away is shown beside its name**, next
+              to the back link, the way an article's or an announcement's does
               (`admin-contents-news-item.tsx`): it acts on the series rather
-              than on any one revision, so it belongs with what names the
+              than on any one revision, so it belongs with what identifies the
               series rather than under the revisions. */}
           <Heading title={t.seriesHeading} aside={series.slug}>
             <AdminBack
@@ -86,9 +86,9 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
 
           {/*
             **What the screen is about comes first**: the address readers hold
-            and which revision it answers with. The name of the part says what
+            and which revision it responds with. The name of the part shows what
             the address is called everywhere on this side, and the sentence
-            under it says the one thing a curator cannot work out from the
+            under it shows the one thing a curator cannot work out from the
             controls — that publishing does not move it.
           */}
           <Section title={t.representative} note={t.representativeNote(series.slug)}>
@@ -110,13 +110,13 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
           </Section>
 
           {/*
-            **Which revision the address answers with is a mark in the listing
+            **Which revision the address responds with is an indicator in the listing
             rather than a line above it.** The listing is where the reader is
             choosing one anyway, and said in both places the two drift apart the
             moment the pointer is moved.
 
             **No count over the rows.** Every revision is on screen, and a number
-            over ten visible rows says what the rows already say.
+            over ten visible rows shows what the rows already say.
           */}
           <Section title={t.revisionList}>
             <Table

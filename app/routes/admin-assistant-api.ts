@@ -5,7 +5,7 @@ import { requireCapability } from "~/auth/actor.server"
 import type { Route } from "./+types/admin-assistant-api"
 
 /**
- * The one way into the assistant.
+ * The one route into the assistant.
  *
  * **The service holds no authorisation of its own.** It is not published
  * outside the compose network and does not read a token, so being reachable
@@ -14,7 +14,7 @@ import type { Route } from "./+types/admin-assistant-api"
  * call the service.
  *
  * **The second check is the one the framework cannot make.** React Router turns
- * away a mutation sent from another site, but not on a route that answers with
+ * away a mutation sent from another site, but not on a route that responds with
  * data rather than with a page — and this one hands every method on to a
  * service whose endpoints the portal knows nothing about (`assistant/target.ts`
  * の `fromSameSite`).

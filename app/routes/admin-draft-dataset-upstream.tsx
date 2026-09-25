@@ -6,10 +6,10 @@ import { readLocale } from "~/public/urls"
 import type { Route } from "./+types/admin-draft-dataset-upstream"
 
 /**
- * What the section under the list of a draft's datasets asks
+ * What the section under the list of a draft's datasets requests
  * (`AccessionSection`): looking an accession up, and making the dataset it
  * names. **No screen of its own** — a box and what it finds are read beside the
- * list they add to, so this address answers the section's requests and draws
+ * list they add to, so this address responds to the section's requests and draws
  * nothing.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {

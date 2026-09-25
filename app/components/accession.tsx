@@ -22,13 +22,13 @@ import { UpstreamChoice } from "./upstream"
  * what that box finds, read beside the list it adds to — no screen of its own
  * to leave for, and no panel to open first: the box is where the reader looks
  * when the button would have been. The box looks the accession up without
- * leaving (`GET` on the address the list answers the press from), shows what
+ * leaving (`GET` on the address the list handles the press from), shows what
  * would be made, and makes it; once a dataset is made the list above is read
  * again and what was found is put away. A refusal stays beside what was
  * refused.
  *
  * **An application is not chosen here.** A branch's datasets come in through
- * the take-in screen's table of this research's branches; a second place to
+ * the import screen's table of this research's branches; a second place to
  * choose a branch would be a second listing of them.
  */
 export function AccessionSection({ locale, researchId, draftId, revision }: {
@@ -45,7 +45,7 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
   const make = useFetcher<typeof accessionAction>()
   const [made, setMade] = useState(false)
 
-  // A press that made a dataset answers with a way back to the list, which
+  // A press that made a dataset responds with a link back to the list, which
   // leaves nothing in `data`; a refusal leaves its reason there. Made, what was
   // found is put away until the next lookup.
   const was = useRef(make.state)
@@ -60,8 +60,8 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
   }, [look.state])
 
   // **A lookup can take a minute** — a DRA submission is asked of the archive
-  // itself — so the press has to say it is under way: the button waits with
-  // its spinner in place of its mark (`Submit` の `busy`), and what the last
+  // itself — so the press has to show it is under way: the button waits with
+  // its spinner in place of its indicator (`Submit` の `busy`), and what the last
   // lookup found is put away, since it is no longer the answer to what is in
   // the box.
   const looking = look.state !== "idle"
@@ -74,7 +74,7 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
         <look.Form method="get" action={at} className="flex flex-wrap items-end gap-3">
           {/* **The example is the box's grey word rather than a line under
               it.** A line under the box makes the field taller than the
-              button beside it, and a row aligned at its foot then stands the
+              button beside it, and a row aligned at its foot then puts the
               button level with the line instead of with the box. */}
           <Field
             label={t.accessionHint}

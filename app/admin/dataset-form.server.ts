@@ -28,7 +28,7 @@ import type {
   ValueSlot,
 } from "~/content/types"
 import { convert } from "~/content/units"
-import { inBoxOrder } from "~/files/selection"
+import { inListingOrder } from "~/files/selection"
 
 import {
   highBelowValue,
@@ -97,7 +97,7 @@ function distinctKeys(values: { keyId: string }[]): boolean {
 
 const valuesSchema = z
   .array(z.object({ keyId: z.uuid(), value: valueBodySchema }))
-  .refine(distinctKeys, "a key may carry only one value")
+  .refine(distinctKeys, "a key may have only one value")
 
 const experimentsSchema = z
   .array(z.object({
@@ -118,7 +118,7 @@ const datasetContentInputSchema = z.object({
 })
 
 /**
- * What one save carries. **The revision is null when the screen was opened
+ * What one save has. **The revision is null when the screen was opened
  * before this draft had touched the dataset**, which is what tells an insert
  * apart from an update: the first save creates the entry and finds a conflict
  * by not being the one that created it.
@@ -130,7 +130,7 @@ export const saveDatasetSchema = z.object({
 
 /**
  * The stored form of a number: converted to the key's unit, with what was typed
- * kept beside it. Null when there is nothing to store — an empty box, or a unit
+ * kept beside it. Null when there is nothing to store — an empty field, or a unit
  * the key cannot convert from, which the catalog has already refused.
  */
 function numberValue(row: NumberRow, canonical: string | null): NumberValue | null {
@@ -173,7 +173,7 @@ function highValue(
 }
 
 /**
- * The stored form of a disease. Null when the row says nothing — neither a
+ * The stored form of a disease. Null when the row reports nothing — neither a
  * classification's word for it nor anybody else's — which is a row somebody
  * added and left alone rather than a disease.
  */
@@ -217,7 +217,7 @@ function contentValue(body: ValueBody, keyId: string, units: CanonicalUnits): Co
     const one = numberValue(row, canonical)
     return one === null ? [] : [one]
   })
-  // An empty box is not a number. There is no "empty number" to store, so a row
+  // An empty field is not a number. There is no "empty number" to store, so a row
   // that holds nothing goes, and a key left with no rows at all loses its slot
   // rather than becoming a value nobody can read.
   return held.length === 0 ? null : { kind: "number", values: { state: "value", value: held } }
@@ -240,7 +240,7 @@ export function datasetContentOf(input: DatasetContentInput, units: CanonicalUni
 
   return {
     releaseDate: input.releaseDate === "" ? null : input.releaseDate,
-    fileSelection: inBoxOrder(input.fileSelection),
+    fileSelection: inListingOrder(input.fileSelection),
     values,
     experiments,
   }
@@ -256,8 +256,8 @@ export function datasetContentOf(input: DatasetContentInput, units: CanonicalUni
  * preview over one field somebody has not finished typing would blank the
  * page they are looking at. A save is different: the screen marks this box
  * `aria-invalid` the moment it is typed (`dataset-editor.tsx` の
- * `NumberField`), so a save that still carries the disordered shape is a
- * request that went around the form, and the caller answers it with a bad
+ * `NumberField`), so a save that still has the disordered shape is a
+ * request that went around the form, and the caller responds to it with a bad
  * request (`app/admin/pages.server.ts` の `saveDatasetAction`).
  */
 export function widthsOrdered(input: DatasetContentInput): boolean {

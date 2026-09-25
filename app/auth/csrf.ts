@@ -3,7 +3,7 @@
  *
  * **React Router's own check does not cover every route.** It refuses a
  * mutation whose `Origin` names another host only for a route that renders a
- * page; a route that answers with data alone — the comment, upload and sign-out
+ * page; a route that responds with data alone — the comment, upload and sign-out
  * endpoints — never reaches it. The session cookie is `SameSite=Lax`, and Lax
  * still sends it on a POST from any subdomain of the same registrable domain,
  * so without this a page on a sibling subdomain could post to the management
@@ -17,7 +17,7 @@
  * - `Origin`, when sent, names this host. One naming `null` (a sandboxed or
  *   opaque document) or not a URL is refused.
  *
- * **A write carrying neither header is refused.** Every current browser sends
+ * **A write with neither header is refused.** Every current browser sends
  * at least one of them on a non-GET request, and nothing the portal serves
  * expects a write from anything else.
  *
@@ -35,7 +35,7 @@ export function refusedAsCrossSite(request: Request): boolean {
   if (site !== null && !ALLOWED_FETCH_SITES.has(site)) return true
 
   const origin = request.headers.get("origin")
-  // A page cannot set `Sec-Fetch-Site` itself, so a browser saying the request
+  // A page cannot set `Sec-Fetch-Site` itself, so a browser indicating the request
   // is its own origin's is enough on its own.
   if (origin === null) return site === null
   if (origin === "null") return true
@@ -46,7 +46,7 @@ export function refusedAsCrossSite(request: Request): boolean {
   }
 }
 
-/** What a refused write is answered with. It says nothing about why. */
+/** What a refused write is responded with. It implies nothing about why. */
 export function crossSiteRefusal(): Response {
   return new Response("Forbidden", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } })
 }

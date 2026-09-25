@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { ConflictBand, elementPanelTitle, ItemList, keptOnClose, shortfallsOf, LanguageMark, SingleField, type Marks, PairField, Section, SlotEditor, StateSwitch, toggledState } from "./fields"
+import { ConflictBanner, elementPanelTitle, ItemList, keptOnClose, shortfallsOf, LanguageLabel, SingleField, type FieldAnnotations, PairField, Section, SlotEditor, StateSwitch, toggledState } from "./fields"
 
 /** Rendered inside a router, since the state switch beside the box closes on a move. */
 function render(element: React.ReactNode): string {
@@ -12,17 +12,17 @@ function render(element: React.ReactNode): string {
 }
 
 describe("toggledState", () => {
-  it("takes on the mark that was pressed, from a value", () => {
+  it("takes on the state that was pressed, from a value", () => {
     expect(toggledState("value", "unknown")).toBe("unknown")
     expect(toggledState("value", "not-applicable")).toBe("not-applicable")
   })
 
-  it("releases a mark back to a value when the same mark is pressed again", () => {
+  it("releases an indicator back to a value when the same indicator is pressed again", () => {
     expect(toggledState("unknown", "unknown")).toBe("value")
     expect(toggledState("not-applicable", "not-applicable")).toBe("value")
   })
 
-  it("switches directly from one mark to the other, never holding both", () => {
+  it("switches directly from one indicator to the other, never holding both", () => {
     expect(toggledState("unknown", "not-applicable")).toBe("not-applicable")
     expect(toggledState("not-applicable", "unknown")).toBe("unknown")
   })
@@ -35,10 +35,10 @@ describe("the state switch", () => {
     [...html.matchAll(/<button[^>]*aria-pressed="false"[^>]*>[\s\S]*?<\/button>/g)].map((found) => found[0])
 
   /**
-   * **Both marks are always on the screen**, since either changes what the
+   * **Both indicators are always on the screen**, since either changes what the
    * page shows; a switch that only appeared once used was one nobody used.
    */
-  it("shows both marks by name, with the one in force pressed and filled", () => {
+  it("shows both indicators by name, with the one in force pressed and filled", () => {
     const html = render(
       <StateSwitch state="unknown" locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
@@ -50,7 +50,7 @@ describe("the state switch", () => {
     expect(unpressedIn(html)[0]).not.toContain("bg-brand")
   })
 
-  it("draws the ordinary answer (a value) with neither mark pressed or filled", () => {
+  it("draws the ordinary answer (a value) with neither toggle pressed or filled", () => {
     const html = render(
       <StateSwitch state="value" locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
@@ -59,8 +59,8 @@ describe("the state switch", () => {
   })
 })
 
-describe("what a state mark says it does", () => {
-  it("draws the effect over the mark — taking it on, or letting it go once held — and keeps the state's word as the name", () => {
+describe("what a state toggle shows it does", () => {
+  it("draws the effect over the indicator — taking it on, or letting it go once held — and keeps the state's word as the name", () => {
     const value = render(<StateSwitch state="value" locale="ja" onChange={() => { /* nothing changes here */ }} />)
     expect(value).toContain("未確定にする")
     expect(value).toContain("該当なしにする")
@@ -80,7 +80,7 @@ describe("what a state mark says it does", () => {
 })
 
 describe("a slot marked unsettled or not-applicable", () => {
-  it("folds the box away and stands the state's own word in its place", () => {
+  it("collapses the box away and shows the state's own word in its place", () => {
     const html = render(
       <SlotEditor
         language="ja"
@@ -94,7 +94,7 @@ describe("a slot marked unsettled or not-applicable", () => {
     expect(html).toContain("未確定")
   })
 
-  it("folds a multiline box the same way for not-applicable", () => {
+  it("collapses a multiline box the same way for not-applicable", () => {
     const html = render(
       <SlotEditor
         language="ja"
@@ -111,9 +111,9 @@ describe("a slot marked unsettled or not-applicable", () => {
   it("keeps showing the typed text once the state is a value again", () => {
     // `onChange={(state) => onChange({ ...value, state })}` is what SlotEditor
     // hands `StateSwitch` — the spread is what keeps `text` untouched by a
-    // state change, and this is the other half: the box, unfolded, is a plain
-    // display of whatever `text` it is given, so a value carried through a
-    // fold and back still reads on the box.
+    // state change, and this is the other half: the box, expanded, is a plain
+    // display of whatever `text` it is given, so a value kept through a
+    // collapse and back still reads on the box.
     const html = render(
       <SlotEditor
         language="ja"
@@ -128,12 +128,12 @@ describe("a slot marked unsettled or not-applicable", () => {
 })
 
 describe("the dialect badge on a field's name row", () => {
-  const marks = (): Marks => ({ at: "summary.aims", changed: false, onTake: null })
+  const annotations = (): FieldAnnotations => ({ at: "summary.aims", changed: false, onImport: null })
   const pair = { ja: { state: "value" as const, text: "" }, en: { state: "value" as const, text: "" } }
 
-  it("stands right after the name, before anything else on the row", () => {
+  it("remains right after the name, before anything else on the row", () => {
     const html = render(
-      <PairField label="対象" value={pair} multiline marks={{ ...marks(), changed: true }} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+      <PairField label="対象" value={pair} multiline annotations={{ ...annotations(), changed: true }} locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
     const name = html.indexOf(">対象<")
     const badge = html.indexOf("リンクと改行")
@@ -144,20 +144,20 @@ describe("the dialect badge on a field's name row", () => {
     expect(html.slice(name, badge)).not.toContain("ml-auto")
   })
 
-  it("is not drawn by a field with no name of its own — the heading naming it carries it", () => {
+  it("is not drawn by a field with no name of its own — the heading naming it has it", () => {
     const html = render(
-      <PairField value={pair} multiline marks={marks()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+      <PairField value={pair} multiline annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
     expect(html).not.toContain("リンクと改行")
     const section = render(<Section id="releaseNote" title="リリースノート" accepts="リンクと改行"><p>欄</p></Section>)
     expect(section).toMatch(/<h2[^>]*>リリースノート[\s\S]*?リンクと改行[\s\S]*?<\/h2>/)
   })
 
-  it("draws no row for a field with no name, however much the review has to say — the heading carries it", () => {
+  it("draws no row for a field with no name, however much the review has to show — the heading has it", () => {
     const html = render(
       <PairField
         value={{ ja: { state: "value", text: "値" }, en: { state: "value", text: "" } }}
-        marks={{ ...marks(), changed: true }}
+        annotations={{ ...annotations(), changed: true }}
         locale="ja"
         onChange={() => { /* nothing changes here */ }}
       />,
@@ -170,15 +170,15 @@ describe("the dialect badge on a field's name row", () => {
 
   it("is absent from a field that does not read prose", () => {
     const html = render(
-      <PairField value={pair} marks={marks()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+      <PairField value={pair} annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
     )
     expect(html).not.toContain("リンクと改行")
   })
 })
 
-describe("the language mark beside a box", () => {
+describe("the language label beside a field", () => {
   it("names the language as its code, at the size of the words beside it", () => {
-    const html = render(<LanguageMark language="en" />)
+    const html = render(<LanguageLabel language="en" />)
     expect(html).toContain("lang=\"en\"")
     expect(html).toContain(">en<")
     expect(html).toContain("text-sm")
@@ -206,7 +206,7 @@ describe("a list of repeated elements", () => {
     </ItemList>,
   )
 
-  it("stands as a table with the columns given, the four operations at each row's end, in the list's order", () => {
+  it("is shown as a table with the columns given, the four operations at each row's end, in the list's order", () => {
     const html = list([{ id: "a", name: "課題 A", number: "JP1" }, { id: "b", name: "課題 B", number: "JP2" }])
     expect(html).toContain("<table")
     for (const header of ["研究課題名", "研究課題番号", "操作"]) expect(html).toContain(header)
@@ -222,7 +222,7 @@ describe("a list of repeated elements", () => {
     expect(html).not.toContain("truncate")
   })
 
-  it("says 未入力 in the first column of a row with nothing written, and leaves the other cells empty", () => {
+  it("shows 未入力 in the first column of a row with nothing written, and leaves the other cells empty", () => {
     const html = list([{ id: "a", name: "", number: "" }])
     expect(html.match(/未入力/g)?.length).toBe(1)
   })
@@ -233,7 +233,7 @@ describe("a list of repeated elements", () => {
     expect(operations).toMatch(/<td[^>]*class="[^"]*\bpy-0\b/)
   })
 
-  it("stands no table while the list is empty — only the way to add one", () => {
+  it("remains no table while the list is empty — only the way to add one", () => {
     const html = list([])
     expect(html).not.toContain("<table")
     expect(html).toContain("追加")
@@ -255,7 +255,7 @@ describe("an element's panel", () => {
   })
 })
 
-describe("what an element's row says it is short of", () => {
+describe("what an element's row shows it is short of", () => {
   const pair = (ja: string, en: string) => ({ ja: { state: "value", text: ja }, en: { state: "value", text: en } })
 
   it("finds a pair with one language written anywhere in the element, however deep", () => {
@@ -268,19 +268,19 @@ describe("what an element's row says it is short of", () => {
     expect(shortfallsOf({ id: "a", doi: { state: "unknown", text: "" } }).unsettled).toBe(true)
   })
 
-  it("says nothing of a pair both sides left empty, both written, or one not applicable", () => {
+  it("shows nothing of a pair both sides left empty, both written, or one not applicable", () => {
     expect(shortfallsOf({ id: "a", name: pair("", "") })).toEqual({ untranslated: false, unsettled: false })
     expect(shortfallsOf({ id: "a", name: pair("名", "Name") })).toEqual({ untranslated: false, unsettled: false })
     expect(shortfallsOf({ id: "a", name: { ja: { state: "value", text: "名" }, en: { state: "not-applicable", text: "" } } }))
       .toEqual({ untranslated: false, unsettled: false })
   })
 
-  it("does not ask links about translation", () => {
+  it("does not request links about translation", () => {
     expect(shortfallsOf({ id: "a", url: { ja: { state: "value", links: [{ url: "https://x" }] }, en: { state: "value", links: [] } } }))
       .toEqual({ untranslated: false, unsettled: false })
   })
 
-  it("puts the marks on the row, after the element's name", () => {
+  it("puts the indicators on the row, after the element's name", () => {
     const html = render(
       <ItemList
         path="grants"
@@ -301,22 +301,22 @@ describe("what an element's row says it is short of", () => {
   })
 })
 
-describe("the conflict band", () => {
+describe("the conflict banner", () => {
   it("draws each changed place as a bordered way to its section, not as a bare word", () => {
-    const html = render(<ConflictBand locale="ja" changed={["summary.aims", "publications"]} />)
+    const html = render(<ConflictBanner locale="ja" changed={["summary.aims", "publications"]} />)
     const ways = [...html.matchAll(/<a\b[^>]*href="#([^"]*)"[^>]*class="([^"]*)"/g)]
     expect(ways.map((way) => way[1])).toEqual(["summary", "publications"])
     for (const way of ways) expect(way[2]).toMatch(/\bborder\b/)
   })
 
   it("draws no ways when nothing it can name has changed", () => {
-    const html = render(<ConflictBand locale="ja" changed={[]} />)
+    const html = render(<ConflictBanner locale="ja" changed={[]} />)
     expect(html).not.toContain("<a")
   })
 })
 
 describe("a list's row as a place on the form", () => {
-  it("names each row by the element's path, so a cell of the page's table can land on it", () => {
+  it("names each row by the element's path, so a cell of the page's table can focus it", () => {
     const html = render(
       <ItemList
         path="grants"
@@ -332,7 +332,7 @@ describe("a list's row as a place on the form", () => {
     )
     expect(html).toMatch(/<tr[^>]*data-at="grants\.a"/)
     expect(html).toMatch(/<tr[^>]*data-at="grants\.b"/)
-    expect(html).toMatch(/<tr[^>]*data-landed:bg-warning-surface/)
+    expect(html).toMatch(/<tr[^>]*data-highlighted:bg-warning-surface/)
   })
 })
 
@@ -375,9 +375,9 @@ describe("keptOnClose", () => {
 
 describe("a field with one value", () => {
   const value = { state: "value" as const, text: "https://doi.org/10.1/x" }
-  const marks = (): Marks => ({ at: "relatedPublications.p1.doi", changed: false, onTake: null })
+  const annotations = (): FieldAnnotations => ({ at: "relatedPublications.p1.doi", changed: false, onImport: null })
   const field = (props: { wide?: boolean, hint?: string }) => render(
-    <SingleField label="DOI" value={value} marks={marks()} locale="ja" onChange={() => { /* nothing changes here */ }} {...props} />,
+    <SingleField label="DOI" value={value} annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} {...props} />,
   )
 
   it("holds an identifier to a short box unless told the value is long", () => {
@@ -385,7 +385,7 @@ describe("a field with one value", () => {
     expect(field({ wide: true })).not.toContain("md:max-w-md")
   })
 
-  it("says the hint under the box, and nothing where there is none", () => {
+  it("shows the hint under the box, and nothing where there is none", () => {
     const hint = "論文の DOI を、https://doi.org/ から始まる完全な URL で書く。"
     const html = field({ wide: true, hint })
     expect(html).toContain(hint)

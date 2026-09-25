@@ -35,13 +35,13 @@ export default function ContactUs({ loaderData }: Route.ComponentProps) {
           <Heading title={messages.heading} />
           {/*
             **The form is on the page, the way it is on the current portal.**
-            This is the most-used way in, and a page whose whole content is a
+            This is the most-used starting point, and a page whose whole content is a
             link to somewhere else is a worse answer than embedding the thing
             being linked to. The sentence under it is the way through for
             anybody whose browser will not run the frame.
 
             The height is fixed because the frame is on another origin and
-            cannot say how tall it is. **2,265px is what the form measures**,
+            cannot show how tall it is. **2,265px is what the form measures**,
             and the number here is that plus room for the one question that
             grows (choosing 「その他」 opens a box). Too little would put the
             form in a letterbox, which is worse than no embed; too much leaves

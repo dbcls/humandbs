@@ -1,7 +1,7 @@
 /**
  * Reading what the management screens show.
  *
- * The public side starts from `search_doc` because its job is to answer "is
+ * The public side starts from `search_doc` because its job is to respond to "is
  * this published"; here the answer is the opposite — **everything is in scope,
  * published or not** — so these read the identity tables directly. Nothing in
  * this file is reachable without `view-unpublished`.
@@ -12,7 +12,7 @@
  * rest of the portal uses; expressing it a second time as a JSON predicate would
  * be two definitions of one rule. At the size of the real data — a few hundred
  * research, a few megabytes of content — reading it all is cheaper than keeping
- * the two in step. The other three come from the pin ledger and the upstream
+ * the two in step. The other three come from the `label_pin` table and the upstream
  * cache, and are assembled the same way for the same reason.
  */
 
@@ -94,7 +94,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       })
       .from(researchDraft),
     // A dataset with a search row is one a reader can open: that is the one
-    // question the public side answers from this table.
+    // question the public side responds to, from this table.
     db
       .select({ datasetId: searchDoc.targetId })
       .from(searchDoc)
@@ -118,7 +118,7 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
     held.published += 1
-    // The listing says when this research was last out, which is the newest
+    // The listing reports when this research was last out, which is the newest
     // release date among the versions it still has — withdrawing one takes its
     // row away, so a version that is here is a version that is out.
     if (held.publishedOn === null || row.releaseDate > held.publishedOn) {
@@ -176,12 +176,12 @@ const EMPTY_TITLE: TranslatedText = {
 export interface ResearchDatasetRow {
   id: string
   label: string | null
-  /** The ledger row behind the label, which is what unpinning names. */
+  /** The `label_pin` row behind the label, which is what unpinning names. */
   pinId: string | null
   published: boolean
   /**
    * Whether the portal issued the id, read off its spelling. Only these may
-   * carry a file selection: an archive's dataset is distributed by the
+   * have a file selection: an archive's dataset is distributed by the
    * archive.
    */
   portalIssued: boolean
@@ -192,7 +192,7 @@ export interface ResearchDatasetRow {
 /**
  * The datasets belonging to a research, whether published or not. A dataset
  * belongs to exactly one research, and the next version of that research
- * carries all of them (`admin/datasets.ts`).
+ * has all of them (`admin/datasets.ts`).
  */
 export async function researchDatasets(
   db: Executor,
@@ -231,7 +231,7 @@ export interface AdminVersionRow {
   updatedAt: string
   /**
    * The draft this version is being updated in, while it is. It is the update's
-   * vessel and not a draft of its own, so it is carried here and not among the
+   * vessel and not a draft of its own, so it is kept here and not among the
    * drafts.
    */
   updating: AdminDraftRow | null
@@ -320,7 +320,7 @@ export interface DraftRecord {
   content: ResearchContent
   /**
    * The version this draft is the update of, when it is one. Every screen of
-   * the draft measures against that version rather than the newest, and names
+   * the draft measures against that version rather than the newest, and identifies
    * the draft after it.
    */
   updating: { versionId: string, number: number } | null
@@ -349,9 +349,9 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
 }
 
 /**
- * The version a draft is shown against, for the screen that says what differs.
+ * The version a draft is shown against, for the screen that reports what differs.
  *
- * **Two shapes rather than three.** A draft carries no ancestor, so there is
+ * **Two shapes rather than three.** A draft has no ancestor, so there is
  * nothing to divide "what they changed" from "what I changed" with — the
  * comparison lists the differences and leaves the choosing to the reader.
  * Asking for no number gets the newest version, which is the default the editor
@@ -405,7 +405,7 @@ export async function readDatasetEntry(
 /**
  * How the newest version describes a dataset, which is what the editor compares
  * against. Null means no version lists it — the draft introduced it, or every
- * version that carried it has been withdrawn.
+ * version that kept it has been withdrawn.
  */
 export async function readPublishedDataset(
   db: Executor,
@@ -430,8 +430,8 @@ export async function readPublishedDataset(
 /**
  * The identities this draft publishes, in the order it publishes them
  * (`admin/datasets.ts`). **What a draft's content holds is the order alone**,
- * so everything that asks "which datasets is this draft about" — the steps, the
- * preview, the places a comment may be left — asks here rather than reading the
+ * so everything that requests "which datasets is this draft about" — the steps, the
+ * preview, the places a comment may be left — requests here rather than reading the
  * order and taking it for the set.
  */
 export async function draftDatasetIds(
@@ -446,7 +446,7 @@ export async function draftDatasetIds(
 /**
  * The research's datasets, as little of them as the order is worked out from.
  * The rows come in a settled order, because what the draft has not named yet
- * stands in the order it arrives (`admin/datasets.ts`).
+ * is shown in the order it arrives (`admin/datasets.ts`).
  */
 export async function ownedDatasets(
   db: Executor,
@@ -482,12 +482,12 @@ export async function draftDatasetRows(
 
 /**
  * The datasets whose description this draft has changed — measured against
- * the version the published marks compare with, the one the draft updates or
+ * the version the published-version indicators compare with, the one the draft updates or
  * else the newest.
  *
  * **Holding an entry is not having changed it.** A draft copied from a version
  * holds an entry for every dataset that version lists, word for word, so an
- * entry says only that the draft could be written. What the version does not
+ * entry reports only that the draft could be written. What the version does not
  * list — a dataset the draft made — has nothing to be compared with, and there
  * the entry is the writing.
  */
@@ -555,7 +555,7 @@ export interface CatalogWithTerms extends EditableCatalog {
   terms: EditableTerm[]
 }
 
-/** How many candidates one search of a vocabulary answers with. */
+/** How many candidates one search of a vocabulary responds with. */
 export const TERM_CANDIDATES = 20
 
 const TERM_COLUMNS = {
@@ -572,10 +572,10 @@ const TERM_COLUMNS = {
  * public projection has no use for. **The type decides which input control a
  * value gets**, so a screen without it could only guess.
  *
- * **It carries no terms.** A vocabulary holds anything from three values to
+ * **It has no terms.** A vocabulary holds anything from three values to
  * several hundred, and sending all of them so that a box can filter them in the
  * browser makes the size of the page follow the size of the catalog. The values
- * a document already names are resolved by identity (`termsByIds`) and the rest
+ * a document already identifies are resolved by identity (`termsByIds`) and the rest
  * are searched for (`findTerms`).
  */
 export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog> {
@@ -601,7 +601,7 @@ export async function loadEditableCatalog(db: Executor): Promise<EditableCatalog
 /**
  * The catalog with every term.
  *
- * **Only what runs on the server may ask for this.** Matching what an archive
+ * **Only what runs on the server may request this.** Matching what an archive
  * spells against the vocabulary needs the whole of it, and nothing of it
  * reaches a page.
  */
@@ -630,7 +630,7 @@ export async function termsByIds(
 
 /**
  * The candidates for what was typed into a vocabulary's box: by code or by
- * either label, capped — and for an empty box, the vocabulary from its first
+ * either label, capped — and for an empty field, the vocabulary from its first
  * code, so the box opens on something the moment it is entered.
  */
 export async function findTerms(
@@ -639,9 +639,9 @@ export async function findTerms(
   needle: string,
 ): Promise<EditableTerm[]> {
   const find = needle.trim()
-  // **An empty box opens on the vocabulary's first terms**, in code order: a
+  // **An empty field opens on the vocabulary's first terms**, in code order: a
   // vocabulary of a handful is then shown whole the moment its box is entered,
-  // and a large one shows where it starts, with the box saying to type.
+  // and a large one shows where it starts, with the box indicating to type.
   const like = `%${find}%`
   return db
     .select(TERM_COLUMNS)
@@ -665,7 +665,7 @@ export async function findTerms(
  *
  * A code is normalised before it is looked for — the box is written with and
  * without the point, in either case — and **the tail is dropped until the
- * vocabulary answers**. What the articles and the application forms write is
+ * vocabulary responds**. What the articles and the application forms write is
  * partly ICD-10-CM, which WHO's classification cannot spell: `K75.81` is NASH
  * and `K758` is what stands for it, so typing the longer code offers the
  * shorter one rather than nothing.

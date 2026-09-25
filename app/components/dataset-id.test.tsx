@@ -36,7 +36,7 @@ describe("the box a dataset's id is given in", () => {
     expect(html).not.toMatch(/name="label"[^>]*value=/)
   })
 
-  it("takes a table row's height when it stands in one", () => {
+  it("takes a table row's height when it is shown in one", () => {
     const html = render("NHA000007", "row")
 
     expect(html).toMatch(/<input[^>]*class="[^"]*min-h-6[^"]*py-0\.5/)

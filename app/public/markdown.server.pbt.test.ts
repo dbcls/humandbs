@@ -49,7 +49,7 @@ const ALLOWED = new Set([
  * the only elements the renderer emits that markdown has no syntax for, so they
  * are allowed **only when the source names an alert**: `<div>` and `<svg>` are
  * two of the things an author might write, and a set that always contained them
- * would stop noticing if one got through. A blockquote that names nothing stays
+ * would stop noticing if one got through. A blockquote that identifies nothing stays
  * a blockquote, which markdown does have syntax for.
  */
 const NOTE_TAGS = ["div", "span", "svg", "circle", "path"]

@@ -5,7 +5,7 @@
  * in a spreadsheet and paste it into one. **Neither is a workbook**: writing an
  * `.xlsx` means a dependency, and every spreadsheet reads what is here.
  *
- * The rows are strings by the time they arrive. Deciding what a column says is
+ * The rows are strings by the time they arrive. Deciding what a column has is
  * the listing's business (`app/public/lists.server.ts`); this file only knows
  * how to write a table down without breaking it.
  */
@@ -24,7 +24,7 @@ const READS_AS_FORMULA = /^[=+\-@\t\r]/
 /**
  * A value a spreadsheet will not evaluate.
  *
- * **Both forms exist to be opened in a spreadsheet** — the file carries a
+ * **Both forms exist to be opened in a spreadsheet** — the file has a
  * byte-order mark for exactly that, and the clipboard form is pasted into
  * one — so the way the spreadsheet reads them is part of writing them. A title
  * beginning `=` or `@` is a formula there, and titles are free text a provider
@@ -41,7 +41,7 @@ export function spreadsheetSafe(value: string): string {
 /**
  * Tab-separated, with nothing quoted.
  *
- * **The tab is what keeps the values whole.** A cell that carries several
+ * **The tab is what keeps the values whole.** A cell that has several
  * values joins them with a comma, so a comma-separated file would have to quote
  * a third of what a listing hands over — while a tab appears in none of it.
  *
@@ -60,7 +60,7 @@ export function toTsv(table: ExportTable): string {
 /**
  * The file, named after the listing it came from.
  *
- * The file carries a byte-order mark: without one Excel reads a UTF-8 file as
+ * The file has a byte-order mark: without one Excel reads a UTF-8 file as
  * the local codepage and every Japanese title in it turns to mojibake. **What
  * is copied does not** — it is going to the clipboard rather than to a reader
  * of files, and the mark would arrive as a character in the first cell.

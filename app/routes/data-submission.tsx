@@ -10,9 +10,9 @@ import { applicationUrl, readLocale } from "~/public/urls"
 import type { Route } from "./+types/data-submission"
 
 /**
- * Where a provider starts. This is a screen — two ways in and two sentences —
+ * Where a provider starts. This is a screen — two links and two sentences —
  * rather than a document, so it is not editable through the CMS. Its sentences
- * carry links, so they are held as markdown in the dictionary and rendered
+ * have links, so they are held as markdown in the dictionary and rendered
  * here, which keeps a sentence one string instead of three fragments around a
  * link.
  */

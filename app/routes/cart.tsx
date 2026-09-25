@@ -2,9 +2,9 @@ import { useEffect, useRef } from "react"
 import { useFetcher } from "react-router"
 
 import { APPLICATION_FORM_URL, applicationPayload, useCart } from "~/cart/store"
-import { Button, ButtonLink, CopyButton, Fold, Heading, IconButton, Stack } from "~/components/base"
+import { Button, ButtonLink, CopyButton, Collapsible, Heading, IconButton, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
-import { AccessTypeBadge, Card, Crumbs, IdMark, Page, Table, Td } from "~/components/page"
+import { AccessTypeBadge, Card, Crumbs, IdWithIcon, Page, Table, Td } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
@@ -14,10 +14,10 @@ import type { Route } from "./+types/cart"
 import type { loader as rowsLoader } from "./cart-rows"
 
 /**
- * The datasets a reader has collected, and the block of JSON that carries them
+ * The datasets a reader has collected, and the block of JSON that has them
  * into the application system.
  *
- * **The cart is in the browser, and the browser is what asks for the rows.**
+ * **The cart is in the browser, and the browser is what requests the rows.**
  * The collection used to ride in the address so that this loader could draw the
  * table from it — which put a hundred accessions in the address bar for what is
  * a private, half-finished errand. The page is `/cart` and nothing else now,
@@ -69,14 +69,14 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
           parts of a page: the table ends and the first step is what to do with
           what it holds. **The numbering is what groups the steps** — the list
           says "first this, then that" on its own, so the distance above it does
-          not have to say it a second time by standing further off.
+          not have to show it a second time by standing further off.
         */}
         <Stack gap="normal">
           {/*
             **How many, and the one thing that acts on all of them, at the end
             of the line the title opens.** The two belong together — the number
             is what "remove all" would remove — and the heading's own row is
-            where the site already stands what acts on a whole page.
+            where the site already remains what acts on a whole page.
 
             **Not the count slot beside the title**, which would put the number
             at the left with the errand 1,024px away from it. The row centres
@@ -106,7 +106,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
           {/*
           **The rows are one line each, so the cells are centred.** `Td` sits
           its contents at the top, which is right where a cell may run to three
-          or four lines; here it leaves a mark 36px tall and a word 22.4px tall
+          or four lines; here it leaves an indicator 36px tall and a word 22.4px tall
           starting at the same edge, and nothing lines up with anything.
         */}
           <Table
@@ -124,9 +124,9 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
               return (
                 <tr key={label}>
                   <Td nowrap>
-                    <IdMark kind="dataset" to={row === undefined ? null : href(locale, datasetPath(label))}>
+                    <IdWithIcon kind="dataset" to={row === undefined ? null : href(locale, datasetPath(label))}>
                       {label}
-                    </IdMark>
+                    </IdWithIcon>
                   </Td>
                   {row === undefined
                     ? (
@@ -142,9 +142,9 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                     : (
                         <>
                           <Td nowrap>
-                            <IdMark kind="research" to={href(locale, researchPath(row.humLabel))}>
+                            <IdWithIcon kind="research" to={href(locale, researchPath(row.humLabel))}>
                               {row.humLabel}
-                            </IdMark>
+                            </IdWithIcon>
                           </Td>
                           <Td>
                             {row.accessType !== null && (
@@ -153,7 +153,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                           </Td>
                         </>
                       )}
-                  <Td holds="mark">
+                  <Td holds="icon">
                     <IconButton
                       name="close"
                       label={messages.cart.removeOne(label)}
@@ -178,12 +178,12 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
  * **A procedure is not a remark.** The three clauses used to sit in the ⓘ box
  * the site uses for asides, above two buttons that carried them out — so the
  * words and the controls were the same instruction told twice, and the box said
- * "by the way" about the only thing this screen is for. **Each step carries its
+ * "by the way" about the only thing this screen is for. **Each step has its
  * own control instead**, and the numbering is the list's own (`<ol>`), which is
- * what says "first this, then that" to a reader who cannot see the layout.
+ * what conveys "first this, then that" to a reader who cannot see the layout.
  *
  * **The second step opens a new tab**, which the words beside it say rather than
- * the mark alone (`base.tsx` の `ButtonLink`).
+ * the indicator alone (`base.tsx` の `ButtonLink`).
  */
 function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale }) {
   const messages = messagesFor(locale)
@@ -200,11 +200,11 @@ function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale
           </div>
           {/*
             The JSON is what the button copies, not something to read — it is
-            folded away, and focusable when opened because it scrolls (a hundred
+            collapsed away, and focusable when opened because it scrolls (a hundred
             datasets are four hundred lines, and a box only a mouse can scroll is
             a box some readers cannot reach).
           */}
-          <Fold summary={messages.cart.showPayload}>
+          <Collapsible summary={messages.cart.showPayload}>
             <pre
               tabIndex={0}
               aria-label={messages.cart.payload}
@@ -212,7 +212,7 @@ function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale
             >
               <code>{payload}</code>
             </pre>
-          </Fold>
+          </Collapsible>
         </Stack>
       </li>
       <li>

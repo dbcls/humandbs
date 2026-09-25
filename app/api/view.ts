@@ -1,5 +1,5 @@
 /**
- * Turning the public projection into the JSON the API answers with.
+ * Turning the public projection into the JSON the API responds with.
  *
  * This is the only place the answer takes its shape, and every endpoint goes
  * through it — a single research, a search hit and a line of the bulk stream are
@@ -13,10 +13,10 @@
  * - **No value means no key; "not applicable" means `null`.** The projection has
  *   already emptied every unsettled slot, so an empty one and an unsettled one
  *   are the same thing by the time they arrive here and both disappear. What
- *   survives is the one state that carries information: the value does not
+ *   survives is the one state that has information: the value does not
  *   exist, and somebody has said so
  * - **A list is always there, empty if need be**, so that a reader can take its
- *   length without asking whether the key exists. This is ddbj-search-api's
+ *   length without checking whether the key exists. This is ddbj-search-api's
  *   convention and consumers of both should not have to remember which is which
  * - **Prose comes out as plain text.** The tree
  *   is how the portal stores a sentence; putting it on the wire would tie the
@@ -34,7 +34,7 @@
 
 import type { CauUsage, StoredFile } from "~/content/public"
 import { toPlainText } from "~/content/richtext"
-import { inBoxOrder } from "~/files/selection"
+import { inListingOrder } from "~/files/selection"
 import type {
   DatasetContent,
   DiseaseValue,
@@ -119,7 +119,7 @@ export function linksOf(value: LocalizedLinks): ApiLinks | undefined {
 }
 
 /**
- * A catalog label, and the label of a vocabulary value. Neither carries a state
+ * A catalog label, and the label of a vocabulary value. Neither has a state
  * — the catalog holds both languages — so an empty one is simply a language the
  * catalog has not been given.
  */
@@ -147,7 +147,7 @@ function termsOf(slot: Slot<string[]>, catalog: CatalogView): ApiTerm[] | null |
 /**
  * **A list, because a key holds a list** (`app/content/types.ts`). What each
  * entry is about and what qualifies it travel with it: a client that only wants
- * the number can read `value`, and one that wants to say which number it was
+ * the number can read `value`, and one that wants to report which number it was
  * has the label without parsing prose.
  */
 function numberOf(slot: Slot<NumberValue[]>): ApiNumber[] | null | undefined {
@@ -197,7 +197,7 @@ function valueOf(slot: ValueSlot, catalog: CatalogView): ApiValue | undefined {
 }
 
 /**
- * **A disease answers with both names.** The terms carry what a classification
+ * **A disease responds with both names.** The terms have what a classification
  * calls it, `name` what the article called it, and neither replaces the other:
  * a reader looking for `NASH` will not find `その他の明示された炎症性肝疾患`,
  * and a client counting diseases needs the code. **The terms may be empty**, so
@@ -332,7 +332,7 @@ export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset
       label: held(experiment.label),
       values: valuesOf(experiment.values, context.catalog),
     })),
-    files: inBoxOrder(input.content.fileSelection).flatMap((name) => {
+    files: inListingOrder(input.content.fileSelection).flatMap((name) => {
       const size = sizeOf.get(name)
       return size === undefined
         ? []

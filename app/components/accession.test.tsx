@@ -17,14 +17,14 @@ function draw(): string {
 }
 
 describe("外部アクセッションからの作成", () => {
-  it("データセットの画面の節として開いたまま表示され、ダイアログも別の画面へのリンクも持たない", () => {
+  it("データセットの画面の節として開いたまま表示され、ダイアログも別の画面へのリンクも無い", () => {
     const html = draw()
     expect(html).toMatch(new RegExp(`<h2[^>]*>${t.openDataset}</h2>`))
     expect(html).not.toContain("<dialog")
     expect(html).not.toContain("href=\"/admin/research/r-1/draft/d-1/dataset/upstream\"")
   })
 
-  it("番号の窓と「検索」が最初から表示され、調べるのはその場で (GET) 行う", () => {
+  it("番号の入力欄と「検索」が最初から表示され、調べるのはその場で (GET) 行う", () => {
     const html = draw()
     expect(html).toContain(t.accessionHint)
     expect(html).toContain(t.look)
@@ -37,7 +37,7 @@ describe("外部アクセッションからの作成", () => {
 })
 
 describe("調べた結果の出し方", () => {
-  it("次を調べているあいだは前の結果を出さない — もう窓の値に対応していない", () => {
+  it("次を調べているあいだは前の結果を出さない — もう入力欄の値に対応していない", () => {
     expect(shownLookup({ found: "前の結果", looking: true, made: false })).toBeUndefined()
   })
 

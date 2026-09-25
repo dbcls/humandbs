@@ -1,14 +1,14 @@
 /**
  * The global navigation and the footer sitemap.
  *
- * These live in code rather than in the database because nothing edits them at
+ * These are defined in code rather than in the database because nothing edits them at
  * runtime: there is no admin screen for navigation, so a table would only be
  * writable by editing a migration. The labels settle the question — they are
  * hand-written short forms, not document titles (`機関外サーバ` against a
  * document titled `所属機関外利用可能サーバ（機関外サーバ）の導入について`),
  * which makes them interface text of the same kind as `i18n/messages.ts`.
  *
- * A destination is an internal path: either a slug that a document answers at,
+ * A destination is an internal path: either a slug that a document responds at,
  * or a path a route owns (`/`, `/data-use`, `/research`). The test that every
  * destination is answered by something is the only guard against a slug being
  * renamed out from under an entry — a foreign key would not have caught the
@@ -148,7 +148,7 @@ const CONTACT_US: NavLink = {
  *
  * **The order is also the order they are given up in**, since the bar keeps as
  * many as fit from the front. It is v1's, with the two listings placed where v1
- * folds them — under "data use" — rather than ahead of it.
+ * groups them — under "data use" — rather than ahead of it.
  */
 export const NAVBAR: NavLink[] = [
   GUIDELINES,

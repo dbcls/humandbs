@@ -50,7 +50,7 @@ describe("アシスタントの人物検証表示", () => {
     )
 
     expect(html.match(/参考 URL/g)).toHaveLength(1)
-    // Each opens a new tab with the site's own mark and words for that (`page.tsx` の `ExternalLink`).
+    // Each opens a new tab with the site's own indicator and words for that (`page.tsx` の `ExternalLink`).
     expect(html).toMatch(/>example\.ac\.jp<svg[^]*?\(新しいタブで開きます\)<\/span><\/a><\/span><span>, <a/)
     expect(html).toContain(">registry.example.go.jp<svg")
     expect(html).toContain("rel=\"noopener noreferrer\"")
@@ -290,7 +290,7 @@ describe("アシスタントレポートのレイアウト", () => {
     expect(html).not.toContain("lg:grid-cols-3")
   })
 
-  it("整合性の否定判定だけを色で立てる", () => {
+  it("整合性の否定判定だけを色で強調する", () => {
     const html = renderReport({
       phone_consistency_result: {
         all_match: false,

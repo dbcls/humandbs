@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, CountBubble, Fold, foldShown, IconButton, MarkButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, CountBubble, Collapsible, collapsibleOpen, IconButton, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -26,7 +26,7 @@ function clamped(count: number): string {
   )
 }
 
-describe("a list cut short", () => {
+describe("a truncated list", () => {
   it("shows everything while there is nothing to cut", () => {
     const html = clamped(3)
     expect(html).toContain("JGAD000003")
@@ -44,7 +44,7 @@ describe("a list cut short", () => {
     expect(html).not.toContain("他 ")
   })
 
-  it("cuts once more than one would be hidden, and says how many", () => {
+  it("cuts once more than one would be hidden, and shows how many", () => {
     const html = clamped(5)
     expect(html).toContain("JGAD000003")
     expect(html).not.toContain("JGAD000004")
@@ -63,11 +63,11 @@ function visible(html: string): string {
 
 /**
  * A glyph has no baseline, so a box placed by its first item's baseline is
- * placed by the glyph's bottom edge and stretches the line it stands in. The
+ * placed by the glyph's bottom edge and stretches the line it is shown in. The
  * pair takes a box of one line's height and sits at the top of it instead, the
  * way a badge does.
  */
-describe("a state every row carries", () => {
+describe("a state every row has", () => {
   it("takes one line's height and sits at the top of it, so it has no baseline to be placed by", () => {
     const html = render(<Stated kind="live">公開中</Stated>)
     const box = (/<span class="([^"]*)"><svg/.exec(html)?.[1] ?? "").split(/\s+/)
@@ -85,7 +85,7 @@ describe("the name of a pane", () => {
   })
 
   /**
-   * The rule is pulled out through the card's padding so that it stands on the
+   * The rule is pulled out through the card's padding so that it is shown on the
    * same line as the page heading's own; the line under it belongs to the pane
    * and spans it. Moving the pull onto the row would drag the line out too, and
    * the pane would read as hanging off the left of everything below it.
@@ -100,13 +100,13 @@ describe("the name of a pane", () => {
   })
 
   /*
-    The other place a mark may stand: at the start of the thing it names, for a
+    The other place an indicator may stand: at the start of the thing it identifies, for a
     pane with no edge of the card to line up with. What must not move with it is
-    the line, which is the pane's either way. **The gap goes with the mark**:
+    the line, which is the pane's either way. **The gap goes with the indicator**:
     hung out it has to leave room for the words to land back on the content
-    edge, standing at the start it only has to bind itself to the word.
+    edge, shown at the start it only has to bind itself to the word.
   */
-  it("stands the rule at the start when asked, without moving the line", () => {
+  it("keeps the rule at the start when asked, without moving the line", () => {
     const html = render(<PaneHeading title="絞り込み" rule="start" />)
     const row = /<div class="([^"]*border-b[^"]*)"/.exec(html)?.[1] ?? ""
     const heading = /<h2 class="([^"]*)"/.exec(html)?.[1] ?? ""
@@ -133,7 +133,7 @@ describe("a condition in force", () => {
     expect((html.match(/<a /g) ?? []).length).toBe(1)
   })
 
-  it("draws what the condition is about before what it says", () => {
+  it("draws what the condition is about before what it shows", () => {
     expect(visible(render(<Chip field="性別" value="男性" to="/research" remove="解除" />)))
       .toBe("性別男性")
   })
@@ -144,36 +144,36 @@ describe("a condition in force", () => {
   })
 
   /** The glyph is hidden, so without this the link is read out as "link". */
-  it("says what pressing it takes off", () => {
+  it("shows what pressing it takes off", () => {
     expect(render(<Chip field="性別" value="男性" to="/research" remove="性別: 男性 を解除" />))
       .toContain("性別: 男性 を解除")
   })
 })
 
-describe("a part of a panel that folds", () => {
+describe("a part of a panel that collapses", () => {
   it("is open while there is a reason for it to be", () => {
-    expect(render(<Fold summary="疾患" open>C34</Fold>)).toContain("<details open")
+    expect(render(<Collapsible summary="疾患" open>C34</Collapsible>)).toContain("<details open")
   })
 
   it("is shut when there is none", () => {
-    expect(render(<Fold summary="疾患">C34</Fold>)).not.toContain("<details open")
+    expect(render(<Collapsible summary="疾患">C34</Collapsible>)).not.toContain("<details open")
   })
 
   it("opens when a reason appears", () => {
-    expect(foldShown(false, true)).toBe(true)
+    expect(collapsibleOpen(false, true)).toBe(true)
   })
 
   /**
-   * The reason going away is not the reader asking for the section to be put
+   * The reason going away is not the reader requesting the section to be put
    * away. Written as the reason alone, lifting the last condition of a facet
-   * would fold it up under a reader who was reading it.
+   * would collapse it up under a reader who was reading it.
    */
   it("stays open when the reason goes away, which nobody asked for", () => {
-    expect(foldShown(true, false)).toBe(true)
+    expect(collapsibleOpen(true, false)).toBe(true)
   })
 
   it("stays shut while nothing has opened it", () => {
-    expect(foldShown(false, false)).toBe(false)
+    expect(collapsibleOpen(false, false)).toBe(false)
   })
 
   /**
@@ -182,7 +182,7 @@ describe("a part of a panel that folds", () => {
    * words and nothing else — under 8px of margin nobody could press.
    */
   it("puts its padding inside the thing that gets pressed", () => {
-    const html = render(<Fold summary="疾患">C34</Fold>)
+    const html = render(<Collapsible summary="疾患">C34</Collapsible>)
 
     expect(html).toMatch(/<summary[^>]*\bpy-2\b/)
     expect(html).not.toMatch(/<details[^>]*\bpy-2\b/)
@@ -191,7 +191,7 @@ describe("a part of a panel that folds", () => {
 
 /**
  * A question raised by something that happened, rather than by a control:
- * files chosen whose names the box already holds. What raised it is the way in,
+ * files chosen whose names the box already holds. What raised it is the trigger,
  * so the panel draws none of its own.
  */
 describe("a question held open from outside", () => {
@@ -206,13 +206,13 @@ describe("a question held open from outside", () => {
     />,
   )
 
-  it("draws no way in, and nothing at all while it is shut", () => {
+  it("draws no trigger, and nothing at all while it is shut", () => {
     const html = question(false)
     expect(html).not.toContain("<button")
     expect(html).not.toContain("同じ名前のファイルの上書き")
   })
 
-  it("asks with the sentence and both answers once it is open, and the deed sends no form", () => {
+  it("requests with the sentence and both answers once it is open, and the action sends no form", () => {
     const html = question(true)
     expect(html).toContain("同じ名前のファイルの上書き")
     expect(html).toContain("2 件が既にあります: a.zip, b.zip。")
@@ -239,7 +239,7 @@ describe("a control that cannot be pressed", () => {
     expect(html).toMatch(/<button[^>]*\bdisabled=""/)
   })
 
-  it("says why over itself, and the reason is read out with it", () => {
+  it("shows why over itself, and the reason is read out with it", () => {
     const [, id] = /role="tooltip"[^>]*>|id="([^"]+)"[^>]*role="tooltip"/.exec(html) ?? []
     expect(html).toContain("role=\"tooltip\"")
     expect(html).toContain("使われているので削除できません。")
@@ -247,12 +247,12 @@ describe("a control that cannot be pressed", () => {
     expect(html).toMatch(new RegExp(`<button[^>]*aria-describedby="${id ?? ""}"`))
   })
 
-  it("lets the pointer through to what stands the reason up, which can also take focus", () => {
+  it("lets the pointer through to what holds the reason up, which can also take focus", () => {
     expect(html).toMatch(/<span[^>]*tabindex="0"[^>]*>/)
     expect(html).toContain("pointer-events-none")
   })
 
-  it("hangs the reason from the right, or from the left when it stands at the left of a row", () => {
+  it("hangs the reason from the right, or from the left when it is shown at the left of a row", () => {
     expect(html).toMatch(/role="tooltip"[^>]*right-0|right-0[^>]*role="tooltip"/)
     const left = render(<Button disabled="理由" reasonAt="left">表示</Button>)
     expect(left).toMatch(/role="tooltip"[^>]*left-0|left-0[^>]*role="tooltip"/)
@@ -266,45 +266,45 @@ describe("a control that cannot be pressed", () => {
     expect(off).not.toContain("tooltip")
   })
 
-  it("is the same control whether a panel's way in or a plain one", () => {
-    const wayIn = render(
+  it("is the same control whether a panel's trigger or a plain one", () => {
+    const trigger = render(
       <Confirm label="削除" title="x の削除" warning="削除されます。元に戻せません。" confirm="削除" cancel="キャンセル" disabled="使われています。" />,
     )
-    expect(wayIn).toContain("role=\"tooltip\"")
-    expect(wayIn).toContain("使われています。")
-    expect(wayIn).toMatch(/<button[^>]*\bdisabled=""/)
+    expect(trigger).toContain("role=\"tooltip\"")
+    expect(trigger).toContain("使われています。")
+    expect(trigger).toMatch(/<button[^>]*\bdisabled=""/)
   })
 })
 
 /**
- * The mark of a way moves the way it points while the control it stands in is
+ * The indicator of a way moves the way it points while the control it is shown in is
  * pointed at — and only then, and only for those who allow motion.
  */
 describe("Chevron", () => {
   it("points and moves left, or right, as told", () => {
     const left = render(<Chevron dir="left" />)
-    expect(left).toContain("group-hover/way:-translate-x-0.5")
-    expect(left).toContain("group-focus-visible/way:-translate-x-0.5")
+    expect(left).toContain("group-hover/link:-translate-x-0.5")
+    expect(left).toContain("group-focus-visible/link:-translate-x-0.5")
     expect(left).toContain("motion-safe:transition-transform")
     const right = render(<Chevron dir="right" />)
-    expect(right).toContain("group-hover/way:translate-x-0.5")
+    expect(right).toContain("group-hover/link:translate-x-0.5")
     expect(right).not.toContain("-translate-x-0.5")
   })
 
-  it("is hidden from readers — the word beside it says where", () => {
+  it("is hidden from readers — the word beside it shows where", () => {
     expect(render(<Chevron dir="right" />)).toContain("aria-hidden=\"true\"")
   })
 
-  it("moves inside any Button, which is the group it answers to", () => {
+  it("moves inside any Button, which is the group it responds to", () => {
     const html = render(<Button type="button" icon={<Chevron dir="right" />}>研究へ</Button>)
-    expect(html).toMatch(/<button[^>]*class="[^"]*\bgroup\/way\b/)
+    expect(html).toMatch(/<button[^>]*class="[^"]*\bgroup\/link\b/)
   })
 })
 
-describe("a mark in a line of text (MarkButton)", () => {
-  it("is 24px tall whether or not it carries a word, so a glyph alone does not sit lower than the word beside it", () => {
-    const bare = render(<MarkButton icon="comment" label="コメント" onClick={() => undefined} />)
-    const worded = render(<MarkButton icon="diff" onClick={() => undefined}>変更あり</MarkButton>)
+describe("an indicator in a line of text (PanelButton)", () => {
+  it("is 24px tall whether or not it has a word, so a glyph alone does not sit lower than the word beside it", () => {
+    const bare = render(<PanelButton icon="comment" label="コメント" onClick={() => undefined} />)
+    const worded = render(<PanelButton icon="diff" onClick={() => undefined}>変更あり</PanelButton>)
     for (const html of [bare, worded]) {
       const classes = (/<button[^>]*class="([^"]*)"/.exec(html)?.[1] ?? "").split(/\s+/)
       expect(classes).toContain("min-h-6")
@@ -314,14 +314,14 @@ describe("a mark in a line of text (MarkButton)", () => {
   })
 
   it("names itself where the words shown are not a name", () => {
-    const html = render(<MarkButton icon="comment" label="コメント" onClick={() => undefined}>2</MarkButton>)
+    const html = render(<PanelButton icon="comment" label="コメント" onClick={() => undefined}>2</PanelButton>)
     expect(html).toContain("<span class=\"sr-only\">コメント</span>")
     expect(html).toMatch(/<svg[^>]*aria-hidden="true"/)
   })
 })
 
 describe("a way that opens a new tab (ButtonLink newTab)", () => {
-  it("draws the external glyph itself and says the new tab in words", () => {
+  it("draws the external glyph itself and shows the new tab in words", () => {
     const html = render(<ButtonLink to="/x.pdf" external newTab newTabLabel=" (新しいタブで開きます)">PDF</ButtonLink>)
     expect(html).toMatch(/<a[^>]*target="_blank"/)
     expect(html).toContain("<span class=\"sr-only\"> (新しいタブで開きます)</span>")
@@ -338,20 +338,20 @@ describe("a way that opens a new tab (ButtonLink newTab)", () => {
     expect(true).toBe(true)
   })
 
-  it("ends a way to another screen in the chevron that moves (way)", () => {
-    const html = render(<ButtonLink to="/cart" way>カートを見る</ButtonLink>)
+  it("ends a link to another screen in the chevron that moves (chevron)", () => {
+    const html = render(<ButtonLink to="/cart" chevron>カートを見る</ButtonLink>)
     expect(html.indexOf("カートを見る")).toBeLessThan(html.indexOf("<svg"))
-    expect(html).toContain("group-hover/way:translate-x-0.5")
+    expect(html).toContain("group-hover/link:translate-x-0.5")
   })
 })
 
 describe("a picked value (ValueChip)", () => {
-  it("is one button: the value, the close glyph after it, and the sentence saying what pressing does", () => {
+  it("is one button: the value, the close glyph after it, and the sentence indicating what pressing does", () => {
     const html = render(<ValueChip remove="解除" onRemove={() => undefined}>肺癌</ValueChip>)
     expect(html.match(/<button/g)).toHaveLength(1)
     expect(html.indexOf("肺癌")).toBeLessThan(html.indexOf("<svg"))
     expect(html).toContain("<span class=\"sr-only\">解除</span>")
-    // The badge's face: small type, a muted edge.
+    // The badge's style: small type, a muted edge.
     expect(html).toMatch(/class="[^"]*\btext-xs\b[^"]*\bborder-line-strong\b|class="[^"]*\bborder-line-strong\b[^"]*\btext-xs\b/)
   })
 
@@ -361,12 +361,12 @@ describe("a picked value (ValueChip)", () => {
 })
 
 describe("a count riding on a control (CountBubble)", () => {
-  it("draws nothing for none, so an empty cart carries no disc", () => {
+  it("draws nothing for none, so an empty cart has no disc", () => {
     expect(render(<CountBubble count={0} />)).toBe(render(null))
     expect(render(<CountBubble count={-1} />)).toBe(render(null))
   })
 
-  it("is kept from readers, since the control says the number in its own name", () => {
+  it("is kept from readers, since the control shows the number in its own name", () => {
     const html = render(<CountBubble count={3} tone="brand" />)
     expect(html).toContain("aria-hidden=\"true\"")
     expect(html).toContain(">3<")
@@ -379,7 +379,7 @@ describe("a count riding on a control (CountBubble)", () => {
 describe("copying (CopyButton)", () => {
   const html = render(<CopyButton text="hum0001" label="コピー" done="コピーしました" />)
 
-  it("holds both words in one cell before anything is pressed, so answering does not change its width", () => {
+  it("holds both words in one cell before anything is pressed, so responding does not change its width", () => {
     const cell = /<span class="grid">([\s\S]*?)<\/span><\/button>/.exec(html)?.[1] ?? ""
     expect(cell).toMatch(/<span aria-hidden="false" class="col-start-1 row-start-1 ">コピー<\/span>/)
     expect(cell).toMatch(/<span aria-hidden="true" class="col-start-1 row-start-1 invisible">コピーしました<\/span>/)
@@ -395,7 +395,7 @@ describe("copying (CopyButton)", () => {
 })
 
 describe("an icon-only control that cannot be pressed (IconButton)", () => {
-  it("dims itself and stops answering the pointer, with no box wrapped round it", () => {
+  it("dims itself and stops responding to the pointer, with no box wrapped round it", () => {
     const html = render(<IconButton name="chevron-up" label="上へ" disabled />)
     const classes = /class="([^"]*)"/.exec(html)?.[1]?.split(/\s+/) ?? []
     expect(classes).toContain("disabled:opacity-50")

@@ -36,10 +36,10 @@ async function createResearch(humLabel: string): Promise<string> {
 }
 
 /**
- * What the next version will say about each dataset.
+ * What the next version will report about each dataset.
  *
  * A description belongs to the version that lists it, so seeding one is not a
- * write of its own — it is held here until a publish folds it in.
+ * write of its own — it is held here until a publish merges it in.
  */
 const descriptions = new Map<string, DatasetContent>()
 
@@ -148,7 +148,7 @@ describe("rebuildSearchDocs", () => {
     expect(await db.select().from(s.dataset)).toHaveLength(1)
   })
 
-  it("carries the ancestors of a term so a broad code matches a narrow one", async () => {
+  it("has the ancestors of a term so a broad code matches a narrow one", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)
       .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
@@ -177,7 +177,7 @@ describe("rebuildSearchDocs", () => {
     const counts = await rebuildSearchDocs(db)
 
     // One for the dataset and one for the research above it: both listings are
-    // filtered by the same shape of query, so both carry the value.
+    // filtered by the same shape of query, so both have the value.
     expect(counts.facetTerms).toBe(2)
     const facets = await db
       .select({ targetType: s.searchDoc.targetType, termId: s.searchFacetTerm.termId, ancestorIds: s.searchFacetTerm.ancestorIds })
@@ -221,7 +221,7 @@ describe("rebuildSearchDocs", () => {
 
     await rebuildSearchDocs(db)
 
-    // The projection carries the identity of a term and the page resolves the
+    // The projection has the identity of a term and the page resolves the
     // label, so the words a reader sees have to be put back here — otherwise a
     // value shown on the page cannot be found from the search box.
     const [row] = await db
@@ -234,12 +234,12 @@ describe("rebuildSearchDocs", () => {
     // what an ICD10 value is looked up by.
     expect(row?.ja).toContain("C349")
     expect(row?.en).toContain("C349")
-    // One shown key and one hidden one carry the same value: it is indexed
+    // One shown key and one hidden one have the same value: it is indexed
     // once, by way of the projection rather than of the content.
     expect(row?.en.split("Bronchus or lung").length).toBe(2)
   })
 
-  it("carries the facet values of a dataset into the row of the research it belongs to", async () => {
+  it("passes the facet values of a dataset into the row of the research it belongs to", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)
       .values({ code: "assay", labelJa: "手法", labelEn: "Assay" })
@@ -281,7 +281,7 @@ describe("rebuildSearchDocs", () => {
     expect(research.map((row) => row.termId).sort()).toEqual([wgs, rna].sort())
   })
 
-  it("carries the text of a dataset into the row of the research it belongs to", async () => {
+  it("passes the text of a dataset into the row of the research it belongs to", async () => {
     const researchId = await createResearch("hum0001")
     const datasetId = await createDataset(researchId, "JGAD000001")
     describeDataset(datasetId, {
@@ -296,7 +296,7 @@ describe("rebuildSearchDocs", () => {
       .select({ targetType: s.searchDoc.targetType, textJa: s.searchDoc.textJa })
       .from(s.searchDoc)
     expect(only(texts.filter((row) => row.targetType === "research")).textJa).toContain("ATAC-seq")
-    // A version is the ledger of what was published, not something the lists search.
+    // A version is the `label_pin` table of what was published, not something the lists search.
     const version = only(texts.filter((row) => row.targetType === "research-version"))
     expect(version.textJa).not.toContain("ATAC-seq")
     expect(version.textJa).toContain("JGAD000001")
@@ -340,7 +340,7 @@ describe("rebuildSearchDocs", () => {
     const counts = await rebuildSearchDocs(db)
 
     expect(counts.facetTerms).toBe(2)
-    // **The prose is in the index too.** Which key a value stands under decides
+    // **The prose is in the index too.** Which key a value is shown under decides
     // whether it can be asked for by name, not whether it can be read.
     const texts = await db.select({ textJa: s.searchDoc.textJa }).from(s.searchDoc)
     expect(texts.some((row) => row.textJa.includes("内部メモ"))).toBe(true)

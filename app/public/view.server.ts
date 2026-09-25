@@ -70,7 +70,7 @@ export function writtenNumber(number: NumberValue): string {
   // **A width is its two ends joined by an en dash**, the typographic mark for a
   // span rather than a subtraction — a hyphen would read as a negative number
   // beside the numbers either side of it. Only one unit is shown: the key has
-  // one, so repeating it after both ends would say the same word twice.
+  // one, so repeating it after both ends would report the same word twice.
   const high = number.inputHigh ?? null
   const shown = high === null
     ? writtenFigure(value)
@@ -89,9 +89,9 @@ export type FieldView
 /**
  * Links as a page shows them. A URL is the one kind of value whose two
  * languages are different resources rather than translations, so it never falls
- * back — but it carries the same four states as everything else, and both
+ * back — but it has the same four states as everything else, and both
  * `unsettled` and `not-applicable` have to survive the trip to the screen.
- * Collapsing them into an empty list is what would make a preview stop asking.
+ * Collapsing them into an empty list is what would make a preview stop requesting.
  */
 export type LinksView = Resolved<Link[]>
 
@@ -166,7 +166,7 @@ export interface VocabularyTermView {
   code: string
   labelJa: string | null
   labelEn: string
-  /** Who makes the thing this names, where the value is a product. */
+  /** Who makes the thing this identifies, where the value is a product. */
   maker: string | null
   /**
    * Where the value sits among the others under its key. It is what the
@@ -195,12 +195,12 @@ export const TYPE_OF_DATA_KEY = "type-of-data"
 /**
  * The key the research listing gives a column of its own. It is scoped to the
  * experiment rather than to the research, so what a study "runs on" is the
- * union of what the experiments beneath it carry — which is why the listing
+ * union of what the experiments beneath it have — which is why the listing
  * reads it from the facet rows and not from the research's own content.
  */
 export const PLATFORM_KEY = "platform"
 
-/** A value as one line of text, for saying what a list used to hold. */
+/** A value as one line of text, for indicating what a list used to hold. */
 /** A cell of a compared table: the words, or the state said in words. */
 function cellText(field: FieldView, words: ReturnType<typeof messagesFor>): string {
   if (field.state === "unsettled") return words.unsettled
@@ -305,7 +305,7 @@ function writtenDisease(disease: DiseaseValue, locale: Locale, catalog: CatalogV
 }
 
 /**
- * The state of a value lives inside it: prose holds one per language and
+ * The state of a value is kept inside it: prose holds one per language and
  * resolves like any other translated pair, everything else holds a single one.
  */
 function valueField(
@@ -325,7 +325,7 @@ function valueField(
       if (slot.state === "not-applicable") return { state: "not-applicable" }
       if (slot.state === "unknown") return { state: "unsettled" }
       // Catalog order, for the reason `termViews` gives: the ids themselves
-      // carry none, and a key holding several values is read down a column
+      // have none, and a key holding several values is read down a column
       // beside the same key on other pages.
       const labels = slot.value
         .map((id) => catalog.termById.get(id))
@@ -401,7 +401,7 @@ function valueUnderCode(
 /**
  * The access type keeps its term code alongside its label: the badge is drawn
  * differently for unrestricted and controlled data, and the label is whatever
- * the catalog says in whichever language, so it cannot be matched against.
+ * the catalog reports in whichever language, so it cannot be matched against.
  */
 export interface TermView {
   code: string
@@ -489,7 +489,7 @@ export interface CauView
 /**
  * Upstream's languages, taken as they are. A usage record is not content: a
  * curator cannot edit it, so calling one of its languages untranslated would
- * name a defect nobody in the portal can fix. It carries no state either, which
+ * name a defect nobody in the portal can fix. It has no state either, which
  * is why it resolves through its own function.
  */
 function cauView(entry: CauUsage, locale: Locale): CauView {
@@ -512,7 +512,7 @@ export interface ResearchView {
   untranslated: boolean
   title: FieldView
   /**
-   * What this version says it changed. **The published pages do not draw it** —
+   * What this version has it changed. **The published pages do not draw it** —
    * it belongs to the release list, where the versions are read against each
    * other — but a preview does, because the note is part of what the provider
    * is being asked to check and there is no release list under a share link.
@@ -534,8 +534,8 @@ export interface ResearchView {
   }[]
   cau: CauView[]
   /**
-   * The research's box, as the caller listed and paged it. It is not part of
-   * the content and carries no anchor: nobody edits it, and a comment about a
+   * The research's prefix, as the caller listed and paged it. It is not part of
+   * the content and has no anchor: nobody edits it, and a comment about a
    * file would have nothing in the draft to attach to.
    */
   files: ResearchFileListView
@@ -561,8 +561,8 @@ export interface FileRowView {
 }
 
 /**
- * One page of a box. **The cut is made before the view is built**, because it
- * is a property of the listing rather than of the research, and the largest box
+ * One page of a prefix. **The page is sliced before the view is built**, because it
+ * is a property of the listing rather than of the research, and the largest prefix
  * would otherwise be a megabyte of HTML.
  */
 export interface FileListView {
@@ -570,14 +570,14 @@ export interface FileListView {
   total: number
   page: number
   pageCount: number
-  /** 1-based positions of the shown rows within the whole box. */
+  /** 1-based positions of the shown rows within the whole prefix. */
   rangeFrom: number
   rangeTo: number
 }
 
 /**
  * One dataset a publication names, as the page draws it. **Another research's
- * dataset says whose it is** — the ID alone reads as this research's, and a
+ * dataset reports whose it is** — the ID alone reads as this research's, and a
  * reader following it would land somewhere they did not expect.
  */
 export interface CitedDatasetView {
@@ -711,7 +711,7 @@ export function anchoredResearchView(
     untranslated: fallbacks.seen(),
   }
 
-  // An array carries its own path for membership and order, so each list is
+  // An array has its own path for membership and order, so each list is
   // anchored as a whole as well: an element added or taken away is a change
   // nobody could see if only the surviving elements were anchored. It is kept
   // as the table the page draws, every column of it, so that what is compared
@@ -805,7 +805,7 @@ export interface DatasetView {
   untranslated: boolean
   experiments: { id: string, label: FieldView, values: ValueView[] }[]
   /**
-   * What this dataset selects out of its research's box, in the box's order.
+   * What this dataset selects out of its research's prefix, in the prefix's order.
    * Already narrowed to what the listing holds, so a selection
    * naming something absent is simply not here.
    */
@@ -819,7 +819,7 @@ export interface DatasetViewInput {
   content: DatasetContent
   datePublished: string | null
   dateModified: string | null
-  /** The research's box, which the selection is read against. */
+  /** The research's prefix, which the selection is read against. */
   files: FileRowView[]
 }
 
@@ -833,7 +833,7 @@ export function datasetView(
 
 /**
  * A dataset's anchors are the paths of the dataset form: a value the dataset
- * itself carries is under the catalog key it sits under, and an experiment's
+ * itself has is under the catalog key it sits under, and an experiment's
  * values are under the experiment's identity. The two keys the page places
  * itself are anchored the same way, because a comment about the access type is
  * a comment about that value slot however the page chose to draw it.
@@ -898,7 +898,7 @@ function selectedFiles(
 /**
  * A row of one of the two listings.
  *
- * The listings do not carry the untranslated notice. It is a statement about a
+ * The listings do not have the untranslated notice. It is a statement about a
  * page — "what you are reading is not fully translated" — and a table of twenty
  * rows drawn from twenty different records has no single answer to give.
  */
@@ -914,7 +914,7 @@ export interface ResearchListRowView {
   /**
    * Whom the row names as the provider: the listing's own names where someone
    * wrote them, and otherwise the principal investigator of each provider the
-   * research carries — not the organisation beside it. The page carries both
+   * research has — not the organisation beside it. The page has both
    * under one heading; a cell in a listing holds a line, and the name is the
    * half a reader scans for.
    */
@@ -983,7 +983,7 @@ export function researchListRowView(
 }
 
 /**
- * A term as a page draws it. **The maker is only carried where the label still
+ * A term as a page draws it. **The maker is only kept where the label still
  * starts with it** — a curator who renames `Illumina NovaSeq 6000` to something
  * else has said the two are no longer a prefix and a rest, and drawing them
  * apart would then cut the label in the wrong place.
@@ -1027,7 +1027,7 @@ export interface DatasetListRowView extends DatasetRowView {
    * What the dataset's experiments are called.
    *
    * **Free text rather than terms.** The label is the line above the table in
-   * the source article (`Experiment`), and the listing carries it because that
+   * the source article (`Experiment`), and the listing has it because that
    * line is how a reader tells one dataset's work from another's. The
    * controlled values describing the same work sit under catalog keys and are
    * what the refinement panel counts.

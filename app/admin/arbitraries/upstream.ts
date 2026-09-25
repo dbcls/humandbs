@@ -3,13 +3,13 @@
  * against.
  *
  * The catalog is a fixture rather than a generator: the laws are about the
- * relationship between what upstream says and what a fixed vocabulary holds, so
+ * relationship between what upstream reports and what a fixed vocabulary holds, so
  * generating the vocabulary too would only make the two drift past each other
  * and leave every law vacuously true.
  *
  * The strings upstream states are drawn from a pool that half matches that
  * vocabulary. Drawn freely they would never match, and the half of the law that
- * says a known word is written would never be exercised.
+ * reports a known word is written would never be exercised.
  */
 
 import fc from "fast-check"
@@ -91,7 +91,7 @@ export const catalogFixture: CatalogWithTerms = {
 const STRATEGIES = ["WGS", "RNA-Seq", "WXS", "AMPLICON", ""]
 const MODELS = ["Illumina HiSeq 2500", "DNBSEQ-T7", "Illumina NovaSeq 6000"]
 // The last two exercise the rolling up: `E110A` is not a code the vocabulary
-// holds and `E110` is, while `Z9999` answers at no length at all.
+// holds and `E110` is, while `Z9999` responds at no length at all.
 const DISEASES = ["C34.9", "C34", "E11.0", "-", "dummy", "Z999", "c349", "E110A", "Z9999"]
 
 const wording = fc.oneof(fc.constant(""), fc.string({ maxLength: 40 }))

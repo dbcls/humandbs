@@ -1,8 +1,8 @@
 /**
  * The pieces both conflict diffs are built out of.
  *
- * A diff answers with paths (`paths.ts`), and the comparison is of the meaning
- * rather than of the JSON: a slot that says there is no value still carries
+ * A diff responds with paths (`paths.ts`), and the comparison is of the meaning
+ * rather than of the JSON: a slot that reports there is no value still has
  * whatever was half typed into it, and two slots differing only in that
  * leftover text say the same thing.
  *
@@ -33,7 +33,7 @@ export function sameStrings(a: readonly string[], b: readonly string[]): boolean
   return a.length === b.length && a.every((value, at) => value === b[at])
 }
 
-/** Leftover text is invisible while the state says there is no value. */
+/** Leftover text is invisible while the state reports there is no value. */
 export function sameText(a: TextInput, b: TextInput): boolean {
   if (a.state !== b.state) return false
   return a.state !== "value" || a.text === b.text

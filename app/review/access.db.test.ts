@@ -9,7 +9,7 @@ import * as s from "~/db/schema"
 import { sharedDraftByToken } from "./access.server"
 
 /**
- * The gate every unauthenticated read of a draft goes through.
+ * The publish check every unauthenticated read of a draft goes through.
  *
  * All of it is the negative side. A link that is private, one whose date has
  * gone by and one built on a token that has since been replaced must all answer
@@ -87,7 +87,7 @@ describe("a share token", () => {
     expect((await sharedDraftByToken(db, replacement))?.draftId).toBe(draftId)
   })
 
-  it("opens nothing when it names no draft at all", async () => {
+  it("opens nothing when it identifies no draft at all", async () => {
     await shared()
 
     expect(await sharedDraftByToken(db, "not-a-token")).toBe(null)
@@ -98,7 +98,7 @@ describe("a share token", () => {
 describe("sharing", () => {
   /**
    * The share settings are not content: two administrators disagreeing costs
-   * the setting one of them made a moment ago and nothing else, so they carry
+   * the setting one of them made a moment ago and nothing else, so they have
    * no revision — and flipping the switch must not make an open editor's next
    * save fail over fields nobody touched.
    */
@@ -119,7 +119,7 @@ describe("sharing", () => {
     expect(after).toEqual(before)
   })
 
-  it("says nothing happened when the draft is not there", async () => {
+  it("reports nothing happened when the draft is not there", async () => {
     const gone = "00000000-0000-0000-0000-000000000009"
     expect(await setDraftSharing(db, gone, { enabled: true, expiresAt: null }))
       .toEqual({ status: "gone" })

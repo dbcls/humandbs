@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { databaseName, testDatabaseUrl } from "./test-database"
 
 describe("databaseName", () => {
-  it("refuses a URL that names no database", () => {
+  it("refuses a URL that identifies no database", () => {
     expect(() => databaseName("postgres://user:pass@db:5432/")).toThrow(/names no database/)
   })
 
@@ -21,17 +21,17 @@ describe("testDatabaseUrl", () => {
     expect(url.host).toBe("db:5432")
   })
 
-  it("does nothing to a URL that already names the test database", () => {
+  it("does nothing to a URL that already identifies the test database", () => {
     const once = testDatabaseUrl("postgres://user:pass@db:5432/humandbs")
     expect(testDatabaseUrl(once)).toBe(once)
   })
 
-  it("keeps the query, which carries connection options", () => {
+  it("keeps the query, which has connection options", () => {
     const url = testDatabaseUrl("postgres://user:pass@db:5432/humandbs?sslmode=disable")
     expect(new URL(url).search).toBe("?sslmode=disable")
   })
 
-  it("refuses a URL that names no database", () => {
+  it("refuses a URL that identifies no database", () => {
     expect(() => testDatabaseUrl("postgres://user:pass@db:5432/")).toThrow(/names no database/)
   })
 })

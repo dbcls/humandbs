@@ -114,9 +114,9 @@ function AbstractPanel({
               key={sentence.id}
               data-abstract-pair-id={sentence.id}
               tabIndex={0}
-              // **選ばれている 1 文だけが背景を持つ。**焦点の輪郭は `app.css` の
-              // `:focus-visible` が site に 1 つ持っているので、ここで消して
-              // 引き直さない。
+              // **選ばれている 1 文だけに背景色を付ける。**フォーカスリングは `app.css` の
+              // `:focus-visible` でサイト全体に 1 つだけ定義しているので、ここで消して
+              // 書き直さない。
               className={`mr-1 rounded px-1 transition-colors ${
                 activePairId === sentence.id ? "bg-surface-hover text-ink" : ""
               }`}

@@ -15,14 +15,14 @@
  *
  * **The form is one column, in the order the public page runs in.** It is read
  * beside that page, and a reader following the two together cannot do it if one
- * of them is cut into panels. Nothing is hidden, so a mark beside a field is
+ * of them is split into panels. Nothing is hidden, so an indicator beside a field is
  * always where the field is.
  */
 
 import { useRef, useState, type ReactNode } from "react"
 
 import { describeAt } from "~/admin/changes"
-import { diffDraftInput, takeField } from "~/admin/diff"
+import { diffDraftInput, importField } from "~/admin/diff"
 import type {
   DataProviderInput,
   DraftInput,
@@ -36,7 +36,7 @@ import {
   adminDraftDatasetsPath,
   adminDraftPublishPath,
   adminDraftReviewPath,
-  adminDraftTakePath,
+  adminDraftImportPath,
   adminResearchPath,
   draftCommentsPath,
   draftPagePath,
@@ -44,7 +44,7 @@ import {
 import type { CommentAnchor } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { AnnotationLayer, Card, Page, PageHead } from "~/components/page"
+import { AnnotationLayer, Card, Page, PageHeader } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import {
@@ -53,7 +53,7 @@ import {
   wholeComments,
 } from "~/review/comments"
 
-import { usePanes, WayTo } from "./admin"
+import { usePanes, ScreenLink } from "./admin"
 import { Badge, Stack } from "./base"
 import { DraftHead, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote, OpenComments, WholeNote } from "./comments"
@@ -61,7 +61,7 @@ import { FieldReview, type FieldReviewData } from "./field-review"
 import { ResearchBody, ResearchListTable } from "./research"
 import { CitableTable, datasetName, GrantIds, IdList, LinksField, researchFieldLabel } from "./research-fields"
 import {
-  ConflictBand,
+  ConflictBanner,
   emptyLinksPair,
   emptyPair,
   emptySlot,
@@ -70,21 +70,21 @@ import {
   isUntranslated,
   type ItemColumn,
   ItemList,
-  LanguageMark,
-  type Marks,
+  LanguageLabel,
+  type FieldAnnotations,
   newId,
   PairField,
   Section,
   SingleField,
 } from "./fields"
-import { landAt } from "./form"
+import { focusField } from "./form"
 import { Icon } from "./icons"
 
 /**
  * The section a path is written in, which is the first name in it.
  *
  * **A section's anchor is that same first name**, so going to a place named by
- * a band is finding the element with that id. The bands stand outside the
+ * a banner is finding the element with that id. The banners are shown outside the
  * sections and name what they are about by path, and nothing between them and
  * the field is hidden.
  */
@@ -111,7 +111,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     comments: commentsByPath(view.review.comments, RESEARCH),
     changed: view.review.changed,
     previous: view.review.previous,
-    // Read when a mark opens, by which time the editing state below exists.
+    // Read when an indicator opens, by which time the editing state below exists.
     current: (at) => describeAt(editing.value.content, at),
     heading: view.review.publishedNumber === null
       ? ""
@@ -122,13 +122,13 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     initial: view.input,
     revision: view.revision,
     diff: diffDraftInput,
-    take: takeField,
+    importAt: importField,
     body: (value) => ({ content: value.content }),
   })
 
   const input = editing.value
   const content = input.content
-  const marksFor = editing.marksFor
+  const annotationsFor = editing.annotationsFor
 
   function editContent(produce: (held: ResearchContentInput) => ResearchContentInput): void {
     editing.edit({ ...input, content: produce(content) })
@@ -137,8 +137,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   /**
    * The field's own name for the comment panel's heading — a repeating
    * section's own name for the list itself, and for a field inside one, the
-   * name the form gives that field. Read off the path a mark is addressed by,
-   * the same one the field itself is written at (`fields.tsx` の `Marks`).
+   * name the form gives that field. Read off the path an indicator is addressed by,
+   * the same one the field itself is written at (`fields.tsx` の `FieldAnnotations`).
    */
   function fieldLabelFor(path: string): string | undefined {
     return researchFieldLabel(path, locale)
@@ -160,7 +160,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
    * announce itself.
    */
   const [at, setAt] = useState<string | null>(null)
-  /** The form, when a pane shows it: the only place a jump may land (`landAt`). */
+  /** The form, when a pane shows it: the only place a jump may focus (`focusField`). */
   const form = useRef<HTMLDivElement>(null)
   function onFormFocus(event: React.FocusEvent): void {
     const target = event.target
@@ -170,12 +170,12 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   }
 
   /**
-   * Going to the place a band or the page pane names (`form.tsx` の `landAt`):
-   * the field when it stands open on the form, the element's row when the field
+   * Going to the place a banner or the page pane names (`form.tsx` の `focusField`):
+   * the field when it remains open on the form, the element's row when the field
    * is written in a panel that is not open (`ItemList`), else the section.
    */
   function goTo(path: string): void {
-    landAt(form.current, path, sectionOf(path))
+    focusField(form.current, path, sectionOf(path))
   }
 
   /**
@@ -201,14 +201,14 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   }
 
   /**
-   * The same move, for a band that draws its own anchors.
+   * The same move, for a banner that draws its own anchors.
    *
-   * The parts that draw the bands write plain `#` links, which scroll without
+   * The parts that draw the banners write plain `#` links, which scroll without
    * taking the keyboard with them. The click is caught on its way out and
-   * answered by `goTo` instead, so that every route to a field lands the same
+   * answered by `goTo` instead, so that every route to a field focuses the same
    * way.
    */
-  function onBandJump(event: React.MouseEvent): void {
+  function onHeaderBarJump(event: React.MouseEvent): void {
     const target = event.target
     if (!(target instanceof Element)) return
     const path = target.closest("a[href^='#']")?.getAttribute("href")?.slice(1)
@@ -222,8 +222,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       <Card under={false}>
         <Stack>
           {editing.conflict !== null && (
-            <div onClick={onBandJump}>
-              <ConflictBand locale={locale} changed={editing.conflict.changed} />
+            <div onClick={onHeaderBarJump}>
+              <ConflictBanner locale={locale} changed={editing.conflict.changed} />
             </div>
           )}
 
@@ -232,11 +232,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               <Section
                 id="title"
                 title={words.title}
-                flags={<FieldFlags marks={marksFor("title")} locale={locale} untranslated={isUntranslated(content.title)} />}
+                flags={<FieldFlags annotations={annotationsFor("title")} locale={locale} untranslated={isUntranslated(content.title)} />}
               >
                 <PairField
                   value={content.title}
-                  marks={marksFor("title")}
+                  annotations={annotationsFor("title")}
                   locale={locale}
                   onChange={(next) => { editContent((c) => ({ ...c, title: next })) }}
                 />
@@ -246,12 +246,12 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 id="releaseNote"
                 title={words.releaseNote}
                 accepts={messages.admin.accepts.prose}
-                flags={<FieldFlags marks={marksFor("releaseNote")} locale={locale} untranslated={isUntranslated(content.releaseNote)} />}
+                flags={<FieldFlags annotations={annotationsFor("releaseNote")} locale={locale} untranslated={isUntranslated(content.releaseNote)} />}
               >
                 <PairField
                   value={content.releaseNote}
                   multiline
-                  marks={marksFor("releaseNote")}
+                  annotations={annotationsFor("releaseNote")}
                   locale={locale}
                   onChange={(next) => { editContent((c) => ({ ...c, releaseNote: next })) }}
                 />
@@ -264,7 +264,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     label={words[field]}
                     value={content.summary[field]}
                     multiline
-                    marks={marksFor(`summary.${field}`)}
+                    annotations={annotationsFor(`summary.${field}`)}
                     locale={locale}
                     onChange={(next) => {
                       editContent((c) => ({ ...c, summary: { ...c.summary, [field]: next } }))
@@ -274,7 +274,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 <LinksField
                   label={words.url}
                   value={content.summary.url}
-                  marks={marksFor("summary.url")}
+                  annotations={annotationsFor("summary.url")}
                   locale={locale}
                   onChange={(next) => {
                     editContent((c) => ({ ...c, summary: { ...c.summary, url: next } }))
@@ -288,7 +288,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               title={words.dataProvider}
               locale={locale}
               items={content.dataProviders}
-              marksFor={marksFor}
+              annotationsFor={annotationsFor}
               onChange={(next) => { editContent((c) => ({ ...c, dataProviders: next })) }}
               makeEmpty={() => ({
                 id: newId(),
@@ -305,14 +305,14 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   <PairField
                     label={words.principalInvestigator}
                     value={item.name}
-                    marks={marksFor(`${path}.name`)}
+                    annotations={annotationsFor(`${path}.name`)}
                     locale={locale}
                     onChange={(name) => { set({ ...item, name }) }}
                   />
                   <PairField
                     label={words.organization}
                     value={item.organization.name}
-                    marks={marksFor(`${path}.organization.name`)}
+                    annotations={annotationsFor(`${path}.organization.name`)}
                     locale={locale}
                     onChange={(name) => {
                       set({ ...item, organization: { ...item.organization, name } })
@@ -327,7 +327,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               title={words.researchProjects}
               locale={locale}
               items={content.researchProjects}
-              marksFor={marksFor}
+              annotationsFor={annotationsFor}
               onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
               makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
               columns={[
@@ -340,14 +340,14 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   <PairField
                     label={words.researchProjectName}
                     value={item.name}
-                    marks={marksFor(`${path}.name`)}
+                    annotations={annotationsFor(`${path}.name`)}
                     locale={locale}
                     onChange={(name) => { set({ ...item, name }) }}
                   />
                   <LinksField
                     label={words.url}
                     value={item.url}
-                    marks={marksFor(`${path}.url`)}
+                    annotations={annotationsFor(`${path}.url`)}
                     locale={locale}
                     onChange={(url) => { set({ ...item, url }) }}
                   />
@@ -360,7 +360,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               title={words.grants}
               locale={locale}
               items={content.grants}
-              marksFor={marksFor}
+              annotationsFor={annotationsFor}
               onChange={(next) => { editContent((c) => ({ ...c, grants: next })) }}
               makeEmpty={() => ({
                 id: newId(),
@@ -387,21 +387,21 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   <PairField
                     label={words.grantTitle}
                     value={item.title}
-                    marks={marksFor(`${path}.title`)}
+                    annotations={annotationsFor(`${path}.title`)}
                     locale={locale}
                     onChange={(title) => { set({ ...item, title }) }}
                   />
                   <PairField
                     label={words.grantAgency}
                     value={item.agency.name}
-                    marks={marksFor(`${path}.agency.name`)}
+                    annotations={annotationsFor(`${path}.agency.name`)}
                     locale={locale}
                     onChange={(name) => { set({ ...item, agency: { name } }) }}
                   />
                   <GrantIds
                     locale={locale}
                     value={item.grantIds}
-                    marks={marksFor(`${path}.grantIds`)}
+                    annotations={annotationsFor(`${path}.grantIds`)}
                     onChange={(grantIds) => { set({ ...item, grantIds }) }}
                   />
                 </>
@@ -413,7 +413,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               title={words.relatedPublications}
               locale={locale}
               items={content.relatedPublications}
-              marksFor={marksFor}
+              annotationsFor={annotationsFor}
               onChange={(next) => { editContent((c) => ({ ...c, relatedPublications: next })) }}
               makeEmpty={() => ({
                 id: newId(),
@@ -443,7 +443,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   <SingleField
                     label={words.publicationTitle}
                     value={item.title}
-                    marks={marksFor(`${path}.title`)}
+                    annotations={annotationsFor(`${path}.title`)}
                     locale={locale}
                     wide
                     onChange={(title) => { set({ ...item, title }) }}
@@ -451,7 +451,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   <SingleField
                     label={t.doi}
                     value={item.doi}
-                    marks={marksFor(`${path}.doi`)}
+                    annotations={annotationsFor(`${path}.doi`)}
                     locale={locale}
                     wide
                     hint={t.doiHint}
@@ -460,7 +460,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   <Stack gap="tight">
                     <FieldHead
                       label={messages.dataset.datasetId}
-                      marks={marksFor(`${path}.datasetIds`)}
+                      annotations={annotationsFor(`${path}.datasetIds`)}
                       locale={locale}
                     />
                     <CitableTable
@@ -471,7 +471,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     />
                   </Stack>
                   {/* The column on the page is one place for both, so this
-                      list answers to the same path; the marks stand once,
+                      list is addressed by the same path; the indicators are shown once,
                       with the table above. */}
                   <IdList
                     label={t.externalIds}
@@ -481,7 +481,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                     placeholder={t.externalIdPlaceholder}
                     locale={locale}
                     value={item.externalIds}
-                    marks={{ at: `${path}.datasetIds`, changed: false, onTake: null }}
+                    annotations={{ at: `${path}.datasetIds`, changed: false, onImport: null }}
                     onChange={(externalIds) => { set({ ...item, externalIds }) }}
                   />
                 </>
@@ -498,7 +498,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   label={words.listingSummary[field]}
                   value={content.listingSummary[field]}
                   multiline
-                  marks={marksFor(`listingSummary.${field}`)}
+                  annotations={annotationsFor(`listingSummary.${field}`)}
                   locale={locale}
                   onChange={(next) => {
                     editContent((c) => ({
@@ -510,7 +510,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               ))}
               <FieldHead
                 label={words.listingSummary.dataProviders}
-                marks={marksFor("listingSummary.dataProviders")}
+                annotations={annotationsFor("listingSummary.dataProviders")}
                 locale={locale}
               />
               <p className="text-ink-muted text-xs">
@@ -536,7 +536,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   <PairField
                     label={words.principalInvestigator}
                     value={item.name}
-                    marks={marksFor(`${path}.name`)}
+                    annotations={annotationsFor(`${path}.name`)}
                     locale={locale}
                     onChange={(name) => { set({ ...item, name }) }}
                   />
@@ -562,21 +562,21 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
           body: (
             <AnnotationLayer
               /*
-                **What the page carries and what the form carries are split by
+                **What the page has and what the form has are split by
                 whose question it is.** A difference from the published version
                 and a comment are about the place a reader looks at, so they
                 belong here; a field somebody else moved and markup a save
                 refused are about the hands typing, and stay in the form. Drawn
                 in both, one thing waiting would appear on the screen twice.
                 **Where the caret is** is the page's to show too, on the value
-                itself (`page.tsx` の `Place`).
+                itself (`page.tsx` の `ValueAtPath`).
               */
               annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} drawn={drawn} />}
               here={at}
               onGo={goTo}
               goLabel={t.goToField}
             >
-              <PageHead
+              <PageHeader
                 level="p"
                 kicker={words.researchId}
                 label={(
@@ -586,10 +586,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   </>
                 )}
               >
-                <Badge onBand icon={<Icon name="edit" aria-hidden="true" />}>
+                <Badge onHeaderBar icon={<Icon name="edit" aria-hidden="true" />}>
                   {view.updating === null ? t.draftBadge : t.updatingBadge(`v${view.updating}`)}
                 </Badge>
-              </PageHead>
+              </PageHeader>
               <Card>
                 {/* **Nothing is drawn until this language has been drawn.** The
                   other language's page would be the wrong words under the right
@@ -600,7 +600,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
           ),
         })),
       // **The listing's row is a place of its own**: the short summaries are
-      // read there and nowhere on the research's page. Both languages stand in
+      // read there and nowhere on the research's page. Both languages are shown in
       // the one tab, each under its own column names, because the row is short
       // and the two are checked against each other.
       {
@@ -611,7 +611,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             <Stack gap="block">
               {([["ja", pageJa], ["en", pageEn]] as const).map(([language, drawn]) => (
                 <Stack key={language} gap="tight">
-                  <LanguageMark language={language} />
+                  <LanguageLabel language={language} />
                   {drawn !== null && (
                     <ResearchListTable
                       rows={[drawn.row]}
@@ -633,9 +633,9 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     <Page>
       <Stack>
         {/*
-          **The head is left for the research this draft belongs to, and folds
-          to its tools row while typing.** Its second line reaches this draft's
-          other faces, its memo and the way to take a data-providing
+          **The header is left for the research this draft belongs to, and collapses
+          to its toolbar while typing.** Its second line reaches this draft's
+          other screens, its memo and the way to import a data-providing
           application in.
         */}
         <DraftHead
@@ -660,7 +660,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               locale={locale}
               panesControl={panes.control}
               // **Memo, the whole, then what is still open** — from what only
-              // the office reads to what the office has to answer.
+              // the office reads to what the office has to respond.
               notes={(
                 <>
                   <DraftNote context={review.context} comments={memoComments(view.review.comments)} />
@@ -683,14 +683,14 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 }
 
 /**
- * The draft's other faces, as the ways to them: taking an application in, the
+ * The draft's other screens, as the links to them: importing an application, the
  * datasets, review and sharing, publishing — in the order the work goes, but
- * named only, never numbered. **Each wears the face of the way out, with the
- * mark after the word** (`admin.tsx` の `WayTo`): all four lead to another
+ * named only, never numbered. **Each is styled as the back link, with the
+ * chevron after the word** (`admin.tsx` の `ScreenLink`): all four lead to another
  * screen, and the row under them is where things are done in place. **The
  * facts are not here** — how many datasets, whether it is shared, what stops
- * publishing — each screen says its own on arrival, and what is still open is
- * counted in the tools row.
+ * publishing — each screen shows its own on arrival, and what is still open is
+ * counted in the toolbar.
  */
 function DraftOverview({ locale, researchId, draftId }: {
   locale: Locale
@@ -700,18 +700,18 @@ function DraftOverview({ locale, researchId, draftId }: {
   const admin = messagesFor(locale).admin
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <WayTo to={href(locale, adminDraftTakePath(researchId, draftId))} icon="download">
-        {admin.take.open}
-      </WayTo>
-      <WayTo to={href(locale, adminDraftDatasetsPath(researchId, draftId))} icon="database">
+      <ScreenLink to={href(locale, adminDraftImportPath(researchId, draftId))} icon="download">
+        {admin.import.open}
+      </ScreenLink>
+      <ScreenLink to={href(locale, adminDraftDatasetsPath(researchId, draftId))} icon="database">
         {admin.draft.datasets}
-      </WayTo>
-      <WayTo to={href(locale, adminDraftReviewPath(researchId, draftId))} icon="comment">
+      </ScreenLink>
+      <ScreenLink to={href(locale, adminDraftReviewPath(researchId, draftId))} icon="comment">
         {admin.review.heading}
-      </WayTo>
-      <WayTo to={href(locale, adminDraftPublishPath(researchId, draftId))} icon="upload">
+      </ScreenLink>
+      <ScreenLink to={href(locale, adminDraftPublishPath(researchId, draftId))} icon="upload">
         {admin.publish.heading}
-      </WayTo>
+      </ScreenLink>
     </div>
   )
 }
@@ -723,7 +723,7 @@ function DraftOverview({ locale, researchId, draftId }: {
  * being typed.
  *
  * Either language, whichever is written: this is a curator being shown what the
- * table will say, and a name written only in Japanese still answers that.
+ * table will show, and a name written only in Japanese still responds to that.
  */
 function writtenNames(providers: DataProviderInput[], locale: Locale): string {
   const written = providers
@@ -739,11 +739,11 @@ function writtenNames(providers: DataProviderInput[], locale: Locale): string {
  *
  * The four differ in what one element holds, in what an empty one looks like
  * and in which columns the table shows. **Everything around that is the same
- * in all four** — the mark for the list itself, a row per element carrying its
+ * in all four** — the indicator for the list itself, a row per element with its
  * own way to open, move and remove it, and the way to add one more — and four
  * copies of it would be four things able to drift apart.
  *
- * **The anchor is the path the list is addressed by** (`TAB_OF`), so a band
+ * **The anchor is the path the list is addressed by** (`TAB_OF`), so a banner
  * naming a place inside one of these elements can find the section holding it.
  */
 function RepeatingSection<T extends { id: string }>({
@@ -751,7 +751,7 @@ function RepeatingSection<T extends { id: string }>({
   title,
   locale,
   items,
-  marksFor,
+  annotationsFor,
   onChange,
   makeEmpty,
   columns,
@@ -762,7 +762,7 @@ function RepeatingSection<T extends { id: string }>({
   title: string
   locale: Locale
   items: T[]
-  marksFor: (path: string) => Marks
+  annotationsFor: (path: string) => FieldAnnotations
   onChange: (next: T[]) => void
   /** One more of whatever the list holds, with nothing written in it yet. */
   makeEmpty: () => T
@@ -775,8 +775,8 @@ function RepeatingSection<T extends { id: string }>({
 }) {
   return (
     // The list is the section's one field, so the heading is its name and
-    // carries what the review says about the list.
-    <Section id={id} title={title} flags={<FieldFlags marks={marksFor(id)} locale={locale} />}>
+    // has what the review shows about the list.
+    <Section id={id} title={title} flags={<FieldFlags annotations={annotationsFor(id)} locale={locale} />}>
       <ItemList
         path={id}
         locale={locale}
@@ -793,13 +793,13 @@ function RepeatingSection<T extends { id: string }>({
   )
 }
 
-/** The words for the two states a side can wear instead of a value (`admin.editor.stateChoice`). */
+/** The words for the two states a side can be shown with instead of a value (`admin.editor.stateChoice`). */
 type StateWords = Record<Exclude<SlotState, "value">, string>
 
 /**
- * What one side of a value says in a line: its text, or the word for the
- * state it wears instead. A side marked unsettled or not applicable has no
- * text to show, and a row saying 未入力 for it would say the curator has not
+ * What one side of a value shows in a line: its text, or the word for the
+ * state it is shown with instead. A side marked unsettled or not applicable has no
+ * text to show, and a row indicating 未入力 for it would show the curator has not
  * answered when they have.
  */
 function sideLine(side: TextInput, states: StateWords): { text: string, isState: boolean } {
@@ -812,7 +812,7 @@ function pairLine(pair: { ja: TextInput, en: TextInput }, states: StateWords): {
   return ja.text !== "" ? ja : sideLine(pair.en, states)
 }
 
-/** A line as a table cell: a state's word in the muted face a folded box wears (`fields.tsx`), a value as it is. */
+/** A line as a table cell: a state's word in the muted style a collapsed field is shown with (`fields.tsx`), a value as it is. */
 function lineCell(line: { text: string, isState: boolean }): ReactNode {
   return line.isState ? <span className="text-ink-muted">{line.text}</span> : line.text
 }

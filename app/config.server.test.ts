@@ -139,7 +139,7 @@ describe("loadOwnerDatabaseUrl", () => {
       .not.toContain(OWNER)
   })
 
-  it("returns the owner's URL to the jobs that ask for it", () => {
+  it("returns the owner's URL to the jobs that request it", () => {
     expect(loadOwnerDatabaseUrl({ HUMANDBS_OWNER_DATABASE_URL: `  ${OWNER}\n` })).toBe(OWNER)
   })
 
@@ -168,7 +168,7 @@ describe("cookiesAreSecure", () => {
 
 /**
  * The assistant, which is optional for the same reason and refused rather than
- * trimmed when it carries a path — the addresses under it are the service's,
+ * trimmed when it has a path — the addresses under it are the service's,
  * and a prefix here would silently move every one of them.
  */
 describe("loadConfig とアシスタント", () => {
@@ -185,7 +185,7 @@ describe("loadConfig とアシスタント", () => {
     expect(loadConfig(withAssistant("  ")).assistantOrigin).toBeNull()
   })
 
-  it("keeps an origin as it stands", () => {
+  it("keeps an origin unchanged", () => {
     expect(loadConfig(withAssistant("http://assistant-api:8000")).assistantOrigin)
       .toBe("http://assistant-api:8000")
   })

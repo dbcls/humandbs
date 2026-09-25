@@ -108,7 +108,7 @@ describe("reading a query", () => {
     expect(errorOf("\"a").code).toBe("unexpected-token")
   })
 
-  it("refuses a query nested past the depth it will answer", () => {
+  it("refuses a query nested past the depth it will respond", () => {
     expect(errorOf(`${"(".repeat(40)}a${")".repeat(40)}`).code).toBe("too-complex")
   })
 })

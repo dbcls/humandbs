@@ -73,7 +73,7 @@ describe("the place an anchor points at", () => {
     expect(pathExists(dataset(), "experiments.e1.values.k2")).toBe(true)
   })
 
-  it("does not exist for an element that is not there or a name nothing carries", () => {
+  it("does not exist for an element that is not there or a name nothing has", () => {
     expect(pathExists(research(), "dataProviders.p9.name")).toBe(false)
     expect(pathExists(research(), "summary.nothing")).toBe(false)
     expect(pathExists(dataset(), "values.k9")).toBe(false)

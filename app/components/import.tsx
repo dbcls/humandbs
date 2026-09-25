@@ -1,21 +1,21 @@
 /**
- * The take-in face: the draft and a source, place by place, with the value
+ * The import form: the draft and a source, place by place, with the value
  * that will be written under them.
  *
  * **The two readings are read-only and the third is not.** What goes in is
  * often neither — a curator rewrites a title the application states awkwardly —
  * so a control that only chose between the two would leave nowhere to write.
- * The third is written with the control the form uses for that field, marks
+ * The third is written with the control the form uses for that field, toggles
  * for 未確定・該当なし included.
  *
- * **The face knows nothing of where the source came from, nor of what is being
- * written.** It is handed two values of one shape (`take.ts` の `TakeShape`)
+ * **The form knows nothing of where the source came from, nor of what is being
+ * written.** It is handed two values of one shape (`import.ts` の `ImportShape`)
  * and what that shape calls its places and draws its fields with, so a
  * version, another draft and an application — and a research and a dataset —
- * are one face.
+ * are one form.
  *
- * **Only the places that differ stand here.** A version bump changes a few
- * fields, and a face of every field would bury them.
+ * **Only the places that differ are shown here.** A version bump changes a few
+ * fields, and a form of every field would bury them.
  */
 
 import { useId, useMemo, useState, type ReactNode } from "react"
@@ -28,35 +28,35 @@ import type { ResearchDatasetRow } from "~/admin/queries.server"
 import type { DatasetRowView } from "~/public/view.server"
 import {
   heldIds,
-  initialTake,
+  initialImport,
   isList,
   listRows,
-  RESEARCH_TAKE,
-  takePlaces,
+  RESEARCH_IMPORT,
+  importFieldPaths,
   withElement,
   type ListRow,
-  type TakeShape,
-} from "~/admin/take"
-import type { TakeSource, TakeSourceRow } from "~/admin/take.server"
+  type ImportShape,
+} from "~/admin/import"
+import type { ImportSource, ImportSourceRow } from "~/admin/import.server"
 import { adminResearchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { minuteInJst } from "~/dates"
 import { href, researchPath } from "~/public/urls"
 
-import { WayTo } from "./admin"
+import { ScreenLink } from "./admin"
 import { Button, ButtonLink, Note, PANE_LABEL, Stack } from "./base"
 import { Flag, Stated } from "./flags"
-import { type Marks, PairField, SingleField } from "./fields"
+import { type FieldAnnotations, PairField, SingleField } from "./fields"
 import { Submit } from "./form"
 import { Icon } from "./icons"
 import { CompareTable, lineRows } from "./previous"
 import { Empty, ExternalLink, Section, Table, Td } from "./page"
 import { CitableTable, GrantIds, IdList, LinksField, PROSE_PATHS, researchFieldLabel } from "./research-fields"
 
-/** What one kind of form brings to the face. */
-export interface TakeParts<T> {
-  shape: TakeShape<T>
+/** What one kind of form brings to the import form. */
+export interface ImportParts<T> {
+  shape: ImportShape<T>
   /** What the form calls the place a path names. */
   labelOf: (path: string) => string
   /** What one element of a list is, in a line. */
@@ -66,7 +66,7 @@ export interface TakeParts<T> {
     path: string,
     value: unknown,
     onChange: (next: unknown) => void,
-    /** The other paths the place holds (`TakeShape` の `along`), read and written together with it. */
+    /** The other paths the place holds (`ImportShape` の `along`), read and written together with it. */
     along: { read: (path: string) => unknown, write: (path: string, next: unknown) => void },
   ) => ReactNode
   /** One side's reading, where the default (`describeInput`) would show identities rather than names. */
@@ -77,8 +77,8 @@ export interface TakeParts<T> {
   posted: (written: T) => unknown
 }
 
-export function marksAt(path: string): Marks {
-  return { at: path, changed: false, onTake: null }
+export function annotationsAt(path: string): FieldAnnotations {
+  return { at: path, changed: false, onImport: null }
 }
 
 function isTextInput(value: unknown): value is TextInput {
@@ -113,15 +113,15 @@ export function writtenName(named: unknown): string {
 }
 
 /** One side's reading at a path. A bare string (a date) reads as itself. */
-function readingAt<T>(shape: TakeShape<T>, side: T, path: string): ShownLine[] | null {
+function readingAt<T>(shape: ImportShape<T>, side: T, path: string): ShownLine[] | null {
   const found = readAt(side, shape.keysOf(path))
   if (!found.found) return null
   if (typeof found.value === "string") return [{ label: "", state: "value", text: found.value }]
   return describeInput(found.value)
 }
 
-export function sourceName(source: TakeSource, locale: Locale, minute: (at: string) => string): string {
-  const t = messagesFor(locale).admin.take
+export function sourceName(source: ImportSource, locale: Locale, minute: (at: string) => string): string {
+  const t = messagesFor(locale).admin.import
   switch (source.kind) {
     case "version": return t.fromVersion(source.number)
     // An update is called by the version it updates, as its row in the table is.
@@ -131,14 +131,14 @@ export function sourceName(source: TakeSource, locale: Locale, minute: (at: stri
 }
 
 /**
- * The face itself. `hidden` rides along with the post (the application to
- * record), `after` stands under the places (the datasets an application
- * registered), and either counts as something to take even where no place
+ * The form itself. `hidden` rides along with the post (the application to
+ * record), `after` is shown under the places (the datasets an application
+ * registered), and either counts as something to import even where no place
  * differs.
  */
-export function TakeFace<T>({ locale, parts, mine, theirs, sourceLabel, revision, hidden, before, after }: {
+export function ImportForm<T>({ locale, parts, mine, theirs, sourceLabel, revision, hidden, before, after }: {
   locale: Locale
-  parts: TakeParts<T>
+  parts: ImportParts<T>
   mine: T
   theirs: T
   sourceLabel: string
@@ -148,11 +148,11 @@ export function TakeFace<T>({ locale, parts, mine, theirs, sourceLabel, revision
   before?: ReactNode
   after?: ReactNode
 }) {
-  const t = messagesFor(locale).admin.take
+  const t = messagesFor(locale).admin.import
   const { shape } = parts
-  const opened = useMemo(() => initialTake(shape, mine, theirs), [shape, mine, theirs])
+  const opened = useMemo(() => initialImport(shape, mine, theirs), [shape, mine, theirs])
   const [written, setWritten] = useState(opened)
-  const places = useMemo(() => takePlaces(shape, mine, theirs), [shape, mine, theirs])
+  const places = useMemo(() => importFieldPaths(shape, mine, theirs), [shape, mine, theirs])
   const offers = places.length > 0 || after !== undefined
   const read = (side: T, path: string) => parts.reading?.(side, path) ?? readingAt(shape, side, path)
 
@@ -229,10 +229,10 @@ export function TakeFace<T>({ locale, parts, mine, theirs, sourceLabel, revision
  *
  * **The two sides read as the fields' do** (`CompareTable`), an element to a
  * line by its name — one only the draft has is struck out on the left, one
- * only the source has added on the right, and one both have stands untinted.
+ * only the source has added on the right, and one both have remains untinted.
  * A table of ticks said the same with a blank cell for "not there" and a box
  * nobody had named. **What the written value keeps is a list of boxes named
- * for what they do**, each saying where the element is now; a change inside
+ * for what they do**, each indicating where the element is now; a change inside
  * an element both have is a place of its own, under the element's name.
  */
 function ListPlace({ locale, title, rows, nameOf, held, sourceLabel, onTick }: {
@@ -244,7 +244,7 @@ function ListPlace({ locale, title, rows, nameOf, held, sourceLabel, onTick }: {
   sourceLabel: string
   onTick: (id: string, on: boolean) => void
 }) {
-  const t = messagesFor(locale).admin.take
+  const t = messagesFor(locale).admin.import
   const keptId = useId()
   const side = (present: boolean, element: unknown) => present ? { state: "value" as const, text: nameOf(element) } : null
   return (
@@ -290,14 +290,14 @@ export function researchParts(
   datasets: ResearchDatasetRow[],
   citable: DatasetRowView[],
   sides: readonly DraftInput[],
-): TakeParts<DraftInput> {
+): ImportParts<DraftInput> {
   const messages = messagesFor(locale)
-  const t = messages.admin.take
+  const t = messages.admin.import
   const editor = messages.admin.editor
   const labelOf = new Map(datasets.map((row) => [row.id, row.label ?? editor.unpinnedDataset]))
   return {
-    shape: RESEARCH_TAKE,
-    // **A field inside an element says which element**: two providers' names
+    shape: RESEARCH_IMPORT,
+    // **A field inside an element shows which element**: two providers' names
     // differing would otherwise stand as two places called the same.
     labelOf: (path) => {
       const label = researchFieldLabel(path, locale) ?? path
@@ -305,7 +305,7 @@ export function researchParts(
       const id = list === undefined ? undefined : path.slice(list.length + 1).split(".")[0]
       if (list === undefined || id === undefined || path === `${list}.${id}`) return label
       const element = sides
-        .map((side) => readAt(side, RESEARCH_TAKE.keysOf(`${list}.${id}`)))
+        .map((side) => readAt(side, RESEARCH_IMPORT.keysOf(`${list}.${id}`)))
         .find((found) => found.found)?.value
       const name = elementName(element)
       return `${researchFieldLabel(list, locale) ?? list} ${name}: ${label}`
@@ -316,8 +316,8 @@ export function researchParts(
     // own by their labels, then the typed IDs — never the identities.
     reading: (side, path) => {
       if (!path.endsWith(".datasetIds")) return null
-      const chosen = readAt(side, RESEARCH_TAKE.keysOf(path))
-      const typed = readAt(side, RESEARCH_TAKE.keysOf(path.replace(/datasetIds$/, "externalIds")))
+      const chosen = readAt(side, RESEARCH_IMPORT.keysOf(path))
+      const typed = readAt(side, RESEARCH_IMPORT.keysOf(path.replace(/datasetIds$/, "externalIds")))
       const ids = [
         ...(Array.isArray(chosen.value) ? chosen.value : []).map((id) => labelOf.get(String(id)) ?? String(id)),
         ...(Array.isArray(typed.value) ? typed.value.map(String) : []),
@@ -325,14 +325,14 @@ export function researchParts(
       return ids.map((text) => ({ label: "", state: "value", text }))
     },
     written: (path, value, onChange, along) => {
-      const marks = marksAt(path)
+      const annotations = annotationsAt(path)
       if (Array.isArray(value)) {
         const strings = value.filter((one): one is string => typeof one === "string")
         if (!path.endsWith("datasetIds")) {
-          return <GrantIds label={t.written} locale={locale} value={strings} marks={marks} onChange={onChange} />
+          return <GrantIds label={t.written} locale={locale} value={strings} annotations={annotations} onChange={onChange} />
         }
         // The same two controls the form writes the place with, the typed
-        // list moving with the chosen one (`RESEARCH_TAKE` の `along`).
+        // list moving with the chosen one (`RESEARCH_IMPORT` の `along`).
         const typedPath = path.replace(/datasetIds$/, "externalIds")
         const typed = along.read(typedPath)
         return (
@@ -346,14 +346,14 @@ export function researchParts(
               hint={editor.externalIdsHint}
               locale={locale}
               value={Array.isArray(typed) ? typed.filter((one): one is string => typeof one === "string") : []}
-              marks={marks}
+              annotations={annotations}
               onChange={(next) => { along.write(typedPath, next) }}
             />
           </Stack>
         )
       }
       if (isLinksPair(value)) {
-        return <LinksField label={t.written} value={value} marks={marks} locale={locale} onChange={onChange} />
+        return <LinksField label={t.written} value={value} annotations={annotations} locale={locale} onChange={onChange} />
       }
       if (isPair(value)) {
         return (
@@ -361,14 +361,14 @@ export function researchParts(
             label={t.written}
             value={value as TextPairInput}
             multiline={PROSE_PATHS.includes(path)}
-            marks={marks}
+            annotations={annotations}
             locale={locale}
             onChange={onChange}
           />
         )
       }
       if (isTextInput(value)) {
-        return <SingleField label={t.written} value={value} marks={marks} locale={locale} onChange={onChange} />
+        return <SingleField label={t.written} value={value} annotations={annotations} locale={locale} onChange={onChange} />
       }
       return null
     },
@@ -381,25 +381,25 @@ export function researchParts(
  */
 export function ApplicationWarning({ locale, source, humLabel }: {
   locale: Locale
-  source: Extract<TakeSource, { kind: "application" }>
+  source: Extract<ImportSource, { kind: "application" }>
   humLabel: string | null
 }) {
   const t = messagesFor(locale).admin.templates
-  // **Nothing here stops the take-in.** The branch's own research ID
+  // **Nothing here stops the import.** The branch's own research ID
   // disagreeing with the draft's is stated rather than refused — a version
-  // bump can be approved under a corrected ID before the ledger catches up.
+  // bump can be approved under a corrected ID before the `label_pin` table catches up.
   if (source.branch.humLabel === null || humLabel === null || source.branch.humLabel === humLabel) return null
   return <Note kind="warning">{t.humDiffers(source.branch.humLabel, humLabel)}</Note>
 }
 
 /**
  * The datasets a branch registered, each to be created in this research. One
- * another research already holds cannot be, and the way to that research
- * stands beside it.
+ * another research already holds cannot be, and the link to that research
+ * is shown beside it.
  */
 export function ApplicationDatasets({ locale, source }: {
   locale: Locale
-  source: Extract<TakeSource, { kind: "application" }>
+  source: Extract<ImportSource, { kind: "application" }>
 }) {
   const t = messagesFor(locale).admin.templates
   const datasets = source.choice.datasets
@@ -428,9 +428,9 @@ export function ApplicationDatasets({ locale, source }: {
                   {entry.heldBy !== null && (
                     <>
                       <span className="text-ink-muted text-xs">{t.taken}</span>
-                      <WayTo to={href(locale, adminResearchPath(entry.heldBy))} size="row">
+                      <ScreenLink to={href(locale, adminResearchPath(entry.heldBy))} size="row">
                         {t.openHolder}
-                      </WayTo>
+                      </ScreenLink>
                     </>
                   )}
                 </li>
@@ -442,15 +442,15 @@ export function ApplicationDatasets({ locale, source }: {
 }
 
 /**
- * The versions and drafts a value can be taken from, **in one table, the rows
+ * The versions and drafts a value can be imported from, **in one table, the rows
  * the research's own screen draws**: as a source there is nothing to tell them
  * apart by, and one row drawn two ways would read as two things. So a draft
  * that updates a version is not a row of its own but that version's row, the
- * way the research's screen shows it (`TakeSourceRow`).
+ * way the research's screen shows it (`ImportSourceRow`).
  */
 export function SourceTable({ rows, here, current, humLabel, locale }: {
-  rows: TakeSourceRow[]
-  /** The take-in screen's own address, which a row adds its source to. */
+  rows: ImportSourceRow[]
+  /** The import screen's own address, which a row adds its source to. */
   here: string
   /** The draft being written: the row that is it cannot be chosen. */
   current: string
@@ -469,7 +469,7 @@ export function SourceTable({ rows, here, current, humLabel, locale }: {
         detail.updatedAt,
         detail.releaseDate,
       ]}
-      whenEmpty={messages.admin.take.noRows}
+      whenEmpty={messages.admin.import.noRows}
     >
       {rows.map((row) => (
         <SourceRow
@@ -486,11 +486,11 @@ export function SourceTable({ rows, here, current, humLabel, locale }: {
 }
 
 /**
- * What choosing a row takes: a draft, a version — or, for a version being
+ * What choosing a row imports: a draft, a version — or, for a version being
  * updated, what the update has written, which is what the row's time and the
  * research's screen say the row is.
  */
-function queryOf(row: TakeSourceRow): string {
+function queryOf(row: ImportSourceRow): string {
   if (row.kind === "draft") return `?draft=${row.id}`
   if (row.update !== null) return `?draft=${row.update.id}`
   return `?version=${row.number}`
@@ -502,13 +502,13 @@ function queryOf(row: TakeSourceRow): string {
  * done here, choosing it.
  */
 function SourceRow({ row, to, humLabel, self, locale }: {
-  row: TakeSourceRow
+  row: ImportSourceRow
   to: string
   humLabel: string | null
   /**
    * This row is the draft being written — its own row, or the row of the
-   * version it updates. **It stays in the table and says why it cannot be
-   * chosen**: taking a draft into itself offers back what is already there,
+   * version it updates. **It stays in the table and shows why it cannot be
+   * chosen**: importing a draft into itself offers back what is already there,
    * and without the row the table would not say which one is being written.
    */
   self: boolean
@@ -525,7 +525,7 @@ function SourceRow({ row, to, humLabel, self, locale }: {
           ? (
               <span className="flex items-center gap-2 text-nowrap">
                 <Stated kind="changed">{detail.draft}</Stated>
-                {self && <Flag kind="pointed">{messages.admin.take.thisDraft}</Flag>}
+                {self && <Flag kind="pointed">{messages.admin.import.thisDraft}</Flag>}
               </span>
             )
           : (
@@ -550,13 +550,13 @@ function SourceRow({ row, to, humLabel, self, locale }: {
                 variant="secondary"
                 icon={<Icon name="download" />}
                 disabled={row.kind === "draft"
-                  ? messages.admin.take.selfSource
-                  : messages.admin.take.updatingSource(`v${row.number}`)}
+                  ? messages.admin.import.selfSource
+                  : messages.admin.import.updatingSource(`v${row.number}`)}
               >
-                {messages.admin.take.choose}
+                {messages.admin.import.choose}
               </Button>
             )
-          : <ButtonLink to={to} size="row" icon={<Icon name="download" />}>{messages.admin.take.choose}</ButtonLink>}
+          : <ButtonLink to={to} size="row" icon={<Icon name="download" />}>{messages.admin.import.choose}</ButtonLink>}
       </Td>
     </tr>
   )

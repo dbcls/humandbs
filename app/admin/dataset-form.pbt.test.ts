@@ -43,7 +43,7 @@ describe("the trip a dataset takes through the editor", () => {
     }))
   })
 
-  it("never lets a slot that holds no value carry a value across", () => {
+  it("never lets a slot that holds no value pass a value across", () => {
     fc.assert(fc.property(datasetContentForEditorArb, (content) => {
       const once = through(content)
       for (const match of JSON.stringify(once).matchAll(/\{"state":"(unknown|not-applicable)"[^}]*/g)) {
@@ -52,7 +52,7 @@ describe("the trip a dataset takes through the editor", () => {
     }))
   })
 
-  it("carries the file selection through a screen that does not show it", () => {
+  it("passes the file selection through a screen that does not show it", () => {
     fc.assert(fc.property(datasetContentForEditorArb, (content) => {
       const once = through(content)
       expect(once.fileSelection).toEqual(content.fileSelection)

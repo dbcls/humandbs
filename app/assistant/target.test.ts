@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   assistantTarget,
-  carriesBody,
+  hasBody,
   forwardedRequestHeaders,
   forwardedResponseHeaders,
   fromSameSite,
@@ -21,7 +21,7 @@ describe("転送先", () => {
       .toBe(`${ORIGIN}/api/applications/abc123`)
   })
 
-  it("クエリを持って行く", () => {
+  it("クエリを引き継ぐ", () => {
     expect(assistantTarget(ORIGIN, "applications", "?page=2"))
       .toBe(`${ORIGIN}/api/applications?page=2`)
   })
@@ -90,7 +90,7 @@ describe("行きの header", () => {
   })
 
   /** `Headers` lower-cases its names, so a header cannot hide behind its spelling. */
-  it("表記の大小によらず落とす", () => {
+  it("表記の大小によらず除く", () => {
     const kept = forwardedRequestHeaders(new Headers({ Cookie: "humandbs_session=secret" }))
     expect([...kept.keys()]).toEqual([])
   })
@@ -117,18 +117,18 @@ describe("帰りの header", () => {
 
 describe("body を持つ method", () => {
   it("読み取りは持たない", () => {
-    expect(carriesBody("GET")).toBe(false)
-    expect(carriesBody("HEAD")).toBe(false)
+    expect(hasBody("GET")).toBe(false)
+    expect(hasBody("HEAD")).toBe(false)
   })
 
   it("表記が小文字でも読み取りは読み取り", () => {
-    expect(carriesBody("get")).toBe(false)
-    expect(carriesBody("head")).toBe(false)
+    expect(hasBody("get")).toBe(false)
+    expect(hasBody("head")).toBe(false)
   })
 
   it("それ以外は持ちうる", () => {
     for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
-      expect(carriesBody(method)).toBe(true)
+      expect(hasBody(method)).toBe(true)
     }
   })
 })

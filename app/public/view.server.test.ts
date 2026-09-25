@@ -119,7 +119,7 @@ describe("the untranslated notice", () => {
   })
 })
 
-describe("what a research page carries", () => {
+describe("what a research page has", () => {
   it("hands the summary over as lines and the title as one string", () => {
     const content = research({
       title: { ja: filled(""), en: filled("A * B") },
@@ -137,7 +137,7 @@ describe("what a research page carries", () => {
     })
   })
 
-  it("says a field is settled as having no value, whichever language holds that", () => {
+  it("reports a field is settled as having no value, whichever language holds that", () => {
     const content = research({ title: { ja: NOT_APPLICABLE, en: filled("Title") } })
     expect(viewOf(content, "ja").title).toEqual({ state: "not-applicable" })
     expect(viewOf(content, "en").title)
@@ -160,7 +160,7 @@ describe("what a research page carries", () => {
     expect(ja.state === "value" && ja.value).toHaveLength(1)
   })
 
-  it("carries the state of a link out to the page rather than emptying it", () => {
+  it("has the state of a link out to the page rather than emptying it", () => {
     const unsettled = research({
       summary: {
         ...emptyResearchContent().summary,
@@ -172,7 +172,7 @@ describe("what a research page carries", () => {
     expect(viewOf(unsettled, "en").summary.links).toEqual({ state: "not-applicable" })
   })
 
-  it("says a version is the latest only when it is", () => {
+  it("reports a version is the latest only when it is", () => {
     expect(viewOf(research()).isLatest).toBe(true)
     expect(researchView({
       humLabel: "hum0001",
@@ -290,7 +290,7 @@ describe("what a research page carries", () => {
       expect(row?.datasets.map((one) => one.label)).toEqual(["JGAD000001", "DRA000001"])
     })
 
-    it("says whose a dataset is only where it is another research's", () => {
+    it("reports whose a dataset is only where it is another research's", () => {
       const hums = new Map([["JGAD000001", "hum0001"], ["JGAD000009", "hum0009"], ["JGAD000777", "hum0007"]])
       const row = cited(hums, ["mine", "theirs"], ["JGAD000777"])
       expect(row?.datasets).toEqual([
@@ -300,7 +300,7 @@ describe("what a research page carries", () => {
       ])
     })
 
-    it("draws a typed ID the ledger does not answer for as it was written, with nothing to follow", () => {
+    it("draws a typed ID the `label_pin` table does not respond for as it was written, with nothing to follow", () => {
       const row = cited(new Map(), [], ["JGAD999999"])
       expect(row?.datasets).toEqual([{ label: "JGAD999999", known: false, humLabel: null }])
     })
@@ -337,7 +337,7 @@ function dataset(content: DatasetContent) {
   }, "ja", catalog)
 }
 
-describe("what a dataset page carries", () => {
+describe("what a dataset page has", () => {
   it("places the access type and the type of data outside the experiments", () => {
     const view = dataset({
       ...emptyDatasetContent(),
@@ -384,7 +384,7 @@ describe("what a dataset page carries", () => {
     expect(view.experiments[0]?.values).toEqual([])
   })
 
-  it("keeps a settled 'no such value' so the row can say so", () => {
+  it("keeps a settled 'no such value' so the row can report it", () => {
     const view = dataset({
       ...emptyDatasetContent(),
       experiments: [{
@@ -454,7 +454,7 @@ describe("what a dataset page carries", () => {
 })
 
 describe("the maker a label is drawn apart from", () => {
-  it("is carried while the label still opens with it", () => {
+  it("is kept while the label still opens with it", () => {
     expect(makerOf("Illumina", "Illumina NovaSeq 6000")).toBe("Illumina")
   })
 
@@ -637,7 +637,7 @@ describe("the provider column of the research listing", () => {
   })
 
   /**
-   * Emptying the listing is how a curator says "the section again", so the
+   * Emptying the listing is how a curator reports "the section again", so the
    * column has to go back rather than stay on the last thing typed into it.
    */
   it("goes back to the research's providers when the listing is emptied", () => {

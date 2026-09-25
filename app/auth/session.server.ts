@@ -1,7 +1,7 @@
 /**
  * Signed-in sessions.
  *
- * The cookie carries one unguessable value and nothing else. Everything about
+ * The cookie has one unguessable value and nothing else. Everything about
  * the session is a row, so signing out takes effect at once and no part of the
  * cookie can be read as a statement about what its holder may do.
  *

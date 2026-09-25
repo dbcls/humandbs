@@ -167,7 +167,7 @@ def validate_public_url(url: str) -> ResolvedURL:
     """Validate ``url`` and resolve it to a single pinned public address.
 
     Raises :class:`UnsafeURLError` if the URL is not a plain ``http``/``https``
-    URL, carries userinfo, has a hostname that cannot be a public Internet
+    URL, has userinfo, has a hostname that cannot be a public Internet
     host, or resolves (even partially) to a non-public address.
     """
     parsed = urlparse(url)

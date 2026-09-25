@@ -7,8 +7,8 @@ import {
   formatSize,
   isUploadableName,
   MULTIPART_CONCURRENCY,
-  type BoxEntry,
-} from "~/files/box"
+  type ListedFile,
+} from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { datasetPath, filePath, href } from "~/public/urls"
@@ -29,7 +29,7 @@ import { DatasetIds, Paging, Table, Td } from "./page"
 import { Flag, Stated } from "./flags"
 
 /**
- * The download list, and the box behind it.
+ * The download list, and the prefix behind it.
  *
  * One row is one node of a listed bucket. **A reader's list and a preview's are
  * the same component** — the difference is which bucket the caller listed, and a
@@ -60,7 +60,7 @@ export function Downloads<Row extends DownloadRow>({
   humLabel: string | null
   rows: readonly Row[]
   total: number
-  /** 1-based positions of the shown rows within the whole box. */
+  /** 1-based positions of the shown rows within the whole prefix. */
   rangeFrom: number
   rangeTo: number
   page: number
@@ -89,8 +89,8 @@ export function Downloads<Row extends DownloadRow>({
         {rows.map((row) => (
           <tr key={row.name}>
             <Td className="break-all">
-              {/* **A name that fetches wears the download mark** — pressing it
-                  starts a download rather than opening a page, and the mark says
+              {/* **A name that fetches is shown with the download icon** — pressing it
+                  starts a download rather than opening a page, and the indicator shows
                   so before the press. A name not public yet fetches nothing and
                   goes without. */}
               {row.isPublic && humLabel !== null
@@ -108,7 +108,7 @@ export function Downloads<Row extends DownloadRow>({
         ))}
       </Table>
       {/* **One page is not paged, and not counted.** The table holds few
-          enough rows to count at a glance (most boxes hold five or fewer),
+          enough rows to count at a glance (most prefixes hold five or fewer),
           and a count under it reads as a listing's tools on a page's section. */}
       {pageCount > 1 && (
         <div className="flex justify-end">
@@ -156,24 +156,24 @@ function NotPublicYet({ locale, humLabel, name }: {
 }
 
 /**
- * The box as an administrator works with it: both buckets in one list, and
+ * The prefix as an administrator works with it: both buckets in one list, and
  * every act on the row it acts on.
  *
  * **Nothing is chosen and then acted on from the foot of the table.** A press
- * that names nothing, over rows that have scrolled, is the way to switch or
+ * that identifies nothing, over rows that have scrolled, is the way to switch or
  * delete the wrong file; the one place several files are made public at once
  * is the publish confirmation, which sends its own list.
  *
  * **The name is not pressed.** A public file opens as a download, and a fetch
  * that starts because a name was read is not one the reader decided on; the
- * download stands beside the name as an act of its own, and a file nobody
+ * download is shown beside the name as an act of its own, and a file nobody
  * outside can reach offers neither it nor its address.
  */
-export function BoxTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
+export function FileTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
   locale: Locale
-  rows: readonly BoxEntry[]
+  rows: readonly ListedFile[]
   humLabel: string | null
-  /** What to say in place of the rows when there are none. The box's own word by default. */
+  /** What to show in place of the rows when there are none. The prefix's own word by default. */
   whenEmpty?: string
   /**
    * The published datasets that select each file, by its name — the column the
@@ -200,7 +200,7 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
       whenEmpty={whenEmpty ?? t.empty}
     >
       {rows.map((row) => (
-        <BoxRow
+        <FileRow
           key={row.name}
           row={row}
           humLabel={humLabel}
@@ -217,18 +217,18 @@ export function BoxTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
  * switched to the other side, renamed, deleted.
  *
  * **The switch is one control that offers the other side.** Which side the
- * file is on, the row already says; the control says where a press would
- * take it. **While a switch runs it says so and cannot be pressed** — the
+ * file is on, the row already shows; the control shows where a press would
+ * take it. **While a switch runs it shows it and cannot be pressed** — the
  * bytes are being copied and a second wish in the meantime would only be
  * queued behind the first. Renaming waits for the same reason: which side to
  * rename on is not settled.
  *
  * **Renaming a public file moves its address**, which is the break deleting it
- * makes, so the way in wears the same face and the same panel every slug is
+ * makes, so the trigger uses the same style and the same panel every slug is
  * changed in (`SlugEditor`).
  */
-function BoxRow({ row, humLabel, locale, selectedBy }: {
-  row: BoxEntry
+function FileRow({ row, humLabel, locale, selectedBy }: {
+  row: ListedFile
   humLabel: string | null
   locale: Locale
   selectedBy: readonly string[] | undefined
@@ -249,7 +249,7 @@ function BoxRow({ row, humLabel, locale, selectedBy }: {
         <Td nowrap>
           {/* A published dataset has a public page, and it opens in a new tab
               the way the research listing's dataset IDs do: the curator is
-              working down this box and would lose the row. */}
+              working down this prefix and would lose the row. */}
           {selectedBy.length > 0 && (
             <DatasetIds
               newTab
@@ -324,9 +324,9 @@ function BoxRow({ row, humLabel, locale, selectedBy }: {
  * store's own words: the control beside it is pressable again, and the reason
  * the last press did not take is what decides whether to press it.
  */
-function State({ locale, entry }: { locale: Locale, entry: BoxEntry }) {
+function State({ locale, entry }: { locale: Locale, entry: ListedFile }) {
   const t = messagesFor(locale).admin.files
-  // Every row has a side, so the side is a mark and a word rather than a box;
+  // Every row has a side, so the side is an indicator and a word rather than a box;
   // only a failure is a box.
   const side = entry.isPublic
     ? <Stated kind="live">{t.isPublic}</Stated>
@@ -358,11 +358,11 @@ interface UploadProgress {
  *
  * **The bytes go straight there.** The server is asked for a signature, and
  * what comes back accepts exactly one file: this key, this type, this many
- * bytes. Anything larger than the threshold is cut into parts, and only the
+ * bytes. Anything larger than the threshold is split into parts, and only the
  * parts are signed — beginning and completing need credentials this page does
  * not have.
  *
- * **A name the box already holds is asked about before anything is sent.** The
+ * **A name the prefix already holds is asked about before anything is sent.** The
  * name is the key, so sending it again replaces what is there and nothing brings
  * that back; the server is asked which of the chosen names are there, and only
  * those are put to the reader, in one question for the whole choice. A choice
@@ -381,13 +381,13 @@ interface UploadProgress {
  */
 export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
   locale: Locale
-  /** Where the signatures are asked for. The box is whatever answers there. */
+  /** Where the signatures are asked for. The prefix is whatever responds there. */
   endpoint: string
   threshold: number
   partSize: number
   /**
    * What becomes of a file put here, where the screen has not already said it.
-   * The article assets say nothing: that box is public, which is what the whole
+   * The article assets say nothing: that prefix is public, which is what the whole
    * screen is about.
    */
   hint?: string
@@ -404,7 +404,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
   const [unchecked, setUnchecked] = useState(false)
   /**
    * A choice waiting on the reader's answer: the files, and the names among
-   * them the box already holds. Null while nothing is being asked.
+   * them the prefix already holds. Null while nothing is being asked.
    */
   const [pending, setPending] = useState<{ files: File[], existing: string[] } | null>(null)
   const aborter = useRef<AbortController | null>(null)
@@ -474,7 +474,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
     setDone(true)
     forgetChoice()
     // The listing is read on the server, so what was just sent appears by
-    // asking for the page again rather than by patching the table.
+    // requesting the page again rather than by patching the table.
     window.location.reload()
   }
 
@@ -489,7 +489,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
     [...event.dataTransfer.types].includes("Files")
 
   // **Both `dragenter` and `dragover` have to refuse the default**, or the drop
-  // never fires: not refusing it is how the page says it does not take files.
+  // never fires: not refusing it is how the page shows it does not take files.
   const onDragEnter = (event: DragEvent<HTMLDivElement>) => {
     if (!holdsFiles(event)) return
     event.preventDefault()
@@ -514,7 +514,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
     setOver(false)
     if (busy) return
     /*
-      **A folder arrives as an entry with nothing to send behind it.** A box is
+      **A folder arrives as an entry with nothing to send behind it.** A prefix is
       flat and nothing here walks into one, so what a folder gets is the reason
       rather than silence — dropped files and a dropped folder both leave the
       same empty panel otherwise.
@@ -541,14 +541,14 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      /* **The edge says it is a target, and says it without moving anything.**
+      /* **The edge shows it is a target, and shows it without moving anything.**
          A border that thickened under the pointer would shift every line inside
          the panel by a pixel at the moment the reader is aiming at it. */
       className={`rounded border px-4 py-3 ${over ? "border-brand border-dashed bg-surface-hover" : "border-line"}`}
     >
       <Stack gap="normal">
         {/*
-          **The panel says what it is, rather than letting the browser say it.**
+          **The panel shows what it is, rather than letting the browser say it.**
           A bare file input draws its own control and its own words — a button
           reading "Choose Files" beside "No file chosen" — and the second of
           those is the panel's whole message at rest: that nothing has happened
@@ -559,7 +559,7 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
         <div className="flex flex-col items-center gap-3 text-center">
           <Icon name="upload" className="text-3xl text-ink-muted" aria-hidden="true" />
           {/* **The sentence and what follows it are one block, in one size.**
-              What becomes of a file is the second half of what the panel says,
+              What becomes of a file is the second half of what the panel shows,
               not a footnote to it: the same 14px, the quieter colour, and the
               gap of lines within a paragraph rather than the gap between
               things. */}
@@ -627,10 +627,10 @@ export function UploadPanel({ locale, endpoint, threshold, partSize, hint }: {
 }
 
 /**
- * The way to take the address a file answers at.
+ * The way to take the address a file responds at.
  *
  * **What is copied is the path rather than the whole URL.** It is written into
- * a body, and a body carrying the host it was written on stops working as soon
+ * a body, and a body with the host it was written on stops working as soon
  * as the same content is read anywhere else. The path is shown to a pointer,
  * since the row names the file rather than the address.
  */
@@ -795,7 +795,7 @@ interface UploadAnswer {
   urls?: string[]
 }
 
-/** Which of the names the box already holds, as the server lists them. */
+/** Which of the names the prefix already holds, as the server lists them. */
 async function whichExist(endpoint: string, names: string[]): Promise<string[]> {
   const answer = await ask(endpoint, { kind: "check", names }, undefined)
   if (answer.kind !== "check") throw new Error("the server answered with the wrong shape")

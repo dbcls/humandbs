@@ -5,21 +5,21 @@
  * requirement nobody can check by looking at one screen, held by something that
  * reads the source. Neither of these can be checked by rendering either — a link
  * that forgot `preventScrollReset` draws exactly like one that did not, and the
- * word a reader who cannot see the mark needs is not in the picture at all.
+ * word a reader who cannot see the indicator needs is not in the picture at all.
  *
  * **Only the refinement panel is held to the first rule absolutely.** Everything
- * that panel offers narrows a listing standing beside it, so there is no link in
+ * that panel offers narrows a listing shown beside it, so there is no link in
  * it that should send the reader anywhere; the wrapper is what makes that true
  * of a link added later. The controls in `components/search.tsx` are a mixture
  * on purpose — the front page's box goes to another screen, and arriving there
  * part-way down would be arriving in the middle — so they are read one at a time
  * rather than by a rule.
  *
- * **The second rule is about leaving the site.** A link that opens a tab says so
- * twice — a mark for the eye and a word for anyone not using one — because a tab
+ * **The second rule is about leaving the site.** A link that opens a tab reports it
+ * twice — an indicator for the eye and a word for anyone not using one — because a tab
  * that opens unannounced leaves the reader pressing a back button that does
  * nothing. `external` on the button-shaped parts does not mean this: it means an
- * address client-side navigation cannot answer, which the TSV download and the
+ * address client-side navigation cannot respond to, which the TSV download and the
  * redirect to the identity provider also are. Those two stay in the same tab and
  * are named here, so that the next `external` written cannot quietly become a
  * third exception.
@@ -71,7 +71,7 @@ const OUTWARD = [
 
 /**
  * `external` on a button-shaped part that stays in this tab. Both are addresses
- * client-side navigation cannot answer rather than other sites, so neither owes
+ * client-side navigation cannot respond to rather than other sites, so neither owes
  * the reader a warning — and listing them is what keeps a third from appearing
  * without anyone deciding it should.
  */
@@ -91,10 +91,10 @@ describe("a link that leaves the site", () => {
     }
   })
 
-  it("goes through the one part that carries both, in the prose and the values", async () => {
+  it("goes through the one part that has both, in the prose and the values", async () => {
     // `page.tsx` opens a tab in exactly one place — inside `ExternalLink` — and
     // nothing else in the prose or the values opens one at all. A second
-    // occurrence is a link somebody wrote without the mark or the word.
+    // occurrence is a link somebody wrote without the indicator or the word.
     const page = await readFile(path.join(import.meta.dirname, "components/page.tsx"), "utf8")
     expect(page.match(/target="_blank"/g)).toHaveLength(1)
     expect(page.indexOf("target=\"_blank\"")).toBeGreaterThan(page.indexOf("export function ExternalLink"))
@@ -104,9 +104,9 @@ describe("a link that leaves the site", () => {
     expect(research).toContain("<ExternalLink")
   })
 
-  it("owes the word even where the mark has nowhere to sit", async () => {
-    // The footer's link is a logo: the mark would land on top of the image, so
-    // only the word is left to say the tab is new.
+  it("owes the word even where the indicator has nowhere to sit", async () => {
+    // The footer's link is a logo: the indicator would land on top of the image, so
+    // only the word is left to report the tab is new.
     const source = await readFile(path.join(import.meta.dirname, "components/layout.tsx"), "utf8")
     const logo = source.slice(source.indexOf("dbcls.rois.ac.jp"))
     expect(logo.slice(0, logo.indexOf("</a>"))).toContain("newTab")

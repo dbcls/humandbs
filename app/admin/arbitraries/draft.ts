@@ -106,7 +106,7 @@ export function CANONICAL_UNITS(keyId: string): string | null {
  * A stored number under a key with the given unit: already in that unit.
  *
  * **`high`, when drawn, is never below `value`** — the one shape a width
- * carries on its own (`app/content/arbitraries/content.ts`). Both ends share
+ * has on its own (`app/content/arbitraries/content.ts`). Both ends share
  * the row's unit, so `inputHigh` moves the same amount above `inputValue` that
  * `high` moves above `value`, the way the editor's own upper-end box does
  * (`app/components/dataset-editor.tsx` の `NumberField`).

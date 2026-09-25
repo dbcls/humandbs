@@ -4,7 +4,7 @@
  * Neither is kept in the repository. `npm run icd10:import` fetches them and
  * leaves them under `migration/input/` (git-ignored), and the dev data load
  * reads them from there to put the vocabulary in again after emptying the
- * catalog (docs/development.md の「ICD10 の語彙を入れる」). A hand-placed copy
+ * catalog. A hand-placed copy
  * under the same name is used as it stands, which is how an environment with
  * no way out runs either at all.
  *

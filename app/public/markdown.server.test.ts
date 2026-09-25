@@ -12,13 +12,13 @@ function headings(html: string): string[] {
 }
 
 describe("サイトコンテンツの markdown", () => {
-  it("生 HTML のブロックは中身ごと落ちる", () => {
+  it("生 HTML のブロックは中身ごと除かれる", () => {
     expect(renderMarkdown("<script>alert(1)</script>", "ja")).toBe("")
     expect(renderMarkdown("<div>hi</div>", "ja")).toBe("")
     expect(renderMarkdown("<iframe src=\"https://forms.gle/x\"></iframe>", "ja")).toBe("")
   })
 
-  it("行の中の生 HTML はタグだけ落ち、文字は残る", () => {
+  it("行の中の生 HTML はタグだけ除かれ、文字は残る", () => {
     expect(renderMarkdown("a <u>b</u> c", "ja")).toBe("<p>a b c</p>")
     expect(renderMarkdown("x <img src=y onerror=\"z\"> w", "ja")).toBe("<p>x  w</p>")
   })
@@ -61,7 +61,7 @@ describe("サイトコンテンツの markdown", () => {
     expect(html).toContain("<td>1</td>")
   })
 
-  it("本文が h1 を持つとき、ページの h1 と衝突しないよう見出しが 1 段下がる", () => {
+  it("本文に h1 があるとき、ページの h1 と衝突しないよう見出しが 1 階層下がる", () => {
     expect(headings(renderMarkdown("# top\n\n## next\n", "ja"))).toEqual(["h2:top", "h3:next"])
   })
 
@@ -69,7 +69,7 @@ describe("サイトコンテンツの markdown", () => {
     expect(headings(renderMarkdown("## a\n\n### b\n", "ja"))).toEqual(["h2:a", "h3:b"])
   })
 
-  it("h6 は 1 段下げようとしても h6 のまま", () => {
+  it("h6 は 1 階層下げようとしても h6 のまま", () => {
     expect(headings(renderMarkdown("# a\n\n###### f\n", "ja"))).toEqual(["h2:a", "h6:f"])
   })
 
@@ -107,16 +107,16 @@ describe("サイトコンテンツの markdown", () => {
     expect(html).toContain("id=\"概要-2\"")
   })
 
-  it("GitHub の 5 種の alert がそれぞれの枠になる", () => {
-    // NOTE はアイコンの無い枠で、残る 4 つは色と字形で種類を表す。
+  it("GitHub の 5 種の alert がそれぞれの種類の注記になる", () => {
+    // NOTE はアイコンの無い注記で、残る 4 つは色とアイコンで種類を表す。
     expect(renderMarkdown("> [!NOTE]\n> 本文", "ja")).not.toContain("<svg")
-    for (const [mark, edge] of [
+    for (const [alert, edge] of [
       ["TIP", "border-brand"],
       ["IMPORTANT", "border-ink-muted"],
       ["WARNING", "border-warning"],
       ["CAUTION", "border-danger"],
     ]) {
-      const html = renderMarkdown(`> [!${mark}]\n> 本文`, "ja")
+      const html = renderMarkdown(`> [!${alert}]\n> 本文`, "ja")
       expect(html).toContain(edge)
       expect(html).toContain("<svg")
       expect(html).not.toContain("blockquote")
@@ -141,7 +141,7 @@ describe("サイトコンテンツの markdown", () => {
     expect(renderMarkdown("> [!note]\n> 本文", "ja")).not.toContain("blockquote")
   })
 
-  it("マーカーだけの引用も枠になる", () => {
+  it("マーカーだけの引用も注記になる", () => {
     const html = renderMarkdown("> [!TIP]", "ja")
     expect(html).not.toContain("blockquote")
     expect(html).toContain("<svg")
@@ -161,7 +161,7 @@ describe("サイトコンテンツの markdown", () => {
   })
 
   it("本文が自分の見出しを指すリンクは href を保つ", () => {
-    // FAQ とガイドラインは自分の節を指す目次を持っている。
+    // FAQ とガイドラインには、自分の節を指す目次がある。
     expect(renderMarkdown("[目次](#faq-1)", "ja")).toContain("href=\"#faq-1\"")
   })
 

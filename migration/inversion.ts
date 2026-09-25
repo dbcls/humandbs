@@ -3,7 +3,7 @@
  * own copy.
  *
  * **A v1 table is sometimes written once for a whole group of datasets, and
- * the group is folded back together with the accession that owns each row
+ * the group is merged back together with the accession that owns each row
  * (`JGAD000001: value`, `【JGAS000009】value`, a bare `[JGAD000001](url)`
  * line, or the study an accession's own JGAS resolves to).** The block itself
  * — header and every cell — is identical wherever it is pinned; only which
@@ -13,11 +13,11 @@
  * This is a generalisation of `ownLines`/`kept` in `build.ts`, which already
  * splits the `ID:` form by checking every dataset's own experiments against
  * every other's. That check needs the whole dump in memory to work; this one
- * needs only the one block and the siblings that carry it; it is not called
+ * needs only the one block and the siblings that have it; it is not called
  * from `build.ts` yet.
  *
  * Every function here is pure — no dump, no filesystem, no network. The
- * caller supplies the block's cells, the dataset labels that carry it, and
+ * caller supplies the block's cells, the dataset labels that have it, and
  * the JGAS→JGAD correspondence; the JGAS→JGAD map itself is built from rows
  * read elsewhere (`jgadsByStudy`), because reading `jga_dataset_study.tsv` is
  * `upstream.ts`'s job, not this module's.
@@ -26,7 +26,7 @@
  * shared note.** A line naming no dataset is always read as shared, even
  * where the source really pairs it with the very next line — a disease name
  * on its own line followed by that one dataset's accession, repeated once per
- * dataset. This module tracks what a line says, not where it sits, so such a
+ * dataset. This module tracks what a line has, not where it sits, so such a
  * pairing is invisible to it. `hum0014`'s master accession list is built
  * exactly this way and needs the individual review `survey/inversion.md`
  * already calls for, not a general rule.
@@ -140,7 +140,7 @@ function mentions(line: string, label: string): boolean {
 
 /**
  * JGA's own dataset and study numbers, long form folded to the six digits the
- * ledger uses (`citedLabel` in `build.ts` folds the same way). A token this
+ * `label_pin` table uses (`citedLabel` in `build.ts` folds the same way). A token this
  * does not match — a typo'd prefix such as `JGA000429` missing its `D` — is
  * invisible here, and the line it sits on is read as naming nothing rather
  * than being misread as naming the wrong thing.
@@ -167,7 +167,7 @@ type LineOwner
   = | { kind: "shared" }
     /** Names exactly one of the block's own datasets, directly or through a study. */
     | { kind: "owned", dataset: string }
-    /** Names only accession(s) outside the block — recorded, if anywhere, under whatever that names. */
+    /** Names only accession(s) outside the block — recorded, if anywhere, under whatever that identifies. */
     | { kind: "foreign" }
     /** Names more than one dataset, or a study spanning more than one — not this module's call to make. */
     | { kind: "unsettled", reason: string }
@@ -207,7 +207,7 @@ function lineOwner(
     return { kind: "unsettled", reason: "この行の JGAS が block 内の複数 dataset にまたがる" }
   }
   if (owners.size >= 2) {
-    return { kind: "unsettled", reason: "この行が block 内の複数 dataset を名指ししている" }
+    return { kind: "unsettled", reason: "この行が block 内の複数 dataset を指定している" }
   }
   if (owners.size === 1) return { kind: "owned", dataset: theOnly(owners) }
   return foreign ? { kind: "foreign" } : { kind: "shared" }
@@ -221,14 +221,14 @@ type CellOutcome
  * One cell (one language of one key), split among the datasets that share
  * the block it sits in.
  *
- * A line stays for every dataset unless it names one — `readLine` in
+ * A line stays for every dataset unless it identifies one — `readLine` in
  * `build.ts` calls this "about" — in which case it stays only for the
- * dataset(s) it names among the block's own. **A line naming an accession
+ * dataset(s) it identifies among the block's own. **A line naming an accession
  * that is not one of the block's own datasets is dropped for all of them**:
  * whatever it is about is not any of this block's datasets, so it is not this
  * block's line to keep, and keeping it on a sibling would attribute someone
  * else's fact to that sibling. This differs from `ownLines`' rule, which only
- * drops a line once it has verified the dataset it names carries the same
+ * drops a line once it has verified the dataset it identifies has the same
  * line itself — a check this function cannot make with one block alone — but
  * the risk being guarded against is the same: never let a fact end up filed
  * under a dataset it was not about.
@@ -300,7 +300,7 @@ function handSplit(
  *
  * Every key and every language is decided on its own: `ja` may split cleanly
  * while `en` needs a reviewer, and the result holds whichever each cell
- * reached. A block that never names any of its own datasets — 2 節 of
+ * reached. A block that never identifies any of its own datasets — 2 節 of
  * `survey/inversion.md`'s "素直な共有" — needs no special case: every one of
  * its cells comes back `shared`, which is a plain copy already.
  */

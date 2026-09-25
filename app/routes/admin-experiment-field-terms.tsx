@@ -48,8 +48,8 @@ import { Flag } from "~/components/flags"
  *
  * **The screen is named after the field, not after the vocabulary.** Every
  * vocabulary belongs to exactly one field, so a screen called 「語彙」 could
- * only ever be answered with "which vocabulary?" — while 「プラットフォームで
- * 選べる語」 says both what is here and what it is for (`admin/urls.ts`).
+ * only ever be responded with "which vocabulary?" — while 「プラットフォームで
+ * 選べる語」 shows both what is here and what it is for (`admin/urls.ts`).
  *
  * **What the data brings in is editable; what is settled is read.** The
  * vocabularies the portal's structure fixes, and ICD10 — the classification put
@@ -57,7 +57,7 @@ import { Flag } from "~/components/flags"
  * `SETTLED_VOCABULARIES`).
  *
  * **A term in use is merged rather than deleted.** Merging rewrites every
- * value that names the term so it names another term of the same vocabulary,
+ * value that identifies the term so it identifies another term of the same vocabulary,
  * then removes the term; deleting one that is still named would leave a value
  * nobody can render.
  */
@@ -90,7 +90,7 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
  *
  * **Choosing an order sends the reader back to the first page**: the seventh
  * page of an order nobody has seen yet is not a place anyone asked for. What
- * the box holds is carried through, because an order is a way of reading the
+ * the box holds is kept through, because an order is a way of reading the
  * answer rather than a different question.
  */
 function at(view: VocabularyView, over: Partial<PresentedQuery<TermSortKey>> & {
@@ -106,7 +106,7 @@ function at(view: VocabularyView, over: Partial<PresentedQuery<TermSortKey>> & {
   }
   const search = new URLSearchParams()
   if (view.find !== "") search.set("find", view.find)
-  // Carried through the box and the pages: choosing where to fold a term into
+  // Kept through the box and the pages: choosing where to merge a term into
   // is reading this listing, and losing the aim on the second page would mean
   // starting over.
   if (next.mergeFrom !== null) search.set("mergeFrom", next.mergeFrom)
@@ -148,7 +148,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
   /*
     How the terms are read, and which of them are on screen.
 
-    **The same row the table of fields carries**, in the same place — the two
+    **The same row the table of fields has**, in the same place — the two
     screens are one step apart, and a reader who learned the controls on the
     table should not have to find them again in what it opens.
   */
@@ -179,14 +179,14 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
       />
       <Card under={false}>
         <Stack gap="normal">
-          {/* **The name says what these are, and the field stands beside it** —
+          {/* **The name shows what these are, and the field is shown beside it** —
               every vocabulary belongs to exactly one field, so the field is
               which one rather than part of what the screen does.
 
-              **The way to make one stands with the name**, as it does over the
+              **The way to make one is shown with the name**, as it does over the
               table of fields: it is the one thing a reader comes here to do
               that is not "open one of these". */}
-          {/* The line under the name says what can be done to these values —
+          {/* The line under the name shows what can be done to these values —
               deleting and merging — or, for a settled vocabulary, why nothing
               can: the portal's own vocabularies are fixed by what the portal
               is, ICD10 by being a standard put in whole. It is the same line every screen with a note has, so
@@ -201,15 +201,15 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
               label={t.backToList}
               icon="chevron-left"
             />
-            {/* **A settled vocabulary has no way in either.** What it holds is
-                part of what the portal is, so the screen carries the name and
+            {/* **A settled vocabulary has no trigger either.** What it holds is
+                part of what the portal is, so the screen has the name and
                 the rows and nothing to press. */}
             {view.editable && (
               <Form method="post">
                 {/* **Nothing here is unsaved yet**: a panel that makes something
                     has nothing loaded to compare what is typed against, so it is
                     a plain form and the save is the ordinary one (unlike a row's
-                    panel, which answers whether there is anything to send). */}
+                    panel, which shows whether there is anything to send). */}
                 <input type="hidden" name="setId" value={set.id} />
                 <Dialog
                   label={t.addTerm}
@@ -223,8 +223,8 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                 >
                   {/* **No code is asked for.** It is made from the English label
                       (`admin/catalog.ts` の `codeFrom`): it is an address the
-                      public side carries rather than a name to choose, and
-                      asking for one asks the curator to know which characters
+                      public side has rather than a name to choose, and
+                      requesting one requires the curator to know which characters
                       a query holds unquoted. */}
                   <LanguagePair>
                     <Field label={t.labelJa} name="labelJa" width="w-full" />
@@ -235,11 +235,11 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
             )}
           </Heading>
 
-          {/* **Choosing where to fold a term into is reading this listing**, so
-              what is in force says so over the rows it changes the meaning of —
+          {/* **Choosing where to merge a term into is reading this listing**, so
+              what is in force shows it over the rows it changes the meaning of —
               every row's control is now "keep this one" rather than "edit
-              this one". The way out stands in the same band as the way in,
-              and wears the outlined face: a bare word at the end of the
+              this one". The cancel button is shown in the same header row as the trigger,
+              and uses the outlined style: a bare word at the end of the
               sentence reads as its last clause. */}
           {view.mergeFrom !== null && (
             <Note
@@ -312,7 +312,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
  *
  * **A GET form, so a narrowed listing has an address that can be kept and
  * shared** — the same rule the table of fields and the public listings follow.
- * **Nothing here waits to be confirmed**: the box asks once the typing has
+ * **Nothing here waits to be confirmed**: the field sends the query once the typing has
  * stopped. The ordering and the page size ride along — neither is a condition,
  * but losing them on every search would re-sort and re-cut the listing under
  * the reader.
@@ -328,7 +328,7 @@ function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
       name="find"
       value={view.find}
       label={t.find}
-      placeholder={messages.search.boxHint}
+      placeholder={messages.search.searchHint}
       submit={messages.search.submit}
       size="compact"
       searchAsTyped
@@ -342,8 +342,8 @@ function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
 /**
  * One term.
  *
- * **The code stands first and in the face the data is written in.** It is what
- * the value is filed under — a dataset carries the code, and the labels are how
+ * **The code is shown first and in the typeface the data is written in.** It is what
+ * the value is filed under — a dataset has the code, and the labels are how
  * a reader recognises which code that is.
  *
  * **What can be pressed is at the end, and what it opens is a panel rather than
@@ -371,7 +371,7 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
   return (
     <tr>
       {showsCode && <Td nowrap><Code size="xs">{term.code}</Code></Td>}
-      {/* **A missing Japanese label is a mark, not a dash**: the English one
+      {/* **A missing Japanese label is an indicator, not a dash**: the English one
           is always there, so what is missing is the translation, and that is a
           thing to fix rather than a blank in the row. */}
       <Td floor="min-w-40">
@@ -405,8 +405,8 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
           : mergeFrom !== null
             ? (
                 mergeFrom.id === term.id
-                  // The row being folded away cannot be its own destination, and
-                  // saying which one it is beats leaving a gap in the column.
+                  // The row being merged away cannot be its own destination, and
+                  // indicating which one it is beats leaving a gap in the column.
                   ? <Flag kind="merging">{t.merge}</Flag>
                   : (
                       <Form method="post">
@@ -427,7 +427,7 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
               )
             : (
                 <span className="flex items-center gap-1">
-                  {/* **The save answers what the panel holds**: the labels and
+                  {/* **The save determines what the panel holds**: the labels and
                       whether the value is still offered are one answer to "what
                       should this be now", so they are settled in one press. */}
                   <Editing method="post">
@@ -454,16 +454,16 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                       </LanguagePair>
                     </Dialog>
                   </Editing>
-                  {/* **Folding is where a used term goes.** It is offered on
+                  {/* **Merging is where a used term goes.** It is offered on
                       every row rather than only on the used ones, because
                       pulling two spellings together is the same operation and
                       neither of them has to be in use. */}
                   <ButtonLink to={mergeAt(term.id)} size="row" icon={<Icon name="merge" />}>
                     {t.mergeStart}
                   </ButtonLink>
-                  {/* Going is what cannot be undone, unlike folding, and a
-                      term something still points at cannot go. The way in
-                      stands on every row and says so on the ones it refuses
+                  {/* Going is what cannot be undone, unlike merging, and a
+                      term something still points at cannot go. The trigger
+                      is shown on every row and shows it on the ones it refuses
                       — the count beside it is of published datasets, and a
                       draft holds a term without any of those. */}
                   <Form method="post">

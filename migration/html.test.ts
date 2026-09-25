@@ -55,7 +55,7 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
     expect(first.split("|").filter((cell) => cell.trim() === "A")).toHaveLength(2)
   })
 
-  it("rowspan と colspan が同じセルに付いていても各行各列に届く", () => {
+  it("rowspan と colspan が同じセルに付いていても各行各列に反映される", () => {
     const markdown = htmlToMarkdown(
       "<table><tbody>"
       + "<tr><td rowspan=\"2\" colspan=\"2\">A</td><td>x</td></tr>"
@@ -75,7 +75,7 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
     expect(htmlToMarkdown("::: callout type=\"info\"\n\nhello\n\n:::")).toBe("> [!TIP]\n> hello")
   })
 
-  it("callout の種類は綴りを変えて残り、名前の無いものは info になる", () => {
+  it("callout の種類は表記を変えて残り、名前の無いものは info になる", () => {
     const kind = (fence: string) => htmlToMarkdown(`${fence}\nx\n:::`).split("\n")[0]
     expect(kind(":::callout")).toBe("> [!TIP]")
     expect(kind("::: callout type=\"info\"")).toBe("> [!TIP]")
@@ -83,11 +83,11 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
     expect(kind("::: callout type=\"warning\"")).toBe("> [!WARNING]")
     expect(kind("::: callout type=\"error\"")).toBe("> [!CAUTION]")
     expect(kind("::: callout type=\"plain\"")).toBe("> [!NOTE]")
-    // v1 の getCalloutType が知らない綴りに落とす先と同じ。
+    // 知らない表記のときに v1 の getCalloutType が返す既定の種類と同じ。
     expect(kind("::: callout type=\"whatever\"")).toBe("> [!TIP]")
   })
 
-  it("type 以外の属性を持つ callout は、黙って落とさず変換を止める", () => {
+  it("type 以外の属性がある callout は、警告なしに除かず変換を止める", () => {
     expect(() => htmlToMarkdown("::: callout title=\"見出し\"\nx\n:::"))
       .toThrow(/unhandled callout attribute/)
   })
@@ -103,7 +103,7 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
     expect(markdown.indexOf("> note")).toBeGreaterThan(markdown.indexOf("1. item"))
   })
 
-  it("扱わない directive は黙って本文に残さず、変換を止める", () => {
+  it("扱わない directive は警告なしに本文に残さず、変換を止める", () => {
     expect(() => htmlToMarkdown(":::button href=\"https://example.com\"\nx\n:::"))
       .toThrow(/unhandled markdown directive/)
   })
@@ -127,7 +127,7 @@ describe("v1 のアドレスの書き換え", () => {
     expect(rewriteLinks("[x](/public-files/dac/a.pdf)")).toBe("[x](/files/common/dac/a.pdf)")
   })
 
-  it("日本語の /ja/ 接頭辞は落ちる", () => {
+  it("日本語の /ja/ 接頭辞は除かれる", () => {
     expect(rewriteLinks("[x](/ja/nbdc-policy)")).toBe("[x](/nbdc-policy)")
   })
 
@@ -187,16 +187,16 @@ describe("v1 のページ内リンクの行き先", () => {
 
 describe("行き先を持たない <a>", () => {
   /**
-   * Joomla marked where a link lands with an `<a>` carrying only an id. Written
+   * Joomla marked where a link lands with an `<a>` with only an id. Written
    * back as markdown it becomes `[crf.tsv]()` — an address a reader can press,
    * which reloads the page they are already on.
    */
-  it("アンカーの目印は、リンクではなく文字として残る", () => {
+  it("id だけのアンカーは、リンクではなく文字として残る", () => {
     expect(htmlToMarkdown("<p>● 概要（<a id=\"crf_norm\">crf_normal.tsv</a>）</p>"))
       .toBe("● 概要（crf\\_normal.tsv）")
   })
 
-  it("古い綴りの name= も同じ", () => {
+  it("古い表記の name= も同じ", () => {
     expect(htmlToMarkdown("<p><a name=\"top\">先頭</a></p>")).toBe("先頭")
   })
 
@@ -216,11 +216,11 @@ describe("v1 の callout の種類", () => {
 
   /**
    * The FAQ quotes the personal-information act under headings of its own and
-   * the sharing guidelines carry the sample wording for a consent form the same
-   * way. Neither is an aside, and a glyph saying "by the way" in front of a
+   * the sharing guidelines have the sample wording for a consent form the same
+   * way. Neither is an aside, and a glyph indicating "by the way" in front of a
    * statute names it wrongly.
    */
-  it("自分の見出しを持つ callout は、印を持たない器になる", () => {
+  it("見出しを含む callout は、アイコンの無い注記 (NOTE) になる", () => {
     expect(htmlToMarkdown("::: callout\n### 個人識別符号\n\n本文\n:::")).toContain("[!NOTE]")
     expect(htmlToMarkdown("::: callout\n<h3>個人識別符号</h3>\n\n本文\n:::")).toContain("[!NOTE]")
   })

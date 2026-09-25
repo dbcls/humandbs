@@ -15,8 +15,8 @@
  * What is dropped:
  *
  * - unsettled slots, unless `keepUnsettled`. A preview keeps them because the
- *   first use of a share link is asking a provider to fill exactly those in;
- *   showing the published face would hide the question. `not-applicable` is
+ *   first use of a share link is requesting a provider to fill exactly those in;
+ *   showing the published view would hide the question. `not-applicable` is
  *   settled information and survives either way
  * - file selections naming something the listing does not contain. The listing
  *   is the only source for what exists, so a stale selection renders as nothing
@@ -50,8 +50,8 @@ export interface PublicOptions {
 /**
  * How every public route derives, named once so that "the public side never
  * keeps an unsettled value" is a single thing rather than a literal repeated
- * wherever a projection is taken. **The preview says otherwise**, and that is
- * the whole reason the option exists: a shared link is for asking a provider to
+ * wherever a projection is taken. **The preview reports otherwise**, and that is
+ * the whole reason the option exists: a shared link is for requesting a provider to
  * settle what is unsettled, so it is the one place the question survives.
  */
 export const PUBLISHED: PublicOptions = { keepUnsettled: false }
@@ -105,7 +105,7 @@ export interface PublicDataset {
    *
    * **A JGAD accession is the application system's, and everything else with an
    * accession is DDBJ Search's** — both arrive through the cache and are taken
-   * unchanged. **An NHA ID is the portal's own**, and there the content carries
+   * unchanged. **An NHA ID is the portal's own**, and there the content has
    * the release date.
    *
    * **An NHA dataset has one date, written twice.** The portal does not version
@@ -224,8 +224,8 @@ function publicValue(value: ContentValue, options: PublicOptions): ContentValue 
 }
 
 /**
- * **Every key a dataset carries is drawn.** What a reader may see is decided by
- * the state of each value rather than by the key it stands under — a key the
+ * **Every key a dataset has is drawn.** What a reader may see is decided by
+ * the state of each value rather than by the key it is shown under — a key the
  * public page had no place for would be a key nothing in the portal could act
  * on.
  */

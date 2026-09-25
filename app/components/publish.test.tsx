@@ -62,7 +62,7 @@ describe("the publish screen", () => {
     expect(section).not.toContain("v3, v1")
   })
 
-  it("says under the line that the release date is not a schedule", () => {
+  it("shows under the line that the release date is not a schedule", () => {
     const section = (html: string): string => html.slice(html.indexOf(">公開</h2>"))
     for (const html of [render(view()), render(view({ updating: { number: 3 }, heldNumbers: [3] }))]) {
       const under = section(html).slice(section(html).indexOf("</button>"))
@@ -77,7 +77,7 @@ describe("the publish screen", () => {
     expect(updated).not.toContain("下書きは削除される")
   })
 
-  it("asks for no number for an update, says what the update does, and dates it the day it went out", () => {
+  it("requests no number for an update, shows what the update does, and dates it the day it went out", () => {
     const html = render(view({
       updating: { number: 3 },
       releaseDate: "2024-05-01",
@@ -94,10 +94,10 @@ describe("the publish screen", () => {
     expect(html).toContain("value=\"2024-05-01\"")
   })
 
-  it("answers a number a version took in the meantime", () => {
+  it("reports a number a version took in the meantime", () => {
     const html = render(view(), { status: "number-unavailable" })
 
-    expect(html).toContain("その番号は公開中のバージョンが持っています")
+    expect(html).toContain("その番号は公開中のバージョンで使われています")
   })
 
   it("will not let the publish be pressed while something structural is missing", () => {
@@ -107,7 +107,7 @@ describe("the publish screen", () => {
     }))
 
     expect(html).toContain(">公開できない理由</h2>")
-    // Said the way the research's own screen says it — a quiet sentence, not a line in red.
+    // Said the way the research's own screen shows it — a quiet sentence, not a line in red.
     expect(html).toContain("研究 ID は未発行です。")
     expect(html).not.toContain("text-danger")
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?公開<\/button>/)
@@ -154,7 +154,7 @@ describe("the publish screen", () => {
     expect(html).toContain(`name="datasetId" value="${d2}"`)
     expect(html).not.toContain(`>${d1}<`)
     expect(html.match(/ID 未発行/g)?.length).toBe(2)
-    // The table alone: the section's sentence says why they are listed.
+    // The table alone: the section's sentence shows why they are listed.
     expect(html).not.toContain("text-danger")
     expect(html).toContain(">割り当てる ID<")
     expect(html).not.toContain(">研究 ID<")
@@ -163,7 +163,7 @@ describe("the publish screen", () => {
     expect(html).toContain("RNA-seq")
   })
 
-  it("groups what is listed by kind and asks for one tick over the lot", () => {
+  it("groups what is listed by kind and requests one tick over the lot", () => {
     const html = render(view({
       findingCount: 13,
       groups: [
@@ -171,7 +171,7 @@ describe("the publish screen", () => {
           kind: "unsettled",
           count: 12,
           fileNames: [],
-          places: [{ label: "研究の記述", href: "/admin/research/x/draft/y", count: 12, note: null }],
+          places: [{ label: "研究の内容", href: "/admin/research/x/draft/y", count: 12, note: null }],
         },
         {
           kind: "empty-dataset",
@@ -187,7 +187,7 @@ describe("the publish screen", () => {
       ],
     }))
 
-    // One row to a kind, read at a glance: no fold to open first.
+    // One row to a kind, read at a glance: no collapse to open first.
     expect(html).toContain(">公開前に確かめるもの</h2>")
     expect(html).not.toContain("<details")
     expect(html).toMatch(/<td[^>]*>未確定の値<\/td><td[^>]*>12 件<\/td>/)
@@ -202,7 +202,7 @@ describe("the publish screen", () => {
    * A description belongs to the version being written, so the screen names the
    * dataset and stops there — there is no count of other versions to give.
    */
-  it("names a dataset whose description this publish changes, and says what it is measured against", () => {
+  it("names a dataset whose description this publish changes, and shows what it is measured against", () => {
     const html = render(view({
       comparedWith: 4,
       datasetChanges: [
@@ -220,12 +220,12 @@ describe("the publish screen", () => {
     expect(html).not.toContain("掲載")
   })
 
-  it("says the first version has nothing to be measured against", () => {
+  it("shows the first version has nothing to be measured against", () => {
     expect(render(view({ comparedWith: null, heldNumbers: [] }))).toContain("最初のバージョンのため")
   })
 
-  /** Advice, not a gate: the button is live whatever the review says. */
-  it("says what the review stands at — the link, who pressed which mark — without stopping the publish", () => {
+  /** Advice, not a publish check: the button is live whatever the review shows. */
+  it("shows what the review is shown at — the link, who pressed which indicator — without stopping the publish", () => {
     const html = render(view({
       review: {
         shared: true,
@@ -247,7 +247,7 @@ describe("the publish screen", () => {
   })
 
   /** The review screen's table (#217): a row per person, when they last pressed and how often. */
-  it("lists who pressed each mark as the review screen does — a table of name, last time and count", () => {
+  it("lists who pressed each review button as the review screen does — a table of name, last time and count", () => {
     const html = render(view({
       review: {
         shared: true,
@@ -260,7 +260,7 @@ describe("the publish screen", () => {
       },
     }))
     const review = html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開前に確かめるもの</h2>"))
-    // One table per mark, both standing, the empty one saying nobody pressed.
+    // One table per indicator, both standing, the empty one indicating nobody pressed.
     expect(review.match(/<table/g)).toHaveLength(2)
     expect(review.match(/>名前<\/th>/g)).toHaveLength(2)
     expect(review).toContain(">最後に押した日時</th>")
@@ -269,7 +269,7 @@ describe("the publish screen", () => {
     expect(review).toContain("押した人はいません。")
   })
 
-  it("says a link past its date as expired, apart from a draft never shared", () => {
+  it("shows a link past its date as expired, apart from a draft never shared", () => {
     const base = { unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", datasetLabels: {} }
     const review = (html: string) => html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開</h2>"))
     const expired = review(render(view({ review: { ...base, shared: false, expired: true } })))
@@ -280,7 +280,7 @@ describe("the publish screen", () => {
     expect(never).not.toContain("期限切れ")
   })
 
-  it("opens the open questions in a panel from the review, counting them on its way in", () => {
+  it("opens the open questions in a panel from the review, counting them on its trigger", () => {
     const comment = {
       id: "c1",
       anchor: { kind: "research-field" as const, path: "title" },
@@ -296,11 +296,11 @@ describe("the publish screen", () => {
       review: { shared: true, expired: false, unresolved: 1, acknowledgements: [], comments: [comment], signedInName: "curator", datasetLabels: {} },
     }))
     const review = html.slice(html.indexOf(">レビュー</h2>"), html.indexOf(">公開</h2>"))
-    // The panel's way in: a button, with the count on it, not a link away.
+    // The panel's trigger: a button, with the count on it, not a link away.
     expect(review).toMatch(/<button type="button"[^>]*>[\s\S]*?未解決のコメント[\s\S]*?>1<[\s\S]*?<\/button>/)
   })
 
-  it("will not update a version with nothing that would change, and says why; a new release date is a change", () => {
+  it("will not update a version with nothing that would change, and shows why; a new release date is a change", () => {
     const same = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01" }))
     expect(same).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?v3 の更新<\/button>/)
     expect(same).toContain("公開中の v3 と変わるものが無いため、更新できません。")
@@ -310,19 +310,19 @@ describe("the publish screen", () => {
   })
 
   /** The public page lists the datasets in the version's order, so moving them is a change. */
-  it("updates a version whose only change is the order of its datasets, and says so", () => {
+  it("updates a version whose only change is the order of its datasets, and shows it", () => {
     const html = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01", reordered: true }))
 
     expect(html).not.toMatch(/disabled=""/)
     expect(html).toContain("データセットの並び順の変更")
-    expect(html).not.toContain("記述の変更はありません。")
+    expect(html).not.toContain("研究の内容の変更はありません。")
   })
 
   it("reads in the order it is wanted: changes, what stops it, review, what to confirm, the press", () => {
     const html = render(view({
       blocks: [{ kind: "hum-label-missing", datasetId: null }],
       findingCount: 1,
-      groups: [{ kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の記述", href: "/x", count: 1, note: null }] }],
+      groups: [{ kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の内容", href: "/x", count: 1, note: null }] }],
     }))
     const order = ["変更点", "公開できない理由", "レビュー", "公開前に確かめるもの", "公開"].map((title) => html.indexOf(`>${title}</h2>`))
     expect(order.every((at) => at > -1)).toBe(true)
@@ -334,44 +334,40 @@ describe("the publish screen", () => {
     expect(html).not.toMatch(/<h2[^>]*>[^<]*か<\/h2>/)
   })
 
-  /** A section there only when something is wrong leaves a clean draft unable to say it was checked. */
-  it("keeps both checks on the screen when they find nothing, and says so", () => {
+  /** A section there only when something is wrong leaves a clean draft unable to show it was checked. */
+  it("keeps both checks on the screen when they find nothing, and shows it", () => {
     const html = render(view())
     expect(html).toContain(">公開できない理由</h2>")
-    expect(html).toContain("公開を止めるものはありません。")
+    expect(html).toContain("公開できない理由はありません。")
     expect(html).toContain(">公開前に確かめるもの</h2>")
     expect(html).toContain("公開前に確かめるものはありません。")
     expect(html).not.toContain("type=\"checkbox\"")
   })
 
-  it("says so when there is nothing to change at all", () => {
-    expect(render(view())).toContain("記述の変更はありません")
+  it("shows it when there is nothing to change at all", () => {
+    expect(render(view())).toContain("研究の内容の変更はありません")
   })
 
-  it("says why a publish came back rather than leaving the screen unchanged", () => {
+  it("shows why a publish came back rather than leaving the screen unchanged", () => {
     expect(render(view(), { status: "conflict" })).toContain("この画面を開いた後に別の場所で変更されました。")
     expect(render(view(), { status: "unacknowledged" })).toContain("確認のチェック")
     expect(render(view(), { status: "taken" })).toContain("既に別のものに割り当てられています")
   })
 
-  it("names the way out once, at the top — the way back to the research", () => {
+  it("shows the back link once, at the top — the link back to the research", () => {
     const html = render(view())
     expect(html).toContain("href=\"/admin/research/00000000-0000-0000-0000-000000000001\"")
     expect(html).toContain("研究の編集へ")
-    // No second way out at the form's foot: publishing is the one thing to
-    // press, and leaving is the head's own way back.
+    // No second back link at the form's foot: publishing is the one thing to
+    // press, and leaving is the header's own back link.
     expect(html).not.toContain("下書きへ戻る")
-  })
-
-  it("carries no strip of steps of its own — the head names the screen and nothing more", () => {
-    expect(render(view())).not.toContain("aria-label=\"下書きの段\"")
   })
 
   it("offers to publish the private files from their own row, and only there", () => {
     const html = render(view({
       findingCount: 2,
       groups: [
-        { kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の記述", href: "/x", count: 1, note: null }] },
+        { kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の内容", href: "/x", count: 1, note: null }] },
         { kind: "private-file", count: 1, fileNames: ["a.zip"], places: [{ label: "JGAD000001", href: "/y", count: 1, note: null }] },
       ],
     }))
@@ -379,7 +375,7 @@ describe("the publish screen", () => {
       const at = html.indexOf(`>${kind}</td>`)
       return html.slice(html.lastIndexOf("<tr", at), html.indexOf("</tr>", at))
     }
-    expect(row("データセットが選択している未公開のファイル")).toMatch(/form="publish-files"[\s\S]*?まとめて公開 \(1\)/)
+    expect(row("データセットに紐づけた未公開のファイル")).toMatch(/form="publish-files"[\s\S]*?まとめて公開 \(1\)/)
     expect(row("未確定の値")).not.toContain("まとめて公開")
   })
 })

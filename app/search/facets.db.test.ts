@@ -74,7 +74,7 @@ async function key(
   return id
 }
 
-/** One dataset row, with the facet values it carries. */
+/** One dataset row, with the facet values it has. */
 async function doc(input: {
   label: string
   terms: { keyId: string, termId: string, ancestorIds?: string[] }[]
@@ -122,7 +122,7 @@ beforeAll(async () => {
   const prostate = await term(icd10, "C61")
   const wgs = await term(assay, "wgs")
   const rna = await term(assay, "rna-seq")
-  // Defined and carried by nothing, which is the case the offer has to leave out
+  // Defined and held by nothing, which is the case the offer has to leave out
   await term(assay, "unused")
 
   const disease = await key("disease", "vocabulary", icd10)
@@ -173,7 +173,7 @@ afterAll(async () => {
 describe("filtering by a facet", () => {
   it("matches the rows filed under a broader term as well as under the term itself", async () => {
     // The whole point of the tree: nobody files a dataset under a 3-character
-    // ICD10 code, and asking for one has to find the 4-character codes below it.
+    // ICD10 code, and requesting one has to find the 4-character codes below it.
     expect(await labels("disease:C34")).toEqual(["JGAD000001", "JGAD000002"])
     expect(await labels("disease:C349")).toEqual(["JGAD000001"])
   })
@@ -231,7 +231,7 @@ describe("counting the facets of a result", () => {
     expect(counts.map((row) => [row.code, row.count])).toEqual([["C34", 1], ["C61", 1]])
   })
 
-  it("counts a row once under a root however many of its children it carries", async () => {
+  it("counts a row once under a root however many of its children it has", async () => {
     await doc({
       label: "JGAD000004",
       terms: [
@@ -262,8 +262,8 @@ describe("counting the facets of a result", () => {
     })
   })
 
-  it("says nothing about a date the result never carries", async () => {
-    // The panel draws no control at all for this, rather than two empty boxes
+  it("implies nothing about a date the result never has", async () => {
+    // The panel draws no control at all for this, rather than two empty fields
     // over a span that does not exist.
     expect(await dateBounds(db, query("assay:rna-seq"))).toEqual({
       date_published: { min: "2021-01-05", max: "2021-01-05" },
@@ -296,7 +296,7 @@ describe("filtering by a date, which is a column rather than a facet row", () =>
 /**
  * What `/api/fields` offers as values. **The offer is a promise**: a caller that
  * takes a value from it and writes it into a query gets rows back, so a value
- * nothing carries must not appear.
+ * nothing has must not appear.
  */
 describe("the values a query may name", () => {
   it("offers a term at the root of its tree, which is the level a query can name", async () => {
@@ -310,16 +310,16 @@ describe("the values a query may name", () => {
     expect(diseases).toEqual(["C34", "C61"])
   })
 
-  it("offers nothing that no published row carries", async () => {
+  it("offers nothing that no published row has", async () => {
     const codes = (await publishedFacetValues(db)).map((one) => one.code)
 
     // Defined in the vocabulary and used by nobody
     expect(codes).not.toContain("unused")
-    // The level below a root: real, carried, and not nameable
+    // The level below a root: real, kept, and not nameable
     expect(codes).not.toContain("C341")
   })
 
-  it("carries both labels, so a value can be shown as well as written", async () => {
+  it("has both labels, so a value can be shown as well as written", async () => {
     const values = await publishedFacetValues(db)
     expect(values.every((one) => one.labelEn !== "")).toBe(true)
   })

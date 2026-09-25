@@ -2,13 +2,13 @@
  * Which fields two versions of a draft disagree about.
  *
  * The answer is a list of paths (`form.ts`), and the editor uses it twice: the
- * band across the top of a rejected save names the fields somebody else
- * changed, and the mark beside each of those fields is what offers to take
+ * banner across the top of a rejected save names the fields somebody else
+ * changed, and the indicator beside each of those fields is what offers to import
  * their value. Nothing is merged and nothing is reloaded — **what is in the
- * form stays in the form** until the author says otherwise.
+ * form stays in the form** until the author reports otherwise.
  *
  * How two values are told apart and how an array is compared are the same for a
- * research and for a dataset, so they live in `compare.ts`.
+ * research and for a dataset, so they are defined in `compare.ts`.
  */
 
 import {
@@ -95,7 +95,7 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
   const a = base.content
   const b = other.content
 
-  // **In the order the editing form stands its fields**, so that every
+  // **In the order the editing form orders its fields**, so that every
   // screen listing the places that differ reads them as the form does.
   into.when(sameTextPair(a.title, b.title), "title")
   into.when(sameTextPair(a.releaseNote, b.releaseNote), "releaseNote")
@@ -133,14 +133,14 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
  * reported. The memo sits beside the content rather than inside it, so it is
  * the one path that does not descend through `content`.
  */
-export function takeField(mine: DraftInput, theirs: DraftInput, path: string): DraftInput {
+export function importField(mine: DraftInput, theirs: DraftInput, path: string): DraftInput {
   const keys = path === "note" ? ["note"] : ["content", ...path.split(".")]
   const taken = readAt(theirs, keys)
   if (!taken.found) return mine
   const written = writeAt(mine, keys, taken.value) as DraftInput
   // **A publication's datasets are one place holding two lists** — the ones
-  // chosen and the ones typed (`publication` above) — so taking the place
-  // takes both.
+  // chosen and the ones typed (`publication` above) — so importing the place
+  // imports both.
   if (keys[1] !== "relatedPublications" || keys.at(-1) !== "datasetIds") return written
   const typed = [...keys.slice(0, -1), "externalIds"]
   const other = readAt(theirs, typed)

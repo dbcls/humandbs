@@ -15,18 +15,18 @@ import type { Route } from "./+types/admin-contents-alert"
 import { Flag } from "~/components/flags"
 
 /**
- * The alert: the sentence the site says at the top of every public page.
+ * The alert: the sentence the site shows at the top of every public page.
  *
  * **It is not an article and does not share their screen.** An article is a
  * body at an address readers hold, kept in versions and published one language
- * at a time; the alert is a sentence the site says everywhere until somebody
+ * at a time; the alert is a sentence the site shows everywhere until somebody
  * takes it down. Written on one screen, the two ranked as siblings and the
  * alert read as one more entry in a tree of pages.
  *
  * **Standing on every page is what makes both languages compulsory**, which is
  * the one rule this screen enforces rather than the model: saving half of it is
  * how it gets written, but showing half of it hands a reader of the other
- * language an empty box.
+ * language an empty field.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   return alertsPage(request)
@@ -57,7 +57,7 @@ export default function AdminContentsAlert({ loaderData, actionData }: Route.Com
           own state rather than with a name. */}
       <Card under={false}>
         <Stack gap="normal">
-          {/* The way to make one stands on the heading's own line: it acts on
+          {/* The way to make one is shown on the heading's own line: it acts on
               the screen rather than on any one alert, and at the foot it moves
               further down the page with every alert added. */}
           <Heading title={t.alert.heading} note={t.alert.note}>
@@ -98,7 +98,7 @@ function bodyOf(form: HTMLFormElement, name: string): string {
  *
  * **Showing it is a button rather than a box to tick.** An alert is either up
  * or it is not; a tick that takes effect at the next save leaves the screen
- * saying one thing while the site says another. The button carries the state in
+ * indicating one thing while the site shows another. The button has the state in
  * its word — what it offers is the other one — and pressing it saves what has
  * been typed, so there is no way to put up a sentence that is not the one on
  * the screen.
@@ -106,8 +106,8 @@ function bodyOf(form: HTMLFormElement, name: string): string {
  * **Both languages are the condition for showing it, so the button holds that
  * condition.** The server refuses an alert with an empty side, and a control
  * that can be pressed into a refusal is one the reader only hears about
- * afterwards. While a side is empty the button cannot be pressed and says why
- * over itself (`Button` の `disabled`); the two boxes wear the mark of a box
+ * afterwards. While a side is empty the button cannot be pressed and shows why
+ * over itself (`Button` の `disabled`); the two boxes are shown with the indicator of a box
  * that has to be filled (`form.tsx` の `required`) — for the showing, not for
  * the save, which takes one language at a time.
  *
@@ -129,13 +129,13 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
       }}
     >
       <input type="hidden" name="alertId" value={row.id} />
-      {/* Which of these the site is saying, above the words rather than in the
+      {/* Which of these the site is indicating, above the words rather than in the
           state of a control at the foot of them — and at the other end of that
           line, the way to take the whole alert away. It acts on the alert
-          rather than on what is typed into it, so it stands with what names
+          rather than on what is typed into it, so it is shown with what identifies
           the alert rather than among the controls that write it.
 
-          **The day it went up stands beside the state**, the way an article's
+          **The day it went up is shown beside the state**, the way an article's
           publish day stands beside its language's (`components/contents.tsx`
           の `LocaleEditors`): the state says that the site is saying this, and
           the day says since when. */}

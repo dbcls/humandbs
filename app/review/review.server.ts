@@ -98,9 +98,9 @@ export interface ReviewPageView {
   datasetLabels: Record<string, string | null>
   unresolved: number
   acknowledgements: AcknowledgementView[]
-  /** The number of the version the draft updates, which names the last step. */
+  /** The number of the version the draft updates, which identifies the last step. */
   updating: number | null
-  /** The draft's facts (datasets, sharing, gate), as the research's screen and the head of the editor read them; the share and the threads are this screen's own. */
+  /** The draft's facts (datasets, sharing, publish check), as the research's screen and the header of the editor read them; the share and the threads are this screen's own. */
   steps: DraftStepsView
 }
 
@@ -184,7 +184,7 @@ export async function reviewAction(
   const done = async (): Promise<Response | ReviewActionResult> =>
     answer === "redirect" ? back() : { status: "comments", comments: await readComments(db, draftId) }
 
-  // Saving the expiry keeps sharing as it stands; the switch beside it turns
+  // Saving the expiry keeps sharing as it remains; the switch beside it turns
   // sharing on or off and saves the expiry typed with it.
   if (intent === "share" || intent === "share-on" || intent === "share-off") {
     const enabled = intent === "share" ? form.get("enabled") === "on" : intent === "share-on"

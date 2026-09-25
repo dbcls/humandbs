@@ -49,8 +49,8 @@ test.describe("P-ANON", () => {
     }
     const newest = Math.max(...bare.versions.map((one) => one.version))
     expect(bare.version).toBe(newest)
-    // 応答が示すアドレスはバージョンを書いたほう。裸のアドレスは入口であって、
-    // 機械に渡すときの名前ではない
+    // 応答が示すアドレスはバージョンを書いたほう。バージョンの無いアドレスは人が開くためのもので、
+    // プログラムに渡すときのアドレスではない
     expect(new URL(bare.url).pathname).toBe(`/research/${humLabel}/v${newest}`)
 
     // 画面も同じバージョンを出す — 見出しが示すのは解決した先のバージョン

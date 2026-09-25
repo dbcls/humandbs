@@ -5,9 +5,9 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
-import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "./box"
+import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "./prefix"
 import {
-  boxMoveOf,
+  prefixMoveOf,
   claimJob,
   forgetSwitches,
   pendingSwitches,
@@ -37,7 +37,7 @@ const CURATOR = { sub: "0f3a-1b2c", name: "curator" }
 
 let researchId = ""
 let humLabel = ""
-let boxes: { bucket: typeof PUBLIC_BUCKET | typeof PRIVATE_BUCKET, prefix: string }[] = []
+let cleared: { bucket: typeof PUBLIC_BUCKET | typeof PRIVATE_BUCKET, prefix: string }[] = []
 
 function only<T>(rows: T[]): T {
   const [row] = rows
@@ -45,19 +45,19 @@ function only<T>(rows: T[]): T {
   return row
 }
 
-/** A label of its own per test, so one test's box is never another's. */
+/** A label of its own per test, so one test's prefix is never another's. */
 let counter = 0
 
 async function research(label: string | null = null): Promise<void> {
   researchId = only(await db.insert(s.research).values({}).returning({ id: s.research.id })).id
   if (label === null) {
     humLabel = ""
-    boxes = [{ bucket: PRIVATE_BUCKET, prefix: privatePrefix(researchId) }]
+    cleared = [{ bucket: PRIVATE_BUCKET, prefix: privatePrefix(researchId) }]
     return
   }
   humLabel = label
   await db.insert(s.labelPin).values({ kind: "hum", label, researchId, isPrimary: true })
-  boxes = [
+  cleared = [
     { bucket: PRIVATE_BUCKET, prefix: privatePrefix(researchId) },
     { bucket: PUBLIC_BUCKET, prefix: publicPrefix(label) },
   ]
@@ -69,8 +69,8 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  for (const box of boxes) await clearPrefix(box.bucket, box.prefix)
-  boxes = []
+  for (const target of cleared) await clearPrefix(target.bucket, target.prefix)
+  cleared = []
 })
 
 afterAll(async () => {
@@ -165,7 +165,7 @@ describe("the queue", () => {
     expect(await jobs()).toHaveLength(0)
   })
 
-  it("says which switches have not finished, which of them failed, and why", async () => {
+  it("reports which switches have not finished, which of them failed, and why", async () => {
     await research(label())
     await requestSwitch(db, [{ researchId, fileName: "a.zip", action: "publish" }])
     await db.update(s.filePublishJob).set({ state: "failed", lastError: "the store said no" })
@@ -266,7 +266,7 @@ describe("running a switch", () => {
     expect(await privateKeys()).toEqual([`${privatePrefix(researchId)}a.zip`])
   })
 
-  it("answers false when there is nothing waiting", async () => {
+  it("responds false when there is nothing waiting", async () => {
     await research(label())
 
     expect(await runOneJob(db)).toBe(false)
@@ -296,30 +296,30 @@ describe("running a switch", () => {
 })
 
 describe("renumbering a research", () => {
-  it("queues every file in the old box to become public under the new label", async () => {
+  it("queues every file in the old prefix to become public under the new label", async () => {
     await research(label())
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}a.zip`)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}b.zip`)
 
-    await requestSwitch(db, await boxMoveOf(researchId, humLabel))
+    await requestSwitch(db, await prefixMoveOf(researchId, humLabel))
 
     expect((await jobs()).map((row) => row.fileName).toSorted()).toEqual(["a.zip", "b.zip"])
   })
 
-  it("moves them into the new box and leaves nothing at the old address", async () => {
+  it("moves them into the new prefix and leaves nothing at the old address", async () => {
     const old = label()
     await research(old)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(old)}a.zip`)
-    // What repinning does: the old label stays in the ledger as a secondary,
+    // What repinning does: the old label stays in the `label_pin` table as a secondary,
     // which is how the copy that has to move is found again.
     const moved = `${old}x`
-    boxes.push({ bucket: PUBLIC_BUCKET, prefix: publicPrefix(moved) })
+    cleared.push({ bucket: PUBLIC_BUCKET, prefix: publicPrefix(moved) })
     await db.update(s.labelPin).set({ isPrimary: false })
       .where(eq(s.labelPin.researchId, researchId))
     await db.insert(s.labelPin)
       .values({ kind: "hum", label: moved, researchId, isPrimary: true })
 
-    await requestSwitch(db, await boxMoveOf(researchId, old))
+    await requestSwitch(db, await prefixMoveOf(researchId, old))
     await runOneJob(db)
 
     expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(moved)))
@@ -328,7 +328,7 @@ describe("renumbering a research", () => {
   })
 })
 
-describe("what the publish gate is checked against", () => {
+describe("what the publish check is checked against", () => {
   it("reads the private bucket rather than anything the database holds", async () => {
     await research(label())
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}closed.zip`)

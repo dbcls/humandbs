@@ -20,7 +20,7 @@ describe("parsePageNumber", () => {
     }
   })
 
-  it("refuses a page past the bound instead of answering with an unsafe integer", () => {
+  it("refuses a page past the bound instead of responding with an unsafe integer", () => {
     expect(parsePageNumber(String(MAX_PAGE + 1))).toBeNull()
     expect(parsePageNumber("99999999999999999999")).toBeNull()
   })

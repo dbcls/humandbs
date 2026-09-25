@@ -1,16 +1,16 @@
 /**
  * How every answer on the JSON API is put together.
  *
- * One place, so that the two things every answer has to carry cannot be
+ * One place, so that the two things every answer has to have cannot be
  * forgotten on one endpoint: the cross-origin header, and the content type that
- * says which of the two body formats this is.
+ * reports which of the two body formats this is.
  *
- * **The API is open to every origin.** It carries no credentials and returns
+ * **The API is open to every origin.** It has no credentials and returns
  * only what is already published, so there is nothing an origin could be
  * trusted with that another could not. No preflight is involved — every route
  * is a plain `GET` — so no `OPTIONS` handler is needed either.
  *
- * **Bulk answers are written a record to a line.** A whole corpus in one array
+ * **Bulk responds are written a record to a line.** A whole corpus in one array
  * would make a reader hold all of it before the first record could be looked at,
  * and would leave a reader that only wants part of it no way to stop. The portal
  * still builds the whole answer — the corpus is a few thousand rows — so what is

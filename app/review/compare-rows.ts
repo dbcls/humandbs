@@ -3,7 +3,7 @@
  *
  * The rows are paired by the element's id, not by position: taking out the
  * third element would otherwise pair every later row with its neighbour and
- * mark all of them changed. A row only the published side has stands where it
+ * mark all of them changed. A row only the published side has is shown where it
  * stood — after the last row before it that both sides still hold — so a table
  * read top to bottom keeps the published order with the draft's rows in theirs.
  */

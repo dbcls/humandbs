@@ -4,11 +4,11 @@
  * **Every path that serves unpublished content to an unauthenticated reader
  * goes through here** — the preview pages, the comment forms, the
  * acknowledgement. A check on the route would not do: a route guard protects a
- * page, and the data behind it is reachable by whatever else asks for it, so
+ * page, and the data behind it is reachable by whatever else requests it, so
  * the check belongs where the data is fetched.
  *
  * A link that is private, expired, or built on a token that has since been
- * reissued answers exactly as a link that never existed: null, which the pages
+ * reissued responds exactly as a link that never existed: null, which the pages
  * turn into 404. Saying "this exists but is closed" would confirm the draft to
  * somebody holding a stale address.
  */

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import { isDecimalNumber, isRealDate } from "./dsl"
 
 /**
- * The two value checks stand between the address and a SQL cast. A value they
+ * The two value checks are shown between the address and a SQL cast. A value they
  * pass has to be one the database takes as a `date` or a `numeric`, and one
  * that reads back the way it was written.
  */

@@ -4,12 +4,12 @@
  * Upstream holds the country as English free text typed by the applicant
  * (`USA`, `Korea`, `HKG`, `Viet Nam`), and the state as a free-text address
  * line beside it (`MA`, `Massachusetts`, `Choose One...`). Neither language of
- * the name exists upstream, so the portal carries its own table and folds the
+ * the name exists upstream, so the portal has its own table and folds the
  * spellings onto it.
  *
  * **The state is kept only for the federations listed in `REGIONS`**, where a
  * state or province makes its own law on the use of personal data, so the
- * state says something about the terms a user works under. Elsewhere the
+ * state reports something about the terms a user works under. Elsewhere the
  * address line is dropped whatever it holds.
  *
  * Anything the tables do not recognise is shown as upstream wrote it, in both

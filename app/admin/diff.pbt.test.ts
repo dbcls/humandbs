@@ -2,11 +2,11 @@ import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { draftInputArb } from "./arbitraries/draft"
-import { diffDraftInput, takeField } from "./diff"
+import { diffDraftInput, importField } from "./diff"
 
 /**
- * The diff and the take share one path vocabulary. Nothing in the types holds
- * them to it — the take walks the structure — so these are what does.
+ * The diff and the import share one path vocabulary. Nothing in the types holds
+ * them to it — the import walks the structure — so these are what does.
  */
 describe("the conflict diff and taking a field", () => {
   it("reports nothing about a draft compared with itself", () => {
@@ -24,7 +24,7 @@ describe("the conflict diff and taking a field", () => {
   it("leaves nothing to report once every path it reported has been taken", () => {
     fc.assert(fc.property(draftInputArb, draftInputArb, (mine, theirs) => {
       const merged = diffDraftInput(mine, theirs)
-        .reduce((held, path) => takeField(held, theirs, path), mine)
+        .reduce((held, path) => importField(held, theirs, path), mine)
       expect(diffDraftInput(merged, theirs)).toEqual([])
     }))
   })
@@ -33,7 +33,7 @@ describe("the conflict diff and taking a field", () => {
     fc.assert(fc.property(draftInputArb, draftInputArb, (mine, theirs) => {
       const before = diffDraftInput(mine, theirs)
       for (const path of before) {
-        const after = diffDraftInput(takeField(mine, theirs, path), theirs)
+        const after = diffDraftInput(importField(mine, theirs, path), theirs)
         expect(after).not.toContain(path)
         expect(before).toEqual(expect.arrayContaining(after))
       }
@@ -42,8 +42,8 @@ describe("the conflict diff and taking a field", () => {
 
   it("changes nothing when asked for a path the two agree on", () => {
     fc.assert(fc.property(draftInputArb, (draft) => {
-      expect(takeField(draft, draft, "title")).toEqual(draft)
-      expect(takeField(draft, draft, "summary.url")).toEqual(draft)
+      expect(importField(draft, draft, "title")).toEqual(draft)
+      expect(importField(draft, draft, "summary.url")).toEqual(draft)
     }))
   })
 })

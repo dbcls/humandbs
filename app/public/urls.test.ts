@@ -72,7 +72,7 @@ describe("readLocale", () => {
   })
 
   /**
-   * A client navigation asks for `<path>.data`, and the request's own URL keeps
+   * A client navigation requests `<path>.data`, and the request's own URL keeps
    * the suffix even though the router strips it before it matches. The English
    * front page is the address that hides the whole prefix behind it.
    */
@@ -193,7 +193,7 @@ describe("normalizeQuery", () => {
 })
 
 describe("applicationUrl", () => {
-  it("asks the application system for English on an English page and for nothing on a Japanese one", () => {
+  it("requests the application system for English on an English page and for nothing on a Japanese one", () => {
     expect(applicationUrl("en")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/?lang=en")
     expect(applicationUrl("ja")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/")
   })

@@ -188,7 +188,7 @@ describe("news の一覧", () => {
     expect((await newsList("ja", 1)).items.map((item) => item.title)).toEqual(["済み"])
   })
 
-  it("公開日時を持たないものは、公開に倒してあっても出てこない", async () => {
+  it("公開日時の無いものは、公開に設定してあっても表示されない", async () => {
     // 日時の無い news は書きかけで、一覧が日付で並べる以上そこに居場所が無い。
     const id = await createNews(null, [{ locale: "ja", title: "書きかけ" }])
 
@@ -256,7 +256,7 @@ describe("news の一覧", () => {
     expect([empty.rangeFrom, empty.rangeTo]).toEqual([0, 0])
   })
 
-  it("id の形が uuid でなくても落ちずに 404 になる", async () => {
+  it("id の形が uuid でなくてもエラーにならずに 404 になる", async () => {
     expect(await status(newsItemPage("not-a-uuid", "ja"))).toBe(404)
   })
 })
@@ -293,7 +293,7 @@ describe("news の検索", () => {
   // **The one that matters**: without escaping, `%` matches every row, so a
   // reader who typed a percent sign would be told that every announcement
   // contains it.
-  it("LIKE のワイルドカードを打っても全件にならない", async () => {
+  it("LIKE のワイルドカードを入力しても全件にならない", async () => {
     await createNews("2026-01-01", [{ locale: "ja", title: "ふつうの告知" }])
     await createNews("2026-01-02", [{ locale: "ja", title: "50% 完了" }])
 

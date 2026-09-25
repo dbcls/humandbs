@@ -15,7 +15,7 @@ describe("resolveText", () => {
     expect(resolveText(pair, "en")).toEqual({ state: "value", value: "English", untranslated: false })
   })
 
-  it("falls back to the other language and says so", () => {
+  it("falls back to the other language and reports it", () => {
     expect(resolveText({ ja: filled("日本語"), en: filled("") }, "en"))
       .toEqual({ state: "value", value: "日本語", untranslated: true })
     expect(resolveText({ ja: filled(""), en: filled("English") }, "ja"))
@@ -28,12 +28,12 @@ describe("resolveText", () => {
     expect(resolveText(pair, "en")).toEqual({ state: "value", value: "", untranslated: false })
   })
 
-  it("answers unsettled rather than filling that language from the other one", () => {
+  it("responds unsettled rather than filling that language from the other one", () => {
     expect(resolveText({ ja: filled("日本語"), en: UNKNOWN }, "en"))
       .toEqual({ state: "unsettled" })
   })
 
-  it("answers not-applicable in the language it is settled in and leaves the other alone", () => {
+  it("responds not-applicable in the language it is settled in and leaves the other alone", () => {
     const pair = { ja: NOT_APPLICABLE, en: filled("English") }
     expect(resolveText(pair, "ja")).toEqual({ state: "not-applicable" })
     expect(resolveText(pair, "en")).toEqual({ state: "value", value: "English", untranslated: false })
@@ -50,17 +50,17 @@ describe("resolveRichText", () => {
     expect(resolveRichText(pair, "en")).toEqual({ state: "value", value: en, untranslated: false })
   })
 
-  it("falls back to the other language and says so", () => {
+  it("falls back to the other language and reports it", () => {
     expect(resolveRichText({ ja: filled(ja), en: filled([]) }, "en"))
       .toEqual({ state: "value", value: ja, untranslated: true })
   })
 
-  it("reads lines that carry no text as nothing to fall back from", () => {
+  it("reads lines that have no text as nothing to fall back from", () => {
     expect(resolveRichText({ ja: filled([[]]), en: filled([[{ text: "" }]]) }, "ja"))
       .toEqual({ state: "value", value: [], untranslated: false })
   })
 
-  it("answers unsettled rather than filling that language from the other one", () => {
+  it("responds unsettled rather than filling that language from the other one", () => {
     expect(resolveRichText({ ja: filled(ja), en: UNKNOWN }, "en"))
       .toEqual({ state: "unsettled" })
   })
@@ -79,7 +79,7 @@ describe("resolveLinks", () => {
       .toEqual({ state: "value", value: [], untranslated: false })
   })
 
-  it("carries the state of the wanted language out rather than emptying it", () => {
+  it("has the state of the wanted language out rather than emptying it", () => {
     expect(resolveLinks({ ja: filled(ja), en: UNKNOWN }, "en")).toEqual({ state: "unsettled" })
     expect(resolveLinks({ ja: filled(ja), en: NOT_APPLICABLE }, "en"))
       .toEqual({ state: "not-applicable" })
@@ -87,7 +87,7 @@ describe("resolveLinks", () => {
 })
 
 describe("resolveBilingual", () => {
-  it("shows the other language rather than nothing, and never says untranslated", () => {
+  it("shows the other language rather than nothing, and never reports untranslated", () => {
     expect(resolveBilingual({ ja: "", en: "Upstream" }, "ja")).toBe("Upstream")
     expect(resolveBilingual({ ja: "上流", en: "" }, "en")).toBe("上流")
     expect(resolveBilingual({ ja: "", en: "" }, "ja")).toBe("")

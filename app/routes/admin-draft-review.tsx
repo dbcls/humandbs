@@ -7,7 +7,7 @@ import { reviewAction, reviewPage } from "~/review/review.server"
 import type { Route } from "./+types/admin-draft-review"
 
 /**
- * The link, what came back through it, and what is still open. It answers with
+ * The link, what came back through it, and what is still open. It responds with
  * a redirect, so the forms work with JavaScript switched off; the editing
  * screens post the same intents to the resource route instead, because they
  * must not navigate away from unsaved work.

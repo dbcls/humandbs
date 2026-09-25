@@ -4,7 +4,7 @@
  *
  * **Editing and taking down are two forms, side by side rather than nested.**
  * A body that was typed but not sent travels with the form it was typed in, so
- * "take this down" cannot carry it — and publishing, which sits under the body,
+ * "take this down" cannot have it — and publishing, which sits under the body,
  * takes exactly what is on screen.
  */
 
@@ -25,7 +25,7 @@ import { Editing, Field, MarkdownEditor, Submit, Unsaved } from "./form"
 import { Icon } from "./icons"
 import { Markdown } from "./markdown"
 import { Card, Section } from "./page"
-import { Flag, type FlagKind, KindMark, Stated } from "./flags"
+import { Flag, type FlagKind, KindIcon, Stated } from "./flags"
 
 /**
  * What the last form did.
@@ -55,7 +55,7 @@ export const SHOWING = "min-w-36"
 /**
  * The kind a publish state is — an eye for what readers can see, a lock for
  * what they cannot, and a clock for what they will see once the announcement's
- * date comes — whether it heads a section as a mark or stands in a row as a
+ * date comes — whether it heads a section as an indicator or is shown in a row as a
  * glyph and a word (`flags.tsx`).
  */
 export const STATE_FLAG = {
@@ -78,7 +78,7 @@ export function newsStateOf(state: LocaleState, ahead: boolean): NewsState {
 
 /** The glyph on its own, for the pane's choice of state. */
 export function StateIcon({ state }: { state: NewsState }) {
-  return <KindMark kind={STATE_FLAG[state]} />
+  return <KindIcon kind={STATE_FLAG[state]} />
 }
 
 /** The word for the pane's choice of state, beside its glyph. */
@@ -94,13 +94,13 @@ export function stateLabel(locale: Locale, state: NewsState): string {
  * eye or a lock is only obvious once you know that is the question.
  *
  * **Only the draft is a badge, because only the draft is the exception.**
- * Nearly every article is out in both languages, and a row that says so in two
+ * Nearly every article is out in both languages, and a row that shows it in two
  * outlined boxes leaves a listing with nothing for the eye to catch — the rows
  * that need somebody look exactly like the rows that do not.
  *
  * **One language per cell.** A pair squeezed into one column has to name the
  * languages to tell them apart, and the names then repeat down every row of the
- * listing; as two columns the heading says it once.
+ * listing; as two columns the heading shows it once.
  *
  * **It is the part every row's state is drawn with** (`flags.tsx` の `Stated`),
  * not a copy of it: the part is what holds the pair in a box of one line's
@@ -125,16 +125,16 @@ export function StateCell({ state, locale, ahead = false }: {
  *
  * **One panel, whatever holds the slug.** An article and a file in `common/`
  * are renamed from different screens, and a reader who learned the form on one
- * — the sentence saying what breaks under the name, the box with its rule
+ * — the sentence indicating what breaks under the name, the box with its rule
  * under it, the two buttons — finds the same on the other. A screen is not
- * handed the choice of leaving the box open on the page and asking in the
+ * handed the choice of leaving the box open on the page and requesting in the
  * panel: the box on the page is a second place to type on a screen whose
- * subject is the body, and it says nothing about what pressing beside it does.
+ * subject is the body, and it implies nothing about what pressing beside it does.
  *
- * **The way in wears the warning face** (`Confirm`): the address readers hold
- * stops answering, which is the break deleting it makes.
+ * **The trigger uses the warning style** (`Confirm`): the address readers hold
+ * stops responding, which is the break deleting it makes.
  *
- * **The panel does not name the slug in its title.** The box inside carries it,
+ * **The panel does not name the slug in its title.** The box inside has it,
  * and a title would disagree with the box the moment anything is typed.
  */
 export function SlugEditor({ locale, intent, name, value, hint, size, disabled }: {
@@ -146,7 +146,7 @@ export function SlugEditor({ locale, intent, name, value, hint, size, disabled }
   value: string
   /** The rule the slug has to follow, under the box. */
   hint: string
-  /** How large the way in is drawn among its neighbours (`Dialog`). */
+  /** How large the trigger is drawn among its neighbours (`Dialog`). */
   size?: ButtonSize
   /** Why the slug cannot be changed now, when it cannot (`Dialog`). */
   disabled?: string
@@ -205,18 +205,18 @@ function goToLine(form: HTMLFormElement | null, line: number): void {
 /**
  * The lines a save refused, under the box they are in.
  *
- * **Each names its line, says what is wrong with it, and offers the way
+ * **Each names its line, shows what is wrong with it, and offers the way
  * there — and does not quote it.** The way puts the caret on the line in the
  * editor, which shows its numbers and colours the refused ones, so the line is
  * read where it can be mended; a quote under the box was the same line a
- * second time, cut short, in a place nothing can be done about it.
+ * second time, truncated, in a place nothing can be done about it.
  *
  * **It is the box's own error** (`MarkdownEditor` の `refused`), which is why
- * it stands at the distance an error stands under its box, wears the mark an
- * error wears, and is not counted above — the list is the count.
+ * it is shown at the distance an error is shown under its box, is shown with the icon an
+ * error is shown with, and is not counted above — the list is the count.
  *
  * **The way there is a control in a line of text**, so it takes the row size
- * and the outlined face every such control takes.
+ * and the outlined style every such control takes.
  */
 function BodyProblems({ id, problems, locale, goTo }: {
   id: string
@@ -309,7 +309,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
   const shown = newsStateOf({ published: editor.published }, publishing?.ahead ?? false)
   // The list of refused lines, named so the box can point at it.
   const problemsId = useId()
-  // The editor's own way to a line, once it stands; the textarea's until then.
+  // The editor's own jump to a line, once it is set; the textarea's until then.
   const jump = useRef<((line: number) => void) | null>(null)
   const onReady = useCallback((goToLine: ((line: number) => void) | null) => {
     jump.current = goToLine
@@ -331,7 +331,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
         the alert screen does. What keeps the badge out of a listing is the
         count: fifty rows that all say the same thing in an outlined box
         leave the eye nothing to catch, whereas here there is one per
-        language and it is the first thing the section says.
+        language and it is the first thing the section shows.
       */}
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <Flag kind={STATE_FLAG[shown]}>{stateWord(locale, shown)}</Flag>
@@ -345,9 +345,9 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
       </div>
 
       {/*
-        **Two things can be done to a language, and they stand in one row.**
+        **Two things can be done to a language, and they are shown in one row.**
         Saving writes the one body there is, public or not, and the state
-        says whether the page is up. There is no draft between the words and
+        shows whether the page is up. There is no draft between the words and
         the page — a rewrite that must not be read on the way is a new
         revision under a series. **A language's words are never taken away
         on their own**: a language that must not be read is taken down, which
@@ -363,9 +363,9 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
         now, so a language with unsaved words can be published as it is.
 
         **An announcement's date decides what the control is.** With no date
-        there is nothing to publish under, so the control stays shut and says
+        there is nothing to publish under, so the control stays shut and shows
         why when pointed at; with a date still ahead, pressing it schedules
-        rather than publishes, and the word says so before it is pressed.
+        rather than publishes, and the word shows it before it is pressed.
       */}
       <Editing
         id={id}
@@ -376,10 +376,10 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
       >
         <input type="hidden" name="locale" value={editor.locale} />
         <input type="hidden" name="revision" value={editor.revision ?? ""} />
-        {/* **The mark says what publishing would refuse**, not what saving
+        {/* **The indicator shows what publishing would refuse**, not what saving
             does — a title-less body still saves, and only the switch below
             can turn it into a published page. The server is what refuses it;
-            the box carries no HTML `required`. */}
+            the field has no HTML `required`. */}
         <Field label={t.title} name="title" value={editor.title} width="w-full" required={messages.admin.required} />
         {/* The box and the lines it was refused for are one part of the form:
             the list stands under the box at an error's distance (8px), not at
@@ -399,7 +399,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
           />
           {problems.length > 0 && <BodyProblems id={problemsId} problems={problems} locale={locale} goTo={goTo} />}
         </div>
-        {/* **The two things done to a language stand in one row at the foot
+        {/* **The two things done to a language are shown in one row at the foot
             of its form: the publish state first, the save to its right.**
             The save is the form's own, so it reads what the form knows about
             being typed into (`Editing` の `Changed`); its id is what Ctrl+S
@@ -440,7 +440,7 @@ function contentOf(editors: LocaleEditor[], language: Locale): ArticleContent {
  * The page a language's words make, drawn as readers would see it — and
  * nothing else: whether it is up is said in the form beside it, and a badge
  * over the page would be a word readers never see. Until the first drawing
- * arrives the saved body stands, drawn the same way by the loader.
+ * arrives the saved body remains, drawn the same way by the loader.
  */
 function ArticlePage({ language, drawn, dated }: {
   language: Locale
@@ -467,7 +467,7 @@ function ArticlePage({ language, drawn, dated }: {
   )
 }
 
-/** What a language's own form is sent by, from outside the pane it stands in. */
+/** What a language's own form is sent by, from outside the pane it is shown in. */
 export function articleFormId(remember: string, language: Locale): string {
   return `${remember}-${language}`
 }
@@ -486,13 +486,13 @@ export function leftLanguageOf(panes: Pick<PaneArrangement, "left" | "showing">)
 }
 
 /**
- * The tools row an article or an announcement keeps at hand: the pane switch,
+ * The toolbar an article or an announcement keeps at hand: the pane switch,
  * in the same place a research draft's `DraftTools` keeps it (`draft-tools.tsx`).
  *
  * **The save is not here but at the foot of each language's form** — one per
  * form, beside the publish state, since two forms can be open at once and
  * each is sent on its own. Neither unresolved comments nor who else is here
- * stand in it either: both belong to a draft, and these have none.
+ * are shown in it either: both belong to a draft, and these have none.
  *
  * **Ctrl+S and Cmd+S send the left pane's form**, when it holds one — the one
  * form a curator typing has to reach without moving the pointer.
@@ -541,7 +541,7 @@ export function useArticlePanes({ locale, remember, editors, result, dated = nul
   remember: string
   editors: LocaleEditor[]
   result: ContentsResult | undefined
-  /** What the page says under its title — the day an announcement went out. */
+  /** What the page shows under its title — the day an announcement went out. */
   dated?: string | null
   /** What an announcement's date means for its forms (`LocaleEditors`). */
   publishing?: Publishing
@@ -564,7 +564,7 @@ export function useArticlePanes({ locale, remember, editors, result, dated = nul
 
   // **Each language's form on its own, facing its own page.** What belongs to
   // the article rather than to a language — an announcement's date, an
-  // article's way under version control — stands in the head above the tools
+  // article's way under version control — is shown in the header above the tools
   // row, so the boxes hold nothing but a language and its page.
   //
   // **The column fills the pane** (`fill`, down to the body's box), so that a

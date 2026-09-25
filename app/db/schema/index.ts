@@ -1,7 +1,7 @@
 /**
  * The schema. Content is JSONB (see `~/content/types`); rows are for the things
  * that have to be queried, constrained or appended to — the search rows, the
- * pin ledger, the catalog, the caches, the event log.
+ * `label_pin` table, the catalog, the caches, the event log.
  *
  * There are no migration files yet. `drizzle-kit push` applies the definitions
  * directly and development data is rebuilt when they change; migrations start

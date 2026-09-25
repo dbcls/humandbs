@@ -8,7 +8,7 @@ import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
-import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/files/box"
+import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
 import { clearPrefix, keysUnder, putTestObject } from "~/files/_store"
 
 import { createDatasetInDraft, createResearchWithDraft, saveDatasetEntry, saveDraftContent } from "./drafts.server"
@@ -19,8 +19,8 @@ import { deleteResearch } from "./research.server"
  * Deleting a research, against the development database.
  *
  * The point of these is the invariants around it: what composition takes with
- * it, what the pin ledger frees, and what the event outlives — even though
- * the research it names no longer exists.
+ * it, what the `label_pin` table frees, and what the event outlives — even though
+ * the research it identifies no longer exists.
  */
 const db = getDb()
 
@@ -77,10 +77,10 @@ async function ready(label: string) {
   return { ...created, datasetId: made.datasetId, revision: 3 }
 }
 
-async function publish(ground: Awaited<ReturnType<typeof ready>>): Promise<void> {
+async function publish(fixture: Awaited<ReturnType<typeof ready>>): Promise<void> {
   const outcome = await publishDraft(
     db,
-    { at: { draftId: ground.draftId, revision: ground.revision }, ...AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+    { at: { draftId: fixture.draftId, revision: fixture.revision }, ...AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
     CURATOR,
   )
   if (outcome.status !== "published") throw new Error(outcome.status)
@@ -88,9 +88,9 @@ async function publish(ground: Awaited<ReturnType<typeof ready>>): Promise<void>
 
 describe("deleting a research", () => {
   it("takes its datasets, its drafts and their change entries with it", async () => {
-    const ground = await ready("hum5202")
+    const fixture = await ready("hum5202")
 
-    expect(await deleteResearch(db, ground.researchId, CURATOR)).toEqual({ status: "deleted" })
+    expect(await deleteResearch(db, fixture.researchId, CURATOR)).toEqual({ status: "deleted" })
 
     expect(await db.select().from(s.research)).toHaveLength(0)
     expect(await db.select().from(s.researchDraft)).toHaveLength(0)
@@ -99,19 +99,19 @@ describe("deleting a research", () => {
   })
 
   it("takes its published versions, their snapshots and the dataset content too", async () => {
-    const ground = await ready("hum5203")
-    await publish(ground)
+    const fixture = await ready("hum5203")
+    await publish(fixture)
 
-    await deleteResearch(db, ground.researchId, CURATOR)
+    await deleteResearch(db, fixture.researchId, CURATOR)
 
     expect(await db.select().from(s.researchVersion)).toHaveLength(0)
     expect(await db.select().from(s.dataset)).toHaveLength(0)
   })
 
   it("frees both the hum label and the dataset id to be pinned again", async () => {
-    const ground = await ready("hum5204")
+    const fixture = await ready("hum5204")
 
-    await deleteResearch(db, ground.researchId, CURATOR)
+    await deleteResearch(db, fixture.researchId, CURATOR)
 
     expect(await db.select().from(s.labelPin)).toHaveLength(0)
     // The same labels are free again — pinning them a second time is not a
@@ -124,30 +124,30 @@ describe("deleting a research", () => {
   })
 
   it("takes the search rows with it, so it leaves the public side at the same moment", async () => {
-    const ground = await ready("hum5205")
-    await publish(ground)
+    const fixture = await ready("hum5205")
+    await publish(fixture)
     expect(await db.select().from(s.searchDoc)).not.toHaveLength(0)
 
-    await deleteResearch(db, ground.researchId, CURATOR)
+    await deleteResearch(db, fixture.researchId, CURATOR)
 
     expect(await db.select().from(s.searchDoc)).toHaveLength(0)
   })
 
-  it("leaves the event behind, carrying the hum label the research had", async () => {
-    const ground = await ready("hum5206")
+  it("leaves the event behind, with the hum label the research had", async () => {
+    const fixture = await ready("hum5206")
 
-    await deleteResearch(db, ground.researchId, CURATOR)
+    await deleteResearch(db, fixture.researchId, CURATOR)
 
     // The research row that gave the event its subjectId is gone by the time
-    // this reads, since event carries no foreign key to it.
+    // this reads, since event has no foreign key to it.
     const events = await db.select().from(s.event).where(eq(s.event.action, "delete-research"))
     expect(events).toHaveLength(1)
     expect(events[0]?.subjectType).toBe("research")
-    expect(events[0]?.subjectId).toBe(ground.researchId)
+    expect(events[0]?.subjectId).toBe(fixture.researchId)
     expect(events[0]?.detail).toMatchObject({ humLabels: ["hum5206"] })
   })
 
-  describe("with files in its boxes", () => {
+  describe("with files in its prefixes", () => {
     const LABEL = "hum5101"
     const RETIRED = "hum5102"
     let researchId = ""
@@ -159,13 +159,13 @@ describe("deleting a research", () => {
     })
 
     /**
-     * The rows go and the objects would not: the public ones kept answering at
+     * The rows go and the objects would not: the public ones kept responding at
      * `/files/hum…/`, and the research given that number next listed them as
      * its own.
      */
-    it("refuses while a public box, the current one or a retired one, holds a file, and changes nothing", async () => {
-      const ground = await ready(LABEL)
-      researchId = ground.researchId
+    it("refuses while a public prefix, the current one or a retired one, holds a file, and changes nothing", async () => {
+      const fixture = await ready(LABEL)
+      researchId = fixture.researchId
       await db.insert(s.labelPin).values({ kind: "hum", label: RETIRED, researchId, isPrimary: false })
       await putTestObject(PUBLIC_BUCKET, `${publicPrefix(RETIRED)}a.zip`)
 
@@ -177,9 +177,9 @@ describe("deleting a research", () => {
       expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(RETIRED))).toEqual([`${publicPrefix(RETIRED)}a.zip`])
     })
 
-    it("refuses while the private box holds a file", async () => {
-      const ground = await ready(LABEL)
-      researchId = ground.researchId
+    it("refuses while the private prefix holds a file", async () => {
+      const fixture = await ready(LABEL)
+      researchId = fixture.researchId
       await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
 
       expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "files-remain" })
@@ -187,8 +187,8 @@ describe("deleting a research", () => {
     })
 
     it("deletes once the files are gone", async () => {
-      const ground = await ready(LABEL)
-      researchId = ground.researchId
+      const fixture = await ready(LABEL)
+      researchId = fixture.researchId
       await putTestObject(PUBLIC_BUCKET, `${publicPrefix(LABEL)}a.zip`)
       expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "files-remain" })
 
@@ -198,7 +198,7 @@ describe("deleting a research", () => {
     })
   })
 
-  it("answers gone for a research that is not there, and writes no event", async () => {
+  it("reports gone for a research that is not there, and writes no event", async () => {
     const outcome = await deleteResearch(db, randomUUID(), CURATOR)
 
     expect(outcome).toEqual({ status: "gone" })

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest"
 
 /**
  * The route list is evaluated once, when the module is imported, so a test that
- * wants to see it under a different environment has to ask for the module
+ * wants to see it under a different environment has to request the module
  * again.
  */
 async function routesUnder(nodeEnv: string): Promise<string> {
@@ -73,13 +73,13 @@ describe("管理画面の登録", () => {
       .filter((entry) => !inside.has(entry.path))
       .map((entry) => entry.path)
 
-    // What is left outside answers with data rather than with a page, so it has
+    // What is left outside responds with data rather than with a page, so it has
     // no frame to be inside of.
     expect(outside.every((path) => path?.startsWith("admin/assistant/api") === true
       || path?.includes("/upload") === true
       || path?.includes("/comments") === true
-      // The draft drawn as its page, which the editor's second pane asks for
-      // as the content changes. It answers with the drawing, not with a screen.
+      // The draft drawn as its page, which the editor's second pane requests
+      // as the content changes. It responds with the drawing, not with a screen.
       || path?.endsWith("/page") === true
       || path === "admin/terms")).toBe(true)
   })
@@ -133,7 +133,7 @@ const TALKED_TO = [
 
 /**
  * **Nothing looks wrong when one of these is given a prefix.** The address is
- * built, no route matches it, and the router answers 405 without a request ever
+ * built, no route matches it, and the router responds with 405 without a request ever
  * leaving the browser — so the editor a curator had open is replaced by the
  * error page a few seconds after it drew, with nothing in the network to point
  * at. It cannot happen in Japanese, where the prefix is the empty string, which

@@ -2,8 +2,8 @@
  * Moving between the two shapes the same content takes.
  *
  * A draft keeps the body in one row and every dataset description in a row of
- * its own; a version keeps the lot in a single value. Publishing folds, and
- * withdrawing or copying unfolds. Both directions live here so that neither
+ * its own; a version keeps the lot in a single value. Publishing merges, and
+ * withdrawing or copying splits. Both directions live here so that neither
  * side has to know the other's table.
  */
 

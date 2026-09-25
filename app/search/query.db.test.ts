@@ -108,7 +108,7 @@ describe("running a query against the published set", () => {
     expect(await labels("糖尿病 OR 肝臓")).toEqual(["hum0001", "hum0003"])
   })
 
-  it("counts a row that cannot answer as not matching, so NOT is the whole complement", async () => {
+  it("counts a row that cannot respond as not matching, so NOT is the whole complement", async () => {
     const all = await labels("")
     const matching = await labels("ゲノム")
     const rest = await labels("NOT ゲノム")
@@ -141,7 +141,7 @@ describe("running a query against the published set", () => {
     expect(await labels("title:ゲノム")).toEqual(["hum0001"])
   })
 
-  it("answers the empty query with everything published", async () => {
+  it("responds to the empty query with everything published", async () => {
     expect(await labels("")).toEqual(["hum0001", "hum0002", "hum0003"])
     expect(await countMatches(db, { target: "dataset", ast: null, fields: BUILT_IN_ONLY })).toBe(3)
   })

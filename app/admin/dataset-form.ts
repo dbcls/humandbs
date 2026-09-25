@@ -1,12 +1,12 @@
 /**
  * The shape a dataset is edited in.
  *
- * It stands to `DatasetContent` as `form.ts` stands to `ResearchContent`, and
+ * It relates to `DatasetContent` as `form.ts` relates to `ResearchContent`, and
  * for the same two reasons: prose is markdown while a person is typing it, and
- * a slot keeps its text whatever its state says so that marking a value
+ * a slot keeps its text whatever its state reports, so that marking a value
  * unsettled does not eat what was half written.
  *
- * **A value carries the kind of its catalog key.** The kind is stored with the
+ * **A value has the kind of its catalog key.** The kind is stored with the
  * value rather than looked up, so a form can be built without the catalog, and
  * a value whose kind disagrees with its key never gets that far — the write
  * path checks it. Four of the six kinds are editable here; a key typed as a
@@ -82,7 +82,7 @@ export function highBelowValue(row: NumberRow): boolean {
  * suggestions a curator can still type past.
  * **Keyed by the catalog's own `code`**, which is the smallest way to reach
  * this from the editing screen: the catalog has no column for it
- * (`content_key` carries only what an admin can change), and the full set this
+ * (`content_key` has only what an admin can change), and the full set this
  * is drawn from — `migration/facets.ts` の `TextNumberKey.labelCandidates` —
  * belongs to the one-off migration and does not ship into the running app.
  */
@@ -98,7 +98,7 @@ export function labelCandidatesFor(code: string): readonly string[] {
  * One disease as it is typed: **which terms name it, and what it is called.**
  *
  * The names are empty strings rather than nulls for the same reason the number
- * rows hold strings — that is what a text box carries — and become nulls on the
+ * rows hold strings — that is what a text box has — and become nulls on the
  * way in. **A row naming no term is an ordinary row**: a disease no
  * classification holds is one somebody still has to be able to write.
  */
@@ -115,14 +115,14 @@ export type ValueBody
      * What was typed and the unit it was typed in — not the converted value.
      * The conversion happens once on the way in (`app/content/units.ts`), and
      * the editor has to show the author what they wrote rather than what it
-     * became. **An empty box is not a number**: the slot is left out on save,
+     * became. **An empty field is not a number**: the slot is left out on save,
      * because a number that is not there has no representation the way an empty
      * piece of prose does.
      */
     | { kind: "number", state: SlotState, rows: NumberRow[] }
     /**
-     * **A row that names nothing at all is dropped on save**, the same way an
-     * empty number box is: a disease with neither a term nor a name says
+     * **A row that identifies nothing at all is dropped on save**, the same way an
+     * empty number field is: a disease with neither a term nor a name reports
      * nothing, and a key left with no rows loses its slot.
      */
     | { kind: "disease", state: SlotState, diseases: DiseaseRow[] }
@@ -139,9 +139,9 @@ export interface ExperimentInput {
 }
 
 export interface DatasetContentInput {
-  /** Empty when there is no date. Only NHA IDs carry one. */
+  /** Empty when there is no date. Only NHA IDs have one. */
   releaseDate: string
-  /** The research's files the dataset's page lists. A set, saved in the box's order (`files/selection.ts`). */
+  /** The research's files the dataset's page lists. A set, saved in the prefix's order (`files/selection.ts`). */
   fileSelection: string[]
   values: ValueInput[]
   experiments: ExperimentInput[]

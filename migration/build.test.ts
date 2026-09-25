@@ -145,7 +145,7 @@ describe("buildResearchContent", () => {
     )
     expect(content.datasetIds).toEqual(["identity-1"])
     expect(first(content.relatedPublications).datasetIds).toEqual(["identity-1"])
-    // Not in the ledger, but shaped as an accession: kept as the ID.
+    // Not in the `label_pin` table, but shaped as an accession: kept as the ID.
     expect(first(content.relatedPublications).externalIds).toEqual(["JGAD2"])
   })
 
@@ -380,10 +380,10 @@ describe("a cell holding a table about several datasets", () => {
 
   /**
    * The whole point of dropping a line is that it is written down where it
-   * belongs. A line naming a dataset that never says it is the only copy there
+   * belongs. A line naming a dataset that never reports it is the only copy there
    * is, and it stays until somebody has looked at it.
    */
-  it("keeps a line the dataset it names does not carry itself", () => {
+  it("keeps a line the dataset it identifies does not have itself", () => {
     const lonely = [
       dumpRow(volume("JGAD000001: 88 GB\nJGAD000009: 32 GB"), "JGAD000001", null),
       dumpRow(volume(""), "JGAD000009", null),
@@ -391,7 +391,7 @@ describe("a cell holding a table about several datasets", () => {
     expect(said(datasetOf(lonely, "JGAD000001"))).toContain("32 GB")
   })
 
-  it("keeps a line the dataset it names disagrees with", () => {
+  it("keeps a line the dataset it identifies disagrees with", () => {
     const differing = [
       dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB"), "JGAD000001", null),
       dumpRow(volume("JGAD000002: 33 GB"), "JGAD000002", null),
@@ -405,7 +405,7 @@ describe("a cell holding a table about several datasets", () => {
     expect(said(datasetOf(plain, "JGAD000001"))).toContain("147,353")
   })
 
-  /** A value carries colons of its own, and those are not labels. */
+  /** A value has colons of its own, and those are not labels. */
   it("does not read a colon inside brackets as a label", () => {
     const bracketed = [
       dumpRow(volume("JGAD000001: 1.32 TB(bam [ref: hg19])"), "JGAD000001", null),
@@ -438,7 +438,7 @@ describe("a cell read by the load's own reader", () => {
     expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["healthy adults", "Japanese"])
   })
 
-  it("drops a line about a sibling when the sibling says it, reading both through the reader", () => {
+  it("drops a line about a sibling when the sibling reports it, reading both through the reader", () => {
     const table = "JGAD000001: 88 GB|JGAD000002: 32 GB"
     const siblings = [dumpRow(cell(table), "JGAD000001", null), dumpRow(cell(table), "JGAD000002", null)]
     expect(lines(datasetOf(siblings, "JGAD000001", recovering))).toEqual(["JGAD000001: 88 GB"])

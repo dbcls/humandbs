@@ -32,7 +32,7 @@ describe("where a draft differs from the version that is out there", () => {
   })
 
   /** The memo is not published, so it cannot be a difference from a version. */
-  it("never reports the memo, which is not part of what a version says", () => {
+  it("never reports the memo, which is not part of what a version has", () => {
     expect(changedFromPublished(titled("同じ"), titled("同じ"))).not.toContain("note")
   })
 
@@ -51,7 +51,7 @@ describe("where a draft differs from the version that is out there", () => {
   })
 })
 
-describe("showing what the published version says at a path", () => {
+describe("showing what the published version has at a path", () => {
   const published = researchContentInput(research({
     title: { ja: filled("和名"), en: { state: "unknown" } },
     grants: [{
@@ -117,8 +117,8 @@ describe("showing what the published version says at a path", () => {
   })
 
   /**
-   * A list whose membership moved has no single value to show, so the mark
-   * stands on its own rather than inventing one.
+   * A list whose membership moved has no single value to show, so the indicator
+   * is shown on its own rather than inventing one.
    */
   it("gives nothing for a list of elements, where the difference is the membership", () => {
     expect(describeAt(published, "grants")).toBe(null)
@@ -133,7 +133,7 @@ describe("whether the datasets were put in another order", () => {
     expect(orderChanged(["a"], ["a"])).toBe(false)
   })
 
-  it("is true when the same datasets stand in another order", () => {
+  it("is true when the same datasets are shown in another order", () => {
     expect(orderChanged(["a", "b"], ["b", "a"])).toBe(true)
     expect(orderChanged(["a", "b", "c"], ["a", "c", "b"])).toBe(true)
   })
@@ -146,7 +146,7 @@ describe("whether the datasets were put in another order", () => {
     expect(orderChanged(["a", "x", "b"], ["b", "y", "a"])).toBe(true)
   })
 
-  it("is false exactly when the ones kept on both sides stand in the same order", () => {
+  it("is false exactly when the ones kept on both sides are shown in the same order", () => {
     const ids = fc.uniqueArray(fc.constantFrom("a", "b", "c", "d", "e", "f"), { maxLength: 6 })
     fc.assert(fc.property(ids, ids, (before, after) => {
       const kept = before.filter((id) => after.includes(id))

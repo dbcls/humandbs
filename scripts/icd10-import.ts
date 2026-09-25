@@ -54,7 +54,7 @@ const db = getOwnerDb()
 const taken = await db.transaction((tx) => importIcd10Terms(tx, entries))
 const size = await icd10VocabularySize(db)
 console.log(
-  `icd10: ${taken.roots} roots and ${taken.children} children taken in; `
+  `icd10: ${taken.roots} roots and ${taken.children} children imported; `
   + `the vocabulary holds ${size.roots + size.children} (ja ${size.withJa})`,
 )
 await closePools()

@@ -98,7 +98,7 @@ async function write(
  * of them — the share link and the management screen — and a comment hung off a
  * place the draft does not have is one no screen will ever draw. What the two
  * disagree about is only which datasets are in range, and that is what
- * `about.datasetIds` carries (`anchorExists`).
+ * `about.datasetIds` has (`anchorExists`).
  */
 export async function postComment(
   db: Executor,
@@ -183,7 +183,7 @@ export async function deleteComment(
 }
 
 /**
- * One reader's presses of one mark, as the review screen lists them: a reader
+ * One reader's presses of one indicator, as the review screen lists them: a reader
  * presses again on each round, so a row is a person rather than a press.
  */
 export interface AcknowledgementView {
@@ -212,11 +212,11 @@ export async function acknowledgeDraft(
 }
 
 /**
- * Each reader's presses of each mark, gathered into one row, the most recently
+ * Each reader's presses of each indicator, gathered into one row, the most recently
  * pressed first.
  *
  * **Who a reader is**: a signed-in one is their account, whatever name it
- * carried at the time — the row goes by the latest; one who did not sign in is
+ * kept at the time — the row goes by the latest; one who did not sign in is
  * the name they typed, which is all there is to know them by.
  */
 export async function readAcknowledgements(

@@ -2,7 +2,7 @@
  * The two invariants the assistant route depends on, held by reading the
  * source.
  *
- * The assistant answers to anybody who can reach it — it holds no
+ * The assistant responds to anybody who can reach it — it holds no
  * authorisation of its own and reads no token — so who may reach it is decided
  * entirely by the one route in front of it. Neither invariant can be checked by
  * calling anything: the first is about a guard being present rather than about
@@ -41,7 +41,7 @@ describe("アシスタントとの境界", () => {
   /**
    * The service is reachable from the portal and from nowhere else, so a second
    * caller would be a second door — and one without the capability check, since
-   * that lives in the route rather than in the module it calls.
+   * that is defined in the route rather than in the module it calls.
    */
   it("proxy 以外からアシスタントを呼ばない", async () => {
     const callers = (await sources())
@@ -57,7 +57,7 @@ describe("アシスタントとの境界", () => {
 
   /**
    * Knowing where the service is would be enough to call it directly. The screen
-   * is allowed to read whether the address is set at all — that is how it says
+   * is allowed to read whether the address is set at all — that is how it reports
    * the assistant is not running — and nothing else may read it.
    */
   it("サービスのアドレスを知っているのは proxy と、動いているかを示す画面だけ", async () => {

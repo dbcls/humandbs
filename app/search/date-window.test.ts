@@ -14,7 +14,7 @@ const day = fc
 const years = fc.constantFrom(...DATE_WINDOW_YEARS)
 
 describe("the day a date window opens on", () => {
-  it("is a calendar day the query language can carry, and one that exists", () => {
+  it("is a calendar day the query language can have, and one that exists", () => {
     fc.assert(fc.property(day, years, (today, back) => {
       const opened = dateWindowFrom(today, back)
       expect(opened).toMatch(CALENDAR_DAY)
@@ -77,7 +77,7 @@ function windows(from: string | null, to: string | null, today = "2026-09-23") {
 }
 
 describe("the windows over a range of days", () => {
-  it("offers all, and the years in the order drawn, each going where it says", () => {
+  it("offers all, and the years in the order drawn, each going where it reports", () => {
     expect(windows(null, null)).toEqual([
       { label: "すべて", href: "/files", current: true },
       { label: "1 年", href: "/files?from=2025-09-23", current: false },
@@ -98,7 +98,7 @@ describe("the windows over a range of days", () => {
     expect(windows(null, "2026-09-23").some((one) => one.current)).toBe(false)
   })
 
-  it("lights at most one window, and all exactly when the range asks nothing", () => {
+  it("lights at most one window, and all exactly when the range requests nothing", () => {
     const end = fc.option(day, { nil: null })
     fc.assert(fc.property(day, end, end, (now, from, to) => {
       const lit = windows(from, to, now).filter((one) => one.current)

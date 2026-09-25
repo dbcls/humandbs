@@ -10,7 +10,7 @@ import { BOOTSTRAP_ACTOR } from "./events.server"
 import { createSession, sessionCookie } from "./session.server"
 
 /**
- * Deriving who is asking, against the development database.
+ * Deriving who is requesting, against the development database.
  *
  * The one that matters is "access removed between requests": authorisation is
  * read on every request precisely so that it can change without waiting for a
@@ -79,7 +79,7 @@ describe("要求ごとの主体の導出", () => {
     expect(actor?.sessionId).toMatch(/^[0-9a-f-]{36}$/)
   })
 
-  it("admin を外すと、同じ cookie の次の要求で効く", async () => {
+  it("admin を外すと、同じ cookie の次の要求から反映される", async () => {
     const token = await createSession(db, PERSON)
     await grantAdmin(db, BOOTSTRAP_ACTOR, PERSON)
     expect((await readActor(requestFor(token)))?.isAdmin).toBe(true)
@@ -93,7 +93,7 @@ describe("要求ごとの主体の導出", () => {
 })
 
 describe("認可の 3 通りの応答", () => {
-  it("未ログインはログインへ送り、いま見ていたアドレスを戻り先に持たせる", async () => {
+  it("未ログインはログインへ送り、いま見ていたアドレスを戻り先にする", async () => {
     const response = await thrownBy(() => requireActor(requestFor(null, "/admin?tab=drafts")))
 
     expect(response.status).toBe(302)

@@ -22,12 +22,12 @@ import type { Route } from "./+types/admin-contents-document"
  *
  * **The slug can be corrected but doing so moves the page.** External
  * references — submission metadata, other bodies, the navigation constants —
- * are not rewritten by anything, so the panel says as much rather than
+ * are not rewritten by anything, so the panel shows as much rather than
  * refusing (`components/contents.tsx` の `SlugEditor`).
  *
  * **"Cut into a version"** is how a page that never had revisions gets one: the
  * body moves to `{slug}/version/1` and the address it had becomes a pointer at
- * it. Nothing is copied, so the same text never lives at two addresses.
+ * it. Nothing is copied, so the same text never is kept at two addresses.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const view = await documentPage(request, params.documentId)
@@ -47,7 +47,7 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
   ]
 }
 
-/** What is in the version-number box, so the sentence under it can say where the body goes. */
+/** What is in the version-number box, so the sentence under it can show where the body goes. */
 function numberIn(form: HTMLFormElement): string {
   const field = form.elements.namedItem("number")
   return field instanceof HTMLInputElement ? field.value.trim() : ""
@@ -64,7 +64,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
     <Page>
       <Answer answer={actionData} locale={locale} said={(answer) => contentsSaid(answer, locale)} />
       <Stack>
-        {/* **The head is left for the article, and folds to its tools row
+        {/* **The header is left for the article, and collapses to its toolbar
             while typing** (`draft-tools.tsx` の `DraftHead`, the same shape a
             research draft takes). Its second line reaches version control — a
             document without revisions has nowhere else that operation
@@ -82,23 +82,23 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
           headExtra={(
             <>
               {/* **The slug is changed from beside the name that shows it.** It
-                  is the one thing the article has apart from what it says, and
+                  is the one thing the article has apart from what it shows, and
                   it already stands at the name's side as the identifier; a part
                   of the page for it would hold nothing but this one control.
                   **A revision has no slug of its own to correct** — its address
                   is the series' slug and its number, and neither is this
-                  document's to change — so only an article standing alone
+                  document's to change — so only an article shown alone
                   has the control (the server refuses the rest). */}
               {seriesOf === null && (
                 <Form method="post">
                   <SlugEditor locale={locale} intent="rename" name="slug" value={slug} hint={t.slugHint} />
                 </Form>
               )}
-              {/* **What takes the whole article away stands beside its name**,
-                  next to the way back, rather than among the languages
+              {/* **What takes the whole article away is shown beside its name**,
+                  next to the back link, rather than among the languages
                   (`admin-contents-news-item.tsx`). **The revision a series points
                   at has no such control**: the version-less address has to keep
-                  answering, and the way to take it down is the series' own
+                  responding, and the way to take it down is the series' own
                   screen, which takes the pointer with it. */}
               {seriesOf?.isCurrent !== true && (
                 <Form method="post">
@@ -117,8 +117,8 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
             /* **Only an article without revisions has this part.** Moving an
                article under version control is done to the article, not to a
                language's words, so it does not go among the languages'
-               forms. The sentence under the name says what this article is
-               not yet, and the one under the box says the address the body
+               forms. The sentence under the name shows what this article is
+               not yet, and the one under the box shows the address the body
                goes to with the number as typed, rather than a placeholder
                for it. */
             <Section title={t.versioning} note={t.versioningNote}>

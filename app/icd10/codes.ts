@@ -7,7 +7,7 @@
  * does can edit them. Everything here is pure — the fetching and the rows
  * are in `vocabulary.server.ts`.
  *
- * **The tree is derived from the code, not carried by the data.** A
+ * **The tree is derived from the code, not held by the data.** A
  * four-character code belongs under the three-character one it starts with, so
  * the parent of `C349` is `C34` and nothing has to record it.
  */
@@ -15,7 +15,7 @@
 /**
  * A code as written anywhere: with or without the point, in either case.
  * Three to five characters, because chapters (`II`) and blocks (`A00-A09`) are
- * not codes and are not taken in.
+ * not codes and are not imported.
  */
 const CODE = /^[A-Z][0-9]{2}[0-9A-Z]{0,2}$/
 
@@ -58,7 +58,7 @@ const WIDEST_RANGE = 10
 const RANGE = /^([A-Z])([0-9]{2})[-–~〜]([A-Z]?)([0-9]{2})$/
 
 /**
- * The codes a range names, or null when it names something else. **The letters
+ * The codes a range names, or null when it identifies something else. **The letters
  * have to agree** (`C00-D48` spans two chapters) and **the span has to be
  * narrow** — a wide one is a block heading, and **the three-character codes are
  * not consecutive**, so expanding it also invents codes the classification does
@@ -96,11 +96,11 @@ export function icd10CodesIn(raw: string): string[] {
 
 /**
  * The code the dictionary holds for what was written, found by **dropping the
- * tail until it answers**. Null when even the three-character root is unknown.
+ * tail until it responds**. Null when even the three-character root is unknown.
  *
  * **The five-character codes in the data are not typos.** They are ICD-10-CM,
- * which names diseases WHO's ICD-10 cannot — `K75.81` is NASH, `I45.81` is long
- * QT syndrome. Rounding them loses the distinction the code carried, but not
+ * which identifies diseases WHO's ICD-10 cannot — `K75.81` is NASH, `I45.81` is long
+ * QT syndrome. Rounding them loses the distinction the code kept, but not
  * the disease: the value keeps the name the article wrote.
  */
 export function icd10Resolve(written: string, known: (code: string) => boolean): string | null {

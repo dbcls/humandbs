@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest"
 import { researchContentInput, type DraftInput } from "~/admin/form"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import { emptyResearchContent } from "~/content/empty"
-import type { TakeSourceRow } from "~/admin/take.server"
+import type { ImportSourceRow } from "~/admin/import.server"
 
-import { researchParts, sourceName, SourceTable, TakeFace } from "./take"
+import { researchParts, sourceName, SourceTable, ImportForm } from "./import"
 
 const DATASETS: ResearchDatasetRow[] = [
   { id: "d1", label: "JGAD000141", pinId: null, published: true, portalIssued: false } as ResearchDatasetRow,
@@ -29,8 +29,8 @@ function draft(datasetIds: string[], externalIds: string[]): DraftInput {
 }
 
 function draw(mine: DraftInput, theirs: DraftInput): string {
-  const face = (
-    <TakeFace
+  const form = (
+    <ImportForm
       locale="ja"
       parts={researchParts("ja", DATASETS, [], [mine, theirs])}
       mine={mine}
@@ -39,7 +39,7 @@ function draw(mine: DraftInput, theirs: DraftInput): string {
       revision={1}
     />
   )
-  const router = createMemoryRouter([{ path: "/", element: face }])
+  const router = createMemoryRouter([{ path: "/", element: form }])
   return renderToStaticMarkup(<RouterProvider router={router} />)
 }
 
@@ -70,17 +70,17 @@ describe("取り込み元の表", () => {
   const OTHER = "d-other"
   type Update = { id: string, updatedAt: string } | null
 
-  /** Two versions, and this draft plus another as drafts unless an update folds one into a version. */
+  /** Two versions, and this draft plus another as drafts unless an update merges one into a version. */
   function table({ v1 = null, v2 = null, drafts = [HERE, OTHER] }: { v1?: Update, v2?: Update, drafts?: string[] } = {}): string {
     const times: Record<string, string> = { [OTHER]: "2026-09-24T05:42:00Z", [HERE]: "2026-09-24T04:25:00Z" }
-    const rows: TakeSourceRow[] = [
+    const rows: ImportSourceRow[] = [
       ...drafts.map((id) => ({ kind: "draft" as const, id, updatedAt: times[id] ?? "" })),
       { kind: "version" as const, number: 2, updatedAt: "2026-09-23T14:07:00Z", releaseDate: "2025-01-01", update: v2 },
       { kind: "version" as const, number: 1, updatedAt: "2026-09-23T14:07:00Z", releaseDate: "2024-11-25", update: v1 },
     ]
     const router = createMemoryRouter([{
       path: "/",
-      element: <SourceTable rows={rows} here="/take" current={HERE} humLabel="hum0481" locale="ja" />,
+      element: <SourceTable rows={rows} here="/import" current={HERE} humLabel="hum0481" locale="ja" />,
     }])
     return renderToStaticMarkup(<RouterProvider router={router} />)
   }
@@ -95,25 +95,25 @@ describe("取り込み元の表", () => {
     const self = rowOf(html, "2026-09-24 13:25")
     expect(self).toContain("この下書き")
     expect(self).toContain("取り込み先のこの下書きのため、選べません。")
-    expect(html).not.toContain(`href="/take?draft=${HERE}"`)
+    expect(html).not.toContain(`href="/import?draft=${HERE}"`)
     expect(disabledCount(html)).toBe(1)
   })
 
   it("他の下書きは選べ、「この下書き」を表示しない", () => {
     const other = rowOf(table(), "2026-09-24 14:42")
-    expect(other).toContain(`href="/take?draft=${OTHER}"`)
+    expect(other).toContain(`href="/import?draft=${OTHER}"`)
     expect(other).not.toContain("この下書き")
   })
 
   /** The research's own screen draws an update as its version's row; so does this table. */
-  it("この下書きがバージョンを更新していれば、そのバージョンの 1 行だけが押せず、下書きの行は立たない", () => {
+  it("この下書きがバージョンを更新していれば、そのバージョンの 1 行だけが押せず、下書きの行は表示されない", () => {
     const html = table({ v1: { id: HERE, updatedAt: "2026-09-24T06:38:00Z" }, drafts: [OTHER] })
     const v1 = rowOf(html, "2024-11-25")
     expect(v1).toContain("更新中")
     expect(v1).toContain("2026-09-24 15:38")
-    expect(v1).toContain("この下書きが更新している v1 のため、選べません。")
+    expect(v1).toContain("この下書きで更新中の v1 のため、選べません。")
     expect(html).not.toContain(`draft=${HERE}`)
-    expect(html).not.toContain("href=\"/take?version=1\"")
+    expect(html).not.toContain("href=\"/import?version=1\"")
     expect(disabledCount(html)).toBe(1)
   })
 
@@ -121,13 +121,13 @@ describe("取り込み元の表", () => {
     const html = table({ v2: { id: OTHER, updatedAt: "2026-09-24T07:00:00Z" }, drafts: [HERE] })
     const v2 = rowOf(html, "2025-01-01")
     expect(v2).toContain("更新中")
-    expect(v2).toContain(`href="/take?draft=${OTHER}"`)
+    expect(v2).toContain(`href="/import?draft=${OTHER}"`)
     expect(v2).not.toMatch(/disabled=""/)
   })
 
   it("更新されていないバージョンは、更新中を表示せずに選べる", () => {
     const html = table()
-    expect(rowOf(html, "2024-11-25")).toContain("href=\"/take?version=1\"")
+    expect(rowOf(html, "2024-11-25")).toContain("href=\"/import?version=1\"")
     expect(rowOf(html, "2024-11-25")).not.toContain("更新中")
   })
 })
@@ -155,7 +155,7 @@ describe("取り込みの画面の一覧 (提供者など)", () => {
     expect(html).not.toMatch(/<(del|ins)[^>]*>松原 誠</)
   })
 
-  it("残す要素は名前の付いた枠の列で、要素ごとにどちらの側にあるかを示す", () => {
+  it("残す要素は名前の付いたカードの並びで、要素ごとにどちらの側にあるかを示す", () => {
     const html = draw(withProviders(["a", "山口 建"], ["b", "松原 誠"]), withProviders(["b", "松原 誠"], ["c", "鈴木 花子"]))
     expect(html).toContain("取り込み後に残す要素")
     const kept = html.slice(html.indexOf("取り込み後に残す要素"))

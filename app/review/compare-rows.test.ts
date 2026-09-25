@@ -58,8 +58,8 @@ describe("compareRows", () => {
       expect(new Set(seen).size).toBe(seen.length)
       expect(new Set(seen)).toEqual(new Set([...was, ...now]))
       expect(rows.filter((row) => row.kind !== "removed").map((row) => row.id)).toEqual(now)
-      // A dropped row stands after the row that stood above it and survived,
-      // and a dropped row with none above it stands ahead of every survivor.
+      // A dropped row is shown after the row that was shown above it and survived,
+      // and a dropped row with none above it remains ahead of every survivor.
       for (const [at, row] of rows.entries()) {
         if (row.kind !== "removed") continue
         const above = was.slice(0, was.indexOf(row.id)).filter((id) => now.includes(id)).at(-1)

@@ -20,7 +20,7 @@ describe("writing a table as TSV", () => {
     expect(toTsv({ headers: ["a"], rows: [["say \"this\""]] })).toBe("a\nsay \"this\"")
   })
 
-  it("flattens a value's own line break, which a reader of columns cannot carry", () => {
+  it("flattens a value's own line break, which a reader of columns cannot have", () => {
     expect(toTsv({ headers: ["a"], rows: [["one\ntwo"]] })).toBe("a\none two")
   })
 

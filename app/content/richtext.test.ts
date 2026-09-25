@@ -22,7 +22,7 @@ describe("toPlainText", () => {
 })
 
 describe("isEmptyRichText", () => {
-  it("reads lines that carry no text as nothing having been written", () => {
+  it("reads lines that have no text as nothing having been written", () => {
     expect(isEmptyRichText([])).toBe(true)
     expect(isEmptyRichText([[], []])).toBe(true)
     expect(isEmptyRichText([[{ text: "" }]])).toBe(true)
@@ -110,7 +110,7 @@ describe("linkHref", () => {
     expect(linkHref("https://")).toBeNull()
   })
 
-  it("refuses a destination with no scheme, which names a host and not a path", () => {
+  it("refuses a destination with no scheme, which identifies a host and not a path", () => {
     expect(linkHref("//example.com/")).toBeNull()
     expect(linkHref("example.com")).toBeNull()
     expect(linkHref("")).toBeNull()

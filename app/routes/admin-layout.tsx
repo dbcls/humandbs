@@ -17,7 +17,7 @@ import type { Route } from "./+types/admin-layout"
  * **A session, and not a capability.** The area's own front page is the one
  * screen a signed-in non-administrator may open: granting access needs a
  * `sub`, and nothing else on the portal shows a person theirs. Each screen
- * under here asks for the capability it needs, so this guard being the
+ * under here requests the capability it needs, so this guard being the
  * weaker one loses nothing.
  *
  * **The navigation is not here.** It is the bar across the top of every page

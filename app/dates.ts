@@ -14,16 +14,16 @@ export function today(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date())
 }
 
-/** How far JST stands from UTC. A constant, since JST has no daylight saving. */
+/** How far JST is from UTC. A constant, since JST has no daylight saving. */
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 /**
  * An instant as the minute it fell on in JST.
  *
  * **Instants are held in UTC and read by people working in JST**, so one
- * printed as it stands puts a fetch that ran at nine this morning at midnight.
+ * printed unconverted puts a fetch that ran at nine this morning at midnight.
  * The shape is the one the dates use with the minute after it
- * (`YYYY-MM-DD HH:MM`); it carries no zone because every clock the reader is
+ * (`YYYY-MM-DD HH:MM`); it has no zone because every clock the reader is
  * comparing it against is the same one.
  */
 export function minuteInJst(instant: string): string {
@@ -34,7 +34,7 @@ export function minuteInJst(instant: string): string {
 /**
  * Now, as the second it falls on in JST.
  *
- * **An announcement's date is a JST wall clock in a column that carries no
+ * **An announcement's date is a JST wall clock in a column that has no
  * zone** (`app/db/schema/site.ts`), so a value made for one is written in that
  * same clock rather than converted on the way out. `en-CA` writes the date the
  * way the column holds it and puts the time after a comma, which is the one
@@ -54,7 +54,7 @@ export function nowInJst(): string {
 }
 
 /**
- * A stored stamp as the minute it names. **The minute is as fine as anything
+ * A stored stamp as the minute it identifies. **The minute is as fine as anything
  * on screen goes** — the second is neither typed nor read, and printing it puts
  * two characters of noise in every row of a listing.
  */
@@ -106,7 +106,7 @@ export function stampFromLocalInput(value: string): string | null {
  * An instant as the calendar day it fell on in JST.
  *
  * **The day a file was written is read on the same clock as every other day on
- * a row.** The store answers with an instant, and the UTC day of that instant is
+ * a row.** The store responds with an instant, and the UTC day of that instant is
  * the day before between midnight and nine in the morning — the hours an upload
  * made at the start of a working day would be filed under yesterday.
  */
@@ -117,7 +117,7 @@ export function dayInJst(instant: string): string {
 const DAY_INPUT = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * What a `date` field sent, as the day it names — or `null` if it is not one,
+ * What a `date` field sent, as the day it identifies — or `null` if it is not one,
  * which is what anything but the screen's own form can send.
  *
  * **The shape is not enough**, for the reason `stampFromLocalInput` gives: a day

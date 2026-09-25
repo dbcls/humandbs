@@ -21,7 +21,7 @@ services:
 
   # The image runs as `node`. It writes the data migration's reports under the
   # mounted `migration/input/`, and reads the directories an operator mounts
-  # for the file carry, both of which the deploying user owns.
+  # for the file have, both of which the deploying user owns.
   tools:
     userns_mode: "keep-id:uid=1000,gid=1000"
 

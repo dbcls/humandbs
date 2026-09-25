@@ -13,8 +13,8 @@
  * is gained by inventing a second vocabulary for the same edges.
  *
  * **Only researches the portal has published appear.** An edge to an
- * unpublished hum would be a link that answers 404, and it would also give away
- * that the label exists at all — which is exactly what answering 404 for
+ * unpublished hum would be a link that responds with 404, and it would also give away
+ * that the label exists at all — which is exactly what responding with 404 for
  * "unpublished" and "no such label" alike is there to prevent.
  *
  * **Nothing found is 200 with an empty list.** An accession nobody has heard of
@@ -53,7 +53,7 @@ export interface DbLinks {
  *
  * A hum label resolves at the bare address rather than at `/research/{humId}`,
  * because that is the address DDBJ Search has been building all along and the
- * one the portal promises to keep answering forever.
+ * one the portal promises to keep responding forever.
  */
 export function xrefOf(type: AccessionType, identifier: string, origin: string): Xref {
   const url = type === "humandbs"
@@ -69,7 +69,7 @@ export function xrefOf(type: AccessionType, identifier: string, origin: string):
 export interface Edge {
   accession: string
   type: JgaType
-  /** The primary hum label, which is the one whose address answers. */
+  /** The primary hum label, which is the one whose address responds. */
   humLabel: string
 }
 
@@ -117,7 +117,7 @@ export function linksBySubject(
 /**
  * What one accession links to. Absent and unpublished both come out empty.
  *
- * It answers by grouping everything and then taking one, rather than by a
+ * It responds by grouping everything and then taking one, rather than by a
  * lookup of its own: the correspondence is on the order of a thousand edges, and
  * one way of reading it means a point lookup cannot disagree with the listing.
  */

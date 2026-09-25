@@ -1,6 +1,6 @@
 /**
  * Every service the app cannot run without, and 503 if any one of them is down.
- * The store is here as well as the database: a published file lives in it, so
+ * The store is here as well as the database: a published file is kept in it, so
  * an app that cannot reach it is not serving the site even if every page
  * still renders.
  */

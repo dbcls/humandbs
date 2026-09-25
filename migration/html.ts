@@ -50,7 +50,7 @@ function textOf(node: ElementContent): string {
 }
 
 /** A superscript becomes its Unicode form when every character has one. */
-function foldSuperscripts() {
+function normalizeSuperscripts() {
   return (tree: Root) => {
     visit(tree, "element", (node: Element) => {
       node.children = node.children.map((child) => {
@@ -94,7 +94,7 @@ function expandSpans() {
     visit(tree, "element", (table: Element) => {
       if (table.tagName !== "table") return
       const rows = rowsOf(table)
-      /** Cells carried down from an earlier row, by the column they sit in. */
+      /** Cells passed down from an earlier row, by the column they sit in. */
       const carried = new Map<number, { cell: Element, left: number }>()
 
       for (const row of rows) {
@@ -181,12 +181,12 @@ const CALLOUT_DEFAULT = "TIP"
  * A callout that brought its own headings, which is a passage quoted whole
  * rather than an aside.
  *
- * **Three of the thirty-four are one of these**: the FAQ carries forty-three
- * lines of the personal-information act, and the sharing guidelines carry the
+ * **Three of the thirty-four are one of these**: the FAQ has forty-three
+ * lines of the personal-information act, and the sharing guidelines have the
  * sample wording for a consent form in both languages. All three run to
- * thousands of characters under headings of their own, and none of them says
+ * thousands of characters under headings of their own, and none of them reports
  * which kind of callout it is — so what they are drawn as is only ever the
- * default. **A statute inside a "ⓘ" box says the wrong thing about what it is**
+ * default. **A statute inside a "ⓘ" box reports the wrong thing about what it is**
  * (`app/public/markdown.server.ts`), so these take the box with no glyph.
  *
  * Only the default is overridden. A kind somebody wrote down is a decision, and
@@ -201,20 +201,20 @@ const HEADING_LINE = /^\s*(?:#{1,6}\s|<h[1-6]\b)/
  * ahead, because the kind is written at the top and what decides it is inside.
  */
 function calloutHeadings(lines: readonly string[]): Set<number> {
-  const carries = new Set<number>()
+  const withHeadings = new Set<number>()
   let opened: number | null = null
   lines.forEach((line, at) => {
     const rest = FENCE.exec(line)?.[2]?.trim()
     if (opened === null) {
-      // A fence carrying its own closing `:::` opens and shuts on one line, and
+      // A fence with its own closing `:::` opens and shuts on one line, and
       // one line cannot be a heading and a fence at once.
       if (rest !== undefined && rest !== "" && !rest.endsWith(":::")) opened = at
       return
     }
     if (rest === "") opened = null
-    else if (HEADING_LINE.test(line)) carries.add(opened)
+    else if (HEADING_LINE.test(line)) withHeadings.add(opened)
   })
-  return carries
+  return withHeadings
 }
 
 /**
@@ -230,10 +230,10 @@ function calloutHeadings(lines: readonly string[]): Set<number> {
  * survive, or a blockquote inside a list item becomes one after it.
  *
  * **An attribute other than `type` stops the run.** v1's callout took a title as
- * well, and none of the fences in the dump carries one; stripping quietly is how
+ * well, and none of the fences in the dump has one; stripping quietly is how
  * a body would arrive in v2 with a line of it missing.
  */
-function foldCallouts(source: string): string {
+function convertCallouts(source: string): string {
   const out: string[] = []
   const lines = source.split("\n")
   const quoted = calloutHeadings(lines)
@@ -257,14 +257,14 @@ function foldCallouts(source: string): string {
         if (key !== "type") throw new Error(`unhandled callout attribute: ${key}`)
         kind = CALLOUT_KIND[value.toLowerCase()] ?? CALLOUT_DEFAULT
       }
-      // The mark that makes this an alert rather than a quotation. v1 had
+      // The marker that makes this an alert rather than a quotation. v1 had
       // already told the two apart — what it fenced is an aside, and what it
       // left as a blockquote is a quotation (the FAQ quotes the
       // personal-information act at length) — so the distinction survives the
       // conversion instead of being re-decided by hand afterwards.
       out.push(`${indent}> [!${kind}]`, `${indent}>`)
-      // A fence may carry the first line of its own content after the name, and
-      // one of them carries the whole callout and its closing fence as well.
+      // A fence may have the first line of its own content after the name, and
+      // one of them has the whole callout and its closing fence as well.
       let inline = after.replaceAll(ATTRIBUTE, "").trim()
       const closesItself = inline.endsWith(":::")
       if (closesItself) inline = inline.slice(0, -3).trimEnd()
@@ -363,7 +363,7 @@ const processor = unified()
   .use(remarkGfm)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
-  .use(foldSuperscripts)
+  .use(normalizeSuperscripts)
   .use(dropBlankParagraphs)
   .use(expandSpans)
   .use(resolveAnchors)
@@ -372,12 +372,12 @@ const processor = unified()
   .use(remarkStringify, { bullet: "-", emphasis: "*", strong: "*", fence: "`", rule: "-" })
 
 /**
- * Two things the serialiser does to an alert's mark, undone.
+ * Two things the serialiser does to an alert's marker, undone.
  *
- * It escapes the `[`, because a `[…]` could be a reference link; and the mark
+ * It escapes the `[`, because a `[…]` could be a reference link; and the marker
  * and the line under it are one paragraph with a soft break in it, which it
- * writes back as a single line. The mark is therefore opened as a paragraph of
- * its own (`foldCallouts` puts a blank quoted line after it) and closed up
+ * writes back as a single line. The marker is therefore opened as a paragraph of
+ * its own (`convertCallouts` puts a blank quoted line after it) and closed up
  * again here, which leaves the form GitHub writes.
  *
  * Safe as a text substitution because `[!` appears nowhere in the input.
@@ -387,7 +387,7 @@ const ESCAPED_BRACKET = /\\(\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)])/g
 
 export function htmlToMarkdown(source: string): string {
   if (source.trim() === "") return ""
-  return String(processor.processSync(foldCallouts(source)))
+  return String(processor.processSync(convertCallouts(source)))
     .trim()
     .replaceAll(ESCAPED_MARK, "$1\n")
     .replaceAll(ESCAPED_BRACKET, "$1")
@@ -397,7 +397,7 @@ export function htmlToMarkdown(source: string): string {
  * Two rewrites the addresses need.
  *
  * v1 served article assets from `/public-files/`; v2 serves everything from the
- * `common/` box under `/files/` (`docs/data-model.md`, "ファイル"). Relative
+ * `common/` prefix under `/files/`. Relative
  * paths are left alone — `files/images/x.png` was already broken in v1, and
  * guessing at what it meant is a decision, not a rewrite.
  *

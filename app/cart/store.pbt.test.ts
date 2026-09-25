@@ -63,12 +63,12 @@ describe("what was stored", () => {
 })
 
 /**
- * **The notice is the only way back.** Undo puts `before` into the cart, so a
+ * **The notice is the only undo.** Undo puts `before` into the cart, so a
  * notice that holds the wrong list silently loses whatever the reader had.
  * These say it holds the right one for any press, and that what it claims moved
  * is what moved.
  */
-describe("what a press says about itself", () => {
+describe("what a press has about itself", () => {
   it("holds exactly the cart the press started from", () => {
     fc.assert(fc.property(cart, fc.array(anyId), (held, ids) => {
       const after = addToCart(held, ids)
@@ -78,7 +78,7 @@ describe("what a press says about itself", () => {
     }))
   })
 
-  it("counts what actually moved, and says where the cart stands now", () => {
+  it("counts what actually moved, and reports where the cart remains now", () => {
     fc.assert(fc.property(cart, fc.array(anyId), (held, ids) => {
       const after = addToCart(held, ids)
       const notice = noticeOf(held, after, 1)
@@ -98,7 +98,7 @@ describe("what a press says about itself", () => {
     }))
   })
 
-  it("reads a removal from the other side, and names only what left", () => {
+  it("reads a removal from the other side, and identifies only what left", () => {
     fc.assert(fc.property(cart, fc.array(jgad), (held, ids) => {
       const after = removeFromCart(held, ids)
       const notice = noticeOf(held, after, 1)

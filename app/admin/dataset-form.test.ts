@@ -58,7 +58,7 @@ describe("reading a dataset back off the form", () => {
     })
   })
 
-  it("drops whatever was typed into a slot whose state says there is no value", () => {
+  it("drops whatever was typed into a slot whose state reports there is no value", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "type-of-data",
@@ -173,7 +173,7 @@ describe("reading a dataset back off the form", () => {
     expect(saveDatasetSchema.safeParse(payload).success).toBe(true)
   })
 
-  it("widthsOrdered refuses content carrying a row typed out of order, wherever it sits", () => {
+  it("widthsOrdered refuses content with a row typed out of order, wherever it sits", () => {
     const outOfOrderInValues = form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
@@ -245,7 +245,7 @@ describe("reading a dataset back off the form", () => {
     expect(result.values[0]?.value).toEqual({ kind: "number", values: { state: "unknown" } })
   })
 
-  it("keeps a disease that names no term, which is what the type is for", () => {
+  it("keeps a disease that identifies no term, which is what the type is for", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "disease",

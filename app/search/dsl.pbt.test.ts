@@ -83,7 +83,7 @@ describe("a query and its written form", () => {
 })
 
 describe("reading anything at all", () => {
-  it("either gives a tree or says where it stopped, and never throws", () => {
+  it("either gives a tree or reports where it stopped, and never throws", () => {
     fc.assert(fc.property(fc.string(), (input) => {
       const parsed = parseQuery(input, BUILT_IN_ONLY)
       if (!parsed.ok) expect(parsed.error.column).toBeGreaterThanOrEqual(1)

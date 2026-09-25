@@ -16,12 +16,12 @@ import { dataset, research } from "./research"
 export const labelKind = pgEnum("label_kind", ["hum", "dataset"])
 
 /**
- * The pin ledger: which outward-facing label is attached to which identity.
+ * The `label_pin` table: which outward-facing label is attached to which identity.
  *
  * Both systems of label are here because the rule they follow is the same —
  * unique across primary and secondary alike, reusable once unpinned, warned
  * about when moved to a different identity. Version numbers follow the same
- * idea but are scoped to a research and carry a published state, so they are
+ * idea but are scoped to a research and have a published state, so they are
  * pinned on `research_version` instead.
  *
  * One identity can hold several labels: one primary, the rest secondary. That

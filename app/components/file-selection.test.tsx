@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { BoxEntry } from "~/files/box"
+import type { ListedFile } from "~/files/prefix"
 
 import { FilePicker, FileSelection } from "./file-selection"
 
@@ -12,14 +12,14 @@ function render(element: React.ReactNode): string {
   return renderToStaticMarkup(<Stub initialEntries={["/admin"]} />)
 }
 
-function entry(name: string, isPublic = false): BoxEntry {
+function entry(name: string, isPublic = false): ListedFile {
   return { name, size: 2048, updatedAt: "2026-09-23T00:00:00.000Z", isPublic, pending: null }
 }
 
-const BOX = [entry("a.txt", true), entry("b.tsv"), entry("c.vcf.gz")]
+const LISTING = [entry("a.txt", true), entry("b.tsv"), entry("c.vcf.gz")]
 const FILES_AT = "/admin/research/r1/files"
 
-function selection(listing: BoxEntry[] | null, selected: string[]): string {
+function selection(listing: ListedFile[] | null, selected: string[]): string {
   return render(
     <FileSelection
       locale="ja"
@@ -35,7 +35,7 @@ function picker(ticked: string[], filter = ""): string {
   return render(
     <FilePicker
       locale="ja"
-      listing={BOX}
+      listing={LISTING}
       ticked={ticked}
       filter={filter}
       onFilter={() => { /* nothing changes here */ }}
@@ -44,46 +44,46 @@ function picker(ticked: string[], filter = ""): string {
   )
 }
 
-/** The box in the head, as drawn. */
+/** The checkbox in the table header, as drawn. */
 function head(html: string): string {
   return /<thead[\s\S]*?(<input[^>]*>)/.exec(html)?.[1] ?? ""
 }
 
-/** The names of the rows whose box is ticked. */
+/** The names of the rows whose checkbox is ticked. */
 function tickedRows(html: string): string[] {
   const body = /<tbody[\s\S]*<\/tbody>/.exec(html)?.[0] ?? ""
   return [...body.matchAll(/<input[^>]*>/g)]
     .map((match) => match[0])
-    .filter((box) => /\bchecked=""/.test(box))
-    .map((box) => /aria-label="([^"]*)"/.exec(box)?.[1] ?? "")
+    .filter((row) => /\bchecked=""/.test(row))
+    .map((row) => /aria-label="([^"]*)"/.exec(row)?.[1] ?? "")
 }
 
 describe("the files a dataset's page lists, on the form", () => {
-  it("says how many files of the box are linked, and draws no table", () => {
-    const html = selection(BOX, ["a.txt", "b.tsv"])
+  it("shows how many files of the prefix are linked, and draws no table", () => {
+    const html = selection(LISTING, ["a.txt", "b.tsv"])
     expect(html).toContain("2 件を紐づけています")
     expect(html).not.toContain("<table")
   })
 
-  it("does not count a linked name the box no longer holds", () => {
-    expect(selection(BOX, ["a.txt", "gone.txt"])).toContain("1 件を紐づけています")
-    expect(selection(BOX, ["gone.txt"])).toContain("紐づけたファイルはありません。")
+  it("does not count a linked name the prefix no longer holds", () => {
+    expect(selection(LISTING, ["a.txt", "gone.txt"])).toContain("1 件を紐づけています")
+    expect(selection(LISTING, ["gone.txt"])).toContain("紐づけたファイルはありません。")
   })
 
   it("opens the panel from a button, and leads to the files screen in a new tab", () => {
-    const html = selection(BOX, [])
+    const html = selection(LISTING, [])
     expect(html).toContain("ファイルの紐づけ")
     expect(html).toMatch(new RegExp(`href="${FILES_AT}"[^>]*target="_blank"`))
   })
 
-  it("keeps the button on screen but not pressable when the box is empty, and says why", () => {
+  it("keeps the button on screen but not pressable when the prefix is empty, and shows why", () => {
     const html = selection([], [])
     const button = /<button[^>]*>(?:(?!<\/button>)[\s\S])*ファイルの紐づけ/.exec(html)?.[0] ?? ""
     expect(button).toMatch(/aria-disabled="true"|disabled=""/)
     expect(html).toContain("この研究にアップロードしたファイルがないため、紐づけられません。")
   })
 
-  it("says the store did not answer, and still leads to the files screen", () => {
+  it("shows the store did not respond, and still leads to the files screen", () => {
     const html = selection(null, ["a.txt"])
     expect(html).toContain("ファイルストアから一覧を取得できませんでした。")
     expect(html).toContain(`href="${FILES_AT}"`)
@@ -104,18 +104,18 @@ describe("the table in the panel", () => {
   })
 
   it("ticks each row that is chosen and no other", () => {
-    fc.assert(fc.property(fc.subarray(BOX.map((one) => one.name)), (chosen) => {
+    fc.assert(fc.property(fc.subarray(LISTING.map((one) => one.name)), (chosen) => {
       expect(tickedRows(picker(chosen)).toSorted()).toEqual(chosen.toSorted())
     }))
   })
 
-  it("ticks the box in the head exactly when every row shown is chosen, whatever else is chosen besides", () => {
+  it("ticks the checkbox in the table header exactly when every row shown is chosen, whatever else is chosen besides", () => {
     fc.assert(fc.property(
-      fc.subarray(BOX.map((one) => one.name)),
+      fc.subarray(LISTING.map((one) => one.name)),
       fc.array(fc.constantFrom("gone-1.txt", "gone-2.txt"), { maxLength: 2 }),
       (chosen, others) => {
         const checked = /\bchecked=""/.test(head(picker([...others, ...chosen])))
-        expect(checked).toBe(chosen.length === BOX.length)
+        expect(checked).toBe(chosen.length === LISTING.length)
       },
     ))
   })
@@ -128,11 +128,11 @@ describe("the table in the panel", () => {
     expect(html).not.toContain("c.vcf.gz")
   })
 
-  it("judges the head's box by the rows the window shows", () => {
+  it("judges the table header's checkbox by the rows the window shows", () => {
     expect(/\bchecked=""/.test(head(picker(["a.txt"], "a.txt")))).toBe(true)
   })
 
-  it("says so when the window matches nothing, and the head's box cannot be pressed", () => {
+  it("shows it when the window matches nothing, and the table header's checkbox cannot be pressed", () => {
     const html = picker([], "zzz")
     expect(html).toContain("条件に合うファイルはありません。")
     expect(head(html)).toContain("disabled=\"\"")

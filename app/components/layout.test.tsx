@@ -41,7 +41,7 @@ function announcements(locale: Locale, alerts: string[], untranslated = false): 
 function circle(html: string, name: string): string {
   const found = new RegExp(`<summary[^>]*aria-label="アカウント: ${name}"[^>]*>(.*?)</summary>`, "s")
   const inside = found.exec(html)?.[1]
-  // Thrown rather than returned as "": every case below asks what is *not* in
+  // Thrown rather than returned as "": every case below asks for what is *not* in
   // the circle as well as what is, and those pass on an empty string.
   if (inside === undefined) throw new Error(`アカウントの丸が無い: ${name}`)
   return inside
@@ -100,13 +100,13 @@ describe("サイトのヘッダ", () => {
     expect(marked(header("en", "/en/faq"))).toEqual(["/en/faq", "/en/faq"])
   })
 
-  it("フッタのサイトマップは現在地を持たない", () => {
+  it("フッタのサイトマップは現在地を表示しない", () => {
     expect(marked(render(<SiteFooter locale="ja" />, "/guidelines"))).toEqual([])
   })
 })
 
 describe("サイトの告知", () => {
-  it("alert が無いときは枠ごと出さない", () => {
+  it("alert が無いときはバナーごと表示しない", () => {
     expect(announcements("ja", [])).toBe("")
   })
 
@@ -126,7 +126,7 @@ describe("サイトの告知", () => {
     expect(html).toContain("英語のみ")
   })
 
-  it("読者の言語で書かれた alert には、言語の断りを付けない", () => {
+  it("読者の言語で書かれた alert には、「英語のみ」の注記を付けない", () => {
     expect(announcements("ja", ["<p>点検のお知らせ</p>"])).not.toContain("英語のみ")
   })
 
@@ -139,7 +139,7 @@ describe("ヘッダのログイン導線", () => {
   const admin: Account = { name: "curator", isAdmin: true }
   const signedIn: Account = { name: "someone", isAdmin: false }
 
-  it("未ログインならログインリンクが、いま見ているアドレスを戻り先に持つ", () => {
+  it("未ログインならログインリンクの戻り先が、いま見ているアドレスになる", () => {
     const html = header("ja", "/research?q=%E7%B3%96%E5%B0%BF%E7%97%85&page=2")
     expect(html).toContain("ログイン")
     expect(html).toContain(
@@ -166,7 +166,7 @@ describe("ヘッダのログイン導線", () => {
   /**
    * **The management area has one address whichever language the reader is
    * in** — it exists in Japanese only, so `/en/admin` is not an address
-   * (`app/routes.ts`). The way in from an English page still reaches it.
+   * (`app/routes.ts`). The link from an English page still reaches it.
    */
   it("admin には Admin への行き先を出し、英語からでも /admin を指す", () => {
     expect(header("ja", "/", admin)).toContain("href=\"/admin\"")
@@ -181,27 +181,27 @@ describe("ヘッダのログイン導線", () => {
     expect(html).toMatch(/<a[^>]*href="\/"[^>]*>Public/)
   })
 
-  it("公開側と管理画面で、区画をまたぐ行は 1 本しか出ない", () => {
+  it("公開側と管理画面で、両者を行き来するリンクは 1 本しか表示されない", () => {
     expect(header("ja", "/", admin)).not.toContain("Public")
     expect(header("ja", "/admin", admin, true)).not.toContain(">Admin<")
   })
 
   /**
    * The area has no English address, so a reader who was on an English page
-   * lands on the Japanese management screens — and the way out has to take
+   * lands on the Japanese management screens — and the back link has to take
    * them back to the side they came from.
    */
   it("管理画面から公開へ戻る先は、読んでいた言語のトップ", () => {
     expect(header("en", "/admin", admin, true)).toMatch(/<a[^>]*href="\/en"[^>]*>Public/)
   })
 
-  it("区画をまたぐ行は、押すと移ることを示すアイコンを持つ。隣のログアウトは持たない", () => {
+  it("公開側と管理画面を行き来するリンクには、押すと移ることを示すアイコンがある。隣のログアウトには無い", () => {
     expect(header("ja", "/", admin)).toMatch(/<a[^>]*href="\/admin"[^>]*>Admin<svg/)
     expect(header("ja", "/admin", admin, true)).toMatch(/<a[^>]*href="\/"[^>]*>Public<svg/)
     expect(header("ja", "/", admin)).not.toMatch(/ログアウト<svg/)
   })
 
-  it("wordmark はいまいる区画のトップを指す", () => {
+  it("wordmark はいまいる側 (公開側か管理画面) のトップを指す", () => {
     expect(wordmark(header("ja", "/research", admin))).toBe("/")
     expect(wordmark(header("ja", "/admin/research", admin, true))).toBe("/admin")
     // The area's top is the same address in either language.
@@ -212,7 +212,7 @@ describe("ヘッダのログイン導線", () => {
     expect(header("ja", "/", admin)).not.toContain(">管理<")
   })
 
-  it("ログイン済みの丸は、アカウント名の頭文字を大文字で持つ", () => {
+  it("ログイン済みの丸には、アカウント名の頭文字を大文字で表示する", () => {
     expect(circle(header("ja", "/", signedIn), "someone")).toContain(">S<")
   })
 
@@ -223,7 +223,7 @@ describe("ヘッダのログイン導線", () => {
       .toContain(">山<")
   })
 
-  it("頭文字はコードポイントで 1 字取る。サロゲートの片割れを出さない", () => {
+  it("頭文字はコードポイントで 1 字取る。サロゲートペアの片方だけを表示しない", () => {
     const drawn = circle(header("ja", "/", { name: "𝒜lice", isAdmin: false }), "𝒜lice")
     expect(drawn).toContain(">𝒜<")
     expect(drawn).not.toContain("\ud835<")
@@ -233,7 +233,7 @@ describe("ヘッダのログイン導線", () => {
     expect(circle(header("ja", "/", signedIn), "someone")).not.toContain("<svg")
   })
 
-  it("未ログインの丸には頭文字が無い。押す先はサインインで、開くものを持たない", () => {
+  it("未ログインの丸には頭文字が無い。押す先はサインインで、開くメニューは無い", () => {
     expect(header("ja", "/")).not.toContain("aria-label=\"アカウント: ")
   })
 })

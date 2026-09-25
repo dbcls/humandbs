@@ -1,7 +1,7 @@
 /**
  * Where the management area can be gone from any of its screens.
  *
- * **One file, two shapes.** A screen does not carry links to its neighbours:
+ * **One file, two shapes.** A screen does not pass links to its neighbours:
  * the bar across the top of every screen under `/admin` draws them in one row
  * (`components/layout.tsx`), and the area's front page draws the same set
  * grouped by the work they are for (`routes/admin.tsx`). Adding a screen means
@@ -12,7 +12,7 @@
  * and an administrator holds every capability; deriving the list from what the
  * reader may do would mean sending an authorisation decision to the browser,
  * which the root loader deliberately does not do (`root.tsx`). The screens
- * themselves each ask for the capability they need.
+ * themselves each request the capability they need.
  *
  * The order is the order the work runs in — what is being edited, then what
  * editing draws on, then the site around it, then the tools beside it.
@@ -46,7 +46,7 @@ export interface AdminEntry extends AdminDestination {
 
 export interface AdminTask {
   title: string
-  /** Said only where the title cannot say what the work is. */
+  /** Said only where the title cannot report what the work is. */
   note?: string
   links: AdminEntry[]
   /** A form rather than a link: what it makes is what it opens. */
@@ -62,7 +62,7 @@ export interface AdminTask {
  * set and the same sequence (`navigation.test.ts`).
  *
  * **The order is the front page's**, group after group. The two are the only
- * two faces the area has, and a reader who has learnt where a name sits on one
+ * two screens the area has, and a reader who has learnt where a name sits on one
  * of them should not have to look for it somewhere else on the other. The bar
  * draws that sequence in one line; the front page has the room to draw it in
  * groups.
@@ -87,8 +87,8 @@ type AdminWords = ReturnType<typeof messagesFor>["admin"]
  * The words come from a locale; the shape of the area does not.
  *
  * **`heading` is what the destination's screen calls itself**, which is not
- * always the bar's word: the bar says 「研究一覧」 where the screen, a listing,
- * says 「研究」. A window names its area by the screen's word (`adminArea`).
+ * always the bar's word: the bar reports 「研究一覧」 where the screen, a listing,
+ * reports 「研究」. A window names its area by the screen's word (`adminArea`).
  */
 const BAR: {
   path: string
@@ -150,7 +150,7 @@ export function adminArea(words: AdminWords, path: string): string | null {
 
 /**
  * **How wide the window has to be before each entry appears in the bar**, the
- * way the public bar carries its own (`public/navigation.ts`).
+ * way the public bar has its own (`public/navigation.ts`).
  *
  * The steps are written out as whole class names because Tailwind cannot see a
  * class assembled at runtime, and the two columns are complements — an entry is
@@ -165,8 +165,8 @@ export function adminArea(words: AdminWords, path: string): string | null {
  * on**: the same nine screens run about a fifth wider there, so a ladder cut to
  * the Japanese labels overflows the English row.
  *
- * The first two are Tailwind's own `sm` and `md`. Below `sm` the bar carries
- * nothing and the menu carries everything, which is where a window that narrow
+ * The first two are Tailwind's own `sm` and `md`. Below `sm` the bar has
+ * nothing and the menu has everything, which is where a window that narrow
  * has to end up whatever the labels say.
  */
 export const ADMIN_NAVBAR_STEP: { bar: string, menu: string }[] = [
@@ -193,28 +193,28 @@ export const ADMIN_NAVBAR_MENU_STEP
  * The work the area is for, and what each piece of it is pressed on.
  *
  * **A section is a verb, and the screens under it are where that work is
- * done.** A name on its own cannot say whether 「お知らせ」 is a screen to read
+ * done.** A name on its own cannot report whether 「お知らせ」 is a screen to read
  * or one to write in, and lengthening the name does not settle it — the verb
  * above it does.
  *
- * **A note belongs to a section whose title cannot say what is inside it.**
+ * **A note belongs to a section whose title cannot report what is inside it.**
  * Giving one to every section buries the titles under sentences nobody reads.
  *
  * **What is pressed is not always a destination.** Starting a research is an
  * action rather than an address, and a list that held only addresses would make
  * three ways to begin a research look like two.
  *
- * **The map says the short name and the screen says its role.** 「お知らせ」 is
- * enough under a section that already says which site the announcements are on,
+ * **The map reports the short name and the screen reports its role.** 「お知らせ」 is
+ * enough under a section that already reports which site the announcements are on,
  * while the screen it opens calls itself 「お知らせ一覧」 because a screen is
  * arrived at from anywhere and has to name itself out of any surroundings.
- * Holding the two to one word means every entry carries a qualification the map
+ * Holding the two to one word means every entry has a qualification the map
  * has already given it.
  *
  * **A glyph rides in front of the word**, so that an entry is found by its shape
- * before it is read. **It says the subject, not the act** (`SUBJECT_ICON`) — a
+ * before it is read. **It reports the subject, not the act** (`SUBJECT_ICON`) — a
  * research is `book` here and on the public side — and the one thing in the
- * list that is not a destination takes the mark for creating everywhere else
+ * list that is not a destination takes the indicator for creating everywhere else
  * (`ACTION_ICON`).
  */
 export function adminTasks(locale: Locale): AdminTask[] {
@@ -257,7 +257,7 @@ export function adminTasks(locale: Locale): AdminTask[] {
  * every other address starts with it; the rest match what lies under them, so
  * that a draft three levels down still lights the area it belongs to.
  *
- * **Where one destination stands under another, only the deeper one lights.**
+ * **Where one destination is shown under another, only the deeper one lights.**
  * Taking a research from an approved application is its own screen at an
  * address below the research listing, and covering what lies underneath would
  * otherwise make the bar say the reader is in two places. The listing is not

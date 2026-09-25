@@ -39,9 +39,9 @@ import {
  * The site-content screens with their guard on, against the development
  * database.
  *
- * What is worth watching here is the address space. A slug lives in two tables
- * at once, a version-less one answers through a pointer that has to keep
- * answering, and the operations that move a body between the two are the only
+ * What is worth watching here is the address space. A slug is kept in two tables
+ * at once, a version-less one responds through a pointer that has to keep
+ * responding, and the operations that move a body between the two are the only
  * ones that can break either.
  */
 const db = getDb()
@@ -122,7 +122,7 @@ describe("認可", () => {
 })
 
 describe("slug", () => {
-  it("route が持つアドレスは取れない", async () => {
+  it("route で使われているアドレスは取れない", async () => {
     const token = await signIn(CURATOR, true)
     const result = await contentsAction(
       post(token, adminContentsPath(), { intent: "create-document", slug: "news/2026" }),
@@ -168,7 +168,7 @@ describe("slug", () => {
     expect(await slugOf(id)).toBe("faq")
   })
 
-  it("バージョンの slug は打ち直せない — 系列の下にある document の rename は撥ねる", async () => {
+  it("バージョンの slug は入力し直せない — 系列の下にある document の rename は拒否する", async () => {
     const token = await signIn(CURATOR, true)
     const revision = await makeDocument("x/version/1")
     await db.insert(s.documentSeries).values({ slug: "x", currentId: revision })
@@ -183,7 +183,7 @@ describe("slug", () => {
 })
 
 describe("本文と公開", () => {
-  it("**保存は本文そのものを書き換え、公開中ならその場で読者に届く**", async () => {
+  it("**保存は本文そのものを書き換え、公開中ならその場で読者に反映される**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("faq")
     await publishSide(id, "ja", "公開されている本文")
@@ -271,7 +271,7 @@ describe("本文と公開", () => {
     expect(only(await db.select().from(s.documentContent)).content.body).toBe("そのまま")
   })
 
-  it("行が既にあるのに revision を持たない保存も、同じく弾かれる", async () => {
+  it("行が既にあるのに revision の無い保存も、同じくエラーになる", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("faq")
     await publishSide(id, "ja")
@@ -380,7 +380,7 @@ describe("バージョン", () => {
     expect(again.status).toBe("not-a-revision")
   })
 
-  it("**バージョン番号は打った番号がそのまま入る**", async () => {
+  it("**バージョン番号は入力した番号がそのまま入る**", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "9" }), id)
@@ -396,7 +396,7 @@ describe("バージョン", () => {
     expect(slugs.sort()).toEqual(["x/version/10", "x/version/9"])
   })
 
-  it("既に使われているバージョン番号は弾かれる", async () => {
+  it("既に使われているバージョン番号はエラーになる", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "3" }), id)
@@ -410,7 +410,7 @@ describe("バージョン", () => {
     expect(await db.select().from(s.document)).toHaveLength(1)
   })
 
-  it("整数でないバージョン番号は弾かれる", async () => {
+  it("整数でないバージョン番号はエラーになる", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
 
@@ -510,7 +510,7 @@ describe("バージョン", () => {
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
     const series = only(await db.select().from(s.documentSeries))
-    // A second revision, so that the one taken out is not the one the address answers with.
+    // A second revision, so that the one taken out is not the one the address responds with.
     await thrown(() => seriesAction(
       post(token, adminSeriesPath(series.id), { intent: "add-version", number: "2" }),
       series.id,
@@ -671,7 +671,7 @@ describe("お知らせ", () => {
       .returning({ id: s.news.id })).id
 
     // 2026 年はうるう年ではない。欄が送るのと同じ形なので、日付として読めるかまで
-    // 見ていないと、翌月に繰り上がった値が黙って入る。
+    // 見ていないと、翌月に繰り上がった値がエラーにならずに入る。
     const result = await newsAction(post(token, adminNewsPath(id), {
       intent: "set-date", publishedAt: "2026-02-29T09:30",
     }), id)
@@ -784,7 +784,7 @@ describe("お知らせ", () => {
     expect(view.rows[0]?.states.ja.published).toBe(false)
   })
 
-  it("アドレスの条件で絞られ、軸の件数はその軸の条件だけ外して数える", async () => {
+  it("アドレスの条件で絞られ、絞り込みの項目の件数はその項目の条件だけ外して数える", async () => {
     const token = await signIn(CURATOR, true)
     const dated = async (publishedAt: string | null, published: boolean | null) => {
       const id = only(await db.insert(s.news).values({ publishedAt })
@@ -806,13 +806,13 @@ describe("お知らせ", () => {
     const view = await newsListPage(get(token, `${adminNewsListPath()}?ja=published`))
     expect(view.rows.map((row) => row.id)).toEqual([out])
     expect(view.total).toBe(1)
-    // 日本語の軸は自分の条件を外して数えるので、母集団は 3 件のまま。
+    // 日本語の項目は自分の条件を外して数えるので、母集団は 3 件のまま。
     expect(view.counts.ja).toEqual({ published: 1, scheduled: 0, unpublished: 2 })
-    // 公開日の軸は日本語の条件が効いた 1 件の中で数える。
+    // 公開日の項目は日本語の条件を適用した 1 件の中で数える。
     expect(view.counts.dating).toEqual({ dated: 1, undated: 0 })
   })
 
-  it("窓は公開日にも当たる", async () => {
+  it("キーワードは公開日にも一致する", async () => {
     const token = await signIn(CURATOR, true)
     await db.insert(s.news).values([
       { publishedAt: "2026-01-01 09:00:00" },
@@ -927,7 +927,7 @@ describe("アラート", () => {
     expect(only(await db.select().from(s.alert)).content.body.ja).toBe("お知らせ")
   })
 
-  it("アラートの本文も生 HTML を弾く", async () => {
+  it("アラートの本文も生 HTML を拒否する", async () => {
     const token = await signIn(CURATOR, true)
     await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
     const alert = only(await db.select().from(s.alert))
@@ -1028,7 +1028,7 @@ describe("画面", () => {
     expect(view?.current?.slug).toBe("x/version/1")
   })
 
-  it("**一覧は打った語で絞られ、件数もその語のもの**", async () => {
+  it("**一覧は入力した語で絞られ、件数もその語のもの**", async () => {
     const token = await signIn(CURATOR, true)
     await makeDocument("faq")
     await makeDocument("nbdc-policy")
@@ -1043,7 +1043,7 @@ describe("画面", () => {
     expect(view.pageCount).toBe(1)
   })
 
-  it("**言語の 2 軸は AND で効く**", async () => {
+  it("**言語の 2 つの絞り込みは AND で組み合わさる**", async () => {
     const token = await signIn(CURATOR, true)
     const both = await makeDocument("faq")
     await publishSide(both, "ja")
@@ -1057,7 +1057,7 @@ describe("画面", () => {
     expect(view.rows.map((row) => row.kind === "document" ? row.document.slug : "")).toEqual(["aim"])
   })
 
-  it("バージョンの軸は、バージョンのある記事だけを残す", async () => {
+  it("バージョンの絞り込みは、バージョンのある記事だけを残す", async () => {
     const token = await signIn(CURATOR, true)
     const id = await makeDocument("x")
     await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
@@ -1067,7 +1067,7 @@ describe("画面", () => {
     expect(view.rows.map((row) => row.kind === "series" ? row.series.slug : "")).toEqual(["x"])
   })
 
-  it("**軸の件数は、その軸の条件だけ外した集合で数える**", async () => {
+  it("**絞り込みの項目の件数は、その項目の条件だけ外した集合で数える**", async () => {
     const token = await signIn(CURATOR, true)
     const both = await makeDocument("faq")
     await publishSide(both, "ja")
@@ -1079,14 +1079,14 @@ describe("画面", () => {
     const view = await contentsPage(get(token, `${adminContentsPath()}?ja=published`))
 
     expect(view.rows).toHaveLength(2)
-    // 自分の軸は外して数えるので、日本語を絞っても両方の値が件数を持つ。
+    // 自分の項目の条件は外して数えるので、日本語を絞っても両方の値に件数がある。
     expect(view.counts.ja).toEqual({ published: 2, unpublished: 1 })
-    // 他の軸は日本語の条件が効いた 2 件の中で数える。
+    // 他の項目は日本語の条件を適用した 2 件の中で数える。
     expect(view.counts.en).toEqual({ published: 1, unpublished: 1 })
     expect(view.counts.versioning).toEqual({ versioned: 0, plain: 2 })
   })
 
-  it("窓で絞った語も、軸の件数に効く", async () => {
+  it("キーワードで絞った語も、絞り込みの項目の件数に反映される", async () => {
     const token = await signIn(CURATOR, true)
     const faq = await makeDocument("faq")
     await publishSide(faq, "ja")
@@ -1130,7 +1130,7 @@ describe("隣に描くプレビュー", () => {
     })
   }
 
-  it("打った本文を、公開ページと同じ関数で描いて返す", async () => {
+  it("入力した本文を、公開ページと同じ関数で描いて返す", async () => {
     const token = await signIn(CURATOR, true)
     const body = "# 見出し\n\n本文 **強調** と <b>タグ</b>"
 
@@ -1214,7 +1214,7 @@ describe("お知らせの公開日時と公開", () => {
 
 /**
  * `updated_at` は「最後に変わった時刻」を表す列なので、書き換えるたびに動く。
- * 作った時刻のまま残ると、いつか「最終更新」に使った画面が黙って誤る。
+ * 作った時刻のまま残ると、いつか「最終更新」に使った画面が警告なしに誤る。
  */
 describe("最終更新の時刻", () => {
   const LONG_AGO = new Date("2020-01-01T00:00:00Z")

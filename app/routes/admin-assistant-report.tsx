@@ -1,4 +1,4 @@
-import { Fold, Stack } from "~/components/base"
+import { Collapsible, Stack } from "~/components/base"
 import { KeyValue, Pairs, Section } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 
@@ -49,7 +49,7 @@ export function AssistantReport({
       && report.researcher_info.email !== ""
       && report.researcher_info.email === report.submitter_info?.email
   return (
-    <Fold summary={words.assessment} open>
+    <Collapsible summary={words.assessment} open>
       <Stack>
         {report.application_id !== undefined
           && report.application_id !== null && (
@@ -258,6 +258,6 @@ export function AssistantReport({
           words={words}
         />
       </Stack>
-    </Fold>
+    </Collapsible>
   )
 }

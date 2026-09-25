@@ -5,7 +5,7 @@ import { useFetchers, useLocation, useNavigation } from "react-router"
  * How long a navigation has to have been under way before the page admits to it.
  *
  * **Below this the reader sees nothing change**, which covers most of what the
- * listings do: the loader answers in 12–62ms, and a mark put up and taken away
+ * listings do: the loader responds in 12–62ms, and an indicator put up and taken away
  * inside a fifth of a second reads as a flicker rather than as an answer.
  */
 export const SHOW_BUSY_AFTER = 200
@@ -15,7 +15,7 @@ export const SHOW_BUSY_AFTER = 200
  *
  * **Refining is not going anywhere.** Choosing a facet value, sorting, or paging
  * lands on the same path with a different query, and what changes is the middle
- * of the page — so the page stays where it is and says that the part which is
+ * of the page — so the page stays where it is and means that the part which is
  * about to change is not the answer yet. Following a row to a research page is a
  * different path and reads as leaving, so nothing there is dimmed: the page the
  * reader is leaving has no reason to look unwell on the way out.
@@ -48,11 +48,11 @@ export function useBusyHere(): boolean {
 }
 
 /**
- * Whether a deed is on its way to an action — by navigation or by a fetcher.
+ * Whether a submission is on its way to a route action — by navigation or by a fetcher.
  *
  * **Reading is not sending.** A listing narrowed by its pane, or the pane
- * beside a form asking for the page, is a load: nothing the reader pressed is
- * waiting on it. What is held is the deed in flight, and it stays in flight
+ * beside a form requesting the page, is a load: nothing the reader pressed is
+ * waiting on it. What is held is the action in flight, and it stays in flight
  * through the read that follows it, until the screen shows what it did.
  */
 export function useSubmitting(): boolean {
@@ -65,11 +65,11 @@ export function useSubmitting(): boolean {
 }
 
 /**
- * Whether the deed a control started is still in flight.
+ * Whether the action a control started is still in flight.
  *
- * **Only the control that was pressed says it is waiting.** Every submit on
+ * **Only the control that was pressed reports it is waiting.** Every submit on
  * the page could read the same navigation, and every one would then dim
- * together; what the reader pressed is what has to answer, and the press is
+ * together; what the reader pressed is what has to respond, and the press is
  * the one thing each control knows about itself.
  *
  * **The press is remembered until a sending has ended**, not until the next

@@ -6,7 +6,7 @@
  * than by its position**, because reordering must not move what points at it.
  * The same spelling is what a comment anchors by.
  *
- * Two things carry an identity and they spell it differently — content elements
+ * Two things have an identity and they spell it differently — content elements
  * hold an `id`, a value slot holds the `keyId` of the catalog key it is under —
  * so the walk accepts either. Nothing else in a form is an array of identified
  * things, and a plain array of strings is a value rather than a place to

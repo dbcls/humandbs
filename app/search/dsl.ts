@@ -1,8 +1,8 @@
 /**
  * The query language: the written form on one side, the tree on the other.
  *
- * The tree is what everything in the search speaks. The keyword box builds one,
- * the address carries one written out, and the compiler reads one — so a facet
+ * The tree is what everything in the search uses. The keyword box builds one,
+ * the address has one written out, and the compiler reads one — so a facet
  * selection and a query written by hand meet as the same kind of value instead
  * of as two paths that have to agree.
  *
@@ -222,7 +222,7 @@ export function isDecimalNumber(value: string): boolean {
 
 /**
  * A wildcard has to keep at least two literal characters in front of it. A
- * leading one asks the index to walk every term there is, and the shortest
+ * leading one requests the index to walk every term there is, and the shortest
  * prefixes come to the same thing.
  */
 function checkWildcard(value: string, column: number): void {
@@ -234,7 +234,7 @@ function checkWildcard(value: string, column: number): void {
  * One end of a range, checked against what the field's type admits.
  *
  * **Either end may be open, dates included.** "Published since 2020" is a
- * question with no closing day, and asking the reader to write today's date
+ * question with no closing day, and requesting the reader to write today's date
  * would give the address a meaning that changes overnight.
  */
 function checkBound(type: "date" | "number", value: string, column: number): void {
@@ -413,7 +413,7 @@ class Parser {
  *
  * The fields have to be handed in because the catalog decides most of them
  * ([fields.ts](fields.ts)). **Values are not checked against the vocabulary**:
- * a code that names no term is a query that matches nothing, which is the
+ * a code that identifies no term is a query that matches nothing, which is the
  * honest answer and keeps this module free of the database.
  */
 export function parseQuery(input: string, fields: QueryFields): ParseResult {

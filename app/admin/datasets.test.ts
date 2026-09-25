@@ -20,7 +20,7 @@ describe("下書きが公開するデータセット", () => {
     expect(ids(draftDatasets(rows, "draft-1", ["c"]))).toEqual(["c", "a", "b"])
   })
 
-  it("順が指定していても、研究が持たないものは落ちる", () => {
+  it("順に指定されていても、研究に無いものは除かれる", () => {
     const rows = [published("a")]
 
     expect(ids(draftDatasets(rows, "draft-1", ["gone", "a"]))).toEqual(["a"])
@@ -32,7 +32,7 @@ describe("下書きが公開するデータセット", () => {
     expect(ids(draftDatasets(rows, "draft-1", []))).toEqual(["a", "b"])
   })
 
-  it("この下書きが作ったものは並び、他の下書きが作ったものは出ない", () => {
+  it("この下書きで作成したものは並び、他の下書きで作成したものは表示されない", () => {
     const rows = [published("a"), madeBy("mine", "draft-1"), madeBy("theirs", "draft-2")]
 
     expect(ids(draftDatasets(rows, "draft-1", []))).toEqual(["a", "mine"])

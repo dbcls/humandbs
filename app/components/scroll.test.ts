@@ -5,11 +5,11 @@ import { paneScrollTop } from "./scroll"
 
 /**
  * The one promise of the number: after the pane scrolls to it, the target
- * stands where it was asked to. The pane's own top and what it had already
+ * is shown where it was asked to. The pane's own top and what it had already
  * scrolled must fall out of the answer — the target is measured on screen,
  * against a pane that is itself somewhere on screen and partly scrolled.
  */
-const box = fc.record({
+const rect = fc.record({
   top: fc.double({ min: -5000, max: 5000, noNaN: true }),
   height: fc.double({ min: 0, max: 3000, noNaN: true }),
 })
@@ -26,7 +26,7 @@ function topAfter(p: { top: number, scrollTop: number }, t: { top: number }, to:
 
 describe("where the pane has to scroll to", () => {
   it("puts the target's top at the pane's top for \"start\", unless that is above the pane's own start", () => {
-    fc.assert(fc.property(pane, box, (p, t) => {
+    fc.assert(fc.property(pane, rect, (p, t) => {
       const to = paneScrollTop(p, t, "start")
       expect(to).toBeGreaterThanOrEqual(0)
       if (to > 0) expect(topAfter(p, t, to)).toBeCloseTo(p.top, 6)
@@ -34,14 +34,14 @@ describe("where the pane has to scroll to", () => {
   })
 
   it("puts the target's middle at the pane's middle for \"center\", unless that is above the pane's own start", () => {
-    fc.assert(fc.property(pane, box, (p, t) => {
+    fc.assert(fc.property(pane, rect, (p, t) => {
       const to = paneScrollTop(p, t, "center")
       expect(to).toBeGreaterThanOrEqual(0)
       if (to > 0) expect(topAfter(p, t, to) + t.height / 2).toBeCloseTo(p.top + p.height / 2, 6)
     }))
   })
 
-  it("asks for nothing when the target already stands where it was asked to", () => {
+  it("requests nothing when the target already is shown where it was asked to", () => {
     fc.assert(fc.property(pane, fc.double({ min: 0, max: 3000, noNaN: true }), (p, height) => {
       const atStart = { top: p.top, height }
       expect(paneScrollTop(p, atStart, "start")).toBeCloseTo(p.scrollTop, 6)

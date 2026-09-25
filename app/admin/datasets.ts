@@ -2,7 +2,7 @@
  * Which datasets a draft publishes, and in what order.
  *
  * **A dataset belongs to the research, not to a version**: a draft does not
- * choose which of them the next version carries. It carries every dataset the
+ * choose which of them the next version has. It has every dataset the
  * research has, and all the draft decides is the order.
  *
  * **What another draft made is not among them.** It has never been out, so it
@@ -18,7 +18,7 @@ export interface DraftDataset {
  * The research's datasets this draft publishes, in the draft's order.
  *
  * **The order names what it knows and no more.** One the draft has not named
- * yet stands after the ones it has, in the order it arrived; one it names that
+ * yet is shown after the ones it has, in the order it arrived; one it identifies that
  * the research no longer has falls out. Neither is a fault to report: the order
  * is written as rows are moved, and datasets come and go by their own
  * operations.
@@ -32,7 +32,7 @@ export function draftDatasets<T extends DraftDataset>(
   const last = order.length
   return rows
     .filter((row) => row.originDraftId === null || row.originDraftId === draftId)
-    // The arrival index is carried rather than left to the sort: what the
+    // The arrival index is kept rather than left to the sort: what the
     // caller handed over is the tie-break for everything the order does not
     // name, and that has to hold whatever the sort does with equal keys.
     .map((row, arrived) => ({ row, at: named.get(row.id) ?? last, arrived }))

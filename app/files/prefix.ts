@@ -1,8 +1,8 @@
 /**
- * The box: where a research's files live, and how the two buckets are read as
+ * The prefix: where a research's files live, and how the two buckets are read as
  * one list.
  *
- * **A box is a prefix, and the prefix differs between the buckets.** The private
+ * **The prefix differs between the buckets.** The private
  * one is keyed by the research identity because files start arriving before a
  * hum number has been issued; the public one is keyed by the hum label so that
  * `/files/hum0009/hum0009.v1.CpG.v1.zip` resolves without anything having to be
@@ -12,8 +12,8 @@
  * administrator see one list rather than two, and what makes the correspondence
  * between the buckets solvable from `(researchId, humLabel)` alone.
  *
- * Nothing here reaches the store. What a bucket holds is the store's to say;
- * this module only says what the answer means.
+ * Nothing here reaches the store. What a bucket holds is the store's to report;
+ * this module only reports what the answer means.
  */
 
 export const PUBLIC_BUCKET = "files"
@@ -24,16 +24,16 @@ export const PRIVATE_BUCKET = "private"
 
 /**
  * Files a reader gets one page of — the public download list and a dataset's
- * files. Most boxes hold fewer than this in total, and a list that fits on one
+ * files. Most prefixes hold fewer than this in total, and a list that fits on one
  * page draws neither a count nor page steps (`components/files.tsx` の
  * `Downloads`).
  */
-export const BOX_PAGE_SIZE = 20
+export const FILES_PAGE_SIZE = 20
 
-/** Above this a single PUT is a bad bet, and the upload is cut into parts. */
+/** Above this a single PUT is a bad bet, and the upload is split into parts. */
 export const MULTIPART_THRESHOLD = 64 * 1024 * 1024
 
-/** What each part of a multipart upload carries. Also the store's own minimum. */
+/** What each part of a multipart upload has. Also the store's own minimum. */
 export const MULTIPART_PART_SIZE = 64 * 1024 * 1024
 
 /** How many parts are in flight at once. Measured throughput flattens here. */
@@ -49,14 +49,14 @@ export interface StoredNode {
 
 export type SwitchAction = "publish" | "unpublish"
 
-/** One line of the box as an administrator sees it: both buckets, merged. */
-export interface BoxEntry {
+/** One line of the prefix as an administrator sees it: both buckets, merged. */
+export interface ListedFile {
   name: string
   size: number
   updatedAt: string
   /**
    * Whether a reader can fetch it. A file caught in both buckets counts as
-   * public: the public copy is the one that answers, and the invariant that
+   * public: the public copy is the one that responds, and the invariant that
    * resolves the situation keeps that copy.
    */
   isPublic: boolean
@@ -85,29 +85,29 @@ export function publicPrefix(humLabel: string): string {
 }
 
 /**
- * The box the article assets live in — the images and PDFs a document body
+ * The prefix the article assets are kept in — the images and PDFs a document body
  * links to. It belongs to no research, so it has no private counterpart: it is
  * **public bucket only**, and what is put there is public from that moment.
  */
-export const COMMON_BOX = "common"
+export const COMMON_PREFIX_NAME = "common"
 
 export function commonPrefix(): string {
-  return `${COMMON_BOX}/`
+  return `${COMMON_PREFIX_NAME}/`
 }
 
 /**
- * A name a file may answer under, once it is in a box.
+ * A name a file may respond under, once it is in a prefix.
  *
- * **It may carry `/`.** The `common/` box keeps the article assets under the
+ * **It may have `/`.** The `common/` prefix keeps the article assets under the
  * shape they already had (`/files/common/dac/DAC_summary-1.pdf`), so a slug
  * there is a path rather than a word — which is also what lets one be moved
- * from one folder to another without leaving the box.
+ * from one folder to another without leaving the prefix.
  *
  * What it may not be is anything that would name a different object than it
  * reads as: an empty segment, a `.` or a `..` walking out of the prefix, or a
  * control character, which survives the signature and comes back out in a
  * header. Code units are the right unit for that last one — a control
- * character is one of them, and splitting the name into graphemes would say
+ * character is one of them, and splitting the name into graphemes would report
  * nothing more.
  */
 export function isFileSlug(slug: string): boolean {
@@ -123,10 +123,10 @@ export function isFileSlug(slug: string): boolean {
 /**
  * A name the screen is allowed to bring in.
  *
- * **An upload names one file and nothing else**, so unlike a slug it carries no
- * separator: a research's box is flat, and what arrives by drop is a file
+ * **An upload names one file and nothing else**, so unlike a slug it has no
+ * separator: a research's prefix is flat, and what arrives by drop is a file
  * somebody picked rather than a place they chose for it. Putting one under a
- * folder in the `common/` box is done afterwards, by changing its slug.
+ * folder in the `common/` prefix is done afterwards, by changing its slug.
  */
 export function isUploadableName(name: string): boolean {
   return !name.includes("/") && isFileSlug(name)
@@ -139,13 +139,13 @@ export function isUploadableName(name: string): boolean {
  * so it appears once. Its size comes from the public side, which is the copy a
  * reader would get.
  */
-export function composeBox(
+export function composeListing(
   publicNodes: readonly StoredNode[],
   privateNodes: readonly StoredNode[],
   pending: readonly PendingSwitch[],
-): BoxEntry[] {
+): ListedFile[] {
   const queued = new Map(pending.map((row) => [row.fileName, row]))
-  const entries = new Map<string, BoxEntry>()
+  const entries = new Map<string, ListedFile>()
 
   for (const node of privateNodes) {
     entries.set(node.name, { ...node, isPublic: false, pending: null })
@@ -166,33 +166,33 @@ export function composeBox(
 }
 
 /**
- * The orderings a box can be read in.
+ * The orderings a prefix can be read in.
  *
- * **The slug is the first of them** because it is the address, and a box is
+ * **The slug is the first of them** because it is the address, and a prefix is
  * read by looking for one — the size and the date are for finding what is big
  * or what moved, which is a second question rather than the first.
  */
-export const BOX_SORT_KEYS = ["slug", "size", "updated"] as const
+export const FILE_SORT_KEYS = ["slug", "size", "updated"] as const
 
-export type BoxSortKey = typeof BOX_SORT_KEYS[number]
+export type FileSortKey = typeof FILE_SORT_KEYS[number]
 
-export const BOX_SORT: BoxSortKey = BOX_SORT_KEYS[0]
+export const FILE_SORT: FileSortKey = FILE_SORT_KEYS[0]
 
-export function isBoxSortKey(value: string | null): value is BoxSortKey {
-  return value !== null && (BOX_SORT_KEYS as readonly string[]).includes(value)
+export function isFileSortKey(value: string | null): value is FileSortKey {
+  return value !== null && (FILE_SORT_KEYS as readonly string[]).includes(value)
 }
 
 /**
- * The box in the order asked for.
+ * The prefix in the order asked for.
  *
  * **The slug breaks every tie**, so the ordering is total: two files of the
  * same size or written in the same second would otherwise be free to swap, and
  * a row that swaps between two requests can cross a page boundary and be missed
  * or read twice.
  */
-export function sortedBox<T extends StoredNode>(
+export function sortedFiles<T extends StoredNode>(
   rows: readonly T[],
-  key: BoxSortKey,
+  key: FileSortKey,
   order: "asc" | "desc",
 ): T[] {
   const by = (a: T, b: T): number => {
@@ -205,10 +205,10 @@ export function sortedBox<T extends StoredNode>(
 }
 
 /** The two sides of the store a research's file can be on, as the listing's axis names them. */
-export const BOX_STATES = ["public", "private"] as const
-export type BoxState = (typeof BOX_STATES)[number]
+export const FILE_STATES = ["public", "private"] as const
+export type FileState = (typeof FILE_STATES)[number]
 
-export interface BoxFilter {
+export interface FileFilter {
   /** Words all of which have to appear in the slug. Empty is every file. */
   keyword: string
   /** The first and the last JST day to keep, each `null` when that end is open. */
@@ -220,7 +220,7 @@ export interface BoxFilter {
  * The files a filter leaves, in the order they were given.
  *
  * **The words are looked for in the slug and nowhere else** — it is the one
- * thing a row says about a file that a curator can have typed — and every word
+ * thing a row reports about a file that a curator can have typed — and every word
  * separated by whitespace has to appear, as in the other listings' boxes
  * (`app/admin/listing.ts`). Case does not count: a slug is written in lower
  * case and what is typed need not be.
@@ -231,7 +231,7 @@ export interface BoxFilter {
  * inclusive and either may be open; a lower bound above the upper leaves
  * nothing, which is what was asked.
  */
-export function narrowedBox<T extends StoredNode>(rows: readonly T[], filter: BoxFilter): T[] {
+export function narrowedFiles<T extends StoredNode>(rows: readonly T[], filter: FileFilter): T[] {
   const words = filter.keyword.toLowerCase().split(/\s+/).filter((word) => word !== "")
   return rows.filter((row) => {
     if (words.length > 0) {
@@ -246,22 +246,22 @@ export function narrowedBox<T extends StoredNode>(rows: readonly T[], filter: Bo
   })
 }
 
-export interface BoxPage<T> {
+export interface FilePage<T> {
   rows: T[]
   total: number
   page: number
   pageCount: number
-  /** 1-based positions of the shown rows within the whole box. */
+  /** 1-based positions of the shown rows within the whole prefix. */
   rangeFrom: number
   rangeTo: number
 }
 
 /**
  * One page of a listing. **The cut happens on the server** because the pages a
- * reader sees have to work without JavaScript, and because the largest box
+ * reader sees have to work without JavaScript, and because the largest prefix
  * would otherwise be a megabyte of HTML that nobody reads to the end of.
  */
-export function pageOfBox<T>(rows: readonly T[], page: number, size = BOX_PAGE_SIZE): BoxPage<T> {
+export function pageOfFiles<T>(rows: readonly T[], page: number, size = FILES_PAGE_SIZE): FilePage<T> {
   const pageCount = Math.max(1, Math.ceil(rows.length / size))
   const wanted = Math.min(Math.max(page, 1), pageCount)
   const from = (wanted - 1) * size
@@ -289,8 +289,8 @@ export function formatSize(bytes: number): string {
     value /= 1000
     unit += 1
   }
-  // One decimal until the number is three digits: 78.9 MB says something 79 MB
-  // does not, while 157.0 GB says nothing 157 GB does not.
+  // One decimal until the number is three digits: 78.9 MB reports something 79 MB
+  // does not, while 157.0 GB reports nothing 157 GB does not.
   const shown = unit === 0 ? String(Math.round(value)) : value.toFixed(value < 100 ? 1 : 0)
   return `${shown} ${UNITS[unit]}`
 }
@@ -302,8 +302,8 @@ export function formatSize(bytes: number): string {
  */
 export function selectedFrom(
   selection: readonly string[],
-  listing: readonly BoxEntry[],
-): BoxEntry[] {
+  listing: readonly ListedFile[],
+): ListedFile[] {
   const byName = new Map(listing.map((entry) => [entry.name, entry]))
   return selection.flatMap((name) => {
     const entry = byName.get(name)

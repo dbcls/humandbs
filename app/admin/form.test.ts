@@ -27,7 +27,7 @@ describe("what the editor is handed", () => {
       .toBe("see [the policy](/nbdc-policy)")
   })
 
-  it("hands a slot that holds no value an empty box to type into", () => {
+  it("hands a slot that holds no value an empty field to type into", () => {
     const content: ResearchContent = {
       ...emptyResearchContent(),
       title: { ja: { state: "unknown" }, en: { state: "not-applicable" } },
@@ -40,7 +40,7 @@ describe("what the editor is handed", () => {
 })
 
 describe("what the editor sends back", () => {
-  it("drops the half-typed text of a slot whose state says there is no value", () => {
+  it("drops the half-typed text of a slot whose state reports there is no value", () => {
     const input = researchContentInput(emptyResearchContent())
     input.title.ja = { state: "unknown", text: "half written" }
     input.title.en = { state: "not-applicable", text: "also half written" }
@@ -96,7 +96,7 @@ describe("what the editor sends back", () => {
 
   /**
    * A name somebody is still asking about is not a card left alone. Dropping it
-   * would take the question off the publish gate's list along with it.
+   * would take the question off the publish check's list along with it.
    */
   it("keeps a listing provider whose name is a question rather than a blank", () => {
     const input = researchContentInput(emptyResearchContent())

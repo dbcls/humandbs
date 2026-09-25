@@ -3,14 +3,14 @@ import { Link } from "react-router"
 import { Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import {
-  BandBox,
+  HeaderBarSection,
   Card,
   Crumbs,
   Empty,
-  IdMark,
+  IdWithIcon,
   KeyValue,
   Page,
-  PageHead,
+  PageHeader,
   UntranslatedNotice,
   Value,
 } from "~/components/page"
@@ -60,13 +60,13 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
         current={t.releaseInfo}
       />
       {/*
-        The band names the page rather than the research. A label of the bare
-        identifier is the one the version page carries as well, so the two open
-        the same way and only the trail says which is which — and the badge that
-        made up the difference said, on the right of the band, a word the trail
+        The header bar names the page rather than the research. A label of the bare
+        identifier is the one the version page has as well, so the two open
+        the same way and only the trail shows which is which — and the badge that
+        made up the difference said, on the right of the header bar, a word the trail
         had already said on the left.
       */}
-      <PageHead
+      <PageHeader
         label={(
           <>
             <Icon name="book" aria-hidden="true" />
@@ -79,7 +79,7 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
           <UntranslatedNotice show={view.untranslated} locale={locale} />
           <Stack gap="normal" as="ul">
             {view.versions.map((version) => (
-              <BandBox
+              <HeaderBarSection
                 key={version.number}
                 as="li"
                 level={2}
@@ -102,7 +102,7 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
                           <Stack gap="tight" as="ul">
                             {version.addedDatasetLabels.map((label) => (
                               <li key={label} className="whitespace-nowrap text-sm">
-                                <IdMark kind="dataset" to={href(locale, datasetPath(label))}>{label}</IdMark>
+                                <IdWithIcon kind="dataset" to={href(locale, datasetPath(label))}>{label}</IdWithIcon>
                               </li>
                             ))}
                           </Stack>
@@ -112,7 +112,7 @@ export default function ResearchVersions({ loaderData }: Route.ComponentProps) {
                     <Value field={version.releaseNote} locale={locale} />
                   </KeyValue>
                 </dl>
-              </BandBox>
+              </HeaderBarSection>
             ))}
           </Stack>
         </Stack>

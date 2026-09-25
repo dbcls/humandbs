@@ -6,9 +6,9 @@ import { ACTION_ICON, ICON_NAMES, SUBJECT_ICON } from "./icons"
 /**
  * **A glyph means one thing.** There are three
  * tables — what a control does (`ACTION_ICON`), what a thing is
- * (`SUBJECT_ICON`) and what state it is in (`FLAG`) — and a glyph standing in
+ * (`SUBJECT_ICON`) and what state it is in (`FLAG`) — and a glyph shown in
  * two of them is read in both senses at once. The only overlaps allowed are
- * the pairs below: a deed and the state it leaves, or a deed and the thing it
+ * the pairs below: an action and the state it leaves, or an action and the thing it
  * acts on, so that seeing the glyph in either place points at the same thing.
  */
 const PAIRED: readonly (readonly [string, string])[] = [
@@ -33,7 +33,7 @@ function entries(): { table: string, key: string, icon: string }[] {
   ]
 }
 
-/** Every glyph that stands in more than one table, with the entries it stands for. */
+/** Every glyph that is shown in more than one table, with the entries it stands for. */
 function crossings(rows: readonly { table: string, key: string, icon: string }[]) {
   const byIcon = new Map<string, { table: string, key: string }[]>()
   for (const row of rows) byIcon.set(row.icon, [...byIcon.get(row.icon) ?? [], row])
@@ -56,14 +56,14 @@ function unpaired(rows: readonly { table: string, key: string, icon: string }[])
 }
 
 describe("the three glyph tables", () => {
-  it("share a glyph between two tables only where the pair is a deed and what it leaves or acts on", () => {
+  it("share a glyph between two tables only where the pair is an action and what it leaves or acts on", () => {
     expect(unpaired(entries())).toEqual([])
   })
 
   it("would catch a glyph borrowed across tables — the rule is not empty", () => {
     // The tables do cross, so the check has pairs to read …
     expect(crossings(entries()).length).toBeGreaterThanOrEqual(PAIRED.length - 2)
-    // … and a state wearing a deed's glyph that is not its own is refused.
+    // … and a state shown with an action's glyph that is not its own is refused.
     expect(unpaired([...entries(), { table: "state", key: "borrowed", icon: ACTION_ICON.delete }]))
       .toEqual([`${ACTION_ICON.delete}: action:delete state:borrowed`])
   })
@@ -76,11 +76,11 @@ describe("the three glyph tables", () => {
     }
   })
 
-  it("gives no deed and no thing a glyph the icon set does not have", () => {
+  it("gives no action and no thing a glyph the icon set does not have", () => {
     for (const row of entries()) expect(ICON_NAMES).toContain(row.icon)
   })
 
-  it("gives each thing its own glyph, so a way in is found by its shape", () => {
+  it("gives each thing its own glyph, so a trigger is found by its shape", () => {
     const icons = Object.values(SUBJECT_ICON)
     expect(new Set(icons).size).toBe(icons.length)
   })

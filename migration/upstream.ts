@@ -2,17 +2,17 @@
  * The upstream correspondence between hum labels and JGA accessions.
  *
  * This is not part of the v1 dump: it is a cache of what the JGA application
- * system says, and in production a batch will refresh it. The development data
+ * system reports, and in production a batch will refresh it. The development data
  * seeds it from the two tab-separated files the current nightly job already
  * produces, so that the endpoint that supplies the correspondence to DDBJ
- * Search, and the check the publish gate runs against it, both have the real
+ * Search, and the comparison the publish check runs against it, both have the real
  * thing to work against rather than something invented.
  *
- * A third file carries the edge upstream draws between a dataset and the study
- * it sits under, which the correspondence above cannot be folded back into (a
+ * A third file has the edge upstream draws between a dataset and the study
+ * it sits under, which the correspondence above cannot be merged back into (a
  * hum holding several studies is the ordinary case).
  *
- * Every file carries no header and two columns. A line that does not look like
+ * Every file has no header and two columns. A line that does not look like
  * that is skipped rather than fatal — the portal is a reader of this data, not
  * its owner, and refusing to load because one line upstream is malformed would
  * put the portal's own development at the mercy of a system it does not control.
@@ -96,7 +96,7 @@ export function humAccessionRows(
     return true
   })
   // The edge file is drawn over everything registered rather than everything
-  // published, so an edge into a study these files do not carry is dropped: the
+  // published, so an edge into a study these files do not have is dropped: the
   // cache holds only what is public, and a page may not name what nobody can open.
   const published = new Set(kept.filter((row) => row.kind === "jga-study").map((row) => row.accession))
   const studies = new Map(edges)

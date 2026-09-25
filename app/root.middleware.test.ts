@@ -21,7 +21,7 @@ describe("the root middleware", () => {
     return { status: answer.status, reached }
   }
 
-  it("answers a cross-site write itself, without reaching the route", async () => {
+  it("responds to a cross-site write itself, without reaching the route", async () => {
     const answer = await run(new Request("https://humandbs.dbcls.jp/admin/research/R/draft/D/comments", {
       method: "POST",
       headers: { origin: "https://evil.dbcls.jp" },

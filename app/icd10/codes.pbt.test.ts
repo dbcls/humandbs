@@ -127,7 +127,7 @@ describe("the codes an annotation names", () => {
 })
 
 describe("resolving against a dictionary", () => {
-  it("answers with something the dictionary holds and the code begins with", () => {
+  it("responds with something the dictionary holds and the code begins with", () => {
     fc.assert(fc.property(code, fc.array(code), (written, dictionary) => {
       const known = (one: string) => dictionary.includes(one)
       const held = icd10Resolve(written, known)
@@ -138,7 +138,7 @@ describe("resolving against a dictionary", () => {
     }))
   })
 
-  it("answers with the longest held prefix, never a shorter one", () => {
+  it("responds with the longest held prefix, never a shorter one", () => {
     fc.assert(fc.property(code, fc.array(code), (written, dictionary) => {
       const known = (one: string) => dictionary.includes(one)
       const held = icd10Resolve(written, known)

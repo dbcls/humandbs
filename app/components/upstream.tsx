@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useFetcher } from "react-router"
 
-import type { BranchStanding } from "~/admin/listing"
+import type { BranchStatus } from "~/admin/listing"
 import type { DroppedValue } from "~/admin/templates"
 import type { DatasetChoiceView, SeededFieldView, UpstreamBranchView, UpstreamChoiceView } from "~/admin/templates.server"
 import { adminUpstreamBranchPath } from "~/admin/urls"
@@ -12,10 +12,10 @@ import type { loader as branchLoader } from "~/routes/admin-upstream-branch"
 
 import { Dialog, Excerpt, Note, Stack } from "./base"
 import { Flag, type FlagKind, Stated } from "./flags"
-import { LanguageMark } from "./fields"
+import { LanguageLabel } from "./fields"
 import { Submit } from "./form"
 import { Icon } from "./icons"
-import { Code, DatasetIds, Empty, Fact, Facts, IdMark, KeyValue, Pairs, Section, Td } from "./page"
+import { Code, DatasetIds, Empty, Fact, Facts, IdWithIcon, KeyValue, Pairs, Section, Td } from "./page"
 import { researchFieldLabel, SEEDED_PATH } from "./research-fields"
 
 /**
@@ -32,35 +32,35 @@ export function UpstreamNotConnected({ locale }: { locale: Locale }) {
 }
 
 /**
- * Where a branch stands with the portal, drawn as a glyph and a word.
+ * A branch's status in the portal, drawn as a glyph and a word.
  *
  * Whether the hum's research is already here is the question every row of the
- * branch listing is opened to answer, and a label that is or is not a link says
+ * branch listing is opened to respond to, and a label that is or is not a link shows
  * it only to a reader who tries to press it. **The pair is the one the pane
- * narrows by** (`Stated`): the same three glyphs stand beside the ticks, so the
+ * narrows by** (`Stated`): the same three glyphs are shown beside the ticks, so the
  * shape a curator narrows by is the shape they then read down the rows. **The
  * glyphs differ from one another** — the glyph is what tells the states apart
- * at a glance, and the word says which it is.
+ * at a glance, and the word shows which it is.
  */
-export const STANDING_MARK: Record<BranchStanding, FlagKind> = {
+export const BRANCH_STATUS_FLAG: Record<BranchStatus, FlagKind> = {
   held: "resolved",
   absent: "absent",
   unlabelled: "unknown",
 }
 
-export function BranchStandingMark({ standing, locale }: {
-  standing: BranchStanding
+export function BranchStatusBadge({ branchStatus, locale }: {
+  branchStatus: BranchStatus
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.templates
-  return <Stated kind={STANDING_MARK[standing]}>{t.standings[standing]}</Stated>
+  return <Stated kind={BRANCH_STATUS_FLAG[branchStatus]}>{t.branchStatuses[branchStatus]}</Stated>
 }
 
 /**
  * What one press would create.
  *
  * Every dataset found is made, and one a research already holds is left out:
- * the ledger is unique across every label, so pinning it again would refuse the
+ * the `label_pin` table is unique across every label, so pinning it again would refuse the
  * whole seeding rather than that one row.
  *
  * **Without a word for the button it is a reading, not a form.**
@@ -89,8 +89,8 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
 
       {/* **Nothing is ticked.** What the accession names is made, less what a
           research already holds, which the list says beside it; the form
-          carries the rest as it stands (`BranchDatasets`). **What was found
-          and the press that makes it stand on one line** — the press is the
+          passes the rest on unchanged (`BranchDatasets`). **What was found
+          and the press that makes it fit on one line** — the press is the
           answer to that one row, not a step of its own under it. */}
       <div className="flex flex-wrap items-center gap-3">
         <BranchDatasets locale={locale} datasets={choice.datasets} sayHeld={submit !== null} bare />
@@ -99,9 +99,9 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
             {free.map((entry) => (
               <input key={entry.accession} type="hidden" name="accession" value={entry.accession} />
             ))}
-            {/* **The mark says what the press does, and this one makes
+            {/* **The indicator shows what the press does, and this one makes
                 something.** */}
-            {/* **Row height**: it is pressed for the one row it stands in,
+            {/* **Row height**: it is pressed for the one row it is shown in,
                 beside that row's words, and at full height it would stand
                 over the row it belongs to (`BUTTON_SIZE` の `row`). */}
             <Submit
@@ -127,7 +127,7 @@ export function UpstreamChoice({ locale, choice, submit = null }: {
 }
 
 /**
- * What upstream stated that has no choice to stand on, said in one sentence
+ * What upstream stated that matches no choice, said in one sentence
  * before it is made. **Nothing to do here and nowhere to go**: the field is
  * made unsettled and the value is left on it as a comment, so it is settled in
  * the dataset's own form, where the choices are.
@@ -137,10 +137,10 @@ export function DroppedNote({ locale, dropped }: { locale: Locale, dropped: read
   if (dropped.length === 0) return null
   return (
     // **One box, and its first line names what it lists.** A sentence over a
-    // list on the same ground reads as a remark beside it rather than as the
+    // list on the same background reads as a remark beside it rather than as the
     // list's caption; boxed, the name, the rows and what becomes of them are
-    // one thing, and standing under the found row it is about that row. What is
-    // lacking wears `warning` (the choice is missing, nothing is refused).
+    // one thing, and shown under the found row it is about that row. What is
+    // lacking is shown with `warning` (the choice is missing, nothing is refused).
     // As wide as what it holds: a row of name and value stretched across the
     // section leaves the value far from its name.
     <div className="w-fit max-w-full">
@@ -195,7 +195,7 @@ export function BranchPairs({ locale, branch, fields, applicationId }: {
  * One value the application states, in both its languages.
  *
  * **The two languages stand one above the other**, each after its `ja` / `en`
- * mark: side by side they read as two values rather than one said twice, and
+ * label: side by side they read as two values rather than one said twice, and
  * told apart by colour alone the pair reads as one statement and a quieter
  * second one.
  */
@@ -208,7 +208,7 @@ function SeededValue({ field, locale }: { field: SeededFieldView, locale: Locale
       {(["ja", "en"] as const).map((language) => field[language] !== "" && (
         <span key={language} className="flex gap-2">
           {/* A fixed width, so the ja and en texts start at one edge. */}
-          <span className="w-5 shrink-0"><LanguageMark language={language} /></span>
+          <span className="w-5 shrink-0"><LanguageLabel language={language} /></span>
           <span lang={language}>{field[language]}</span>
         </span>
       ))}
@@ -216,13 +216,13 @@ function SeededValue({ field, locale }: { field: SeededFieldView, locale: Locale
   )
 }
 
-/** How many of a branch's datasets a row names before it folds the rest. */
+/** How many of a branch's datasets a row names before it collapses the rest. */
 const SHOWN_DATASETS = 3
 
 /**
  * A branch's cells from its approval on, **drawn the same in every table of
- * branches** — the listing of applications and a draft's table of them to take
- * in from — so that one branch never looks like two things.
+ * branches** — the listing of applications and a draft's table of them to import
+ * from — so that one branch never looks like two things.
  */
 export function BranchCells({ row, locale }: { row: UpstreamBranchView, locale: Locale }) {
   const messages = messagesFor(locale)
@@ -252,14 +252,14 @@ export function BranchCells({ row, locale }: { row: UpstreamBranchView, locale: 
 }
 
 /**
- * A branch's ID that opens what the branch says, in a panel over the table.
+ * A branch's ID that opens what the branch shows, in a panel over the table.
  *
- * **Read here, chosen in the row.** Which branch to take in from is decided by
+ * **Read here, chosen in the row.** Which branch to import from is decided by
  * reading it, and a table that sends the reader to another screen to read makes
- * them find their way back to choose. The panel reads the branch's own screen
+ * them find the table again to choose. The panel reads the branch's own screen
  * when it opens — the table has only the columns — and draws the same list of
  * names and values that screen does, and the datasets it registered. It offers
- * nothing to press but the way out: choosing is the row's.
+ * nothing to press but the close button: choosing is the row's.
  */
 export function BranchDialog({ applicationId, locale }: { applicationId: string, locale: Locale }) {
   const messages = messagesFor(locale)
@@ -296,7 +296,7 @@ export function BranchDialog({ applicationId, locale }: { applicationId: string,
                 <Stack gap="block">
                   {/* **The panel is named by its kind and the branch is the
                       first of its values** (the rule every panel keeps), so the
-                      ID stands where the branch's own screen puts it beside
+                      ID is shown where the branch's own screen puts it beside
                       the name — the first thing read. */}
                   <BranchPairs locale={locale} branch={view.branch} fields={view.chosen.fields} applicationId={applicationId} />
                   <BranchDatasets locale={locale} datasets={view.chosen.datasets} />
@@ -308,12 +308,12 @@ export function BranchDialog({ applicationId, locale }: { applicationId: string,
 }
 
 /**
- * The datasets a branch registered, read as part of what the application says
+ * The datasets a branch registered, read as part of what the application shows
  * — on the branch's own screen and in the panel a draft's table opens.
  *
  * **Each ID leads to the archive**, the same way the listing's cell does: the
- * portal may have nothing of it yet. **One a research already holds says so**,
- * with the way to that research: it is left out when a research is made from
+ * portal may have nothing of it yet. **One a research already holds shows it**,
+ * with the link to that research: it is left out when a research is made from
  * the branch, and a reader looking for it finds where it is.
  */
 export function BranchDatasets({ locale, datasets, sayHeld = false, bare = false }: {
@@ -341,8 +341,8 @@ export function BranchDatasets({ locale, datasets, sayHeld = false, bare = false
         <ul className="flex flex-col gap-2 text-sm">
           {datasets.map((entry) => (
             <li key={entry.accession} className="flex flex-wrap items-center gap-2">
-              {/* The mark and the way to the archive the listing's cell gives. */}
-              <IdMark kind="dataset" to={jgaEntryUrl(entry.accession)} newTab locale={locale}>{entry.accession}</IdMark>
+              {/* The icon and the link to the archive the listing's cell gives. */}
+              <IdWithIcon kind="dataset" to={jgaEntryUrl(entry.accession)} newTab locale={locale}>{entry.accession}</IdWithIcon>
               {entry.description !== "" && <span className="text-ink-muted">{entry.description}</span>}
               {sayHeld && entry.heldBy !== null && <span className="text-ink-muted text-xs">{t.taken}</span>}
             </li>

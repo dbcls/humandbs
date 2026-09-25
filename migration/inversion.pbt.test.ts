@@ -70,7 +70,7 @@ describe("splitting a block with one line per dataset plus shared lines", () => 
   })
 
   /**
-   * A dataset's own copy already carries only its own lines, so splitting it
+   * A dataset's own copy already has only its own lines, so splitting it
    * again — alone, as if it were the whole block — must return exactly what
    * went in.
    */

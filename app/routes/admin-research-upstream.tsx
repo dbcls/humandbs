@@ -3,11 +3,11 @@ import { Form, Link } from "react-router"
 import {
   BRANCH_SORT,
   BRANCH_SORT_KEYS,
-  BRANCH_STANDINGS,
+  BRANCH_STATUSES,
   branchOrder,
   type BranchSortKey,
-  branchStanding,
-  type BranchStanding,
+  branchStatusOf,
+  type BranchStatus,
 } from "~/admin/listing"
 import { upstreamResearchPage } from "~/admin/templates.server"
 import {
@@ -22,10 +22,10 @@ import {
   Stack,
 } from "~/components/base"
 import { Checkbox } from "~/components/form"
-import { Flag, KindMark } from "~/components/flags"
-import { Card, IdMark, Page, Paging, Table, Td } from "~/components/page"
+import { Flag, KindIcon } from "~/components/flags"
+import { Card, IdWithIcon, Page, Paging, Table, Td } from "~/components/page"
 import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { BranchCells, BranchStandingMark, STANDING_MARK, UpstreamNotConnected } from "~/components/upstream"
+import { BranchCells, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
@@ -42,7 +42,7 @@ import type { Route } from "./+types/admin-research-upstream"
  * the people it is about and the accessions it registered, so a research begins
  * from those rather than from an empty form.
  *
- * **This screen only finds the branch.** What taking it in would bring, and
+ * **This screen only finds the branch.** What importing it would bring, and
  * which draft it goes into, are answered one screen on — that answer depends on
  * what the portal already holds for the hum, and reading it for every row would
  * be reading it for rows nobody opens.
@@ -50,8 +50,8 @@ import type { Route } from "./+types/admin-research-upstream"
  * **It is presented the way the other listings are** (`components/search.tsx`):
  * the conditions in a pane at the left, the ordering and the page size over the
  * rows, and every branch that matched counted and paged. What it narrows by is
- * its own — where the branch stands with the portal — because that is the
- * question a curator opens a row to answer.
+ * its own — the status of the branch in the portal — because that is the
+ * question a curator opens a row to respond.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
@@ -74,10 +74,10 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
 
-  // Folded, the way back into the pane says how much is in force, because the
+  // Collapsed, the button that reopens the pane shows how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
-    + view.standings.length
+    + view.branchStatuses.length
 
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
@@ -107,7 +107,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                   locale={locale}
                   onToggle={togglePane}
                   inForce={inForce}
-                  // The box is never alone in the pane here: the axis stands
+                  // The box is never alone in the pane here: the axis remains
                   // under it whatever the reader has asked for.
                   refineHasMore
                   refine={<Filters view={view} locale={locale} />}
@@ -117,15 +117,15 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                 >
                   <Stack gap="normal">
                     {/* **行がどれの話かを示す列だけ残して固定する。** 題目の列が
-                        窓を越えるまで広がるので、横に送ると先頭の ID が出ていって
-                        しまう。固定できるのは先頭の列で (`page.tsx` の `STUCK`)、
-                        それがこの表の主役でもある。 */}
+                        画面の幅を越えるまで広がるので、横にスクロールすると先頭の ID が
+                        見えなくなる。固定できるのは先頭の列で (`page.tsx` の `STUCK`)、
+                        この表でいちばん読まれる列もそれである。 */}
                     <Table
                       stuck={1}
                       headers={[
                         t.application,
                         t.humLabel,
-                        t.standing,
+                        t.branchStatus,
                         t.approvedOn,
                         t.title,
                         t.pi,
@@ -141,22 +141,22 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                             </Link>
                           </Td>
                           <Td nowrap>
-                            {/* **The label, and a way into the research when
+                            {/* **The label, and a link into the research when
                                 the portal holds one.** Whether it does is said
                                 by the column beside, not by this one — a label
-                                that is or is not a link says it only to a
+                                that is or is not a link shows it only to a
                                 reader who tries to press it. The glyph is the
                                 one every listing gives a research. */}
                             {row.humLabel === null
                               ? <Flag kind="short">{t.noHumLabel}</Flag>
                               : (
-                                  <IdMark kind="research" to={row.heldBy === null ? null : href(locale, adminResearchPath(row.heldBy))}>
+                                  <IdWithIcon kind="research" to={row.heldBy === null ? null : href(locale, adminResearchPath(row.heldBy))}>
                                     {row.humLabel}
-                                  </IdMark>
+                                  </IdWithIcon>
                                 )}
                           </Td>
                           <Td nowrap>
-                            <BranchStandingMark standing={branchStanding(row)} locale={locale} />
+                            <BranchStatusBadge branchStatus={branchStatusOf(row)} locale={locale} />
                           </Td>
                           <BranchCells row={row} locale={locale} />
                         </tr>
@@ -181,9 +181,9 @@ interface ViewProps {
  * and nothing here waits to be confirmed — the same pane the research listing
  * has (`routes/admin-research-list.tsx`).
  *
- * **The box and the ticks are two forms, and each carries what the other
+ * **The box and the ticks are two forms, and each has what the other
  * holds**, because the box is one control with a submission of its own and a
- * form cannot stand inside another.
+ * form cannot be shown inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
@@ -198,13 +198,13 @@ function Filters({ view, locale }: ViewProps) {
         name="q"
         value={view.keyword}
         label={t.keyword}
-        placeholder={messages.search.boxHint}
+        placeholder={messages.search.searchHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped
       >
-        {view.standings.map((standing) => (
-          <input key={standing} type="hidden" name="standing" value={standing} />
+        {view.branchStatuses.map((branchStatus) => (
+          <input key={branchStatus} type="hidden" name="status" value={branchStatus} />
         ))}
         <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
@@ -213,16 +213,16 @@ function Filters({ view, locale }: ViewProps) {
         <input type="hidden" name="q" value={view.keyword} />
         <ListingPresented presented={presentation(view, locale)} />
         <Stack gap="normal">
-          <RefineAxis label={t.standing}>
-            {BRANCH_STANDINGS.map((standing: BranchStanding) => (
+          <RefineAxis label={t.branchStatus}>
+            {BRANCH_STATUSES.map((branchStatus: BranchStatus) => (
               <Checkbox
-                key={standing}
-                label={t.standings[standing]}
-                icon={<KindMark kind={STANDING_MARK[standing]} />}
-                name="standing"
-                value={standing}
-                checked={view.standings.includes(standing)}
-                count={view.counts.standings[standing]}
+                key={branchStatus}
+                label={t.branchStatuses[branchStatus]}
+                icon={<KindIcon kind={BRANCH_STATUS_FLAG[branchStatus]} />}
+                name="status"
+                value={branchStatus}
+                checked={view.branchStatuses.includes(branchStatus)}
+                count={view.counts.branchStatuses[branchStatus]}
               />
             ))}
           </RefineAxis>
@@ -234,12 +234,12 @@ function Filters({ view, locale }: ViewProps) {
 
 /**
  * This listing under a different setting. Everything the reader chose is
- * carried, and the page is the first one unless the page is what changes.
+ * kept, and the page is the first one unless the page is what changes.
  */
 function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<BranchListingQuery>): string {
   return href(locale, adminUpstreamResearchPath() + branchListingQuery({
     keyword: view.keyword,
-    standings: view.standings,
+    branchStatuses: view.branchStatuses,
     page: 1,
     ...presentedQuery(presentation(view, locale)),
     ...over,
@@ -265,7 +265,7 @@ function presentation(view: ViewProps["view"], locale: Locale): Presentation<Bra
   }
 }
 
-/** The count and the way through the pages, over the rows and again under them. */
+/** The count and the pagination, over the rows and again under them. */
 function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
   return {
     total: view.total,

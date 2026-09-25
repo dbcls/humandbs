@@ -30,7 +30,7 @@ describe("diffText", () => {
     ])
   })
 
-  it("folds a lone particle between two changes into one rewrite", () => {
+  it("merges a lone particle between two changes into one rewrite", () => {
     const parts = diffText("血液の検体", "組織の標本")
     expect(parts).toEqual([
       { kind: "del", text: "血液の検体" },
@@ -72,7 +72,7 @@ describe("diffSentences", () => {
     expect(rows).toHaveLength(2)
   })
 
-  it("stands a sentence only one side has on its own line", () => {
+  it("shows a sentence only one side has on its own line", () => {
     const rows = diffSentences("一つ目。", "一つ目。二つ目。")
     expect(rows).toEqual([
       { kind: "same", text: "一つ目。" },

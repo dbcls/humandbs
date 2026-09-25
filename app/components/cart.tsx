@@ -10,22 +10,22 @@ import { messagesFor } from "~/i18n/messages"
 import { cartPath, href } from "~/public/urls"
 
 /**
- * The cart mark a listing row and the dataset page carry.
+ * The cart icon a listing row and the dataset page have.
  *
- * **One control puts a whole row in or takes it out.** A research row stands
+ * **One control puts a whole row in or takes it out.** A research row stands for
  * for every JGA dataset under it and the dataset page for one — the difference
  * between them is only which accessions they name, so they are the same
  * control.
  *
- * **No mark stands for a whole page.** One did, and a press on it moved 69
+ * **No indicator stands for a whole page.** One did, and a press on it moved 69
  * datasets — 23 times what a row moves at its median — through a glyph drawn
- * exactly like the row's, told apart only by the colour the band gives it.
+ * exactly like the row's, told apart only by the colour the header bar gives it.
  *
  * A row whose datasets cannot be applied for shows nothing at all rather than a
- * disabled mark: an unrestricted-access dataset needs no application, and a
+ * disabled toggle: an unrestricted-access dataset needs no application, and a
  * control that can never do anything is noise in every row of the table.
  *
- * The cart lives in the browser, so on the server every mark draws as "not in
+ * The cart is defined in the browser, so on the server every indicator draws as "not in
  * the cart" and corrects itself once the page is running. That is why the state
  * is announced (`aria-pressed`) rather than only coloured.
  */
@@ -40,7 +40,7 @@ export function CartToggle({ ids, locale }: {
 
   if (cartable.length === 0) return null
   // **Partly in the cart is its own state.** A research with twenty datasets of
-  // which nineteen are collected is not "not collected", and saying so would
+  // which nineteen are collected is not "not collected", and indicating so would
   // make the control read as untouched.
   const state = held.length === 0 ? false : held.length === cartable.length ? true : "mixed"
   return (
@@ -48,7 +48,7 @@ export function CartToggle({ ids, locale }: {
       name="cart"
       pressed={state}
       label={messages.cart.toggleRow}
-      // Asked when the mark is pressed rather than when it is drawn: a page
+      // Asked when the indicator is pressed rather than when it is drawn: a page
       // holds a hundred of these and only one of them is ever pressed.
       onClick={() => {
         if (cartPressGathers(cart.ids, cartable)) cart.add(cartable)
@@ -62,10 +62,10 @@ export function CartToggle({ ids, locale }: {
  * The empty square that holds the cart column open.
  *
  * **The column keeps its width where nothing in it can be pressed.** The
- * dataset listing is mostly archive accessions, so whole pages of it carry no
- * mark at all, and a column that shrank to its own padding there would move
+ * dataset listing is mostly archive accessions, so whole pages of it have no
+ * toggle at all, and a column that shrank to its own padding there would move
  * every other column sideways as the reader turned the page. The header holds
- * it open; the rows stay empty, because a mark that can never do anything is
+ * it open; the rows stay empty, because a toggle that can never do anything is
  * noise in every one of them.
  *
  * The name is here rather than nowhere because a column of controls with no
@@ -84,7 +84,7 @@ export function CartColumnHead({ locale }: { locale: Locale }) {
  * The same thing said in words, for the dataset's own page — there is one
  * dataset there and room to name the action.
  *
- * It sits on the page's band, so neither state may use a page colour: brand
+ * It sits on the page's header bar, so neither state may use a page colour: brand
  * text on the deep fill would be 1.2:1. Collected is a white button, not
  * collected is the accent one.
  */
@@ -100,7 +100,7 @@ export function AddToCartButton({ datasetLabel, locale }: {
   return (
     <Button
       type="button"
-      onBand
+      onHeaderBar
       variant={held ? "secondary" : "primary"}
       icon={<Icon name={held ? "check" : "cart"} />}
       onClick={() => {
@@ -129,15 +129,15 @@ function noticeSentence(notice: CartNotice, messages: Messages): string {
 }
 
 /**
- * What the cart says back when it is pressed.
+ * What the cart shows back when it is pressed.
  *
- * **The cart is never where the press is.** A mark at the foot of a listing is
+ * **The cart is never where the press is.** An indicator at the foot of a listing is
  * two thousand pixels below the count in the top bar, so without this the only
- * answer to a press is the colour of a 36px glyph. One of these stands at a
- * time, in the corner, and holds the way back to the state before the press.
+ * answer to a press is the colour of a 36px glyph. One of these is shown at a
+ * time, in the corner, and holds the undo back to the state before the press.
  *
  * **It waits while it is being read.** The timer is held off while a pointer is
- * over the box or the focus is inside it — the way back is a control, and a
+ * over the box or the focus is inside it — the undo is a control, and a
  * control that leaves while somebody is reaching for it is worse than none.
  */
 export function CartToast({ locale }: { locale: Locale }) {
@@ -212,7 +212,7 @@ export function CartToast({ locale }: { locale: Locale }) {
  * `/cart` are fetched by that page from what the browser is holding; here there
  * is no fetch at all, so the panel names each dataset by the label the reader
  * pressed and hands them on to that page for anything more. **The way there
- * carries nothing** — the cart is in the browser, and the address is `/cart`.
+ * has nothing** — the cart is in the browser, and the address is `/cart`.
  */
 export function CartMenu({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
@@ -254,19 +254,19 @@ export function CartMenu({ locale }: { locale: Locale }) {
             </>
           )}
       {/*
-        **The way on stands whether or not anything is in the cart, and in the
+        **The way on remains whether or not anything is in the cart, and in the
         same place either way.** How many are held is the panel's subject, not a
         reason for the way to `/cart` to be there or not — a reader who has just
         emptied the cart from this very panel would otherwise press where the
-        way out was and find nothing, and one who opened it to find where their
+        close button was and find nothing, and one who opened it to find where their
         collection is kept would be sent back to the address bar.
 
         **Emptying it is what leaves.** It acts on the rows above it, so with no
         rows it has nothing to act on; the way on does not, so it stays.
 
-        **Both are outlined, and the one that leaves carries a chevron.** They
+        **Both are outlined, and the one that leaves has a chevron.** They
         were a bare button and a menu line — the same colour, no underline
-        between them, and nothing saying that one of the two took the reader off
+        between them, and nothing indicating that one of the two took the reader off
         the page they were collecting from.
       */}
       <div className="flex items-center justify-end gap-2 border-line border-t p-2">
@@ -284,7 +284,7 @@ export function CartMenu({ locale }: { locale: Locale }) {
             {messages.cart.clear}
           </Button>
         )}
-        <ButtonLink to={href(locale, cartPath())} variant="secondary" size="sm" way>
+        <ButtonLink to={href(locale, cartPath())} variant="secondary" size="sm" chevron>
           {messages.cart.view}
         </ButtonLink>
       </div>

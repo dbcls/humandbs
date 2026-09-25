@@ -68,18 +68,18 @@ const CONTROL_EDGE = "border border-line-strong bg-surface-input text-ink"
 
 /**
  * **The focus ring is drawn over the edge rather than outside it.** Everywhere
- * else the ring stands off the element by 2px, which reads as a ring; on
+ * else the ring remains off the element by 2px, which reads as a ring; on
  * something that already has a border it draws a second line 2px away from the
- * first. The row of an input is 36.4px tall (`text-sm` carries a line of 22.4),
+ * first. The row of an input is 36.4px tall (`text-sm` has a line of 22.4),
  * so the two lines land on different fractions of a physical pixel and the pair
  * reads as misaligned rather than as one control. Over the edge it is one line.
  *
- * **The depth is the one a button stands at.** A field and the button that
+ * **The depth is the one a button is shown at.** A field and the button that
  * submits it share a row, and a row is one height: at 4px of padding the field
  * sat 32.4px against the button's 36.4px and the pair read as a step rather
  * than as a row.
  */
-export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outline-offset-1 data-landed:bg-warning-surface`
+export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outline-offset-1 data-highlighted:bg-warning-surface`
 
 /**
  * The same box at the height of a table row's buttons (`Button` の `row`), for a
@@ -89,7 +89,7 @@ export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outli
 export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs focus-visible:-outline-offset-1`
 
 /**
- * Landing on a field from somewhere else on the screen — the page pane, a band
+ * Focusing a field from somewhere else on the screen — the page pane, a banner
  * naming a conflict, the published version's differences.
  *
  * **Scrolling is not enough on its own.** An anchor moves the pane to the
@@ -97,45 +97,45 @@ export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs 
  * in different places; what is focused here is the first box in `target` that
  * will take the caret. **The first that will take it, rather than the first in
  * the markup** — the review layer hangs a comment form beside every field, and
- * its own boxes come first while being hidden, folded away or otherwise unable
+ * its own boxes come first while being hidden, collapsed away or otherwise unable
  * to hold the caret. Asking each in turn is what tells the two apart.
  *
- * **The box that took the caret says so with its ground** (`data-landed`,
+ * **The box that took the caret shows it with its background** (`data-highlighted`,
  * `CONTROL`) until the caret leaves. The ring alone did not: it is the same ring
- * every box wears when the caret arrives by Tab, so a jump from the other pane
- * landed without anything on the form saying where. The ring keeps its one
- * colour, and the ground is what differs.
+ * every box is shown with when the caret arrives by Tab, so a jump from the other pane
+ * focused without anything on the form indicating where. The ring keeps its one
+ * colour, and the background is what differs.
  *
  * Only the pane scrolls, and only up and down (`scroll.ts`).
  */
-export function landOn(target: HTMLElement, block: "start" | "center"): void {
+export function focusElement(target: HTMLElement, block: "start" | "center"): void {
   scrollPaneTo(target, block)
   for (const box of target.querySelectorAll<HTMLElement>("input, textarea")) {
     box.focus({ preventScroll: true })
     if (document.activeElement !== box) continue
-    box.dataset.landed = ""
+    box.dataset.highlighted = ""
     box.addEventListener("blur", () => {
-      delete box.dataset.landed
+      delete box.dataset.highlighted
     }, { once: true })
     return
   }
   // **A row of a list has no box to type in**: what is in it is written in a
-  // panel (`fields.tsx` の `ItemList`). The row takes the ground instead, and
-  // the caret goes to its first control — the way into that panel — so the
+  // panel (`fields.tsx` の `ItemList`). The row takes the background instead, and
+  // the caret goes to its first control — the trigger of that panel — so the
   // eye and the keyboard land on the same row.
   if (target.tagName !== "TR") return
   target.querySelector<HTMLElement>("button:not(:disabled)")?.focus({ preventScroll: true })
-  target.dataset.landed = ""
+  target.dataset.highlighted = ""
   const leave = (event: FocusEvent): void => {
     if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return
-    delete target.dataset.landed
+    delete target.dataset.highlighted
     target.removeEventListener("focusout", leave)
   }
   target.addEventListener("focusout", leave)
 }
 
 /**
- * Which of the places the form marks (`data-at`) a place of the page lands on.
+ * Which of the places the form marks (`data-at`) a field path of the page focuses.
  *
  * **The field when the form draws it open; else the element the field belongs
  * to; else nothing** — a caller then falls back to the section. A cell of a
@@ -143,7 +143,7 @@ export function landOn(target: HTMLElement, block: "start" | "center"): void {
  * (`grants.<id>.title`), and that field is written in a panel that is not open,
  * so the nearest thing on the form is the element's row (`grants.<id>`).
  */
-export function landingPath(path: string, marked: (candidate: string) => boolean): string | null {
+export function focusTargetPath(path: string, marked: (candidate: string) => boolean): string | null {
   const segments = path.split(".")
   for (let length = segments.length; length >= 1; length -= 1) {
     const candidate = segments.slice(0, length).join(".")
@@ -154,29 +154,29 @@ export function landingPath(path: string, marked: (candidate: string) => boolean
 
 /**
  * Going to a place from somewhere else on the screen: the field or row
- * `landingPath` finds, brought to the middle, or else the section `section`
+ * `focusTargetPath` finds, brought to the middle, or else the section `section`
  * names, brought to the top.
  *
- * **Only inside the form** (`form`). The page drawn beside it names the same
+ * **Only inside the form** (`form`). The page drawn beside it identifies the same
  * places, so a search of the whole document finds the page's own copy when
  * the form is not the one showing — and moves a pane the reader is reading.
  * With no form on screen there is nowhere to go, and nothing moves.
  */
-export function landAt(form: HTMLElement | null, path: string, section: string | undefined): void {
+export function focusField(form: HTMLElement | null, path: string, section: string | undefined): void {
   if (form === null) return
   const find = (candidate: string): HTMLElement | null =>
     form.querySelector<HTMLElement>(`[data-at="${CSS.escape(candidate)}"]`)
-  const found = landingPath(path, (candidate) => find(candidate) !== null)
+  const found = focusTargetPath(path, (candidate) => find(candidate) !== null)
   const field = found === null ? null : find(found)
   const target = field ?? (section === undefined ? null : form.querySelector<HTMLElement>(`#${CSS.escape(section)}`))
   if (target === null) return
-  // **A field folded away is opened first.** A closed `<details>` keeps its
-  // boxes in the markup but lets none of them take the caret, so the landing
-  // would pass them by and settle on whatever box came first outside the fold.
+  // **A field collapsed away is opened first.** A closed `<details>` keeps its
+  // boxes in the markup but lets none of them take the caret, so the focus
+  // would pass them by and settle on whatever box came first outside the collapsible.
   for (let around = target.parentElement; around !== null && around !== form; around = around.parentElement) {
     if (around instanceof HTMLDetailsElement && !around.open) around.open = true
   }
-  landOn(target, field === null ? "start" : "center")
+  focusElement(target, field === null ? "start" : "center")
 }
 
 /**
@@ -223,12 +223,12 @@ function Labelled({
   id: string
   label: string
   /**
-   * The word for anyone not looking at the mark, where the box has to be
+   * The word for anyone not looking at the indicator, where the box has to be
    * filled (`FieldLook`).
    *
-   * **The mark rides on the name itself**, a red `*` hard against the last
+   * **The indicator rides on the name itself**, a red `*` hard against the last
    * character, the way every form a reader has filled in draws it. **It is
-   * not a badge**: the badge beside a name says which dialect the box reads,
+   * not a badge**: the badge beside a name shows which dialect the box reads,
    * and a second badge there would have to be read before either was known.
    */
   required?: string
@@ -250,7 +250,7 @@ function Labelled({
    */
   accepts?: string
   /**
-   * What stands at the far end of the row, opposite the label.
+   * What is shown at the far end of the row, opposite the label.
    *
    * **Only an inline control has one.** It is the far end of the label's own
    * line, and a stacked control's label is a heading over a box rather than one
@@ -263,17 +263,17 @@ function Labelled({
   inline?: boolean
   hideLabel?: boolean
   /**
-   * May be shrunk by the column it stands in, down to the box's own floor.
+   * May be shrunk by the column it is shown in, down to the box's own floor.
    * Stacked only.
    *
    * **It does not grow past its content.** Room the column has left goes
-   * under whatever stands last in it — a form's row of buttons — rather than
+   * under whatever is shown last in it — a form's row of buttons — rather than
    * opening between the box and what is written under it.
    */
   fill?: boolean
 }) {
   /**
-   * **A hidden name is still a name.** In a row where the control stands beside
+   * **A hidden name is still a name.** In a row where the control is shown beside
    * the button that acts on it, a label above the box makes the row two lines
    * tall and nothing lines up with anything; the word is still read out, and
    * still what clicking it focuses.
@@ -349,9 +349,9 @@ interface FieldLook {
    *
    * **What it has to be filled for is what the screen does with it**, which
    * is not always sending the form: an alert is saved with one language and
-   * shown only with both, and its two boxes wear the mark for the showing.
+   * shown only with both, and its two boxes are shown with the indicator for the showing.
    * The server is what refuses either way (`required` is not set on the
-   * control); the mark says so before anything is pressed.
+   * control); the indicator shows it before anything is pressed.
    */
   required?: string
   hint?: string
@@ -388,14 +388,14 @@ export function Field({
   /** `text` unless the value has a shape the browser can help with. */
   type?: "text" | "email" | "url" | "number" | "date" | "datetime-local" | "search"
   /**
-   * **The shape of the value, shown inside the empty box.** It is an example
+   * **The shape of the value, shown inside the empty field.** It is an example
    * rather than help, so it belongs where what is typed will appear and not in
    * a line under the box, where it reads as a rule about the value.
    */
   placeholder?: string
   /**
    * The shape the value has to have. **The server checks it too** — this only
-   * saves the round trip and says so before the box is left.
+   * saves the round trip and shows it before the box is left.
    */
   pattern?: string
   /** For a row where a visible label would leave nothing lined up with it. */
@@ -421,20 +421,20 @@ export function Field({
 }
 
 /**
- * The two faces a box of several lines can take.
+ * The two styles a box of several lines can take.
  *
- * **`source` is for a body whose punctuation is structure.** A pipe stands in a
+ * **`source` is for a body whose punctuation is structure.** A pipe is shown in a
  * column of a table, a backslash holds a character back from being read, and
  * two spaces at the end of a line are a line break — none of which can be
- * proof-read in a proportional face, where the columns do not line up and the
+ * proof-read in a proportional typeface, where the columns do not line up and the
  * trailing spaces are invisible. **It is the size every other field is.** It
  * was once smaller so that a long article wrapped less, but the box no longer
- * grows with the article — it scrolls inside its seat — and a smaller face only
+ * grows with the article — it scrolls inside its container — and a smaller typeface only
  * made the lines harder to read.
  *
  * **`plain` is for a value that is read as it is typed.** Nothing in it is
- * syntax, so the face has no work to do, and the box usually stands beside
- * prose it is being compared with — a different size and a different face there
+ * syntax, so the typeface has no work to do, and the box usually is shown beside
+ * prose it is being compared with — a different size and a different typeface there
  * makes two readings of one sentence look like two sentences.
  */
 const TEXTAREA_LOOK = {
@@ -488,7 +488,7 @@ export function TextArea({
  *
  * **Not a native `<select>`.** The one part of a select the page can reach is
  * the closed box; the list it opens is drawn outside the page and matches
- * nothing else on it. What that costs is carried
+ * nothing else on it. What that costs is kept
  * here: ↑ / ↓ / Home / End walk the choices, Enter and Space choose, Escape
  * closes and hands focus back to the box. **No type-ahead** — a list long
  * enough to search is a picker with a box of its own, not a select.
@@ -532,7 +532,7 @@ export function Select({
   const chosen = onChange === undefined ? held : (value ?? "")
   const current = options.find((option) => option.value === chosen)
 
-  // The line pressed closes the panel it stands in and hands focus back to
+  // The line pressed closes the panel it is shown in and hands focus back to
   // the box, the way Escape does (`useDismissible`).
   const choose = (event: React.MouseEvent<HTMLButtonElement>, next: string) => {
     if (onChange === undefined) setHeld(next)
@@ -623,11 +623,11 @@ export function Select({
  *
  * **A code editor over a textarea.** The body of a guideline runs to hundreds
  * of lines and a save that refuses one of them names it by number, so the box
- * has to show line numbers, wrap at its own edge, draw the markdown's marks
+ * has to show line numbers, wrap at its own edge, draw the markdown's syntax characters
  * apart from the words, and put the caret on a line by its number — none of
  * which a textarea gives.
  *
- * **The form still carries the body in the textarea.** The editor is mounted
+ * **The form still has the body in the textarea.** The editor is mounted
  * over it once the page has script (`codemirror.client.ts`), and every change
  * is written back into the textarea and announced as a keystroke, so the form
  * posts what it always posted, `Editing` sees the change the way it sees any
@@ -635,12 +635,12 @@ export function Select({
  * a box that works.
  *
  * **The box stops at thirty lines and scrolls inside itself.** A body runs to
- * hundreds of lines, and a box that grew with it carried the row that saves
+ * hundreds of lines, and a box that grew with it kept the row that saves
  * and the lines a save refused thousands of pixels below the top. A box that
  * took whatever room the pane had left instead grew with the window, and on a
  * tall one the row that saves sat at the foot of the pane with a gap between
  * it and the words — thirty lines is as much as is read at once, and the row
- * stands right under them. **A short body takes a shorter box**, down to 24rem,
+ * remains right under them. **A short body takes a shorter box**, down to 24rem,
  * and a short window shrinks the box to that floor before the pane scrolls
  * (`fill` down the column). The textarea that stands in for it without script
  * is thirty rows.
@@ -658,29 +658,29 @@ export function MarkdownEditor({ label, name, value, required, accepts, hint, er
   hint?: string
   error?: string
   /**
-   * The lines a save refused: the list under the box that names them, and
+   * The lines a save refused: the list under the box that identifies them, and
    * their numbers.
    *
    * **The list is the box's error.** A body's problems are several lines
    * each with a line number, which no one-line `error` can hold; so the box
    * is marked wrong and described by the list (`aria-invalid`,
-   * `aria-describedby`), and says nothing of its own above it — a count would
+   * `aria-describedby`), and shows nothing of its own above it — a count would
    * only repeat what the list already shows. The editor colours the lines
-   * (`codemirror.client.ts` の `markLines`).
+   * (`codemirror.client.ts` の `highlightLines`).
    */
   refused?: { id: string, lines: number[] }
-  /** Handed the way to put the caret on a line once the editor stands, and null when it goes. */
+  /** Handed the way to put the caret on a line once the editor remains, and null when it goes. */
   onReady?: (goToLine: ((line: number) => void) | null) => void
 }) {
   const id = useId()
   const box = useRef<HTMLTextAreaElement>(null)
-  const seat = useRef<HTMLDivElement>(null)
+  const container = useRef<HTMLDivElement>(null)
   const editor = useRef<MountedMarkdown | null>(null)
   const refusedLines = refused?.lines.join(",") ?? ""
 
   useEffect(() => {
     const textarea = box.current
-    const parent = seat.current
+    const parent = container.current
     if (textarea === null || parent === null) return
     let gone = false
     void import("./codemirror.client").then(({ mountMarkdown }) => {
@@ -706,11 +706,11 @@ export function MarkdownEditor({ label, name, value, required, accepts, hint, er
     }
   }, [label, onReady])
 
-  // The marks follow the answer: set when a save is refused, cleared when the
-  // next one goes through. Before the editor stands there is nothing to mark,
+  // The indicators follow the answer: set when a save is refused, cleared when the
+  // next one goes through. Before the editor is shown there is nothing to mark,
   // and it reads the current answer as it mounts.
   useEffect(() => {
-    editor.current?.markLines(refusedLines === "" ? [] : refusedLines.split(",").map(Number))
+    editor.current?.highlightLines(refusedLines === "" ? [] : refusedLines.split(",").map(Number))
   }, [refusedLines])
 
   const wrong = error !== undefined || refused !== undefined
@@ -728,15 +728,15 @@ export function MarkdownEditor({ label, name, value, required, accepts, hint, er
           ? invalid(id, error)
           : { "aria-invalid": true, "aria-describedby": refused.id })}
       />
-      {/* Empty until the editor stands in it, and drawn as nothing while
+      {/* Empty until the editor is shown in it, and drawn as nothing while
           empty. **It clips the editor at its own corners**: the editor's fill
           and gutter are square, and a square corner shows past a round one.
           **It is a column the editor fills**, so that the editor is as tall as
-          the seat and no taller (`codemirror.client.ts`). **Its ceiling is
+          the container and no taller (`codemirror.client.ts`). **Its ceiling is
           thirty lines** of the editor's 21px (14px × 1.5) plus the content's
           padding and the edge, and its floor is 24rem. */}
       <div
-        ref={seat}
+        ref={container}
         className={`${CONTROL_EDGE} flex min-h-96 max-h-[calc(30*1.3125rem+0.75rem+2px)] flex-col overflow-hidden rounded empty:hidden focus-within:outline-2 focus-within:outline-focus focus-within:-outline-offset-1 ${wrong ? "border-danger" : ""}`}
       />
     </Labelled>
@@ -755,7 +755,7 @@ export function Checkbox({ label, icon, name, value, checked, count, required, h
    * **The number alone**, drawn the way the public panel draws it
    * (`components/facets.tsx`): a word after it would be read as part of the
    * value's name, and what the eye compares is the column of figures, so the
-   * digits are set in the one face where they are all the same width.
+   * digits are set in the one typeface where they are all the same width.
    */
   count?: number
 }) {
@@ -773,12 +773,12 @@ export function Checkbox({ label, icon, name, value, checked, count, required, h
       error={error}
       inline
     >
-      {/* **The box takes a line's height and centres in it** (`MARK`, the same
+      {/* **The box takes a line's height and centres in it** (`CHECKBOX_CELL`, the same
           box the table's ticks stand in). The row is aligned to its top so that
           a label running to two lines keeps the box on the first of them, and a
           16px box left in that corner sits above the word beside it — 3.2px,
           which is the half of the line it does not fill. */}
-      <span className={MARK}>
+      <span className={CHECKBOX_CELL}>
         <input
           id={id}
           type="checkbox"
@@ -837,15 +837,15 @@ export function RadioGroup({ label, name, value, options, hint, disabled }: {
  * store with a signed URL — so this is a chooser and nothing else.
  *
  * **The browser's own control is put away and a button drives it.** Left as it
- * comes, a file input draws a button the page cannot reach — its face has to be
+ * comes, a file input draws a button the page cannot reach — its style has to be
  * spelled a second time through `file:` pseudo-elements, and beside it the
  * browser writes its own words in its own language ("選択されていません"), which
- * says nothing about which file this field wants. Hidden, the input keeps doing
- * the work and the page says what was chosen.
+ * implies nothing about which file this field wants. Hidden, the input keeps doing
+ * the work and the page shows what was chosen.
  *
- * **It asks for nothing through the browser's validation.** A hidden control
+ * **It requests nothing through the browser's validation.** A hidden control
  * cannot be focused, so a `required` on it refuses the form with nowhere to put
- * the reader — the same trap a required field inside a folded panel is. A
+ * the reader — the same trap a required field inside a collapsed panel is. A
  * field that has to be filled is said by the screen: the send stays disabled
  * until it is.
  */
@@ -899,7 +899,7 @@ export function FileField({
         >
           {t.chooseFiles}
         </Button>
-        {/* **What was chosen, in the page's own words.** A chooser that says
+        {/* **What was chosen, in the page's own words.** A chooser that shows
             nothing leaves the reader pressing it again to find out. */}
         <span className={chosen.length === 0 ? "text-ink-muted text-sm" : "text-sm"}>
           {chosen.length === 0 ? t.noFileChosen : chosen.join(" / ")}
@@ -920,19 +920,19 @@ export function LanguagePair({ children }: { children: ReactNode }) {
 }
 
 /**
- * A checkbox standing on its own in a table cell.
+ * A checkbox shown on its own in a table cell.
  *
  * **It takes one line's height and sits in the middle of it**, so that it lands
  * where a word in the next column lands. A box is 13px against a line of 22.4px
  * and, left inline, sits on the baseline of prose that is not there: 1.5px above
- * the words beside it down the rows and 1.7px above them in the band, measured.
+ * the words beside it down the rows and 1.7px above them in the header row, measured.
  * Either reads as the table being out of true rather than as anything a reader
  * can point at.
  *
  * **A line's height rather than a number**, because what it has to match is the
  * height the cell beside it is already using.
  */
-const MARK = "flex h-[1lh] items-center"
+const CHECKBOX_CELL = "flex h-[1lh] items-center"
 
 /**
  * The checkbox at the head of a column of checkboxes.
@@ -944,7 +944,7 @@ const MARK = "flex h-[1lh] items-center"
  */
 export function SelectAll({ name, label }: { name: string, label: string }) {
   return (
-    <span className={MARK}>
+    <span className={CHECKBOX_CELL}>
       <input
         type="checkbox"
         aria-label={label}
@@ -973,7 +973,7 @@ const Changed = createContext<boolean | undefined>(undefined)
  * rather than a copy of the row held in state and compared field by field —
  * which is a second place for the screen's own values to live.
  *
- * Hidden fields are left out: they carry the id and the revision, which the
+ * Hidden fields are left out: they have the id and the revision, which the
  * reader cannot type into.
  */
 function changedIn(form: HTMLFormElement): boolean {
@@ -997,14 +997,14 @@ function changedIn(form: HTMLFormElement): boolean {
  * A form that knows whether it is holding anything unsent.
  *
  * **What it knows is passed down rather than up.** The control that has to
- * change is the save, which stands at the foot of whatever the form holds; a
+ * change is the save, which is shown at the foot of whatever the form holds; a
  * screen that had to thread the answer from its boxes to that button would
  * write the same three lines on every screen that saves anything.
  */
 export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: ComponentProps<typeof Form> & {
   /**
    * Told whenever this form's own answer to "has this been typed into"
-   * changes — for a save standing outside the form it sends, which cannot
+   * changes — for a save shown outside the form it sends, which cannot
    * read `Changed` because it is not inside the form's own tree.
    */
   onDirty?: (dirty: boolean) => void
@@ -1015,7 +1015,7 @@ export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: Compo
   const { state } = useNavigation()
   // **What was sent is no longer unsent.** Once a submission has settled the
   // screen has been read again, and every control's loaded value is what the
-  // server now holds — so the same walk answers false, or true when the save
+  // server now holds — so the same walk returns false, or true when the save
   // was refused and the words are still only here. Without this the answer
   // given at the last keystroke stood until the next one, over a save that
   // had already gone through.
@@ -1045,7 +1045,7 @@ export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: Compo
         onInput?.(event)
       }}
       // **Sending is a way off the screen the guard must not stop**, so the
-      // hold is let go in the same event, before the router asks. A refused
+      // hold is let go in the same event, before the router requests. A refused
       // save comes back with the words still here, and the walk above takes
       // the hold again.
       onSubmit={(event) => {
@@ -1061,12 +1061,12 @@ export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: Compo
 /**
  * That there is unsent work, said beside the control that sends it.
  *
- * **The face of the save says the same thing to anybody looking at it**, and
- * this is what says it to anybody who is not. It is a live region, so it is
+ * **The style of the save shows the same thing to anybody looking at it**, and
+ * this is what shows it to anybody who is not. It is a live region, so it is
  * read at the moment the first character is typed rather than when the reader
  * next happens to move the focus there.
  *
- * **It stands to the right of the save and centred on it**, which is a pairing
+ * **It is shown to the right of the save and centred on it**, which is a pairing
  * rather than a property of either: `self-center` would centre it on the flex
  * line, and a row that ends in a save usually holds a field twice the button's
  * height that sets what the line is. **So the two go in one box that centres its
@@ -1077,7 +1077,7 @@ export function Unsaved({ locale, dirty }: {
   locale: Locale
   /**
    * The "has this been typed into" answer to use in place of `Changed`, for a
-   * report standing beside a save that is outside the form it is about.
+   * report shown beside a save that is outside the form it is about.
    */
   dirty?: boolean
 }) {
@@ -1097,14 +1097,14 @@ export function Unsaved({ locale, dirty }: {
  *
  * **Nothing beside it moves when the news comes and goes.** The news appears
  * at the first character typed and goes at the save; a report that takes its
- * width only while it speaks pushes whatever stands to its right across the
+ * width only while it has a word pushes whatever remains to its right across the
  * row at every keystroke that starts or ends a change. So every word it can
  * say is laid in the same grid cell, out of sight and out of the reading
  * order, and the cell is as wide as the widest of them — the one being said
  * is drawn over them.
  */
 export function SaveNews({ words, said }: {
-  /** Every word this report can say, so that its room is the widest of them. */
+  /** Every word this report can show, so that its room is the widest of them. */
   words: readonly string[]
   said: { word: string, tone: "accent" | "muted" } | null
 }) {
@@ -1138,7 +1138,7 @@ export function Submit({
   children: ReactNode
   intent?: string
   variant?: ButtonVariant
-  /** Passed on to `Button`, for a save that stands in a row of `xs` controls. */
+  /** Passed on to `Button`, for a save that is shown in a row of `xs` controls. */
   size?: ButtonSize
   /**
    * Passed on to `Button`: a sentence is why it cannot be pressed, drawn over
@@ -1147,7 +1147,7 @@ export function Submit({
   disabled?: boolean | string
   /** Passed on to `Button`, with the reason: which edge of it the reason hangs from. */
   reasonAt?: "left" | "right"
-  /** Passed on to `Button`, for a row where the links beside it carry one. */
+  /** Passed on to `Button`, for a row where the links beside it have one. */
   icon?: ReactNode
   /**
    * Passed on to `Button`, for the one thing a button cannot work out for
@@ -1159,27 +1159,27 @@ export function Submit({
   /**
    * Whether this is the button that sends what has been typed.
    *
-   * **A save answers the state of the form rather than standing still.** With
+   * **A save reflects the state of the form rather than staying fixed.** With
    * nothing typed there is nothing to send, so it cannot be pressed; with
    * something typed it is the one thing on the screen that has to be pressed
-   * before the reader leaves, so it wears the accent. Outside `Editing` it is
+   * before the reader leaves, so it is shown with the accent. Outside `Editing` it is
    * an ordinary submit — a form that never loads a value has nothing to compare
    * against.
    */
   saves?: boolean
   /**
    * The "has this been typed into" answer to use in place of `Changed`, for a
-   * save that stands outside the form it sends and so cannot read a context
+   * save that is shown outside the form it sends and so cannot read a context
    * provided inside that form's own tree.
    */
   dirty?: boolean
-  /** Passed on to `Button`: the form this control sends, when it is not the one it stands in. */
+  /** Passed on to `Button`: the form this control sends, when it is not the one it is shown in. */
   form?: string
-  /** Passed on to `Button`, for a control another one has to find by id when Ctrl+S sends the form it stands in. */
+  /** Passed on to `Button`, for a control another one has to find by id when Ctrl+S sends the form it is shown in. */
   id?: string
   /**
    * A wait the press cannot see for itself: a lookup sent through a fetcher
-   * as `GET`, which reads rather than sends and so is not a deed in flight
+   * as `GET`, which reads rather than sends and so is not an action in flight
    * (`useSubmitting`), yet can keep the reader waiting as long as one.
    */
   busy?: boolean
@@ -1188,10 +1188,10 @@ export function Submit({
   const changed = dirty ?? contextChanged
   const waiting = saves && changed === true
   /*
-    **While the deed it sent is in flight, the control that sent it waits in
+    **While the action it sent is in flight, the control that sent it waits in
     place.** It cannot be pressed again, its icon's box holds the spinner, and
     its name and width stay exactly as they were — a control that renamed
-    itself or grew would move whatever stands beside it at the moment the
+    itself or grew would move whatever is shown beside it at the moment the
     reader is watching it. What is read out is
     beside it, out of sight: the admin screens are Japanese only, which is why
     the word needs no locale.
@@ -1225,19 +1225,19 @@ export function Submit({
 /**
  * What a form did, said once at the top of the screen.
  *
- * It is a `Note` that announces itself when it appears: a save that answers on
+ * It is a `Note` that announces itself when it appears: a save that responds on
  * the same page is otherwise silent to anybody not watching that corner. The
  * box it is drawn in is the one every other remark uses, rather than its own
  * arrangement of the same glyph, border and text.
  *
- * **It carries no margin and no width.** It is drawn inside `Answered`, which
- * decides where it stands and how wide it gets.
+ * **It has no margin and no width.** It is drawn inside `Answered`, which
+ * decides where it remains and how wide it gets.
  */
 export function Result({ ok, also, children }: {
   ok: boolean
   /**
    * A control belonging to the answer rather than to the box — the way to take
-   * back what was just done. It stands left of the way out, which every answer
+   * back what was just done. It is shown left of the close button, which every message
    * has, so that the two are read as "undo this" and "put this away".
    */
   also?: ReactNode
@@ -1261,13 +1261,13 @@ export function Result({ ok, also, children }: {
 }
 
 /**
- * The answer to what was just sent, said the one way every screen says it:
+ * The answer to what was just sent, said the one way every screen shows it:
  * over the screen (`Answered`), in one box (`Result`), in the words `said`
  * gives for it.
  *
  * **A screen gives the table from answer to sentence and nothing else** — not
  * a row of boxes one per refusal, not a box of its own. An answer the screen
- * does not speak to (`said` gives `null`: a publish that left for the research
+ * does not apply to (`said` gives `null`: a publish that left for the research
  * it published) raises nothing.
  */
 export function Answer<A extends object>({ answer, locale, said, ok = saysOk, also, label, dismiss }: {
@@ -1304,27 +1304,27 @@ const Dismiss = createContext<ReactNode>(undefined)
 /**
  * The answer to the last thing that was sent, over the screen rather than in it.
  *
- * **It does not stand in the page it is about.** An answer written into the
+ * **It is not shown in the page it is about.** An answer written into the
  * screen takes a strip of the card above the thing that was just edited, so a
  * save pushes the form down by the height of its own confirmation and the
  * reader loses the line they were on. Over the page nothing moves, and the
  * answer is in the same place on every screen that gives one — which is the
- * corner the public side already answers in when a dataset is marked.
+ * corner the public side already responds in when a dataset is marked.
  *
  * **It waits while it is being read.** The timer is held off while a pointer is
  * over the box or the focus is inside it.
  *
  * **What is passed in is the response, not a flag.** A screen whose answer is
- * only worth showing half the time (a publish that answers with nothing when it
+ * only worth showing half the time (a publish that responds with nothing when it
  * worked) hands over what it wants shown, and nothing arrives here that the
- * screen had not decided to say.
+ * screen had not decided to show.
  */
 export function Answered({ answer, locale, label, dismiss, children }: {
   /** The last response. A new one raises the box; `null` and `undefined` do not. */
   answer: unknown
   locale: Locale
   /**
-   * The region's name and the way out's, for an answer outside the management
+   * The region's name and the close button's, for an answer outside the management
    * screens: theirs are Japanese only, and a page read in English is not.
    */
   label?: string
@@ -1335,7 +1335,7 @@ export function Answered({ answer, locale, label, dismiss, children }: {
   // **Which answer this is, not whether one is up.** Two saves in a row answer
   // with the same words, and a box that was already standing would not come in
   // again — so they are counted, and the box is keyed by the count. Nought is
-  // nothing to say.
+  // nothing to show.
   // **An answer that is already in hand is up in the first drawing of the
   // screen**, rather than raised afterwards: a form posted without JavaScript
   // comes back as a whole page, and a box that waits for an effect is one such
@@ -1376,7 +1376,7 @@ export function Answered({ answer, locale, label, dismiss, children }: {
             >
               <Dismiss.Provider
                 value={(
-                  // **The way out is 36px to press and 24px tall in the box.**
+                  // **The close button is 36px to press and 24px tall in the box.**
                   // An icon-only control is 36px square, and left to itself it
                   // is the tallest thing here — taller than the glyph and half
                   // again the line of text — so the box stood 54px for a

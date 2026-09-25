@@ -32,7 +32,7 @@ function parts(under: "page" | "bar"): { view: string, control: string } {
 }
 
 describe("usePanes", () => {
-  it("draws the switch on the panes' own tabs when nothing stands above them", () => {
+  it("draws the switch on the panes' own tabs when nothing is shown above them", () => {
     const { view } = parts("page")
     expect(view).toContain("表示 pane")
   })

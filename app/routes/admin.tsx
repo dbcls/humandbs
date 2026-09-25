@@ -17,16 +17,16 @@ import { upstreamStatus } from "~/upstream/status.server"
 import type { Route } from "./+types/admin"
 
 /**
- * The way into the management area.
+ * The front page of the management area.
  *
  * **It lists the work, not the screens.** Each section is a verb, and what
- * stands under it is pressed to begin that work — which is what settles whether
+ * is shown under it is pressed to begin that work — which is what settles whether
  * 「お知らせ」 is a screen to read or one to write in (`admin/navigation.ts`).
  * The seven screens that need no identity are each under one of them; the
  * twelve about one research, one draft, one document or one field are reached
  * by choosing that thing.
  *
- * **It asks for a session but not for a capability, and what it holds depends
+ * **It requests a session but not a capability, and what it holds depends
  * on which.** An administrator gets the work. Somebody holding no capability
  * gets their own `sub` instead — that is what makes the first administrator
  * possible: access is granted by `sub`, nothing else displays one, and somebody
@@ -75,7 +75,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                 <Section key={task.title} title={task.title}>
                   <Stack gap="tight">
                     {task.note !== undefined && <Empty>{task.note}</Empty>}
-                    {/* The ways in share a floor width. Left to their labels
+                    {/* The links share a floor width. Left to their labels
                         they run from two characters to ten, and a row of boxes
                         each stopping somewhere else reads as a ragged edge
                         rather than as one list. The floor clears the longest
@@ -132,7 +132,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                       </Td>
                       <Td nowrap>{row.rowCount}</Td>
                       {/* **Every row has one of the three, so a fetch that
-                          worked or has not run is a mark and a word; only a
+                          worked or has not run is an indicator and a word; only a
                           failure is a box.** The
                           reason it gave is a sentence rather than a state, so
                           it stands under the box. */}

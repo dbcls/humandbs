@@ -10,7 +10,7 @@ const branchListing = fc.record({
   sort: fc.constantFrom(null, "approved", "application"),
   order: fc.constantFrom(null, "asc", "desc"),
   size: fc.constantFrom(null, 50, 100),
-  standings: fc.subarray(["held", "absent", "unlabelled"]),
+  branchStatuses: fc.subarray(["held", "absent", "unlabelled"]),
 })
 
 function read(address: string): URLSearchParams {
@@ -22,7 +22,7 @@ describe("the address of the listing of branches", () => {
     fc.assert(fc.property(branchListing, (query) => {
       const written = read(branchListingQuery(query))
       expect(written.get("q") ?? "").toBe(query.keyword)
-      expect(written.getAll("standing")).toEqual(query.standings)
+      expect(written.getAll("status")).toEqual(query.branchStatuses)
       expect(written.has("registered")).toBe(false)
     }))
   })
@@ -35,7 +35,7 @@ const day = fc.date({
   noInvalidDate: true,
 }).map((at) => at.toISOString().slice(0, 10))
 
-/** A setting of the `common/` box, of any shape the screen can write. */
+/** A setting of the `common/` prefix, of any shape the screen can write. */
 const filesListing = fc.record({
   keyword: fc.string(),
   page: fc.integer({ min: 1, max: 50 }),
@@ -46,7 +46,7 @@ const filesListing = fc.record({
   to: fc.option(day, { nil: null }),
 })
 
-describe("the address of the common box", () => {
+describe("the address of the common prefix", () => {
   it("writes each end of the range only when it is set, beside the words", () => {
     fc.assert(fc.property(filesListing, (query) => {
       const written = read(filesQuery(query))

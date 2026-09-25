@@ -32,7 +32,7 @@ describe("selectDrafts", () => {
     expect(selection.drafts[0]?.updatesPublished).toBe(true)
   })
 
-  it("takes every version of a research that was never published, and says it updates nothing", () => {
+  it("takes every version of a research that was never published, and reports it updates nothing", () => {
     const selection = selectDrafts(
       new Map([["hum0002", research("hum0002", null)]]),
       [version("hum0002", 1)],

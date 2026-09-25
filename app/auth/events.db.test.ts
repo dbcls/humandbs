@@ -116,7 +116,7 @@ describe("append-only の担保", () => {
   })
 
   /**
-   * A version carries its own descriptions, so a publish writes no copy of what
+   * A version has its own descriptions, so a publish writes no copy of what
    * it stood in front of — the trail is the only table the application may just
    * append to, and everything else it owns it may also take back.
    */

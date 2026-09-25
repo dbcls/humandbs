@@ -114,7 +114,7 @@ describe("the application payload", () => {
   })
 })
 
-describe("pressing a mark that stands for many", () => {
+describe("pressing a toggle that covers many", () => {
   it("gathers when the cart holds none of them", () => {
     expect(cartPressGathers([], many(20))).toBe(true)
   })
@@ -136,8 +136,8 @@ describe("pressing a mark that stands for many", () => {
   })
 })
 
-describe("what a press says afterwards", () => {
-  it("says nothing when the cart did not move", () => {
+describe("what a press has afterwards", () => {
+  it("reports nothing when the cart did not move", () => {
     expect(noticeOf(["JGAD000001"], ["JGAD000001"], 1)).toBeNull()
     expect(noticeOf([], [], 1)).toBeNull()
   })

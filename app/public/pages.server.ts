@@ -2,7 +2,7 @@
  * What each public page loads.
  *
  * The order is the same for all three, and it is the order that keeps the
- * public side honest: resolve the label through the pin ledger, ask the
+ * public side honest: resolve the label through the `label_pin` table, ask the
  * published set whether the identity is on it, then read the text. A page that
  * skipped the middle step would render a draft.
  *
@@ -14,7 +14,7 @@
 import { redirect } from "react-router"
 
 import { publicDatasetContent, publicResearch, PUBLISHED } from "~/content/public"
-import { fileListOf, publicBox, publicRows } from "~/files/listing.server"
+import { fileListOf, publicListing, publicRows } from "~/files/listing.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 
@@ -57,7 +57,7 @@ export interface ResearchPageRequest {
   humId: string
   /** A version number, or the latest published one. */
   wanted: number | "latest"
-  /** Which page of the download list. The box is the only long thing here. */
+  /** Which page of the download list. The prefix is the only long thing here. */
   filePage: number
 }
 
@@ -86,7 +86,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
 
   // The download list is the public bucket, listed. A store that does not
   // answer leaves the section out rather than losing the page.
-  const listing = await publicBox(resolved.primaryLabel)
+  const listing = await publicListing(resolved.primaryLabel)
   const projected = publicResearch(version.content, { cau, files: listing ?? [] }, PUBLISHED)
   const content = projected.content
 
@@ -145,7 +145,7 @@ export async function releaseListPage(
   const projected = versions.map((version) => ({
     number: version.number,
     releaseDate: version.releaseDate,
-    // The release list draws no download section, so the box is not listed for it.
+    // The release list draws no download section, so the prefix is not listed for it.
     content: publicResearch(version.content, { cau: [], files: [] }, PUBLISHED).content,
   }))
   const added = datasetsAddedByVersion(
@@ -178,7 +178,7 @@ export async function datasetPage(
 
   const row = await publishedDataset(db, resolved.id)
   if (row === null) notFound()
-  const [catalog, listing] = await Promise.all([loadCatalog(db), publicBox(row.humLabel)])
+  const [catalog, listing] = await Promise.all([loadCatalog(db), publicListing(row.humLabel)])
 
   return datasetView({
     label: row.label,

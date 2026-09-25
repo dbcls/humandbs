@@ -23,7 +23,7 @@ import { researchDraft } from "./research"
  * being re-rendered, which the reference implementations only manage with a
  * thousand lines of re-anchoring.
  *
- * **There are no threads.** The comments at one place stand in the order they
+ * **There are no threads.** The comments at one place are shown in the order they
  * were written, and each is resolved on its own. Resolving is a manual act:
  * nothing marks a comment resolved because the value beneath it changed —
  * editing the commented place is exactly the operation being reviewed, and
@@ -58,7 +58,7 @@ export const comment = pgTable("comment", {
 /**
  * What a reader of the share link said about the draft as a whole: that they
  * have finished commenting, or that there is nothing to fix. Not an approval —
- * publishing is an admin operation — and it only carries identity when the
+ * publishing is an admin operation — and it only has identity when the
  * reader was signed in. **Every press is a row**, signed in or not: a reader
  * presses again on each round of the review, and how many times they have is
  * part of what the review screen reads.

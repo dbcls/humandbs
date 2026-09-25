@@ -1,9 +1,9 @@
 /**
- * The words the interface itself says.
+ * The words the interface itself shows.
  *
  * No library. The languages are two and fixed, the only authors are developers,
  * and most of what a reader sees is content rather than interface text — so
- * what a library would carry (key management, plural rules, a translation
+ * what a library would have (key management, plural rules, a translation
  * service) does not apply here. Holding the dictionary as a value instead means
  * a mistyped key and a missing translation are both compile errors.
  *
@@ -33,9 +33,9 @@ const ja = {
   notFoundTitle: "ページが見つかりません",
   notFoundBody: "お探しのページは存在しないか、公開されていません。",
   notApplicable: "該当なし",
-  // Said for anyone not looking at the mark beside an outward link.
+  // Said for anyone not looking at the indicator beside an outward link.
   newTab: " (新しいタブで開きます)",
-  /** What a copy control says in place of its name while the copy is fresh. */
+  /** What a copy control shows in place of its name while the copy is fresh. */
   copied: "コピーしました",
   unsettled: "未確定",
   untranslatedNotice: "このページには未翻訳の項目があります。もう一方の言語の内容を表示しています。",
@@ -63,14 +63,14 @@ const ja = {
     navigatorFor: "初めての方",
     apply: "データ提供申請を行う",
     applyFor: "2 回目以降の方",
-    // Markdown: these sentences carry their links, so they stay one sentence.
+    // Markdown: these sentences have their links, so they stay one sentence.
     account: "データ登録には [DDBJ アカウント](https://accounts.ddbj.nig.ac.jp/) が必要です。お持ちでない方はアカウントを作成してください (詳細は[こちら](https://www.ddbj.nig.ac.jp/ddbj-account.html))。",
     procedure: "データ登録手順は[こちら](https://bsi.nig.ac.jp/humandbs#%E3%83%87%E3%83%BC%E3%82%BF%E6%8F%90%E4%BE%9B%E7%94%B3%E8%AB%8B%E3%81%AB%E5%90%91%E3%81%91%E3%81%9F%E4%BA%8B%E5%89%8D%E6%BA%96%E5%82%99)。",
   },
   use: {
     heading: "データの利用",
     /*
-      The two ways in are `ActionButton`s, whose block is 320px wide, which
+      The two call-to-action buttons are `ActionButton`s, whose block is 320px wide, which
       leaves 244px for the words beside the arrow. **What the data is comes from
       the line under the button, not from the label**: at this size English
       cannot hold "controlled-access" as well as the verb, and a label that ran
@@ -79,8 +79,8 @@ const ja = {
     find: "利用可能なデータセットを探す",
     findFor: "データセット ID が未特定の場合",
     apply: "データの利用を申請する",
-    // 「データセット」は隣の一言が言っているので、こちらは ID だけを言う。
-    // 320px の枠に対して、書き切ると 330px 要って最後の 1 文字が行から落ちる。
+    // 隣の説明に「データセット」とあるので、ここは ID だけを書く。ボタンの幅は
+    // 320px で、「データセット」まで書くと 330px になり、最後の 1 文字が次の行に回る。
     applyFor: "「JGAD」で始まる ID をお持ちの場合",
     account: "制限公開データの利用には [DDBJ アカウント](https://accounts.ddbj.nig.ac.jp/) が必要です。お持ちでない方はアカウントを作成してください (詳細は[こちら](https://www.ddbj.nig.ac.jp/ddbj-account.html))。",
     procedure: "データ利用手順は[こちら](https://bsi.nig.ac.jp/humandbs?lang=ja#%E3%83%87%E3%83%BC%E3%82%BF%E3%81%AE%E5%88%A9%E7%94%A8)。",
@@ -88,29 +88,29 @@ const ja = {
   contact: {
     heading: "お問い合わせ",
     form: "フォームが表示されないときは[お問い合わせフォーム](https://forms.gle/mCd7fKRiwYfc9KRP8)を直接開いてください。",
-    // The address the short link resolves to. `forms.gle` answers with a
+    // The address the short link resolves to. `forms.gle` responds with a
     // redirect, which a frame cannot follow.
     embed: "https://docs.google.com/forms/d/e/1FAIpQLSfyKmqCoIegHhRvaDH6JUF4j8C6-2cWWnjwaSAJ9iMxKbukXw/viewform?embedded=true",
   },
   search: {
-    // **The field's name says which listing it is over**, and stays that way
-    // wherever the box stands: a reader who cannot see it is the one who most
+    // **The field's name shows which listing it is over**, and stays that way
+    // wherever the box is shown: a reader who cannot see it is the one who most
     // needs telling which of the two they are searching, and a name is what a
     // screen reader announces instead of the grey word. It matters most where
     // nothing came back — the table is empty then, and the name is the only
-    // thing left saying what was being looked through.
-    boxName: {
+    // thing left indicating what was being looked through.
+    searchName: {
       research: "キーワードで研究を検索",
       dataset: "キーワードでデータセットを検索",
     },
-    // The grey word, inside a listing. The page around it already says which
-    // listing this is, so the box says what it takes rather than where it looks.
-    boxHint: "キーワード検索",
+    // The grey word, inside a listing. The page around it already shows which
+    // listing this is, so the box shows what it takes rather than where it looks.
+    searchHint: "キーワード検索",
     submit: "検索",
     pageSize: "表示件数",
     examples: "よく検索されるキーワード",
     // Hand-written guidance, the same three v1 offers. Nothing in the data
-    // says what a first-time reader should try typing.
+    // shows what a first-time reader should try typing.
     exampleQueries: ["筋萎縮性側索硬化症", "肝臓疾患", "NGS(Exome)"],
     researchList: "研究一覧",
     datasetList: "データセット一覧",
@@ -165,10 +165,10 @@ const ja = {
     showLess: "閉じる",
     refine: {
       heading: "絞り込み",
-      fold: "非表示",
-      // Folded, the way back carries how many conditions are in force — the
+      collapse: "非表示",
+      // Collapsed, the reopen button shows how many conditions are in force — the
       // conditions themselves are in the pane that is no longer there.
-      foldedWith: (count: number) => `絞り込み (${count})`,
+      collapsedWith: (count: number) => `絞り込み (${count})`,
       applied: "適用中",
       clear: "すべて解除",
       removeCondition: (label: string) => `${label} を解除`,
@@ -184,16 +184,16 @@ const ja = {
       presetYears: (years: number) => `${years} 年`,
       // The range in force, named in the column of conditions.
       span: (min: string, max: string) => `${min}〜${max}`,
-      // One end of a range left open. The same mark as a span, so that a
+      // One end of a range left open. The same symbol as a span, so that a
       // condition on one end reads as the same kind of thing as one on both.
       spanFrom: (min: string) => `${min}〜`,
       spanTo: (max: string) => `〜${max}`,
       clearFacet: "解除",
       selected: "選択中",
       /**
-       * Inside a facet nothing in the result carries a value for.
+       * Inside a facet nothing in the result has a value for.
        *
-       * **The box itself stays** (`facets.server.ts`), so opening it has to say
+       * **The box itself stays** (`facets.server.ts`), so opening it has to show
        * why it holds nothing — blank, it reads as a box that failed to draw.
        */
       none: "この項目で絞り込める値はありません。",
@@ -209,8 +209,8 @@ const ja = {
     url: "URL",
     /**
      * The three short fields are not the research's own account of how it was
-     * done and who took part: they hold what the datasets beneath it carry,
-     * each made into one line. The listing and the editing form say so, which
+     * done and who took part: they hold what the datasets beneath it have,
+     * each made into one line. The listing and the editing form show it, which
      * is why they do not borrow the names above.
      */
     listingSummary: {
@@ -248,7 +248,7 @@ const ja = {
     datasetsAddedInRelease: "このリリースで追加されたデータセット",
     noDatasetsAddedInRelease: "追加されたデータセットはありません。",
     noDatasets: "公開されているデータセットはありません。",
-    datasetsAreCurrent: "データセットの一覧はこのバージョンのものですが、各データセットの記述は現在のものを表示しています。",
+    datasetsAreCurrent: "データセットの一覧はこのバージョンのものですが、各データセットの内容は現在のものを表示しています。",
     downloads: "ダウンロード",
     downloadName: "ファイル名",
     downloadSize: "サイズ",
@@ -281,7 +281,7 @@ const ja = {
     toggleRow: "この研究のデータセットをカートに入れる",
     openWithCount: (count: number) => `カート (${count} 件)`,
     empty: "カートに入れたデータセットはありません。",
-    // The two of them as one line, for the row that stands where the rows would
+    // The two of them as one line, for the row that is shown where the rows would
     // be: a table cell is a line, and a second sentence under it would push the
     // one column name a reader still needs off the top of their eye.
     emptyRow: "カートに入れたデータセットはありません。研究一覧やデータセット一覧のカートのボタンから追加してください。",
@@ -291,10 +291,10 @@ const ja = {
     copy: "JSON をコピー",
     apply: "利用申請フォームへ",
     missing: "このデータセットは見つかりません。",
-    holding: (count: number) => `${count} 件を集めています`,
+    holding: (count: number) => `カートに ${count} 件入っています`,
     clear: "すべて外す",
     view: "カートを見る",
-    notice: "カートの知らせ",
+    notice: "カートの通知",
     dismiss: "閉じる",
     undo: "取り消し",
     putOne: (label: string) => `${label} をカートに入れました`,
@@ -309,13 +309,13 @@ const ja = {
     /**
      * The management area, called what the office calls it.
      *
-     * **Not 「管理」**: that word already names the JGA application system the
+     * **Not 「管理」**: that word already identifies the JGA application system the
      * portal hands applicants on to, and a link in the bar reading 「管理」 was
-     * read as the way into that rather than into this site's own screens.
+     * read as the link into that rather than into this site's own screens.
      */
     admin: "Admin",
     /**
-     * The way back out of the management area, named after where it lands
+     * The link back out of the management area, named after where it lands
      * rather than after leaving.
      *
      * **The English word in Japanese as well**, so that it reads as the other
@@ -335,7 +335,7 @@ const ja = {
     previousIn: (version: number) => `公開中の v${version}`,
     previousPublished: "公開中のバージョン",
     differsHere: "変更あり",
-    /** The panel the mark opens, holding what the published version says there. */
+    /** The panel the indicator opens, holding what the published version shows there. */
     changeHeading: "変更",
     fieldChangeHeading: (name: string) => `${name} の変更`,
     /** The right-hand column of the comparison: what is being written. */
@@ -346,12 +346,12 @@ const ja = {
     unnamedDataset: "ID 未発行",
     who: "お名前",
     whoHint: "コメントに表示されるお名前です。DDBJ アカウントでログインすると、アカウントのお名前で記録されます。",
-    /** Between typing a name and signing in: the two ways of saying who is writing. */
+    /** Between typing a name and signing in: the two ways of indicating who is writing. */
     whoOr: "または",
     logIn: "DDBJ アカウントでログイン",
     whoPlaceholder: "山田 太郎",
-    /** The mark an unsettled slot wears here: a request to the reader, not the name of a state. */
-    unsettledMark: "ご教示ください",
+    /** The badge an unsettled slot is shown with here: a request to the reader, not the name of a state. */
+    unsettledBadge: "ご教示ください",
     stepsHeading: "ご確認の手順",
     steps: {
       who: "はじめに、下の「お名前」にお名前を入力するか、DDBJ アカウントでログインしてください。コメントには、そのお名前が表示されます。",
@@ -372,13 +372,13 @@ const ja = {
     },
     commented: "コメントを書き終えました。事務局に確認をお願いします",
     approved: "修正の必要はありません。この内容で問題ありません",
-    /** The answer floated over the page once a mark is recorded, quoting its first sentence. */
-    sent: (mark: string) => `「${mark}」を事務局にお送りしました。`,
-    /** Read out beside the marks while one is on its way; the buttons keep their words. */
+    /** The answer floated over the page once an indicator is recorded, quoting its first sentence. */
+    sent: (action: string) => `「${action}」を事務局にお送りしました。`,
+    /** Read out beside the indicators while one is on its way; the buttons keep their words. */
     sending: "送信中",
     /** The name of the floating answer's region. */
     notice: "送信の結果",
-    /** A heading over the readers who pressed one of the two marks, quoting its first sentence. */
+    /** A heading over the readers who pressed one of the two indicators, quoting its first sentence. */
     pressedBy: (button: string) => `「${button}」を押した人`,
     whole: "全体へのコメント",
     wholePlaceholder: "コメントを書く",
@@ -405,7 +405,7 @@ const ja = {
     bodyRequired: "コメントを入れてください。",
     tooLong: "長すぎます。",
     closed: "この共有リンクは使えなくなっています。",
-    /** The panel's own way out, for a panel with nothing else to press. */
+    /** The panel's own close button, for a panel with nothing else to press. */
     close: "閉じる",
   },
   admin: {
@@ -413,18 +413,18 @@ const ja = {
     /**
      * The area's own front page — its name in the bar, its h1 and its title.
      *
-     * **It does not repeat the area.** Everything around it already says which
+     * **It does not repeat the area.** Everything around it already shows which
      * area this is: the bar it sits at the head of holds only management
      * screens, and the wordmark beside it leads here.
      */
     overview: "トップ",
-    // 行に並ぶ操作の列の名前。目には出ず、読み上げにだけ渡る。
+    // 各行の操作ボタンの列の名前。画面には表示せず、スクリーンリーダーだけが読み上げる。
     actions: "操作",
     moveUp: "上へ",
     moveDown: "下へ",
-    /** The way out of a panel or a band that throws away what it holds (`Confirm` / `Dialog` の既定). */
+    /** The cancel button of a panel or a banner that throws away what it holds (`Confirm` / `Dialog` の既定). */
     cancel: "キャンセル",
-    /** Read out beside a control whose deed is in flight; the control itself keeps its name. */
+    /** Read out beside a control whose action is in flight; the control itself keeps its name. */
     busy: "処理中",
     navigation: "Admin メニュー",
     notice: "操作の結果",
@@ -440,12 +440,12 @@ const ja = {
       right: "右だけ",
       holds: "この pane に表示する内容",
     },
-    // 欄が受け取る記法の名前。無印の欄は打った文字がそのまま値になる。
+    // 欄で使える記法の名前。記法の指定が無い欄は、入力した文字がそのまま値になる。
     accepts: {
       markdown: "markdown",
       prose: "リンクと改行",
     },
-    // 欄の名前の印 (*) を読み上げる語。
+    // 欄の名前の横の必須マーク (*) を、スクリーンリーダーが読み上げるときの語。
     required: "必須",
     tasks: {
       research: {
@@ -457,7 +457,7 @@ const ja = {
       contents: { title: "サイトコンテンツ", news: "お知らせ" },
       fields: {
         title: "ファセット",
-        note: "絞り込みの軸になる key と、その値の候補を決める。",
+        note: "絞り込みに使う key と、その値の候補を決める。",
       },
       assistant: { title: "データ提供申請" },
     },
@@ -479,7 +479,7 @@ const ja = {
     },
     assistant: {
       heading: "申請支援アシスタント",
-      note: "申請書とその添付を読ませて、確認の材料を作る。ポータルの隣で動く別のサービスで、下書きには何も書かない。",
+      note: "申請書と添付書類を解析し、確認結果を作成する。ポータルとは別のサービスで、下書きは変更しない。",
       absent: "申請支援アシスタントはこの環境では動いていません。",
       uploadHeading: "申請書の登録",
       applicationFile: "申請書 PDF (必須)",
@@ -674,9 +674,9 @@ const ja = {
       openComments: (count: number) => `未解決のコメント ${count} 件`,
       unpublishedDataset: "未公開",
       filesNote: [
-        "研究に直接紐づくファイルの置き場。公開ページの「ダウンロード」に並び、バージョンや下書きには属さない。",
-        "下書きの段階から入れられ、共有リンクのプレビューには名前だけが表示される。",
-        "公開・公開停止はファイルごとに行い、研究を公開しても自動では公開されない。データセットが選んだファイルに未公開のものがあれば、公開前の確認の画面にも並び、そこからまとめて公開できる。",
+        "研究に直接紐づくファイルのアップロード先。公開ページの「ダウンロード」に表示され、バージョンや下書きには属さない。",
+        "下書きの段階からアップロードでき、共有リンクのプレビューには名前だけが表示される。",
+        "公開・公開停止はファイルごとに行い、研究を公開しても自動では公開されない。データセットに紐づけたファイルに未公開のものがあれば、公開前の確認の画面にも表示され、そこからまとめて公開できる。",
       ],
       openFiles: "ファイル一覧",
       updating: "更新中",
@@ -695,7 +695,7 @@ const ja = {
       pinPrimary: "primary ID として割り当て",
       pinSubmit: "割り当て",
       pinTaken: "その ID は既に別のものに割り当てられています。",
-      pinReserved: "NHA ID は打って割り当てることができません。「NHA ID の発行」で次の番号を発行してください。",
+      pinReserved: "NHA ID は入力して割り当てることができません。「NHA ID の発行」で次の番号を発行してください。",
       issueNha: "NHA ID の発行",
       issued: (label: string) => `${label} を割り当てました。`,
       pinMalformed: "研究 ID は hum のあとに 4 桁の数字で書きます (例: hum0001)。",
@@ -712,7 +712,7 @@ const ja = {
         "switching": "ファイルの切り替え中のため解除できません。切り替えが終わると解除できます。",
       },
       movingFiles: "ファイルの移動中",
-      /** An NHA id is issued once and cannot be typed back, so its warning says so. */
+      /** An NHA id is issued once and cannot be typed back, so its warning shows it. */
       unpinDatasetWarning: (nha: boolean) => nha
         ? "この ID は未発行になり、この ID のアドレスは開けなくなります。NHA ID の番号は再び発行されないため、同じ ID には戻せません。"
         : "この ID は未発行になり、この ID のアドレスは開けなくなります。同じ ID をもう一度割り当てれば、アドレスはまた開けます。",
@@ -729,7 +729,7 @@ const ja = {
       noDatasets: "この研究のデータセットはありません。",
       createDataset: "データセットの作成",
       state: "状態",
-      order: "並び",
+      order: "並び順",
       noListed: "この研究のデータセットはありません。",
       publishedDataset: "公開中",
       edited: "編集済み",
@@ -737,7 +737,7 @@ const ja = {
       deleteDatasetTitle: (label: string) => `${label} の削除`,
       deleteConfirm: "削除",
       deleteWarning: "このデータセットと、その編集がまとめて削除されます。公開中の場合は、公開ページ・一覧・検索にも表示されなくなります。元に戻せません。",
-      deleteRefused: "このデータセットは、この研究のものではないか、別の下書きが作ったものであるため削除できません。",
+      deleteRefused: "このデータセットは、この研究のものではないか、別の下書きで作成したものであるため削除できません。",
     },
     datasetEditor: {
       heading: "データセットの編集",
@@ -747,7 +747,7 @@ const ja = {
       releaseDate: "公開日",
       dateModified: "更新日",
       notYet: "未公開",
-      datesArchive: "公開日と更新日は、外部アーカイブがその accession に持つ日付を表示する。",
+      datesArchive: "公開日と更新日は、外部アーカイブでその accession に登録されている日付を表示する。",
       datesPortal: "NHA ID の公開日と更新日には、このデータセットを初めて公開したバージョンの公開日が自動で入る。",
       files: "ファイル",
       filesNone: "紐づけたファイルはありません。",
@@ -755,7 +755,7 @@ const ja = {
       filesEmpty: "この研究にアップロードしたファイルがないため、紐づけられません。",
       filesUnavailable: "ファイルストアから一覧を取得できませんでした。",
       linkFiles: "ファイルの紐づけ",
-      linkFilesNote: "チェックしたファイルが、このデータセットに紐づくファイルとして公開ページに並ぶ。保存するまで反映されない。",
+      linkFilesNote: "チェックしたファイルが、このデータセットに紐づくファイルとして公開ページに表示される。保存するまで反映されない。",
       linkFilesConfirm: "紐づけ",
       pickAllFiles: "表示しているファイルをすべて選択",
       filterFiles: "ファイル名で絞り込む",
@@ -776,17 +776,17 @@ const ja = {
       noCandidate: "条件に合う選択肢はありません。",
       searching: "探しています",
       candidateCount: (count: number) => `候補 ${count} 件`,
-      typeToNarrow: (count: number) => `先頭の ${count} 件を表示している。打って絞り込む。`,
+      typeToNarrow: (count: number) => `先頭の ${count} 件を表示している。入力して絞り込む。`,
       removeTerm: "解除",
       unit: "単位",
       emptyNumber: "空のままだと、この項目は保存されない。",
-      numberLabel: "何の数か",
+      numberLabel: "内訳",
       numberHigh: "上限",
       numberRangeSeparator: "〜",
       numberHighInvalid: "上限は下限より小さくできない。",
       numberNote: "但し書き",
-      addNumber: "数の追加",
-      removeNumber: "数の削除",
+      addNumber: "数値の追加",
+      removeNumber: "数値の削除",
       diseaseNameJa: "疾患名 (日本語)",
       diseaseNameEn: "疾患名 (英語)",
       addDisease: "疾患の追加",
@@ -803,7 +803,7 @@ const ja = {
       share: "共有",
       shareOff: "共有していません。リンクを渡しても開けません。",
       shareOn: "リンクを知っている人がプレビューを見てコメントできます。",
-      /** The state, beside the sentence saying what it means. */
+      /** The state, beside the sentence indicating what it means. */
       shared: "共有中",
       unshared: "未共有",
       /** The switch, which offers the other state. */
@@ -818,7 +818,7 @@ const ja = {
       expired: "期限切れ",
       reissue: "共有リンクの再発行",
       reissueTitle: "共有リンクの再発行",
-      reissueWarning: "配ってあるリンクは開けなくなります。元に戻せません。",
+      reissueWarning: "共有済みのリンクは開けなくなります。元に戻せません。",
       reissueConfirm: "再発行",
       nobodyYet: "押した人はいません。",
       who: "名前",
@@ -826,7 +826,7 @@ const ja = {
       times: "回数",
       timesCount: (count: number) => `${count} 回`,
     },
-    /** The comment panel's controls, as the management area names them (the preview says 「投稿する」). */
+    /** The comment panel's controls, as the management area names them (the preview shows 「投稿する」). */
     comment: {
       post: "投稿",
       resolve: "解決",
@@ -864,7 +864,7 @@ const ja = {
       paneRow: "研究一覧の行",
       unlabelled: "ID 未発行",
       draftBadge: "下書き",
-      /** Beside the identifier on the page-preview pane's own name, and on the head's (`draft-tools.tsx` の `DraftHead`). */
+      /** Beside the identifier on the page-preview pane's own name, and on the header's (`draft-tools.tsx` の `DraftHead`). */
       updatingBadge: (version: string) => `${version} を更新中`,
       statesLabel: "値の扱い",
       stateChoice: {
@@ -872,8 +872,8 @@ const ja = {
         "unknown": "未確定",
         "not-applicable": "該当なし",
       },
-      /** What pressing a mark does now, drawn over the mark while it is pointed at. The mark's own name stays the state's word. */
-      stateTake: {
+      /** What pressing an indicator does now, drawn over the indicator while it is pointed at. The indicator's own name stays the state's word. */
+      stateImport: {
         "unknown": "未確定にする",
         "not-applicable": "該当なしにする",
       },
@@ -906,22 +906,22 @@ const ja = {
       externalIds: "外部データセット ID",
       externalIdPlaceholder: "JGAD000000",
       addExternalId: "ID の追加",
-      externalIdsHint: "この研究のデータセット以外で論文が扱うデータセットの ID を、1 つずつ書く。ポータルが公開しているデータセットの ID なら、公開ページではその研究の ID を添えて表示される。",
+      externalIdsHint: "この研究のデータセット以外で、論文で使われたデータセットの ID を 1 つずつ書く。ポータルが公開しているデータセットの ID なら、公開ページではその研究の ID を添えて表示される。",
       noDatasets: "この研究のデータセットはありません。",
       unpinnedDataset: "ID 未発行",
       conflictHeading: "別の場所で保存されました",
       conflictBody: (count: number) =>
         `${count} 件の項目が、この画面を開いてから変わりました。手元の入力は残っています。`,
       conflictNone: "変わった項目はありません。もう一度保存してください。",
-      take: "取り込み",
+      importField: "取り込み",
       /** A field somebody saved elsewhere since the screen was opened — not a difference from the published version. */
       changedElsewhere: "別の場所で変更",
     },
-    take: {
+    import: {
       heading: "取り込み元の選択",
-      /** The screen once a source is chosen, where the values to take in are chosen. */
+      /** The screen once a source is chosen, where the values to import are chosen. */
       chosenHeading: "取り込む値の選択",
-      /** Where the values are read from, standing apart beside the identifier. */
+      /** Where the values are read from, shown apart beside the identifier. */
       chosenFrom: (source: string) => `取り込み元: ${source}`,
       headingNote: "バージョン・他の下書き・データ提供申請から 1 つ選び、下書きへの取り込みを行う。",
       open: "取り込み",
@@ -939,8 +939,8 @@ const ja = {
         "データ提供申請の一覧で検索し、「研究 ID に紐づいていない提供申請 ID」の欄に入力して取り込む。",
       ],
       unlinkedApplication: "研究 ID に紐づいていない提供申請 ID",
-      updatingSource: (version: string) => `この下書きが更新している ${version} のため、選べません。`,
-      /** The mark on the row of the draft being written, and why it cannot be chosen. */
+      updatingSource: (version: string) => `この下書きで更新中の ${version} のため、選べません。`,
+      /** The indicator on the row of the draft being written, and why it cannot be chosen. */
       thisDraft: "この下書き",
       selfSource: "取り込み先のこの下書きのため、選べません。",
       choose: "取り込み",
@@ -975,7 +975,7 @@ const ja = {
       accessionHint: "JGAD または DRA",
       accessionPlaceholder: "DRA000123",
       applicationPlaceholder: "J-DS000136-010",
-      noBranches: "この研究の hum を持つ提供申請はありません。",
+      noBranches: "この研究の研究 ID が付いた提供申請はありません。",
       look: "検索",
       none: "条件に合う承認済みの申請はありません。",
       application: "提供申請 ID",
@@ -984,13 +984,13 @@ const ja = {
       approvedOn: "承認日",
       title: "研究課題名",
       pi: "研究代表者",
-      // JGAS は出さない (「データセット」ではないため)。1 本の枝番が JGAS を持つ
-      // ときは必ず JGAD も持つので、登録の有無はこの列だけで読める。
+      // JGAS は表示しない (「データセット」ではないため)。枝番に JGAS があるときは
+      // 必ず JGAD もあるので、登録の有無はこの列だけで分かる。
       registered: "登録されたデータセット",
-      // 枝番の hum の研究がポータルに作られているか。ペインの軸と表の列が
-      // 同じ語と印を持つ。研究 ID が無い枝番は作りようがないので 3 つ目の状態。
-      standing: "研究の作成",
-      standings: {
+      // 枝番の研究 ID の研究がポータルで作成済みか。絞り込みの項目と表の列で同じ語を
+      // 使う。研究 ID が無い枝番は研究を作成できないため、3 つ目の状態にする。
+      branchStatus: "研究の作成",
+      branchStatuses: {
         held: "作成済み",
         absent: "未作成",
         unlabelled: "研究 ID 未発行",
@@ -1009,11 +1009,11 @@ const ja = {
         "申請の値を反映する場合は、研究の編集から下書きを開き、研究の内容の「取り込み」でこの申請を選択する。",
       ],
       branchSummary: "申請の内容",
-      fields: "研究に入る値",
+      fields: "研究に反映される値",
       neither: "未入力",
       noDatasets: "この申請に登録されたデータセットはありません。",
       taken: "研究に登録済み",
-      /** The name of the box listing what has no choice to stand on. */
+      /** The name of the box listing what matches no choice. */
       droppedHeading: (count: number) => `選択肢に無い値 ${count} 件`,
       /** Under that list: what pressing does with them. */
       droppedSaid: "作成すると、これらの欄は未確定になり、値はその欄のコメントに残る。",
@@ -1036,7 +1036,7 @@ const ja = {
       humLabelMissing: "この申請の研究 ID は未発行です。",
       humLabelMissingHint:
         "研究 ID は後から割り当てられる。割り当てたら、申請管理システムにも記入する。"
-        + "研究 ID と申請の対応を持っているのは申請管理システムで、ポータルからは書けない。",
+        + "研究 ID と申請の対応を管理しているのは申請管理システムで、ポータルからは変更できない。",
     },
     publish: {
       heading: "公開前の確認",
@@ -1050,45 +1050,45 @@ const ja = {
       blockedReason: "公開できない理由が残っているため、公開できません。",
       unchanged: (version: string) => `公開中の ${version} と変わるものが無いため、更新できません。`,
       number: "バージョン番号",
-      numberHint: "バージョン番号は、公開中のバージョンが持っていない番号を選ぶ。取り下げて空いた番号も選べる。",
-      numberUnavailable: "その番号は公開中のバージョンが持っています。",
+      numberHint: "バージョン番号は、公開中のバージョンで使われていない番号を選ぶ。取り下げて空いた番号も選べる。",
+      numberUnavailable: "その番号は公開中のバージョンで使われています。",
       releaseDate: "公開日",
       releaseDateHint: "公開日は公開ページに表示する日付で、予約にはならない。未来の日付でも、押した時点で公開される。",
       blocked: "公開できない理由",
       blockedHint: "次のものが揃うまで公開できない。ID はこの場で割り当てられる。",
-      noBlocks: "公開を止めるものはありません。",
+      noBlocks: "公開できない理由はありません。",
       pin: "割り当て",
       pinColumn: "割り当てる ID",
       pinTaken: "その ID は既に別のものに割り当てられています。",
       findings: "公開前に確かめるもの",
       findingKind: "種類",
       findingCount: "件数",
-      findingPlaces: "場所",
+      findingFields: "場所",
       findingTimes: (count: number) => `${count} 件`,
       noFindings: "公開前に確かめるものはありません。",
-      findingsNote: "公開は止めないが、欠けや食い違いがあるもの。直すものは「場所」の列から各画面へ移って直し、残すものはそのままでよいことを確かめてから、下のチェックを入れる。",
+      findingsNote: "公開はできるが、不足や不一致があるもの。直すものは「場所」の列から各画面へ移って直し、残すものはそのままでよいことを確かめてから、下のチェックを入れる。",
       acknowledge: (count: number) => `上の ${count} 件を確認しました`,
       acknowledgeRequired: "確認のチェックを入れてください。",
       kinds: {
         "unsettled": "未確定の値",
         "untranslated": "未翻訳の項目",
-        "empty-dataset": "中身の無いデータセット",
+        "empty-dataset": "内容が空のデータセット",
         "pin-unknown-upstream": "データ提供申請にないデータセット ID",
         "pin-disagrees-upstream": "データ提供申請と食い違うデータセット ID",
-        "private-file": "データセットが選択している未公開のファイル",
+        "private-file": "データセットに紐づけた未公開のファイル",
       },
-      research: "研究の記述",
+      research: "研究の内容",
       language: { ja: "日本語", en: "英語" },
       upstreamSays: (humLabel: string) => `データ提供申請では ${humLabel}`,
       changes: "変更点",
       changesNote: (version: string) => `公開中の ${version} と比べて変わるもの。`,
       changesNoteFirst: "最初のバージョンのため、すべてが新しく公開される。",
       researchChanged: (count: number) => `${count} 項目の変更`,
-      nothingChanges: "記述の変更はありません。",
+      nothingChanges: "研究の内容の変更はありません。",
       reordered: "データセットの並び順の変更",
       datasetFields: (count: number) => `${count} 項目の変更`,
       review: "レビュー",
-      reviewNote: "提供者とのやり取りの状態。公開を止めるものではなく、公開してよいかを判断する材料である。",
+      reviewNote: "提供者とのやり取りの状態。公開の条件ではなく、公開してよいかの判断材料である。",
       share: "共有リンク",
       unresolved: "未解決のコメント",
       newDataset: "新しく公開",
@@ -1099,7 +1099,7 @@ const ja = {
     catalog: {
       heading: "解析手法の表",
       backToList: "解析手法の表へ",
-      note: "行の並びが公開ページの表の並びになる。自由文以外の key の追加は開発者に依頼する。",
+      note: "行の並び順が公開ページの表の並び順になる。自由文以外の key の追加は開発者に依頼する。",
       code: "コード",
       labelJa: "ラベル (日本語)",
       labelEn: "ラベル (英語)",
@@ -1123,10 +1123,10 @@ const ja = {
       create: "作成",
       order: "並び替え",
       grab: "つかんで並び替え",
-      dragInstructions: "並び替えるには、Space でつかみ、矢印キーで動かし、もう一度 Space で置きます。Escape で取り消します。",
+      dragInstructions: "並び替えるには、Space でつかみ、矢印キーで動かし、もう一度 Space で離します。Escape で取り消します。",
       dragStart: (label: string) => `${label} をつかみました。`,
       dragOver: (label: string, at: number, of: number) => `${label} を ${at} 番目へ (全 ${of} 件)。`,
-      dragEnd: (label: string, at: number, of: number) => `${label} を ${at} 番目に置きました (全 ${of} 件)。`,
+      dragEnd: (label: string, at: number, of: number) => `${label} を ${at} 番目に移動しました (全 ${of} 件)。`,
       dragCancel: (label: string) => `${label} の移動を取り消しました。`,
       remove: "削除",
       removeTitle: (name: string) => `${name} の削除`,
@@ -1166,9 +1166,9 @@ const ja = {
       done: {
         "create-key": "key を作成しました。",
         "update-key": "key を保存しました。",
-        "move-key-up": "並びを保存しました。",
-        "move-key-down": "並びを保存しました。",
-        "move-key-to": "並びを保存しました。",
+        "move-key-up": "並び順を保存しました。",
+        "move-key-down": "並び順を保存しました。",
+        "move-key-to": "並び順を保存しました。",
         "delete-key": "key を削除しました。",
         "create-term": "値を作成しました。",
         "update-term": "値を保存しました。",
@@ -1234,7 +1234,7 @@ const ja = {
       },
       rename: "slug の編集",
       renameTitle: "slug の編集",
-      renameWarning: "これまでのアドレスは開けなくなり、そこへ書かれたリンクは届かなくなります。",
+      renameWarning: "これまでのアドレスは開けなくなり、そのアドレスへのリンクは切れます。",
       renameConfirm: "編集",
       cut: "バージョンへの切り出し",
       cutNote: (slug: string, number: string) =>
@@ -1287,7 +1287,7 @@ const ja = {
         publishedAt: "公開日時",
         publishedAtField: "公開日時 (JST)",
         publishedAtNote: [
-          "公開ページに表示する日付。お知らせの一覧もこの日時の順に並ぶ。",
+          "公開ページに表示する日付。お知らせの一覧もこの日時の順に表示される。",
           "言語を公開していても、この日時 (JST) になるまでは公開ページに表示しない。未来の日時にすると予約公開になる。",
           "公開済みのお知らせでも変更できる。",
         ],
@@ -1304,7 +1304,7 @@ const ja = {
       },
       files: {
         heading: "静的ファイル",
-        note: "記事から参照する画像と PDF の置き場。置いた時点で公開される。",
+        note: "記事から参照する画像と PDF のアップロード先。アップロードした時点で公開される。",
         slug: "slug",
         size: "サイズ",
         updatedAt: "更新日",
@@ -1317,13 +1317,13 @@ const ja = {
           size: "サイズ",
           updated: "更新日",
         },
-        renameHint: "/files/common/ の下のアドレスになる。/ で階層に置ける (例: dir_name/file_name)。",
+        renameHint: "/files/common/ の下のアドレスになる。/ で階層を作れる (例: dir_name/file_name)。",
         malformedSlug: "slug に空の区切りや . は書けません。",
         slugTaken: "その slug は既に使われています。",
         removeFile: "削除",
         removeFileTitle: (name: string) => `${name} の削除`,
         removeFileConfirm: "削除",
-        removeFileWarning: "このファイルが削除され、このアドレスを参照している本文からは届かなくなります。元に戻せません。",
+        removeFileWarning: "このファイルが削除され、このアドレスを参照している本文からのリンクは切れます。元に戻せません。",
         nothingSelected: "ファイルを選んでください。",
         failed: "アップロードに失敗しました。",
       },
@@ -1351,13 +1351,13 @@ const ja = {
     },
     files: {
       heading: "ファイル",
-      note: "研究に直接紐づくファイルの置き場。公開ページの「ダウンロード」に並び、アップロードした時点では未公開で、公開はファイルごとに行う。",
+      note: "研究に直接紐づくファイルのアップロード先。公開ページの「ダウンロード」に表示される。アップロードした時点では未公開で、公開はファイルごとに行う。",
       backToResearch: "研究の編集へ",
       open: "ファイル",
       summary: (count: number, size: string) => `${count} 件 / ${size}`,
       find: "ファイル名で探す",
       noMatch: "条件に合うファイルはありません。",
-      noBox: "研究 ID が未発行のため、ファイルはまだ公開できません。",
+      noHumLabel: "研究 ID が未発行のため、ファイルはまだ公開できません。",
       unavailable: "ファイルストアから一覧を取得できませんでした。",
       empty: "この研究にアップロードしたファイルはありません。",
       name: "ファイル名",
@@ -1397,7 +1397,7 @@ const ja = {
       uploadDrop: "ファイルをドラッグ・アンド・ドロップしてアップロード",
       chooseFiles: "ファイルの選択",
       noFileChosen: "未選択",
-      uploadFolder: "フォルダは置けません。中のファイルを落としてください。",
+      uploadFolder: "フォルダはアップロードできません。中のファイルをドロップしてください。",
       copyAddress: "アドレスのコピー",
     },
   },
@@ -1458,11 +1458,11 @@ const en: Messages = {
     embed: "https://docs.google.com/forms/d/e/1FAIpQLSessVTsAHFeFNQnd_mS79T7ZRlOCVehbpQfSlrioOhmdYWdjg/viewform?embedded=true",
   },
   search: {
-    boxName: {
+    searchName: {
       research: "Search research by keyword",
       dataset: "Search datasets by keyword",
     },
-    boxHint: "Search by keyword",
+    searchHint: "Search by keyword",
     submit: "Search",
     pageSize: "Per page",
     examples: "Frequent searches",
@@ -1504,8 +1504,8 @@ const en: Messages = {
     showLess: "Show less",
     refine: {
       heading: "Refine",
-      fold: "Hide",
-      foldedWith: (count: number) => `Refine (${count})`,
+      collapse: "Hide",
+      collapsedWith: (count: number) => `Refine (${count})`,
       applied: "Applied",
       clear: "Clear all",
       removeCondition: (label: string) => `Remove ${label}`,
@@ -1567,7 +1567,7 @@ const en: Messages = {
     datasetsAddedInRelease: "Datasets added in this release",
     noDatasetsAddedInRelease: "No datasets were added.",
     noDatasets: "This version lists no published datasets.",
-    datasetsAreCurrent: "The list is the one this version published; each dataset is described as it is described now.",
+    datasetsAreCurrent: "The list is the one this version published; each dataset's content is shown as it is now.",
     downloads: "Downloads",
     downloadName: "File",
     downloadSize: "Size",
@@ -1605,10 +1605,10 @@ const en: Messages = {
     copy: "Copy JSON",
     apply: "Go to the application form",
     missing: "This dataset cannot be found.",
-    holding: (count: number) => `${count} collected`,
+    holding: (count: number) => `${count} in the cart`,
     clear: "Remove all",
     view: "Go to the cart",
-    notice: "Cart notice",
+    notice: "Cart notification",
     dismiss: "Dismiss",
     undo: "Undo",
     putOne: (label: string) => `${label} added to the cart`,
@@ -1644,7 +1644,7 @@ const en: Messages = {
     whoOr: "or",
     logIn: "Log in with a DDBJ account",
     whoPlaceholder: "Taro Yamada",
-    unsettledMark: "Please let us know",
+    unsettledBadge: "Please let us know",
     stepsHeading: "How to review",
     steps: {
       who: "First, please enter your name under \"Your name\" below, or log in with a DDBJ account. Your comments will be shown with that name.",
@@ -1664,7 +1664,7 @@ const en: Messages = {
     },
     commented: "I have finished commenting. Please review my comments",
     approved: "No corrections are needed. The content is fine as it is",
-    sent: (mark: string) => `"${mark}" has been sent to the office.`,
+    sent: (action: string) => `"${action}" has been sent to the office.`,
     sending: "Sending",
     notice: "Result",
     pressedBy: (button: string) => `Pressed "${button}"`,
@@ -1695,7 +1695,7 @@ const en: Messages = {
   },
   /**
    * **The management screens are Japanese only** (`app/routes.ts`), so what
-   * stands here is the Japanese set rather than a second one nobody reads.
+   * is shown here is the Japanese set rather than a second one nobody reads.
    *
    * **What admin edits still has both languages** — the two bodies of an
    * article, the two labels of a term, the two sides of an application. That

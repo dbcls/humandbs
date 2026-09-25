@@ -3,7 +3,7 @@ import { Fragment, type ReactNode } from "react"
 import { Clamped } from "~/components/base"
 import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
-import { AccessTypeBadge, IdMark, Table, Td, Value } from "~/components/page"
+import { AccessTypeBadge, IdWithIcon, Table, Td, Value } from "~/components/page"
 import { ListingScreen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -91,7 +91,7 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
   // Most datasets are not applied for at all — the archives' own accessions are
   // open — so on many pages every cell in it is empty; a column that appeared
   // and disappeared with the sort left the note above the table telling the
-  // reader to press a mark that was nowhere on the screen, and moved every
+  // reader to press a toggle that was nowhere on the screen, and moved every
   // other column sideways between one page of results and the next.
   const headers = [
     <CartColumnHead key="cart" locale={locale} />,
@@ -122,12 +122,12 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
       <Table headers={headers} stuck={2} whenEmpty={messages.search.none}>
         {view.rows.map((row) => (
           <tr key={row.label}>
-            <Td stuck={0} holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
+            <Td stuck={0} holds="icon"><CartToggle ids={[row.label]} locale={locale} /></Td>
             <Td stuck={1} floor="min-w-32">
-              <IdMark kind="dataset" to={href(locale, datasetPath(row.label))}>{wrappable(row.label)}</IdMark>
+              <IdWithIcon kind="dataset" to={href(locale, datasetPath(row.label))}>{wrappable(row.label)}</IdWithIcon>
             </Td>
             <Td nowrap>
-              <IdMark kind="research" to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</IdMark>
+              <IdWithIcon kind="research" to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</IdWithIcon>
             </Td>
             <Td floor="min-w-48">
               {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}

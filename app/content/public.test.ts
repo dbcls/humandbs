@@ -144,9 +144,9 @@ describe("publicDataset", () => {
   })
 
   it("does not let an archive answer for a dataset the portal is master of", () => {
-    // Only an NHA ID carries a date in the content, and no archive holds one —
+    // Only an NHA ID has a date in the content, and no archive holds one —
     // a row for both is a state the data should not reach. If it does, the
-    // portal's own answer is the one that stands, both halves of it.
+    // portal's own answer is the one that remains, both halves of it.
     const content = { ...emptyDatasetContent(), releaseDate: "2020-01-01" }
     const archive = { datePublished: "2021-02-02", dateModified: "2022-03-03" }
 
@@ -154,7 +154,7 @@ describe("publicDataset", () => {
     expect(out.dates).toEqual({ datePublished: "2020-01-01", dateModified: "2020-01-01" })
   })
 
-  it("takes both dates from the archive when the content carries none", () => {
+  it("takes both dates from the archive when the content has none", () => {
     const archive = { datePublished: "2021-02-02", dateModified: "2022-03-03" }
 
     const out = publicDataset(emptyDatasetContent(), { ...input, archive }, PUBLISHED)
@@ -163,7 +163,7 @@ describe("publicDataset", () => {
 
   it("leaves the modification date alone when the archive has only a release", () => {
     // A JGAD accession the application system does not hold as live, and a DDBJ
-    // Search entry that answers with one date. Neither gets one invented.
+    // Search entry that responds with one date. Neither gets one invented.
     const archive = { datePublished: "2021-02-02", dateModified: null }
 
     const out = publicDataset(emptyDatasetContent(), { ...input, archive }, PUBLISHED)

@@ -101,7 +101,7 @@ describe("a source that fails", () => {
     )
   })
 
-  it("does not take a source that answered down with it", async () => {
+  it("does not take a source that responded down with it", async () => {
     vi.mocked(fetchCauEntries).mockRejectedValueOnce(new Error("connection refused"))
     vi.mocked(fetchHumAccessions).mockResolvedValueOnce([
       { accession: "JGAD000001", humLabel: "hum0001", kind: "jga-dataset", study: "JGAS000001" },
@@ -114,7 +114,7 @@ describe("a source that fails", () => {
   })
 })
 
-describe("a source that answers", () => {
+describe("a source that responds", () => {
   it("replaces its rows entirely, so what upstream no longer holds goes away", async () => {
     vi.mocked(fetchCauEntries).mockResolvedValueOnce([cauRow("J-DU000001"), cauRow("J-DU000002")])
     await runUpstreamRefresh(db, ["cau"])
@@ -180,7 +180,7 @@ describe("the dates, which two upstreams share", () => {
     })
   })
 
-  it("asks DDBJ Search only about the accessions it answers for", async () => {
+  it("requests DDBJ Search only about the accessions it responds for", async () => {
     const researchId = await aResearch()
     await pinDataset(researchId, "DRA000001")
     await pinDataset(researchId, "JGAD000009")
@@ -222,7 +222,7 @@ describe("without a connection to the application system", () => {
     expect(vi.mocked(fetchCauEntries)).not.toHaveBeenCalled()
   })
 
-  it("leaves no record, because the table answers how the last fetch went", async () => {
+  it("leaves no record, because the table determines how the last fetch went", async () => {
     await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date"])
 
     expect(await db.select().from(s.upstreamRefresh)).toHaveLength(0)

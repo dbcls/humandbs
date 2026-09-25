@@ -870,8 +870,8 @@ export const FACETS: FacetPanelView = {
           label: "疾患",
           kind: "disease",
           clearHref: null,
-          // **More values than stand in the box**, so the catalogue shows the
-          // facet that scrolls and carries a box to narrow itself.
+          // **More values than are shown in the box**, so the catalogue shows the
+          // facet that scrolls and has a box to narrow itself.
           values: [
             {
               code: "C34",
@@ -1227,8 +1227,8 @@ export const REFINED_FACETS: FacetPanelView = {
           label: "疾患",
           kind: "disease",
           clearHref: null,
-          // **More values than stand in the box**, so the catalogue shows the
-          // facet that scrolls and carries a box to narrow itself.
+          // **More values than are shown in the box**, so the catalogue shows the
+          // facet that scrolls and has a box to narrow itself.
           values: [
             {
               code: "C34",

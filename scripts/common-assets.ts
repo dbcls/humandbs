@@ -1,5 +1,5 @@
 /**
- * Fills the `common/` box with the images and documents articles point at.
+ * Fills the `common/` prefix with the images and documents articles point at.
  *
  * The bodies are not in the repository. They are fetched from the portal the
  * development data came from and left under `migration/input/` (git-ignored),
@@ -9,12 +9,12 @@
  *
  * **What is fetched is what the content refers to.** The list is read out of the
  * database rather than written down here, so an article that starts pointing at
- * something else brings it along on the next run — and nothing is carried that
- * no article asks for.
+ * something else brings it along on the next run — and nothing is kept that
+ * no article requests.
  *
  * **The content type is written onto the object.** The store guesses from the
- * body when a PUT carries none, and the proxy decides between showing a file and
- * downloading it by what the store answers with (`docker/nginx/default.conf`),
+ * body when a PUT has none, and the proxy decides between showing a file and
+ * downloading it by what the store responds with (`docker/nginx/default.conf`),
  * so an image put without one would arrive as a download. An extension this does
  * not know becomes `application/octet-stream`, which the proxy sends as an
  * attachment — the safe side for anything that might hold markup.
@@ -30,7 +30,7 @@ import { dirname, join } from "node:path"
 
 import { loadConfig } from "~/config.server"
 import { closePools, getDb } from "~/db/client.server"
-import { COMMON_BOX, PUBLIC_BUCKET } from "~/files/box"
+import { COMMON_PREFIX_NAME, PUBLIC_BUCKET } from "~/files/prefix"
 import { contentTypeOf } from "~/files/content-types"
 
 /** Where the portal these files still live on serves them from. */
@@ -69,7 +69,7 @@ async function referenced(): Promise<string[]> {
     from bodies, regexp_matches(bodies.body, '/files/common/[^"()\\ ]+', 'g') as match
     order by 1
   `)
-  return rows.map((row) => row.path.slice(`/files/${COMMON_BOX}/`.length))
+  return rows.map((row) => row.path.slice(`/files/${COMMON_PREFIX_NAME}/`.length))
 }
 
 /** The body, from what was kept last time or from the portal that still has it. */
@@ -91,7 +91,7 @@ async function bodyOf(name: string): Promise<Buffer> {
 const names = await referenced()
 console.log(`${names.length} files are referred to`)
 
-let carried = 0
+let copied = 0
 const missing: string[] = []
 
 for (const name of names) {
@@ -99,18 +99,18 @@ for (const name of names) {
     const body = await bodyOf(name)
     await client.send(new PutObjectCommand({
       Bucket: PUBLIC_BUCKET,
-      Key: `${COMMON_BOX}/${name}`,
+      Key: `${COMMON_PREFIX_NAME}/${name}`,
       Body: body,
       ContentType: contentTypeOf(name),
     }))
-    carried += 1
+    copied += 1
     console.log(`  ${name} (${body.byteLength} B)`)
   } catch (error) {
     missing.push(`${name}: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
-console.log(`carried ${carried}/${names.length} into ${PUBLIC_BUCKET}/${COMMON_BOX}/`)
+console.log(`copied ${copied}/${names.length} into ${PUBLIC_BUCKET}/${COMMON_PREFIX_NAME}/`)
 for (const line of missing) console.log(`  missing ${line}`)
 
 client.destroy()

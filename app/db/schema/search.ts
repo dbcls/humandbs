@@ -42,7 +42,7 @@ export const searchDoc = pgTable("search_doc", {
   targetType: searchTargetType().notNull(),
   targetId: uuid().notNull(),
   researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
-  /** Denormalised for the URL and for display; the ledger remains the source. */
+  /** Denormalised for the URL and for display; the `label_pin` table remains the source. */
   humLabel: text().notNull(),
   versionNumber: integer(),
   datasetLabel: text(),
@@ -61,7 +61,7 @@ export const searchDoc = pgTable("search_doc", {
    * from being twenty version-sized expansions.
    *
    * **It is the content, not the public representation.** The projection drops
-   * what the catalog hides, and an administrator asking whether a key is still
+   * what the catalog hides, and an administrator checking whether a key is still
    * in use is asking about what was published rather than about what a reader
    * sees. Projecting is left to whoever is drawing a page.
    */
@@ -99,7 +99,7 @@ export const searchDoc = pgTable("search_doc", {
 ])
 
 /**
- * A term facet value. Ancestors are carried on the row so that selecting a
+ * A term facet value. Ancestors are kept on the row so that selecting a
  * 3-character ICD10 code also matches the 4-character codes beneath it without
  * a recursive query. They are derived, and a full rebuild is how they stay
  * correct after the tree is edited.

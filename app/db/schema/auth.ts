@@ -20,7 +20,7 @@ export const adminUser = pgTable("admin_user", {
 /**
  * One signed-in browser.
  *
- * The session lives here rather than in the cookie, and the cookie carries
+ * The session is kept here rather than in the cookie, and the cookie has
  * nothing but an unguessable value. Signing out therefore deletes a row and
  * takes effect at once, and nothing in the cookie can be mistaken for a
  * statement about what its holder may do — authorisation is derived per request

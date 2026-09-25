@@ -1,32 +1,32 @@
 @import "tailwindcss";
 
 /*
- * The palette is the portal's own, carried over by value rather than by name:
- * v1 called these primary / secondary / tetriary, which says nothing about what
+ * The palette is the portal's own, kept over by value rather than by name:
+ * v1 called these primary / secondary / tetriary, which implies nothing about what
  * they are for, held one colour under two names twice, and misspelled tertiary.
  * Nothing else from v1's stylesheet is kept — the type scale there is built on a
  * 10px root (`html { font-size: 62.5% }`), and inheriting that would put the
  * workaround into every new screen.
  *
  * **Three of the values are a shade off v1's, and deliberately.** White text on
- * v1's own band ran to 2.2:1, its pink read 4.4:1, and the rule it drew input
- * borders with 2.1:1 — all below what WCAG asks of a page anybody may read
+ * v1's own header bar ran to 2.2:1, its pink read 4.4:1, and the rule it drew input
+ * borders with 2.1:1 — all below what WCAG requests of a page anybody may read
  * (4.5:1 for text, 3:1 for the edge of a control). Each was moved down one step
  * in lightness with its hue kept, so the site looks the same and can be read.
  * The numbers are checked by `app/app.contrast.test.ts`, which is where the
- * requirement lives; changing a value here without changing that test fails.
+ * requirement is kept; changing a value here without changing that test fails.
  */
 @theme {
   /* Links, headings, and every edge and word drawn in the brand colour. */
   --color-brand: #1a5fbd;
-  /* The right end of a band. */
+  /* The right end of a header bar. */
   --color-brand-light: #157bac;
 
   /*
-   * The left end of a band, which is not the colour a link is drawn in.
+   * The left end of a header bar, which is not the colour a link is drawn in.
    *
-   * **A band's travel is held at the light end and free at the dark one.** Both
-   * ends carry small white text, so the right end can go no lighter than 4.5:1
+   * **A header bar's travel is held at the light end and free at the dark one.** Both
+   * ends have small white text, so the right end can go no lighter than 4.5:1
    * — and starting the sweep from the link's own colour covers 1.43x in
    * luminance, which the eye reads as a flat fill. Starting one step darker
    * takes it to 1.77x, which reads as a gradient.
@@ -34,11 +34,11 @@
    * **It stops one step short of what the dark end allows.** Nothing is lost by
    * going darker still — the previous portal's sweep was 2.2x, and this end can
    * reach that at 8.2:1 — but at that width the left end stops reading as the
-   * site's blue and starts reading as navy. What is wanted here is a band that
+   * site's blue and starts reading as navy. What is wanted here is a header bar that
    * is seen to travel, not the widest one available.
    *
    * **The link colour cannot be moved to get this.** It is also the word in a
-   * badge and the edge of every control standing over a listing, all of them on
+   * badge and the edge of every control shown over a listing, all of them on
    * white, where darker is a different design rather than a safer one.
    */
   --color-brand-dark: #1856ab;
@@ -50,7 +50,7 @@
    * control it marks (`:focus-visible` below) rather than beside it: at the
    * brand's own weight it reads as a border that changed colour. **This is as
    * light as it goes** — 3.28:1 on the page's tint, against the 3:1 that a
-   * thing saying "you are here" has to meet.
+   * thing indicating "you are here" has to meet.
    */
   --color-focus: #4285d6;
 
@@ -59,26 +59,26 @@
   --color-accent-light: #eb0075;
 
   /*
-   * The far end of the two ways in, and of nothing else.
+   * The far end of the two call-to-action buttons, and of nothing else.
    *
-   * A band carries small white text, so both of its ends have to reach 4.5:1
+   * A header bar has small white text, so both of its ends have to reach 4.5:1
    * and the gradient across it can only be a shade wide — which reads as a flat
-   * fill. The front page's two buttons carry one large bold word each, so 3:1
+   * fill. The front page's two buttons have one large bold word each, so 3:1
    * is the requirement there and the gradient can travel far enough to be seen
-   * as one. Keeping them under their own names is what stops a band from
+   * as one. Keeping them under their own names is what stops a header bar from
    * reaching for them.
    */
   --color-accent-lighter: #f7568a;
   --color-brand-lighter: #1a95d2;
 
-  /* The band of a page that is about one thing with a name of its own. */
+  /* The header bar of a page that is about one thing with a name of its own. */
   --color-deep: #002245;
 
   /* Body text, and the labels and asides set beside it. */
   --color-ink: #292929;
   --color-ink-muted: #2a5b73;
 
-  /* Rules and dividers, which carry no meaning of their own... */
+  /* Rules and dividers, which have no meaning of their own... */
   --color-line: #abb4c4;
   /* ...and the edge of something you can type into or press, which does. */
   --color-line-strong: #818fa7;
@@ -87,7 +87,7 @@
   --color-surface: #edeff2;
   --color-surface-hover: #e8eff8;
   --color-surface-input: #f7f7f7;
-  /* A face that is above the page but behind the white box: the tab that is not
+  /* A surface that is above the page but behind the white box: the tab that is not
      the one being read. It has to be lighter than the page's own tint, or it is
      the page and has no shape of its own. */
   --color-surface-light: #f4f6f9;
@@ -96,7 +96,7 @@
   /* Something that needs looking at but is not an error: an untranslated
      field, a label the upstream system disagrees about. */
   --color-warning: #a16207;
-  /* The ground an announcement is written on, and the only fill that is not a
+  /* The background an announcement is written on, and the only fill that is not a
      neutral: a notice the site puts above every page has to be told apart from
      the page at a glance. */
   --color-warning-surface: #fffbeb;
@@ -107,7 +107,7 @@
    * older one loses, and what the newer one gains. The line is tinted, and the
    * pieces that differ inside it a step deeper — the shades a code review
    * uses, since that is where a reader has learnt to read them. The green here
-   * says "added", never "passed".
+   * shows "added", never "passed".
    */
   --color-diff-del: #ffebe9;
   --color-diff-del-word: #ffcecb;
@@ -124,9 +124,9 @@
    *
    * The wide one leaves the gutter and nothing else on the display the portal
    * is read on, which is what v1 gives a listing: the columns a research row
-   * carries are what the width is for, and a laptop is where they run out.
+   * has are what the width is for, and a laptop is where they run out.
    *
-   * **The narrower one is not prose alone.** An article here carries tables —
+   * **The narrower one is not prose alone.** An article here has tables —
    * 147 of them across 22 documents, half again as wide as the paragraphs
    * around them — and one held to the width of a line of text leaves two thirds
    * of them scrolling sideways inside it. The measure is the outer edge of the
@@ -150,7 +150,7 @@
    * is the one a reader misses: 36px square is the size the header circles
    * already were, and every other icon control is held to it rather than
    * shrinking to fit its own drawing. **In a table it is what a one-line row is
-   * as tall as** — the line and its padding come to 34.4px — so a mark in a
+   * as tall as** — the line and its padding come to 34.4px — so an indicator in a
    * listing costs a row 1.6px and nothing else.
    */
   --spacing-tap: 2.25rem;
@@ -167,7 +167,7 @@
    * loose line is a table nobody can scan. Headings go tighter still: a title
    * that wraps should read as one thing, not two.
    *
-   * **Nothing writes `leading-*`.** The size carries the line height with it,
+   * **Nothing writes `leading-*`.** The size has the line height with it,
    * so a part cannot pick a different rhythm for the same size of type.
    */
   --text-xs--line-height: 1.5;
@@ -175,10 +175,10 @@
   --text-base--line-height: 1.75;
   /*
    * **`text-lg` is a heading size here, so it takes a heading's leading.** It is
-   * the size a section's name is set at and the one the two ways in carry; no
+   * the size a section's name is set at and the one the two call-to-action buttons use; no
    * prose is written at it. Left at the body's 1.6 the line box stood 28.8px
    * around an 18px word, and the rule beside a heading is as long as that box —
-   * which is what made it read as a bar rather than a mark. The previous portal
+   * which is what made it read as a bar rather than an indicator. The previous portal
    * sets the same 18px heading at 1.2; 1.3 is the value this scale already uses
    * at its largest.
    */
@@ -188,7 +188,7 @@
   --text-3xl--line-height: 1.3;
 
   /*
-   * The two movements the site has, both of them saying that something changed
+   * The two movements the site has, both of them indicating that something changed
    * rather than decorating it.
    *
    * `bump` is a number that has just been counted up, and `rise` is a notice
@@ -234,11 +234,11 @@
 
   /*
    * **A link is underlined where it sits inside a sentence, and nowhere else.**
-   * What WCAG asks (1.4.1) is that colour not be the only thing telling a link
+   * What WCAG requests (1.4.1) is that colour not be the only thing telling a link
    * from the words around it — which is a question only inside running text. A
    * title in a listing, an entry in the sitemap, a step in a trail: those are
    * links by their position, and underlining every one of them draws the page
-   * as a field of rules. The two places that are running text say so
+   * as a field of rules. The two places that are running text show it
    * themselves: `.markdown a` below, and the prose spans of research content
    * (`components/page.tsx`).
    *
@@ -292,7 +292,7 @@
    * `#` is shifted down so that the page keeps the single `h1` its title is
    * (`public/markdown.server.ts`), which is why no `h1` is named here.
    *
-   * **No heading in an article carries colour — only its title does.** An
+   * **No heading in an article has colour — only its title does.** An
    * article is made of headings and its paragraphs are dense with links, so a
    * coloured line is read as a link first and a heading second: the size and
    * the missing underline are both noticed after the colour. Leaving colour to
@@ -300,16 +300,16 @@
    * including where the heading itself is one.
    *
    * **The guidelines are nested four deep** (`５．` → `５－１．` → `５－１－１`),
-   * so the levels have to stay apart past the third. Size carries it, and every
+   * so the levels have to stay apart past the third. Size has it, and every
    * rung holds the same weight — the heading has only its weight to separate it
    * from the paragraph under it, and that is as true of the section level as of
    * the ones below it.
    *
-   * **What tells the section level apart is the mark.** The rule beside it is
+   * **What tells the section level apart is the indicator.** The rule beside it is
    * the one thing on the page no link has, which is why it can be dropped from
-   * `h3` down without the ladder losing a step. **It stands at the start of
-   * what it names** rather than being hung out through the card's padding: the
-   * card edge belongs to the title of the whole page, and a mark on that line
+   * `h3` down without the ladder losing a step. **It is shown at the start of
+   * what it identifies** rather than being hung out through the card's padding: the
+   * card edge belongs to the title of the whole page, and an indicator on that line
    * would put every section on the same footing as it.
    *
    * `Section` names a part of a *page* in brand at the same size, and that one

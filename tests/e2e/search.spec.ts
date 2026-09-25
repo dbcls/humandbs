@@ -23,7 +23,7 @@ test.describe("P-ANON 絞り込み", () => {
     expect(before).toBeGreaterThanOrEqual(0)
   })
 
-  test("S-SEARCH-02: 窓を空にするとキーワードが解除される", async ({ page }) => {
+  test("S-SEARCH-02: キーワード欄を空にするとキーワードが解除される", async ({ page }) => {
     await page.goto("/research")
     const box = page.getByRole("searchbox", { name: "キーワードで研究を検索" })
     await box.fill("cancer")

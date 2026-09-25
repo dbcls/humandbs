@@ -7,7 +7,7 @@
  * there is where the script comes from, because a page that stops working when
  * somebody else's CDN does is a dependency taken on for nothing.
  *
- * **The page is plain HTML and not a route of the site.** It carries no header,
+ * **The page is plain HTML and not a route of the site.** It has no header,
  * no footer and no language prefix, because it is not a page of the portal — it
  * is the contract, made readable. Keeping it out of the application's tree also
  * keeps Swagger UI's stylesheet and the site's own from having to be held apart
@@ -15,7 +15,7 @@
  *
  * **The library is copied into `public/` before a build** rather than imported,
  * because an import would be handed to the bundler and this page is not built:
- * it is a string. What `public/` holds is served as it stands, which is what a
+ * it is a string. What `public/` holds is served as it remains, which is what a
  * stylesheet needs — anything else arrives claiming to be JavaScript and a
  * browser will not style a page with it.
  */

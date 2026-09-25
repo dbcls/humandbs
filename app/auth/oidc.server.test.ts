@@ -103,7 +103,7 @@ describe("beginLogin: the flow cookie", () => {
     expect(cookie).toContain("Max-Age=600")
   })
 
-  it("carries no Secure attribute when the configured redirect URI is http", async () => {
+  it("has no Secure attribute when the configured redirect URI is http", async () => {
     vi.stubEnv("HUMANDBS_AUTH_REDIRECT_URI", "http://localhost:8080/auth/callback")
 
     const { cookie } = await beginLogin(null)
@@ -111,7 +111,7 @@ describe("beginLogin: the flow cookie", () => {
     expect(cookie).not.toContain("Secure")
   })
 
-  it("carries Secure when the configured redirect URI is https, with no separate flag to disagree", async () => {
+  it("has Secure when the configured redirect URI is https, with no separate flag to disagree", async () => {
     vi.stubEnv("HUMANDBS_AUTH_REDIRECT_URI", "https://humandbs.dbcls.jp/auth/callback")
 
     const { cookie } = await beginLogin(null)
@@ -124,7 +124,7 @@ describe("beginLogin: the flow cookie", () => {
   })
 })
 
-describe("beginLogin: state and the return address live in the cookie, not in state", () => {
+describe("beginLogin: state and the return address are defined in the cookie, not in state", () => {
   it("puts state in both the URL and the cookie, and they match", async () => {
     const { authorizationUrl, cookie } = await beginLogin("/research/hum0001")
 
@@ -195,7 +195,7 @@ describe("completeLogin: redirect_uri comes from configuration, not request.url"
 })
 
 describe("completeLogin: state is checked against the cookie, not trusted from the URL", () => {
-  it("passes the cookie's state as expectedState even when the URL carries a different one", async () => {
+  it("passes the cookie's state as expectedState even when the URL has a different one", async () => {
     const { cookie } = await beginLogin(null)
     vi.mocked(oidc.authorizationCodeGrant).mockResolvedValue(fakeTokens({ sub: "u1" }))
 
@@ -229,7 +229,7 @@ describe("completeLogin: outcomes", () => {
     })
   })
 
-  /** A comment or a mark is read by someone who wants to know who it was, and an account id does not say. */
+  /** A comment or an indicator is read by someone who wants to know who it was, and an account id does not report. */
   it("names the person by their own name, not their account id, when the realm gives both", async () => {
     const { cookie } = await beginLogin(null)
     vi.mocked(oidc.authorizationCodeGrant).mockResolvedValue(
@@ -286,7 +286,7 @@ describe("completeLogin: outcomes", () => {
 })
 
 describe("endSessionUrl", () => {
-  it("carries the id token as id_token_hint and points back at this site's origin", async () => {
+  it("has the id token as id_token_hint and points back at this site's origin", async () => {
     const url = await endSessionUrl("the-id-token")
 
     expect(url).not.toBeNull()

@@ -3,7 +3,7 @@
  *
  * **v1 wrote a table into a cell.** `Total Data Volume` holds lines like
  * `GWAS: 平均 123 MB(zip)`, `Variant Number` holds `常染色体: 5,961,600 SNVs(hg19)`
- * — a label saying which number it is, the number, its unit, and a word
+ * — a label indicating which number it is, the number, its unit, and a word
  * qualifying it. More than half of these cells run to several lines: 77% of the
  * variant counts and 56% of the data volumes. Held as prose none of it can be
  * filtered by, which is why v1 kept a second layer of numbers beside the text,
@@ -24,10 +24,10 @@
  * that dump rather than a property of the rules. Three things follow:
  *
  * - **The residue has to be re-read.** `input/unread-numbers.json` is produced
- *   by a run, not carried between them, and lines that were read by hand are
+ *   by a run, not kept between them, and lines that were read by hand are
  *   matched by their exact text (`input/read-by-hand.json`). A line whose
  *   wording changed upstream falls back into the residue rather than being read
- *   as something it no longer says, which is the safe direction — but it means
+ *   as something it no longer reports, which is the safe direction — but it means
  *   the by-hand file is a starting point at cutover, not an answer
  * - **The coverage figures have to be measured again**, because whether a rule
  *   reads 90% or 60% of a key is what decides if that key should be a number at
@@ -54,7 +54,7 @@ export interface ReadNumber {
 const KANJI: Readonly<Record<string, number>> = { 万: 1e4, 億: 1e8, 兆: 1e12 }
 
 /**
- * The first colon standing outside any bracket. A value carries colons of its
+ * The first colon shown outside any bracket. A value has colons of its
  * own — `bam [ref: hg19]` — and the first one anywhere would read those as
  * labels. Measured over the data volumes, the naive split misreads 74 lines.
  */
@@ -98,7 +98,7 @@ function noteOf(...parts: (string | undefined)[]): string | null {
 
 /**
  * The parts of the genome a count is taken over. **The one closed vocabulary
- * in these cells**: everything else a label says — a cohort, a platform, a
+ * in these cells**: everything else a label reports — a cohort, a platform, a
  * trait — is open and grows with the data, but the human genome has these
  * parts and will not grow more. v1 writes the part either before the number as
  * a label or after it in brackets, and both mean the same thing.
@@ -127,7 +127,7 @@ function region(said: string): string | undefined {
  * The spellings a genome region label settles to, once each. This is human
  * anatomy rather than data, so the set does not grow the way an open label
  * does — offering it as candidates on the label field costs nothing to keep in
- * step (`docs/data-model.md` の「値と文」).
+ * step.
  */
 export const GENOME_REGION_LABELS: readonly string[] = [...new Set(Object.values(REGIONS))]
 
@@ -150,9 +150,9 @@ function named(one: ReadNumber): ReadNumber {
 }
 
 /**
- * A whole cell, line by line. An empty line says nothing and is dropped.
+ * A whole cell, line by line. An empty line reports nothing and is dropped.
  *
- * **A reader answers with `null` when it could not read the line, and with an
+ * **A reader responds with `null` when it could not read the line, and with an
  * empty list when it read it and there is no number in it.** The two are not
  * the same thing: the first is work for somebody, the second is a line somebody
  * has already looked at (`ReadByHand`). Collapsing them would put every line a
@@ -174,7 +174,7 @@ export function readCell(
   return { read, declined }
 }
 
-/** The label and what follows it, where a line carries one. */
+/** The label and what follows it, where a line has one. */
 function labelled(line: string): { label: string | null, rest: string } {
   const at = topLevelColon(line)
   if (at === -1) return { label: null, rest: line }
@@ -233,7 +233,7 @@ function withUnit(
 
 /**
  * A spread written after the value — `28.70 ± 4.16`. The number is the first
- * one; what follows the sign says how much it moves, which is a remark about
+ * one; what follows the sign reports how much it moves, which is a remark about
  * the number rather than a second number.
  */
 function withoutSpread(rest: string): { said: string, spread: string | null } {
@@ -331,7 +331,7 @@ function topLevelSplit(line: string, marks: RegExp): string[] {
  * - `常染色体: 31.8x、X染色体: 28.0x` — two labelled facts sharing a line
  * - `61,608,817 variants(常染色体: 59,387,070、X染色体: 2,221,747)` — a total and
  *   what it is made of. All three are kept: a reader looking for the total and
- *   one looking for the part are both asking something the cell answers
+ *   one looking for the part are both requesting something the cell responds to
  * - `101 bp もしくは 93 bp` — two readings neither of which is the value
  *
  * A width (`0.9-1.3 GB`) is a fourth shape, and is one reading rather than two:
@@ -356,7 +356,7 @@ function spread(
   one: (part: string, label: string | null) => ReadNumber[],
 ): ReadNumber[] | null {
   // Split before reading a label, not after: `HiSeq 2500: 31.8x、NovaSeq: 28.0x`
-  // carries a label per part, and taking the first one for the whole line would
+  // has a label per part, and taking the first one for the whole line would
   // leave the rest looking like one reading with two numbers in it.
   const shared = topLevelSplit(said, SHARING)
   if (shared.length > 1) {
@@ -376,7 +376,7 @@ function spread(
       return held.label === null ? [] : one(held.rest, held.label)
     })
     // The total and what it is made of are both kept: a reader looking for one
-    // and a reader looking for the other are each asking what the cell answers.
+    // and a reader looking for the other are each asking what the cell responds to.
     if (parts.length > 1) return [...one(composite[1] ?? "", label), ...parts]
   }
 
@@ -400,7 +400,7 @@ export function numbersWithUnit(
 /**
  * The reader for a key that counts things. The unit is the key — a gene number
  * is a number of genes — so a bare figure is a value rather than a line that
- * declined to say what it measures.
+ * declined to report what it measures.
  */
 export function counts(units: readonly string[] = []) {
   return (said: string): ReadNumber[] | null =>
@@ -439,7 +439,7 @@ export function storedNumber(
  * **The key is the text itself, not a position.** A run rebuilds from the dump,
  * so there is no row to point at; and matching on the words means a line whose
  * wording changed upstream falls back into the residue rather than being read
- * as something it no longer says. At cutover that is the safe direction, and it
+ * as something it no longer reports. At cutover that is the safe direction, and it
  * is also why this file is a starting point there rather than an answer.
  *
  * An entry with nothing in `read` is not missing — it is a line somebody looked

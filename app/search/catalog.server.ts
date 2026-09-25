@@ -11,7 +11,7 @@
  * **A number key is a facet only when it has been given a category.** Most
  * number keys are display only — a dataset's total data volume is shown on its
  * page but is not something a reader narrows a listing by — and `subject-count`
- * and `read-length` are the two that are, marked by carrying a
+ * and `read-length` are the two that are, marked by having a
  * `facetCategoryId` the way every vocabulary and disease key always does. This
  * reuses the column the panel's heading already comes from rather than adding
  * one that means the same thing a second way.
@@ -19,7 +19,7 @@
  * Terms are not read wholesale. A vocabulary can hold ten values or twelve
  * thousand, so labels are resolved for the values actually shown: the counts
  * bring their own, and a chosen value that no longer matches anything is looked
- * up by the code the address carries.
+ * up by the code the address has.
  */
 
 import { and, asc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm"
@@ -42,7 +42,7 @@ export interface FacetDefinition {
   /** Set for a number key: the unit its stored values are in. */
   canonicalUnit: string | null
   /**
-   * Whether an object carrying this key says so. **A key can be filtered on
+   * Whether an object with this key reports it. **A key can be filtered on
    * without being shown** — thirteen of them are, and they are the ones the
    * panel offers as questions rather than as descriptions.
    */
@@ -130,7 +130,7 @@ export interface ResolvedTerm {
 
 /**
  * Labels for values named by code. Used for what a count cannot supply: a value
- * the reader has chosen that nothing in the result carries any more, which has
+ * the reader has chosen that nothing in the result has any more, which has
  * to keep its label so that it can be recognised and taken off again.
  */
 export async function resolveTerms(
@@ -162,11 +162,11 @@ export interface FacetValue {
 }
 
 /**
- * Every value the published set actually carries, by key.
+ * Every value the published set actually has, by key.
  *
  * **Rolled up to the root of its tree**, because the root is the only level a
  * query can name (`./counts.server.ts`). **Read off the facet rows rather than
- * the vocabulary**, so that a value nothing carries is not offered: the set
+ * the vocabulary**, so that a value nothing has is not offered: the set
  * behind `disease` holds every ICD10 code there is, and all but a few hundred
  * of them would match nothing.
  *

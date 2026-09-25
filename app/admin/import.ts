@@ -1,23 +1,23 @@
 /**
- * Taking a source's values into a draft: the three-row face's arithmetic.
+ * Importing a source's values into a draft: the three-row import form's arithmetic.
  *
  * A source is anything already in the draft's own shape — a version, another
  * draft, or an application laid over this draft (`templates.ts` の
- * `applicationInput`). The face never asks which: it reads the paths the two
+ * `applicationInput`). The form never cares which: it reads the paths the two
  * disagree at (`diff.ts`, `dataset-diff.ts`), shows both readings, and holds a
  * third value — **what will be written** — that starts from the source and is
  * edited like any field.
  *
- * **Where the source says nothing, the draft's reading stands.** An empty
+ * **Where the source reports nothing, the draft's reading remains.** An empty
  * language of a title, an empty list of links, an empty list of numbers: the
- * source leaving a blank is not the source saying "blank", and starting the
- * written value from it would clear the draft's work without anybody asking.
- * A state (未確定・該当なし) is something said, and is taken.
+ * source leaving a blank is not the source indicating "blank", and starting the
+ * written value from it would clear the draft's work without anybody requesting.
+ * A state (未確定・該当なし) is something said, and is imported.
  *
  * **An array of things with an identity is a set of rows to tick**, not one
- * value. Both sides' elements stand in one list — the draft's in its order,
+ * value. Both sides' elements are shown in one list — the draft's in its order,
  * then the ones only the source has — and all of them start ticked, for the
- * same reason as above: an element the source lacks is not one it asks to
+ * same reason as above: an element the source lacks is not one it requests to
  * remove. An element both sides hold is compared field by field under its own
  * paths, so ticking it keeps whatever those rows say.
  */
@@ -27,11 +27,11 @@ import type { DraftInput } from "./form"
 import { identityOf, readAt, writeAt } from "./paths"
 
 /** How one kind of form is compared and addressed. */
-export interface TakeShape<T> {
+export interface ImportShape<T> {
   diff: (base: T, other: T) => string[]
   /** The keys a reported path is read at: a research's paths are under `content`. */
   keysOf: (path: string) => string[]
-  /** Paths the face does not offer: what the draft decides elsewhere. */
+  /** Paths the form does not offer: what the draft decides elsewhere. */
   skip: readonly string[]
   /**
    * Other paths that are the same place as a reported one and move with it —
@@ -40,13 +40,13 @@ export interface TakeShape<T> {
   along?: (path: string) => string[]
 }
 
-/** The paths the face shows, in the order the form shows them. */
-export function takePlaces<T>(shape: TakeShape<T>, mine: T, theirs: T): string[] {
+/** The paths the form shows, in the order the form shows them. */
+export function importFieldPaths<T>(shape: ImportShape<T>, mine: T, theirs: T): string[] {
   return shape.diff(mine, theirs).filter((path) => !shape.skip.includes(path))
 }
 
 /** Whether the value at a path is a list of identified elements on either side. */
-export function isList<T>(shape: TakeShape<T>, mine: T, theirs: T, path: string): boolean {
+export function isList<T>(shape: ImportShape<T>, mine: T, theirs: T, path: string): boolean {
   const keys = shape.keysOf(path)
   return [mine, theirs].some((side) => {
     const found = readAt(side, keys)
@@ -69,7 +69,7 @@ function listAt(side: unknown, keys: readonly string[]): unknown[] {
 }
 
 /** Both sides' elements: the draft's in its order, then the ones only the source has. */
-export function listRows<T>(shape: TakeShape<T>, mine: T, theirs: T, path: string): ListRow[] {
+export function listRows<T>(shape: ImportShape<T>, mine: T, theirs: T, path: string): ListRow[] {
   const keys = shape.keysOf(path)
   const ours = listAt(mine, keys)
   const others = listAt(theirs, keys)
@@ -91,10 +91,10 @@ export function listRows<T>(shape: TakeShape<T>, mine: T, theirs: T, path: strin
  * The written value with one element ticked in or out. The list is rebuilt in
  * the rows' order, so ticking an element back puts it where it stood. An element
  * still in the written value keeps what was written into it; one ticked back in
- * comes back as the face opened it (`opened`), holding the source's reading.
+ * comes back as the form opened it (`opened`), holding the source's reading.
  */
 export function withElement<T>(
-  shape: TakeShape<T>,
+  shape: ImportShape<T>,
   written: T,
   opened: T,
   rows: readonly ListRow[],
@@ -115,7 +115,7 @@ export function withElement<T>(
 }
 
 /** The ids a written value's list holds at a path. */
-export function heldIds<T>(shape: TakeShape<T>, written: T, path: string): string[] {
+export function heldIds<T>(shape: ImportShape<T>, written: T, path: string): string[] {
   return listAt(written, shape.keysOf(path)).flatMap((element) => {
     const id = identityOf(element)
     return id === undefined ? [] : [id]
@@ -156,13 +156,13 @@ export function sourceOrDraft(mine: unknown, theirs: unknown): unknown {
 }
 
 /**
- * What the face opens holding: the draft, with every offered place set to the
+ * What the form opens holding: the draft, with every offered place set to the
  * source's reading (blanks kept from the draft) and every list holding both
  * sides' elements.
  */
-export function initialTake<T>(shape: TakeShape<T>, mine: T, theirs: T): T {
+export function initialImport<T>(shape: ImportShape<T>, mine: T, theirs: T): T {
   let written = mine
-  for (const path of takePlaces(shape, mine, theirs)) {
+  for (const path of importFieldPaths(shape, mine, theirs)) {
     const keys = shape.keysOf(path)
     if (isList(shape, mine, theirs, path)) {
       const rows = listRows(shape, mine, theirs, path)
@@ -181,7 +181,7 @@ export function initialTake<T>(shape: TakeShape<T>, mine: T, theirs: T): T {
       continue
     }
     // **One place is blank only when all of it is**: the source naming a
-    // dataset only in the typed list still says which datasets it cites.
+    // dataset only in the typed list still reports which datasets it cites.
     const parts = [keys, ...along.map((one) => shape.keysOf(one))]
     const blank = parts.every((part) => {
       const source = readAt(theirs, part)
@@ -196,20 +196,20 @@ export function initialTake<T>(shape: TakeShape<T>, mine: T, theirs: T): T {
   return written
 }
 
-/** A value the source says nothing with: an empty slot, or an empty list of strings. */
+/** A value the source reports nothing with: an empty slot, or an empty list of strings. */
 function blankValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length === 0
   return blankSlot(value)
 }
 
-export const RESEARCH_TAKE: TakeShape<DraftInput> = {
+export const RESEARCH_IMPORT: ImportShape<DraftInput> = {
   diff: diffDraftInput,
   keysOf: (path) => ["content", ...path.split(".")],
-  // Which datasets a version lists is the research's to say, and the draft
+  // Which datasets a version lists is the research's to report, and the draft
   // holds only their order.
   skip: ["datasetIds"],
   // A publication's datasets are one place in two lists: the research's own,
-  // chosen, and the ones typed (`diff.ts` の `takeField`).
+  // chosen, and the ones typed (`diff.ts` の `importField`).
   along: (path) => /^relatedPublications\.[^.]+\.datasetIds$/.test(path)
     ? [path.replace(/datasetIds$/, "externalIds")]
     : [],

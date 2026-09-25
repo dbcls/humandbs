@@ -28,7 +28,7 @@ import { href, normalizeQuery, readLocale } from "~/public/urls"
  * Whether an entry names the page being looked at.
  *
  * **A destination covers what is under it.** The guidelines index is the entry
- * in the bar and a guideline answers at a path below it, so both have to light
+ * in the bar and a guideline responds at a path below it, so both have to light
  * the same word — a reader who followed a link from the index has not left it.
  * The listings are the same shape (`/research/hum0103/v4`). The trailing slash
  * is what keeps `/data-use` from claiming `/data-users`.
@@ -64,11 +64,11 @@ function NavItemLink({ item, locale, here, className, whenHere }: {
 /**
  * How an entry in the top bar is drawn.
  *
- * **It stands `tap` tall rather than as tall as its own words.** Everything
+ * **It is `tap` tall rather than as tall as its own words.** Everything
  * else in the row — the language pills, the cart, the account — is 36px, while
  * a word on a 22.4px line with 8px above and below comes to 38.4 and would be
  * the tallest thing in the bar, making the row 2.4px deeper than the controls
- * standing in it. The pressable area is the same 36px either way.
+ * shown in it. The pressable area is the same 36px either way.
  */
 const NAV_ITEM
   = "flex h-tap items-center whitespace-nowrap px-2 font-medium text-ink text-sm no-underline hover:text-brand"
@@ -141,7 +141,7 @@ function AdminNavLink({ entry, locale, here, inMenu = false }: {
   )
 }
 
-/** What the header knows about the person asking. Never their capabilities. */
+/** What the header knows about the person requesting. Never their capabilities. */
 export interface Account {
   name: string
   isAdmin: boolean
@@ -164,13 +164,13 @@ function initialOf(name: string): string {
 /**
  * Signing in and out.
  *
- * Signing in is a plain anchor because `/auth/login` answers with a redirect to
- * Keycloak and has no page behind it; a client-side navigation would ask it for
+ * Signing in is a plain anchor because `/auth/login` responds with a redirect to
+ * Keycloak and has no page behind it; a client-side navigation would request it for
  * data instead of following it. Signing out is a POST, so that neither a link
  * nor an image somebody else placed can end a session.
  *
  * Once signed in the circle becomes a menu: who is signed in, the way across
- * to the other side of the site, and the way out. Those three would take more
+ * to the other side of the site, and the exit link. Those three would take more
  * room across the top bar than they are worth, and none of them is wanted often.
  *
  * **The crossing is one entry that turns around**, rather than a link into the
@@ -178,17 +178,17 @@ function initialOf(name: string): string {
  * out of where the reader is standing, and a menu holding both would put the
  * name of the side they are already on under their own account.
  *
- * **It carries the chevron the site gives to a way onward** (`MoreLink`, the
+ * **It has the chevron the site gives to a way onward** (`MoreLink`, the
  * cart's way to itself), because the entry beside it ends the session: a
  * destination and an action drawn as the same line are told apart by pressing
  * one of them.
  *
  * **Signed in, the circle is filled and holds the account's own initial.** It
- * was a hamburger — the same glyph the navigation's overflow menu carries two
+ * was a hamburger — the same glyph the navigation's overflow menu has two
  * controls away, drawn in the same outlined circle as the cart, so the one
  * thing in the bar that is about the reader personally looked like a third way
  * to reach a page. A letter cannot be mistaken for a set of destinations, and
- * the fill is what says the state at a glance: nothing else in the bar is
+ * the fill is what shows the state at a glance: nothing else in the bar is
  * filled while nobody is signed in.
  */
 function AccountControl({ account, locale, managing }: {
@@ -201,7 +201,7 @@ function AccountControl({ account, locale, managing }: {
 
   if (account === null) {
     // The query is read through `normalizeQuery`, so the address written into
-    // the way back is the same one whichever side drew this link.
+    // the back link is the same one whichever side drew this link.
     const back = new URLSearchParams({
       redirect: `${location.pathname}${normalizeQuery(location.search)}`,
     })
@@ -219,13 +219,13 @@ function AccountControl({ account, locale, managing }: {
   return (
     <Menu
       // The name is in the control's own name as well as under it: the circle
-      // says a letter, and a letter is not who you are signed in as.
+      // shows a letter, and a letter is not who you are signed in as.
       label={messages.account.menuAs(account.name)}
       glyph={<span className="font-semibold text-sm">{initialOf(account.name)}</span>}
       round
       filled
     >
-      {/* **Who, said in words at the head of the panel.** The circle says that
+      {/* **Who, said in words at the head of the panel.** The circle means that
           somebody is signed in; only this says which account, which is the
           question anybody who shares a terminal is opening the menu to ask. */}
       <span className="border-line border-b px-4 py-2 text-sm">
@@ -235,7 +235,7 @@ function AccountControl({ account, locale, managing }: {
       {account.isAdmin && (
         <Link
           to={href(locale, managing ? "/" : "/admin")}
-          className="group/way flex items-center gap-0.5 whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
+          className="group/link flex items-center gap-0.5 whitespace-nowrap px-4 py-2 text-sm no-underline hover:bg-surface-hover"
         >
           {managing ? messages.account.public : messages.account.admin}
           <Chevron dir="right" />
@@ -261,7 +261,7 @@ function AccountControl({ account, locale, managing }: {
  * drawn on the same white it read as part of the furniture. Below the bar it is
  * on the page's tint, which is where v1 puts it and what makes it look temporary.
  *
- * They are stacked rather than folded into one: each is a separate thing the
+ * They are stacked rather than merged into one: each is a separate thing the
  * office needs read, and there are two or three of them at a time. Closing one
  * is remembered for as long as the reader stays on the page they closed it on,
  * which is why this holds the state rather than the notice itself. Reaching
@@ -280,7 +280,7 @@ export function Announcements({ alerts, locale }: { alerts: AlertView[], locale:
     <section
       aria-label={messages.announcements}
       // The width of the window, held to the same edge as the bar above: what
-      // the site says to everybody belongs to the window rather than to the
+      // the site shows to everybody belongs to the window rather than to the
       // page, and a notice indented to the width of a page under a full-width
       // bar reads as belonging to the screen underneath it.
       className="w-full px-4 pt-4 sm:px-page-gutter"
@@ -293,7 +293,7 @@ export function Announcements({ alerts, locale }: { alerts: AlertView[], locale:
             onDismiss={() => { setDismissed((was) => [...was, index]) }}
           >
             {/* Which language this is in, where it is not the reader's. It
-                stands above the words rather than after them: a reader who
+                is shown above the words rather than after them: a reader who
                 cannot read them should not have to reach the end first. */}
             {untranslated && (
               <p className="mb-1"><Badge tone="muted">{messages.otherLanguageOnly}</Badge></p>
@@ -327,7 +327,7 @@ export function SiteHeader({ locale, account, managing = false }: {
    * **The row of destinations is the area's own, and the cart goes.** Where a
    * management screen is left for is the same row a public page keeps its
    * destinations in — one bar with one grammar — but the destinations differ,
-   * and a cart is a reader collecting datasets to ask for rather than somebody
+   * and a cart is a reader collecting datasets to request rather than somebody
    * editing them. `root.tsx` decides this from the address.
    */
   managing?: boolean
@@ -370,7 +370,7 @@ export function SiteHeader({ locale, account, managing = false }: {
       */}
       <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4 sm:px-page-gutter">
         {/*
-          The wordmark is the portal's own artwork, carried over as it is; the
+          The wordmark is the portal's own artwork, kept as it is; the
           site's name in the reader's language is set under it rather than drawn
           into it, so that it can be translated and read aloud.
 
@@ -382,7 +382,7 @@ export function SiteHeader({ locale, account, managing = false }: {
           under the wordmark still has weight, and a logo whose drawing is
           exactly level with the navigation reads as sitting low in the bar. The
           shift is a transform rather than a margin, so it moves the name with
-          the drawing and asks nothing of the row.
+          the drawing and requests nothing of the row.
 
           **It leads to the top of the area the reader is in**, which on a
           management screen is that area's own front page rather than the
@@ -429,7 +429,7 @@ export function SiteHeader({ locale, account, managing = false }: {
                 {/*
           The menu sits at the end of the navigation because that is where the
           row runs out, and it holds destinations rather than actions — so it
-          carries its name rather than a glyph on its own.
+          has its name rather than a glyph on its own.
         */}
                 <div className={NAVBAR_MENU_STEP}>
                   <Menu label={messages.moreNavigation} icon="menu" word>
@@ -472,7 +472,7 @@ export function SiteHeader({ locale, account, managing = false }: {
             browser (`public/urls.ts`).
 
             **Not on a management screen.** Those exist in Japanese only, so
-            the other pill would lead to an address that answers nothing —
+            the other pill would lead to an address that responds with nothing —
             and a control that cannot be pressed is not one to draw.
           */}
           {!managing && (
@@ -488,7 +488,7 @@ export function SiteHeader({ locale, account, managing = false }: {
           )}
           {/*
             **Not on a management screen.** The cart is a reader collecting
-            datasets to ask for, which is not what somebody editing them is
+            datasets to request, which is not what somebody editing them is
             doing; it would sit there holding nothing on all eighteen of them.
           */}
           {!managing && <CartMenu locale={locale} />}
@@ -502,8 +502,8 @@ export function SiteHeader({ locale, account, managing = false }: {
 /**
  * The sitemap at the foot of every page.
  *
- * Four columns of links under one heading, with the centre's mark opposite it —
- * v1's arrangement, and the reason the footer carries more than the top bar
+ * Four columns of links under one heading, with the centre's logo opposite it —
+ * v1's arrangement, and the reason the footer has more than the top bar
  * does: it is where the four guidelines are named in full and where anything
  * the bar had no room for can still be reached.
  *
@@ -523,7 +523,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
         className="relative mx-auto w-full max-w-content-max px-4 py-8 sm:px-page-gutter"
       >
         {/*
-          The centre's mark sits in the corner and out of the flow. Set beside
+          The centre's logo sits in the corner and out of the flow. Set beside
           the heading it was the tallest thing in that row, and the whole
           sitemap started 40px lower than the words it belongs to.
         */}
@@ -534,7 +534,7 @@ export function SiteFooter({ locale }: { locale: Locale }) {
           className="absolute top-8 right-4 sm:right-page-gutter"
         >
           <img src="/logo-dbcls.svg" alt="DBCLS" width={132} height={60} className="h-10 w-auto" />
-          {/* The mark this link carries is the logo itself, so the one that
+          {/* The icon this link has is the logo itself, so the one that
               says "outward" has nowhere to sit that is not on top of it. The
               word is still owed. */}
           <span className="sr-only">{messages.newTab}</span>

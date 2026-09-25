@@ -13,7 +13,7 @@
  * reader sees; where the destination is also the text of the link, the text
  * side is indexed and searching by domain still works.
  *
- * Language is carried down the walk rather than decided at the leaf: a link
+ * Language is passed down the walk rather than decided at the leaf: a link
  * inside `LocalizedLinks.ja` belongs to the Japanese text however deeply it is
  * nested, and a single-valued field belongs to both.
  */
@@ -122,7 +122,7 @@ export function searchTextOf(projection: unknown, extra: string[] = []): SearchT
 }
 
 /**
- * The vocabulary values a row carries, as text.
+ * The vocabulary values a row has, as text.
  *
  * The projection holds the identity of a term and not its label — resolving
  * labels is the renderer's job, not the projection's — so the walk above
@@ -147,7 +147,7 @@ export function termsSearchText(
   return { ja: ja.join(" "), en: en.join(" ") }
 }
 
-/** Both sides concatenated. A research row carries its datasets' text this way. */
+/** Both sides concatenated. A research row has its datasets' text this way. */
 export function concatSearchText(parts: readonly SearchText[]): SearchText {
   return {
     ja: parts.map((part) => part.ja).filter(Boolean).join(" "),

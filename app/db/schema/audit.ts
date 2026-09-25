@@ -10,7 +10,7 @@ export const eventAction = pgEnum("event_action", [
   "publish-dataset",
   /**
    * A version turned back into a draft. Recorded because it is the only trace
-   * left: the row moves rather than gaining a flag, so nothing else can say
+   * left: the row moves rather than gaining a flag, so nothing else can report
    * that the number was ever out.
    */
   "withdraw-version",
@@ -31,7 +31,7 @@ export const eventAction = pgEnum("event_action", [
   "unpublish-site-content",
   "grant-admin",
   "revoke-admin",
-  "pass-publish-gate",
+  "pass-publish-check",
 ])
 
 export type EventAction = (typeof eventAction.enumValues)[number]
@@ -54,7 +54,7 @@ export type EventSubjectType
  *
  * The subject is stored as a plain string with no foreign key: deleting a
  * research must not delete the record of how it got there, and files are
- * addressed by name because their published state lives in S3, not here.
+ * addressed by name because their published state is kept in S3, not here.
  *
  * Append-only is enforced by granting the role that serves requests INSERT and
  * SELECT only (`app/db/grants.server.ts`). A trigger would not be enough —

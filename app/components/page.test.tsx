@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { AnnotationLayer, BandBox, DatasetIds, Fact, Facts, IdMark, KeyValue, MarkedPlace, pageWindow, Paging, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
+import { AnnotationLayer, HeaderBarSection, DatasetIds, Fact, Facts, IdWithIcon, KeyValue, AnnotatedCell, pageWindow, Paging, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -162,7 +162,7 @@ describe("a vocabulary value naming a product", () => {
 
   /**
    * The gap is drawn, but what is copied out of a cell and what a screen reader
-   * says are the text. Without the space they read `IlluminaMiSeq`.
+   * reads out are the text. Without the space they read `IlluminaMiSeq`.
    */
   it("keeps a space between the two, not only the room for one", () => {
     expect(termLabel("Illumina MiSeq", "Illumina")).toContain("Illumina</span> MiSeq")
@@ -181,13 +181,13 @@ describe("a vocabulary value naming a product", () => {
 })
 
 /*
-  **The band a table opens with is one line.** The floors below it are measured
+  **The header row a table opens with is one line.** The floors below it are measured
   from the values, so a column whose name is longer than its values had nothing
   holding it open — and the name wrapped only in the language where it was
-  longer, leaving one table with a band half again as tall as the same table
+  longer, leaving one table with a header row half again as tall as the same table
   next door.
 */
-describe("the band a table opens with", () => {
+describe("the header row a table opens with", () => {
   function header(headers: ReactNode[]): string {
     const Stub = createRoutesStub([{
       path: "/*",
@@ -202,11 +202,11 @@ describe("the band a table opens with", () => {
   })
 
   /*
-    A mark is 36px against a line of 22.4px, so the room a word needs would make
-    the band half as tall again. It carries no word, so there is nothing to hold
+    An indicator is 36px against a line of 22.4px, so the room a word needs would make
+    the header row half as tall again. It has no word, so there is nothing to hold
     on one line — and holding one would push a fixed-width column open.
   */
-  it("asks nothing for a header that is a control rather than a word", () => {
+  it("requests nothing for a header that is a control rather than a word", () => {
     const html = header([<span key="cart" className="sr-only">カート</span>])
     expect(html).not.toContain("whitespace-nowrap")
     expect(html).toContain("w-15")
@@ -240,7 +240,7 @@ describe("a table with no rows", () => {
     expect(of("なし")).toMatch(/colspan="2"/i)
   })
 
-  it("draws an empty body where the caller says nothing, which is most tables", () => {
+  it("draws an empty body where the caller shows nothing, which is most tables", () => {
     expect(of()).not.toMatch(/colspan/i)
   })
 
@@ -287,7 +287,7 @@ describe("where a cell sits in a row taller than it is", () => {
     four — and the reader takes a row by reading across its first line. A date
     centred against a four-line cell sits beside nothing.
   */
-  it("sits at the top unless the caller says otherwise", () => {
+  it("sits at the top unless the caller shows otherwise", () => {
     expect(of()).toMatch(/<td[^>]*align-top/)
     expect(of()).not.toMatch(/<td[^>]*align-middle/)
   })
@@ -298,20 +298,20 @@ describe("where a cell sits in a row taller than it is", () => {
     amount — measured on the cart at 16.4 / 17.2 / 18.0px against a middle of
     18.0. Nothing is aligned to anything, which reads as "not quite centred".
   */
-  it("centres them where the caller says every row is one line", () => {
+  it("centres them where the caller shows every row is one line", () => {
     expect(of("middle")).toMatch(/<td[^>]*align-middle/)
     expect(of("middle")).not.toMatch(/<td[^>]*align-top/)
   })
 
   /*
-    **The choice is about the cells, not the band.** A column name does not wrap,
+    **The choice is about the cells, not the header row.** A column name does not wrap,
     so the header row is one line whatever the rows under it do — and the same
     1px the cells had was there between the words (17.0) and
-    the mark that sets the row's height (18.0).
+    the icon that sets the row's height (18.0).
   */
   /*
     A control flush with the top of a top-set row stood 5px above the first line
-    of the words beside it (measured: 12.0 against 17.2 on the take-in screen's
+    of the words beside it (measured: 12.0 against 17.2 on the import screen's
     table of applications); a middle-set row has no first line to meet.
   */
   it("lowers a control onto the first line in a row set to the top, and only there", () => {
@@ -373,7 +373,7 @@ describe("横に流れる表で残る列", () => {
     公開の一覧はマークを先頭に 2 列残し、admin の研究一覧は名前の列を 1 つ残す。
     固定の指定が幅まで決めると、名前がマークの 60px に押し込まれる。
   */
-  it("固定は幅を決めない。マークの幅はマークのセルが持つ", () => {
+  it("固定は幅を決めない。マークの幅はマークのセルで決まる", () => {
     const named = renderToStaticMarkup(
       <Table headers={["研究 ID"]} stuck={1}>
         <tr><Td stuck={0} nowrap>hum0001</Td></tr>
@@ -389,7 +389,7 @@ describe("横に流れる表で残る列", () => {
     const marked = renderToStaticMarkup(
       <Table headers={["", "研究 ID"]} stuck={2}>
         <tr>
-          <Td stuck={0} holds="mark">x</Td>
+          <Td stuck={0} holds="icon">x</Td>
           <Td stuck={1} nowrap>hum0001</Td>
         </tr>
       </Table>,
@@ -399,58 +399,58 @@ describe("横に流れる表で残る列", () => {
   })
 })
 
-describe("where a place's marks stand", () => {
-  const annotate = (at: string, name?: string) => <i data-mark="">{`mark:${at}:${name ?? ""}`}</i>
+describe("where a field's annotations are shown", () => {
+  const annotate = (at: string, name?: string) => <i data-annotation="">{`annotation:${at}:${name ?? ""}`}</i>
   const draw = (element: React.ReactNode) => renderToStaticMarkup(<AnnotationLayer annotate={annotate}>{element}</AnnotationLayer>)
 
-  it("a section's marks stand in its heading, and nothing of them under the value", () => {
+  it("a section's annotations are shown in its heading, and nothing of them under the value", () => {
     const html = draw(<Section title="研究題目" at="title"><p>値</p></Section>)
-    expect(html).toMatch(/<h2[^>]*>研究題目[\s\S]*?mark:title[\s\S]*?<\/h2>/)
-    expect(html.match(/mark:title/g)).toHaveLength(1)
+    expect(html).toMatch(/<h2[^>]*>研究題目[\s\S]*?annotation:title[\s\S]*?<\/h2>/)
+    expect(html.match(/annotation:title/g)).toHaveLength(1)
   })
 
-  it("a pair's marks stand with its name (dt), and the value (dd) holds only the value", () => {
+  it("a pair's annotations are shown with its name (dt), and the value (dd) holds only the value", () => {
     const html = draw(<dl><KeyValue title="研究代表者" at="dataProviders.p.name">松原</KeyValue></dl>)
-    expect(html).toMatch(/<dt[^>]*>研究代表者[\s\S]*?mark:dataProviders\.p\.name[\s\S]*?<\/dt>/)
-    expect(html.slice(html.indexOf("<dd"))).not.toContain("mark:")
+    expect(html).toMatch(/<dt[^>]*>研究代表者[\s\S]*?annotation:dataProviders\.p\.name[\s\S]*?<\/dt>/)
+    expect(html.slice(html.indexOf("<dd"))).not.toContain("annotation:")
   })
 
   /** A field just added has nothing written; its place is still a line to light and to press. */
-  it("an empty place still stands a line tall, so the caret in its box lights something", () => {
+  it("an empty place still is a line tall, so the caret in its box lights something", () => {
     const html = draw(<dl><KeyValue title="細胞株" at="experiments.e.values.k">{null}</KeyValue></dl>)
-    expect(html).toMatch(/<div data-place="experiments\.e\.values\.k" class="[^"]*\bmin-h-\[1lh\]/)
+    expect(html).toMatch(/<div data-field-path="experiments\.e\.values\.k" class="[^"]*\bmin-h-\[1lh\]/)
   })
 
-  it("a cell's marks stand at the value's right on its row, once", () => {
-    const html = draw(<MarkedPlace at="grants.g.title" name="研究課題名">課題名</MarkedPlace>)
-    expect(html.indexOf("mark:grants.g.title")).toBeGreaterThan(html.indexOf("課題名"))
+  it("a cell's annotations are shown at the value's right on its row, once", () => {
+    const html = draw(<AnnotatedCell at="grants.g.title" name="研究課題名">課題名</AnnotatedCell>)
+    expect(html.indexOf("annotation:grants.g.title")).toBeGreaterThan(html.indexOf("課題名"))
     expect(html).toContain("flex items-start")
-    expect(html.match(/mark:grants/g)).toHaveLength(1)
+    expect(html.match(/annotation:grants/g)).toHaveLength(1)
   })
 
-  it("hands each mark the name the page gives the place — the heading, the pair's name, the column's", () => {
-    expect(draw(<Section title="研究題目" at="title"><p>値</p></Section>)).toContain("mark:title:研究題目")
-    expect(draw(<dl><KeyValue title="研究代表者" at="p.name">松原</KeyValue></dl>)).toContain("mark:p.name:研究代表者")
-    expect(draw(<MarkedPlace at="grants.g.title" name="研究課題名">課題名</MarkedPlace>)).toContain("mark:grants.g.title:研究課題名")
+  it("hands each annotation the name the page gives the place — the heading, the pair's name, the column's", () => {
+    expect(draw(<Section title="研究題目" at="title"><p>値</p></Section>)).toContain("annotation:title:研究題目")
+    expect(draw(<dl><KeyValue title="研究代表者" at="p.name">松原</KeyValue></dl>)).toContain("annotation:p.name:研究代表者")
+    expect(draw(<AnnotatedCell at="grants.g.title" name="研究課題名">課題名</AnnotatedCell>)).toContain("annotation:grants.g.title:研究課題名")
   })
 
   it("draws none of it on a page without a layer", () => {
     const html = renderToStaticMarkup(<dl><KeyValue title="研究代表者" at="dataProviders.p.name">松原</KeyValue></dl>)
-    expect(html).not.toContain("mark:")
+    expect(html).not.toContain("annotation:")
   })
 })
 
-describe("段に流す対", () => {
+describe("段組みの列に流すラベルと値", () => {
   function pair(split?: boolean): string {
     return renderToStaticMarkup(<Pairs><KeyValue title="研究方法" split={split}>長い</KeyValue></Pairs>)
   }
 
-  it("既定では値を段の境で切らない", () => {
+  it("既定では値を段組みの列の境で切らない", () => {
     expect(pair()).toContain("break-inside-avoid")
     expect(pair()).not.toContain("break-after-avoid")
   })
 
-  it("split なら値は段を越えてよいが、ラベルの直後では切らない", () => {
+  it("split なら値は次の列へ続いてよいが、ラベルの直後では切らない", () => {
     const html = pair(true)
     expect(html).not.toContain("break-inside-avoid")
     expect(/<dt class="[^"]*break-after-avoid/.test(html)).toBe(true)
@@ -491,16 +491,16 @@ describe("a table's column of things to press (Table actions)", () => {
   })
 })
 
-describe("an identifier with its mark (IdMark)", () => {
-  it("chooses the mark by what the identifier names, muted and before it", () => {
-    expect(routed(<IdMark kind="research" to="/research/hum0001">hum0001</IdMark>)).toMatch(/^<svg[^>]*class="[^"]*mr-1 text-ink-muted[^"]*"[^]*<path[^]*<a href="\/research\/hum0001">hum0001<\/a>$/)
-    const dataset = routed(<IdMark kind="dataset">JGAD000001</IdMark>)
+describe("an identifier with its indicator (IdWithIcon)", () => {
+  it("chooses the indicator by what the identifier names, muted and before it", () => {
+    expect(routed(<IdWithIcon kind="research" to="/research/hum0001">hum0001</IdWithIcon>)).toMatch(/^<svg[^>]*class="[^"]*mr-1 text-ink-muted[^"]*"[^]*<path[^]*<a href="\/research\/hum0001">hum0001<\/a>$/)
+    const dataset = routed(<IdWithIcon kind="dataset">JGAD000001</IdWithIcon>)
     expect(dataset).toMatch(/JGAD000001$/)
     expect(dataset).not.toContain("<a ")
   })
 
   it("opens a new tab with the site's words for it when asked, keeping the pair on one line", () => {
-    const html = routed(<IdMark kind="dataset" to="/dataset/JGAD000001" newTab locale="ja">JGAD000001</IdMark>)
+    const html = routed(<IdWithIcon kind="dataset" to="/dataset/JGAD000001" newTab locale="ja">JGAD000001</IdWithIcon>)
     expect(html).toContain("text-nowrap")
     expect(html).toContain("target=\"_blank\"")
     expect(html).toContain("(新しいタブで開きます)")
@@ -508,7 +508,7 @@ describe("an identifier with its mark (IdMark)", () => {
 })
 
 describe("a cell of dataset IDs (DatasetIds)", () => {
-  it("cuts to three and adds another research's ID after its dataset", () => {
+  it("truncates to three and adds another research's ID after its dataset", () => {
     const items = ["JGAD1", "JGAD2", "JGAD3", "JGAD4", "JGAD5"].map((label) => ({ label, to: null }))
     const html = routed(<DatasetIds locale="ja" items={[...items, { label: "JGAD9", to: "/d/JGAD9", research: { label: "hum0009", to: "/r/hum0009" } }]} />)
     expect(html).toContain("JGAD3")
@@ -525,9 +525,9 @@ describe("a short list of facts (Facts)", () => {
   })
 })
 
-describe("a box named on a band (BandBox)", () => {
-  it("clips the band with the box and names it at the level it is given", () => {
-    const html = renderToStaticMarkup(<BandBox as="li" level={2} title="v1" aside="2026-01-01">本文</BandBox>)
+describe("a box named on a header bar (HeaderBarSection)", () => {
+  it("clips the header bar with the box and identifies it at the level it is given", () => {
+    const html = renderToStaticMarkup(<HeaderBarSection as="li" level={2} title="v1" aside="2026-01-01">本文</HeaderBarSection>)
     expect(html).toMatch(/^<li class="overflow-hidden rounded border border-line">/)
     expect(html).toContain("<h2 class=\"flex flex-wrap items-center gap-2 font-semibold\">v1</h2>")
     expect(html).toContain("2026-01-01")

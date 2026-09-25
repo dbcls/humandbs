@@ -2,7 +2,7 @@
  * Identities the production load gives the research and datasets it makes,
  * the same on every load.
  *
- * The load empties the database and makes everything again, and a private box
+ * The load empties the database and makes everything again, and a private prefix
  * in the file store is keyed by research identity. Drawn afresh each time, the
  * identities would move and leave every private file under a key nothing points
  * at. Derived from what the snapshot names them by — the hum label, the

@@ -24,7 +24,7 @@ function screen(view: Partial<AdminResearchPageView>): string {
     versions: [],
     drafts: [],
     reviews: [],
-    box: { count: 0, bytes: 0 },
+    fileSummary: { count: 0, bytes: 0 },
     filesRemain: false,
     switching: false,
     ...view,
@@ -35,7 +35,7 @@ function screen(view: Partial<AdminResearchPageView>): string {
 }
 
 /**
- * The reason a closed control stands over itself, or null when the control
+ * The reason a closed control is shown over itself, or null when the control
  * named `label` is there and can be pressed. Throws when there is no such
  * control, so a test cannot pass by the control going missing.
  */
@@ -68,8 +68,8 @@ describe("研究の削除", () => {
     expect(reasonOf(screen({ filesRemain: false }), t.deleteResearch)).toBeNull()
   })
 
-  it("ストアが応答せず分からないときは押せるまま (押した先の断りに任せる)", () => {
-    expect(reasonOf(screen({ filesRemain: null, box: null }), t.deleteResearch)).toBeNull()
+  it("ストアが応答せず分からないときは押せるまま (押した先のエラーメッセージに任せる)", () => {
+    expect(reasonOf(screen({ filesRemain: null, fileSummary: null }), t.deleteResearch)).toBeNull()
   })
 })
 
@@ -106,7 +106,7 @@ describe("研究 ID の解除", () => {
   })
 
   it("フォルダが分からないときは、切り替えが無ければ押せるまま", () => {
-    const html = screen({ labels: [{ ...NEW, holdsFiles: null }, { ...OLD, holdsFiles: null }], box: null, filesRemain: null })
+    const html = screen({ labels: [{ ...NEW, holdsFiles: null }, { ...OLD, holdsFiles: null }], fileSummary: null, filesRemain: null })
     expect(reasonOf(rowOf(html, "hum0101"), t.unpin)).toBeNull()
     expect(reasonOf(rowOf(html, "hum0102"), t.unpin)).toBeNull()
   })

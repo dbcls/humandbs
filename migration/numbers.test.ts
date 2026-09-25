@@ -29,7 +29,7 @@ describe("reading a number out of a v1 cell", () => {
     ])
   })
 
-  /** A value carries colons of its own, and `ref` is not a label. */
+  /** A value has colons of its own, and `ref` is not a label. */
   it("does not read a colon inside brackets as a label", () => {
     expect(rows("1.32 TB(bam [ref: hg19])", volume).got[0]?.label).toBeNull()
   })

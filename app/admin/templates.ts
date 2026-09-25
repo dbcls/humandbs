@@ -1,5 +1,5 @@
 /**
- * Turning what an upstream system says into the content of a draft.
+ * Turning what an upstream system has into the content of a draft.
  *
  * **Nothing here reads a database or a network.** The two upstreams are read in
  * `templates.server.ts`; this is the part that decides what of their answer a
@@ -48,7 +48,7 @@ const READ_LENGTH_KEY = "read-length"
 
 /**
  * The access type the application form's number means. 1 is unrestricted, which
- * no JGA dataset is, and 3 is an application covering both — neither says what
+ * no JGA dataset is, and 3 is an application covering both — neither reports what
  * one dataset is, so neither is written.
  */
 const ACCESS_TERM_BY_NUMBER: ReadonlyMap<number, string> = new Map([
@@ -96,8 +96,8 @@ export interface DatasetSeed {
  *
  * A language upstream left empty stays empty rather than becoming `unknown`:
  * a value in one language and an empty string in the other is what untranslated
- * means, and the publish gate lists it as such. `unknown` is a mark a curator
- * puts on a field they are still asking about, and upstream saying nothing is
+ * means, and the publish check lists it as such. `unknown` is a state a curator
+ * puts on a field they are still asking about, and upstream indicating nothing is
  * not that.
  */
 export function researchContentFrom(branch: DsBranchDetail): ResearchContent {
@@ -141,7 +141,7 @@ function hasName(branch: DsBranchDetail): boolean {
 /**
  * A dataset registered with JGA.
  *
- * It carries one experiment, labelled with the assay the registration states.
+ * It has one experiment, labelled with the assay the registration states.
  * A published dataset holds one experiment four times out of five, so the shape
  * matches what a curator would have written; the diseases the application names
  * go in it, because that is where the catalog keeps them.
@@ -203,8 +203,8 @@ export function draDatasetSeed(
   }
 
   // **The diseases are the application's, the same in every experiment**, and
-  // what did not fit is said in each: every field left unsettled carries the
-  // comment that says what to settle it on.
+  // what did not fit is said in each: every field left unsettled has the
+  // comment that reports what to settle it on.
   const diseases = diseasesOf(branch, catalog)
   const experiments = submission.groups.map((group) => {
     const id = newId()
@@ -270,9 +270,9 @@ function diseasesOf(branch: DsBranchDetail | null, catalog: CatalogWithTerms): B
  * without the point, narrow ranges spelled out, and `-` and `dummy` left out
  * rather than turned into codes.
  *
- * **The tail of a code is dropped until the vocabulary answers.** The field
+ * **The tail of a code is dropped until the vocabulary responds.** The field
  * holds ICD-10-CM, which WHO's classification cannot spell — `K75.81` is NASH —
- * and `K758` is what stands for it. A code that answers at no length is named
+ * and `K758` is what stands for it. A code that responds at no length is named
  * as not written rather than minted.
  *
  * **What is written is codes and no names.** The application form holds no word
@@ -316,7 +316,7 @@ type Built
     | { slot: null, dropped: DroppedValue[] }
 
 /**
- * Puts a built slot among `values`, which stand at `base` in the dataset, and
+ * Puts a built slot among `values`, which are shown at `base` in the dataset, and
  * notes what did not fit against the field it would have gone in.
  */
 function take(values: ValueSlot[], dropped: DroppedValue[], built: Built, base: string): void {
@@ -425,18 +425,18 @@ function named(catalog: CatalogWithTerms, keyCode: string, values: readonly stri
 }
 
 /**
- * An application laid over a draft, as a source for the take-in face
- * (`take.ts`).
+ * An application laid over a draft, as a source for the import form
+ * (`import.ts`).
  *
  * **Only what the application states is laid over**: the title, the three
  * summary fields and the principal investigator. Everything else is the
  * draft's own — grants, publications and the dataset list are the curator's
- * work, and the application knows nothing about them — so the face finds no
+ * work, and the application knows nothing about them — so the form finds no
  * difference there and offers nothing.
  *
  * **The investigator is added, never swapped in.** A provider is a structure,
  * and the draft's providers are people the curator already wrote; the
- * application's one joins the end of the list unless the draft already names
+ * application's one joins the end of the list unless the draft already identifies
  * that person in either language.
  */
 export function applicationInput(mine: DraftInput, branch: DsBranchDetail): DraftInput {

@@ -11,7 +11,7 @@
  * compared as a set** (`files/selection.ts`).
  */
 
-import { inBoxOrder } from "~/files/selection"
+import { inListingOrder } from "~/files/selection"
 
 import {
   diff,
@@ -39,14 +39,14 @@ function sameValueBody(a: ValueBody, b: ValueBody): boolean {
   if (a.kind === "text" && b.kind === "text") return sameTextPair(a.text, b.text)
   if (a.kind === "vocabulary" && b.kind === "vocabulary") {
     if (a.state !== b.state) return false
-    // Chosen terms are invisible while the state says there is no value, the
+    // Chosen terms are invisible while the state reports there is no value, the
     // same way half-typed text is.
     return a.state !== "value" || sameStrings(a.termIds, b.termIds)
   }
   if (a.kind === "number" && b.kind === "number") {
     if (a.state !== b.state) return false
     // What was typed and the unit it was typed in, for the same reason: neither
-    // is on screen while the state says there is no value.
+    // is on screen while the state reports there is no value.
     return a.state !== "value" || (a.rows.length === b.rows.length && a.rows.every((row, at) => {
       const other = b.rows[at]
       return row.label === other?.label && row.value === other.value
@@ -98,13 +98,13 @@ export function diffDatasetInput(
   elements(into, "values", base.values, other.values, byKeyId, value)
   elements(into, "experiments", base.experiments, other.experiments, byId, experiment)
   // The selection is a set: the same files chosen in another order are the same selection.
-  into.when(sameStrings(inBoxOrder(base.fileSelection), inBoxOrder(other.fileSelection)), "fileSelection")
+  into.when(sameStrings(inListingOrder(base.fileSelection), inListingOrder(other.fileSelection)), "fileSelection")
 
   return into.paths
 }
 
 /** One field of `theirs` written over `mine`, addressed by a reported path. */
-export function takeDatasetField(
+export function importDatasetField(
   mine: DatasetContentInput,
   theirs: DatasetContentInput,
   path: string,

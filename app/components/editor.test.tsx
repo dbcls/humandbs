@@ -15,7 +15,7 @@ import { emptyPair } from "./fields"
 /** Nothing in this fixture has values, so an empty catalog draws every place. */
 const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
 
-/** The draft drawn as its page, which the editor stands beside the form. */
+/** The draft drawn as its page, which the editor is shown beside the form. */
 function drawn(): DrawnDraft {
   const anchored = anchoredResearchView({
     humLabel: "hum0001",
@@ -110,7 +110,7 @@ describe("the editing form", () => {
     expect(names).toContain("目的")
   })
 
-  it("folds the box of a slot marked unsettled, naming the state rather than the half-typed text", () => {
+  it("collapses the box of a slot marked unsettled, naming the state rather than the half-typed text", () => {
     const html = render(view((input) => {
       input.content.title.ja = { state: "unknown", text: "half written" }
     }))
@@ -132,7 +132,7 @@ describe("the editing form", () => {
     expect(both).not.toContain("未翻訳")
   })
 
-  it("says nothing about a conflict or refused markup until a save has been answered", () => {
+  it("implies nothing about a conflict or refused markup until a save has been answered", () => {
     const html = render(view())
 
     expect(html).not.toContain("別の場所で保存されました")
@@ -147,7 +147,7 @@ describe("the editing form", () => {
 })
 
 describe("the rows of a list", () => {
-  it("stands the grants as a table with the page's columns, the values whole rather than cut short", () => {
+  it("shows the grants as a table with the page's columns, the values whole rather than truncated", () => {
     const words = messagesFor("ja").research
     const pair = (text: string) => {
       const made = emptyPair()
@@ -166,7 +166,7 @@ describe("the rows of a list", () => {
     for (const label of ["編集", "上へ", "下へ", "削除"]) expect(grants).toContain(`aria-label="${label}"`)
   })
 
-  it("says the state a value wears — 該当なし, 未確定 — in the table rather than 未入力", () => {
+  it("shows the state a value is shown with — 該当なし, 未確定 — in the table rather than 未入力", () => {
     const marked = (state: "unknown" | "not-applicable") => {
       const made = emptyPair()
       made.ja.state = state
@@ -185,7 +185,7 @@ describe("the rows of a list", () => {
   })
 
   /**
-   * **A row's controls carry marks.** Taking a row away is a glyph with the
+   * **A row's controls have icons.** Taking a row away is a glyph with the
    * word as its label, the way the repeated elements' rows draw it, and adding
    * one is a word with the glyph for adding beside it; a bare word beside a
    * box reads as part of the row.
@@ -214,8 +214,8 @@ const RESEARCH_ID = "00000000-0000-0000-0000-000000000001"
 const DRAFT_ID = "00000000-0000-0000-0000-000000000002"
 const DRAFT_BASE = `/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}`
 
-describe("the head", () => {
-  it("names the screen \"研究の内容\", the identifier beside it, and the way back to the research", () => {
+describe("the header", () => {
+  it("names the screen \"研究の内容\", the identifier beside it, and the back link to the research", () => {
     const html = render(view())
     expect(html).toContain("研究の内容")
     expect(html).toContain("hum0001")
@@ -228,12 +228,12 @@ describe("the head", () => {
     expect(html).toContain("ID 未発行")
   })
 
-  it("wears the version it updates as a badge beside the identifier, and none for an ordinary draft", () => {
+  it("is shown with the version it updates as a badge beside the identifier, and none for an ordinary draft", () => {
     expect(render({ ...view(), updating: 3 })).toContain("v3 を更新中")
     expect(render(view())).not.toContain("を更新中")
   })
 
-  it("leads to this draft's other faces in one order — take-in, datasets, review, publish — by name only", () => {
+  it("leads to this draft's other screens in one order — import, datasets, review, publish — by name only", () => {
     const html = render({
       ...view(),
       steps: { datasets: 3, shared: true, unresolved: 4, blocks: 0, findings: 2 },
@@ -245,13 +245,13 @@ describe("the head", () => {
       return found
     }
     const order = [
-      at(`href="${DRAFT_BASE}/take"`),
+      at(`href="${DRAFT_BASE}/import"`),
       at(`href="${DRAFT_BASE}/dataset"`),
       at(`href="${DRAFT_BASE}/review"`),
       at(`href="${DRAFT_BASE}/publish"`),
     ]
     expect([...order].sort((a, b) => a - b)).toEqual(order)
-    // Named, not measured: the facts are read on each screen, and what is open is counted in the tools row.
+    // Named, not measured: the facts are read on each screen, and what is open is counted in the toolbar.
     expect(head).not.toContain("3 件")
     expect(head).not.toContain("共有中")
     expect(head).not.toContain("確認 2")
@@ -259,20 +259,20 @@ describe("the head", () => {
     expect(head).not.toMatch(/rounded-full[^>]*>\s*1\s*</)
   })
 
-  it("marks each of the four as a way to another screen — the chevron after the word, which moves when pointed at", () => {
+  it("marks each of the four as a link to another screen — the chevron after the word, which moves when pointed at", () => {
     const html = render(view())
     const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
-    expect(head.match(/group-hover\/way:translate-x-0\.5/g)).toHaveLength(4)
-    // The tools row under them leads nowhere and carries no such mark.
+    expect(head.match(/group-hover\/link:translate-x-0\.5/g)).toHaveLength(4)
+    // The toolbar under them leads nowhere and has no such indicator.
     const tools = head.slice(head.indexOf(">保存<"))
-    expect(tools).not.toContain("group-hover/way:translate-x-0.5")
+    expect(tools).not.toContain("group-hover/link:translate-x-0.5")
   })
 })
 
-describe("the tools row", () => {
+describe("the toolbar", () => {
   /**
    * **Left to right: save, its status, the memo, the whole, what is still
-   * open, then the pane switch at the far end.** The unsaved notice stands
+   * open, then the pane switch at the far end.** The unsaved notice remains
    * to save's own right.
    */
   it("keeps one order: save, its status, memo, whole, open comments, the pane switch", () => {
@@ -292,7 +292,7 @@ describe("the tools row", () => {
   })
 
   /**
-   * **Save stands alone at the left; the panels' entries stand with the switch
+   * **Save is shown alone at the left; the panels' entries are shown with the switch
    * at the right end** — none of them changes the draft.
    */
   it("pushes the panels' entries to the right end, together with the pane switch, and leaves save alone on the left", () => {
@@ -312,7 +312,7 @@ describe("the tools row", () => {
     expect(html.slice(groupAt, switchAt)).not.toContain(">保存<")
   })
 
-  it("stands inside the head card — the first of the two things that stick, the panes being the second", () => {
+  it("is shown inside the header — the first of the two things that stick, the panes being the second", () => {
     const html = render(view())
     const stuck = [...html.matchAll(/\bsticky\b/g)].map((found) => found.index)
     expect(stuck).toHaveLength(2)
@@ -347,7 +347,7 @@ describe("the tools row", () => {
     expect(html.slice(entry, entry + 300)).toMatch(/>1</)
   })
 
-  it("draws the pane switch once, on the tools row rather than on a pane's own tabs", () => {
+  it("draws the pane switch once, on the toolbar rather than on a pane's own tabs", () => {
     const html = render(view())
     expect([...html.matchAll(/aria-label="表示 pane"/g)]).toHaveLength(1)
   })
@@ -373,14 +373,14 @@ describe("the comment panel's own name", () => {
 })
 
 describe("a section of one prose field", () => {
-  it("carries the dialect badge on its heading, and not on a name row of its own", () => {
+  it("has the dialect badge on its heading, and not on a name row of its own", () => {
     const html = render(view())
     expect(html).toMatch(/<h2[^>]*>リリースノート[\s\S]*?リンクと改行[\s\S]*?<\/h2>/)
     const title = html.indexOf("<h2")
     expect(html.slice(0, title)).not.toContain("リンクと改行")
   })
 
-  it("carries the field's flags on the same line as the heading and the badge, and draws no row of its own", () => {
+  it("has the field's flags on the same line as the heading and the badge, and draws no row of its own", () => {
     const html = render(view((input) => {
       input.content.releaseNote = { ja: { state: "value", text: "公開に向けて精査中" }, en: { state: "value", text: "" } }
     }))
@@ -395,12 +395,12 @@ describe("a section of one prose field", () => {
 })
 
 /**
- * The version's differences stand over the form once, as the take-in's own
- * list with each place as the way there; nothing else of the review stands
+ * The version's differences are shown over the form once, as the import's own
+ * list with each place as the way there; nothing else of the review remains
  * there.
  */
 describe("the form against the published version", () => {
-  it("offers no take-in and marks no field, however much the page differs from the version", () => {
+  it("offers no import and marks no field, however much the page differs from the version", () => {
     const page = view()
     page.review.publishedNumber = 4
     page.review.changed = ["title", "summary.aims", "datasetIds"]
@@ -411,7 +411,7 @@ describe("the form against the published version", () => {
     expect(form).not.toMatch(/<button[^>]*>(?:(?!<\/button>).)*取り込み/s)
   })
 
-  it("stands only while something differs, and never says the review's own things there", () => {
+  it("remains only while something differs, and never shows the review's own things there", () => {
     const html = render(view())
     const form = html.slice(html.indexOf("role=\"tablist\""))
     expect(form).not.toContain("か所違います")

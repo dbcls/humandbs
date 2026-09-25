@@ -52,7 +52,7 @@ describe("a platform value naming more than one machine", () => {
       ])
   })
 
-  it("carries the maker onto each machine, so every label can be drawn apart", () => {
+  it("passes the maker onto each machine, so every label can be drawn apart", () => {
     expect(platformTerms({ vendor: "PacBio", model: "Sequel II/IIe" }).map((term) => term.maker))
       .toEqual(["PacBio", "PacBio"])
   })
@@ -75,7 +75,7 @@ describe("a platform value written a second way", () => {
     expect(platformsOf({ vendor: "Illumina", model: "HiSeq X-10" })).toEqual(["Illumina HiSeq X Ten"])
   })
 
-  it("drops the note a model carries in brackets", () => {
+  it("drops the note a model has in brackets", () => {
     expect(platformsOf({ vendor: "Illumina", model: "Asian Screening Array (ASA-24v1-0_A2)" }))
       .toEqual(["Illumina Asian Screening Array"])
   })
@@ -96,7 +96,7 @@ describe("a platform value written a second way", () => {
     expect(platformsOf({ vendor: null, model: null })).toEqual([])
   })
 
-  it("yields nothing where the model is only the note it carries", () => {
+  it("yields nothing where the model is only the note it has", () => {
     expect(platformsOf({ vendor: null, model: " (see above) " })).toEqual([])
   })
 })
@@ -129,7 +129,7 @@ describe("the order the terms are numbered in", () => {
     expect(held(one)).toEqual(held(other))
   })
 
-  it("folds a machine named twice into one value", () => {
+  it("merges a machine named twice into one value", () => {
     const terms = collectFrom([
       { platforms: [{ vendor: "Illumina", model: "HiSeq 2000/2500" }] },
       { platforms: [{ vendor: "Illumina", model: "HiSeq 2500" }] },
@@ -163,7 +163,7 @@ describe("the diseases an article names", () => {
   })
 
   it("shortens a code the vocabulary does not hold until it does", () => {
-    // The five-character codes are ICD-10-CM (`docs/data-model.md` の「ICD10」).
+    // The five-character codes are ICD-10-CM.
     expect(diseaseTermsOf("NASH(ICD10: K75.81)", ["K75", "K758"])).toEqual(["term-K758"])
   })
 
@@ -183,7 +183,7 @@ describe("the diseases an article names", () => {
   })
 })
 
-describe("the disease slot an experiment carries", () => {
+describe("the disease slot an experiment has", () => {
   const identity = {
     keyIdByCode: new Map([[DISEASE_KEY, "key-1"]]),
     termIdBySetAndCode: new Map([[`${DISEASE_SET}/C349`, "term-1"], [`${DISEASE_SET}/C34`, "term-2"]]),
@@ -209,7 +209,7 @@ describe("the disease slot an experiment carries", () => {
     })
   })
 
-  it("carries no slot when the article names no disease", () => {
+  it("has no slot when the article names no disease", () => {
     expect(diseaseSlots(experimentSaying("健常者: 7名"), identity)).toEqual([])
   })
 })
@@ -235,7 +235,7 @@ describe("a value that comes from a closed set", () => {
       .toEqual(["not-included"])
   })
 
-  it("carries the Japanese label the set was written with", () => {
+  it("has the Japanese label the set was written with", () => {
     expect(readerOf("sex")({ sex: "female" }).map((term) => term.labelJa)).toEqual(["女性"])
   })
 })

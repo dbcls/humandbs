@@ -1,7 +1,7 @@
 import { type ComponentProps, useCallback, useEffect, useRef, useState } from "react"
 import { Form, Link } from "react-router"
 
-import { CLEAR, EDGE_SHADE, Fold, PANE_LABEL, Stack } from "~/components/base"
+import { CLEAR, EDGE_SHADE, Collapsible, PANE_LABEL, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Code, Empty, TermLabel } from "~/components/page"
 import { DateRange } from "~/components/search"
@@ -16,11 +16,11 @@ import type { SearchTarget } from "~/search/query.server"
 /**
  * The refinement panel beside a listing.
  *
- * **Everything here is a link.** A value carries the address of the search with
+ * **Everything here is a link.** A value has the address of the search with
  * that value toggled, so choosing and unchoosing are one thing, the panel holds
  * no state of its own, and none of it needs JavaScript. The single exception is
  * a numeric facet, whose two ends have to be typed — that is a GET form, and
- * the listing answers it with a redirect to the address it stands for.
+ * the listing responds to it with a redirect to the address it stands for.
  *
  * **Choosing does not move the reader.** Everything the panel offers goes
  * through `RefineLink` or a `Form`, which is what keeps that true of anything
@@ -31,15 +31,15 @@ import type { SearchTarget } from "~/search/query.server"
  * still reachable after the first has been chosen.
  *
  * **What names this pane is not here.** The heading, the box and the conditions
- * in force stand above it as one block (`components/search.tsx` の
+ * in force are shown above it as one block (`components/search.tsx` の
  * `ListingScreen`), because a narrow window puts that block over the result and
  * the dimensions below it — a reader with one screen of width wants the way to
  * search before twenty ways of narrowing, and the way to undo what is already
  * narrowing it.
  *
- * **Each facet folds, and the panel is a list of what can be refined by.** Open
+ * **Each facet collapses, and the panel is a list of what can be refined by.** Open
  * at once, the twenty-odd facets run to several thousand pixels and the reader
- * has to scroll past the whole vocabulary to reach the results. Folded, the
+ * has to scroll past the whole vocabulary to reach the results. Collapsed, the
  * dimensions themselves stay in view, which is what somebody who has not chosen
  * anything yet is reading. What is open is derived rather than remembered: a
  * facet holding a condition is open, because a filter in force that cannot be
@@ -47,11 +47,11 @@ import type { SearchTarget } from "~/search/query.server"
  */
 /**
  * How the listing is presented, as the address wrote it: `null` for what is
- * the default. **A range form carries all three**, the same as every link the
+ * the default. **A range form has all three**, the same as every link the
  * panel builds (`facets.server.ts`), so narrowing by a range does not reorder
  * the result or resize its pages.
  */
-export interface CarriedPresentation {
+export interface ListingPresentation {
   sort: string | null
   order: string | null
   size: number | null
@@ -60,9 +60,9 @@ export interface CarriedPresentation {
 export function FacetPanel({ locale, target, query, presented, panel }: {
   locale: Locale
   target: SearchTarget
-  /** The current query, which the range form has to carry unchanged. */
+  /** The current query, which the range form has to have unchanged. */
   query: string
-  presented: CarriedPresentation
+  presented: ListingPresentation
   panel: FacetPanelView | null
 }) {
   const messages = messagesFor(locale).search.refine
@@ -93,7 +93,7 @@ export function FacetPanel({ locale, target, query, presented, panel }: {
                   // opening the first group as well cost 800px of scroll
                   // before the reader reached the dimension they came for.
                   // **The reason going away does not close it again** — that
-                  // part is `Fold`'s.
+                  // part is `Collapsible`'s.
                   open={facet.clearHref !== null}
                 />
               ))}
@@ -109,14 +109,14 @@ function Facet({ locale, target, query, presented, facet, open }: {
   locale: Locale
   target: SearchTarget
   query: string
-  presented: CarriedPresentation
+  presented: ListingPresentation
   facet: FacetView
   open: boolean
 }) {
   const messages = messagesFor(locale).search.refine
   const { form, ask } = useAsk(href(locale, listPath(target)))
   return (
-    <Fold
+    <Collapsible
       summary={facet.label}
       open={open}
       note={facet.clearHref === null
@@ -141,7 +141,7 @@ function Facet({ locale, target, query, presented, facet, open }: {
                   to={facet.range.to}
                   names={{ from: "rangeFrom", to: "rangeTo" }}
                 >
-                  <Carried query={query} presented={presented} />
+                  <PresentationFields query={query} presented={presented} />
                   <input type="hidden" name="rangeKey" value={facet.code} />
                 </DateRange>
               )
@@ -153,7 +153,7 @@ function Facet({ locale, target, query, presented, facet, open }: {
                   preventScrollReset
                 >
                   <Stack gap="tight">
-                    <Carried query={query} presented={presented} />
+                    <PresentationFields query={query} presented={presented} />
                     <input type="hidden" name="rangeKey" value={facet.code} />
                     <div className="flex items-center gap-1">
                       <Bound name="rangeFrom" label={messages.from} value={facet.range.from} ask={ask} />
@@ -167,42 +167,42 @@ function Facet({ locale, target, query, presented, facet, open }: {
                 </Form>
               )
           : facet.values.length === 0
-            // **A dimension nothing in the result carries still stands in the
-            // pane** (`facets.server.ts`), so opening it has to say why it is
+            // **A dimension nothing in the result has still is shown in the
+            // pane** (`facets.server.ts`), so opening it has to show why it is
             // empty. Left blank it reads as a box that failed to draw.
             ? <Empty>{messages.none}</Empty>
             : <Values locale={locale} values={facet.values} kind={facet.kind} />}
       </Stack>
-    </Fold>
+    </Collapsible>
   )
 }
 
 /**
- * How many values stand in the box before the list has to be scrolled.
+ * How many values are shown in the box before the list has to be scrolled.
  *
  * Measured rather than chosen: a value is 29.5px (three values 139px, five
  * 198px), so nine of them fill the 288px the list is allowed. **What this
  * decides is only whether the box to narrow them is drawn** — the list itself
- * always carries the ceiling, which does nothing until there is something to
+ * always has the ceiling, which does nothing until there is something to
  * scroll.
  */
-const VALUES_IN_BOX = 9
+const VALUES_SHOWN = 9
 
 /**
  * Every value a facet holds, and the box that narrows them.
  *
- * **The list scrolls rather than being cut short.** The widest facet carries
+ * **The list scrolls rather than being truncated.** The widest facet has
  * 389 values; cutting it and offering a way to the rest costs either an address
- * that says something other than the conditions in force, or a reader without
- * script who cannot reach past the cut.
+ * that shows something other than the conditions in force, or a reader without
+ * script who cannot reach past the visible part.
  *
- * **The box narrows what is already on the page**, so it asks the server for
+ * **The box narrows what is already on the page**, so it queries the server for
  * nothing and what it was given does not go into the address — it changes what
  * the reader is looking at, not what the search returned. Without script it
  * does nothing, and the values are all there to be scrolled to.
  *
  * **The chosen values are first** (`facets.server.ts`), so a condition in force
- * is never below the fold of the box.
+ * is never below the visible part of the list.
  */
 function Values({ locale, values, kind }: {
   locale: Locale
@@ -215,10 +215,10 @@ function Values({ locale, values, kind }: {
   const shown = values.filter((value) => matches(needle, value))
   const box = useRef<HTMLUListElement>(null)
   // **The far edge is shaded before anything has measured it.** How many values
-  // stand in the box is known where the page is built, and a reader with no
-  // script never reaches the measurement — the one thing saying the list goes
+  // are shown in the box is known where the page is built, and a reader with no
+  // script never reaches the measurement — the one thing indicating the list goes
   // on would be the thing that needs script to appear.
-  const [reach, setReach] = useState({ back: false, on: values.length > VALUES_IN_BOX })
+  const [reach, setReach] = useState({ back: false, on: values.length > VALUES_SHOWN })
 
   // Both ends are read from the same event, and the state only changes when one
   // of them crosses.
@@ -233,7 +233,7 @@ function Values({ locale, values, kind }: {
     })
   }, [])
 
-  // **The list is drawn inside a shut fold**, so how much of it there is cannot
+  // **The list is drawn inside a closed collapsible**, so how much of it there is cannot
   // be known until the reader opens one; and the box above it changes how much
   // there is left to travel with every word typed into it.
   useEffect(() => {
@@ -251,7 +251,7 @@ function Values({ locale, values, kind }: {
 
   return (
     <Stack gap="tight">
-      {values.length > VALUES_IN_BOX && (
+      {values.length > VALUES_SHOWN && (
         <input
           type="search"
           value={find}
@@ -279,7 +279,7 @@ function Values({ locale, values, kind }: {
 /**
  * A link that narrows the listing beside it rather than going anywhere.
  *
- * **The reader is standing in the panel when they choose**, often well down it,
+ * **The reader is shown in the panel when they choose**, often well down it,
  * and the panel is beside a result they are watching change. Landing at the top
  * of the document — which is what a new address means by default — takes both
  * the value just chosen and the rows it left out of sight, so the one thing the
@@ -294,11 +294,11 @@ function RefineLink(props: ComponentProps<typeof Link>) {
 
 /**
  * What a form has to hand back untouched: a GET form replaces the whole query
- * string, so anything it does not carry is dropped from the address.
+ * string, so anything it does not pass is dropped from the address.
  */
-function Carried({ query, presented }: {
+function PresentationFields({ query, presented }: {
   query: string
-  presented: CarriedPresentation
+  presented: ListingPresentation
 }) {
   const { sort, order, size } = presented
   return (
@@ -321,12 +321,12 @@ function Carried({ query, presented }: {
  * **A date names its end where a number does not.** `年/月/日` and a picker do
  * not fit beside a second copy of themselves in the width of the pane, so the
  * two dates stand one above the other, and a bound on its own line has room
- * for the word that says which one it is. The numbers keep their pair around a
- * dash, which is what says it there.
+ * for the word that shows which one it is. The numbers keep their pair around a
+ * dash, which is what shows it there.
  *
  * **Neither end has a button, and the two ask at different moments.**
  *
- * **A date asks the moment it has one.** The control hands over a whole date or
+ * **A date requests the moment it has one.** The control hands over a whole date or
  * nothing at all, and the way most readers give it one is a single gesture in
  * the picker — so there is nothing to wait for, and the presets above it
  * already work this way.
@@ -337,10 +337,10 @@ function Carried({ query, presented }: {
  * ten**, and the numbers on the way are different questions with correct and
  * useless answers. Measured on the read length, an upper bound typed as `150`
  * passes 4 rows and 13 rows before reaching 827; the smallest probe number in
- * the data is 450, so typing it answers "nothing found" twice first. So the
- * form asks on the way out of the field, **and only if the value is not the one
+ * the data is 450, so typing it returns "nothing found" twice first. So the
+ * form requests on the way out of the field, **and only if the value is not the one
  * already in force** — tabbing through a pane must not re-ask what it is
- * already showing. Enter asks too, since a form with two fields and no button
+ * already showing. Enter requests too, since a form with two fields and no button
  * would otherwise do nothing with it.
  */
 function Bound({ name, label, value, ask }: {
@@ -416,7 +416,7 @@ function Value({ locale, value, kind }: {
       {/*
         **The number alone.** A word after it would be read as part of the
         value's name, and the column of figures is what the eye compares — so
-        it is set in the one face whose digits are all the same width.
+        it is set in the one typeface whose digits are all the same width.
       */}
       <span className="shrink-0 font-mono text-ink-muted text-xs">{value.count}</span>
     </RefineLink>

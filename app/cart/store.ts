@@ -10,7 +10,7 @@
  * **`localStorage`, so it outlives the window.** Gathering the datasets for one
  * application is not one sitting's work — a reader picks through several
  * research pages and comes back the next day, and would otherwise find the
- * collection gone with nothing to say it had ever been there. What is kept is a list of published
+ * collection gone with nothing to report it had ever been there. What is kept is a list of published
  * accessions and nothing else: no name, no session, nothing about the person.
  * A shared terminal does hand the next reader what was left behind, which is
  * why **emptying it is one press** from the bar and from the cart's own page.
@@ -23,7 +23,7 @@
  * NHA id would have nowhere to be pasted.
  *
  * **There is no ceiling on how many.** There was one, of a hundred, and what it
- * held back was a mark that put a whole page of results in at once — a control
+ * held back was a toggle that put a whole page of results in at once — a control
  * that no longer exists. On its own a reader cannot reach that far: the largest
  * research holds 95 JGA datasets, and every one in the portal comes to 681,
  * which is 37 KB of the 5 MB the browser will keep. A number the portal made up
@@ -79,9 +79,9 @@ export function removeFromCart(current: string[], ids: string[]): string[] {
 }
 
 /**
- * Whether pressing a cart mark gathers what it stands for, or lets it go.
+ * Whether pressing a cart icon gathers what it stands for, or lets it go.
  *
- * **Pressing again always undoes.** A mark stands for every dataset under a
+ * **Pressing again always undoes.** An indicator stands for every dataset under a
  * row, so a press gathers while any of them is still out, and lets the whole
  * row go once they are all in. A reader always gets back out through the
  * control they came in by.
@@ -94,23 +94,23 @@ export function cartPressGathers(current: string[], ids: string[]): boolean {
   return held < cartable.size
 }
 
-/* ------------------------------------------------------ saying what moved */
+/* ------------------------------------------------------ indicating what moved */
 
 /**
- * What to say about a press, and how to take it back.
+ * What to report about a press, and how to take it back.
  *
  * **The cart is not where the reader is looking.** The count sits in the top
- * bar, and a mark pressed at the foot of a listing is two thousand pixels below
- * it — so without this, the only thing that answers a press is the colour of a
+ * bar, and an indicator pressed at the foot of a listing is two thousand pixels below
+ * it — so without this, the only thing that responds to a press is the colour of a
  * 36px glyph. What is said belongs beside the press.
  *
- * **`before` is the way back.** Holding the whole list rather than the
+ * **`before` is the undo.** Holding the whole list rather than the
  * difference is what lets one control undo a press that both added and dropped,
  * and the list is a hundred short strings at the very most.
  */
 export interface CartNotice {
   kind: "added" | "removed"
-  /** How many ids moved. Never zero: a press that moves nothing says nothing. */
+  /** How many ids moved. Never zero: a press that moves nothing reports nothing. */
   count: number
   /** The one id that moved, when exactly one did: the reader wants to see it. */
   only: string | null
@@ -125,7 +125,7 @@ export interface CartNotice {
 /**
  * Reads a press from the cart on either side of it.
  *
- * **A press that moves nothing has nothing to say.** Every mark either gathers
+ * **A press that moves nothing has nothing to report.** Every indicator either gathers
  * what is still out or lets go of what is in, so the only way to arrive here
  * with an unchanged cart is to press one that stands for no cartable dataset —
  * and those are not drawn at all.
@@ -158,7 +158,7 @@ export function noticeOf(before: string[], after: string[], at: number): CartNot
 
 /**
  * Where an application is actually made. The portal collects the accessions and
- * hands the reader on; nothing about the application itself lives here.
+ * hands the reader on; nothing about the application itself is kept here.
  */
 export const APPLICATION_FORM_URL
   = "https://humandbs.ddbj.nig.ac.jp/nbdc/application/dataset_import"
@@ -194,7 +194,7 @@ let cached: { raw: string | null, value: string[] } = { raw: null, value: EMPTY 
  * **Reaching the store can throw**, not just return nothing: a browser set to
  * block all storage, and an iframe with a restrictive sandbox, both raise on
  * the property itself. This is a `getSnapshot`, so it runs during render — and
- * the header carries it, so a throw here would take down every page and the
+ * the header has it, so a throw here would take down every page and the
  * error boundary with it. A reader with storage turned off gets a cart that
  * cannot remember anything, which is the worst that should happen.
  */
@@ -246,12 +246,12 @@ export interface Cart {
 }
 
 /**
- * The cart as a set, for the marks that ask whether they are in it.
+ * The cart as a set, for the indicators that ask whether they are in it.
  *
- * **Made once per cart rather than once per mark.** A page of a listing draws a
- * hundred marks, each standing for as many as ninety-five datasets, against a
+ * **Made once per cart rather than once per indicator.** A page of a listing draws a
+ * hundred toggles, each covering as many as ninety-five datasets, against a
  * cart that can hold hundreds; asked of a list, one page is millions of
- * comparisons, and every press asks again. The snapshot is the same array until
+ * comparisons, and every press reads it again. The snapshot is the same array until
  * the cart changes, which is what lets one set answer for all of them.
  */
 let membership: { of: string[], set: Set<string> } = { of: EMPTY, set: new Set() }
@@ -262,7 +262,7 @@ function heldIn(ids: string[]): Set<string> {
 }
 
 /**
- * The last press, and what it takes to answer for it.
+ * The last press, and what it takes to respond for it.
  *
  * **One at a time.** Two notices stacked would make the reader choose which to
  * read before either goes, and the second is always the one they just caused.
@@ -293,7 +293,7 @@ function serverNotice(): null {
 
 /**
  * Every way the cart changes goes through here, so that every way of changing
- * it is answered for. **A press that could not be written says nothing** — a
+ * it is answered for. **A press that could not be written reports nothing** — a
  * reader whose browser blocks storage is told the cart is empty by the cart
  * itself, and telling them something went in as well would be a lie.
  */
@@ -328,7 +328,7 @@ export interface CartNoticeControl {
 }
 
 /**
- * Kept apart from `useCart` because every mark on a listing holds a cart: a
+ * Kept apart from `useCart` because every indicator on a listing holds a cart: a
  * notice arriving would otherwise redraw all twenty of them.
  */
 export function useCartNotice(): CartNoticeControl {
@@ -336,7 +336,7 @@ export function useCartNotice(): CartNoticeControl {
   const dismiss = useCallback(() => {
     setNotice(null)
   }, [])
-  // Read from the module rather than from `current`: the way back belongs to
+  // Read from the module rather than from `current`: the undo belongs to
   // the notice standing when the press lands, not to the one this render saw.
   const undo = useCallback(() => {
     const back = notice?.before

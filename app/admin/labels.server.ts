@@ -10,31 +10,31 @@
  * an everyday operation rather than an exception.
  *
  * **A pin is what publishing insists on, so it has to exist before a publish.**
- * The ledger is written when the label is attached, not when the version goes
+ * The `label_pin` table is written when the label is attached, not when the version goes
  * out; a dataset a draft introduced holds its pin the same way it holds its
  * identity, and both go if the draft is discarded.
  *
  * Making a label primary demotes the one that was — the old one keeps resolving,
  * which is the point of holding more than one. Unpinning does not reserve
- * anything: the ledger says which labels are in use and nothing more.
+ * anything: the `label_pin` table reports which labels are in use and nothing more.
  *
- * **Renumbering a research moves its box.** The public key carries the hum
+ * **Renumbering a research moves its prefix.** The public key has the hum
  * label, so the files a reader can already fetch would otherwise stay at the
- * retired address and disappear from the new one. The box is listed before the
- * transaction opens — holding the ledger's rows while talking to the store
+ * retired address and disappear from the new one. The prefix is listed before the
+ * transaction opens — holding the `label_pin` table's rows while talking to the store
  * would be paying for it with a lock — and the move is queued inside it, so the
  * new primary and the move commit together or not at all.
  *
- * **A hum label whose box holds anything is not unpinned.** The ledger is how a
- * switch finds the copies it has to move, so a box whose label left it is out
- * of every switch's reach: its files would keep answering at the old address,
+ * **A hum label whose prefix holds anything is not unpinned.** The `label_pin` table is how a
+ * switch finds the copies it has to move, so a prefix whose label left it is out
+ * of every switch's reach: its files would keep responding at the old address,
  * and appear in the listing of whichever research is given the number next.
  * Renumbering is pinning the new label as primary; the old one can go once the
- * move has emptied its box.
+ * move has emptied its prefix.
  *
  * Visibility follows from the search rows, so every change here derives them
  * again for the research it touched. A dataset whose id was taken away has no
- * label to be found by and drops out of the listings of the versions that carry
+ * label to be found by and drops out of the listings of the versions that have
  * it, without any version's snapshot being rewritten — what a version listed is
  * a fact about that version, and what is visible now is a different question.
  */
@@ -45,10 +45,10 @@ import { recordEvent, type EventActor } from "~/auth/events.server"
 import type { Database, Executor, Transaction } from "~/db/client.server"
 import { dataset, event, labelPin } from "~/db/schema"
 import {
-  boxesOf,
-  boxMoveOf,
+  listingsOf,
+  prefixMoveOf,
   pendingSwitches,
-  publicBoxHoldsFiles,
+  publicPrefixHoldsFiles,
   requestSwitch,
   type SwitchRequest,
 } from "~/files/jobs.server"
@@ -67,7 +67,7 @@ export interface PinRequest {
 
 export type PinOutcome
   = | { status: "pinned" }
-    /** The label already names something. Uniqueness spans primary and secondary. */
+    /** The label already identifies something. Uniqueness spans primary and secondary. */
     | { status: "taken" }
     /** The label is spelled as an NHA id, which only `issueNhaId` gives out. */
     | { status: "reserved" }
@@ -81,7 +81,7 @@ export type IssueOutcome
 
 export type UnpinOutcome
   = | { status: "unpinned" }
-    /** A hum label whose public box still holds files, or whose research has a switch unfinished. */
+    /** A hum label whose public prefix still holds files, or whose research has a switch unfinished. */
     | { status: "holds-files" }
     | { status: "gone" }
 
@@ -96,8 +96,8 @@ function subjectColumns(request: PinRequest) {
 }
 
 /**
- * The ledger row and the record that it was made, which are one act. Both ways
- * of pinning go through here so that what an event carries is decided once —
+ * The `label_pin` row and the record that it was made, which are one act. Both ways
+ * of pinning go through here so that what an event has is decided once —
  * the trail is append-only, and a detail that two writers spell differently
  * cannot be corrected afterwards.
  */
@@ -133,7 +133,7 @@ export async function pinLabel(
   // way an NHA id comes into being is being issued.
   if (isNhaId(label)) return { status: "reserved" }
 
-  // Only a hum label addresses a box, and only a new primary moves it.
+  // Only a hum label addresses a prefix, and only a new primary moves it.
   const planned = request.kind === "hum" && request.isPrimary
     ? await plannedMove(db, request.subjectId)
     : null
@@ -167,10 +167,10 @@ interface PlannedMove {
   moves: SwitchRequest[]
 }
 
-/** The box a research's hum label moves away from, listed before anything is locked. */
+/** The prefix a research's hum label moves away from, listed before anything is locked. */
 async function plannedMove(db: Database, researchId: string): Promise<PlannedMove | null> {
-  const { primary } = await boxesOf(db, researchId)
-  return primary === null ? null : { from: primary, moves: await boxMoveOf(researchId, primary) }
+  const { primary } = await listingsOf(db, researchId)
+  return primary === null ? null : { from: primary, moves: await prefixMoveOf(researchId, primary) }
 }
 
 /**
@@ -184,13 +184,13 @@ async function queueMove(
   demoted: string,
   planned: PlannedMove | null,
 ): Promise<boolean> {
-  const moves = planned?.from === demoted ? planned.moves : await boxMoveOf(researchId, demoted)
+  const moves = planned?.from === demoted ? planned.moves : await prefixMoveOf(researchId, demoted)
   await requestSwitch(tx, moves)
   return moves.length > 0
 }
 
 /**
- * The NHA id the next issue will give — the one after the highest the ledger
+ * The NHA id the next issue will give — the one after the highest the `label_pin` table
  * or the trail holds. **Reading it reserves nothing**: a screen shows it before
  * anything is pinned, and the issue itself reads it again under its lock, so
  * what a screen showed can be overtaken by an issue made in between.
@@ -223,9 +223,9 @@ export async function nextNhaId(db: Executor): Promise<string> {
  *
  * **A number once given out is never given out again**, even after it is
  * unpinned or its draft is discarded: a link somebody copied would otherwise
- * come to name another dataset without anything saying so. The ledger forgets
+ * come to name another dataset without anything indicating so. The `label_pin` table forgets
  * what is unpinned, so the next number is read from the trail as well — every
- * pin is recorded there and nothing is ever taken out of it. The ledger is
+ * pin is recorded there and nothing is ever taken out of it. The `label_pin` table is
  * read too, for an id that reached it without being recorded one by one.
  *
  * Two issues at the same moment would read the same highest number, so they
@@ -264,8 +264,8 @@ export type PinManyOutcome
  * Attaching several labels at once, inside a transaction somebody else opened.
  *
  * Seeding a draft from an approved application pins a hum label and one
- * accession per dataset, and a research can arrive carrying two hundred of them
- * — so the ledger is checked once for the whole set rather than once per label.
+ * accession per dataset, and a research can arrive with two hundred of them
+ * — so the `label_pin` table is checked once for the whole set rather than once per label.
  *
  * **Nothing here demotes and nothing derives the search rows.** The identities
  * being labelled were made a moment ago and hold no earlier label, and nothing
@@ -298,7 +298,7 @@ export async function pinLabelsIn(
 /**
  * Making a label the primary one. The one that was primary becomes secondary,
  * so it keeps resolving — moving a label is not taking it away. A hum label
- * moving is what moves the research's public box, the same as pinning a new
+ * moving is what moves the research's public prefix, the same as pinning a new
  * primary does.
  *
  * Already primary, nothing is written: there is no move to record.
@@ -358,7 +358,7 @@ async function readPin(executor: Executor, pinId: string) {
 }
 
 /**
- * Taking a label off. **A hum label is kept while its public box holds files**
+ * Taking a label off. **A hum label is kept while its public prefix holds files**
  * or a file of the research is still switching — see the head of this module.
  */
 export async function unpinLabel(
@@ -366,10 +366,10 @@ export async function unpinLabel(
   pinId: string,
   actor: EventActor,
 ): Promise<UnpinOutcome> {
-  // The store is asked before the ledger is locked; a switch queued meanwhile
+  // The store is asked before the `label_pin` table is locked; a switch queued meanwhile
   // is caught below, under the lock.
   const seen = await readPin(db, pinId)
-  if (seen?.kind === "hum" && await publicBoxHoldsFiles(seen.label)) return { status: "holds-files" }
+  if (seen?.kind === "hum" && await publicPrefixHoldsFiles(seen.label)) return { status: "holds-files" }
 
   return db.transaction(async (tx): Promise<UnpinOutcome> => {
     const [pin] = await tx
@@ -385,7 +385,7 @@ export async function unpinLabel(
       .for("update")
     if (pin === undefined) return { status: "gone" }
     if (pin.kind === "hum" && pin.researchId !== null) {
-      // A switch still running may yet put a file into this box, or be about
+      // A switch still running may yet put a file into this prefix, or be about
       // to find its copy there.
       const switching = await pendingSwitches(tx, pin.researchId)
       if (switching.some((row) => !row.failed)) return { status: "holds-files" }
@@ -426,7 +426,7 @@ async function researchOfDataset(
 
 /**
  * The label that was primary becomes secondary, so it keeps resolving. It is
- * returned because a hum label is also the name of the public box, and the
+ * returned because a hum label is also the name of the public prefix, and the
  * files under it have to follow the new one.
  */
 async function demote(tx: Transaction, request: PinRequest): Promise<string | null> {

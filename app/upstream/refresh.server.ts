@@ -13,7 +13,7 @@
  * keeps that rebuild to a single pass.
  *
  * A source with no connection to reach is skipped, not failed, and leaves no
- * record: the table answers how the last fetch went, and no fetch was made.
+ * record: the table determines how the last fetch went, and no fetch was made.
  */
 
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm"
@@ -113,7 +113,7 @@ async function fetchSource(
   }
 
   // The three below are only reached with a connection; the caller skips them
-  // otherwise, and this says so to the type checker rather than by comment.
+  // otherwise, and this reports it to the type checker rather than by comment.
   if (pool === null || applicationDb === null) {
     throw new Error("the application system is not configured")
   }
@@ -151,10 +151,10 @@ async function fetchSource(
 }
 
 /**
- * The dates DDBJ Search answers for, for the accessions the portal has pinned.
+ * The dates DDBJ Search responds for, for the accessions the portal has pinned.
  *
  * Unlike the JGA half this cannot take everything upstream holds — there is no
- * listing, only one request per accession — so the set is what the pin ledger
+ * listing, only one request per accession — so the set is what the `label_pin` table
  * names. **Only primary labels**, because the projection resolves a dataset's
  * date by its primary and an accession kept as a secondary is an old name for
  * something already covered.
@@ -231,7 +231,7 @@ async function record(tx: Transaction, outcome: SourceOutcome, at: Date): Promis
     .onConflictDoUpdate({
       target: upstreamRefresh.source,
       // A failure keeps the last success where it is. What the cache holds is
-      // still that fetch's rows, so saying otherwise would misreport the data.
+      // still that fetch's rows, so indicating otherwise would misreport the data.
       set: succeeded
         ? { attemptedAt: at, succeededAt: at, rowCount: outcome.rowCount, failure: null }
         : { attemptedAt: at, failure: outcome.failure },

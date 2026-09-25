@@ -3,7 +3,7 @@
  *
  * The rewrite happens here rather than in `config.server.ts` because the
  * application has no test database: it reads the two connection URLs the
- * environment gives it, and this replaces them before anything asks for the
+ * environment gives it, and this replaces them before anything requests the
  * configuration. `getPool` builds its pool on first use, which is after the
  * setup file has run.
  */

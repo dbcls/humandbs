@@ -1,7 +1,7 @@
 /**
  * Converting a number to the unit its key is stored in.
  *
- * **The conversion lives here and nowhere else.** The editor offers the units a
+ * **The conversion is kept here and nowhere else.** The editor offers the units a
  * key admits, the value is converted once on the way in, and everything
  * downstream — the public page, the facet, the API — sees the canonical unit
  * only. v1 spread this over the extraction code and ended up with thirty-nine
@@ -14,7 +14,7 @@
  * A group is a set of units that measure the same thing. Two units convert into
  * each other exactly when one group holds both; there is no dimensional
  * analysis and no parsing of unit strings, because the units a key admits are a
- * closed list the catalog carries.
+ * closed list the catalog has.
  */
 
 /**

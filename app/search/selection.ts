@@ -6,10 +6,10 @@
  * That is what makes it work with JavaScript turned off, and it is why this is
  * a function from a tree to a tree rather than a form.
  *
- * **What the panel can read is the facet conditions standing in the top-level
+ * **What the panel can read is the facet conditions shown in the top-level
  * AND**, either alone or as an OR of values of one field. A condition buried
  * inside a negation or a nested group is left exactly as it was found and shown
- * as a chip instead: the panel would otherwise have to claim a checkbox stands
+ * as a chip instead: the panel would otherwise have to claim a checkbox remains
  * for something it cannot put back.
  *
  * Several values of one facet are an OR, and different facets are an AND. That
@@ -48,7 +48,7 @@ interface Decomposed {
   facets: Map<string, FieldNode[]>
 }
 
-/** The rules of a top-level AND, or the single node standing on its own. */
+/** The rules of a top-level AND, or the single node shown on its own. */
 function conjuncts(ast: QueryNode | null): QueryNode[] {
   if (ast === null) return []
   return ast.op === "AND" ? [...ast.rules] : [ast]
@@ -167,7 +167,7 @@ export function withRange(
   range: DslRange,
 ): QueryNode | null {
   // A field with no control on the panel cannot have been asked this, so a
-  // request naming one is answered with the search it already was.
+  // request naming one is responded to with the search it already was.
   if (!onPanel(fields, field)) return ast
   const parts = decompose(ast, fields)
   if (range.from === OPEN_BOUND && range.to === OPEN_BOUND) parts.facets.delete(field)

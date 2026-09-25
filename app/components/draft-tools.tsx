@@ -1,5 +1,5 @@
 /**
- * What every editing screen of a draft carries, whichever thing it edits.
+ * What every editing screen of a draft has, whichever thing it edits.
  *
  * **A dataset editor is an editor of the draft.** `DraftHead`, `DraftTools`
  * and the state behind them are shared for that reason: the two screens
@@ -16,36 +16,36 @@ import { useHoldsUnsaved } from "~/components/unsaved"
 import { AdminBack } from "./admin"
 import { Button, Heading, Stack } from "./base"
 import { Icon, type IconName } from "./icons"
-import type { Marks } from "./fields"
+import type { FieldAnnotations } from "./fields"
 import { SaveNews } from "./form"
 import { Flag } from "./flags"
 
 /**
- * The head of an editing screen: what is being edited, the way back out of
- * it, and — for the research editor only — this draft's other faces and its
+ * The header of an editing screen: what is being edited, the back link out of
+ * it, and — for the research editor only — this draft's other screens and its
  * memo.
  *
- * **The first line is the same name row every screen carries** (`Heading`):
- * the role, the identifier beside it, and the way out on the right. An
- * updating draft wears its version as a badge beside the identifier rather
- * than folding it into the name, because it is a fact about the draft's
+ * **The first line is the same name row every screen has** (`Heading`):
+ * the role, the identifier beside it, and the back link on the right. An
+ * updating draft is shown with its version as a badge beside the identifier rather
+ * than merging it into the name, because it is a fact about the draft's
  * state and not part of what the screen is called.
  *
  * **The second line is what this draft is, read once.** Its other three
- * faces, the memo, the comments about the whole of it, and the way to take in
+ * screens, the memo, the comments about the whole of it, and the link to import
  * a data-providing application — read on the way in and not needed again
- * while typing, which is why it folds away with the name. A dataset is a part
- * of the draft rather than a face of its own, so its screen carries no second
+ * while typing, which is why it collapses away with the name. A dataset is a part
+ * of the draft rather than a screen of its own, so its screen has no second
  * line.
  *
- * **The last row is the tools row, and it is the one row that stays.** The
+ * **The last row is the toolbar, and it is the one row that stays.** The
  * card sticks to the top of the window; once it is held there, the name and
- * the second line fold away and the tools row is what is left — one 36px row
+ * the second line collapse away and the toolbar is what is left — one 36px row
  * with 12px above and below (3.75rem), which is what the panes under it add
  * up from (`admin.tsx` の `PANE_STANCE`). The screens are thousands of pixels
- * long, and a save that scrolled away with the head was off the screen for
- * most of the time anything was typed (measured: gone after 306px). **Folded
- * rather than a row of its own**: a row standing apart from the head read as
+ * long, and a save that scrolled away with the header was off the screen for
+ * most of the time anything was typed (measured: gone after 306px). **Collapsed
+ * rather than a row of its own**: a row shown apart from the header read as
  * a card with one line in it.
  */
 export function DraftHead({ locale, title, aside, updating, badge, back, headExtra, overview, tools }: {
@@ -55,33 +55,33 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
   /** The version this draft stands in for, when it does. */
   updating: number | null
   /**
-   * A mark beside the identifier for a fact only one screen has — the dataset
-   * editor's "未公開" — beside the one every draft can carry
+   * An indicator beside the identifier for a fact only one screen has — the dataset
+   * editor's "未公開" — beside the one every draft can have
    * (`updating`).
    */
   badge?: ReactNode
   /** Where leaving this screen goes (`admin.tsx` の `AdminBack`). */
   back: { to: string, label: string, icon: IconName }
   /**
-   * What else stands in the name row after the way out — a document's slug
+   * What else is shown in the name row after the back link — a document's slug
    * editor, the container's own delete. The research editor has neither, so
    * its own call leaves this out.
    */
   headExtra?: ReactNode
-  /** This draft's other faces and its memo — the research editor's own. */
+  /** This draft's other screens and its memo — the research editor's own. */
   overview?: ReactNode
   /**
    * What stays in reach while typing — the pane switch and the way to save
    * (`DraftTools`, `contents.tsx` の `ArticleTools`). Once the page is
-   * scrolled, the card is folded down to this one row.
+   * scrolled, the card is collapsed down to this one row.
    */
   tools: ReactNode
 }) {
   const t = messagesFor(locale).admin.editor
   const card = useRef<HTMLDivElement>(null)
-  const [folded, setFolded] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
-  // **Folded once the card is held at the top of the window.** The card stays
+  // **Collapsed once the card is held at the top of the window.** The card stays
   // at the top once scrolled to; the observer sees it stop being wholly inside
   // a root shrunk by 1px at the top, which is exactly when its top edge has
   // met the window's.
@@ -93,7 +93,7 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
     if (el === null) return
     const watcher = new IntersectionObserver(([entry]) => {
       if (entry === undefined) return
-      setFolded(entry.intersectionRatio < 1 && entry.boundingClientRect.top < 1)
+      setCollapsed(entry.intersectionRatio < 1 && entry.boundingClientRect.top < 1)
     }, { threshold: [1], rootMargin: "-1px 0px 0px 0px" })
     watcher.observe(el)
     return () => {
@@ -104,25 +104,25 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
   return (
     <div
       ref={card}
-      // **Under the strip that answers an operation** (`base.tsx` の `Toast`,
+      // **Under the strip that responds to an operation** (`base.tsx` の `Toast`,
       // z-30): the card is held at the top of the window, which is where the
       // answer floats, and the answer is the newer of the two.
       className={`sticky top-0 z-20 bg-white motion-safe:transition-[padding] motion-safe:duration-150 ${
-        folded ? "rounded-b py-3" : "rounded py-6"
+        collapsed ? "rounded-b py-3" : "rounded py-6"
       }`}
     >
-      {/* **The name and the facts fold away; the tools stay.** Folding is a
+      {/* **The name and the facts collapse away; the tools stay.** Collapsing is a
           grid track going to nothing, which needs no measured height. What is
-          folded is also inert, so neither focus nor a reader lands in it.
-          **The card's side padding is the folding box's own**, so that the
+          collapsed is also inert, so neither focus nor a reader lands in it.
+          **The card's side padding is the collapsing box's own**, so that the
           name's rule, which reaches out to the card's edge, is clipped at the
           edge and not at the padding. */}
       <div
         className={`grid motion-safe:transition-[grid-template-rows] motion-safe:duration-150 ${
-          folded ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
+          collapsed ? "grid-rows-[0fr]" : "grid-rows-[1fr]"
         }`}
       >
-        <div className="min-h-0 overflow-hidden px-6" inert={folded}>
+        <div className="min-h-0 overflow-hidden px-6" inert={collapsed}>
           <Stack>
             <Heading
               title={title}
@@ -150,14 +150,14 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
 }
 
 /**
- * The row an editing screen keeps at hand, as the head's last row
+ * The row an editing screen keeps at hand, as the header's last row
  * (`DraftHead`): the way to save, what the save is doing, the panels read
  * while typing (the memo, the whole, what is still open), and — at the far
  * end — the pane switch.
  *
- * **Save stands first, alone.** It is the one thing on the row that has to be
+ * **Save is shown first, alone.** It is the one thing on the row that has to be
  * pressed, so it is where the eye starts, with its news to its right. **The
- * panels' entries and the switch stand together at the far end**, the switch
+ * panels' entries and the switch are shown together at the far end**, the switch
  * last: none of them changes the draft.
  *
  * **Ctrl+S and Cmd+S save.** The hands typing are on the keyboard, and what the
@@ -205,20 +205,20 @@ export function DraftTools({
   return (
     // **One line where the window allows, and a second line rather than a
     // squeeze where it does not.** The entries are words in boxes, and a box
-    // whose word is folded onto two lines is taller than the row and reads as
-    // broken; so nothing here folds inside itself, and a narrow window sends
+    // whose word is collapsed onto two lines is taller than the row and reads as
+    // broken; so nothing here collapses inside itself, and a narrow window sends
     // the pane switch — the last thing, at the far end — down to a line of
     // its own instead.
     <div className="flex min-h-9 flex-wrap items-center gap-x-4 gap-y-2">
       {/*
-        **Save stands first, at the row's left, with its news beside it.** The
+        **Save is shown first, at the row's left, with its news beside it.** The
         two are one group: what to do with the work, and what the save is doing.
       */}
       <div className="flex shrink-0 items-center gap-3 whitespace-nowrap text-sm">
         {/*
-          **The one control that carries the accent, and only while there is
-          something to save.** The colour says there is unsaved work and the
-          disabled state says there is not — but neither reaches somebody
+          **The one control that has the accent, and only while there is
+          something to save.** The colour shows there is unsaved work and the
+          disabled state shows there is not — but neither reaches somebody
           who is not looking at it, so the words beside it stay.
         */}
         <Button
@@ -233,7 +233,7 @@ export function DraftTools({
         {/*
           **What the save is doing is said here and not on the button.** A
           control that renames itself while it works is a control the reader
-          cannot find again, and the three things this says — there is
+          cannot find again, and the three things this shows — there is
           unsaved work, it is being written, it is written — are one piece
           of news that assistive tech should hear as it changes.
         */}
@@ -255,7 +255,7 @@ export function DraftTools({
       */}
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
         <span className="flex flex-wrap items-center gap-4 whitespace-nowrap">{notes}</span>
-        {/* **The pane switch stands last** — it is about the boxes below, not
+        {/* **The pane switch is shown last** — it is about the boxes below, not
             about the draft. */}
         {panesControl}
       </div>
@@ -278,8 +278,8 @@ const DRAW_AFTER = 300
  * nothing to redraw.
  *
  * **Prose the tree cannot hold leaves the pane on the page as it was loaded.**
- * Refusing markup is the save's job and it says where the problem is; the
- * drawing answers with nothing rather than with half a page, and comes back as
+ * Refusing markup is the save's job and it shows where the problem is; the
+ * drawing responds with nothing rather than with half a page, and comes back as
  * soon as the prose parses again.
  *
  * **Both languages are drawn, not the one being looked at.** Which pane holds
@@ -287,7 +287,7 @@ const DRAW_AFTER = 300
  * a drawing that waited to be looked at would arrive after the look.
  */
 export function useDrawn<T>(at: string, body: string, initial: T | null): T | null {
-  // The fetcher is typed by what the route answers with; a generic one cannot
+  // The fetcher is typed by what the route responds with; a generic one cannot
   // be told that a JSON document survives the trip unchanged.
   const drawing = useFetcher() as { data?: T | null, submit: ReturnType<typeof useFetcher>["submit"] }
   const submit = drawing.submit
@@ -308,14 +308,14 @@ export function useDrawn<T>(at: string, body: string, initial: T | null): T | nu
  *
  * The two screens post different documents to different actions, but a save is
  * accepted, refused for what it said, or refused because somebody else got
- * there first — and the third carries the version that won so that the screen
+ * there first — and the third has the version that won so that the screen
  * can work out where it now disagrees.
  */
 export type DraftAnswer<T>
   = | { status: "saved", revision: number }
     | { status: "conflict", revision: number, current: T }
 
-/** What a screen has to say about the shape it edits, and nothing more. */
+/** What a screen has to show about the shape it edits, and nothing more. */
 export interface DraftEditingOptions<T> {
   /** What the server holds now, which is where the form starts. */
   initial: T
@@ -323,13 +323,13 @@ export interface DraftEditingOptions<T> {
    * The revision the next save is checked against. **Null is a value here**: a
    * dataset entry is inserted the first time a draft writes one, so there is
    * nothing to check against until it has been saved once. Nothing in this hook
-   * reads it — it is carried to the server and compared there.
+   * reads it — it is passed to the server and compared there.
    */
   revision: number | null
   /** Where the two versions of this shape say different things. */
   diff: (base: T, other: T) => string[]
   /** One field of theirs, put into mine. */
-  take: (mine: T, theirs: T, path: string) => T
+  importAt: (mine: T, theirs: T, path: string) => T
   /** What a save posts besides the revision. */
   body: (value: T) => Record<string, unknown>
   /** What the review layer hangs beside a field, when the screen has one. */
@@ -348,7 +348,7 @@ export interface DraftEditing<T> {
   save: () => void
   /** The version a refused save came back with, and where it disagrees. */
   conflict: { theirs: T, changed: string[] } | null
-  marksFor: (path: string) => Marks
+  annotationsFor: (path: string) => FieldAnnotations
 }
 
 /**
@@ -357,8 +357,8 @@ export interface DraftEditing<T> {
  * **What is typed is never taken away.** A refused save leaves the form exactly
  * as it was and marks the fields the other version moved, and refused markup
  * comes back attached to the field it was written in. Nothing here replaces
- * what is in the form — the only way back to an earlier state is the other
- * version, taken field by field.
+ * what is in the form — the only return to an earlier state is the other
+ * version, imported field by field.
  *
  * The answer is taken while rendering rather than in an effect: it is one state
  * derived from another, not a message to an outside system, and which fields
@@ -370,7 +370,7 @@ export interface DraftEditing<T> {
  *   initial: view.input,
  *   revision: view.revision,
  *   diff: diffDraftInput,
- *   take: takeField,
+ *   importAt: importField,
  *   body: (value) => ({ content: value.content }),
  *   extraFor: (path) => <FieldReview review={review} at={path} />,
  * })
@@ -380,7 +380,7 @@ export function useDraftEditing<T>({
   initial,
   revision: startingRevision,
   diff,
-  take,
+  importAt,
   body,
   extraFor,
 }: DraftEditingOptions<T>): DraftEditing<T> {
@@ -392,7 +392,7 @@ export function useDraftEditing<T>({
   const [conflict, setConflict] = useState<{ theirs: T, changed: string[] } | null>(null)
   const [saved, setSaved] = useState(false)
 
-  // What the pending save carried, so that a success can record it as the
+  // What the pending save kept, so that a success can record it as the
   // version the server now holds without depending on what has been typed since.
   const [sent, setSent] = useState<T>(initial)
   const [answered, setAnswered] = useState<DraftAnswer<T> | null>(null)
@@ -426,17 +426,17 @@ export function useDraftEditing<T>({
   }
 
   /**
-   * A field is marked when a refused save says somebody else moved it, and
+   * A field is marked when a refused save shows somebody else moved it, and
    * offers their value. **Only a refusal marks the form**: a difference from a
-   * version or another draft is taken in on its own screen, and read on the
+   * version or another draft is imported on its own screen, and read on the
    * page beside the form.
    */
-  function marksFor(path: string): Marks {
+  function annotationsFor(path: string): FieldAnnotations {
     const theirs = conflict?.changed.includes(path) === true ? conflict.theirs : undefined
     return {
       at: path,
       changed: theirs !== undefined,
-      onTake: theirs === undefined ? null : () => { edit(take(value, theirs, path)) },
+      onImport: theirs === undefined ? null : () => { edit(importAt(value, theirs, path)) },
       extra: extraFor?.(path),
     }
   }
@@ -449,6 +449,6 @@ export function useDraftEditing<T>({
     saving: fetcher.state !== "idle",
     save,
     conflict,
-    marksFor,
+    annotationsFor,
   }
 }

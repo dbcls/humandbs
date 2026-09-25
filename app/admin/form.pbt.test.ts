@@ -46,7 +46,7 @@ describe("the trip through the editor", () => {
     }))
   })
 
-  it("never lets a slot that holds no value carry a value across", () => {
+  it("never lets a slot that holds no value pass a value across", () => {
     fc.assert(fc.property(researchContentArb, (content) => {
       const once = through(content)
       for (const match of JSON.stringify(once).matchAll(/\{"state":"(unknown|not-applicable)"[^}]*/g)) {

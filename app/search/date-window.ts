@@ -7,7 +7,7 @@
  * (`./page-size.ts`): the server works out which window is in force and the
  * screen draws it, and the two have to agree on what a window is.
  *
- * **What the address carries is the absolute day**, so a link that is shared or
+ * **What the address has is the absolute day**, so a link that is shared or
  * bookmarked keeps meaning what it meant when it was made. Which window is in
  * force is worked back out from that day against today, so a bookmark read on
  * another day matches none of them — it still holds the same rows.
@@ -47,7 +47,7 @@ export function dateWindowFrom(today: string, years: number): string {
  * **A window is in force when it is the whole of the condition**: the same
  * opening day, and nothing closing it. A reader who typed those two dates by
  * hand gets the window lit, which is the same search. "All" is lit when the
- * range asks nothing, and a range that is nobody's window lights none of them.
+ * range requests nothing, and a range that is nobody's window lights none of them.
  */
 export function dateWindows(input: {
   today: string

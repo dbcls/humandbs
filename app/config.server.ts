@@ -1,7 +1,7 @@
 /**
  * Configuration is read from the environment once, at the point of first use.
  *
- * Values never appear in error messages: the connection URLs carry passwords,
+ * Values never appear in error messages: the connection URLs have passwords,
  * and a startup failure is the most likely thing to end up in a log or a
  * response body.
  */
@@ -16,7 +16,7 @@ export interface AuthConfig {
  * How the application reaches the file store.
  *
  * These are root credentials, and every signature a browser is handed is made
- * with them. The store cannot see who is asking — the application decides that
+ * with them. The store cannot see who is requesting — the application decides that
  * from `admin_user` and then signs on their behalf.
  *
  * The endpoint is the address inside the compose network, and **not** the
@@ -48,13 +48,13 @@ export interface ApplicationDbConfig {
 }
 
 /**
- * Where the application assistant answers.
+ * Where the application assistant responds.
  *
  * **Optional, and an origin rather than a URL with a path.** The service runs
  * beside the portal inside the compose network and is not published, so an
- * environment without it is a normal environment and the screen says so rather
+ * environment without it is a normal environment and the screen reports it rather
  * than failing. The path is the service's own; the portal only knows the
- * address it lives at.
+ * address it is kept at.
  */
 export interface AppConfig {
   /** What the application connects as. It cannot alter or erase the event log. */
@@ -101,7 +101,7 @@ export function loadConfig(env: Env): AppConfig {
  *
  * **Read apart from `loadConfig`, so that the served application starts
  * without it.** A deployment gives the owner's password only to the one-shot
- * jobs that change the schema, and a process that answers requests and could
+ * jobs that change the schema, and a process that responds to requests and could
  * alter or erase the event log would undo what the application role is for.
  */
 export function loadOwnerDatabaseUrl(env: Env): string {
@@ -151,7 +151,7 @@ function readApplicationDb(env: Env): ApplicationDbConfig | null {
     ? DEFAULT_APPLICATION_DB_SCHEMA
     : configured
   // The name goes into the queries as an identifier, which no parameter can
-  // carry, so the shape is checked once here rather than trusted at each use.
+  // pass, so the shape is checked once here rather than trusted at each use.
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(schema)) {
     throw new ConfigError("HUMANDBS_JGA_DB_SCHEMA must be a plain identifier")
   }
@@ -159,7 +159,7 @@ function readApplicationDb(env: Env): ApplicationDbConfig | null {
 }
 
 /**
- * Whether the cookies this application sets carry `Secure`.
+ * Whether the cookies this application sets have `Secure`.
  *
  * Derived from the registered redirect URI rather than from a setting of its
  * own. That URI is the one address Keycloak will return a browser to, so it
@@ -178,7 +178,7 @@ export function cookiesAreSecure(auth: AuthConfig): boolean {
  * is: that URI is the one address Keycloak will return a browser to, so it
  * cannot disagree with where the site is really served.
  *
- * **A presigned upload URL has to carry this origin**, not the store's own. The
+ * **A presigned upload URL must have this origin**, not the store's own. The
  * store is only reachable inside the network, and its port is deliberately not
  * published — a browser has to go through the front proxy, and the signature
  * covers the host it was made for.

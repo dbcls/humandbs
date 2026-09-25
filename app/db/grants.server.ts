@@ -47,7 +47,7 @@ export function parseConnection(url: string): Connection {
  * `new URL` applies the path semantics of the web to a path that has none: a
  * database named `.` or `..` is folded away entirely, and libpq — which takes
  * everything after the host as the name and percent-decodes it — would connect
- * to a database this function says is unnamed. The authority cannot contain an
+ * to a database this function reports is unnamed. The authority cannot contain an
  * unencoded `/`, so the first one after `//` starts the name.
  */
 function rawPathOf(url: string): string {

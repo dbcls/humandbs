@@ -7,7 +7,7 @@
 # SQL が prod で通るかは staging / prod の integration test が見る。
 #
 # **schema を手で書かない。** DDL は prod から取った列定義の生ダンプから機械
-# 生成したもので、view の定義は prod の `pg_views` そのまま。材料は repo の外
+# 生成したもので、view の定義は prod の `pg_views` そのまま。元データは repo の外
 # (`$JGA_DIR`) にあり、取り直しは `$JGA_DIR/dump.sh` が踏み台経由で行う。
 #
 #   docker compose up -d db
@@ -78,7 +78,7 @@ load "jgasys._t_component_submit"      "$DATA/component_submit.csv"
 INSERT INTO jgasys.use_permission (use_permission_id, appl_id, dataset_id)
   SELECT use_permission_id, appl_id, dataset_id FROM jgasys._t_use_permission;
 
--- public_key は本文を取っていない。有無だけが残っているので、あったことを印にする。
+-- public_key は本文を取っていない。有無だけが残っているので、あったことを示す値を入れる。
 INSERT INTO jgasys.nbdc_use_period (use_period_id, ds_du_id, expire_date, is_lock, public_key)
   SELECT use_period_id, ds_du_id, expire_date, is_lock,
          CASE WHEN has_public_key THEN '(not dumped)' END
@@ -101,7 +101,7 @@ DROP TABLE jgasys._t_use_permission, jgasys._t_use_period, jgasys._t_acc_status,
 SQL
 } | sql
 
-echo "== 読ませる (接続は read-only を強制するので SELECT だけでよい)"
+echo "== 読み取り権限を付ける (接続は read-only を強制するので SELECT だけでよい)"
 {
   printf 'GRANT USAGE ON SCHEMA jgasys TO %s;\n' "$APP_USER"
   printf 'GRANT SELECT ON ALL TABLES IN SCHEMA jgasys TO %s;\n' "$APP_USER"

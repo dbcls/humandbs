@@ -21,11 +21,11 @@ import type {
 import { createdAt, primaryId, updatedAt } from "./common"
 
 /**
- * The identity of a research. It carries no label of its own: the hum label is
- * pinned in the ledger, so a research can be created before a hum number has
+ * The identity of a research. It has no label of its own: the hum label is
+ * pinned in the `label_pin` table, so a research can be created before a hum number has
  * been issued and can survive one being corrected.
  *
- * **Nothing else.** When it was made is what a row of it would say — every
+ * **Nothing else.** When it was made is what a row of it would report — every
  * change to a research is a change to a version or to a draft, and the listing
  * reads its "last touched" off those.
  */
@@ -41,7 +41,7 @@ export const research = pgTable("research", {
  * **The row is never rewritten.** Publishing always inserts; replacing a
  * version is the old row being deleted in the same transaction as the new one
  * appears under its number. So no reader ever sees a version's content change
- * underneath them, and a version needs nothing outside itself to answer for its
+ * underneath them, and a version needs nothing outside itself to account for its
  * own moment.
  *
  * **Being here is what "published" means.** There is no flag — withdrawing
@@ -63,7 +63,7 @@ export const researchVersion = pgTable("research_version", {
 
 /**
  * The identity of a dataset. Belongs to exactly one research (composition) and
- * carries no description of its own — every description lives in the version
+ * has no description of its own — every description is defined in the version
  * that lists it, or in the draft entry being edited.
  *
  * A dataset added by a draft shares that draft's fate until it is published,
@@ -82,7 +82,7 @@ export const dataset = pgTable("dataset", {
  * An unpublished working copy. Several per research are allowed, which is why
  * edited datasets are recorded per draft rather than on a shared row.
  *
- * The share token lives here rather than in a table of links: one link per
+ * The share token is kept here rather than in a table of links: one link per
  * draft, held by whoever it was sent to. Turning sharing off and on again gives
  * back the same link, so a link already mailed out keeps working; reissuing the
  * token is the separate operation that kills it.
@@ -97,7 +97,7 @@ export const researchDraft = pgTable("research_draft", {
    * **An update is a state of the version, and the draft is only its vessel.**
    * The version stays out, untouched, while the draft is written; publishing
    * the draft puts it under that version's number, in its place. The research
-   * screen never shows such a draft as a draft — the version's row says it is
+   * screen never shows such a draft as a draft — the version's row reports it is
    * being updated. One per version, and a version being updated cannot be
    * withdrawn, so the draft never outlives what it points at.
    */

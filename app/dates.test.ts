@@ -47,13 +47,13 @@ describe("minuteInJst", () => {
     expect(minuteInJst("2026-12-31T15:00:00.000Z")).toBe("2027-01-01 00:00")
   })
 
-  it("秒は落とし、分は繰り上げない", () => {
+  it("秒は切り捨て、分は繰り上げない", () => {
     expect(minuteInJst("2026-09-09T07:03:59.999Z")).toBe("2026-09-09 16:03")
   })
 
   it("どの instant でも、Intl が Asia/Tokyo で読む分と一致する", () => {
     fc.assert(fc.property(
-      // 時刻を持たない Date は除く。渡ってくるのは DB の timestamp を書き出した
+      // 時刻の無い Date は除く。渡されるのは DB の timestamp を書き出した
       // ものだけで、instant でない値はそこに現れない。
       fc.date({
         min: new Date("1970-01-01T00:00:00.000Z"),
@@ -75,7 +75,7 @@ const someMinute = fc.date({
 })
 
 describe("nowInJst", () => {
-  it("お知らせの列が持つ形で返る", () => {
+  it("お知らせの列と同じ形で返る", () => {
     expect(nowInJst()).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
   })
 
@@ -84,7 +84,7 @@ describe("nowInJst", () => {
   })
 
   it("時は 24 時制で書く", () => {
-    // 12 時制なら午後が 01〜12 に落ちて、そのまま並べると夕方が朝より前に来る。
+    // 12 時制なら午後が 01〜12 になって、そのまま並べると夕方が朝より前に来る。
     // 列の値は文字列のまま比べられるので、ここが 24 時制であることが「公開日時が
     // 過ぎたか」の判定そのものを支えている。
     const hour = Number(nowInJst().slice(11, 13))
@@ -94,11 +94,11 @@ describe("nowInJst", () => {
 })
 
 describe("minuteOf", () => {
-  it("秒を落とす", () => {
+  it("秒を切り捨てる", () => {
     expect(minuteOf("2026-06-23 09:30:45")).toBe("2026-06-23 09:30")
   })
 
-  it("秒を落としても、分が違えば前後は入れ替わらない", () => {
+  it("秒を切り捨てても、分が違えば前後は入れ替わらない", () => {
     const stamp = (at: Date) => at.toISOString().slice(0, 19).replace("T", " ")
     fc.assert(fc.property(someMinute, someMinute, (a, b) => {
       const [one, other] = [stamp(a), stamp(b)]
@@ -116,7 +116,7 @@ describe("datetime-local の欄との往復", () => {
     }))
   })
 
-  it("欄は分までしか持たないので、秒はゼロに落ちる", () => {
+  it("欄は分までしか扱わないので、秒はゼロになる", () => {
     expect(stampFromLocalInput(asLocalInput("2026-06-23 09:30:45"))).toBe("2026-06-23 09:30:00")
   })
 })
@@ -131,8 +131,8 @@ describe("stampFromLocalInput", () => {
   })
 
   it("うるう年でない年の 2 月 29 日は受けない", () => {
-    // `Date` はこれを 3 月 1 日へ繰り上げるので、形だけ見ていると打った覚えの
-    // 無い日付が黙って入る。
+    // `Date` はこれを 3 月 1 日へ繰り上げるので、形だけ見ていると入力していない
+    // 日付がエラーにならずに入る。
     expect(stampFromLocalInput("2026-02-29T09:30")).toBeNull()
   })
 

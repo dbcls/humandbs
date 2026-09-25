@@ -11,9 +11,9 @@ import type { Route } from "./+types/admin-terms"
  * the catalog: a vocabulary holds anything from three values to several
  * hundred, and only the handful that match is ever needed at once.
  *
- * **A disease's box asks the same question of a different reader.** What is
+ * **A disease's box poses the same question to a different reader.** What is
  * typed there is a classification code as often as a word, so it is normalised
- * and rolled up before the vocabulary is asked; the field says which reading it
+ * and rolled up before the vocabulary is asked; the field reports which reading it
  * wants rather than the endpoint guessing from the set.
  */
 export async function loader({ request }: Route.LoaderArgs) {

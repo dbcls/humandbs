@@ -30,7 +30,7 @@ export function isSortOrder(value: string | null): value is SortOrder {
  * the two do not have to be learned apart.
  *
  * **Relevance is not among the orderings.** A score is only defined for a query
- * carrying a full-text term, so an ordering built on it appears and disappears
+ * with a full-text term, so an ordering built on it appears and disappears
  * with the shape of the query — the offer would change under a reader who did
  * nothing but refine, and the ordering they were reading in would change with
  * it.
@@ -42,8 +42,8 @@ export const DEFAULT_SORT: SortKey = "dateModified"
  *
  * **A date runs from the newest** — a listing opens on what changed last — and
  * **an identifier from the smallest**, which is the order the labels were
- * issued in. Turning either around is something a reader asks for, and the
- * request is carried apart from the key so that one spelling of a key does not
+ * issued in. Turning either around is something a reader requests, and the
+ * request is kept apart from the key so that one spelling of a key does not
  * become two.
  */
 export function defaultOrder(sort: SortKey): SortOrder {

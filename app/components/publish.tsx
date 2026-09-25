@@ -9,7 +9,7 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 
-import { AdminBack, WayTo } from "./admin"
+import { AdminBack, ScreenLink } from "./admin"
 import { Heading, Stack } from "./base"
 import { OpenComments, type CommentContext } from "./comments"
 import { IdForm, shownNhaId } from "./dataset-id"
@@ -25,12 +25,12 @@ import { PressedBy, pressedTitle } from "./review"
  * The last screen before a draft becomes a version.
  *
  * **What is wanted before pressing, in the order it is wanted**: what changes,
- * what stops it, what the review says, what to look at, and last the press
+ * what stops it, what the review shows, what to look at, and last the press
  * with what it does. Every section names
- * itself with a noun and says in one sentence what it is for; the one thing to
- * press stands at the end, after everything read.
+ * itself with a noun and shows in one sentence what it is for; the one thing to
+ * press is shown at the end, after everything read.
  *
- * It is read rather than written on. What is missing is shown with a way back
+ * It is read rather than written on. What is missing is shown with a link back
  * to the screen that can fix it, and the one thing settled here is a label that
  * is not pinned — because that is what stops the publish, and because pinning
  * one is a single field rather than an edit.
@@ -116,7 +116,7 @@ function changesNothing(view: PublishPageView): boolean {
 }
 
 /**
- * What the version will say that the one it is measured against does not.
+ * What the version will show that the one it is measured against does not.
  * **The datasets are the rows of the research's own table**, so one with no id
  * yet is told apart by what kind of data it holds rather than by an identity.
  */
@@ -137,9 +137,9 @@ function Changes({ view }: { view: PublishPageView }) {
                   <span>{`${t.research}: ${t.researchChanged(view.researchFields)}`}</span>
                   {/* The research's own screen sets the form beside the page it
                       writes, which is where a change is read. */}
-                  <WayTo to={href(locale, adminDraftPath(view.researchId, view.draftId))} icon="book">
+                  <ScreenLink to={href(locale, adminDraftPath(view.researchId, view.draftId))} icon="book">
                     {messages.admin.draft.heading}
-                  </WayTo>
+                  </ScreenLink>
                 </p>
               )}
               {view.reordered && <p className="text-sm">{t.reordered}</p>}
@@ -182,7 +182,7 @@ function DatasetRowCells({ view, datasetId, label }: { view: PublishPageView, da
 /**
  * What has to be settled first, each row naming what it is about. A label is
  * pinned from its row in a form of its own — a different operation from the
- * publish, which the publish button must not carry along.
+ * publish, which the publish button must not pass along.
  */
 function Blocked({ view }: { view: PublishPageView }) {
   const locale = view.locale
@@ -205,10 +205,10 @@ function Blocked({ view }: { view: PublishPageView }) {
   return (
     <Section title={t.blocked} note={t.blockedHint}>
       <Stack gap="normal">
-        {/* **Said the way the research's own screen says it**: a missing
+        {/* **Said the way the research's own screen shows it**: a missing
             research ID is the same quiet sentence and a box to give one, and
             the datasets without an id are the table alone — the section's
-            sentence has said why they are listed, so no line in red stands
+            sentence has said why they are listed, so no line in red remains
             over them. */}
         {hum.map((block) => (
           <Stack key="hum" gap="tight">
@@ -286,13 +286,13 @@ function PinForm({ block, locale, nextNhaId, onIssuing }: {
 }
 
 /**
- * What the review says: whether the link is out, what is still asked, and who
- * has pressed which mark. **Advice only** — publishing is the administrator's
+ * What the review shows: whether the link is out, what is still asked, and who
+ * has pressed which indicator. **Advice only** — publishing is the administrator's
  * call, and this is what it is made on.
  *
  * **The open questions are the panel the editing screen opens**
  * (`OpenComments`) — read and resolved here without leaving for the review
- * screen, whose way stands under the list for everything else.
+ * screen, whose way is shown under the list for everything else.
  */
 function Review({ view }: { view: PublishPageView }) {
   const locale = view.locale
@@ -328,7 +328,7 @@ function Review({ view }: { view: PublishPageView }) {
           <Fact name={t.unresolved}>
             <OpenComments context={context} comments={review.comments} nameOf={nameOf} />
           </Fact>
-          {/* **The marks are the review screen's tables**, a row per person with
+          {/* **The indicators are the review screen's tables**, a row per person with
               when they last pressed and how often (`PressedBy`). */}
           {(["commented", "approved"] as const).map((kind) => (
             <Fact key={kind} name={pressedTitle(kind, locale)}>
@@ -337,9 +337,9 @@ function Review({ view }: { view: PublishPageView }) {
           ))}
         </Facts>
         <div>
-          <WayTo to={href(locale, adminDraftReviewPath(view.researchId, view.draftId))} icon="comment">
+          <ScreenLink to={href(locale, adminDraftReviewPath(view.researchId, view.draftId))} icon="comment">
             {messages.admin.review.heading}
-          </WayTo>
+          </ScreenLink>
         </div>
       </Stack>
     </Section>
@@ -348,7 +348,7 @@ function Review({ view }: { view: PublishPageView }) {
 
 /**
  * The form the private files are published by. **It holds no control of its
- * own**: its button stands in the findings, beside the files it is about, and
+ * own**: its button is shown in the findings, beside the files it is about, and
  * names this form — the findings are inside the publish form, which it cannot
  * be nested in.
  */
@@ -366,19 +366,19 @@ function PrivateFilesForm({ view }: { view: PublishPageView }) {
 }
 
 /**
- * What the gate lists without stopping, one row to a kind, and the one box that
- * passes it. **A table rather than folds**: the kinds are few and each is short,
- * so what is there is read at a glance instead of opened one fold at a time.
+ * What the publish check lists without stopping, one row to a kind, and the one box that
+ * passes it. **A table rather than collapses**: the kinds are few and each is short,
+ * so what is there is read at a glance instead of opened one collapsible at a time.
  * Each row names the places it is in — the screen to fix it on, and how many
- * there — and the one kind this screen can act on carries its action.
+ * there — and the one kind this screen can act on has its action.
  */
 function Findings({ view }: { view: PublishPageView }) {
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.publish
 
-  // **The table stands when it is empty**: its columns say what was looked
-  // for, and the one row in its place says nothing was found.
+  // **The table remains when it is empty**: its columns say what was looked
+  // for, and the one row in its place shows nothing was found.
   return (
     <Section title={t.findings} note={view.groups.length === 0 ? undefined : t.findingsNote}>
       <Stack gap="normal">
@@ -388,7 +388,7 @@ function Findings({ view }: { view: PublishPageView }) {
           headers={[
             t.findingKind,
             t.findingCount,
-            t.findingPlaces,
+            t.findingFields,
           ]}
           whenEmpty={t.noFindings}
         >
@@ -436,14 +436,14 @@ function FindingRow({ group, locale }: { group: PublishGroupView, locale: Publis
 /**
  * The number, the day, what pressing does, and the press. **What pressing does
  * is said before it**, since it cannot be taken back as pressed. **The press
- * says why it cannot be pressed** — something stops it, or an update would
+ * shows why it cannot be pressed** — something stops it, or an update would
  * change nothing (the release date counts as a change, which is why the box is
  * watched).
  *
- * **The two values and the press stand on one line**, with what the values
+ * **The two values and the press are shown on one line**, with what the values
  * mean under it: two boxes and a button stacked down the section read as
  * three steps, and a hint under each box pushes the button off the boxes'
- * line. **The release date says it is not a schedule** — a day in the future
+ * line. **The release date shows it is not a schedule** — a day in the future
  * is written onto the version as it is, and the version is out the moment the
  * button is pressed.
  */

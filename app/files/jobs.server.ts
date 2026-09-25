@@ -1,9 +1,9 @@
 /**
  * Moving a file between the buckets.
  *
- * **A row is not an instruction but a destination.** It says which bucket the
+ * **A row is not an instruction but a destination.** It reports which bucket the
  * file is meant to be in, so a second opinion overwrites the first instead of
- * queueing behind it — otherwise every intermediate opinion would be carried
+ * queueing behind it — otherwise every intermediate opinion would be kept
  * out as a copy of the actual bytes, and the largest file is 146 GiB. The unique
  * constraint on `(research, file name)` is what makes that true rather than
  * merely intended.
@@ -12,15 +12,15 @@
  * actually is and moves it only if that is not where it belongs, so running the
  * same job twice does nothing the second time, and a process that died between
  * the copy and the delete is repaired by the next attempt. Nothing is lost if
- * the table is: every file stays either public or private, and the log says who
+ * the table is: every file stays either public or private, and the log reports who
  * asked for what.
  *
- * Renumbering a research is not a third kind of work. The public key carries
- * the hum label, so moving the box is asking for every file in it to be public
- * again — and the label it is moving away from is still in the ledger as a
+ * Renumbering a research is not a third kind of work. The public key has
+ * the hum label, so moving the prefix is requesting every file in it to be public
+ * again — and the label it is moving away from is still in the `label_pin` table as a
  * secondary pin, which is how the copy that has to move is found. That is why a
- * hum label is not unpinned while its box holds anything (`unpinLabel`): out of
- * the ledger, the box is out of reach of every switch.
+ * hum label is not unpinned while its prefix holds anything (`unpinLabel`): out of
+ * the `label_pin` table, the prefix is out of reach of every switch.
  */
 
 import { and, asc, eq, inArray, lt, sql } from "drizzle-orm"
@@ -36,7 +36,7 @@ import {
   PUBLIC_BUCKET,
   type PendingSwitch,
   type SwitchAction,
-} from "./box"
+} from "./prefix"
 import { copyObject, deleteObject, listPrefix, objectExists, type ObjectRef } from "./store.server"
 
 /** An attempt that started this long ago is taken to have died with its process. */
@@ -52,7 +52,7 @@ export interface SwitchRequest {
 }
 
 /**
- * Record where these files belong. **The insert is an upsert**, so asking again
+ * Record where these files belong. **The insert is an upsert**, so recording again
  * for a file already queued replaces the destination rather than adding a second
  * row.
  *
@@ -116,38 +116,38 @@ export async function switchFiles(
 }
 
 /**
- * Every file in the old box has to become public again under the new label.
+ * Every file in the old prefix has to become public again under the new label.
  * Nothing crosses buckets, so each of these finishes as a rename inside the
  * public bucket rather than as a copy of the bytes.
  *
  * **This only lists; queueing is `requestSwitch`, in the transaction that
  * moves the label.** The listing talks to the store, so it is done before that
  * transaction opens, and the label and the move then commit together — a store
- * that does not answer leaves the label where it was, and pressing again moves
- * the box. Committed apart, the label would move and the files would not, with
+ * that does not respond leaves the label where it was, and pressing again moves
+ * the prefix. Committed apart, the label would move and the files would not, with
  * nothing left to press that queues them.
  */
-export async function boxMoveOf(researchId: string, fromHumLabel: string): Promise<SwitchRequest[]> {
+export async function prefixMoveOf(researchId: string, fromHumLabel: string): Promise<SwitchRequest[]> {
   const nodes = await listPrefix(PUBLIC_BUCKET, publicPrefix(fromHumLabel))
   return nodes.map((node) => ({ researchId, fileName: node.name, action: "publish" as const }))
 }
 
 /**
- * Whether any box the research has — the private one and the public one of
- * every hum label in the ledger — holds a file.
+ * Whether any prefix the research has — the private one and the public one of
+ * every hum label in the `label_pin` table — holds a file.
  */
 export async function researchHoldsFiles(executor: Executor, researchId: string): Promise<boolean> {
-  const boxes = await boxesOf(executor, researchId)
-  const labels = [...(boxes.primary === null ? [] : [boxes.primary]), ...boxes.others]
+  const listings = await listingsOf(executor, researchId)
+  const labels = [...(listings.primary === null ? [] : [listings.primary]), ...listings.others]
   if ((await listPrefix(PRIVATE_BUCKET, privatePrefix(researchId))).length > 0) return true
   for (const label of labels) {
-    if (await publicBoxHoldsFiles(label)) return true
+    if (await publicPrefixHoldsFiles(label)) return true
   }
   return false
 }
 
-/** Whether anything answers under this hum label's public address. */
-export async function publicBoxHoldsFiles(humLabel: string): Promise<boolean> {
+/** Whether anything responds under this hum label's public address. */
+export async function publicPrefixHoldsFiles(humLabel: string): Promise<boolean> {
   return (await listPrefix(PUBLIC_BUCKET, publicPrefix(humLabel))).length > 0
 }
 
@@ -183,7 +183,7 @@ export async function pendingSwitches(
   }))
 }
 
-/** The names sitting in the private bucket, which is what the gate checks against. */
+/** The names sitting in the private bucket, which is what the publish check checks against. */
 export async function privateNames(researchId: string): Promise<Set<string>> {
   const nodes = await listPrefix(PRIVATE_BUCKET, privatePrefix(researchId))
   return new Set(nodes.map((node) => node.name))
@@ -268,7 +268,7 @@ async function fail(db: Database, job: FileJob, error: unknown): Promise<void> {
     .update(filePublishJob)
     .set({
       // A job out of attempts waits to be looked at. The screen shows it as
-      // failed, and asking for the switch again clears the count.
+      // failed, and requesting the switch again clears the count.
       state: job.attempts >= MAX_ATTEMPTS ? "failed" : "pending",
       lastError: message.slice(0, 500),
       updatedAt: new Date(),
@@ -276,14 +276,14 @@ async function fail(db: Database, job: FileJob, error: unknown): Promise<void> {
     .where(eq(filePublishJob.id, job.id))
 }
 
-interface Boxes {
+interface Listings {
   /** Where a public copy belongs. Null when no hum label is pinned yet. */
   primary: string | null
   /** Labels this research held before, which is where a copy may still be. */
   others: string[]
 }
 
-export async function boxesOf(executor: Executor, researchId: string): Promise<Boxes> {
+export async function listingsOf(executor: Executor, researchId: string): Promise<Listings> {
   const rows = await executor
     .select({ label: labelPin.label, isPrimary: labelPin.isPrimary })
     .from(labelPin)
@@ -299,7 +299,7 @@ function sameRef(a: ObjectRef, b: ObjectRef): boolean {
 }
 
 /**
- * Move the file to where the job says it belongs, and take away every copy that
+ * Move the file to where the job reports it belongs, and take away every copy that
  * is somewhere else.
  *
  * The order is copy then delete, never the other way round: a process that dies
@@ -307,12 +307,12 @@ function sameRef(a: ObjectRef, b: ObjectRef): boolean {
  * whereas the other order loses it.
  */
 export async function reconcile(db: Database, job: FileJob): Promise<void> {
-  const boxes = await boxesOf(db, job.researchId)
+  const listings = await listingsOf(db, job.researchId)
   const privateRef: ObjectRef = {
     bucket: PRIVATE_BUCKET,
     key: privatePrefix(job.researchId) + job.fileName,
   }
-  const publicRefs = [...(boxes.primary === null ? [] : [boxes.primary]), ...boxes.others]
+  const publicRefs = [...(listings.primary === null ? [] : [listings.primary]), ...listings.others]
     .map((label): ObjectRef => ({
       bucket: PUBLIC_BUCKET,
       key: publicPrefix(label) + job.fileName,
@@ -321,12 +321,12 @@ export async function reconcile(db: Database, job: FileJob): Promise<void> {
   let destination: ObjectRef
   if (job.action === "unpublish") {
     destination = privateRef
-  } else if (boxes.primary === null) {
-    // The gate keeps a version from publishing without a hum label, but a file
+  } else if (listings.primary === null) {
+    // The publish check keeps a version from publishing without a hum label, but a file
     // can be switched on its own, and then there is no address to put it at.
-    throw new Error("no hum label is pinned, so the research has no public box")
+    throw new Error("no hum label is pinned, so the research has no public prefix")
   } else {
-    destination = { bucket: PUBLIC_BUCKET, key: publicPrefix(boxes.primary) + job.fileName }
+    destination = { bucket: PUBLIC_BUCKET, key: publicPrefix(listings.primary) + job.fileName }
   }
 
   const elsewhere = [privateRef, ...publicRefs].filter((ref) => !sameRef(ref, destination))
@@ -373,7 +373,7 @@ export async function recoverAbandoned(db: Database): Promise<number> {
  *
  * The three steps are separate functions rather than one because the middle of
  * them is where a second opinion can arrive: claiming, reconciling and settling
- * have to be drivable one at a time to say what happens when it does.
+ * have to be drivable one at a time to report what happens when it does.
  */
 export async function runOneJob(db: Database): Promise<boolean> {
   const job = await claimJob(db)

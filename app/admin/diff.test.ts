@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { emptyResearchContent } from "~/content/empty"
 
-import { diffDraftInput, takeField } from "./diff"
+import { diffDraftInput, importField } from "./diff"
 import { researchContentInput, type DraftInput } from "./form"
 
 function draft(): DraftInput {
@@ -39,7 +39,7 @@ describe("diffDraftInput", () => {
     expect(diffDraftInput(mine, theirs)).toEqual(["summary.targets"])
   })
 
-  it("reports the places in the order the editing form stands them — release note after the title, the lists before the listing's row", () => {
+  it("reports the places in the order the editing form orders them — release note after the title, the lists before the listing's row", () => {
     const mine = draft()
     const theirs = withProvider("p1", "松原")
     const text = { state: "value" as const, text: "x" }
@@ -93,7 +93,7 @@ describe("diffDraftInput", () => {
   })
 })
 
-describe("takeField", () => {
+describe("importField", () => {
   it("writes one field of theirs over mine and leaves the rest alone", () => {
     const mine = draft()
     mine.content.title.ja = { state: "value", text: "mine" }
@@ -102,7 +102,7 @@ describe("takeField", () => {
     theirs.content.title.ja = { state: "value", text: "theirs" }
     theirs.content.releaseNote.ja = { state: "value", text: "their note" }
 
-    const taken = takeField(mine, theirs, "title")
+    const taken = importField(mine, theirs, "title")
 
     expect(taken.content.title.ja.text).toBe("theirs")
     expect(taken.content.releaseNote.ja.text).toBe("my note")
@@ -116,7 +116,7 @@ describe("takeField", () => {
       ...theirs.content.dataProviders,
     ]
 
-    const taken = takeField(mine, theirs, "dataProviders.p1.name")
+    const taken = importField(mine, theirs, "dataProviders.p1.name")
 
     expect(taken.content.dataProviders).toHaveLength(1)
     expect(taken.content.dataProviders[0]?.name.ja.text).toBe("Suzuki")
@@ -125,6 +125,6 @@ describe("takeField", () => {
   it("changes nothing when the path names an element the other side does not have", () => {
     const mine = withProvider("p1", "Tanaka")
 
-    expect(takeField(mine, draft(), "dataProviders.p1.name")).toEqual(mine)
+    expect(importField(mine, draft(), "dataProviders.p1.name")).toEqual(mine)
   })
 })

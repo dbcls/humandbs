@@ -6,7 +6,7 @@ import type { Route } from "./+types/auth-login"
 
 /**
  * The start of signing in. It has no screen: the only thing it does is hand the
- * browser to Keycloak, carrying a short cookie that holds `state`, the PKCE
+ * browser to Keycloak, with a short cookie that holds `state`, the PKCE
  * verifier, the nonce and where to come back to.
  *
  * The address here has no language prefix, because it is the one Keycloak has

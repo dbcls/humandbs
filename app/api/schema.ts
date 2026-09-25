@@ -13,7 +13,7 @@
  * - **an optional key is a value that is not there.** Empty and unsettled both
  *   arrive as nothing, and both leave the key out
  * - **`null` means "known not to exist".** It is the only value state that
- *   survives, because it is the only one that says something
+ *   survives, because it is the only one that reports something
  * - **an array is always present.** A reader can take its length without
  *   checking for the key first
  */
@@ -23,7 +23,7 @@ import { z } from "zod"
 const dateString = z.string().meta({ description: "A calendar day, `YYYY-MM-DD`, cut in JST." })
 
 /**
- * A value per language. A language with nothing to say is absent; a language
+ * A value per language. A language with nothing to report is absent; a language
  * whose value is known not to exist is `null`. Both languages are always
  * offered — the API has no locale, and falling one back onto the other would
  * present a value as a translation that nobody said was one.
@@ -89,8 +89,8 @@ export const diseaseSchema = z.object({
 /**
  * A number in the key's canonical unit. What was typed to get there is editing.
  *
- * `label` says which number this is where a key holds several — the part of the
- * genome counted, the data product measured — and `note` carries what qualifies
+ * `label` reports which number this is where a key holds several — the part of the
+ * genome counted, the data product measured — and `note` has what qualifies
  * it without being part of it. Both are absent when the value does not have one,
  * so the common case is the same two fields it has always been.
  *
@@ -107,15 +107,15 @@ export const numberValueSchema = z.object({
   id: "NumberValue",
   description:
     "A number in the key's canonical unit, which is the unit `/api/fields` gives for that field "
-    + "and not necessarily the one it was entered in. `label` says which number this is where a "
-    + "key holds several; `note` carries what qualifies it without being part of it. Both are "
+    + "and not necessarily the one it was entered in. `label` identifies which number this is where a "
+    + "key holds several; `note` holds what qualifies it without being part of it. Both are "
     + "absent when there is none. `high` is the upper end of a value written as a width, and "
     + "`null` on every number that is not one.",
 })
 
 const valueHead = { key: z.string(), label: textSchema }
 
-/** A value under a catalog key. The type says which of the payloads is present. */
+/** A value under a catalog key. The type reports which of the payloads is present. */
 export const valueSchema = z.discriminatedUnion("type", [
   z.object({ ...valueHead, type: z.literal("text"), text: textSchema }),
   z.object({ ...valueHead, type: z.literal("single"), value: z.string().nullable() }),
@@ -130,7 +130,7 @@ export const valueSchema = z.discriminatedUnion("type", [
 ]).meta({
   id: "Value",
   description:
-    "A value under a catalog key. `type` says which of the payloads is present, and `key` is the "
+    "A value under a catalog key. `type` indicates which of the payloads is present, and `key` is the "
     + "code `/api/fields` lists it under.",
 })
 
@@ -142,7 +142,7 @@ export const fileSchema = z.object({
   id: "File",
   description:
     "A file as the store lists it. **The address is not promised**: its form is kept, but a file "
-    + "carries a published state of its own that an administrator can turn off.",
+    + "has a published state of its own that an administrator can turn off.",
 })
 
 export const researchSchema = z.object({
@@ -202,7 +202,7 @@ export const researchSchema = z.object({
     datasets: z.array(z.string()),
   })),
   files: z.array(fileSchema).meta({
-    description: "The research's public box, as the store lists it.",
+    description: "The files under the research's prefix in the public bucket, as the store lists them.",
   }),
 }).meta({
   id: "Research",
@@ -231,7 +231,7 @@ export const datasetSchema = z.object({
   values: z.array(valueSchema),
   experiments: z.array(experimentSchema),
   files: z.array(fileSchema).meta({
-    description: "The files this dataset points at, kept to what the box lists.",
+    description: "The files this dataset selects, limited to those the research's public prefix lists.",
   }),
 }).meta({
   id: "Dataset",
@@ -276,8 +276,8 @@ export const datasetSearchSchema
  * them.
  *
  * `values` is present on a `term` field and lists what the published set
- * actually carries. `unit` is present on a `number` field, whose values are a
- * span rather than a list. The fields belonging to the search row itself carry
+ * actually has. `unit` is present on a `number` field, whose values are a
+ * span rather than a list. The fields belonging to the search row itself have
  * neither, and no label: they are named by the query language, not by the
  * catalog.
  */
@@ -287,7 +287,7 @@ export const searchFieldSchema = z.object({
   label: textSchema.optional().meta({ description: "The catalog's name for the key." }),
   unit: z.string().optional().meta({ description: "The unit the stored values are in." }),
   values: z.array(termSchema).optional().meta({
-    description: "Every value the published set carries, at the level a query can name it.",
+    description: "Every value the published set has, at the level a query can name it.",
   }),
 }).meta({
   id: "SearchField",
@@ -331,7 +331,7 @@ export const dbLinksSchema = z.object({
   id: "DbLinks",
   description:
     "What one accession is linked to. **Only researches the portal has published take part**, so "
-    + "an accession whose research is unpublished answers the same as one nobody has heard of: "
+    + "an accession whose research is unpublished returns the same as one nobody has heard of: "
     + "200 with an empty list.",
 })
 
@@ -339,7 +339,7 @@ export const dbLinkTypesSchema = z.object({
   types: z.array(accessionTypeSchema),
 }).meta({
   id: "DbLinkTypes",
-  description: "The accession types `/api/dblink/{type}` answers for.",
+  description: "The accession types `/api/dblink/{type}` accepts.",
 })
 
 // --- errors ---------------------------------------------------------------
@@ -353,7 +353,7 @@ export const problemSchema = z.object({
 }).meta({
   id: "Problem",
   description:
-    "RFC 7807 problem details. **A 404 says nothing about what was asked for**: the sentence is "
+    "RFC 7807 problem details. **A 404 reveals nothing about what was requested**: the sentence is "
     + "fixed per kind of object and never repeats the label, because an unpublished object and "
     + "one that never existed are not told apart.",
 })

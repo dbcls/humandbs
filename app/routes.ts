@@ -24,7 +24,7 @@ import {
  *
  * Registering a file twice needs an explicit id, and **an id must not contain a
  * slash**: the server build resolves a module from it, so `ja/research` sends it
- * looking for a file that is not there and every route answers 500.
+ * looking for a file that is not there and every route responds with 500.
  */
 function pages(scope: string) {
   return [
@@ -58,9 +58,9 @@ function pages(scope: string) {
 /**
  * The management area, registered once.
  *
- * **It carries no language prefix.** These screens are written for the people
+ * **It has no language prefix.** These screens are written for the people
  * who run the portal and exist in Japanese only, so `/en/admin` would be a
- * second address answering the same screens in the same words (`public/urls.ts`
+ * second address serving the same screens in the same words (`public/urls.ts`
  * の `href`). The public pages above are registered twice; this is not.
  *
  * Everything under `/admin` is inside one layout, so that the area's frame —
@@ -146,9 +146,9 @@ const management = [
       { id: "admin-draft" },
     ),
     route(
-      "admin/research/:researchId/draft/:draftId/take",
-      "routes/admin-draft-take.tsx",
-      { id: "admin-draft-take" },
+      "admin/research/:researchId/draft/:draftId/import",
+      "routes/admin-draft-import.tsx",
+      { id: "admin-draft-import" },
     ),
     route(
       "admin/research/:researchId/draft/:draftId/publish",
@@ -177,7 +177,7 @@ const management = [
     ),
     /**
      * The assistant. **The screen is registered here and the service it talks
-     * to is not registered at all** — it answers under the proxy below, which
+     * to is not registered at all** — it responds under the proxy below, which
      * is the only address that reaches it.
      */
     route("admin/assistant", "routes/admin-assistant.tsx", { id: "admin-assistant" }),
@@ -186,7 +186,7 @@ const management = [
 
 /**
  * What an open editor talks to rather than navigates to. They are registered
- * once because they answer with data rather than with a page, so the language
+ * once because they respond with data rather than with a page, so the language
  * prefix has nothing to change about them.
  */
 const editing = [
@@ -202,7 +202,7 @@ const editing = [
   /**
    * The assistant's API, handed on unchanged to a service that holds no
    * authorisation of its own. **Registered once**, beside the others here:
-   * what it answers with is the service's, not interface text, so a language
+   * what it responds with is the service's, not interface text, so a language
    * prefix has nothing to change about it.
    */
   route("admin/assistant/api/*", "routes/admin-assistant-api.ts"),
@@ -224,7 +224,7 @@ const auth = [
  * same list the OpenAPI document is generated from, so a route and its entry in
  * the document cannot describe different addresses.
  *
- * No language prefix: an answer carries both languages.
+ * No language prefix: an answer has both languages.
  */
 const api = [
   ...API_ENDPOINTS.map((endpoint) => route(endpoint.path, endpoint.file)),
@@ -245,7 +245,7 @@ const api = [
  * environment but not the other.
  *
  * **`npm run build` sets `NODE_ENV` itself** (`package.json`) rather than
- * trusting what it inherits: the container the image is built in carries
+ * trusting what it inherits: the container the image is built in has
  * `NODE_ENV=development`, so a build reading the ambient value would have put
  * the catalogue into the deployed server.
  */

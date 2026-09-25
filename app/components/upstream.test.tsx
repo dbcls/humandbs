@@ -3,13 +3,13 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { BRANCH_STANDINGS } from "~/admin/listing"
+import { BRANCH_STATUSES } from "~/admin/listing"
 import type { UpstreamBranchView, UpstreamChoiceView } from "~/admin/templates.server"
 import { messagesFor } from "~/i18n/messages"
 
 import { BranchCreate } from "~/routes/admin-upstream-branch"
 
-import { BranchCells, BranchDatasets, BranchDialog, BranchPairs, BranchStandingMark, STANDING_MARK, UpstreamChoice } from "./upstream"
+import { BranchCells, BranchDatasets, BranchDialog, BranchPairs, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamChoice } from "./upstream"
 
 function routed(element: ReactNode): string {
   const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
@@ -18,15 +18,15 @@ function routed(element: ReactNode): string {
 
 describe("枝番の一覧のポータル側の判定", () => {
   it("3 つの状態はマークだけで見分けられる", () => {
-    const marks = new Set(BRANCH_STANDINGS.map((standing) => STANDING_MARK[standing]))
-    expect(marks.size).toBe(BRANCH_STANDINGS.length)
+    const flags = new Set(BRANCH_STATUSES.map((branchStatus) => BRANCH_STATUS_FLAG[branchStatus]))
+    expect(flags.size).toBe(BRANCH_STATUSES.length)
   })
 
-  it("行に出る語はペインの軸の語と同じで、マークは読み上げない", () => {
+  it("行に表示する語はペインの絞り込みの項目の語と同じで、マークは読み上げない", () => {
     const t = messagesFor("ja").admin.templates
-    for (const standing of BRANCH_STANDINGS) {
-      const html = renderToStaticMarkup(<BranchStandingMark standing={standing} locale="ja" />)
-      expect(html).toContain(t.standings[standing])
+    for (const branchStatus of BRANCH_STATUSES) {
+      const html = renderToStaticMarkup(<BranchStatusBadge branchStatus={branchStatus} locale="ja" />)
+      expect(html).toContain(t.branchStatuses[branchStatus])
       expect(html).toContain("aria-hidden=\"true\"")
     }
   })
@@ -46,7 +46,7 @@ describe("申請から作るものの一覧", () => {
     expect(submitOf(html)).toMatch(/disabled=""/)
   })
 
-  it("選ばせない — checkbox を持たず、研究に登録済みでないものだけを送る", () => {
+  it("選ばせない — checkbox は無く、研究に登録済みでないものだけを送る", () => {
     const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
     const held = { accession: "JGAD000002", description: "WES", experiments: 1, heldBy: "r-1" }
     const html = routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one, held] })} submit={t.add} />)
@@ -63,7 +63,7 @@ describe("申請から作るものの一覧", () => {
     expect(html).not.toContain(t.registered)
   })
 
-  it("作成は見つけたデータセットと同じ行に、枠の見た目・行の高さで表示する", () => {
+  it("作成は見つけたデータセットと同じ行に、outline のボタン・行の高さで表示する", () => {
     const one = { accession: "JGAD000001", description: "WGS", experiments: 1, heldBy: null }
     const html = routed(<UpstreamChoice locale="ja" choice={choice({ datasets: [one] })} submit={t.add} />)
     const row = /<div class="flex flex-wrap items-center gap-3">([\s\S]*?)<\/button>/.exec(html)?.[1] ?? ""
@@ -114,7 +114,7 @@ describe("枝番の表の行", () => {
     expect(html).toContain("A study")
   })
 
-  it("提供申請 ID は押せるもので、押すまでダイアログは開かず、他の画面へは渡らない", () => {
+  it("提供申請 ID は押せるもので、押すまでダイアログは開かず、他の画面へは移動しない", () => {
     const html = routed(<BranchDialog applicationId="J-DS000137-010" locale="ja" />)
     expect(html).toMatch(/<button type="button"[^>]*>[\s\S]*J-DS000137-010/)
     expect(html).not.toContain("href=\"/admin/research/upstream/J-DS000137-010\"")
@@ -161,7 +161,7 @@ describe("研究の作成の節", () => {
     expect(submitOf(draw())).not.toMatch(/disabled=""/)
   })
 
-  it("選択肢に無い値は 1 つの枠で、名前と件数・欄の名前と値の対・作るとどうなるか の順に示し、表への経路は無く、無ければ何も示さない", () => {
+  it("選択肢に無い値は 1 つの欄にまとめ、名前と件数・欄の名前と値の対・作るとどうなるか の順に示し、表への経路は無く、無ければ何も示さない", () => {
     const drop = (keyLabel: string, value: string) => ({ keyCode: keyLabel, keyLabel, value, at: null })
     const html = draw({ dropped: [drop("実験方法", "Exome sequencing"), drop("プラットフォーム", "Illumina Genome Analyzer")] })
     const named = html.indexOf(t.droppedHeading(2))

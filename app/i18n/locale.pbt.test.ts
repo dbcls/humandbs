@@ -48,7 +48,7 @@ describe("resolveText", () => {
     }))
   })
 
-  it("answers not-applicable exactly when the wanted language is the one settled as such", () => {
+  it("responds not-applicable exactly when the wanted language is the one settled as such", () => {
     fc.assert(fc.property(translatedTextArb, localeArb, (text, locale) => {
       const expected = text[locale].state === "not-applicable"
       expect(resolveText(text, locale).state === "not-applicable").toBe(expected)
@@ -83,7 +83,7 @@ describe("resolveRichText", () => {
     }))
   })
 
-  it("answers not-applicable exactly when the wanted language is the one settled as such", () => {
+  it("responds not-applicable exactly when the wanted language is the one settled as such", () => {
     fc.assert(fc.property(translatedRichTextArb, localeArb, (text, locale) => {
       const expected = text[locale].state === "not-applicable"
       expect(resolveRichText(text, locale).state === "not-applicable").toBe(expected)
@@ -109,7 +109,7 @@ describe("resolveLinks", () => {
     }))
   })
 
-  it("carries the state of the wanted language out unchanged", () => {
+  it("has the state of the wanted language out unchanged", () => {
     fc.assert(fc.property(localizedLinksArb, localeArb, (links, locale) => {
       const slot = links[locale]
       const resolved = resolveLinks(links, locale)

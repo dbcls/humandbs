@@ -2,8 +2,8 @@
  * The rules the site-content screens run on: what a slug may be, how the tree
  * is shaped, and which revision a series may name.
  *
- * Nothing here reaches the database — this module says what an answer means,
- * and `contents.server.ts` says where the rows are.
+ * Nothing here reaches the database — this module reports what an answer means,
+ * and `contents.server.ts` reports where the rows are.
  *
  * **A slug is an address**, so the checks here are about the URL space rather
  * than about the text: it has to be shaped like a path, it must not be one a
@@ -18,7 +18,7 @@ import { SCREEN_PATHS } from "~/public/urls"
 /** Lowercase words joined by `/` or `-`, which is the shape v1's slugs have. */
 const SLUG = /^[a-z0-9]+(?:[/-][a-z0-9]+)*$/
 
-/** `{base}/version/{n}` — where a revision of `base` answers. */
+/** `{base}/version/{n}` — where a revision of `base` responds. */
 const VERSION = /^(.+)\/version\/(0|[1-9][0-9]*)$/
 
 /**
@@ -44,7 +44,7 @@ export function versionSlug(base: string, number: number): string {
   return `${base}/version/${number}`
 }
 
-/** The revision number this slug carries under `base`, or null if it is not one. */
+/** The revision number this slug has under `base`, or null if it is not one. */
 export function versionNumberIn(base: string, slug: string): number | null {
   const match = VERSION.exec(slug)
   if (match === null) return null
@@ -67,7 +67,7 @@ export function nextVersionNumber(base: string, slugs: readonly string[]): numbe
   return Math.max(0, ...numbers) + 1
 }
 
-/** The revision number a form carries, or null if what it carries is not one. */
+/** The revision number a form has, or null if what it has is not one. */
 export function parseVersionNumber(input: string): number | null {
   const trimmed = input.trim()
   if (!/^[0-9]+$/.test(trimmed)) return null
@@ -157,7 +157,7 @@ export function entryNames(entry: TreeEntry): { slug: string, title: string } {
  *
  * **A series is matched on what its row shows** — its own slug and the title of
  * the revision it points at. The revisions under it are not rows here, and a
- * listing that answered on them would offer a line whose words are nowhere in
+ * listing that responded on them would offer a line whose words are nowhere in
  * it.
  */
 export function matchingEntries(entries: readonly TreeEntry[], words: string): TreeEntry[] {
@@ -172,7 +172,7 @@ export function matchingEntries(entries: readonly TreeEntry[], words: string): T
 /**
  * Whether an article keeps numbered revisions.
  *
- * **This says what kind of row it is rather than what state it is in**: a
+ * **This reports what kind of row it is rather than what state it is in**: a
  * versioned article's row stands for the pointer and everything under it at
  * once, and a plain one stands for a body.
  */
@@ -180,7 +180,7 @@ export type Versioning = "versioned" | "plain"
 
 export const VERSIONINGS: readonly Versioning[] = ["versioned", "plain"]
 
-/** Whether one language of an article answers a reader. */
+/** Whether one language of an article responds to a reader. */
 export type PublishState = "published" | "unpublished"
 
 export const PUBLISH_STATES: readonly PublishState[] = ["published", "unpublished"]
@@ -203,8 +203,8 @@ export function emptyStates(): LocaleStates {
 /**
  * What a row's two languages are up to.
  *
- * **A series wears the states of the revision it points at**, because that is
- * what its address answers with. A pointer naming nothing readable answers in
+ * **A series is shown with the states of the revision it points at**, because that is
+ * what its address responds with. A pointer naming nothing readable responds in
  * neither language, and is read here as exactly that.
  */
 export function entryStates(entry: TreeEntry): LocaleStates {
@@ -217,14 +217,14 @@ export function versioningOf(entry: TreeEntry): Versioning {
   return entry.kind === "series" ? "versioned" : "plain"
 }
 
-/** Whether one language of a row answers a reader, which is what the other two read. */
+/** Whether one language of a row responds to a reader, which is what the other two read. */
 export function publishStateOf(entry: TreeEntry, locale: Locale): PublishState {
   return publishStateIn(entryStates(entry), locale)
 }
 
 /**
  * The same read taken from the states alone, for the rows that are not
- * articles. An announcement carries the pair a document does, and the axis a
+ * articles. An announcement has the pair a document does, and the axis a
  * curator narrows either listing by has to mean the same thing on both.
  */
 export function publishStateIn(states: LocaleStates, locale: Locale): PublishState {
@@ -285,9 +285,9 @@ export function filterEntries(
 }
 
 /**
- * The languages in which a version-less slug does not answer. The address is
+ * The languages in which a version-less slug does not respond. The address is
  * baked into submission metadata held elsewhere, so this is the one way the
- * promise that it keeps answering can break.
+ * promise that it keeps responding can break.
  */
 export function unansweredLocales(
   current: DocumentRow | null,
@@ -304,7 +304,7 @@ export function unansweredLocales(
  * is read by, and what each of its languages is up to.
  *
  * **The title is one string rather than one per language.** The listing is a
- * way to reach an announcement rather than a reading of it, and a row carrying
+ * way to reach an announcement rather than a reading of it, and a row with
  * both languages of a sentence is two lines of prose where a curator is
  * scanning for a date.
  */
@@ -324,7 +324,7 @@ export interface NewsRow {
  * The orders the announcements can be read in.
  *
  * **The day it goes out is what an announcement is filed under**, so that is
- * the order the listing opens in, newest first. The title is the other way in:
+ * the order the listing opens in, newest first. The title is the other link:
  * an editor looking for one they wrote does not know its date.
  */
 export const NEWS_SORT_KEYS = ["published", "title"] as const
@@ -352,7 +352,7 @@ export function sortedNews(
   sort: NewsSortKey,
   order: "asc" | "desc",
 ): NewsRow[] {
-  const way = order === "asc" ? 1 : -1
+  const direction = order === "asc" ? 1 : -1
   const by = (row: NewsRow): string | null => sort === "title" ? row.title : row.publishedAt
   return [...rows].sort((left, right) => {
     const one = by(left)
@@ -362,14 +362,14 @@ export function sortedNews(
     if (one === null || other === null) {
       if (one !== other) return one === null ? 1 : -1
     } else if (one !== other) {
-      return one < other ? -way : way
+      return one < other ? -direction : direction
     }
     // **The identity settles it, and turns with the order.** The listing read
     // newest first before it offered a choice of order, and two announcements
     // put out at the same minute kept that way round; a tie broken the same
     // way whichever direction the rest of the listing runs would stand out as
     // the one pair reading backwards.
-    return left.id < right.id ? -way : way
+    return left.id < right.id ? -direction : direction
   })
 }
 
@@ -407,7 +407,7 @@ export interface NewsFilter {
  *
  * **What is typed is looked for in the date as well as the title**, because the
  * date is what an announcement is addressed by here: `2026-06` is how a month
- * of them is asked for, and the listing offers no other way to ask. **The two
+ * of them is asked for, and the listing offers no other way to query. **The two
  * are read one at a time** rather than as one line, so that a word ending a
  * date and beginning a title is not a match neither of them holds.
  *

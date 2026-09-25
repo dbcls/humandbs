@@ -103,7 +103,7 @@ function one<T>(rows: T[]): T {
 }
 
 /**
- * The token a share link carries. It is minted with the draft because the
+ * The token a share link has. It is minted with the draft because the
  * column is part of the draft rather than of a table of links: turning sharing
  * off and on again has to give back the same address.
  */
@@ -163,7 +163,7 @@ export interface SeededDataset {
   /**
    * What upstream stated that the catalog has no word for. **Each is left as a
    * comment on the field it would have gone in**, written by whoever made the
-   * dataset — the field is made unsettled, and the comment is what says what to
+   * dataset — the field is made unsettled, and the comment is what reports what to
    * settle it on, where the curator is when they do.
    */
   dropped?: readonly DroppedValue[]
@@ -171,7 +171,7 @@ export interface SeededDataset {
 
 export type SeedOutcome
   = | { status: "created", researchId: string, draftId: string }
-    /** A label the seed would pin already names something else. */
+    /** A label the seed would pin already identifies something else. */
     | { status: "taken", label: string }
 
 export type AddDatasetsOutcome
@@ -216,12 +216,12 @@ function pinRequests(
 }
 
 /**
- * A research written from what an upstream system already says about it, with
+ * A research written from what an upstream system already has about it, with
  * its datasets in the same breath.
  *
  * **The labels are pinned as the identities are made.** A draft holding two
  * hundred datasets that are told apart only by an internal identity is a draft
- * nobody can work in, and the ledger's uniqueness is what decides whether this
+ * nobody can work in, and the `label_pin` table's uniqueness is what decides whether this
  * research may be started at all — a hum label somebody else holds means the
  * research already exists.
  */
@@ -295,7 +295,7 @@ export async function addDatasetsFromUpstream(
 }
 
 /**
- * Taking an application into a draft that already exists.
+ * Importing an application into a draft that already exists.
  *
  * **One transaction, because the curator confirmed one thing.** The content and
  * the datasets come from the same branch and were decided on the same screen;
@@ -383,7 +383,7 @@ async function writeSeededDatasets(
 
 /**
  * One comment per field, naming every value upstream stated there that the
- * catalog has no word for. A value with no field to stand on — its key is not
+ * catalog has no word for. A value with no field to go in — its key is not
  * in the catalog — has nowhere to be said.
  */
 export function droppedComments(
@@ -406,7 +406,7 @@ export function droppedComments(
 
 /**
  * An empty draft of an existing research. Nothing is copied into it: what it
- * comes to hold is taken in afterwards — from a version, an application or an
+ * comes to hold is imported afterwards — from a version, an application or an
  * accession — or typed.
  */
 export async function createEmptyDraft(db: Database, researchId: string): Promise<string> {
@@ -484,7 +484,7 @@ export async function draftUpdating(
 }
 
 /**
- * A draft holding what a version holds, unfolded: the body in the draft's own
+ * A draft holding what a version holds, split apart: the body in the draft's own
  * row, each description in one of its own.
  *
  * **The copy is made once and in full**, rather than filled in as datasets are
@@ -664,7 +664,7 @@ export type ListingOutcome
  * The order the datasets go out in, changed by one step.
  *
  * **The order is all a draft decides about datasets** — which of them the
- * version carries is the research's answer, not the draft's. The order is
+ * version has is the research's answer, not the draft's. The order is
  * research content, so it moves the draft's revision like a save does; it is
  * changed here rather than by the editor's save because the datasets are
  * decided on their own screen.
@@ -738,7 +738,7 @@ export function listingAfter(listed: readonly string[], change: ListingChange): 
  * be pinned again. The trail keeps the row's name, because nothing else will.
  *
  * **The research's search rows are derived again, not only the dataset's
- * dropped.** The research's row carries the text and the facet values of its
+ * dropped.** The research's row has the text and the facet values of its
  * datasets, so it would otherwise still be found by what only this one said.
  *
  * **The comments on it go too, in every draft.** A comment's place is JSON
@@ -813,7 +813,7 @@ export type ShareOutcome
     | { status: "gone" }
 
 /**
- * Turning sharing on or off, and saying when it lapses.
+ * Turning sharing on or off, and indicating when it lapses.
  *
  * **These take no revision.** Sharing is not content: nothing about it can be
  * lost by two administrators disagreeing except the setting one of them made a
@@ -837,7 +837,7 @@ export async function setDraftSharing(
 /**
  * A new token, which kills the address that was handed out. This is the only
  * way to do that: private can be undone, and an expiry can be extended, so
- * neither of them answers "this link must stop working".
+ * neither of them satisfies "this link must stop working".
  */
 export async function reissueShareToken(db: Executor, draftId: string): Promise<ShareOutcome> {
   const rows = await db
@@ -905,7 +905,7 @@ export async function discardDraft(
 }
 
 /**
- * Folding one vocabulary value into another, wherever a draft's description
+ * Merging one vocabulary value into another, wherever a draft's description
  * points at it.
  *
  * **This is the one write here that takes no revision, and the reason is that
@@ -919,8 +919,8 @@ export async function discardDraft(
  * between them no save can put a description back the way it was read.
  *
  * Without the bump, an editor holding one of these rows would save the
- * description they read, the folded term would come back in that row alone, and
- * nothing would say so — the row would point at a term the vocabulary no longer
+ * description they read, the merged term would come back in that row alone, and
+ * nothing would report it — the row would point at a term the vocabulary no longer
  * has.
  *
  * The condition is handed over rather than built here — which rows point at a

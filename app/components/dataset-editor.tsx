@@ -12,22 +12,22 @@
  *
  * A value is shown under the catalog key it is stored against, and **only the
  * keys it actually has**. A slot that is not there is not an empty value: it is
- * the dataset not carrying that item at all, which is a different thing from
- * carrying it and leaving it blank. Adding one is choosing a key.
+ * the dataset not having that item at all, which is a different thing from
+ * having it and leaving it blank. Adding one is choosing a key.
  *
- * **The three parts are tabs, and each experiment folds inside its own.** The
+ * **The three parts are tabs, and each experiment collapses inside its own.** The
  * experiment scope of the catalog runs to some ninety keys, so one experiment
- * carrying a fair share of them is a couple of thousand pixels of boxes and a
+ * with a fair share of them is a couple of thousand pixels of boxes and a
  * handful of them is a page nothing can be found on. Only the display is
- * switched: every field stays in the document, one save carries the whole of
- * it, and a mark beside a field is addressed by path and so is unaffected by
+ * switched: every field stays in the document, one save has the whole of
+ * it, and an indicator beside a field is addressed by path and so is unaffected by
  * which tab it is under. **The tab is not in the address** — nothing here saves
  * on its own, so a reload would cost what has been typed whatever tab it
  * restored.
  *
  * **What is marked is open.** An experiment a save refused, a publish moved or
- * the server rejected markup in is unfolded, and so is one with no display
- * label — a fold nobody can read the summary of is a listing that lies about
+ * the server rejected markup in is expanded, and so is one with no display
+ * label — a collapsible nobody can read the summary of is a listing that lies about
  * itself.
  */
 
@@ -35,7 +35,7 @@ import { useEffect, useId, useRef, useState } from "react"
 import { useFetcher } from "react-router"
 
 import { describeAt } from "~/admin/changes"
-import { diffDatasetInput, takeDatasetField } from "~/admin/dataset-diff"
+import { diffDatasetInput, importDatasetField } from "~/admin/dataset-diff"
 import {
   emptyDiseaseRow,
   emptyNumberRow,
@@ -68,8 +68,8 @@ import {
   Button,
   ButtonLink,
   Confirm,
-  FoldMark,
-  foldShown,
+  CollapsibleChevron,
+  collapsibleOpen,
   IconButton,
   MENU_PANEL,
   PANE_LABEL,
@@ -80,7 +80,7 @@ import {
 } from "~/components/base"
 import { Answer, CONTROL, Select } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { AnnotationLayer, Card, Empty, Page, PageHead } from "~/components/page"
+import { AnnotationLayer, Card, Empty, Page, PageHeader } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -97,7 +97,7 @@ import { DatasetBody } from "./dataset"
 import { FileSelection } from "./file-selection"
 import {
   AddElement,
-  ConflictBand,
+  ConflictBanner,
   FieldFlags,
   FieldHead,
   isUntranslated,
@@ -109,9 +109,9 @@ import {
   moved,
   newId,
   replacing,
-  type Marks,
+  type FieldAnnotations,
 } from "./fields"
-import { landAt, landOn } from "./form"
+import { focusField, focusElement } from "./form"
 import { Flag } from "./flags"
 
 /**
@@ -129,7 +129,7 @@ const EXPERIMENTS = "experiments"
 
 /**
  * The section a field is written in, by the head of its path — which is also
- * the id that section carries, so one lookup finds both.
+ * the id that section has, so one lookup finds both.
  */
 const SECTION_OF: Record<string, string> = {
   releaseDate: BASICS,
@@ -151,14 +151,14 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   /**
    * The field's own name for the comment panel's heading: the catalog's own
    * label for a value slot, the section's name otherwise. Read off the path a
-   * mark is addressed by, the same one the field itself is written at
-   * (`fields.tsx` の `Marks`).
+   * indicator is addressed by, the same one the field itself is written at
+   * (`fields.tsx` の `FieldAnnotations`).
    */
   /**
    * A field of this dataset as the open-comments panel names it: the field's
    * label, and for a field of an experiment, the experiment's label before it.
    */
-  function placeName(path: string): string {
+  function pathName(path: string): string {
     const label = fieldLabelFor(path) ?? path
     const [head, id] = path.split(".")
     if (head !== "experiments" || id === undefined) return label
@@ -193,7 +193,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     comments: commentsByPath(view.review.comments, subject),
     changed: view.review.changed,
     previous: view.review.previous,
-    // Read when a mark opens, by which time the editing state below exists.
+    // Read when an indicator opens, by which time the editing state below exists.
     current: (at) => describeAt(editing.value, at),
     heading: messagesFor(locale).preview.previousPublished,
     termLabel: (id) => termLabelOf.get(id) ?? id,
@@ -203,7 +203,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     initial: view.input,
     revision: view.revision,
     diff: diffDatasetInput,
-    take: takeDatasetField,
+    importAt: importDatasetField,
     body: (value) => ({ content: value }),
   })
 
@@ -227,7 +227,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   )
 
   const [at, setAt] = useState<string | null>(null)
-  /** The form, when a pane shows it: the only place a jump may land (`landAt`). */
+  /** The form, when a pane shows it: the only place a jump may focus (`focusField`). */
   const form = useRef<HTMLDivElement>(null)
   function onFormFocus(event: React.FocusEvent): void {
     const target = event.target
@@ -237,15 +237,15 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   }
 
   /**
-   * Going to the place a band or the page pane names (`form.tsx` の `landAt`):
-   * the field when it stands open, the nearest element that is, else the section.
+   * Going to the place a banner or the page pane names (`form.tsx` の `focusField`):
+   * the field when it remains open, the nearest element that is, else the section.
    */
   function goTo(path: string): void {
-    landAt(form.current, path, SECTION_OF[path.split(".")[0] ?? path])
+    focusField(form.current, path, SECTION_OF[path.split(".")[0] ?? path])
   }
 
-  /** The same move, for a band that draws its own anchors. */
-  function onBandJump(event: React.MouseEvent): void {
+  /** The same move, for a banner that draws its own anchors. */
+  function onHeaderBarJump(event: React.MouseEvent): void {
     const target = event.target
     if (!(target instanceof Element)) return
     const path = target.closest("a[href^='#']")?.getAttribute("href")?.slice(1)
@@ -257,14 +257,14 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const input = editing.value
   // The copy just made, which opens so the curator starts on what differs.
   const [copied, setCopied] = useState<string | null>(null)
-  const marked = markedPaths(editing)
-  const markedUnder = (prefix: string) =>
+  const marked = conflictedPaths(editing)
+  const conflictedUnder = (prefix: string) =>
     marked.filter((path) => path === prefix || path.startsWith(`${prefix}.`)).length
 
-  /** What is worth knowing about an experiment while it is folded away. */
+  /** What is worth knowing about an experiment while it is collapsed away. */
   function experimentNote(experiment: ExperimentInput): string {
     const count = t.valueCount(experiment.values.length)
-    return markedUnder(`experiments.${experiment.id}`) > 0 ? `${count} · ${editor.changedElsewhere}` : count
+    return conflictedUnder(`experiments.${experiment.id}`) > 0 ? `${count} · ${editor.changedElsewhere}` : count
   }
 
   const formBody = (
@@ -272,14 +272,14 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
       <Card under={false}>
         <Stack>
           {editing.conflict !== null && (
-            <div onClick={onBandJump}>
-              <ConflictBand locale={locale} changed={editing.conflict.changed} />
+            <div onClick={onHeaderBarJump}>
+              <ConflictBanner locale={locale} changed={editing.conflict.changed} />
             </div>
           )}
 
           {/* **No section named for what it holds in general** (「基本情報」): each
               of the dataset's values is a section headed by its own name, the
-              way the research's fields are. The wrapper is only what a landing
+              way the research's fields are. The wrapper is only what a focus jump
               falls back to. */}
           <div id={BASICS} className="scroll-mt-32">
             <Stack gap="block">
@@ -293,7 +293,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                 leading={[view.page.typeOfDataAnchor, view.page.accessAnchor]
                   .flatMap((anchor) => anchor?.split(".")[1] ?? [])}
                 values={input.values}
-                marksFor={editing.marksFor}
+                annotationsFor={editing.annotationsFor}
                 onChange={(values) => { editing.edit({ ...input, values }) }}
               />
             </Stack>
@@ -303,11 +303,11 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             <Section
               id={FILES}
               title={t.files}
-              flags={<FieldFlags marks={editing.marksFor("fileSelection")} locale={locale} />}
+              flags={<FieldFlags annotations={editing.annotationsFor("fileSelection")} locale={locale} />}
             >
               <FileSelection
                 locale={locale}
-                listing={view.box}
+                listing={view.listing}
                 selected={input.fileSelection}
                 filesAt={href(locale, adminResearchFilesPath(researchId))}
                 onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
@@ -318,7 +318,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
           <Section
             id={EXPERIMENTS}
             title={t.experiments}
-            flags={<FieldFlags marks={editing.marksFor("experiments")} locale={locale} />}
+            flags={<FieldFlags annotations={editing.annotationsFor("experiments")} locale={locale} />}
           >
             {input.experiments.map((experiment, at) => (
               <ExperimentCard
@@ -332,7 +332,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                 note={experimentNote(experiment)}
                 open={experiment.label.text === ""
                   || experiment.id === copied
-                  || markedUnder(`experiments.${experiment.id}`) > 0}
+                  || conflictedUnder(`experiments.${experiment.id}`) > 0}
                 onMove={(by) => {
                   editing.edit({ ...input, experiments: moved(input.experiments, at, by) })
                 }}
@@ -356,7 +356,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                   catalog={view.catalog}
                   terms={view.terms}
                   experiment={experiment}
-                  marksFor={editing.marksFor}
+                  annotationsFor={editing.annotationsFor}
                   onChange={(next) => {
                     editing.edit({
                       ...input,
@@ -399,14 +399,14 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                 to the place a reader looks at; what a save refused and what
                 somebody else moved belong to the hands typing, and stay in
                 the form. Where the caret is, the page shows on the value itself
-                (`page.tsx` の `Place`).
+                (`page.tsx` の `ValueAtPath`).
               */
               annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
               here={at}
               onGo={goTo}
               goLabel={editor.goToField}
             >
-              <PageHead
+              <PageHeader
                 level="p"
                 kicker={messagesFor(locale).dataset.datasetId}
                 label={(
@@ -416,10 +416,10 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                   </>
                 )}
               >
-                <Badge onBand icon={<Icon name="edit" aria-hidden="true" />}>
+                <Badge onHeaderBar icon={<Icon name="edit" aria-hidden="true" />}>
                   {view.updating === null ? editor.draftBadge : editor.updatingBadge(`v${view.updating}`)}
                 </Badge>
-              </PageHead>
+              </PageHeader>
               <Card>
                 {/* **Nothing is drawn until this language has been drawn.** The
                   other language's page would be the wrong words under the right
@@ -429,7 +429,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                     view={drawn.view}
                     locale={language}
                     // The way a reader goes back to the research. The label may not
-                    // be pinned yet, in which case the page it names does not exist
+                    // be pinned yet, in which case the page it identifies does not exist
                     // — the same as it is under a share link.
                     researchHref={href(language, researchPath(drawn.humLabel ?? ""))}
                     accessAnchor={drawn.accessAnchor}
@@ -446,8 +446,8 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   return (
     <Page>
       <Stack>
-        {/* The way out is the list this dataset is in. A dataset is a part of
-            the draft rather than a face of its own, so the head carries no
+        {/* The back link leads to the list this dataset is in. A dataset is a part of
+            the draft rather than a screen of its own, so the header has no
             second line. */}
         <DraftHead
           locale={locale}
@@ -460,7 +460,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             label: t.backToList,
             icon: "chevron-left",
           }}
-          // **What identifies the dataset and dates it stands in the head**,
+          // **What identifies the dataset and dates it is shown in the header**,
           // not in the form: the id is pinned apart from the save, and the
           // dates of an archive's accession are read from the archive rather
           // than written here.
@@ -480,7 +480,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                   context={review.context}
                   comments={view.review.comments.filter((one) =>
                     one.anchor.kind === "dataset-field" && one.anchor.datasetId === view.datasetId)}
-                  nameOf={(anchor) => anchor.kind === "dataset-field" ? placeName(anchor.path) : editor.whole}
+                  nameOf={(anchor) => anchor.kind === "dataset-field" ? pathName(anchor.path) : editor.whole}
                   perField
                 />
               )}
@@ -499,43 +499,43 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 }
 
 /**
- * Every path a refused save left a mark at. A tab and a fold both hide what is
- * inside them, so both have to be able to say that something in there wants
+ * Every path a refused save left an indicator at. A tab and a collapsible both hide what is
+ * inside them, so both have to be able to show that something in there wants
  * looking at.
  */
-function markedPaths(editing: DraftEditing<DatasetContentInput>): string[] {
+function conflictedPaths(editing: DraftEditing<DatasetContentInput>): string[] {
   return editing.conflict?.changed ?? []
 }
 
-function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: {
+function Experiment({ locale, catalog, terms, experiment, annotationsFor, onChange }: {
   locale: Locale
   catalog: EditableCatalog
   terms: EditableTerm[]
   experiment: ExperimentInput
-  marksFor: (path: string) => Marks
+  annotationsFor: (path: string) => FieldAnnotations
   onChange: (next: ExperimentInput) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const path = `experiments.${experiment.id}`
 
   // **Three parts, each under its own heading** — the experiment itself, the
-  // items it carries, and the way to add one. Twenty-odd fields run together
+  // items it has, and the way to add one. Twenty-odd fields run together
   // under the card's line read as one list, and the box to add a field was
   // found only by scrolling past all of them.
   return (
     <Stack gap="block">
       <Stack>
         {/* **The heading is the field's name**: under 「解析手法」 the one box is
-            what the experiment is called, and a second name over it only says
-            so again. Its marks stand on the heading's line. */}
+            what the experiment is called, and a second name over it only shows
+            so again. Its indicators stand on the heading's line. */}
         <PaneHeading title={t.experiments} level="h3" rule="start">
           <span className="flex items-center gap-2">
-            <FieldFlags marks={marksFor(`${path}.label`)} locale={locale} />
+            <FieldFlags annotations={annotationsFor(`${path}.label`)} locale={locale} />
           </span>
         </PaneHeading>
         <SingleField
           value={experiment.label}
-          marks={marksFor(`${path}.label`)}
+          annotations={annotationsFor(`${path}.label`)}
           locale={locale}
           onChange={(label) => { onChange({ ...experiment, label }) }}
         />
@@ -547,7 +547,7 @@ function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: 
         scope="experiment"
         path={`${path}.values`}
         values={experiment.values}
-        marksFor={marksFor}
+        annotationsFor={annotationsFor}
         headings={{ values: t.values, add: t.addValue }}
         onChange={(values) => { onChange({ ...experiment, values }) }}
       />
@@ -556,14 +556,14 @@ function Experiment({ locale, catalog, terms, experiment, marksFor, onChange }: 
 }
 
 /**
- * The values a dataset or an experiment carries, in catalog order, and the way
- * to add one it does not carry yet.
+ * The values a dataset or an experiment has, in catalog order, and the way
+ * to add one it does not have yet.
  *
  * **A key cannot be invented here.** Adding one is choosing from the catalog,
  * which is what keeps the set of keys a decision somebody made rather than a
  * side effect of typing — the way the previous portal's catalog drifted.
  */
-function Values({ locale, catalog, terms, scope, path, values, marksFor, onChange, leading = [], headed = false, headings }: {
+function Values({ locale, catalog, terms, scope, path, values, annotationsFor, onChange, leading = [], headed = false, headings }: {
   locale: Locale
   catalog: EditableCatalog
   /**
@@ -576,14 +576,14 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
   leading?: readonly string[]
   /**
    * Each value is a section of its own, headed by its name (`fields.tsx` の
-   * `Section`) — the dataset's own values, which stand at the top of the form
+   * `Section`) — the dataset's own values, which are shown at the top of the form
    * the way the research's fields do. An experiment's values stay named rows
    * inside its card.
    */
   headed?: boolean
   /**
    * Headings for the items and for the way to add one, inside an experiment's
-   * card (`Experiment`) — the parts stand apart rather than run together.
+   * card (`Experiment`) — the parts are shown apart rather than run together.
    */
   headings?: { values: string, add: string }
   /** The terms the document names, for the chosen values to be readable. */
@@ -591,7 +591,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
   scope: "dataset" | "experiment"
   path: string
   values: ValueInput[]
-  marksFor: (path: string) => Marks
+  annotationsFor: (path: string) => FieldAnnotations
   onChange: (next: ValueInput[]) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
@@ -618,10 +618,10 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
     if (added.current === null) return
     const field = around.current?.querySelector<HTMLElement>(`[data-at="${CSS.escape(`${path}.${added.current}`)}"]`)
     added.current = null
-    if (field != null) landOn(field, "center")
+    if (field != null) focusElement(field, "center")
   })
 
-  // An always-there field the document does not carry yet joins it once written.
+  // An always-there field the document does not have yet joins it once written.
   const replace = (keyId: string, next: ValueInput) => {
     onChange(held.has(keyId) ? values.map((value) => value.keyId === keyId ? next : value) : [...values, next])
   }
@@ -630,7 +630,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
     <AddValue
       locale={locale}
       keys={spare}
-      catalogWay={scope === "experiment" && (
+      catalogLink={scope === "experiment" && (
         <ButtonLink
           to={href(locale, adminExperimentFieldsPath())}
           external
@@ -655,7 +655,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
         if (key === undefined) return null
         const at = `${path}.${value.keyId}`
         // **At the field name's own row, the same place every other row's
-        // delete stands** — not a control of its own set apart from the field
+        // delete remains** — not a control of its own set apart from the field
         // it acts on.
         const remove = leading.includes(value.keyId)
           ? undefined
@@ -673,7 +673,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
               accepts={body.kind === "text" ? messagesFor(locale).admin.accepts.prose : undefined}
               flags={(
                 <FieldFlags
-                  marks={marksFor(at)}
+                  annotations={annotationsFor(at)}
                   locale={locale}
                   untranslated={body.kind === "text" && isUntranslated(body.text)}
                 />
@@ -687,7 +687,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
                 catalogKey={key}
                 terms={terms}
                 value={value}
-                marks={marksFor(at)}
+                annotations={annotationsFor(at)}
                 onChange={(next) => { replace(value.keyId, next) }}
               />
             </Section>
@@ -701,7 +701,7 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
               catalogKey={key}
               terms={terms}
               value={value}
-              marks={marksFor(at)}
+              annotations={annotationsFor(at)}
               remove={remove}
               onChange={(next) => { replace(value.keyId, next) }}
             />
@@ -741,15 +741,15 @@ function Values({ locale, catalog, terms, scope, path, values, marksFor, onChang
 
 /**
  * One value under a catalog key, with the control its kind is written with.
- * **Written once**, so the dataset's own form and the take-in face write a
+ * **Written once**, so the dataset's own form and the import form write a
  * value the same way.
  */
-export function ValueEditor({ label, named = true, locale, catalogKey: key, terms, value, marks, remove, onChange }: {
+export function ValueEditor({ label, named = true, locale, catalogKey: key, terms, value, annotations, remove, onChange }: {
   label: string
   /**
    * Whether the field draws its own name row. **Not when a heading names it**
    * (`Values` の `headed`): the name would be read twice, and the name row's
-   * marks stand on the heading instead. The label still names the boxes for
+   * indicators are shown on the heading instead. The label still identifies the boxes for
    * anyone not looking at them.
    */
   named?: boolean
@@ -757,12 +757,12 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
   catalogKey: EditableKey
   terms: EditableTerm[]
   value: ValueInput
-  marks: Marks
+  annotations: FieldAnnotations
   remove?: { label: string, onClick: () => void }
   onChange: (next: ValueInput) => void
 }) {
   const body = value.value
-  const way = <ChoicesWay catalogKey={key} locale={locale} />
+  const link = <ChoicesLink catalogKey={key} locale={locale} />
   return (
     <>
       {body.kind === "text" && (
@@ -770,7 +770,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
           label={named ? label : undefined}
           value={body.text}
           multiline
-          marks={marks}
+          annotations={annotations}
           locale={locale}
           remove={remove}
           onChange={(text) => { onChange({ keyId: value.keyId, value: { kind: "text", text } }) }}
@@ -780,9 +780,9 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
         <VocabularyField
           label={label}
           named={named}
-          way={way}
+          link={link}
           locale={locale}
-          marks={marks}
+          annotations={annotations}
           setId={key.vocabularySetId}
           known={terms}
           multiple={key.multiple}
@@ -799,7 +799,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
           label={label}
           named={named}
           locale={locale}
-          marks={marks}
+          annotations={annotations}
           units={key.inputUnits ?? []}
           labelCandidates={labelCandidatesFor(key.code)}
           state={body.state}
@@ -812,9 +812,9 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
         <DiseaseField
           label={label}
           named={named}
-          way={way}
+          link={link}
           locale={locale}
-          marks={marks}
+          annotations={annotations}
           setId={key.vocabularySetId}
           known={terms}
           state={body.state}
@@ -828,7 +828,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
 }
 
 /**
- * The way to the screen that keeps what a field chooses from (「選べる値」),
+ * The link to the screen that keeps what a field chooses from (「選べる値」),
  * **opened in a new tab** — the form around it may hold unsaved work, and a
  * value found missing there is added and then chosen here.
  *
@@ -836,7 +836,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
  * experiment. A dataset's own access type is a closed list the portal defines,
  * with no screen to keep it on.
  */
-export function ChoicesWay({ catalogKey: key, locale }: { catalogKey: EditableKey, locale: Locale }) {
+export function ChoicesLink({ catalogKey: key, locale }: { catalogKey: EditableKey, locale: Locale }) {
   if (key.scope !== "experiment" || (key.valueType !== "vocabulary" && key.valueType !== "disease")) return null
   const messages = messagesFor(locale)
   return (
@@ -876,9 +876,9 @@ function isEditable(key: EditableKey): boolean {
 }
 
 /**
- * The way to add an item the dataset or the experiment is not carrying: **a
+ * The way to add an item the dataset or the experiment does not have: **a
  * box that opens its list as it is entered**, the same combobox a vocabulary is
- * chosen with (`ComboBox`), filtered by what the key is called. A fold labelled
+ * chosen with (`ComboBox`), filtered by what the key is called. A collapsible labelled
  * 「項目の追加」 read as a heading, and what it held was found by opening it.
  * Choosing adds the field and takes the caret to it.
  *
@@ -897,11 +897,11 @@ function isEditable(key: EditableKey): boolean {
  * already made is a step that only exists because the first control could not
  * act.
  */
-function AddValue({ locale, keys, catalogWay, onAdd }: {
+function AddValue({ locale, keys, catalogLink, onAdd }: {
   locale: Locale
   keys: EditableKey[]
-  /** A way to the screen where the keys themselves are kept, when there is one. */
-  catalogWay?: React.ReactNode
+  /** A link to the screen where the keys themselves are kept, when there is one. */
+  catalogLink?: React.ReactNode
   onAdd: (key: EditableKey) => void
 }) {
   const t = messagesFor(locale).admin.datasetEditor
@@ -953,7 +953,7 @@ function AddValue({ locale, keys, catalogWay, onAdd }: {
       >
         {t.add}
       </Button>
-      {catalogWay}
+      {catalogLink}
     </div>
   )
 }
@@ -963,7 +963,7 @@ function AddValue({ locale, keys, catalogWay, onAdd }: {
  *
  * The unit offered is the catalog's list, and the value is converted to the
  * key's own unit on the way in (`app/content/units.ts`) — what is kept here is
- * what the author wrote. **An empty box means the slot is not saved**: there is
+ * what the author wrote. **An empty field means the slot is not saved**: there is
  * no "empty number" the way there is an empty piece of prose, so leaving it
  * blank is the same as not having added the value at all.
  *
@@ -972,11 +972,11 @@ function AddValue({ locale, keys, catalogWay, onAdd }: {
  * `X染色体: 147,353 SNVs` — is two facts, and typing them as two rows is what
  * makes them countable and filterable instead of prose.
  *
- * **The label and the note only appear once they are in use.** Most keys carry
- * a single bare number, and four boxes where one is wanted is a form that asks
+ * **The label and the note only appear once they are in use.** Most keys have
+ * a single bare number, and four boxes where one is wanted is a form that requests
  * more than the value does. They come out when there is a second row (which is
  * when "which number is this" starts to have an answer) or when the row already
- * carries one.
+ * has one.
  *
  * **The unit is a `Select` the screen holds.** A key offers a few units and
  * that is what a select is for; everything on this screen is in React state, so
@@ -984,18 +984,18 @@ function AddValue({ locale, keys, catalogWay, onAdd }: {
  *
  * **A row's upper end shares the lower end's unit and box.** Typed after the
  * separator, it is what makes the row a width (`0.9〜1.3 GB`) rather than a bare
- * number — a second unit for the same row would say the two ends could be
+ * number — a second unit for the same row would show the two ends could be
  * measured differently, which they cannot. A typed upper end below the lower
  * end is a shape the save path refuses outright
  * (`app/admin/dataset-form.server.ts`), so the box marks itself wrong the
  * moment it is typed rather than waiting for that refusal.
  */
-function NumberField({ label, named: drawsName = true, locale, marks, units, labelCandidates, state, rows, remove, onChange }: {
+function NumberField({ label, named: drawsName = true, locale, annotations, units, labelCandidates, state, rows, remove, onChange }: {
   label: string
   /** Whether it draws its own name row (`ValueEditor` の `named`). */
   named?: boolean
   locale: Locale
-  marks: Marks
+  annotations: FieldAnnotations
   units: string[]
   /** Free-text suggestions for the label box, not a closed set (`app/admin/dataset-form.ts`). */
   labelCandidates: readonly string[]
@@ -1014,9 +1014,9 @@ function NumberField({ label, named: drawsName = true, locale, marks, units, lab
   }
 
   return (
-    <Stack gap="tight" at={marks.at}>
-      <FieldHead label={drawsName ? label : undefined} marks={marks} locale={locale} remove={remove} />
-      {/* **The state marks stand at the right of the values**, level with the
+    <Stack gap="tight" at={annotations.at}>
+      <FieldHead label={drawsName ? label : undefined} annotations={annotations} locale={locale} remove={remove} />
+      {/* **The state toggles are shown at the right of the values**, level with the
           first row — where every other field puts them — rather than on a row
           of their own above the values. */}
       <div className="flex items-start gap-2">
@@ -1152,9 +1152,9 @@ function NumberField({ label, named: drawsName = true, locale, marks, units, lab
 function VocabularyField({
   label,
   named = true,
-  way,
+  link,
   locale,
-  marks,
+  annotations,
   setId,
   known,
   multiple,
@@ -1164,12 +1164,12 @@ function VocabularyField({
   onChange,
 }: {
   label: string
-  /** The way to where this field's choices are kept (`ChoicesWay`). */
-  way?: React.ReactNode
+  /** The link to where this field's choices are kept (`ChoicesLink`). */
+  link?: React.ReactNode
   /** Whether it draws its own name row (`ValueEditor` の `named`). */
   named?: boolean
   locale: Locale
-  marks: Marks
+  annotations: FieldAnnotations
   setId: string | null
   /** The terms the document names, which is what the chosen list is drawn from. */
   known: EditableTerm[]
@@ -1180,10 +1180,10 @@ function VocabularyField({
   onChange: (state: SlotState, termIds: string[]) => void
 }) {
   return (
-    <Stack gap="tight" at={marks.at}>
-      <FieldHead label={named ? label : undefined} marks={marks} locale={locale} way={way} remove={remove} />
+    <Stack gap="tight" at={annotations.at}>
+      <FieldHead label={named ? label : undefined} annotations={annotations} locale={locale} link={link} remove={remove} />
       <div className="md:max-w-md">
-        {/* **The two marks stand beside the search box**, the way a
+        {/* **The two indicators are shown beside the search box**, the way a
             translated field's stand beside its box (`fields.tsx` の
             `SlotEditor`) — this field has one box, language-less, and the
             search box is it. */}
@@ -1217,21 +1217,21 @@ function VocabularyField({
  *
  * **A row naming no term is an ordinary row.** Diseases no classification holds
  * are in the articles, and a form that refused them would be a portal that
- * cannot record what was studied. **A row saying nothing at all is dropped on
+ * cannot record what was studied. **A row indicating nothing at all is dropped on
  * save**, the same as an empty number.
  *
  * **The names get no candidates.** The field holds what an article wrote, so
  * there is nothing to align it to; offering the spellings already in would pull
  * a curator away from the source they are copying.
  */
-function DiseaseField({ label, named = true, way, locale, marks, setId, known, state, diseases, remove, onChange }: {
+function DiseaseField({ label, named = true, link, locale, annotations, setId, known, state, diseases, remove, onChange }: {
   label: string
-  /** The way to where this field's choices are kept (`ChoicesWay`). */
-  way?: React.ReactNode
+  /** The link to where this field's choices are kept (`ChoicesLink`). */
+  link?: React.ReactNode
   /** Whether it draws its own name row (`ValueEditor` の `named`). */
   named?: boolean
   locale: Locale
-  marks: Marks
+  annotations: FieldAnnotations
   setId: string | null
   known: EditableTerm[]
   state: SlotState
@@ -1249,9 +1249,9 @@ function DiseaseField({ label, named = true, way, locale, marks, setId, known, s
     row.termIds.length === 0 && row.nameJa.trim() === "" && row.nameEn.trim() === ""
 
   return (
-    <Stack gap="tight" at={marks.at}>
-      <FieldHead label={named ? label : undefined} marks={marks} locale={locale} way={way} remove={remove} />
-      {/* **The state marks stand at the right of the values**, level with the
+    <Stack gap="tight" at={annotations.at}>
+      <FieldHead label={named ? label : undefined} annotations={annotations} locale={locale} link={link} remove={remove} />
+      {/* **The state toggles are shown at the right of the values**, level with the
           first row — where every other field puts them — rather than on a row
           of their own above the values. */}
       <div className="flex items-start gap-2">
@@ -1379,9 +1379,9 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
   onAdd: (id: string) => void
   onRemove: (id: string) => void
   /**
-   * Stood beside the search box, the way a translated field's state marks
-   * stand beside its box (`fields.tsx` の `SlotEditor`). Only a field-level
-   * picker carries one — nested inside a disease row, there is no field-level
+   * Stood beside the search box, the way a translated field's state toggles
+   * are shown beside its box (`fields.tsx` の `SlotEditor`). Only a field-level
+   * picker has one — nested inside a disease row, there is no field-level
    * state to show.
    */
   trailing?: React.ReactNode
@@ -1398,7 +1398,7 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
    * **Asked once the keys are still**, not at every key: a vocabulary of
    * twelve thousand terms is searched on the server, and a burst of typing
    * would otherwise send a burst of questions whose answers arrive out of
-   * order. Entering the box asks at once.
+   * order. Entering the box requests at once.
    */
   const ask = (value: string, pause: number) => {
     if (wait.current !== null) window.clearTimeout(wait.current)
@@ -1458,7 +1458,7 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
  */
 function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, render, loading = false, empty, more, words, onQuery, onChoose, kept }: {
   label: string
-  /** The grey word in the empty box; the label when absent. */
+  /** The grey word in the empty field; the label when absent. */
   placeholder?: string
   disabled?: boolean
   /** What the list offers for what is typed now. */
@@ -1468,7 +1468,7 @@ function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, ren
   /** Whether the options are still being asked for. */
   loading?: boolean
   empty: string
-  /** A line under a list cut short, saying so. */
+  /** A line under a truncated list, indicating so. */
   more?: string
   words: { searching: string, count: (count: number) => string }
   /** What is typed, whenever it changes or the box is entered (typed: false). */
@@ -1533,7 +1533,7 @@ function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, ren
         aria-controls={listId}
         aria-activedescendant={shown && current !== undefined ? optionId(at) : undefined}
         // The browser's own suggestions are what someone typed in some other
-        // box; over this one they hide the list that answers.
+        // box; over this one they hide the list that responds.
         autoComplete="off"
         spellCheck={false}
         value={find}
@@ -1547,7 +1547,7 @@ function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, ren
         onBlur={() => { setOpen(false) }}
         className={`${CONTROL} w-full pr-8 text-sm disabled:opacity-50`}
       />
-      {/* The mark of a list that opens here, the way a pull-down draws it.
+      {/* The indicator of a list that opens here, the way a pull-down draws it.
           Not a control of its own: the box is what is pressed. */}
       <Icon
         name="chevron-down"
@@ -1591,7 +1591,7 @@ function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, ren
 
 /**
  * One candidate as the list reads it: **the words, not the key they are stored
- * under** — an id like `controlled-access-type-2` says nothing a reader chooses
+ * under** — an id like `controlled-access-type-2` shows nothing a reader chooses
  * by. A disease keeps its code before the words: ICD-10 is what the box is typed
  * with, and what tells two names apart.
  */
@@ -1643,23 +1643,23 @@ export function comboKey(
 /**
  * The dataset's id, pinned from the screen the dataset is written on.
  *
- * **It is not part of the description.** The id goes into the ledger the moment
+ * **It is not part of the description.** The id goes into the `label_pin` table the moment
  * it is pinned — it neither waits for a save nor moves the entry's revision —
  * so it is posted as a form of its own beside the JSON save, and through a
  * fetcher so that what is typed in the form around it survives the answer.
  * Nothing is redirected: the listing under the screen is read again once the
- * ledger has moved.
+ * `label_pin` table has moved.
  *
  * **Two ways to give it one**: an archive's accession is typed, and the portal's
  * own id is issued — the next NHA number, which nobody types, so the numbering
  * cannot be broken by hand. Both are settled by the same「割り当て」(`IdForm`),
  * at the row's height — the line
- * is a line of facts, and a 36px box among them stands taller than the words.
+ * is a line of facts, and a 36px box among them remains taller than the words.
  *
  * **The dates are read, never typed.** An archive's accession is dated by the
  * archive; a portal-issued id is dated by the version that first publishes it,
  * written at the publish (`publish.server.ts` の `withReleaseDate`) — so until
- * then it says it is not out yet, and there is nothing here to set.
+ * then it shows it is not out yet, and there is nothing here to set.
  */
 function DatasetFacts({ view, locale }: {
   view: DatasetEditorView
@@ -1733,14 +1733,14 @@ function DatasetFacts({ view, locale }: {
 }
 
 /**
- * One experiment, folded to **a single line**: its name, how many values it
- * carries, and what can be done to the whole of it — copy, move, delete — on
+ * One experiment, collapsed to **a single line**: its name, how many values it
+ * has, and what can be done to the whole of it — copy, move, delete — on
  * the same line.
  *
- * **The controls stand over the line rather than inside the part that folds.**
+ * **The controls are shown over the line rather than inside the part that collapses.**
  * A button inside a `<summary>` is a control within a control: pressing it
- * would fold the card as well. The fold itself is a `<details>`, so a landing
- * from the page opens it (`form.tsx` の `landAt`).
+ * would collapse the card as well. The collapsible itself is a `<details>`, so a focus jump
+ * from the page opens it (`form.tsx` の `focusField`).
  */
 function ExperimentCard({ locale, index, count, summary, note, open, onMove, onCopy, onRemove, children }: {
   locale: Locale
@@ -1760,13 +1760,13 @@ function ExperimentCard({ locale, index, count, summary, note, open, onMove, onC
   const [reason, setReason] = useState(open)
   if (open !== reason) {
     setReason(open)
-    setShown(foldShown(shown, open))
+    setShown(collapsibleOpen(shown, open))
   }
   return (
     <div className="relative rounded border border-line">
-      <details open={shown} onToggle={(event) => { setShown(event.currentTarget.open) }} className="group/fold">
+      <details open={shown} onToggle={(event) => { setShown(event.currentTarget.open) }} className="group/collapsible">
         <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 py-1.5 pr-44 pl-4 text-sm marker:content-none">
-          <FoldMark />
+          <CollapsibleChevron />
           <span className="text-ink-muted text-xs">{index + 1}</span>
           <span className="min-w-0 truncate font-semibold">{summary}</span>
           <span className="shrink-0 text-ink-muted text-xs">{note}</span>

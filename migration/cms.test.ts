@@ -35,7 +35,7 @@ describe("document の組み立て", () => {
     expect(buildDocuments(screens).documents).toEqual([])
   })
 
-  it("draft しか無い document は落ちる", () => {
+  it("draft しか無い document は除かれる", () => {
     const { documents } = buildDocuments([document("x", [version("ja", 1, { status: "draft" })])])
     expect(documents).toEqual([])
   })
@@ -49,7 +49,7 @@ describe("document の組み立て", () => {
     expect(built[0]?.contents).toHaveLength(1)
   })
 
-  it("最新版も番号の slug を持ち、版なし slug は本文を持たない", () => {
+  it("最新のバージョンにも番号付きの slug があり、番号の無い slug には本文が無い", () => {
     const { documents, series } = buildDocuments([document("guidelines/x", [
       version("ja", 1), version("ja", 2), version("ja", 3),
     ])])
@@ -62,7 +62,7 @@ describe("document の組み立て", () => {
     expect(series).toEqual([{ slug: "guidelines/x", currentSlug: "guidelines/x/version/3" }])
   })
 
-  it("版が 1 つだけなら指し先を作らない", () => {
+  it("バージョンが 1 つだけなら指し先を作らない", () => {
     const { documents, series } = buildDocuments([document("x", [
       version("ja", 1), version("en", 1),
     ])])
@@ -72,7 +72,7 @@ describe("document の組み立て", () => {
     expect(series).toEqual([])
   })
 
-  it("片言語しか公開されていない版は片言語のまま入る", () => {
+  it("片方の言語しか公開されていないバージョンは片方の言語のまま入る", () => {
     const { documents: built } = buildDocuments([document("x", [
       version("ja", 1),
       version("en", 1, { status: "draft" }),
@@ -90,7 +90,7 @@ describe("document の組み立て", () => {
       .toEqual(["en", "ja"])
   })
 
-  it("published_at が無い版は created_at の日付で公開される", () => {
+  it("published_at が無いバージョンは created_at の日付で公開される", () => {
     const { documents: built } = buildDocuments([document("x", [
       version("ja", 1, { createdAt: "2015-02-27 10:00:00", publishedAt: null }),
     ])])
@@ -152,7 +152,7 @@ describe("news の組み立て", () => {
     expect(item?.publishedAt).toBe("2025-09-25 01:30:00")
   })
 
-  it("公開日を持たない item も落ちない", () => {
+  it("公開日の無い item も除かれない", () => {
     const [item] = buildNews([{ id: "1", publishedAt: null, translations: [] }])
     expect(item?.publishedAt).toBeNull()
     expect(item?.contents).toEqual([])
@@ -181,7 +181,7 @@ describe("alert の組み立て", () => {
     expect(alert?.active).toBe(true)
   })
 
-  it("立っていないものは、片方だけでもそのまま入る", () => {
+  it("enabled でないものは、片方の言語だけでもそのまま入る", () => {
     const [alert] = buildAlerts(half(false))
     expect(alert?.content.body).toEqual({ ja: "お知らせ", en: "" })
     expect(alert?.active).toBe(false)
@@ -192,12 +192,12 @@ describe("alert の組み立て", () => {
     expect(alert?.content.body).toEqual({ ja: "お知らせ", en: "notice" })
   })
 
-  it("引き当てるのは、持っている側の文そのもの", () => {
+  it("引き当てるのは、v1 にある側の言語の文そのもの", () => {
     expect(() => buildAlerts(half(true), [{ ja: "別のお知らせ", en: "notice", why: "" }]))
       .toThrow(/no en text/)
   })
 
-  it("立っているのに訳が無ければ、移行が止まる", () => {
+  it("enabled なのに訳が無ければ、移行が止まる", () => {
     expect(() => buildAlerts(half(true))).toThrow(/no en text/)
   })
 
@@ -207,23 +207,23 @@ describe("alert の組み立て", () => {
     expect(alert?.shownAt).toBeNull()
   })
 
-  it("立っているものは、v1 で作られた瞬間を表示にした日時として持つ", () => {
+  it("enabled のものは、v1 で作られた時刻を表示にした日時とする", () => {
     const [alert] = buildAlerts(half(true), [{ ja: "お知らせ", en: "notice", why: "" }])
     expect(alert?.shownAt).toEqual(new Date("2026-06-22T07:44:35.305Z"))
   })
 
-  it("立っていないものは表示にした日時を持たない", () => {
+  it("enabled でないものには表示にした日時が無い", () => {
     expect(buildAlerts(half(false))[0]?.shownAt).toBeNull()
   })
 
-  it("立っているのに作られた瞬間が読めなければ、移行が止まる", () => {
+  it("enabled なのに作られた時刻を解釈できなければ、移行が止まる", () => {
     const [source] = half(true)
     if (source === undefined) throw new Error("half() returned nothing")
     expect(() => buildAlerts([{ ...source, createdAt: "2026-06-22 16:44:35 JST" }], [{ ja: "お知らせ", en: "notice", why: "" }]))
       .toThrow(/unreadable created_at/)
   })
 
-  it("立っていないものは、作られた瞬間が読めなくても入る", () => {
+  it("enabled でないものは、作られた時刻を解釈できなくても入る", () => {
     const [source] = half(false)
     if (source === undefined) throw new Error("half() returned nothing")
     expect(buildAlerts([{ ...source, createdAt: "" }])[0]?.shownAt).toBeNull()
@@ -231,7 +231,7 @@ describe("alert の組み立て", () => {
 })
 
 /**
- * The reachability of the navigation constants. It lives here because the set
+ * The reachability of the navigation constants. It is kept here because the set
  * of slugs is what this file decides, and it runs against the real dump — the
  * question is not whether the code is consistent but whether the entries still
  * match the corpus. Without the dump there is nothing to check against.
@@ -239,9 +239,9 @@ describe("alert の組み立て", () => {
 const DUMP = join(process.cwd(), "migration", "input", "cms.json")
 
 describe.skipIf(!existsSync(DUMP))("ナビの行き先", () => {
-  it("route が持つ address か、この移行が作る slug のどちらかである", () => {
+  it("route で使われている address か、この移行が作る slug のどちらかである", () => {
     const { documents, series } = buildDocuments(loadCms().documents)
-    // A version-less slug answers through its pointer, so it counts as reachable.
+    // A version-less slug responds through its pointer, so it counts as reachable.
     const slugs = new Set([...documents, ...series].map((d) => `/${d.slug}`))
     const screens: string[] = [...SCREEN_PATHS]
     expect(navigationPaths().filter((path) => !screens.includes(path) && !slugs.has(path)))

@@ -23,7 +23,7 @@ afterAll(async () => {
   await closePools()
 })
 
-/** `noUncheckedIndexedAccess` makes every indexed read optional; this says why. */
+/** `noUncheckedIndexedAccess` makes every indexed read optional; this reports why. */
 function only<T>(rows: T[]): T {
   const [row] = rows
   if (row === undefined) {

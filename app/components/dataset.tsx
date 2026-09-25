@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router"
 import { Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
-import { pageOfBox } from "~/files/box"
+import { pageOfFiles } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
@@ -13,17 +13,17 @@ import { Downloads } from "./files"
 import {
   AccessTypeBadge,
   Annotation,
-  BandBox,
+  HeaderBarSection,
   Card,
   Crumbs,
   Empty,
   ExternalLink,
-  IdMark,
+  IdWithIcon,
   KeyValue,
   Page,
-  PageHead,
+  PageHeader,
   Pairs,
-  Place,
+  ValueAtPath,
   Section,
   UntranslatedNotice,
   Value,
@@ -44,7 +44,7 @@ export function DatasetPage({ view, locale }: { view: DatasetView, locale: Local
         trail={[{ label: messages.search.datasetList, to: href(locale, listPath("dataset")) }]}
         current={view.label}
       />
-      <PageHead
+      <PageHeader
         kicker={messages.dataset.datasetId}
         label={(
           <>
@@ -54,7 +54,7 @@ export function DatasetPage({ view, locale }: { view: DatasetView, locale: Local
         )}
       >
         <AddToCartButton datasetLabel={view.label} locale={locale} />
-      </PageHead>
+      </PageHeader>
       <Card>
         <DatasetBody
           view={view}
@@ -67,10 +67,10 @@ export function DatasetPage({ view, locale }: { view: DatasetView, locale: Local
 }
 
 /**
- * Everything a dataset says, drawn the same way for the published page and for
+ * Everything a dataset shows, drawn the same way for the published page and for
  * a preview. The access type and the type of data are placed rather than listed
  * — they are what a reader looks for first, and the access type decides whether
- * the data can be had at all. Everything an experiment carries comes out in
+ * the data can be had at all. Everything an experiment has comes out in
  * catalog order, under catalog labels.
  *
  * The two keys placed here are still anchored under the value slots they come
@@ -93,7 +93,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
   // parameter and the same size as the research's download list.
   const [params] = useSearchParams()
   const wanted = Number(params.get("files") ?? "1")
-  const files = pageOfBox(view.files, Number.isInteger(wanted) ? wanted : 1)
+  const files = pageOfFiles(view.files, Number.isInteger(wanted) ? wanted : 1)
 
   return (
     <Stack gap="block">
@@ -118,9 +118,9 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           </KeyValue>
         )}
         <KeyValue title={t.research}>
-          {/* The same mark the two listings put before a research id, so the
+          {/* The same icon the two listings put before a research id, so the
               thing being pointed at is recognised before the label is read. */}
-          <IdMark kind="research" to={researchHref}>{view.humLabel}</IdMark>
+          <IdWithIcon kind="research" to={researchHref}>{view.humLabel}</IdWithIcon>
         </KeyValue>
         {/* A date the upstream archive has not given us is left out rather
             than drawn as an empty row: "there is no value" and "the label is
@@ -167,14 +167,14 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           : (
               <Stack gap="block">
                 {view.experiments.map((experiment) => (
-                  <BandBox
+                  <HeaderBarSection
                     key={experiment.id}
                     level={3}
                     title={(
                       <>
-                        <Place at={`experiments.${experiment.id}.label`} onBand>
+                        <ValueAtPath at={`experiments.${experiment.id}.label`} onHeaderBar>
                           <Value field={experiment.label} locale={locale} />
-                        </Place>
+                        </ValueAtPath>
                         <Annotation at={`experiments.${experiment.id}.label`} name={t.experiments} />
                       </>
                     )}
@@ -190,7 +190,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
                         </KeyValue>
                       ))}
                     </Pairs>
-                  </BandBox>
+                  </HeaderBarSection>
                 ))}
               </Stack>
             )}

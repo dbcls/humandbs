@@ -13,7 +13,7 @@ import {
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
-import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "~/files/box"
+import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "~/files/prefix"
 import { clearPrefix, putTestObject } from "~/files/_store"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -35,7 +35,7 @@ import { postAboutDraft, readComments, setCommentResolved } from "./comments.ser
  *
  * Two things are being held down. **A preview keeps what is unsettled**, which
  * is the whole reason the link exists: the first thing a provider is asked is
- * to fill exactly those in, and the published face would hide the question. And
+ * to fill exactly those in, and the published view would hide the question. And
  * **the token is checked where the data is fetched**, so a link that is private
  * or has been reissued opens nothing however it is reached.
  */
@@ -128,21 +128,21 @@ async function status(run: Promise<unknown>): Promise<number> {
 }
 
 describe("opening a preview", () => {
-  it("answers as a page that is not there when the link is private", async () => {
+  it("responds as a page that is not there when the link is private", async () => {
     const { draftId, token } = await sharedDraft()
     await setDraftSharing(db, draftId, { enabled: false, expiresAt: null })
 
     expect(await status(previewResearchPage(get(), "ja", token))).toBe(404)
   })
 
-  it("answers as a page that is not there when the token has been reissued", async () => {
+  it("responds as a page that is not there when the token has been reissued", async () => {
     const { draftId, token } = await sharedDraft()
     await reissueShareToken(db, draftId)
 
     expect(await status(previewResearchPage(get(), "ja", token))).toBe(404)
   })
 
-  it("says not to index it and not to pass the address on", () => {
+  it("reports not to index it and not to pass the address on", () => {
     expect(PREVIEW_HEADERS["X-Robots-Tag"]).toContain("noindex")
     expect(PREVIEW_HEADERS["Referrer-Policy"]).toBe("no-referrer")
   })
@@ -172,7 +172,7 @@ describe("what a preview marks", () => {
     expect(view.changed).toEqual([])
   })
 
-  it("marks the places that differ, and holds what the published version says there", async () => {
+  it("marks the places that differ, and holds what the published version has there", async () => {
     const { researchId, token } = await sharedDraft(titled("新しい題目"))
     await publish(researchId, 3, titled("前の題目"))
 
@@ -262,7 +262,7 @@ describe("a dataset preview", () => {
     expect(view.view.experiments[0]?.label).toEqual({ state: "unsettled" })
   })
 
-  it("answers as a page that is not there for a dataset this version does not list", async () => {
+  it("responds as a page that is not there for a dataset this version does not list", async () => {
     const { token } = await sharedDraft()
     const stranger = "00000000-0000-0000-0000-000000000009"
 
@@ -383,7 +383,7 @@ describe("the comments a preview shows", () => {
   async function withAnotherDraftsDataset(): Promise<{
     draftId: string
     token: string
-    carriedId: string
+    ownId: string
     otherId: string
   }> {
     const { draftId, researchId, token } = await sharedDraft()
@@ -392,11 +392,11 @@ describe("the comments a preview shows", () => {
     const otherDraftId = await createEmptyDraft(db, researchId)
     const theirs = await createDatasetInDraft(db, { draftId: otherDraftId, revision: 1 }, researchId)
     if (theirs.status !== "created") throw new Error("expected the other draft's dataset to be created")
-    return { draftId, token, carriedId: carried.datasetId, otherId: theirs.datasetId }
+    return { draftId, token, ownId: carried.datasetId, otherId: theirs.datasetId }
   }
 
-  it("returns research comments and the comments of the datasets it carries, and no others", async () => {
-    const { draftId, token, carriedId, otherId } = await withAnotherDraftsDataset()
+  it("returns research comments and the comments of the datasets it has, and no others", async () => {
+    const { draftId, token, ownId, otherId } = await withAnotherDraftsDataset()
     await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
@@ -405,7 +405,7 @@ describe("the comments a preview shows", () => {
     })
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: carriedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: ownId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "on the dataset it carries",
     })
@@ -482,7 +482,7 @@ describe("the comments a preview shows", () => {
   })
 
   it("returns a dataset preview only the comments addressed to that dataset", async () => {
-    const { draftId, token, carriedId, otherId } = await withAnotherDraftsDataset()
+    const { draftId, token, ownId, otherId } = await withAnotherDraftsDataset()
     await saidAt({
       draftId,
       anchor: anchorOf(RESEARCH, "title"),
@@ -491,7 +491,7 @@ describe("the comments a preview shows", () => {
     })
     await saidAt({
       draftId,
-      anchor: anchorOf({ kind: "dataset", datasetId: carriedId }, "values.k1"),
+      anchor: anchorOf({ kind: "dataset", datasetId: ownId }, "values.k1"),
       author: { sub: null, name: "reader" },
       body: "on this dataset",
     })
@@ -502,7 +502,7 @@ describe("the comments a preview shows", () => {
       body: "on another dataset",
     })
 
-    const view = await previewDatasetPage(get(), "ja", token, carriedId)
+    const view = await previewDatasetPage(get(), "ja", token, ownId)
 
     expect(view.comments.map((one) => one.body)).toEqual(["on this dataset"])
   })
@@ -559,11 +559,11 @@ describe("writing from a share link", () => {
     ))).toBe(400)
   })
 
-  it("records which of the two marks a reader left, under their name", async () => {
+  it("records which of the two indicators a reader left, under their name", async () => {
     const { draftId, token } = await sharedDraft()
 
     // Answered on the same page rather than sent back: the page does not change
-    // when a mark is pressed, and the answer is what says it arrived.
+    // when an indicator is pressed, and the answer is what reports it arrived.
     expect(await previewAction(post({ intent: "acknowledge", kind: "commented", name: "提供者" }), token, RESEARCH))
       .toEqual({ status: "acknowledged", kind: "commented" })
     expect(await previewAction(post({ intent: "acknowledge", kind: "approved", name: "提供者" }), token, RESEARCH))
@@ -593,8 +593,8 @@ describe("writing from a share link", () => {
     expect((outcome as Response).headers.get("location")).toBe(`/en/preview/${token}#summary.aims`)
   })
 
-  /** A mark is written by anyone holding the link, as often as they like, so its name is held to a comment's limit. */
-  it("refuses a mark under a name longer than a comment's, and writes nothing", async () => {
+  /** An indicator is written by anyone holding the link, as often as they like, so its name is held to a comment's limit. */
+  it("refuses an indicator under a name longer than a comment's, and writes nothing", async () => {
     const { draftId, token } = await sharedDraft()
 
     expect(await previewAction(post({ intent: "acknowledge", kind: "approved", name: "名".repeat(NAME_LIMIT + 1) }), token, RESEARCH))
@@ -606,7 +606,7 @@ describe("writing from a share link", () => {
       .toEqual({ status: "acknowledged", kind: "approved" })
   })
 
-  it("refuses a mark of a kind it does not know, and writes nothing", async () => {
+  it("refuses an indicator of a kind it does not know, and writes nothing", async () => {
     const { draftId, token } = await sharedDraft()
 
     expect(await status(previewAction(post({ intent: "acknowledge", kind: "lgtm", name: "提供者" }), token, RESEARCH)))

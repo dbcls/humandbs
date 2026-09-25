@@ -62,15 +62,15 @@ afterAll(async () => {
 })
 
 describe("the catalog an editing screen gets", () => {
-  it("carries the keys and no terms at all", async () => {
+  it("has the keys and no terms at all", async () => {
     const catalog = await loadEditableCatalog(db)
 
     expect(catalog.keys.map((key) => key.code)).toEqual(["disease"])
     expect(catalog).not.toHaveProperty("terms")
   })
 
-  it("carries every term when what asks is matching against upstream", async () => {
-    // Only the server side may ask for this: nothing of it reaches a page.
+  it("has every term when what requests is matching against upstream", async () => {
+    // Only the server side may request this: nothing of it reaches a page.
     const catalog = await loadCatalogWithTerms(db)
 
     expect(catalog.terms.map((term) => term.code).sort()).toEqual(["C34", "C349", "C50", "C61", "K758"])
@@ -78,7 +78,7 @@ describe("the catalog an editing screen gets", () => {
 })
 
 describe("resolving what a document names", () => {
-  it("answers only what was asked for, once each", async () => {
+  it("responds with only what was asked for, once each", async () => {
     const wanted = [held.C34, held.C34, held.C50].filter((id) => id !== undefined)
 
     const terms = await termsByIds(db, wanted)
@@ -86,7 +86,7 @@ describe("resolving what a document names", () => {
     expect(terms.map((term) => term.code).sort()).toEqual(["C34", "C50"])
   })
 
-  it("asks nothing of the database when nothing is named", async () => {
+  it("requests nothing of the database when nothing is named", async () => {
     expect(await termsByIds(db, [])).toEqual([])
   })
 })
@@ -104,7 +104,7 @@ describe("the candidates for what was typed", () => {
   })
 
   /** The box opens on the vocabulary the moment it is entered — whole, when it is small. */
-  it("answers an empty box with the vocabulary from its first code, and only this vocabulary", async () => {
+  it("returns the vocabulary from its first code for an empty field, and only this vocabulary", async () => {
     const all = await codesOf("")
     expect(all.length).toBeGreaterThan(0)
     expect(all).toEqual([...all].sort())
@@ -130,7 +130,7 @@ describe("the candidates for what was typed", () => {
     expect(await diseaseCodesOf("気管支")).toEqual(["C34", "C349"])
   })
 
-  it("answers with nothing when no length of the code is held", async () => {
+  it("responds with nothing when no length of the code is held", async () => {
     expect(await diseaseCodesOf("Q999")).toEqual([])
   })
 

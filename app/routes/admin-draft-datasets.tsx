@@ -30,10 +30,10 @@ import type { Route } from "./+types/admin-draft-datasets"
  * research's own form holds none of it, so that a dataset has one screen to be
  * found on rather than two that each show half.
  *
- * **The draft does not choose which of them the version carries** — they
+ * **The draft does not choose which of them the version has** — they
  * belong to the research, so every one of them goes out with the next
  * publish. What the draft
- * decides is the order. The two marks are separate facts: one can be published
+ * decides is the order. The two indicators are separate facts: one can be published
  * and never touched here, or made here and already written.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -87,9 +87,9 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
           </Stack>
 
           {/* **The order is the public page's order**, so a row's arrows say
-              where it stands there, and the columns are the public table's.
-              **The table stands under the name with no section of its own** —
-              the screen holds this one list, and the name already says what
+              where it is shown there, and the columns are the public table's.
+              **The table is shown under the name with no section of its own** —
+              the screen holds this one list, and the name already shows what
               it is. The table stays when empty: the column names say what
               would stand here. */}
           <Table
@@ -115,9 +115,9 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
             ))}
           </Table>
 
-          {/* **No way to the take-in screen here.** Taking in is done to the
+          {/* **No link to the import screen here.** Importing is done to the
               research's contents, whose screen is where it starts; a second
-              entrance here would be a second way to the same screen. */}
+              entrance here would be a second link to the same screen. */}
           <Form method="post">
             <input type="hidden" name="revision" value={view.revision} />
             <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
@@ -137,12 +137,12 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
 
 /**
  * One dataset as this draft sees it: the public page's cells for it, where it
- * stands in the order, and the way to take it out of the research. The id leads
+ * is shown in the order, and the way to take it out of the research. The id leads
  * to the dataset's editor rather than to its page.
  */
 function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
   row: DraftDatasetListView["rows"][number]
-  /** Where it stands in the order the datasets go out in. */
+  /** Where it is shown in the order the datasets go out in. */
   at: { index: number, of: number }
   locale: Locale
   researchId: string
@@ -161,7 +161,7 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
         to={href(locale, adminDraftDatasetPath(researchId, draftId, row.id))}
         locale={locale}
       />
-      {/* **Every row is published or not, so that is a mark and a word; only
+      {/* **Every row is published or not, so that is an indicator and a word; only
           some rows are edited here, so that is the box**. A dataset this
           draft made is the one kind that is not published, so "not
           published" says it without a word of its own. */}
@@ -173,7 +173,7 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
           {row.edited && <Flag kind="changed">{t.edited}</Flag>}
         </span>
       </Td>
-      <Td holds="mark">
+      <Td holds="icon">
         <span className="flex items-center gap-1">
           <ReorderButtons
             at={at.index}

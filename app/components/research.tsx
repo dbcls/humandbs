@@ -24,13 +24,13 @@ import {
   Empty,
   ExternalLink,
   hasLinks,
-  IdMark,
+  IdWithIcon,
   KeyValue,
   LinksValue,
   Page,
-  PageHead,
+  PageHeader,
   Pairs,
-  MarkedPlace,
+  AnnotatedCell,
   Section,
   Table,
   Td,
@@ -42,7 +42,7 @@ import {
 const SHOWN_PLATFORMS = 3
 
 /**
- * The published face of one version of a research. `/research/{humId}` and
+ * The published view of one version of a research. `/research/{humId}` and
  * `/research/{humId}/v{n}` render the same thing — the first is the second with
  * the number left out — so telling them apart on screen is only the badge.
  *
@@ -75,12 +75,12 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
         current={numbered ? view.versionLabel : view.humLabel}
       />
       {/*
-        The band names the version and carries the two things a reader does from
+        The header bar names the version and has the two things a reader does from
         here: read the releases, or leave a past version for the current one.
-        The label above the number says what kind of identifier it is, which is
+        The label above the number shows what kind of identifier it is, which is
         how v1 sets "NBDC Research ID:" over it.
       */}
-      <PageHead
+      <PageHeader
         kicker={t.researchId}
         label={(
           <>
@@ -96,27 +96,27 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
               to={href(locale, researchVersionsPath(view.humLabel))}
               className="flex no-underline"
             >
-              <Badge onBand pill>{t.releaseInfo}</Badge>
+              <Badge onHeaderBar pill>{t.releaseInfo}</Badge>
             </Link>
           </>
         )}
       >
         {/*
           Whether this is the newest version, and the way to the newest one if
-          it is not. The two are drawn the same way — a badge on the band —
+          it is not. The two are drawn the same way — a badge on the header bar —
           because they answer the same question; the one that leads somewhere
           is the rounded one, which is the shape v1 gives a badge that is a link.
         */}
         {view.isLatest
-          ? <Badge onBand>{t.latestVersion}</Badge>
+          ? <Badge onHeaderBar>{t.latestVersion}</Badge>
           : (
               <Link to={href(locale, researchPath(view.humLabel))}>
-                <Badge onBand pill>
+                <Badge onHeaderBar pill>
                   {`${t.toLatestVersion} (v${view.latestVersionNumber})`}
                 </Badge>
               </Link>
             )}
-      </PageHead>
+      </PageHeader>
 
       <Card><ResearchBody view={view} locale={locale} cart /></Card>
     </Page>
@@ -124,11 +124,11 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
 }
 
 /**
- * Everything a version says, and the whole of what a preview shows as well.
+ * Everything a version shows, and the whole of what a preview shows as well.
  *
  * The two differ in what surrounds it — a preview is not a version yet, so it
  * has no version badge and no release list to point at — and in whether the
- * marks are there. The marks come from the annotation layer rather than from a
+ * indicators are there. They come from the annotation layer rather than from a
  * prop, so this reads the same either way and a published page cannot
  * accidentally draw one.
  *
@@ -143,19 +143,19 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
    * Whether to draw only what the research's own form writes. The editing
    * pane does: the dataset table, the downloads and the controlled-access
    * users have no field beside them — the datasets are decided on their own
-   * screen, the box is the research's, the users come from upstream — and a
+   * screen, the prefix is the research's, the users come from upstream — and a
    * pane that draws them shows the writer places nothing they type reaches.
    * The page and the share preview draw everything.
    */
   writtenOnly?: boolean
   /**
-   * Whether the dataset table carries the cart marks. The published page does;
+   * Whether the dataset table has the cart toggles. The published page does;
    * a preview does not, because nothing under a share link can be applied for
    * yet — the labels may not even be pinned.
    */
   cart?: boolean
   /**
-   * Whether to draw what this version says it changed. A published page does
+   * Whether to draw what this version shows it changed. A published page does
    * not: the note belongs to the release list, where the versions can be read
    * against each other. A preview has no release list, and the note is part of
    * what the provider is being asked to check.
@@ -172,7 +172,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
       <UntranslatedNotice show={view.untranslated} locale={locale} />
 
       <Section title={t.title} at="title">
-        {/* Neither larger nor heavier than the body. The heading above it says
+        {/* Neither larger nor heavier than the body. The heading above it shows
             what it is, and a title set apart twice — once by its own heading and
             again by its size — is a sentence the page has decided to shout. */}
         <p><Value field={view.title} locale={locale} /></p>
@@ -225,7 +225,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                       return (
                         <tr key={row.id ?? row.label} id={row.label === "" ? undefined : row.label}>
                           {cart && (
-                            <Td holds="mark"><CartToggle ids={[row.label]} locale={locale} /></Td>
+                            <Td holds="icon"><CartToggle ids={[row.label]} locale={locale} /></Td>
                           )}
                           <DatasetCells row={row} name={name} to={to} locale={locale} />
                         </tr>
@@ -292,14 +292,14 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 {view.researchProjects.map((project) => (
                   <tr key={project.id}>
                     <Td>
-                      <MarkedPlace at={`researchProjects.${project.id}.name`} name={t.researchProjectName}>
+                      <AnnotatedCell at={`researchProjects.${project.id}.name`} name={t.researchProjectName}>
                         <Value field={project.name} locale={locale} />
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                     <Td className="break-all">
-                      <MarkedPlace at={`researchProjects.${project.id}.url`} name={t.url}>
+                      <AnnotatedCell at={`researchProjects.${project.id}.url`} name={t.url}>
                         <LinksValue links={project.links} locale={locale} />
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                   </tr>
                 ))}
@@ -318,25 +318,25 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 {view.grants.map((grant) => (
                   <tr key={grant.id}>
                     <Td>
-                      <MarkedPlace at={`grants.${grant.id}.agency.name`} name={t.grantAgency}>
+                      <AnnotatedCell at={`grants.${grant.id}.agency.name`} name={t.grantAgency}>
                         <Value field={grant.agency} locale={locale} />
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                     <Td>
-                      <MarkedPlace at={`grants.${grant.id}.title`} name={t.grantTitle}>
+                      <AnnotatedCell at={`grants.${grant.id}.title`} name={t.grantTitle}>
                         <Value field={grant.title} locale={locale} />
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                     <Td>
-                      {/* A line each, because a grant carrying several numbers runs
+                      {/* A line each, because a grant with several numbers runs
                       them into one long code on a single line. */}
-                      <MarkedPlace at={`grants.${grant.id}.grantIds`} name={t.grantId}>
+                      <AnnotatedCell at={`grants.${grant.id}.grantIds`} name={t.grantId}>
                         <ul className="flex flex-col items-start gap-1">
                           {grant.grantIds.map((grantId) => (
                             <li key={grantId}><Badge pill>{grantId}</Badge></li>
                           ))}
                         </ul>
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                   </tr>
                 ))}
@@ -352,12 +352,12 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                 {view.relatedPublications.map((publication) => (
                   <tr key={publication.id}>
                     <Td>
-                      <MarkedPlace at={`relatedPublications.${publication.id}.title`} name={t.publicationTitle}>
+                      <AnnotatedCell at={`relatedPublications.${publication.id}.title`} name={t.publicationTitle}>
                         <Value field={publication.title} locale={locale} />
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                     <Td className="break-all">
-                      <MarkedPlace at={`relatedPublications.${publication.id}.doi`} name="DOI">
+                      <AnnotatedCell at={`relatedPublications.${publication.id}.doi`} name="DOI">
                         {publication.doi.state === "plain" && publication.doi.text !== ""
                           ? (
                               <ExternalLink to={publication.doi.text} locale={locale}>
@@ -365,11 +365,11 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                               </ExternalLink>
                             )
                           : <Value field={publication.doi} locale={locale} />}
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                     <Td>
-                      <MarkedPlace at={`relatedPublications.${publication.id}.datasetIds`} name={messages.dataset.datasetId}>
-                        {/* **Another research's dataset carries that research's ID
+                      <AnnotatedCell at={`relatedPublications.${publication.id}.datasetIds`} name={messages.dataset.datasetId}>
+                        {/* **Another research's dataset has that research's ID
                             after it**: the ID alone reads as one of this
                             research's. **An ID the portal publishes nothing under
                             is written as it was typed**, with nothing to press. */}
@@ -383,7 +383,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                               : { label: one.humLabel, to: href(locale, researchPath(one.humLabel)) },
                           }))}
                         />
-                      </MarkedPlace>
+                      </AnnotatedCell>
                     </Td>
                   </tr>
                 ))}
@@ -392,11 +392,11 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
       </Section>
 
       {/*
-        Drawn even with nothing in it. What a research says about itself is
+        Drawn even with nothing in it. What a research shows about itself is
         absent when it has none — a version with no grant simply has no grants
         section — but this reports what has happened since it was published, and
         an empty one is an answer: nobody has been granted this data yet. Left
-        out, a reader cannot tell that from a page that forgot to ask.
+        out, a reader cannot tell that from a page that forgot to request.
       */}
       {!writtenOnly && (
         <Section title={t.controlledAccessUsers}>
@@ -465,7 +465,7 @@ export function datasetColumns(locale: Locale): string[] {
  */
 export function DatasetCells({ row, name, to, newTab = false, locale }: {
   row: DatasetRowView
-  /** What the id cell says: the label, or a stand-in where none is pinned. */
+  /** What the id cell shows: the label, or a stand-in where none is pinned. */
   name: string
   /** Where the id leads; null draws it as text. */
   to: string | null
@@ -477,8 +477,8 @@ export function DatasetCells({ row, name, to, newTab = false, locale }: {
     <>
       <Td nowrap>
         {newTab && to !== null
-          ? <IdMark kind="dataset"><ExternalLink to={to} locale={locale}>{name}</ExternalLink></IdMark>
-          : <IdMark kind="dataset" to={to}>{name}</IdMark>}
+          ? <IdWithIcon kind="dataset"><ExternalLink to={to} locale={locale}>{name}</ExternalLink></IdWithIcon>
+          : <IdWithIcon kind="dataset" to={to}>{name}</IdWithIcon>}
       </Td>
       <Td>
         {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
@@ -509,7 +509,7 @@ export function runsLong(field: FieldView): boolean {
  * **The columns are the ones v1 shows**, which is more than a window holds: the
  * table scrolls sideways and the columns that say which row it is stay put
  * (`components/page.tsx`). **Three of them hold what the datasets beneath a
- * study carry** rather than anything the study says of itself — the analysis
+ * study have** rather than anything the study shows of itself — the analysis
  * methods, the platforms and who took part — which is why they are named for
  * the values and not for the sections of the research's own page.
  *
@@ -547,10 +547,10 @@ export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: 
       {rows.map((row) => (
         <tr key={row.humLabel}>
           {!preview && (
-            <Td stuck={0} holds="mark"><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
+            <Td stuck={0} holds="icon"><CartToggle ids={row.datasetLabels} locale={locale} /></Td>
           )}
           <Td stuck={id} nowrap floor="min-w-26">
-            <IdMark kind="research" to={preview ? null : href(locale, researchPath(row.humLabel))}>{row.humLabel}</IdMark>
+            <IdWithIcon kind="research" to={preview ? null : href(locale, researchPath(row.humLabel))}>{row.humLabel}</IdWithIcon>
           </Td>
           <Td floor="min-w-40">
             <DatasetIds
@@ -598,7 +598,7 @@ export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: 
 /**
  * A cell of prose, cut where the row would otherwise grow. The listing's own
  * name for `Excerpt`, so that the four columns drawn this way name the part
- * once and read the same. Not `Clamped`, which cuts a list of items short.
+ * once and read the same. Not `Clamped`, which truncates a list of items.
  */
 function Prose({ messages, children }: {
   messages: ReturnType<typeof messagesFor>

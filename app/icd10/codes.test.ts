@@ -52,7 +52,7 @@ describe("the codes an annotation names", () => {
     expect(icd10CodesIn("C20 [NG80]")).toEqual(["C20"])
   })
 
-  it("expands a range that names a disease", () => {
+  it("expands a range that identifies a disease", () => {
     expect(icd10CodesIn("C18-20")).toEqual(["C18", "C19", "C20"])
     expect(icd10CodesIn("C40-41")).toEqual(["C40", "C41"])
     expect(icd10CodesIn("F00-03")).toEqual(["F00", "F01", "F02", "F03"])
@@ -81,7 +81,7 @@ describe("resolving a code against the dictionary", () => {
     expect(icd10Resolve("c34.9", known)).toBe("C349")
   })
 
-  it("drops the tail until the dictionary answers", () => {
+  it("drops the tail until the dictionary responds", () => {
     // The five-character codes in the data are ICD-10-CM: `K75.81` is NASH,
     // which WHO's ICD-10 cannot write.
     expect(icd10Resolve("K75.81", known)).toBe("K758")
@@ -90,7 +90,7 @@ describe("resolving a code against the dictionary", () => {
   })
 
   it("falls all the way to the root when nothing between it and the code is held", () => {
-    // C56 carries no subdivision, so the ovarian histologies written as
+    // C56 has no subdivision, so the ovarian histologies written as
     // `C56.12` and `C56.14` land on it.
     expect(icd10Resolve("C56.12", known)).toBe("C56")
   })

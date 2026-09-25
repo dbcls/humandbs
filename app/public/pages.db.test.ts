@@ -10,7 +10,7 @@ import { seedDataset, seedVersion } from "~/db/seed"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { clearPrefix, putTestObject } from "~/files/_store"
-import { PUBLIC_BUCKET, publicPrefix } from "~/files/box"
+import { PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
 
 import { datasetPage, releaseListPage, researchPage } from "./pages.server"
 
@@ -121,7 +121,7 @@ describe("a research page", () => {
       .toBe(404)
   })
 
-  it("answers a label nobody pinned the same way as an unpublished one", async () => {
+  it("responds to a label nobody pinned the same way as an unpublished one", async () => {
     expect((await caught(() => researchPage({ ...ja, humId: "hum9999", wanted: "latest" }))).status)
       .toBe(404)
   })
@@ -313,7 +313,7 @@ describe("the download list", () => {
     await clearPrefix(PUBLIC_BUCKET, publicPrefix("hum7999"))
   })
 
-  it("cuts at twenty names and says how many pages there are", async () => {
+  it("cuts at twenty names and reports how many pages there are", async () => {
     const researchId = await createResearch(HUM)
     await publish(researchId, 1, [])
     await rebuildSearchDocs(db)
@@ -330,7 +330,7 @@ describe("the download list", () => {
     expect(second.files.rows).toHaveLength(1)
   })
 
-  it("keeps only the dataset selections the box holds", async () => {
+  it("keeps only the dataset selections the prefix holds", async () => {
     const researchId = await createResearch(HUM)
     const datasetId = await createDataset(researchId, "JGAD000001")
     descriptions.set(datasetId, { ...emptyDatasetContent(), fileSelection: ["a.zip", "gone.zip"] })
@@ -345,7 +345,7 @@ describe("the download list", () => {
 })
 
 describe("the datasets a publication names", () => {
-  it("says whose another research's published dataset is, found by any ID it holds, and nothing of an unpublished one", async () => {
+  it("reports whose another research's published dataset is, found by any ID it holds, and nothing of an unpublished one", async () => {
     const own = await createResearch("hum0001")
     const other = await createResearch("hum0002")
     const hidden = await createResearch("hum0003")

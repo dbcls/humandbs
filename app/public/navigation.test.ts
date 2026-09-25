@@ -22,7 +22,7 @@ describe("グローバルナビとフッタ", () => {
     expect(paths).toHaveLength(new Set(paths).size)
   })
 
-  it("route が持つ address 以外は document の slug の形をしている", () => {
+  it("route で使われている address 以外は document の slug の形をしている", () => {
     const screens: string[] = [...SCREEN_PATHS]
     for (const path of navigationPaths()) {
       if (screens.includes(path)) continue
@@ -40,7 +40,7 @@ describe("グローバルナビとフッタ", () => {
     }
   })
 
-  it("バーの項目には 1 つずつ幅の段がある", () => {
+  it("バーの項目には 1 つずつブレークポイントがある", () => {
     expect(NAVBAR_STEP).toHaveLength(NAVBAR.length)
   })
 
@@ -53,7 +53,7 @@ describe("グローバルナビとフッタ", () => {
     for (const [index, step] of NAVBAR_STEP.entries()) {
       const at = /(?:^|\s)([\w[\]-]+):block$/.exec(step.bar)?.[1] ?? null
       const hides = step.menu === "" ? null : /^([\w[\]-]+):hidden$/.exec(step.menu)?.[1] ?? null
-      expect(hides, `${String(index)} 番目の段が対になっていない`).toBe(at)
+      expect(hides, `${String(index)} 番目のブレークポイントで bar と menu が対になっていない`).toBe(at)
     }
   })
 

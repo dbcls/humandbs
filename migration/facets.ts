@@ -13,15 +13,15 @@
  * Six keys are only retyped. `Policies`, `Experimental Method`, `Reagents`,
  * `Read Type`, `Reference Sequence` and `Platform` are already in the catalog as
  * free text and already on the public page; giving them a type changes how the
- * value is held, not whether it is shown. The rest are new keys standing beside
+ * value is held, not whether it is shown. The rest are new keys shown beside
  * the free text they were read out of, and most of those are not shown either —
  * they exist to be filtered by, or, for most of the numbers, to be shown on the
  * dataset page and nothing more.
  *
- * **The vocabularies are what the data actually says.** A term is minted for
- * every distinct value the dump carries, because deciding what the controlled
+ * **The vocabularies are what the data actually has.** A term is minted for
+ * every distinct value the dump has, because deciding what the controlled
  * set ought to be is work for the real migration. ICD10 is the exception: its
- * codes carry their own hierarchy, so a four-character code is filed under the
+ * codes have their own hierarchy, so a four-character code is filed under the
  * three-character one it belongs to and the rollup has something to roll up.
  */
 
@@ -58,8 +58,8 @@ export interface VocabularyFacet {
   /** Whether the key is already in the catalog as free text and stays visible. */
   retyped: boolean
   /**
-   * **A disease is not a plain vocabulary value**: it carries the name the
-   * article wrote beside the terms (`docs/data-model.md` の「ICD10」), so its
+   * **A disease is not a plain vocabulary value**: it has the name the
+   * article wrote beside the terms, so its
    * values are built on their own path and `read` is null.
    */
   valueType: "vocabulary" | "disease"
@@ -91,7 +91,7 @@ export interface NumberFacet {
  * analysis in two different boxes (`Variant Number` beside the diseases,
  * `Coverage` beside the machines) and split the subjects' own properties the
  * same way, with the disease and the health status apart from the sex and the
- * age. Neither split answers a question anybody asks.
+ * age. Neither split handles a question anybody requests.
  */
 export const FACET_CATEGORIES = [
   { code: "basic-info", labelJa: null, labelEn: null, position: 0 },
@@ -147,9 +147,9 @@ function makerName(vendor: string | null | undefined): string | null {
  *
  * **The table is written out rather than derived.** A slash separates machines
  * in `HiSeq 2000/2500` and belongs to the name itself in `HiSeq X Ten` and
- * `DNBSEQ-G400RS`, and what carries over to the machine after the slash is the
+ * `DNBSEQ-G400RS`, and what passes over to the machine after the slash is the
  * series (`HiSeq`), the series and a letter (`NovaSeq X`), or nothing at all —
- * the string does not say which. The separator is not always a slash either:
+ * the string does not report which. The separator is not always a slash either:
  * one entry uses the Japanese comma its free text was written with.
  */
 const MODELS_WRITTEN_TOGETHER: Record<string, readonly string[]> = {
@@ -185,7 +185,7 @@ const MODELS_WRITTEN_TOGETHER: Record<string, readonly string[]> = {
  * **Only one name spelled differently belongs here** — a letter misread (`Nspl`
  * for `NspI`), letters transposed (`Omini` for `Omni`), a separator (`X-10` for
  * `X Ten`), an abbreviation spelled out (`Gene Expression` for `GE`), a model
- * carrying the phrase that describes it (`Helios a CyTOF system`).
+ * with the phrase that describes it (`Helios a CyTOF system`).
  *
  * **Names that merely differ are left apart.** `HumanExome` and `HumanExome
  * BeadChip` are very likely one chip written two ways, and so are `Infinium
@@ -208,7 +208,7 @@ const MODEL_SPELLINGS: Record<string, string> = {
   "Ion Torrent Proton": "Ion Proton",
 }
 
-/** What a model carries in brackets is a note about it, not part of its name. */
+/** What a model has in brackets is a note about it, not part of its name. */
 const MODEL_NOTE = /\s*\([^()]*\)/g
 
 /**
@@ -253,8 +253,8 @@ export const DISEASE_SET = "icd10"
 
 /**
  * The catalog key the diseases sit under. **The coding system is not part of
- * the code**: a value may carry a term of another classification, or none at
- * all (`docs/data-model.md` の「ICD10」).
+ * the code**: a value may have a term of another classification, or none at
+ * all.
  */
 export const DISEASE_KEY = "disease"
 
@@ -281,7 +281,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     code: "policies",
     labelJa: "利用ポリシー",
     labelEn: "Data use policy",
-    // The one thing beside the access type that says what may be done with the
+    // The one thing beside the access type that reports what may be done with the
     // data, and the two are read together. A box holding this alone repeated
     // its own name as its only entry.
     categoryCode: "basic-info",
@@ -310,7 +310,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
   {
     code: DISEASE_KEY,
     // **The coding system is not part of the name.** One field holds diseases
-    // named by ICD10 and diseases named by nothing, and the label stands over
+    // named by ICD10 and diseases named by nothing, and the label is shown over
     // the value on the dataset page as well as over the facet.
     labelJa: "疾患",
     labelEn: "Disease",
@@ -393,9 +393,9 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     setCode: "subject-count-type",
     hierarchical: false,
     retyped: false,
-    // The label asks how the number was counted, so the values answer in the
+    // The label states how the number was counted, so the values answer in the
     // same words: `個体` is a word the site itself hardly uses, and a value
-    // reading `検体` under a heading that says `対象者数` denies the heading.
+    // reading `検体` under a heading that reports `対象者数` denies the heading.
     valueType: "vocabulary",
     read: (s) => labelled(s.subjectCountType, {
       individual: "人数",
@@ -465,7 +465,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     read: (s) => (s.platforms ?? []).flatMap((platform) => {
       const maker = makerName(platform.vendor)
       const models = modelNames(maker, platform.model)
-      // A maker with no model still names something the reader can refine by.
+      // A maker with no model still identifies something the reader can refine by.
       const written = models.length === 0
         ? [maker ?? ""]
         : models.map((model) => [maker, model].filter(Boolean).join(" "))
@@ -576,8 +576,8 @@ export const NUMBER_FACETS: NumberFacet[] = [
  *
  * **`データ量` and `総データ量` were the two halves of that split** and are one
  * key here. The same goes for the four counts — `SNV Number`, `INDEL Number`,
- * `SV Number`, `CNV Number` — which are `バリアント数` with the unit saying
- * which kind. Measured over the dump only nine experiments carry more than one
+ * `SV Number`, `CNV Number` — which are `バリアント数` with the unit indicating
+ * which kind. Measured over the dump only nine experiments have more than one
  * of the four, and in those the units differ, so nothing collides.
  *
  * **What the rules cannot read stays unread rather than guessed.** The residue
@@ -591,7 +591,7 @@ export interface TextNumberKey {
   labelEn: string
   /**
    * **Null for a key that is shown but not narrowed by.** Only `subject-count`
-   * (above) and `read-length` carry a category — the refinement panel's range
+   * (above) and `read-length` have a category — the refinement panel's range
    * control and `search_facet_number` are both sourced from a number key that
    * has one (`~/search/catalog.server` の `loadFacetDefinitions`). Every other
    * number here is a value on the dataset page and nothing a query can name.
@@ -602,7 +602,7 @@ export interface TextNumberKey {
   /**
    * Labels this key's numbers are usually given, for the editor to offer as
    * suggestions. **Not a vocabulary** — a label is free text and a candidate
-   * not on this list can still be typed (`docs/data-model.md` の「値と文」).
+   * not on this list can still be typed.
    */
   labelCandidates?: readonly string[]
   /** Null where the rules could not read the line at all (`numbers.ts`). */
@@ -646,7 +646,7 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
     categoryCode: null,
     canonicalUnit: null,
     inputUnits: null,
-    // 95% of this key's labels name a part of the genome (`.claude/plan/numeric-values/README.md`).
+    // 95% of this key's labels name a part of the genome.
     labelCandidates: GENOME_REGION_LABELS,
     read: counts(COUNTED),
   },
@@ -685,8 +685,7 @@ export const TEXT_NUMBERS: TextNumberKey[] = [
 /**
  * `Coverage` names two different quantities in the same v1 cell — a depth
  * (`31.8x`) and a breadth (`98%`) — so it becomes two keys rather than one,
- * each reading only the unit it is about and declining the other's
- * (`docs/data-model.md` の「値と文」).
+ * each reading only the unit it is about and declining the other's.
  */
 export const COVERAGE_DEPTH: TextNumberKey = {
   source: "Coverage",
@@ -737,7 +736,7 @@ export const MERGED_SOURCES = new Map<string, string>([
   ["Raw Call Variant Number", "variant-number"],
 ])
 
-/** The reader for a merged cell, which counts the kind its own name says. */
+/** The reader for a merged cell, which counts the kind its own name reports. */
 export const MERGED_READERS = new Map<string, (said: string) => ReadNumber[] | null>([
   ["SNV Number", counts(["SNVs", "SNV", "SNPs", "SNP"])],
   ["INDEL Number", counts(["indels", "indel"])],
@@ -754,7 +753,7 @@ export const MERGED_READERS = new Map<string, (said: string) => ReadNumber[] | n
  * declared here — **as one list rather than as the order of the arrays above**,
  * because whether a facet holds a vocabulary or a number is an implementation
  * detail of how its values are read, and taking the order from that puts every
- * number after every vocabulary: the count and the word saying what was counted
+ * number after every vocabulary: the count and the word indicating what was counted
  * end up at opposite ends of the same box.
  *
  * Every new key has to appear ([catalog.ts](catalog.ts) refuses to load
@@ -782,7 +781,7 @@ export const TEXT_NUMBER_CODES = new Set(TEXT_NUMBERS.map((one) => one.code))
 
 /**
  * The keys that were free text in v1 and are a facet here. The free text they
- * held is not loaded: the value now lives under the same key with a type, and
+ * held is not loaded: the value now is kept under the same key with a type, and
  * two values under one key is not something the content model can hold.
  */
 /**
@@ -791,8 +790,7 @@ export const TEXT_NUMBER_CODES = new Set(TEXT_NUMBERS.map((one) => one.code))
  * Structured slots are facets and nothing else by default, but the disease is
  * a value a reader looks for on the dataset page — and **being in the public
  * projection is what makes an ICD10 code findable from the search box**, since
- * the full text is built from that projection (docs/public-pages.md の
- * 「dataset」).
+ * the full text is built from that projection.
  */
 export const RETYPED_CODES = new Set([
   ...VOCABULARY_FACETS.filter((facet) => facet.retyped).map((facet) => facet.code),
@@ -828,7 +826,7 @@ export function vocabularySetSeeds(): VocabularySetSeed[] {
  * **This order becomes `position`**, which is the order the editing form lists
  * a key's values in and the order a listing cell puts them in. Makers come
  * first, so that a column of platforms reads one company's machines together;
- * the rest is by label. The order the dump happens to mention a value in says
+ * the rest is by label. The order the dump happens to mention a value in reports
  * nothing, and leaving it would make the cell's first three values — all a
  * reader sees before "and 12 more" — an accident of how rows came back.
  */
@@ -870,8 +868,8 @@ function numberValue(value: number, unit: string | null): NumberValue {
 }
 
 /**
- * The value slots one experiment carries under the typed keys. A key with
- * nothing to say is absent rather than empty: an absent slot means the question
+ * The value slots one experiment has under the typed keys. A key with
+ * nothing to report is absent rather than empty: an absent slot means the question
  * does not come up for this experiment, which is what v1's null meant.
  */
 export function facetValueSlots(
@@ -910,13 +908,12 @@ export function facetValueSlots(
 }
 
 /**
- * The disease slot one experiment carries, or nothing when its article names no
+ * The disease slot one experiment has, or nothing when its article names no
  * disease.
  *
  * **A disease with no term is kept.** It has a name, it goes on the page and
  * into the full text, and it is simply in no facet — which is what the
- * classification being optional means in practice (`docs/data-model.md` の
- * 「ICD10」).
+ * classification being optional means in practice.
  */
 export function diseaseSlots(
   experiment: EsExperiment,

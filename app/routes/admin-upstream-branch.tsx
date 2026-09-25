@@ -3,7 +3,7 @@ import { data, Form } from "react-router"
 import { upstreamBranchAction, upstreamBranchPage } from "~/admin/templates.server"
 import type { UpstreamChoiceView } from "~/admin/templates.server"
 import { adminResearchPath, adminUpstreamResearchPath } from "~/admin/urls"
-import { AdminBack, WayTo } from "~/components/admin"
+import { AdminBack, ScreenLink } from "~/components/admin"
 import { Heading, Note, Stack } from "~/components/base"
 import { Answer, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
@@ -18,11 +18,11 @@ import type { Route } from "./+types/admin-upstream-branch"
 
 /**
  * One approval branch: what it states, and either the start of a research from
- * it or — where the hum already names a research — the way there.
+ * it or — where the hum already identifies a research — the way there.
  *
  * **Two states only.** The hum is not in the portal, and the one thing to do
- * is start a research from what the branch states; or it already names one,
- * and this screen offers no form at all — taking the branch in is done from
+ * is start a research from what the branch states; or it already identifies one,
+ * and this screen offers no form at all — importing the branch is done from
  * that research's own draft.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -53,7 +53,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
 
   return (
     <Page>
-      {/* Only a refusal is answered here: taking the branch in leaves this
+      {/* Only a refusal is answered here: importing the branch leaves this
           screen for the draft it wrote into. */}
       <Answer
         answer={actionData}
@@ -62,7 +62,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
       />
       <Card under={false}>
         <Stack gap="block">
-          {/* The name says what is done here and the branch stands beside it —
+          {/* The name shows what is done here and the branch is shown beside it —
               an application ID on its own would not say which screen this is. */}
           <Heading title={t.branchHeading} aside={view.applicationId}>
             <AdminBack
@@ -84,7 +84,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                     </Note>
                   )}
 
-                  {/* **The heading names what is being read; the branch says
+                  {/* **The heading names what is being read; the branch shows
                       which one.** Standing the branch's own title where the
                       heading goes left the screen without a word for what it
                       holds — and the listing this screen is opened from names
@@ -93,7 +93,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                     <BranchPairs locale={locale} branch={view.branch} fields={view.chosen.fields} />
                   </Section>
 
-                  {/* What the application registered is part of what it says,
+                  {/* What the application registered is part of what it shows,
                       read the same way whether a research is made from it
                       here or it already has one. */}
                   <BranchDatasets locale={locale} datasets={view.chosen.datasets} />
@@ -101,7 +101,7 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                   {holder === null
                     ? (
                         /* **Only a research that is not here yet is made here**,
-                           in a section of its own that says what the press
+                           in a section of its own that shows what the press
                            makes (`BranchCreate`). */
                         <Form method="post">
                           <input type="hidden" name="into" value="new" />
@@ -115,15 +115,15 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
                     : (
                         /* **A research that is here already is only a way to
                            it.** Nothing is made on this screen then, so what
-                           making would bring is not drawn; the take-in face of
+                           making would bring is not drawn; the import form of
                            one of its drafts draws it where it can be pressed.
-                           **The way in says it goes somewhere**, the bordered
-                           face with the mark after the word. */
+                           **The link shows that it goes somewhere**, the bordered
+                           style with the indicator after the word. */
                         <Section title={t.heldHeading} note={t.heldNote}>
                           <div>
-                            <WayTo to={href(locale, adminResearchPath(holder.researchId))} icon="book">
+                            <ScreenLink to={href(locale, adminResearchPath(holder.researchId))} icon="book">
                               {t.toResearchOf(view.branch.humLabel ?? "")}
-                            </WayTo>
+                            </ScreenLink>
                           </div>
                         </Section>
                       )}
@@ -138,14 +138,14 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
 /**
  * Starting a research from a branch: what the press makes, and the press.
  *
- * **A section of its own, under a name that says what it is for** — the
+ * **A section of its own, under a name that shows what it is for** — the
  * sentence and the button are what the screen is opened to do, and standing
  * straight under the application's values they read as one more value.
  *
  * **Nothing is chosen.** Every dataset the branch registered belongs to the
  * research it describes, so all of them are made with it — they are read in
  * the application's own section above (`BranchDatasets`), where one a research
- * already holds says so, and that one is left out because pinning it again
+ * already holds shows it, and that one is left out because pinning it again
  * would refuse the whole creation. **What will not go in is said before the
  * press**, by the name the form gives its key.
  */

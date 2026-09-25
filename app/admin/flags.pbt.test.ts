@@ -16,7 +16,7 @@ function missing(content: ResearchContent) {
   }
 }
 
-/** A research whose only field that can say anything is its title. */
+/** A research whose only field that can report anything is its title. */
 function withTitle(title: TranslatedText): ResearchContent {
   return { ...emptyResearchContent(), title }
 }
@@ -32,14 +32,14 @@ describe("what a research is still missing", () => {
     }))
   })
 
-  it("never says one missing value is both unsettled and untranslated", () => {
+  it("never reports one missing value is both unsettled and untranslated", () => {
     fc.assert(fc.property(translatedTextArb, (title) => {
       const flags = missing(withTitle(title))
       expect(flags.unsettled && flags.untranslated).toBe(false)
     }))
   })
 
-  it("says a research is unsettled exactly when some language of some field is", () => {
+  it("reports a research is unsettled exactly when some language of some field is", () => {
     fc.assert(fc.property(translatedTextArb, (title) => {
       const marked = title.ja.state === "unknown" || title.en.state === "unknown"
       expect(missing(withTitle(title)).unsettled).toBe(marked)

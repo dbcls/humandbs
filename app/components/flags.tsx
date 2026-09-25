@@ -4,20 +4,20 @@ import { Badge, type Tone } from "~/components/base"
 import { Icon, type IconName } from "~/components/icons"
 
 /**
- * The marks a management screen puts on some of its rows, each with the one
- * colour and the one glyph it wears wherever it stands.
+ * The indicators a management screen puts on some of its rows, each with the one
+ * colour and the one glyph it is shown with wherever it remains.
  *
- * **The colour says what the reader does about it, and there are four
+ * **The colour shows what the reader does about it, and there are four
  * answers.** `danger` — it stops something, deal with it first. `warning` — it
  * is short of something, look before going on. `accent` — it moved: this draft
  * changed it, or it is live, or a question on it is open. `brand` — it is the
  * one being pointed at. Everything else is a fact read in passing and stays
- * `muted`, including what passed: a resolved question wears no colour, because
+ * `muted`, including what passed: a resolved question is shown with no colour, because
  * a colour is somewhere to look.
  *
- * **The glyph says what it is about**, the way the glyph before a control does,
- * so the same fact carries the same glyph on every screen. Kept here rather than
- * at each use, a mark named on one screen cannot drift from the same mark on
+ * **The glyph shows what it is about**, the way the glyph before a control does,
+ * so the same fact has the same glyph on every screen. Kept here rather than
+ * at each use, an indicator named on one screen cannot drift from the same indicator on
  * the next.
  */
 export const FLAG = {
@@ -25,7 +25,7 @@ export const FLAG = {
   changed: { tone: "accent", icon: "edit" },
   /** Where the draft and the published version say different things. */
   differs: { tone: "accent", icon: "diff" },
-  /** A question nobody has answered yet. */
+  /** A question nobody has responded yet. */
   unresolved: { tone: "accent", icon: "comment" },
   /** Questions, none of them open: the count of a place that could have one. */
   comments: { tone: "muted", icon: "comment" },
@@ -37,11 +37,11 @@ export const FLAG = {
   scheduled: { tone: "accent", icon: "clock" },
   /** What publishing refuses, or a job that failed. */
   stops: { tone: "danger", icon: "alert" },
-  /** A shortcoming: an id not issued, a value unsettled or untranslated, what publishing asks to confirm. */
+  /** A shortcoming: an id not issued, a value unsettled or untranslated, what publishing requests to confirm. */
   short: { tone: "warning", icon: "warning" },
   /** A field somebody saved elsewhere after this screen was opened. */
   conflicted: { tone: "warning", icon: "edit" },
-  /** The row being folded into another. */
+  /** The row being merged into another. */
   merging: { tone: "warning", icon: "merge" },
   /** The one a pointer names: the primary id, the series' current document. */
   pointed: { tone: "brand", icon: "pin" },
@@ -65,7 +65,7 @@ export const FLAG = {
 
 export type FlagKind = keyof typeof FLAG
 
-/** One mark, in the colour and with the glyph its kind has everywhere. */
+/** One indicator, in the colour and with the glyph its kind has everywhere. */
 export function Flag({ kind, children }: { kind: FlagKind, children: ReactNode }) {
   const { tone, icon } = FLAG[kind]
   return <Badge tone={tone} icon={<Icon name={icon} aria-hidden="true" />}>{children}</Badge>
@@ -73,31 +73,31 @@ export function Flag({ kind, children }: { kind: FlagKind, children: ReactNode }
 
 /**
  * A kind's glyph on its own, before the word a pane narrows by — the same glyph
- * the rows then carry (`Stated`), so the shape narrowed by is the shape read.
+ * the rows then have (`Stated`), so the shape narrowed by is the shape read.
  */
-export function KindMark({ kind }: { kind: FlagKind }) {
+export function KindIcon({ kind }: { kind: FlagKind }) {
   return <Icon name={FLAG[kind].icon} aria-hidden="true" className="mr-1 text-ink-muted" />
 }
 
 /**
  * A state as a glyph and a word, on a line — the same kinds `Flag` draws, for
- * a state every row carries.
+ * a state every row has.
  *
  * **What every row has is not a badge.** A badge is a box, and a box is for
- * what a reader has to pick out — the rows that carry a shortcoming, the one
- * revision the pointer names, the term being folded away. A state that every
- * row carries (published or not, shared or not) drawn in a box gives every row
+ * what a reader has to pick out — the rows that have a shortcoming, the one
+ * revision the pointer names, the term being merged away. A state that every
+ * row has (published or not, shared or not) drawn in a box gives every row
  * a box, and then nothing is picked out: the rows that need somebody look
  * exactly like the rows that do not. The glyph is what tells the states apart
- * at a glance; the word is what says which it is once the question is known.
+ * at a glance; the word is what shows which it is once the question is known.
  *
  * **The glyph is the kind's, and the colour is left out.** A state named here
- * wears the glyph the same state wears as a badge on the next screen, so the
+ * is shown with the glyph the same state is shown with as a badge on the next screen, so the
  * two cannot drift apart; the colour stays with the badge, whose job is to be
  * picked out.
  *
  * **It takes one line's height and sits at the top of it**, the box a badge
- * stands in (`Badge`). Left on the baseline, an inline-flex box is placed by
+ * is shown in (`Badge`). Left on the baseline, an inline-flex box is placed by
  * its first item's baseline, and a glyph has none — the browser takes the
  * bottom edge of the svg, which is 2.4px under the words' baseline. The line
  * box grows by that much to hold it and the pair sits at the top of the taller

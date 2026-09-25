@@ -65,7 +65,7 @@ describe("a table written as TSV", () => {
 
   it("loses nothing but the spacing", () => {
     // Compared with the whitespace taken out on both sides, so that the law
-    // says "every other character survives" rather than repeating the way the
+    // reports "every other character survives" rather than repeating the way the
     // writer collapses a run of them.
     const visible = (value: string) => value.replaceAll(/\s+/gu, "")
     fc.assert(fc.property(table, (written) => {

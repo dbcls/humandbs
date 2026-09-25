@@ -1,7 +1,7 @@
 import { Children, createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Badge, Band, BAND_FILL, type BandTone, Breadcrumb, Clamped, EDGE_SHADE, LISTING_CONTROL, Note, Stack, Chevron } from "~/components/base"
+import { Badge, HeaderBar, HEADER_BAR_FILL, type HeaderBarTone, Breadcrumb, Clamped, EDGE_SHADE, LISTING_CONTROL, Note, Stack, Chevron } from "~/components/base"
 import { Icon, type IconName, SUBJECT_ICON } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
@@ -13,25 +13,25 @@ import type { FieldView, LinksView, TermView } from "~/public/view.server"
 import { scrollPaneTo } from "./scroll"
 
 /**
- * What a preview hangs beside a place the page draws — a comment mark, a note
- * that the published version says something else.
+ * What a preview hangs beside a place the page draws — a comment button, a note
+ * that the published version shows something else.
  *
  * A page marks its places by putting `<Annotation at="…" />` beside each
- * place's name, and the anchor it names is the same path a comment is
+ * place's name, and the anchor it identifies is the same path a comment is
  * attached by and the diff reports. **A public page provides nothing**, so
- * `annotate` is absent, every mark renders as nothing, and the published page
+ * `annotate` is absent, every indicator renders as nothing, and the published page
  * is drawn by the same code that draws the preview.
  *
- * **Every mark stands with the name** — beside a section's heading, beside a
+ * **Every indicator is shown with the name** — beside a section's heading, beside a
  * pair's name, at the value's right in a cell that has no name of its own —
- * where the form beside the page stands its own marks, and where a reader looks
- * to see what a thing is called. Under the value, a mark read as belonging to
+ * where the form beside the page places its own indicators, and where a reader looks
+ * to see what a thing is called. Under the value, an indicator read as belonging to
  * whatever came next.
  */
 /**
  * What hangs beside one place, given the place and the name the page gives it
  * — the heading, the pair's name, the column's — so that a panel opened from a
- * mark can say which place it is about in the words the reader is looking at.
+ * annotation can show which place it is about in the words the reader is looking at.
  */
 export type Annotate = (at: string, name?: string) => ReactNode
 
@@ -39,7 +39,7 @@ interface AnnotationLayerValue {
   annotate: Annotate
   /** The place the caret is in, on the form this page is drawn beside. */
   here: string | null
-  /** The way into the field writing a place, when the page stands beside its form. */
+  /** The link into the field that writes a field path, when the page is shown beside its form. */
   onGo: ((at: string) => void) | null
   /** What that way is called, for whoever reaches it by keyboard. */
   goLabel: string
@@ -67,12 +67,12 @@ export function Annotation({ at, name }: { at: string, name?: string }) {
 }
 
 /**
- * A place with its mark beside it, for a cell that has no name of its own —
- * the name is the column's heading, and a mark under the value read as
- * belonging to the row below. The mark stands at the value's right on its
+ * A place with its indicator beside it, for a cell that has no name of its own —
+ * the name is the column's heading, and an indicator under the value read as
+ * belonging to the row below. The indicator is shown at the value's right on its
  * first line.
  */
-export function MarkedPlace({ at, name, children }: {
+export function AnnotatedCell({ at, name, children }: {
   at: string
   /** The column's heading, which is this cell's name. */
   name: string
@@ -80,7 +80,7 @@ export function MarkedPlace({ at, name, children }: {
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="min-w-0 flex-1"><Place at={at}>{children}</Place></div>
+      <div className="min-w-0 flex-1"><ValueAtPath at={at}>{children}</ValueAtPath></div>
       <Annotation at={at} name={name} />
     </div>
   )
@@ -90,9 +90,9 @@ export function MarkedPlace({ at, name, children }: {
  * A place's value, as the page draws it, so the form beside the page can point
  * at it.
  *
- * **What says "this is the value you are writing" is the value itself.** While
+ * **What shows "this is the value you are writing" is the value itself.** While
  * the caret is in the field writing this place, the value is tinted and brought
- * to the middle of the pane; a mark beside the heading was a 36px point that
+ * to the middle of the pane; an indicator beside the heading was a 36px point that
  * left the paragraph being written looking like every other, and the two panes
  * read as unrelated.
  *
@@ -103,15 +103,15 @@ export function MarkedPlace({ at, name, children }: {
  *
  * **A public page has no layer**, and this draws the value and nothing else.
  */
-export function Place({ at, onBand = false, children }: {
+export function ValueAtPath({ at, onHeaderBar = false, children }: {
   at: string
   /**
-   * Standing on a coloured band — an experiment's name. **The ground that
-   * marks the caret's place is the band's own white, not the page's tint**:
+   * Standing on a coloured header bar — an experiment's name. **The background that
+   * marks the caret's place is the header bar's own white, not the page's tint**:
    * the tint under white words leaves the words unreadable at the one moment
    * they are being pointed at.
    */
-  onBand?: boolean
+  onHeaderBar?: boolean
   children: ReactNode
 }) {
   const layer = useContext(AnnotateContext)
@@ -119,7 +119,7 @@ export function Place({ at, onBand = false, children }: {
   const here = layer !== null && layer.here === at
   useEffect(() => {
     // Only the pane moves (`scroll.ts`): the caret is in the form beside this
-    // pane, and the window it stands in is where the reader left it.
+    // pane, and the window it is shown in is where the reader left it.
     if (here && box.current !== null) scrollPaneTo(box.current, "center")
   }, [here])
   if (layer === null) return <>{children}</>
@@ -127,12 +127,12 @@ export function Place({ at, onBand = false, children }: {
   return (
     <div
       ref={box}
-      data-place={at}
+      data-field-path={at}
       // **At least a line tall.** A field just added to the form has nothing
       // written yet, and a place with nothing in it is no height at all — the
       // caret in its box would light nothing here, and there would be nothing
       // to press to go back to it.
-      className={`-mx-2 min-h-[1lh] rounded px-2 transition-colors ${here ? (onBand ? "bg-white/20" : "bg-surface-hover") : ""} ${
+      className={`-mx-2 min-h-[1lh] rounded px-2 transition-colors ${here ? (onHeaderBar ? "bg-white/20" : "bg-surface-hover") : ""} ${
         go === null ? "" : "cursor-pointer"
       }`}
       onClick={go === null
@@ -140,10 +140,10 @@ export function Place({ at, onBand = false, children }: {
         : (event) => {
             const pressed = event.target instanceof Element ? event.target : null
             if (pressed?.closest("a, button, summary, details, input, textarea, select") !== null) return
-            // **The innermost place answers, and only it.** A section is a
+            // **The innermost place responds, and only it.** A section is a
             // place holding places (a list's table holds its cells), and a
             // press left to rise would go on to the section's own field and
-            // take the form away from the row it had just landed on.
+            // take the form away from the row it had just focused.
             event.stopPropagation()
             go(at)
           }}
@@ -168,7 +168,7 @@ export function Place({ at, onBand = false, children }: {
 /**
  * The area a screen draws in.
  *
- * **An article asks for the narrower measure.** A page that is mostly prose — a
+ * **An article requests the narrower measure.** A page that is mostly prose — a
  * guideline, a news item, the four pages the code holds — is held to the reading
  * width, which is what v1 does with the same two numbers (`app.css`).
  *
@@ -191,12 +191,12 @@ const PAGE_WIDTH: Record<PageWidth, string> = {
 const PageWidthContext = createContext<PageWidth | null>(null)
 
 /**
- * The measure the screens under it take unless they ask for another.
+ * The measure the screens under it take unless they request another.
  *
  * **It exists for the management area**, where the answer is the same on every
  * screen and is a property of the area rather than of any one of them: the
  * shell sets it once, and a screen added later is held to the window without
- * having to know that. A screen that names a width still wins, which is how a
+ * having to know that. A screen that identifies a width still wins, which is how a
  * reading measure stays available anywhere.
  */
 export function PageWidthDefault({ width, children }: {
@@ -229,7 +229,7 @@ export function Page({ width, children }: {
  * every screen, so a trail is written as what lies between the front page and
  * this one. It sits on the tint above the white box, which is where v1 puts it.
  * The front page itself has none: it is the root, and a trail of one step
- * naming the page you are on says nothing.
+ * naming the page you are on shows nothing.
  */
 export function Crumbs({ locale, trail = [], current }: {
   locale: Locale
@@ -249,20 +249,20 @@ export function Crumbs({ locale, trail = [], current }: {
 }
 
 /**
- * The band a page opens with, and what sits next to it.
+ * The header bar a page opens with, and what sits next to it.
  *
  * **Only a page about one thing that has a name of its own gets one** — a
- * research, a dataset, a draft (`base.tsx` の `Band`). A listing or an article
+ * research, a dataset, a draft (`base.tsx` の `HeaderBar`). A listing or an article
  * opens with `Heading` instead. The subject's own label goes above the name it
  * is known by, the way v1 puts "NBDC Research ID:" over `hum0103-v4`.
  */
-export function PageHead({ tone = "deep", level = "h1", kicker, label, children }: {
-  tone?: BandTone
+export function PageHeader({ tone = "deep", level = "h1", kicker, label, children }: {
+  tone?: HeaderBarTone
   /**
    * The step the name takes.
    *
-   * **A band drawn inside another screen is not that screen's name.** The pane
-   * beside an editor's form carries the published page whole, band and all —
+   * **A header bar drawn inside another screen is not that screen's name.** The pane
+   * beside an editor's form has the published page whole, header bar and all —
    * left at `h1` the screen has two names, and the first one a reader is handed
    * is an identifier rather than what the screen is for.
    */
@@ -274,7 +274,7 @@ export function PageHead({ tone = "deep", level = "h1", kicker, label, children 
 }) {
   const Name = level
   return (
-    <Band tone={tone} className="rounded-t">
+    <HeaderBar tone={tone} className="rounded-t">
       <div>
         {kicker !== undefined && <p className="text-white/80 text-xs">{kicker}</p>}
         <Name className="flex flex-wrap items-center gap-3 font-bold text-xl">{label}</Name>
@@ -282,7 +282,7 @@ export function PageHead({ tone = "deep", level = "h1", kicker, label, children 
       {children !== undefined && (
         <div className="flex flex-wrap items-center gap-3 text-sm">{children}</div>
       )}
-    </Band>
+    </HeaderBar>
   )
 }
 
@@ -291,14 +291,14 @@ export function PageHead({ tone = "deep", level = "h1", kicker, label, children 
  *
  * No border and no shadow: the page sits on a tint, so the edge of the box is
  * where the tint stops. `under` squares off the top, for a box that follows a
- * band and is one thing with it.
+ * header bar and is one thing with it.
  */
 export function Card({ under = true, fill = false, children }: {
   under?: boolean
   /**
    * Stand exactly as tall as the box this is in and hand the room down as a
    * column (`base.tsx` の `Stack` の `fill`) — for a pane whose one long field
-   * is to scroll on its own rather than carry the pane's length. When the
+   * is to scroll on its own rather than have the pane's length. When the
    * window is too low for the column's floors, what does not fit runs past
    * this box and the pane scrolls it.
    */
@@ -319,7 +319,7 @@ export function Card({ under = true, fill = false, children }: {
  * margin of their own: two rules for one gap is how a page ends up with an
  * uneven one.
  *
- * **The name stands at `normal` above what it names.** `tight` is the distance
+ * **The name is shown at `normal` above what it identifies.** `tight` is the distance
  * between a label and its value, and the name of a part is not a label: under
  * the 32px that separates one part from the next, 8px leaves the page a single
  * rhythm, and the name crowds the first thing in the block.
@@ -327,14 +327,14 @@ export function Card({ under = true, fill = false, children }: {
 export function Section({ title, note, at, aside, fill = false, children }: {
   title: string
   /**
-   * What the part is for, for the parts whose name does not say it.
+   * What the part is for, for the parts whose name does not show it.
    *
    * **Only those.** A line under every name is a page of sentences nobody
-   * reads, and the names stop being read along with them — so this says what a
+   * reads, and the names stop being read along with them — so this shows what a
    * reader could not have worked out from "公開バージョン", and nothing that
    * repeats it.
    *
-   * **One string is one line.** A note that says several things is given as
+   * **One string is one line.** A note that shows several things is given as
    * several strings, one per thing, so that a line ends where a thought does
    * and not where the window happens to — five sentences run together across
    * the width of a table are read as a paragraph, and a paragraph under a
@@ -344,9 +344,9 @@ export function Section({ title, note, at, aside, fill = false, children }: {
   /** The anchor of the whole section, when it draws one field. */
   at?: string
   /**
-   * What stands beside the name: the badge naming the notation of a section's
+   * What is shown beside the name: the badge naming the notation of a section's
    * one field (`fields.tsx` の `Section`), which has no name row of its own to
-   * carry it.
+   * have it.
    */
   aside?: ReactNode
   /** Take the room left in the column above (`base.tsx` の `Stack` の `fill`). */
@@ -359,9 +359,9 @@ export function Section({ title, note, at, aside, fill = false, children }: {
           sits under the heading as part of it; at the section's own `normal` it
           would float between the two, belonging to neither. */}
       <Stack gap="tight">
-        {/* A mark for the whole section sits beside its name rather than under
+        {/* An indicator for the whole section sits beside its name rather than under
             it: on a line of its own it reads as belonging to the first value. */}
-        {/* The name carries no colour: on a face made of fields and buttons, a
+        {/* The name has no colour: on a screen made of fields and buttons, a
             blue line is read as something to press before it is read as a name.
             What says "this names what follows" is the rule beside it. */}
         <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
@@ -375,7 +375,7 @@ export function Section({ title, note, at, aside, fill = false, children }: {
           </div>
         )}
       </Stack>
-      {at === undefined ? children : <Place at={at}>{children}</Place>}
+      {at === undefined ? children : <ValueAtPath at={at}>{children}</ValueAtPath>}
     </Stack>
   )
 }
@@ -390,12 +390,12 @@ export function Section({ title, note, at, aside, fill = false, children }: {
  * also why they are not simply set full width: the page is 1,344px across, which
  * is eighty Japanese characters to a line.
  *
- * **A value stays whole in its column unless it says `split`** (`KeyValue`).
+ * **A value stays whole in its column unless it shows `split`** (`KeyValue`).
  * Split at the foot of one, a sentence continued at the head of the other can
  * read as a second answer, so short values keep together. A value long enough
  * to outweigh all the others together — a study's methods at twenty lines,
  * against one line of participants — is the exception: kept whole it fills one
- * column while the other stands nearly empty.
+ * column while the other remains nearly empty.
  *
  * **A rule goes between two pairs and nowhere else.** Drawn under each one, the
  * last in a column closes against nothing — inside a box it floats a few pixels
@@ -426,19 +426,19 @@ export function Pairs({ children }: { children: ReactNode }) {
 }
 
 /**
- * An identifier with the mark of what it names before it — `book` for a
+ * An identifier with the indicator of what it identifies before it — `book` for a
  * research, `database` for a dataset.
  *
- * **The mark is chosen by what the identifier points at, never by where it
- * stands**: the same ID stands in a listing, a table of a page and a table of
- * publications, and a mark picked per place gives one thing two faces. **The
- * mark is muted** — the identifier already carries the link's colour, and a
- * brand mark beside it would make two things in one row shine alike.
+ * **The indicator is chosen by what the identifier points at, never by where it
+ * remains**: the same ID is shown in a listing, a table of a page and a table of
+ * publications, and an indicator picked per place gives one thing two styles. **The
+ * icon is muted** — the identifier already has the link's colour, and a
+ * brand icon beside it would make two things in one row shine alike.
  *
- * It is the pair and nothing around it, so the cell or the list it stands in
+ * It is the pair and nothing around it, so the cell or the list it is shown in
  * decides how it wraps.
  */
-export function IdMark(props: {
+export function IdWithIcon(props: {
   kind: "research" | "dataset"
   /** Where the identifier leads; left out, it is text. */
   to?: string | null
@@ -447,25 +447,25 @@ export function IdMark(props: {
   /**
    * The identifier opens its page in a new tab (`ExternalLink`), for a screen
    * somebody is working down. The link is a box that centres its contents, so
-   * the mark is centred with it and the pair sits by its top — a box that
+   * the indicator is centred with it and the pair sits by its top — a box that
    * centres takes its baseline from the words inside and would stretch the row.
    */
   newTab: true
   locale: Locale
 })) {
   const { kind, to = null, children } = props
-  const mark = <Icon name={SUBJECT_ICON[kind]} aria-hidden="true" className={props.newTab === true ? "text-ink-muted" : "mr-1 text-ink-muted"} />
+  const kindIcon = <Icon name={SUBJECT_ICON[kind]} aria-hidden="true" className={props.newTab === true ? "text-ink-muted" : "mr-1 text-ink-muted"} />
   if (props.newTab === true) {
     return (
       <span className="inline-flex items-center gap-1 align-top text-nowrap">
-        {mark}
+        {kindIcon}
         {to === null ? children : <ExternalLink to={to} locale={props.locale}>{children}</ExternalLink>}
       </span>
     )
   }
   return (
     <>
-      {mark}
+      {kindIcon}
       {to === null ? children : <Link to={to}>{children}</Link>}
     </>
   )
@@ -474,19 +474,19 @@ export function IdMark(props: {
 export interface DatasetIdItem {
   label: string
   to: string | null
-  /** Another research's dataset: that research's ID, after it, as a way to its page. */
+  /** Another research's dataset: that research's ID, after it, as a link to its page. */
   research?: { label: string, to: string | null } | null
 }
 
 /**
- * Dataset IDs in a cell, **cut to a few with the rest a press away** (`Clamped`):
+ * Dataset IDs in a cell, **truncated to a few with the rest a press away** (`Clamped`):
  * one row can name sixty-seven accessions, and a row that tall pushes every row
- * under it off the screen. Each is one `IdMark`, and none breaks across a line.
+ * under it off the screen. Each is one `IdWithIcon`, and none breaks across a line.
  */
 export function DatasetIds({ items, shown, newTab = false, locale }: {
   items: readonly DatasetIdItem[]
   shown?: number
-  /** Each opens its page in a new tab (`IdMark` の `newTab`). */
+  /** Each opens its page in a new tab (`IdWithIcon` の `newTab`). */
   newTab?: boolean
   locale: Locale
 }) {
@@ -497,10 +497,10 @@ export function DatasetIds({ items, shown, newTab = false, locale }: {
       more={(rest) => messages.search.andMore(rest)}
       less={messages.search.showLess}
       items={items.map((item) => newTab
-        ? <IdMark key={item.label} kind="dataset" to={item.to} newTab locale={locale}>{item.label}</IdMark>
+        ? <IdWithIcon key={item.label} kind="dataset" to={item.to} newTab locale={locale}>{item.label}</IdWithIcon>
         : (
             <span key={item.label} className="whitespace-nowrap">
-              <IdMark kind="dataset" to={item.to}>{item.label}</IdMark>
+              <IdWithIcon kind="dataset" to={item.to}>{item.label}</IdWithIcon>
               {item.research != null && (
                 <>
                   {" ("}
@@ -515,32 +515,32 @@ export function DatasetIds({ items, shown, newTab = false, locale }: {
 }
 
 /**
- * A framed box named on a band across its top — one of several of the same
+ * A framed box named on a header bar across its top — one of several of the same
  * kind on a page (the versions of a research, the experiments of a dataset).
  *
- * **The band is what separates them**: a grey strip is the weakest thing on a
- * page whose whole job is to tell these apart. The box clips the band rather
+ * **The header bar is what separates them**: a grey strip is the weakest thing on a
+ * page whose whole job is to tell these apart. The box clips the header bar rather
  * than rounding it, and the name and the body keep one weight and one inset
  * whatever the page.
  */
-export function BandBox({ as: Box = "section", level, title, aside, children }: {
+export function HeaderBarSection({ as: Element = "section", level, title, aside, children }: {
   as?: "section" | "li"
-  /** The heading's level on the page it stands in. */
+  /** The heading's level on the page it is shown in. */
   level: 2 | 3
   title: ReactNode
-  /** What stands at the band's far end, such as a date. */
+  /** What is shown at the header bar's far end, such as a date. */
   aside?: ReactNode
   children: ReactNode
 }) {
   const Heading = level === 2 ? "h2" : "h3"
   return (
-    <Box className="overflow-hidden rounded border border-line">
-      <Band>
+    <Element className="overflow-hidden rounded border border-line">
+      <HeaderBar>
         <Heading className="flex flex-wrap items-center gap-2 font-semibold">{title}</Heading>
         {aside}
-      </Band>
+      </HeaderBar>
       <div className="px-4 py-3">{children}</div>
-    </Box>
+    </Element>
   )
 }
 
@@ -570,11 +570,11 @@ export function Fact({ name, children }: { name: ReactNode, children: ReactNode 
 /**
  * A label and its value.
  *
- * **A value that says `split` may run from the foot of one column to the head
+ * **A value that shows `split` may run from the foot of one column to the head
  * of the next** (`Pairs`), but its label never stays behind on its own: a
  * label at the foot of a column with its value at the head of the other reads
  * as a label with nothing under it. Keeping the two together is a rule a flex
- * column cannot carry across a column break, so a split pair is laid out as
+ * column cannot pass across a column break, so a split pair is laid out as
  * plain blocks, with the gap the stack would have given it.
  */
 export function KeyValue({ title, at, split = false, children }: {
@@ -591,7 +591,7 @@ export function KeyValue({ title, at, split = false, children }: {
       {at !== undefined && <Annotation at={at} name={title} />}
     </dt>
   )
-  const value = <dd>{at === undefined ? children : <Place at={at}>{children}</Place>}</dd>
+  const value = <dd>{at === undefined ? children : <ValueAtPath at={at}>{children}</ValueAtPath>}</dd>
   if (split) {
     return (
       <div className="py-2">
@@ -617,37 +617,37 @@ export function KeyValue({ title, at, split = false, children }: {
  * **The width is fixed here rather than left to the contents**, because the
  * second column can only know where to begin if the first one is a known size.
  * **Two is as many as this is worth**: what a reader loses first when a dozen
- * columns run off the side is which row they are reading, and the mark and the
+ * columns run off the side is which row they are reading, and the indicator and the
  * label are the two that say it.
  *
- * **A frozen cell carries the band's own start rather than the band's
+ * **A frozen cell has the header row's own start rather than the header row's
  * gradient.** The fill runs the width of the row, so a cell that asked for it
  * again would run the whole of it inside sixty pixels and start over at its
  * edge. At the left end of the row, where these two stand, a flat fill and the
  * gradient's first tenth are the same colour.
  */
 /**
- * The width of a column holding a mark and nothing else.
+ * The width of a column holding an indicator and nothing else.
  *
- * **The mark is `size-tap` and the cell's padding sits either side of it, so
+ * **The indicator is `size-tap` and the cell's padding sits either side of it, so
  * the column has one width** — but a table narrower than its box shares what it
  * has over among the columns that name none, and this column would take a share
- * of it. The two listings would then draw the same mark in columns of different
+ * of it. The two listings would then draw the same indicator in columns of different
  * widths, which is what happened: 60px beside 74px.
  */
-const MARK_COLUMN = "w-15"
+const ICON_COLUMN = "w-15"
 
 /**
- * Where a frozen column stands — not how wide it is.
+ * Where a frozen column remains — not how wide it is.
  *
- * **No width here at all.** What a listing freezes first is a mark on one side
+ * **No width here at all.** What a listing freezes first is an indicator on one side
  * and a name on the other, and the two are nothing like the same width; the
  * cells already say which they are (`Td` の `holds` と `floor`). A width
- * written here would reach both and squeeze the name into the mark's 60px.
+ * written here would reach both and squeeze the name into the indicator's 60px.
  *
- * **A second column can only be frozen behind a mark.** Its `left` is the mark
+ * **A second column can only be frozen behind an indicator.** Its `left` is the indicator
  * column's width written out, which is the one width this file knows — so a
- * listing that freezes two has to lead with a mark, and one that leads with
+ * listing that freezes two has to lead with an indicator, and one that leads with
  * anything else freezes only the first.
  */
 const STUCK = [
@@ -656,37 +656,37 @@ const STUCK = [
 ]
 
 /**
- * How the band carries on across a frozen header cell.
+ * How the header row continues across a frozen header cell.
  *
  * **A frozen cell has to paint its own background** — the cells sliding under it
  * would show through otherwise — and painting it flat restarts the sweep. The
- * cell then holds the colour the band has at 0 while the band beside it has
+ * cell then holds the colour the header row has at 0 while the header row beside it has
  * already travelled: 164px of a 1,200px sweep is 13.7% along, and the two meet
  * as a vertical seam down the header.
  *
- * **So the cell takes the same sweep, pushed left by where the cell stands.**
+ * **So the cell takes the same sweep, pushed left by where the cell remains.**
  * The size is written out because the origin has to be the table's, not the
  * cell's; without it the sweep would be as wide as the cell and run its whole
  * range inside 60px.
  */
-const STUCK_BAND = [
+const STUCK_HEADER_BAR = [
   "bg-[length:1200px_100%] bg-[position:0px_0] bg-no-repeat",
   "bg-[length:1200px_100%] bg-[position:-60px_0] bg-no-repeat",
 ]
 
 /**
- * What the near edge looks like when a frozen column is standing at it.
+ * What the near edge looks like when a frozen column is shown at it.
  *
  * What stays and what slides are the same colour, so without this the sentence
  * passing behind reads as the continuation of the cell that stayed — a row that
- * says `hum0358` and then half a word of something else. **It is drawn only
+ * shows `hum0358` and then half a word of something else. **It is drawn only
  * while the table is away from its start**: with nothing sliding past there is
  * nothing to tell apart, and a rule that is there either way is one the reader
  * has to explain to themselves.
  */
 const FROZEN_EDGE = "shadow-[6px_0_6px_-6px_rgba(0,34,69,0.45)]"
 
-/** Which frozen column is carrying that edge, or -1 while none is. */
+/** Which frozen column has that edge, or -1 while none does. */
 const FrozenEdgeAt = createContext(-1)
 
 /**
@@ -708,7 +708,7 @@ const CellAlign = createContext<"top" | "middle">("top")
 
 const ALIGN = { top: "align-top", middle: "align-middle" }
 
-/** Where a row-sized control (24px) stands in a top-set row so its middle meets the first line's (6px + 22.4px / 2). */
+/** Where a row-sized control (24px) is shown in a top-set row so its middle meets the first line's (6px + 22.4px / 2). */
 const CONTROL_ON_FIRST_LINE = "pt-1.25"
 
 /**
@@ -725,13 +725,13 @@ const CONTROL_ON_FIRST_LINE = "pt-1.25"
  * letting the table overflow, and without the ceiling one long summary makes
  * every other column unreadably narrow.
  *
- * **A table with no rows is still the table**, and `whenEmpty` is what stands
+ * **A table with no rows is still the table**, and `whenEmpty` is what remains
  * where the rows would be. Swapping the whole table for a box of prose loses the
  * column names, which are what say what was being looked for, and moves
  * everything below it — a reader who narrowed one step too far has to work out
  * where they now are before they can take that step back. **The single cell
  * spans every column**, which also lets the columns collapse to the width of the
- * window: the floors are carried by `Td`, so a table of one wide cell stops
+ * window: the floors are held by `Td`, so a table of one wide cell stops
  * travelling sideways for as long as it has no rows.
  */
 /**
@@ -751,7 +751,7 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
   headers: (ReactNode | NumericHeader)[]
   /**
    * The rows end in a column of things to press, **named for anyone hearing the
-   * row read aloud and nowhere else** — a word over a column of marks is a
+   * row read aloud and nowhere else** — a word over a column of icons is a
    * heading for something already said, and it drags the column off its own
    * width. `true` names it 「操作」; a
    * public table gives its own word.
@@ -830,14 +830,14 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
     <div>
       {/*
         **A second bar above the table, because the one under it is out of
-        reach.** A listing stands taller than the window, so the box's own
-        scrollbar is below the fold: the shaded edge says that the table travels
-        sideways, but nothing says how far along it the reader is, and there is
+        reach.** A listing is taller than the window, so the box's own
+        scrollbar is below the fold: the shaded edge means that the table travels
+        sideways, but nothing shows how far along it the reader is, and there is
         nothing to take hold of without reading to the end of the page first.
 
         **It is a real scrollbar rather than a drawn one** — a strip of overflow
         holding the table's own width — so the browser draws it, sizes it and
-        answers a drag on it exactly as it does the one below.
+        responds to a drag on it exactly as it does the one below.
 
         **It is there only while the table has somewhere to travel**, and it is
         out of the reading order: the same scroll is reachable from the box
@@ -874,28 +874,28 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
           <table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
             <thead>
               {/*
-                **The band finishes its sweep inside the box, not inside the
+                **The header row finishes its sweep inside the box, not inside the
                 table.** A gradient laid across the whole table spends a third of
                 its travel past the right edge of what the reader can see, so the
                 part they do see covers 1.46x in luminance where the whole covers
-                1.77x — the band reads as flatter than it is. Ending it at about
+                1.77x — the header row reads as flatter than it is. Ending it at about
                 the width the box has on the display the portal is read on gives
                 the whole sweep to the first screenful; scrolling sideways runs
                 along the light end, which is where the sweep was going anyway.
 
-                **It belongs here rather than in `BAND_FILL`.** A band elsewhere
+                **It belongs here rather than in `HEADER_BAR_FILL`.** A header row elsewhere
                 is as wide as its box already, and the filled circles that take
                 the same fill are 28px across — stopping their sweep at 1200px
                 would leave them flat at the dark end.
               */}
-              <tr className={`text-left text-white ${BAND_FILL.brand} to-[1200px]`}>
+              <tr className={`text-left text-white ${HEADER_BAR_FILL.brand} to-[1200px]`}>
                 {/*
-                  **A word in the band stays on one line, which makes it the
+                  **A word in the header row stays on one line, which makes it the
                   other thing a column is at least as wide as.** The floors
                   below are measured from the values (`Td` の `floor`), and a
                   date is 96px — but the word naming that column is 124px in
-                  English, so at the table's narrowest the band was the only
-                  part that broke. **The band has to be one line**: it is one
+                  English, so at the table's narrowest the header row was the only
+                  part that broke. **The header row has to be one line**: it is one
                   row of one table, and a column whose name wrapped made every
                   other column's name sit against the top of a box half again
                   as tall.
@@ -906,19 +906,19 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
                   100.4px, and a floor big enough for the longer one is 28px of
                   space nobody uses in the other.
 
-                  **A header that is a control still asks for nothing.** A mark
+                  **A header that is a control still requests nothing.** An indicator
                   is 36px against a line of 22.4px, so the padding a word needs
-                  would make the band half as tall again — which is what made the
-                  two listings, drawn from the same frame, open with bands of two
-                  different heights. It carries no word, so keeping a word on one
+                  would make the header row half as tall again — which is what made the
+                  two listings, drawn from the same frame, open with header rows of two
+                  different heights. It has no word, so keeping a word on one
                   line cannot widen it either.
 
-                  **The band centres what it holds, whatever `align` says.** That
+                  **The header row centres what it holds, whatever `align` shows.** That
                   choice is about the rows, where a cell may run to three or four
                   lines and top is the only edge they share. **A header is one
                   line by decision** (the word does not wrap), so it has no such
-                  reason — and left at the top, a name 16px tall and a 36px mark
-                  in the same 36px band come out 1px apart, which is the band
+                  reason — and left at the top, a name 16px tall and a 36px icon
+                  in the same 36px header row come out 1px apart, which is the header row
                   reading as not quite straight.
                 */}
                 {headers.map((header, index) => (
@@ -927,7 +927,7 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
                     // Which column a value belongs to, for a reader who hears
                     // the row rather than seeing it line up under the name.
                     scope="col"
-                    className={`px-3 align-middle font-semibold ${typeof header === "string" || isNumericHeader(header) ? "whitespace-nowrap py-1.5" : `${CEILING} ${MARK_COLUMN} py-0`} ${isNumericHeader(header) ? "text-right" : ""} ${index < stuck ? `${STUCK[index] ?? ""} ${BAND_FILL.brand} ${STUCK_BAND[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                    className={`px-3 align-middle font-semibold ${typeof header === "string" || isNumericHeader(header) ? "whitespace-nowrap py-1.5" : `${CEILING} ${ICON_COLUMN} py-0`} ${isNumericHeader(header) ? "text-right" : ""} ${index < stuck ? `${STUCK[index] ?? ""} ${HEADER_BAR_FILL.brand} ${STUCK_HEADER_BAR[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                   >
                     {isNumericHeader(header) ? header.text : header}
                   </th>
@@ -990,19 +990,19 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
    * text below its neighbours' 6px starts lower than a control flush with the
    * row's top, and a 24px control centred on a 22.4px line sits 5px down.
    *
-   * The two differ in width. **A `mark` is one glyph**, so the column is a
-   * fixed 60px wherever it stands — left to the content it came out 60px in one
-   * listing and 74px in the next. **A `control` carries a word**, so its width
-   * is the word's; what it shares with a mark is only the missing padding.
+   * The two differ in width. **An `icon` is one glyph**, so the column is a
+   * fixed 60px wherever it remains — left to the content it came out 60px in one
+   * listing and 74px in the next. **A `control` has a word**, so its width
+   * is the word's; what it shares with an indicator is only the missing padding.
    */
-  holds?: "mark" | "control"
+  holds?: "icon" | "control"
   /**
    * Which of the table's stuck columns this cell is, when the table has any.
-   * A cell that stays put carries the card's own colour: the ones it slides
+   * A cell that stays put has the card's own colour: the ones it slides
    * over would otherwise read through it.
    */
   stuck?: number
-  /** For a row that says one thing across several columns. */
+  /** For a row that shows one thing across several columns. */
   colSpan?: number
   /**
    * How narrow this column may become, as a whole `min-w-*` class, where the
@@ -1013,9 +1013,9 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
    * settled by whichever Tailwind happened to emit last, so a class added that
    * way widens a column but silently fails to narrow one.
    *
-   * **The first frozen column has none** — `MARK_COLUMN` fixes it, because the
+   * **The first frozen column has none** — `ICON_COLUMN` fixes it, because the
    * second reads that width as its own `left`. **The second one needs a floor of
-   * its own**: `STUCK` says where it stands, not how wide it is, and what it
+   * its own**: `STUCK` shows where it remains, not how wide it is, and what it
    * holds differs between the listings. Left to the content the width follows
    * whatever rows a page happens to hold, which moves the start of the sideways
    * scroll every time a page is turned.
@@ -1028,7 +1028,7 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
   return (
     <td
       colSpan={colSpan}
-      className={`${nowrap ? "" : CEILING} border-line border-b px-3 ${ALIGN[align]} ${holds === undefined ? `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5` : `py-0 ${holds === "mark" ? MARK_COLUMN : ""} ${holds === "control" && align === "top" ? CONTROL_ON_FIRST_LINE : ""}`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
+      className={`${nowrap ? "" : CEILING} border-line border-b px-3 ${ALIGN[align]} ${holds === undefined ? `${floor ?? (stuck === undefined ? "min-w-28" : "")} py-1.5` : `py-0 ${holds === "icon" ? ICON_COLUMN : ""} ${holds === "control" && align === "top" ? CONTROL_ON_FIRST_LINE : ""}`} ${nowrap ? "whitespace-nowrap" : ""} ${stuck === undefined ? "" : `${STUCK[stuck] ?? ""} bg-white ${stuck === edgeAt ? FROZEN_EDGE : ""}`} ${className}`}
     >
       {children}
     </td>
@@ -1036,18 +1036,18 @@ export function Td({ children, nowrap = false, holds, stuck, colSpan, floor, cla
 }
 
 /**
- * A code — a slug, an accession, a facet's key — standing in a line of words.
+ * A code — a slug, an accession, a facet's key — shown in a line of words.
  *
  * **It takes one line's height and sits in the middle of it**, the box a badge
- * stands in (`base.tsx` の `Badge`), because it is set in another face: aligned
- * by its baseline to the words beside it, a monospace face's glyphs sit a pixel
+ * is shown in (`base.tsx` の `Badge`), because it is set in another typeface: aligned
+ * by its baseline to the words beside it, a monospace typeface's glyphs sit a pixel
  * lower than the sans ones and stretch the line box a pixel taller, so a column
  * of slugs beside a column of titles reads as not quite settled. In a box of
- * its own line's height the face's glyphs are centred where the words' are.
+ * its own line's height the typeface's glyphs are centred where the words' are.
  *
  * **The size goes on the code, the layout on the box**, for the reason a
  * badge's does: `1lh` is read off the box, and a smaller size there would make
- * it a shorter box than the line it stands in.
+ * it a shorter box than the line it is shown in.
  *
  * **Not for a block of code.** A `pre` sets its own lines, and a box of one
  * line's height would cut off everything after the first.
@@ -1075,7 +1075,7 @@ export function Empty({ children }: { children: ReactNode }) {
 /**
  * Page links, given a way to address a page.
  *
- * **The cut is always made on the server**, both for search results and for a
+ * **The page is always sliced on the server**, both for search results and for a
  * box of ten thousand files, so what a reader gets is a link rather than a
  * script — and one address for one page, which can be shared.
  */
@@ -1085,23 +1085,23 @@ export function Empty({ children }: { children: ReactNode }) {
  * the page that can be pressed — so each number sits in one, and the page being
  * read is the one that is filled in.
  *
- * **It takes the face and the edge every control over a listing takes**
- * (`base.tsx` の `LISTING_CONTROL`) **but not its corner.** The numbers stand in
+ * **It takes the style and the edge every control over a listing takes**
+ * (`base.tsx` の `LISTING_CONTROL`) **but not its corner.** The numbers are shown in
  * the same row as the ordering, how many rows a page holds and the export, and
- * a row of controls in three faces reads as three unrelated facilities — the
+ * a row of controls in three styles reads as three unrelated facilities — the
  * edge also settles one that was under the requirement, `line` on white coming
- * to 2.09:1 against the 3:1 the site asks of anything you can operate.
+ * to 2.09:1 against the 3:1 the site requests of anything you can operate.
  *
  * **The corner is 4px because the box is not full of anything.** A digit is
  * 7.8px inside 36px — the box is 4.6 times the width of what it holds, and
  * there are nine of them in a row. Rounded off, the vertical edges go and with
- * them the sense of a strip of cells: what is left is a chain of rings with a
- * mark in each, and the eye has nothing to count along. The other controls are
+ * them the sense of a strip of cells: what is left is a chain of rings with an
+ * icon in each, and the eye has nothing to count along. The other controls are
  * filled by their own words, so a round end there reads as the end of a word.
  */
-const PAGE_BOX = "inline-flex min-h-tap min-w-tap items-center justify-center rounded px-2"
-const PAGE_STEP = `group/way ${PAGE_BOX} ${LISTING_CONTROL} hover:bg-surface-hover`
-const PAGE_HERE = `${PAGE_BOX} border border-transparent bg-brand font-semibold text-white`
+const PAGE_CELL = "inline-flex min-h-tap min-w-tap items-center justify-center rounded px-2"
+const PAGE_STEP = `group/link ${PAGE_CELL} ${LISTING_CONTROL} hover:bg-surface-hover`
+const PAGE_HERE = `${PAGE_CELL} border border-transparent bg-brand font-semibold text-white`
 
 /** How many pages either side are offered one by one, before the steps double. */
 const NEAREST = 3
@@ -1126,7 +1126,7 @@ const NEAREST = 3
  * neighbour is also one press on "next".
  *
  * **No ellipsis between the numbers.** At this scale almost every neighbouring
- * pair is non-consecutive, so the marks would outnumber the pages; the gaps in
+ * pair is non-consecutive, so the indicators would outnumber the pages; the gaps in
  * the numbers themselves say the same thing.
  */
 export function pageWindow(page: number, pageCount: number, most = Infinity): number[] {
@@ -1204,9 +1204,9 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most }: 
  * I looking at" — so they are drawn together rather than placed by each screen.
  * Written apart they drift, and the management area is where that showed: five
  * listings said it five ways, one of them counting a whole vocabulary while the
- * rows on screen were a search within it, and two not saying it at all.
+ * rows on screen were a search within it, and two not indicating it at all.
  *
- * **The range, not the total.** "675 件" over twenty rows says nothing about
+ * **The range, not the total.** "675 件" over twenty rows implies nothing about
  * which twenty. The bare total is the answer only when there is no page to be
  * on, which is what nothing-matched is.
  *
@@ -1234,11 +1234,11 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
   //
   // **The row keeps the height of the steps whether or not they are drawn.** A
   // listing that fits on one page has nothing to page through, and the row fell
-  // from 36px to the 22.4px of the line saying how many there are — which moves
+  // from 36px to the 22.4px of the line indicating how many there are — which moves
   // the table above it and the whole page below it as a reader narrows a search
-  // (measured on the research listing: the tools row 36 → 32.4px, the table's
+  // (measured on the research listing: the toolbar 36 → 32.4px, the table's
   // head 204 → 199px, the run under it 36 → 22.4px). This is the rule the top
-  // bar keeps for the same reason: what stands in a row settles that row's
+  // bar keeps for the same reason: what is shown in a row settles that row's
   // height once, for every state it has.
   return (
     <div className="flex min-h-tap flex-wrap items-center gap-2">
@@ -1259,20 +1259,20 @@ export function Paging({ locale, total, from, to, page, pageCount, at, most }: {
 }
 
 /**
- * How many rows are standing, where a listing that pages says which page of how
+ * How many rows are standing, where a listing that pages shows which page of how
  * many is on screen.
  *
- * **There is no range to give.** A listing that is never cut into pages shows
+ * **There is no range to give.** A listing that is never paginated shows
  * the whole of what it counts, so the bare total is the answer rather than the
- * half-truth it would be over twenty rows of six hundred. It stands where
- * `Paging` stands, so that the one place a reader looks for a count is the same
+ * half-truth it would be over twenty rows of six hundred. It is shown where
+ * `Paging` remains, so that the one place a reader looks for a count is the same
  * on every listing — a table that cannot page is still a table somebody wants
  * to know the size of.
  */
 export function Counted({ locale, total }: { locale: Locale, total: number }) {
   const messages = messagesFor(locale)
   // The row keeps the height of the steps it does not draw, for the reason
-  // `Paging` does: what stands in a row settles that row's height once.
+  // `Paging` does: what is shown in a row settles that row's height once.
   return (
     <div className="flex min-h-tap flex-wrap items-center justify-end gap-2">
       <p className="text-ink-muted text-sm">{messages.search.results(total)}</p>
@@ -1314,7 +1314,7 @@ function Prose({ text }: { text: RichText }) {
  *
  * `unsettled` only ever arrives from a preview, and it is drawn as the empty
  * frame it is: the question is what the reader is being shown, and a blank
- * would look like a value nobody thought worth filling in. **The frame asks
+ * would look like a value nobody thought worth filling in. **The frame requests
  * rather than names a state** — the reader is a provider, and what the office
  * wants from them at this slot is the value.
  */
@@ -1323,7 +1323,7 @@ export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
     return <span className="text-ink-muted italic">{messagesFor(locale).notApplicable}</span>
   }
   if (field.state === "unsettled") {
-    return <Badge tone="danger" dashed>{messagesFor(locale).preview.unsettledMark}</Badge>
+    return <Badge tone="danger" dashed>{messagesFor(locale).preview.unsettledBadge}</Badge>
   }
   if (field.state === "rich") {
     return field.text.length === 0 ? null : <Prose text={field.text} />
@@ -1367,11 +1367,11 @@ export function LinksValue({ links, locale, linked = true }: {
 }
 
 /**
- * A way out of the portal.
+ * A link out of the portal.
  *
- * **The mark is part of the link, not decoration beside it.** A tab that opens
+ * **The indicator is part of the link, not decoration beside it.** A tab that opens
  * without warning leaves the reader pressing a back button that does nothing,
- * so the icon travels inside the anchor and a word says the same thing for
+ * so the icon travels inside the anchor and a word shows the same thing for
  * anyone who is not looking at it. `noopener` is what keeps the page that is
  * opened from reaching back into this one.
  */
@@ -1387,7 +1387,7 @@ export function ExternalLink({ to, locale, children }: {
       rel="noopener noreferrer"
       // **Top-aligned, the way a badge is.** An inline-flex box is placed on
       // the line by the baseline of its first item, and a slug set in a
-      // monospace face carries its baseline a pixel lower than the words in
+      // monospace typeface has its baseline a pixel lower than the words in
       // the next cell — which put the whole link a pixel down and stretched
       // the row by two. The box is one line tall, so its top is the line's.
       className="inline-flex items-center gap-1 align-top"
@@ -1402,7 +1402,7 @@ export function ExternalLink({ to, locale, children }: {
 /**
  * Shown once for the whole page rather than beside each value: a page whose
  * language was never filled in has every field falling back, and a badge on
- * each of them would say the same thing dozens of times.
+ * each of them would show the same thing dozens of times.
  */
 export function UntranslatedNotice({ show, locale }: { show: boolean, locale: Locale }) {
   if (!show) return null
@@ -1435,9 +1435,9 @@ export function TermLabel({ term }: { term: { label: string, maker: string | nul
     <>
       {/*
         **The space is a character, not a margin.** What is copied out of the
-        cell and what a screen reader says are both the text, and drawing the
+        cell and what a screen reader reads out are both the text, and drawing the
         gap alone leaves them holding `IlluminaMiSeq`. The margin is a step on
-        top of it, so the eye sees two things where the text says two words.
+        top of it, so the eye sees two things where the text shows two words.
       */}
       <span className="mr-1 text-brand">{term.maker}</span>
       {" "}
@@ -1454,10 +1454,10 @@ export function TermLabel({ term }: { term: { label: string, maker: string | nul
  * dataset rather than a state it is passing through, and forty outlined boxes
  * down a listing read as decoration.
  *
- * **Both kinds carry a lock, and the two locks differ.** A shut one in the
- * colour reserved for what must be noticed says an application stands between
- * the reader and the data; an open one in the link colour says it does not.
- * Marking only the restricted kind leaves the other saying nothing at all,
+ * **Both kinds have a lock, and the two locks differ.** A shut one in the
+ * colour reserved for what must be noticed shows an application stands between
+ * the reader and the data; an open one in the link colour shows it does not.
+ * Marking only the restricted kind leaves the other indicating nothing at all,
  * which in a column read at a glance is indistinguishable from a row whose
  * value is missing.
  */

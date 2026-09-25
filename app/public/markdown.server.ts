@@ -39,7 +39,7 @@ import remarkRehype from "remark-rehype"
 import { unified } from "unified"
 import { CONTINUE, EXIT, visit } from "unist-util-visit"
 
-import { MARKED, NOTE_KIND, type NoteKind } from "~/components/base"
+import { REMARK_CLASSES, NOTE_KIND, type NoteKind } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { Locale } from "~/i18n/locale"
@@ -95,7 +95,7 @@ function safeDestinations() {
       // may not, so it is dropped here rather than narrowed in the check the
       // two share.
       const allowed = attribute === "src" && kept?.startsWith("#") === true ? null : kept
-      // `undefined` is how hast says an attribute is absent; the serialiser
+      // `undefined` is how hast reports an attribute is absent; the serialiser
       // leaves it out entirely.
       node.properties = { ...node.properties, [attribute]: allowed ?? undefined }
     })
@@ -111,21 +111,21 @@ function textOf(node: Element): string {
 }
 
 /**
- * Every heading answers at an address of its own, and offers it when pointed at.
+ * Every heading responds at an address of its own, and offers it when pointed at.
  *
- * **The articles already ask for this.** The FAQ opens with a contents list of
+ * **The articles already request this.** The FAQ opens with a contents list of
  * its own headings and the guidelines cross-reference their clauses, so without
  * the ids those links point at nothing. It is also how a reader sends somebody
  * one clause of a guideline rather than a document of 16,000px.
  *
- * The mark is out in the margin and shows on hover, so an article of nothing but
+ * The marker is out in the margin and shows on hover, so an article of nothing but
  * headings does not gain a column of `#`. It stays reachable from the keyboard —
  * it is transparent rather than absent, so focus can land on it and bring it
  * into view.
  *
  * **Without a label, the heading keeps its id and offers no link.** The pane an
  * article is written beside has no address of its own to hand out — pressed
- * there, the mark would put the heading's name on the end of the editing
+ * there, the marker would put the heading's name on the end of the editing
  * screen's address. The id stays, so a contents list the article writes still
  * lands on its heading in the pane.
  */
@@ -165,20 +165,20 @@ function headingAnchors(options: { label: string | null }) {
 }
 
 /**
- * An aside that names itself becomes the design system's note; a quotation
+ * An aside that identifies itself becomes the design system's note; a quotation
  * stays a quotation.
  *
  * **The naming is GitHub's**: a blockquote whose first line is `[!NOTE]` (or
- * TIP / IMPORTANT / WARNING / CAUTION) is an alert. Writing the mark rather than
+ * TIP / IMPORTANT / WARNING / CAUTION) is an alert. Writing the marker rather than
  * inferring it from the `>` is what lets an article hold both — the FAQ quotes
  * 43 lines of the personal-information act, headings and all, and a statute
- * inside a "ⓘ" box says the wrong thing about what it is.
+ * inside a "ⓘ" box reports the wrong thing about what it is.
  *
- * **The word is not drawn.** A screen's note carries no label either; the glyph
+ * **The word is not drawn.** A screen's note has no label either; the glyph
  * and the colour are what say which kind it is.
  *
  * **The box and the glyph come from the parts, not from a copy of them.** The
- * classes are `MARKED` and the drawing is `Icon`, both rendered once here, so a
+ * classes are `REMARK_CLASSES` and the drawing is `Icon`, both rendered once here, so a
  * note in an article and a note on a screen cannot drift apart.
  *
  * The glyph is the one place a raw node is put into the tree, which is why the
@@ -194,7 +194,7 @@ const ALERT: Record<string, NoteKind> = {
   CAUTION: "danger",
 }
 
-/** The whole of the first line, which is how GitHub tells a mark from a sentence. */
+/** The whole of the first line, which is how GitHub tells a marker from a sentence. */
 const ALERT_LINE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]$/i
 
 const GLYPH: Partial<Record<NoteKind, string>> = {}
@@ -205,25 +205,25 @@ for (const kind of Object.values(ALERT)) {
   }
 }
 
-/** What a blockquote holds once its mark is taken off, or null if it has none. */
+/** What a blockquote holds once its marker is taken off, or null if it has none. */
 function alertBody(node: Element): { kind: NoteKind, inside: ElementContent[] } | null {
   const said = node.children.filter((child) => child.type !== "text" || child.value.trim() !== "")
   const head = said[0]
   if (head?.type !== "element" || head.tagName !== "p") return null
-  const mark = head.children[0]
-  if (mark?.type !== "text") return null
-  // **The mark is the first line of the paragraph, not the whole of it.** A soft
+  const marker = head.children[0]
+  if (marker?.type !== "text") return null
+  // **The marker is the first line of the paragraph, not the whole of it.** A soft
   // break inside a paragraph is a newline in the text rather than an element, so
   // `> [!NOTE]` followed by a line of prose arrives as one text node.
-  const eol = mark.value.indexOf("\n")
-  const named = ALERT_LINE.exec((eol === -1 ? mark.value : mark.value.slice(0, eol)).trim())
+  const eol = marker.value.indexOf("\n")
+  const named = ALERT_LINE.exec((eol === -1 ? marker.value : marker.value.slice(0, eol)).trim())
   if (named?.[1] === undefined) return null
   const kind = ALERT[named[1].toUpperCase()]
   if (kind === undefined) return null
 
-  // What follows the mark is the first paragraph of the note; a mark on its own
+  // What follows the marker is the first paragraph of the note; a marker on its own
   // leaves that paragraph empty.
-  const said_ = eol === -1 ? "" : mark.value.slice(eol + 1)
+  const said_ = eol === -1 ? "" : marker.value.slice(eol + 1)
   const rest: ElementContent[] = said_ === ""
     ? head.children.slice(1)
     : [{ type: "text", value: said_ }, ...head.children.slice(1)]
@@ -250,7 +250,7 @@ function alertsFromQuotes() {
       if (alert === null) return
       const glyph = GLYPH[alert.kind]
       node.tagName = "div"
-      // The note carries its own distance to the paragraphs around it. Left to a
+      // The note has its own distance to the paragraphs around it. Left to a
       // `.markdown div` rule it would land on the body inside the box as well,
       // and one line of text would sit in a box three times its height.
       //
@@ -259,10 +259,10 @@ function alertsFromQuotes() {
       // `app.css`). Those two cannot reach a margin written as a utility —
       // utilities are ordered after components whatever the selectors say — so
       // the note has to give it up itself, or one opening or closing an article
-      // stands 16px further from the edge than a paragraph in its place.
+      // remains 16px further from the edge than a paragraph in its place.
       node.properties = {
         className: [
-          MARKED.box,
+          REMARK_CLASSES.box,
           "my-4 first:mt-0 last:mb-0 bg-white",
           NOTE_KIND[alert.kind].className,
         ],
@@ -273,13 +273,13 @@ function alertsFromQuotes() {
           : [{
               type: "element" as const,
               tagName: "span",
-              properties: { className: [MARKED.icon] },
+              properties: { className: [REMARK_CLASSES.icon] },
               children: [{ type: "raw", value: glyph } as unknown as ElementContent],
             }]),
         {
           type: "element",
           tagName: "div",
-          properties: { className: [MARKED.body, "[&>:first-child]:mt-0", "[&>:last-child]:mb-0"] },
+          properties: { className: [REMARK_CLASSES.body, "[&>:first-child]:mt-0", "[&>:last-child]:mb-0"] },
           children: alert.inside,
         },
       ]
@@ -288,7 +288,7 @@ function alertsFromQuotes() {
 }
 
 /**
- * One per language, because the anchor a heading carries has a name and names
+ * One per language, because the anchor on a heading has a name and names
  * are words; one more without the anchor, which needs no language. The pipeline
  * is otherwise the same, and all three are built once.
  */
@@ -339,7 +339,7 @@ const text = unified().use(remarkParse).use(remarkGfm)
  * two of what each entry is about.
  *
  * **Parsed rather than trimmed with a regular expression.** The bodies came
- * from Joomla through a conversion, so they carry links, tables and headings;
+ * from Joomla through a conversion, so they have links, tables and headings;
  * cutting the string would show `[…](…)` and `|---|` to the reader. Walking the
  * tree takes the words and nothing else.
  *

@@ -2,15 +2,15 @@
  * Bringing a thing into view inside the pane that scrolls it, and nothing else.
  *
  * `scrollIntoView` moves every scrolling ancestor at once — the pane, the page
- * behind it, and sideways as well — so a jump from the page pane pulled the head
- * of the screen back into the window (which unsticks the tools row) and could
+ * behind it, and sideways as well — so a jump from the page pane pulled the header
+ * of the screen back into the window (which unsticks the toolbar) and could
  * drag a two-column block off its left edge. The pane is the only thing meant to
- * move, and only up and down: where the window stands is the reader's, and
+ * move, and only up and down: where the window remains is the reader's, and
  * nothing a pane holds is meant to be wider than it.
  */
 
-/** A box as it stands on screen: its top edge and its height. */
-export interface Box {
+/** An element as it is laid out on screen: its top edge and its height. */
+export interface Rect {
   top: number
   height: number
 }
@@ -18,13 +18,13 @@ export interface Box {
 /**
  * Where a pane's `scrollTop` has to be for `target` to sit at `block`.
  *
- * Both boxes are read as they stand on screen, so the target's place in the
+ * Both rects are read as they are laid out on screen, so the target's place in the
  * pane's own scroll coordinates is its distance from the pane's top plus what
  * the pane has already scrolled. A negative answer is clamped: the pane cannot
- * scroll above its own start, and asking it to leaves the target below where it
+ * scroll above its own start, and requesting it to leaves the target below where it
  * was promised.
  */
-export function paneScrollTop(pane: Box & { scrollTop: number }, target: Box, block: "start" | "center"): number {
+export function paneScrollTop(pane: Rect & { scrollTop: number }, target: Rect, block: "start" | "center"): number {
   const offset = target.top - pane.top + pane.scrollTop
   const top = block === "start" ? offset : offset - (pane.height - target.height) / 2
   return Math.max(0, top)

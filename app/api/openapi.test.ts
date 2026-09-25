@@ -65,7 +65,7 @@ describe("the document", () => {
     expect(JSON.stringify(research)).toContain("#/components/schemas/Research")
   })
 
-  it("says what an endpoint answers when it refuses", () => {
+  it("reports what an endpoint responds with when it refuses", () => {
     for (const endpoint of API_ENDPOINTS) {
       const operation = document.paths[documentPath(endpoint.path)]?.get
       for (const status of endpoint.problems) {

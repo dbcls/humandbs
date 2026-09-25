@@ -41,7 +41,7 @@ describe("ログイン後の戻り先", () => {
     expect(safeRedirectPath("../admin")).toBe("/")
   })
 
-  it("前後の空白を落としてから判断する", () => {
+  it("前後の空白を除いてから判断する", () => {
     expect(safeRedirectPath("  /admin  ")).toBe("/admin")
     expect(safeRedirectPath("\n/admin")).toBe("/admin")
   })

@@ -4,7 +4,7 @@
  * v1 used the English display string as the identity of a molecular-data key,
  * so renaming a key broke every value stored under it. Here the identity is a
  * code and both labels are display only. `content-keys.json` is the v1 default
- * catalog carried over unchanged — it is hand-written knowledge, not something
+ * catalog kept over unchanged — it is hand-written knowledge, not something
  * derivable from the data.
  *
  * **A key's type is what makes it a facet, except for a number key with no
@@ -62,7 +62,7 @@ export const ACCESS_CRITERIA_TERMS = [
 
 const defaults = catalogDefaults as [string, string][]
 
-/** What a key carries when nothing about it is a facet. */
+/** What a key has when nothing about it is a facet. */
 function freeText(seed: {
   code: string
   scope: "dataset" | "experiment"
@@ -85,7 +85,7 @@ function freeText(seed: {
  * Every key the data may be stored under, in catalog order.
  *
  * A key string is looked up as an English label first and as a Japanese one
- * second, which is what folds the three keys the v1 crawler left in Japanese
+ * second, which is what merges the three keys the v1 crawler left in Japanese
  * onto the catalog entries they belong to. Both label sets are distinct across
  * the catalog, so the lookup is unambiguous.
  *
@@ -94,7 +94,7 @@ function freeText(seed: {
  * what a reader sees in the refinement panel and on the dataset page, and for
  * every key that is a facet it comes from [facets.ts](facets.ts). v1 wrote
  * `Reference Sequence` for the genome build and `試薬` for a library kit, and
- * carrying those through would put v1's mistakes on a v2 screen.
+ * passing those through would put v1's mistakes on a v2 screen.
  *
  * The mapping is deliberately closed: a key seen in the data that matches
  * neither label is an error rather than something to register on the fly.
@@ -138,7 +138,7 @@ export function contentKeySeeds(
 
   ordered.forEach(([labelEn, labelJa], index) => {
     // A cell that is the same key under another name registers its spelling and
-    // makes no key: its numbers join the one it names (`facets.ts`).
+    // makes no key: its numbers join the one it identifies (`facets.ts`).
     const merged = MERGED_SOURCES.get(labelEn)
     if (merged !== undefined) {
       codeBySourceKey.set(labelEn, merged)
@@ -146,7 +146,7 @@ export function contentKeySeeds(
       return
     }
 
-    // A cell that names more than one quantity becomes more than one key
+    // A cell that identifies more than one quantity becomes more than one key
     // (`facets.ts` の `NUMBER_SPLITS`) — `Coverage` is a depth and a breadth.
     // The spelling resolves to the first, which is enough to tell a value read
     // out of this cell from free text nobody typed under the key any more.
@@ -235,10 +235,10 @@ export function contentKeySeeds(
     keys.push(base)
   })
 
-  // The keys v1 had no place for. **They stand beside the free text they were
+  // The keys v1 had no place for. **They are shown beside the free text they were
   // read out of rather than replacing it**, so the same fact is written twice
   // until a migration reads the prose into them — thirteen keys are in that
-  // state (`docs/data-model.md` の「値と文」).
+  // state.
   const newKeys = [
     ...VOCABULARY_FACETS.filter((facet) => !RETYPED_CODES.has(facet.code)).map((facet) => ({
       ...freeText({

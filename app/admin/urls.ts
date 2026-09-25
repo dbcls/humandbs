@@ -31,7 +31,7 @@ export function adminResearchListPath(): string {
 }
 
 /**
- * Where a research is started from what an approved application already says.
+ * Where a research is started from what an approved application already has.
  * It is a fixed segment beside the identities, which is why a research is never
  * addressed by anything that could be the word `upstream`.
  */
@@ -49,7 +49,7 @@ export function adminResearchPath(researchId: string): string {
 }
 
 /**
- * The research's box. It sits outside any draft: the box belongs to the
+ * The research's prefix. It sits outside any draft: the prefix belongs to the
  * research, holds no versions, and switching a file is a separate operation
  * from publishing one.
  */
@@ -58,8 +58,8 @@ export function adminResearchFilesPath(researchId: string): string {
 }
 
 /**
- * Where the box screen asks for a signature. **It carries no language prefix**:
- * nothing it answers with is interface text, and an upload that changed
+ * Where the files screen requests a signature. **It has no language prefix**:
+ * nothing it responds with is interface text, and an upload that changed
  * language mid-transfer would otherwise be talking to a second address.
  */
 export function fileUploadPath(researchId: string): string {
@@ -79,9 +79,9 @@ export function adminDraftPath(researchId: string, draftId: string): string {
   return `${adminResearchPath(researchId)}/draft/${draftId}`
 }
 
-/** Where a source is chosen and taken into the draft. */
-export function adminDraftTakePath(researchId: string, draftId: string): string {
-  return `${adminDraftPath(researchId, draftId)}/take`
+/** Where a source is chosen and imported into the draft. */
+export function adminDraftImportPath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/import`
 }
 
 export function adminDraftDatasetsPath(researchId: string, draftId: string): string {
@@ -99,7 +99,7 @@ export function adminDraftReviewPath(researchId: string, draftId: string): strin
 }
 
 /**
- * Where the editing screens post a comment. It answers with the thread rather
+ * Where the editing screens post a comment. It responds with the thread rather
  * than with a redirect, because the editor holds unsaved work and must not
  * navigate; the review screen and the preview post to their own pages instead.
  *
@@ -113,9 +113,9 @@ export function draftCommentsPath(researchId: string, draftId: string): string {
  * Where the draft is drawn as its page, for the pane beside the form.
  *
  * The language it draws in rides on the address because the pane's language is
- * the reader's choice: the route is registered once and answers with data, so
+ * the reader's choice: the route is registered once and responds with data, so
  * it has no language of its own to take. **Putting a prefix in front of one of
- * these finds no route at all** — the router answers 405 without a request
+ * these finds no route at all** — the router responds with 405 without a request
  * leaving the browser, and the open editor is replaced by the error page.
  */
 export function draftPagePath(researchId: string, draftId: string, locale: string): string {
@@ -163,7 +163,7 @@ export function adminDraftDatasetPath(
 }
 
 /**
- * What every listing carries in its address beside the conditions: the word it
+ * What every listing has in its address beside the conditions: the word it
  * was searched by, and how the result is presented.
  */
 interface ListingPresentation {
@@ -183,7 +183,7 @@ export interface ListingQuery extends ListingPresentation {
 
 /** The listing of approval branches narrows by one axis of its own. */
 export interface BranchListingQuery extends ListingPresentation {
-  standings: readonly string[]
+  branchStatuses: readonly string[]
 }
 
 /**
@@ -218,7 +218,7 @@ export function listingQuery(query: ListingQuery): string {
 
 export function branchListingQuery(query: BranchListingQuery): string {
   return listingAddress(query, {
-    standing: query.standings,
+    status: query.branchStatuses,
   })
 }
 
@@ -226,7 +226,7 @@ export function branchListingQuery(query: BranchListingQuery): string {
  * The listing of articles narrows by three axes of its own: whether the article
  * keeps revisions, and what each of the two languages is up to.
  *
- * **It carries no ordering.** Articles are listed by slug and nothing else —
+ * **It has no ordering.** Articles are listed by slug and nothing else —
  * the order is the address space rather than a presentation of it.
  */
 export interface ContentsListingQuery extends ListingPresentation {
@@ -243,7 +243,7 @@ export function contentsQuery(query: ContentsListingQuery): string {
  * The listing of announcements narrows by three axes of its own: whether one
  * has been given its date, and what each of the two languages is up to.
  *
- * **It carries an ordering of two keys** — the day it goes out and the title —
+ * **It has an ordering of two keys** — the day it goes out and the title —
  * because an editor looking for one they wrote does not always know its date.
  * Announcements without a day sink to the end of either (`admin/contents.ts` の
  * `sortedNews`).
@@ -259,7 +259,7 @@ export function newsQuery(query: NewsListingQuery): string {
 }
 
 /**
- * The `common/` box narrows by the day a file was written — a range with either
+ * The `common/` prefix narrows by the day a file was written — a range with either
  * end open — beside the words looked for in the slug.
  */
 export interface FilesListingQuery extends ListingPresentation {
@@ -275,14 +275,14 @@ export function filesQuery(query: FilesListingQuery): string {
 }
 
 /**
- * A research's box narrows by one axis more than the `common/` box: which side
- * of the store a file is on, which that box has no second side for.
+ * A research's prefix narrows by one axis more than the `common/` prefix: which side
+ * of the store a file is on, which that prefix has no second side for.
  */
-export interface BoxListingQuery extends FilesListingQuery {
+export interface ResearchFilesQuery extends FilesListingQuery {
   states: readonly string[]
 }
 
-export function boxQuery(query: BoxListingQuery): string {
+export function researchFilesQuery(query: ResearchFilesQuery): string {
   return listingAddress(query, {
     from: query.from === null ? [] : [query.from],
     to: query.to === null ? [] : [query.to],
@@ -294,7 +294,7 @@ export function boxQuery(query: BoxListingQuery): string {
  * The fields an analysis method is described under. They hang off `/admin`
  * rather than off a research: a field belongs to the portal, not to one study.
  *
- * **The two fields a dataset carries are not here.** What they may hold is
+ * **The two fields a dataset has are not here.** What they may hold is
  * settled by what the portal is rather than by what arrives in the data, so
  * the migration puts them in and nothing edits them afterwards.
  */
@@ -308,7 +308,7 @@ export function adminExperimentFieldsPath(): string {
  * **The address names the field rather than the vocabulary.** Every vocabulary
  * belongs to exactly one field, so reaching the terms through the field is what
  * lets the screen be titled with what they are the terms *of* — a screen called
- * 「語彙」 can only ever be answered with "which vocabulary?".
+ * 「語彙」 can only ever be responded to with "which vocabulary?".
  */
 export function adminExperimentFieldPath(keyCode: string): string {
   return `${adminExperimentFieldsPath()}/${encodeURIComponent(keyCode)}`
@@ -328,16 +328,16 @@ export function adminDocumentPath(documentId: string): string {
 }
 
 /**
- * A versioned article: the pointer that says which revision is current, and the
- * revisions under it. The listing carries one row for the whole series, so this
- * is where everything that acts on the series as a whole stands.
+ * A versioned article: the pointer that reports which revision is current, and the
+ * revisions under it. The listing has one row for the whole series, so this
+ * is where everything that acts on the series as a whole remains.
  */
 export function adminSeriesPath(seriesId: string): string {
   return `${adminContentsPath()}/series/${seriesId}`
 }
 
 /**
- * The strip that stands above every public page.
+ * The bar shown above every public page.
  *
  * **A screen of its own rather than one under the articles.** The bar lights
  * the entry the reader is under (`navigation.ts` の `isHere`), so an address
@@ -359,21 +359,21 @@ export function adminNewsPath(newsId: string): string {
 /**
  * Where an article's or an announcement's typed body is drawn as its page, for
  * the pane beside the form. **No language prefix and no identity**: nothing it
- * answers with is interface text, and the words come from the form rather than
+ * responds with is interface text, and the words come from the form rather than
  * from any row.
  */
 export function adminArticlePreviewPath(): string {
   return "/admin/documents/preview"
 }
 
-/** The `common/` box: the images and PDFs the article bodies link to. */
+/** The `common/` prefix: the images and PDFs the article bodies link to. */
 export function adminContentFilesPath(): string {
   return "/admin/files"
 }
 
 /**
- * Where that box asks for a signature. **No language prefix**: nothing it
- * answers with is interface text, and an upload that changed language
+ * Where that prefix requests a signature. **No language prefix**: nothing it
+ * responds with is interface text, and an upload that changed language
  * mid-transfer would be talking to a second address.
  */
 export function contentFileUploadPath(): string {
@@ -382,7 +382,7 @@ export function contentFileUploadPath(): string {
 
 /**
  * Where an editing screen looks a vocabulary's candidates up. The catalog does
- * not carry the terms, so the box asks for the few that match what was typed
+ * not have the terms, so the box requests the few that match what was typed
  * (`queries.server.ts` の `findTerms`).
  */
 export function termsPath(): string {

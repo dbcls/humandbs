@@ -111,7 +111,7 @@ describe("selectPublishedDatasets", () => {
       [datasetDoc("JGAD1", "v1", "hum0001")],
     ))
     // A row would put it back on the public side at the next publish: a
-    // dataset belongs to the research and every version carries all of them.
+    // dataset belongs to the research and every version has all of them.
     expect(selection.datasets).toEqual([])
     // Not a defect in the input either — the old version keeps its description.
     expect(selection.missingDocuments).toEqual([])

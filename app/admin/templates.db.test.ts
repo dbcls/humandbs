@@ -45,7 +45,7 @@ import {
   upstreamDatasetPage,
   upstreamResearchPage,
 } from "./templates.server"
-import { takeAction, takePage } from "./take.server"
+import { importAction, importPage } from "./import.server"
 
 /**
  * Writing a seeded draft, against the development database.
@@ -129,7 +129,7 @@ describe("starting a research from an application", () => {
     expect(rows.map((row) => row.origin)).toEqual([outcome.draftId])
   })
 
-  it("creates nothing at all when the hum label already names something", async () => {
+  it("creates nothing at all when the hum label already identifies something", async () => {
     await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
 
     const again = await createResearchFromUpstream(db, seed("hum0522", ["JGAD000891"]), CURATOR)
@@ -292,7 +292,7 @@ describe("adding datasets to a draft from upstream", () => {
     expect(after?.revision).toBe(at.revision)
   })
 
-  it("answers gone for a draft that is no longer there", async () => {
+  it("reports gone for a draft that is no longer there", async () => {
     const at = await draft()
     await db.delete(s.researchDraft).where(eq(s.researchDraft.id, at.draftId))
 
@@ -328,7 +328,7 @@ describe("adding datasets to a draft from upstream", () => {
 
 /**
  * The screen with its guards on. What can still break here is the wiring: a
- * deployment with no connection has to say so rather than answer as though the
+ * deployment with no connection has to report it rather than answer as though the
  * upstream held nothing, and the form has to be unable to name a dataset the
  * application never registered.
  */
@@ -398,7 +398,7 @@ describe("the screen that starts a research from an application", () => {
 
   const at = { applicationId: BRANCH }
 
-  it("says it cannot reach the application system rather than answering as if it were empty", async () => {
+  it("reports it cannot reach the application system rather than responding as if it were empty", async () => {
     delete process.env.HUMANDBS_JGA_DATABASE_URL
     const token = await signIn()
 
@@ -425,8 +425,8 @@ describe("the screen that starts a research from an application", () => {
     const held = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
     if (held.status !== "created") throw new Error(held.status)
 
-    const kept = await upstreamResearchPage(get(token, "?standing=held"), "ja")
-    const dropped = await upstreamResearchPage(get(token, "?standing=absent"), "ja")
+    const kept = await upstreamResearchPage(get(token, "?status=held"), "ja")
+    const dropped = await upstreamResearchPage(get(token, "?status=absent"), "ja")
 
     expect(kept.rows.map((row) => row.applicationId)).toEqual([BRANCH])
     expect(kept.total).toBe(1)
@@ -441,7 +441,7 @@ describe("the screen that starts a research from an application", () => {
     )
   })
 
-  it("offers no form at all once the hum already names a research", async () => {
+  it("offers no form at all once the hum already identifies a research", async () => {
     const token = await signIn()
     const held = await createResearchFromUpstream(db, seed("hum0522", []), CURATOR)
     if (held.status !== "created") throw new Error(held.status)
@@ -497,7 +497,7 @@ describe("the screen that starts a research from an application", () => {
     return { researchId: made.researchId, draftId: made.draftId }
   }
 
-  /** A row `searchDsBranches` could answer with, shaped like the mocked one. */
+  /** A row `searchDsBranches` could respond with, shaped like the mocked one. */
   function branchRow(overrides: Partial<DsBranchRow> = {}): DsBranchRow {
     return {
       applicationId: branch.applicationId,
@@ -515,7 +515,7 @@ describe("the screen that starts a research from an application", () => {
   function draftGet(researchId: string, draftId: string, token: string, query = ""): Request {
     const headers = new Headers({ cookie: sessionCookie(token).split(";")[0] ?? "" })
     return new Request(
-      `http://localhost:8080/admin/research/${researchId}/draft/${draftId}/take${query}`,
+      `http://localhost:8080/admin/research/${researchId}/draft/${draftId}/import${query}`,
       { headers },
     )
   }
@@ -525,7 +525,7 @@ describe("the screen that starts a research from an application", () => {
     const body = new FormData()
     for (const [name, value] of fields) body.append(name, value)
     return new Request(
-      `http://localhost:8080/admin/research/${researchId}/draft/${draftId}/take`,
+      `http://localhost:8080/admin/research/${researchId}/draft/${draftId}/import`,
       { method: "POST", headers, body },
     )
   }
@@ -546,7 +546,7 @@ describe("the screen that starts a research from an application", () => {
         branchRow({ applicationId: "J-DS000999-002", humLabel: "hum06000" }),
       ])
 
-      const view = await takePage(draftGet(own.researchId, own.draftId, token), "ja", own)
+      const view = await importPage(draftGet(own.researchId, own.draftId, token), "ja", own)
 
       expect(view.application.connected).toBe(true)
       expect(view.chosen).toBeNull()
@@ -555,13 +555,13 @@ describe("the screen that starts a research from an application", () => {
         .toHaveBeenLastCalledWith(expect.anything(), expect.anything(), "hum0600", null)
     })
 
-    it("reads no branches and asks upstream nothing before a hum is issued", async () => {
+    it("reads no branches and requests upstream nothing before a hum is issued", async () => {
       const token = await signIn()
       const made = await createResearchFromUpstream(db, seed(null, []), CURATOR)
       if (made.status !== "created") throw new Error(made.status)
       vi.mocked(searchDsBranches).mockClear()
 
-      const view = await takePage(
+      const view = await importPage(
         draftGet(made.researchId, made.draftId, token),
         "ja",
         { researchId: made.researchId, draftId: made.draftId },
@@ -572,26 +572,26 @@ describe("the screen that starts a research from an application", () => {
       expect(vi.mocked(searchDsBranches)).not.toHaveBeenCalled()
     })
 
-    /** The row of the draft being written stands in the table, and cannot be taken from. */
-    it("lists the research's drafts as sources, this one among them, and refuses to take this one into itself", async () => {
+    /** The row of the draft being written is shown in the table, and cannot be taken from. */
+    it("lists the research's drafts as sources, this one among them, and refuses to import this one into itself", async () => {
       const token = await signIn()
       const own = await otherDraft()
       const other = await createEmptyDraft(db, own.researchId)
 
-      const view = await takePage(draftGet(own.researchId, own.draftId, token), "ja", own)
+      const view = await importPage(draftGet(own.researchId, own.draftId, token), "ja", own)
 
       expect(view.rows.map((row) => row.kind === "draft" ? row.id : null).toSorted())
         .toEqual([other, own.draftId].toSorted())
-      const self: unknown = await takePage(draftGet(own.researchId, own.draftId, token, `?draft=${own.draftId}`), "ja", own)
+      const self: unknown = await importPage(draftGet(own.researchId, own.draftId, token, `?draft=${own.draftId}`), "ja", own)
         .then(() => null, (thrown: unknown) => thrown)
       expect((self as Response).status).toBe(404)
     })
 
-    it("turns into the face once an application is chosen, laid over the draft", async () => {
+    it("turns into the form once an application is chosen, laid over the draft", async () => {
       const token = await signIn()
       const own = await otherDraft()
 
-      const view = await takePage(
+      const view = await importPage(
         draftGet(own.researchId, own.draftId, token, `?application=${BRANCH}`),
         "ja",
         own,
@@ -601,18 +601,18 @@ describe("the screen that starts a research from an application", () => {
       if (source?.kind !== "application") throw new Error("no application chosen")
       expect(source.applicationId).toBe(BRANCH)
       expect(view.chosen?.theirs.content.title.ja).toEqual({ state: "value", text: "ゲノム解析" })
-      // The branch's own hum (hum0522) is not the draft's (hum0600) — carried so
-      // the face can say so, rather than pretending they agree.
+      // The branch's own hum (hum0522) is not the draft's (hum0600) — kept so
+      // the form can report it, rather than pretending they agree.
       expect(view.humLabel).toBe("hum0600")
       expect(source.branch.humLabel).toBe("hum0522")
     })
 
-    it("says an application ID is unknown rather than reporting the system unreachable", async () => {
+    it("reports an application ID is unknown rather than reporting the system unreachable", async () => {
       const token = await signIn()
       const own = await otherDraft()
       vi.mocked(fetchDsBranch).mockResolvedValue(null)
 
-      const view = await takePage(
+      const view = await importPage(
         draftGet(own.researchId, own.draftId, token, "?application=J-DS999999-001"),
         "ja",
         own,
@@ -631,7 +631,7 @@ describe("the screen that starts a research from an application", () => {
         content: { ...emptyResearchContent(), title: { ja: filled("別の下書き"), en: filled("") } },
       })
 
-      const view = await takePage(draftGet(own.researchId, own.draftId, token, `?draft=${other}`), "ja", own)
+      const view = await importPage(draftGet(own.researchId, own.draftId, token, `?draft=${other}`), "ja", own)
 
       expect(view.chosen?.source).toEqual(expect.objectContaining({ kind: "draft", id: other }))
       expect(view.chosen?.theirs.content.title.ja).toEqual({ state: "value", text: "別の下書き" })
@@ -642,7 +642,7 @@ describe("the screen that starts a research from an application", () => {
       const own = await otherDraft()
       const elsewhere = await createResearchWithDraft(db)
 
-      const answer: unknown = await takePage(
+      const answer: unknown = await importPage(
         draftGet(own.researchId, own.draftId, token, `?draft=${elsewhere.draftId}`),
         "ja",
         own,
@@ -651,7 +651,7 @@ describe("the screen that starts a research from an application", () => {
       expect((answer as Response).status).toBe(404)
     })
 
-    it("writes what the face holds, keeping the draft's own dataset list", async () => {
+    it("writes what the form holds, keeping the draft's own dataset list", async () => {
       const token = await signIn()
       const made = await createResearchFromUpstream(db, seed("hum0522", ["JGAD000891"]), CURATOR)
       if (made.status !== "created") throw new Error(made.status)
@@ -662,7 +662,7 @@ describe("the screen that starts a research from an application", () => {
         datasetIds: [],
       }
 
-      const answer = await takeAction(
+      const answer = await importAction(
         draftPost(made.researchId, made.draftId, token, [
           ["revision", String(before?.revision)],
           ["content", JSON.stringify(written)],
@@ -677,13 +677,13 @@ describe("the screen that starts a research from an application", () => {
       expect(after?.content.datasetIds).toEqual(before?.content.datasetIds)
     })
 
-    it("refuses a face opened before somebody else saved the draft", async () => {
+    it("refuses a form opened before somebody else saved the draft", async () => {
       const token = await signIn()
       const own = await otherDraft()
       const stale = await revisionOf(own.draftId)
       await saveDraftContent(db, { draftId: own.draftId, revision: stale }, { content: emptyResearchContent() })
 
-      const answer = await takeAction(
+      const answer = await importAction(
         draftPost(own.researchId, own.draftId, token, [
           ["revision", String(stale)],
           ["content", JSON.stringify(researchContentInput(emptyResearchContent()))],
@@ -709,7 +709,7 @@ describe("the screen that starts a research from an application", () => {
         }],
       }
 
-      const answer: unknown = await takeAction(
+      const answer: unknown = await importAction(
         draftPost(own.researchId, own.draftId, token, [
           ["revision", String(await revisionOf(own.draftId))],
           ["content", JSON.stringify(citing)],
@@ -725,7 +725,7 @@ describe("the screen that starts a research from an application", () => {
       const token = await signIn()
       const own = await otherDraft()
 
-      const answer = await takeAction(
+      const answer = await importAction(
         draftPost(own.researchId, own.draftId, token, [
           ["revision", String(await revisionOf(own.draftId))],
           ["content", JSON.stringify(researchContentInput(emptyResearchContent()))],

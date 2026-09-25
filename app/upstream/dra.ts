@@ -1,13 +1,13 @@
 /**
  * Reading a DRA submission into the experiments a draft would hold.
  *
- * The pure half of that source: what one experiment entry says, and how a
- * submission's experiments fold into the handful of rows a curator writes. The
+ * The pure half of that source: what one experiment entry has, and how a
+ * submission's experiments group into the handful of rows a curator writes. The
  * requests are in `dra.server.ts`.
  *
- * **A submission's experiments are folded by library strategy.** DRA holds one
+ * **A submission's experiments are grouped by library strategy.** DRA holds one
  * experiment per library — a submission has dozens to hundreds of them — while
- * an experiment here is one table of an article, and a published dataset carries
+ * an experiment here is one table of an article, and a published dataset has
  * one of those four times out of five. The strategy is what the article's tables
  * are divided by, so it is what these are divided by.
  */
@@ -83,7 +83,7 @@ export function experimentOf(entry: SraEntry): DraExperiment {
  * A value the group's libraries disagree about is dropped rather than reduced to
  * one of them: the catalog holds one layout and one read length per experiment,
  * and a draft that stated the first library's would be stating something no
- * table of the article says. Instrument models are kept in full, because that
+ * table of the article reports. Instrument models are kept in full, because that
  * key takes more than one.
  */
 export function groupByStrategy(experiments: readonly DraExperiment[]): DraExperimentGroup[] {

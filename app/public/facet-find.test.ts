@@ -2,19 +2,19 @@ import { describe, expect, it } from "vitest"
 
 import { matches, rolledUpFind } from "./facet-find"
 
-/** The roots a disease facet offers, as the panel carries them. */
+/** The roots a disease facet offers, as the panel has them. */
 const DISEASES = [
   { code: "C34", label: "気管支及び肺の悪性新生物＜腫瘍＞" },
   { code: "C61", label: "前立腺の悪性新生物＜腫瘍＞" },
 ]
 
-/** What is left standing after the box was given these words. */
+/** What is left shown after the box was given these words. */
 function found(find: string, values = DISEASES): string[] {
   const needle = rolledUpFind(find, values)
   return values.filter((one) => matches(needle, one)).map((one) => one.code)
 }
 
-describe("looking for a value among the ones a facet carries", () => {
+describe("looking for a value among the ones a facet has", () => {
   it("takes every value while nothing has been typed", () => {
     expect(found("")).toEqual(["C34", "C61"])
   })
@@ -45,7 +45,7 @@ describe("looking for a value among the ones a facet carries", () => {
 
   /**
    * Rolling up is only allowed to reach a root the facet has. Without this, a
-   * code under a disease nobody carries would silently widen to its root.
+   * code under a disease nobody has would silently widen to its root.
    */
   it("leaves a code alone when its root is not one of the values", () => {
     expect(found("Z998")).toEqual([])

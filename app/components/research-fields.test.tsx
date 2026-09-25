@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 import type { DatasetRowView } from "~/public/view.server"
 
-import type { Marks } from "./fields"
+import type { FieldAnnotations } from "./fields"
 import { CitableTable, IdList } from "./research-fields"
 
 function render(element: React.ReactNode): string {
@@ -23,7 +23,7 @@ function table(selected: string[]): string {
   return render(<CitableTable locale="ja" datasets={ROWS} selected={selected} onChange={() => { /* nothing changes here */ }} />)
 }
 
-/** The box in the head, as drawn. */
+/** The checkbox in the table header, as drawn. */
 function head(html: string): string {
   return /<thead[\s\S]*?(<input[^>]*>)/.exec(html)?.[1] ?? ""
 }
@@ -35,11 +35,11 @@ describe("the table a publication's datasets are chosen from", () => {
     expect(html).toContain("2025-08-08")
   })
 
-  it("names the box in the head for what it does", () => {
+  it("names the checkbox in the table header for what it does", () => {
     expect(head(table([]))).toContain("aria-label=\"すべて選択\"")
   })
 
-  it("ticks the box in the head exactly when every row is chosen, whatever else is chosen besides", () => {
+  it("ticks the checkbox in the table header exactly when every row is chosen, whatever else is chosen besides", () => {
     fc.assert(fc.property(
       fc.subarray(["1", "2", "3"]),
       fc.array(fc.constantFrom("elsewhere-1", "elsewhere-2"), { maxLength: 2 }),
@@ -57,14 +57,14 @@ describe("the table a publication's datasets are chosen from", () => {
     expect(boxes).toEqual([false, true, false])
   })
 
-  it("says so in words when the research has no dataset to choose", () => {
+  it("shows it in words when the research has no dataset to choose", () => {
     const html = render(<CitableTable locale="ja" datasets={[]} selected={[]} onChange={() => { /* nothing changes here */ }} />)
     expect(html).not.toContain("<table")
   })
 })
 
 describe("a list of IDs typed one to a box", () => {
-  const marks: Marks = { at: "relatedPublications.p1.datasetIds", changed: false, onTake: null }
+  const annotations: FieldAnnotations = { at: "relatedPublications.p1.datasetIds", changed: false, onImport: null }
   const list = (value: string[]) => render(
     <IdList
       label="外部データセット ID"
@@ -73,12 +73,12 @@ describe("a list of IDs typed one to a box", () => {
       placeholder="JGAD000000"
       locale="ja"
       value={value}
-      marks={marks}
+      annotations={annotations}
       onChange={() => { /* nothing changes here */ }}
     />,
   )
 
-  it("shows the shape of an ID in every box, and one box per ID", () => {
+  it("shows the shape of an ID in every field, and one field per ID", () => {
     const boxes = [...list(["", "JGAD000001"]).matchAll(/<input[^>]*>/g)].map((match) => match[0])
     expect(boxes).toHaveLength(2)
     for (const box of boxes) expect(box).toContain("placeholder=\"JGAD000000\"")

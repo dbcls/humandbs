@@ -6,7 +6,7 @@ import type { CommentView } from "~/review/comments"
 import type { PreviewShell } from "~/review/preview.server"
 
 import type { CommentContext } from "./comments"
-import { MarkAnswer, Marks, PreviewHead } from "./preview"
+import { PreviewActionNotice, FieldAnnotations, PreviewHead } from "./preview"
 
 function render(element: React.ReactNode): string {
   const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
@@ -21,20 +21,20 @@ const CONTEXT: CommentContext = {
   signedInName: null,
 }
 
-/** Nothing has changed against the published version, so `PreviousMark` stays silent. */
+/** Nothing has changed against the published version, so `PreviousIndicator` stays silent. */
 const VIEW = { changed: [], previous: {}, current: {} }
 
-describe("the marks a preview draws beside a value", () => {
-  it("opens the same comment panel a field-review mark opens, named plainly with no field name to give", () => {
+describe("the indicators a preview draws beside a value", () => {
+  it("opens the same comment panel a field-review button opens, named plainly with no field name to give", () => {
     const html = render(
-      <Marks context={CONTEXT} at="summary.aims" view={VIEW} comments={[]} heading="" />,
+      <FieldAnnotations context={CONTEXT} at="summary.aims" view={VIEW} comments={[]} heading="" />,
     )
     expect(html).toContain("title=\"コメント\"")
   })
 
   it("names the panel after the field once the caller has one to give", () => {
     const html = render(
-      <Marks
+      <FieldAnnotations
         context={CONTEXT}
         at="summary.aims"
         view={VIEW}
@@ -47,51 +47,51 @@ describe("the marks a preview draws beside a value", () => {
   })
 })
 
-describe("the mark saying the published version reads otherwise", () => {
+describe("the indicator indicating the published version reads otherwise", () => {
   const CHANGED = {
     changed: ["summary.aims"],
     previous: { "summary.aims": { kind: "field" as const, field: { state: "plain" as const, text: "旧い目的", untranslated: false } } },
     current: { "summary.aims": { kind: "field" as const, field: { state: "plain" as const, text: "新しい目的", untranslated: false } } },
   }
 
-  it("is worded as a state, and stands after the comment mark", () => {
-    const html = render(<Marks context={CONTEXT} at="summary.aims" view={CHANGED} comments={[]} heading="公開中の v8" />)
+  it("is worded as a state, and is shown after the comment button", () => {
+    const html = render(<FieldAnnotations context={CONTEXT} at="summary.aims" view={CHANGED} comments={[]} heading="公開中の v8" />)
     expect(html).toContain("変更あり")
     expect(html).not.toContain("公開バージョンと違う")
     expect(html.indexOf("変更あり")).toBeGreaterThan(html.indexOf("title=\"コメント\""))
   })
 
-  it("is a button with the comment mark's face, and opens the comparison in a panel over the page", () => {
-    const html = render(<Marks context={CONTEXT} at="summary.aims" view={CHANGED} comments={[]} heading="公開中の v8" />)
+  it("is a button with the comment button's style, and opens the comparison in a panel over the page", () => {
+    const html = render(<FieldAnnotations context={CONTEXT} at="summary.aims" view={CHANGED} comments={[]} heading="公開中の v8" />)
     expect(html).not.toContain("<details")
-    const faces = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1])
-    expect(faces).toHaveLength(2)
-    expect(faces[1]).toBe(faces[0])
+    const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1])
+    expect(classes).toHaveLength(2)
+    expect(classes[1]).toBe(classes[0])
     expect(html).toMatch(/<button[^>]*>[\s\S]*?変更あり[\s\S]*?<\/button>/)
-    // The two stand on one line, centred against each other rather than hung from the top.
+    // The two are shown on one line, centred against each other rather than hung from the top.
     expect(html).toMatch(/^<span class="[^"]*\bitems-center\b/)
     expect(html).toContain("<dialog")
     // Nothing is inside a panel until it opens (`Dialog`), so the old value is not on the page yet.
     expect(html).not.toContain("旧い目的")
   })
 
-  it("stands alone, pressing nothing, where there is no old value to show", () => {
+  it("is shown alone, pressing nothing, where there is no old value to show", () => {
     const html = render(
-      <Marks context={CONTEXT} at="summary.aims" view={{ changed: ["summary.aims"], previous: {}, current: {} }} comments={[]} heading="" />,
+      <FieldAnnotations context={CONTEXT} at="summary.aims" view={{ changed: ["summary.aims"], previous: {}, current: {} }} comments={[]} heading="" />,
     )
-    const mark = html.indexOf("変更あり")
-    expect(mark).toBeGreaterThan(-1)
-    const before = html.slice(0, mark)
+    const badge = html.indexOf("変更あり")
+    expect(badge).toBeGreaterThan(-1)
+    const before = html.slice(0, badge)
     expect(before.lastIndexOf("</button>")).toBeGreaterThan(before.lastIndexOf("<button"))
   })
 
-  it("says nothing where the place has not changed", () => {
-    const html = render(<Marks context={CONTEXT} at="summary.aims" view={VIEW} comments={[]} heading="" />)
+  it("shows nothing where the place has not changed", () => {
+    const html = render(<FieldAnnotations context={CONTEXT} at="summary.aims" view={VIEW} comments={[]} heading="" />)
     expect(html).not.toContain("変更あり")
   })
 })
 
-describe("the head of a preview", () => {
+describe("the header of a preview", () => {
   const WHOLE: CommentView = {
     id: "c-1",
     anchor: { kind: "draft" },
@@ -130,19 +130,19 @@ describe("the head of a preview", () => {
     )
   }
 
-  it("says what is asked in a card of its own, before the band the page wears", () => {
+  it("shows what is asked in a card of its own, before the header bar the page is shown with", () => {
     const html = head()
     const notice = html.indexOf("公開前のご確認をお願いいたします")
-    const band = html.indexOf("公開前の確認")
+    const headerBar = html.indexOf("公開前の確認")
     const body = html.indexOf("ページの本文")
     expect(notice).toBeGreaterThan(-1)
-    expect(band).toBeGreaterThan(notice)
-    expect(body).toBeGreaterThan(band)
-    // The notice's box closes before the band opens: the band is not inside it.
-    expect(html.slice(notice, band)).toMatch(/<\/div>\s*<div>\s*<header|<\/div><div>/)
+    expect(headerBar).toBeGreaterThan(notice)
+    expect(body).toBeGreaterThan(headerBar)
+    // The notice's box closes before the header bar opens: the header bar is not inside it.
+    expect(html.slice(notice, headerBar)).toMatch(/<\/div>\s*<div>\s*<header|<\/div><div>/)
   })
 
-  it("does not list who pressed either mark", () => {
+  it("does not list who pressed either indicator", () => {
     const html = head()
     expect(html).not.toContain("押した人 B")
     expect(html).not.toContain("押した人 C")
@@ -168,28 +168,28 @@ describe("the head of a preview", () => {
     expect(entry).not.toContain(">2<")
   })
 
-  it("sends both marks from one form, the pressed button naming which, with the typed name joining it", () => {
+  it("sends both indicators from one form, the pressed button naming which, with the typed name joining it", () => {
     const html = head()
     expect(html.match(/<form[^>]*id="preview-decide"/g)).toHaveLength(1)
-    const marks = [...html.matchAll(/<button[^>]*>/g)].map((match) => match[0])
+    const kindButtons = [...html.matchAll(/<button[^>]*>/g)].map((match) => match[0])
       .filter((tag) => tag.includes("name=\"kind\""))
-    expect(marks.map((tag) => /value="(\w+)"/.exec(tag)?.[1])).toEqual(["commented", "approved"])
-    expect(marks.every((tag) => tag.includes("type=\"submit\""))).toBe(true)
+    expect(kindButtons.map((tag) => /value="(\w+)"/.exec(tag)?.[1])).toEqual(["commented", "approved"])
+    expect(kindButtons.every((tag) => tag.includes("type=\"submit\""))).toBe(true)
     expect(html).toMatch(/<input[^>]*name="name"[^>]*form="preview-decide"|<input[^>]*form="preview-decide"[^>]*name="name"/)
   })
 
-  it("draws the whole's entry at the size of the two marks it stands in a row with", () => {
+  it("draws the whole's entry at the size of the two indicators it is shown in a row with", () => {
     const sizeOf = (tag: string) => (/class="([^"]*)"/.exec(tag)?.[1] ?? "").split(" ")
       .filter((one) => /^(?:px|py|gap|text-(?:xs|sm|base|lg))/.test(one))
       .sort()
     const buttons = [...head().matchAll(/<button[^>]*>[\s\S]*?<\/button>/g)].map((match) => match[0])
     const whole = buttons.find((one) => one.includes("全体へのコメント")) ?? ""
-    const marks = buttons.filter((one) => one.includes("name=\"kind\""))
-    expect(marks).toHaveLength(2)
-    for (const mark of marks) expect(sizeOf(whole)).toEqual(sizeOf(mark))
+    const kindButtons = buttons.filter((one) => one.includes("name=\"kind\""))
+    expect(kindButtons).toHaveLength(2)
+    for (const button of kindButtons) expect(sizeOf(whole)).toEqual(sizeOf(button))
   })
 
-  it("asks for no name from a reader who is signed in", () => {
+  it("requests no name from a reader who is signed in", () => {
     const html = head({ signedInName: "山田" })
     expect(html).not.toMatch(/<input[^>]*name="name"/)
     expect(html).toContain("山田")
@@ -198,7 +198,7 @@ describe("the head of a preview", () => {
   const stepsOf = (html: string): string[] =>
     [...html.slice(html.indexOf("<ol"), html.indexOf("</ol>")).matchAll(/<li>(.*?)<\/li>/g)].map((match) => match[1] ?? "")
 
-  it("asks for a name or a sign-in first, and offers both beside each other", () => {
+  it("requests a name or a sign-in first, and offers both beside each other", () => {
     const html = head()
     const steps = stepsOf(html)
     expect(steps[0]).toContain("お名前を入力するか、DDBJ アカウントでログイン")
@@ -209,16 +209,16 @@ describe("the head of a preview", () => {
     expect(html.slice(name, login)).toContain("または")
   })
 
-  it("says whose name the comments carry once signed in, and asks for neither", () => {
+  it("shows whose name the comments have once signed in, and requests neither", () => {
     const html = head({ signedInName: "山田花子" })
     expect(stepsOf(html)[0]).toMatch(/DDBJ アカウント <span[^>]*bg-surface[^>]*><code[^>]*>山田花子<\/code><\/span> でログインしています/)
-    // The line under the steps says the same name at the steps' size, not the hint's.
+    // The line under the steps shows the same name at the steps' size, not the hint's.
     expect(html).toMatch(/<p class="text-sm"><span class="text-ink-muted">お名前: <\/span><span[^>]*bg-surface[^>]*><code[^>]*>山田花子<\/code>/)
     expect(html).not.toContain("/auth/login")
     expect(html).not.toMatch(/<input[^>]*name="name"/)
   })
 
-  it("explains the changed mark only on a draft that updates a published version", () => {
+  it("explains the changed badge only on a draft that updates a published version", () => {
     expect(head({ publishedNumber: 3 })).toContain("「変更あり」と表示された項目は")
     expect(head({ publishedNumber: null })).not.toContain("「変更あり」と表示された項目は")
   })
@@ -248,13 +248,13 @@ describe("the head of a preview", () => {
     expect(datasets).toBeLessThan(commented)
   })
 
-  it("speaks politely in every step: each closes as a request or a polite statement", () => {
+  it("is polite in every step: each closes as a request or a polite statement", () => {
     for (const step of stepsOf(head())) {
       expect(step).toMatch(/(ください|ます|いたします)。$/)
     }
   })
 
-  it("carries only the notice and the name on a page with no whole to comment on", () => {
+  it("has only the notice and the name on a page with no whole to comment on", () => {
     const html = head({}, null)
     expect(html).toContain("公開前のご確認をお願いいたします")
     expect(html).toContain("このページはまだ公開されていません")
@@ -264,25 +264,25 @@ describe("the head of a preview", () => {
   })
 })
 
-describe("the answer to a mark", () => {
-  it("says the mark reached the office, naming it by its first sentence", () => {
-    expect(render(<MarkAnswer answer={{ status: "acknowledged", kind: "commented" }} locale="ja" />))
+describe("the answer to an indicator", () => {
+  it("shows the indicator reached the office, naming it by its first sentence", () => {
+    expect(render(<PreviewActionNotice answer={{ status: "acknowledged", kind: "commented" }} locale="ja" />))
       .toContain("「コメントを書き終えました」を事務局にお送りしました。")
-    expect(render(<MarkAnswer answer={{ status: "acknowledged", kind: "approved" }} locale="ja" />))
+    expect(render(<PreviewActionNotice answer={{ status: "acknowledged", kind: "approved" }} locale="ja" />))
       .toContain("「修正の必要はありません」を事務局にお送りしました。")
   })
 
-  it("speaks the page's language, down to the names read aloud", () => {
-    const html = render(<MarkAnswer answer={{ status: "acknowledged", kind: "approved" }} locale="en" />)
+  it("uses the page's language, down to the names read aloud", () => {
+    const html = render(<PreviewActionNotice answer={{ status: "acknowledged", kind: "approved" }} locale="en" />)
     expect(html).toContain("&quot;No corrections are needed&quot; has been sent to the office.")
     expect(html).toContain("aria-label=\"Result\"")
     expect(html).toContain("aria-label=\"Close\"")
     expect(html).not.toContain("操作の結果")
   })
 
-  it("says nothing before a mark is pressed, or when the name was missing", () => {
+  it("shows nothing before an indicator is pressed, or when the name was missing", () => {
     for (const answer of [undefined, { status: "invalid", problem: "name-required" } as const]) {
-      const html = render(<MarkAnswer answer={answer} locale="ja" />)
+      const html = render(<PreviewActionNotice answer={answer} locale="ja" />)
       expect(html).not.toContain("お送りしました")
     }
   })

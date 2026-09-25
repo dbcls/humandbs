@@ -2,9 +2,9 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import type { BoxEntry } from "~/files/box"
+import type { ListedFile } from "~/files/prefix"
 
-import { BoxTable, Downloads, UploadPanel, type DownloadRow } from "./files"
+import { FileTable, Downloads, UploadPanel, type DownloadRow } from "./files"
 
 /**
  * What the two lists put on the page.
@@ -36,7 +36,7 @@ function downloads(rows: DownloadRow[], humLabel: string | null = "hum0009"): st
   )
 }
 
-function entry(over: Partial<BoxEntry> = {}): BoxEntry {
+function entry(over: Partial<ListedFile> = {}): ListedFile {
   return {
     name: "a.zip",
     size: 1000,
@@ -86,16 +86,16 @@ describe("the download list", () => {
     expect(html).toContain("href=\"/files/hum0009/dac/DAC%20summary%20(1).pdf\"")
   })
 
-  it("marks a name that downloads with the download mark, and a name not public yet with none", () => {
+  it("marks a name that downloads with the download icon, and a name not public yet with none", () => {
     const html = downloads([
       { name: "open.zip", size: 1, isPublic: true },
       { name: "closed.zip", size: 1, isPublic: false },
     ])
 
-    const mark = /<a href="\/files\/hum0009\/open\.zip">(<svg[^>]*aria-hidden="true"[\s\S]*?<\/svg>)/.exec(html)?.[1] ?? ""
-    expect(mark).not.toBe("")
+    const icon = /<a href="\/files\/hum0009\/open\.zip">(<svg[^>]*aria-hidden="true"[\s\S]*?<\/svg>)/.exec(html)?.[1] ?? ""
+    expect(icon).not.toBe("")
     const closed = /<td[^>]*>(?:(?!<\/td>)[\s\S])*closed\.zip(?:(?!<\/td>)[\s\S])*<\/td>/.exec(html)?.[0] ?? ""
-    expect(closed).not.toContain(mark)
+    expect(closed).not.toContain(icon)
   })
 
   it("names a file that is not public yet without linking to it", () => {
@@ -105,7 +105,7 @@ describe("the download list", () => {
     expect(html).not.toContain("href=\"/files/hum0009/closed.zip\"")
   })
 
-  it("says the address a file that is not public yet will have", () => {
+  it("shows the address a file that is not public yet will have", () => {
     const html = downloads([{ name: "closed.zip", size: 1, isPublic: false }])
 
     expect(html).toContain("/files/hum0009/closed.zip")
@@ -136,11 +136,11 @@ describe("the download list", () => {
   })
 })
 
-describe("the box", () => {
+describe("the research's file table", () => {
   describe("the dataset column", () => {
-    function box(selectedBy?: Record<string, string[]>): string {
+    function table(selectedBy?: Record<string, string[]>): string {
       return render(
-        <BoxTable
+        <FileTable
           locale="ja"
           humLabel="hum0009"
           rows={[entry({ name: "a.zip" }), entry({ name: "b.zip", isPublic: false })]}
@@ -156,14 +156,14 @@ describe("the box", () => {
         [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
     }
 
-    it("stands between the name and the size, under the name the public list gives it", () => {
-      const heads = [...box({}).matchAll(/<th[^>]*>([^<]*)<\/th>/g)].slice(0, 3).map((th) => th[1])
+    it("is shown between the name and the size, under the name the public list gives it", () => {
+      const heads = [...table({}).matchAll(/<th[^>]*>([^<]*)<\/th>/g)].slice(0, 3).map((th) => th[1])
 
       expect(heads).toEqual(["ファイル名", "データセット ID", "サイズ"])
     })
 
     it("leads to each dataset's public page in a new tab", () => {
-      const cell = cells(box({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[1] ?? ""
+      const cell = cells(table({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[1] ?? ""
 
       expect(cell).toContain("href=\"/dataset/NHA000001\"")
       expect(cell).toContain("href=\"/dataset/NHA000002\"")
@@ -171,17 +171,17 @@ describe("the box", () => {
     })
 
     it("leaves the cell empty for a file no dataset selects", () => {
-      expect(cells(box({ "a.zip": ["NHA000001"] }))[1]?.[1]).toBe("")
+      expect(cells(table({ "a.zip": ["NHA000001"] }))[1]?.[1]).toBe("")
     })
 
     it("is not there at all when nothing was said about selections", () => {
-      expect(box()).not.toContain("データセット ID")
+      expect(table()).not.toContain("データセット ID")
     })
   })
 
   it("offers to copy the address of a public file, and of no other", () => {
     const html = render(
-      <BoxTable
+      <FileTable
         locale="ja"
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
@@ -193,15 +193,15 @@ describe("the box", () => {
     expect(html).not.toContain("title=\"/files/hum0009/closed.zip\"")
   })
 
-  it("names nothing to copy while the research has no label, since no address answers", () => {
-    const html = render(<BoxTable locale="ja" humLabel={null} rows={[entry({ name: "open.zip" })]} />)
+  it("names nothing to copy while the research has no label, since no address responds", () => {
+    const html = render(<FileTable locale="ja" humLabel={null} rows={[entry({ name: "open.zip" })]} />)
 
     expect(html).not.toContain("アドレスをコピー")
   })
 
-  it("says which side of the store each file is on", () => {
+  it("shows which side of the store each file is on", () => {
     const html = render(
-      <BoxTable
+      <FileTable
         locale="ja"
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
@@ -214,7 +214,7 @@ describe("the box", () => {
 
   it("offers to fetch a public file as a download, and no other", () => {
     const html = render(
-      <BoxTable
+      <FileTable
         locale="ja"
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
@@ -223,13 +223,13 @@ describe("the box", () => {
 
     expect([...html.matchAll(/ダウンロード/g)]).toHaveLength(1)
     expect(html).toMatch(/href="\/files\/hum0009\/open\.zip"[^>]*download/)
-    // The name itself is not a link: a fetch is not what reading a name asks for.
+    // The name itself is not a link: a fetch is not what reading a name requests.
     expect(html).not.toMatch(/<a[^>]*>[^<]*open\.zip<\/a>/)
   })
 
   it("offers the other side on the one switch control", () => {
     const html = render(
-      <BoxTable
+      <FileTable
         locale="ja"
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
@@ -241,9 +241,9 @@ describe("the box", () => {
     expect([...html.matchAll(/公開停止/g)]).toHaveLength(1)
   })
 
-  it("says on the control that a switch is running, and will not take a second press", () => {
+  it("shows on the control that a switch is running, and will not take a second press", () => {
     const html = render(
-      <BoxTable
+      <FileTable
         locale="ja"
         humLabel="hum0009"
         rows={[entry({ isPublic: false, pending: { action: "publish", failed: false, lastError: null } })]}
@@ -256,9 +256,9 @@ describe("the box", () => {
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?切り替え中/)
   })
 
-  it("says a switch failed, beside the side the file is on, and leaves the control pressable", () => {
+  it("shows a switch failed, beside the side the file is on, and leaves the control pressable", () => {
     const html = render(
-      <BoxTable
+      <FileTable
         locale="ja"
         humLabel="hum0009"
         rows={[entry({ pending: { action: "unpublish", failed: true, lastError: "copy refused" } })]}
@@ -274,7 +274,7 @@ describe("the box", () => {
 
   it("names the file in every form of its row, so a press names what it acts on", () => {
     const html = render(
-      <BoxTable
+      <FileTable
         locale="ja"
         humLabel="hum0009"
         rows={[entry({ name: "a.zip" }), entry({ name: "b.zip" })]}
@@ -287,13 +287,13 @@ describe("the box", () => {
   })
 
   it("changes the name on the one panel every slug is changed in", () => {
-    const html = render(<BoxTable locale="ja" humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
+    const html = render(<FileTable locale="ja" humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
 
     expect(html).toContain("slug の編集")
   })
 
   it("does not offer deletion until it has been asked for twice", () => {
-    const html = render(<BoxTable locale="ja" humLabel="hum0009" rows={[entry()]} />)
+    const html = render(<FileTable locale="ja" humLabel="hum0009" rows={[entry()]} />)
 
     expect(html).not.toContain("value=\"delete\"")
   })
@@ -301,11 +301,11 @@ describe("the box", () => {
 
 describe("the upload panel", () => {
   /**
-   * The question about names the box already holds is raised by a choice, not
+   * The question about names the prefix already holds is raised by a choice, not
    * by a control, so at rest there is nothing of it on the page: the chooser
    * is the one thing to press.
    */
-  it("asks nothing at rest, and offers only the chooser", () => {
+  it("requests nothing at rest, and offers only the chooser", () => {
     const html = render(<UploadPanel locale="ja" endpoint="/admin/files/upload" threshold={1} partSize={1} />)
 
     expect(html.match(/<button/g)).toHaveLength(1)

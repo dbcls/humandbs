@@ -12,7 +12,7 @@ import type { Route } from "./+types/admin-draft"
  * Writing a research draft.
  *
  * The whole draft is saved in one request, because a version of a research is
- * one thing. The answer carries the status the save deserves — 409 when the
+ * one thing. The answer has the status the save deserves — 409 when the
  * revision no longer matches, 422 when prose held markup the tree cannot keep —
  * so what happened is visible in the exchange itself and not only in the body.
  */
@@ -29,7 +29,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  // The same name and identifier the head gives it (`components/editor.tsx`).
+  // The same name and identifier the header gives it (`components/editor.tsx`).
   return [
     { title: adminWindowTitle(messages, location.pathname, messages.admin.draft.heading, loaderData.humLabel) },
     { name: "robots", content: "noindex" },

@@ -41,7 +41,7 @@ describe("slug の検査", () => {
     expect(slugProblem("faq/")).toBe("malformed-slug")
   })
 
-  it("route が持つ先頭の語は取れない", () => {
+  it("route で使われている先頭の語は取れない", () => {
     for (const slug of ["news", "research", "dataset", "admin", "api", "files", "private"]) {
       expect(slugProblem(slug)).toBe("reserved-slug")
     }
@@ -117,7 +117,7 @@ describe("木", () => {
       .toEqual(["faq", "guidelines", "guidelines/sharing"])
   })
 
-  it("深さは slug の段の数から出る", () => {
+  it("深さは slug の階層の数から出る", () => {
     const tree = siteTree([guidelines, v1, v2, faq], [series])
     expect(tree.map((entry) => entry.depth)).toEqual([0, 0, 1])
   })
@@ -187,7 +187,7 @@ describe("一覧の絞り込み", () => {
   })
 })
 
-describe("一覧の軸", () => {
+describe("一覧の絞り込みの項目", () => {
   const faq = document("f", "faq", { ja: true, en: true })
   const neither = document("d", "draft-only", { ja: false, en: false })
   const jaOnly = document("j", "ja-only", { ja: true, en: false })
@@ -214,7 +214,7 @@ describe("一覧の軸", () => {
     expect(found({ versioning: ["plain"] })).toEqual(["draft-only", "faq", "ja-only"])
   })
 
-  it("軸の中は OR なので、両方選ぶと絞られない", () => {
+  it("1 つの項目の中は OR なので、両方選ぶと絞られない", () => {
     expect(found({ versioning: ["versioned", "plain"] })).toHaveLength(4)
     expect(found({ ja: ["published", "unpublished"] })).toHaveLength(4)
   })
@@ -224,12 +224,12 @@ describe("一覧の軸", () => {
     expect(found({ en: ["published"] })).toEqual(["faq"])
   })
 
-  it("軸どうしは AND", () => {
+  it("項目どうしは AND", () => {
     expect(found({ ja: ["published"], en: ["unpublished"] }))
       .toEqual(["guidelines/sharing", "ja-only"])
   })
 
-  it("窓と軸も AND", () => {
+  it("キーワードと絞り込みの項目も AND", () => {
     expect(found({ keyword: "ja", ja: ["published"] })).toEqual(["ja-only"])
     expect(found({ keyword: "ja", ja: ["unpublished"] })).toEqual([])
   })
@@ -296,7 +296,7 @@ describe("お知らせの一覧の絞り込み", () => {
     expect(found({ keyword: "23 hum0556" })).toEqual([])
   })
 
-  it("日付を持たない行は日付の語では引けず、タイトルでは引ける", () => {
+  it("日付の無い行は日付の語では引けず、タイトルでは引ける", () => {
     expect(found({ keyword: "2026" })).toEqual(["a", "b"])
     expect(found({ keyword: "書きかけ" })).toEqual(["c"])
   })
@@ -305,21 +305,21 @@ describe("お知らせの一覧の絞り込み", () => {
     expect(found({ keyword: "  HUM0556  " })).toEqual(["a"])
   })
 
-  it("日付の軸は、日付を持つ行と持たない行を分ける", () => {
+  it("日付の項目は、日付のある行と無い行を分ける", () => {
     expect(found({ dating: ["undated"] })).toEqual(["c"])
     expect(found({ dating: ["dated"] })).toEqual(["a", "b"])
   })
 
-  it("軸の値をすべて選ぶことは、その軸に触れていないことと同じ", () => {
+  it("項目の値をすべて選ぶことは、その項目に触れていないことと同じ", () => {
     expect(found({ dating: ["dated", "undated"] })).toEqual(["c", "a", "b"])
   })
 
-  it("言語の軸どうしは AND", () => {
+  it("言語の項目どうしは AND", () => {
     expect(found({ ja: ["published"], en: ["unpublished"] })).toEqual(["b"])
     expect(found({ ja: ["unpublished"], en: ["published"] })).toEqual([])
   })
 
-  it("窓と軸も AND", () => {
+  it("キーワードと絞り込みの項目も AND", () => {
     expect(found({ keyword: "制限公開", ja: ["published"] })).toEqual(["a", "b"])
     expect(found({ keyword: "制限公開", ja: ["unpublished"] })).toEqual([])
   })

@@ -6,7 +6,7 @@
  * Many leaves also kept the article's original HTML (`rawHtml`) untouched
  * beside it, which still has the `<br>`, `<p>` and table structure `text`
  * collapsed away. Where the two agree on content, the line breaks and links
- * `rawHtml` carries are real and worth recovering; where they disagree,
+ * `rawHtml` has are real and worth recovering; where they disagree,
  * `rawHtml` usually is not a stale edit but a different value altogether (an
  * older bug folded several rows of one column into a single `rawHtml`, with
  * `text` holding only the row a leaf is actually about), so a leaf that
@@ -121,7 +121,7 @@ function unescapeMarkdown(value: string): string {
 }
 
 /**
- * Some `text` values carry a corrupted escape where an underscore was
+ * Some `text` values have a corrupted escape where an underscore was
  * replaced by an index marker instead of being written back (an older bug in
  * whatever escaped it). Undoing it here, before the fold, lets the comparison
  * see the same content `rawHtml` already has correctly.
@@ -191,7 +191,7 @@ function plainOfHtml(root: Root, lang: Lang): string {
  * `rehype-raw`'s own node shape for a chunk of HTML still waiting to be
  * parsed. Building one by hand is how a bare HTML string is turned into a
  * hast tree without adding an HTML-parsing dependency of our own — the
- * parser is the one `rehype-raw` already carries.
+ * parser is the one `rehype-raw` already has.
  */
 interface RawHtmlNode {
   type: "raw"
@@ -216,7 +216,7 @@ function inlineLabel(node: Element): string {
 }
 
 /* -------------------------------------------------------------------- */
-/* Dropping the field-name heading rawHtml still carries                 */
+/* Dropping the field-name heading rawHtml still has                 */
 /* -------------------------------------------------------------------- */
 
 /**
@@ -291,7 +291,7 @@ function documentRewrite(path: string): string {
 
 /**
  * Applies `resolve` to the path with an `/en` prefix taken off, then puts the
- * prefix back on the result — `legacyTarget` answers in the default locale,
+ * prefix back on the result — `legacyTarget` responds in the default locale,
  * and a link that named the English page should keep naming it.
  */
 function withLocalePrefix(path: string, resolve: (bare: string) => string | null): string | null {
@@ -327,7 +327,7 @@ function resolveInternalPath(path: string, ctx: RecoverContext): HrefResolution 
  * Resolves one `href` from `rawHtml` to what it should point at in v2:
  * external links and files are kept, a same-page anchor is dropped, and an
  * old-portal address (Joomla's `index.php?...`, or an absolute link to the
- * portal's own domain) is rewritten to the v2 page it names.
+ * portal's own domain) is rewritten to the v2 page it identifies.
  */
 function resolveHref(href: string, ctx: RecoverContext): HrefResolution {
   const value = href.trim()
@@ -364,7 +364,7 @@ const SUPERSCRIPT: Record<string, string> = {
   "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ",
 }
 
-function foldSuperscript(text: string): string {
+function normalizeSuperscript(text: string): string {
   const folded = Array.from(text, (char) => SUPERSCRIPT[char] ?? "").join("")
   return folded.length === text.length && text !== "" ? folded : text
 }
@@ -448,7 +448,7 @@ function walkNode(node: Flow, into: Collector, ctx: RecoverContext): number {
     return 0
   }
   if (tag === "sup") {
-    into.text(foldSuperscript(flattenText(node)))
+    into.text(normalizeSuperscript(flattenText(node)))
     return 0
   }
   if (tag === "sub") {
@@ -475,7 +475,7 @@ function walkNode(node: Flow, into: Collector, ctx: RecoverContext): number {
     return dropped
   }
   // Formatting with no representation in v2 rich text (emphasis, spans,
-  // headings' own tag) — its content stands on its own, unwrapped.
+  // headings' own tag) — its content is shown on its own, unwrapped.
   return walkChildren(node.children, into, ctx)
 }
 
@@ -506,11 +506,11 @@ function withSource(built: Built, source: "rawHtml" | "split"): RecoveredRichTex
 /**
  * Recovers a v2 rich text from a v1 `{text, rawHtml}` leaf.
  *
- * `rawHtml` is used whenever it says the same thing `text` does: either the
+ * `rawHtml` is used whenever it reports the same thing `text` does: either the
  * whole value agrees, or — where an older bug packed several rows into one
  * `rawHtml` — exactly one of its `"\n"`-separated rows agrees. Otherwise the
  * leaf falls back to parsing `text` as markdown, the way `migration/build.ts`
- * already does, and the result carries a note so a caller can list it for a
+ * already does, and the result has a note so a caller can list it for a
  * person to check.
  */
 export function recoverRichText(input: RecoverInput, ctx: RecoverContext = {}): RecoveredRichText {

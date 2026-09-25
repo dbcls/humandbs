@@ -31,11 +31,11 @@ describe("本文の検査", () => {
     expect(checkArticleBody("")).toEqual([])
   })
 
-  it("HTML のブロックを弾く", () => {
+  it("HTML のブロックを拒否する", () => {
     expect(checkArticleBody("段落\n\n<div>中身</div>")).toMatchObject([{ syntax: "html", line: 3 }])
   })
 
-  it("行の中のタグも弾き、開くタグと閉じるタグで同じ行を 2 度は挙げない", () => {
+  it("行の中のタグも拒否し、開くタグと閉じるタグで同じ行を 2 度は挙げない", () => {
     expect(checkArticleBody("これは <u>下線</u> です")).toEqual([{ syntax: "html", line: 1 }])
   })
 
@@ -43,13 +43,13 @@ describe("本文の検査", () => {
     expect(checkArticleBody("一行目\n\n[x](javascript:alert(1)) の行")).toEqual([{ syntax: "link", line: 3 }])
   })
 
-  it("**描画が落とすものを弾く。** ブロックは中身ごと消えるので、通してはいけない", () => {
+  it("**描画で除かれるものを拒否する。** ブロックは中身ごと消えるので、通してはいけない", () => {
     const body = "<div>この文は描画で丸ごと消える</div>"
     expect(renderMarkdown(body, "ja")).not.toContain("消える")
     expect(checkArticleBody(body)).not.toEqual([])
   })
 
-  it("開けない行き先のリンクを弾く", () => {
+  it("開けない行き先のリンクを拒否する", () => {
     expect(checkArticleBody("[x](javascript:alert(1))")).toMatchObject([{ syntax: "link", line: 1 }])
     expect(checkArticleBody("![x](javascript:alert(1))")).toMatchObject([{ syntax: "link", line: 1 }])
   })

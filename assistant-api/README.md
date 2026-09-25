@@ -14,7 +14,7 @@ docker compose exec assistant-api uv run --extra dev pytest
 
 ### 外部サービスを利用するチェック項目
 
-一方、申請書の処理は入力内容と設定に応じて次のサービスへ接続する。
+申請書の処理は、入力内容と設定に応じて次の外部サービスに接続する。
 
 | 確認する機能 | 到達する外部サービス | 必要な設定 |
 |---|---|---|
@@ -37,4 +37,21 @@ compose はこのファイルを container 内の `/app/gcp-credentials.json` �
 
 ## Docker
 
-Dockerfile がコード・テンプレート・データを焼き込んだイメージを作り、配信ではそのイメージで動く。開発では `compose.dev.yml` が `src/`・`templates/`・`data/`・`tests/` を bind mount するので、コードの変更はイメージを作り直さず `docker compose restart assistant-api` で反映される。依存 (`pyproject.toml` / `uv.lock`) を変えたときは `docker compose build assistant-api` で作り直す。
+Dockerfile がコード・テンプレート・データを含めたイメージを作り、配信ではそのイメージで動く。開発では `compose.dev.yml` が `src/`・`templates/`・`data/`・`tests/` を bind mount するので、コードの変更はイメージを作り直さず `docker compose restart assistant-api` で反映される。依存 (`pyproject.toml` / `uv.lock`) を変えたときは `docker compose build assistant-api` で作り直す。
+
+## 配信先で設定を変える・更新する
+
+配信先 (rootless podman + podman-compose 1.0.6) では、`.env` の `HUMANDBS_ASSISTANT_*` を書き換えたあと、次の 1 つだけを実行する。assistant-api の container だけを作り直し、ポータル (app・proxy・DB・ファイルストア) は止まらない。
+
+```bash
+podman-compose up -d --force-recreate assistant-api
+```
+
+コードを更新したときは、先に `podman-compose build assistant-api` を実行してから同じコマンドを実行する。ポータルの更新 (`scripts/deploy.sh`) は、assistant-api が起動していればそのイメージも作り直す。
+
+次のコマンドは使わない。
+
+- `podman-compose up -d` (サービス名なし): `.env` を変えたあとだと、ポータルの DB・ファイルストア・app・proxy まで止めて作り直す
+- `podman-compose restart assistant-api`: 古い設定のまま再起動し、`.env` の変更が反映されない
+- `podman-compose down`: ポータルごと止まる
+- `--profile assistant`: podman-compose 1.0.6 はこのオプションを知らないのでエラーになる (compose.yml の `profiles` も無視される)

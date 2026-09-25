@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { BOX_PAGE_SIZE } from "~/files/box"
+import { FILES_PAGE_SIZE } from "~/files/prefix"
 import type { DatasetView } from "~/public/view.server"
 
 import { DatasetBody } from "./dataset"
@@ -41,32 +41,32 @@ function names(html: string): string[] {
 
 describe("a dataset's files", () => {
   it("draws every file, and no count or page steps, while they fit on one page", () => {
-    const html = render(BOX_PAGE_SIZE)
-    expect(names(html)).toHaveLength(BOX_PAGE_SIZE)
-    expect(html).not.toContain(`/ ${BOX_PAGE_SIZE} 件`)
+    const html = render(FILES_PAGE_SIZE)
+    expect(names(html)).toHaveLength(FILES_PAGE_SIZE)
+    expect(html).not.toContain(`/ ${FILES_PAGE_SIZE} 件`)
     expect(html).not.toContain("?files=")
   })
 
-  it("cuts at the page size and pages past it, with the count", () => {
-    const html = render(BOX_PAGE_SIZE + 1)
-    expect(names(html)).toHaveLength(BOX_PAGE_SIZE)
-    expect(html).toContain(`1–${BOX_PAGE_SIZE} / ${BOX_PAGE_SIZE + 1} 件`)
+  it("paginates at the page size and pages past it, with the count", () => {
+    const html = render(FILES_PAGE_SIZE + 1)
+    expect(names(html)).toHaveLength(FILES_PAGE_SIZE)
+    expect(html).toContain(`1–${FILES_PAGE_SIZE} / ${FILES_PAGE_SIZE + 1} 件`)
     expect(html).toContain("?files=2")
   })
 
-  it("draws the page the address asks for", () => {
-    const html = render(BOX_PAGE_SIZE + 1, "/dataset/NHA000001?files=2")
-    expect(names(html)).toEqual([`f${String(BOX_PAGE_SIZE + 1).padStart(3, "0")}.txt`])
+  it("draws the page the address requests", () => {
+    const html = render(FILES_PAGE_SIZE + 1, "/dataset/NHA000001?files=2")
+    expect(names(html)).toEqual([`f${String(FILES_PAGE_SIZE + 1).padStart(3, "0")}.txt`])
   })
 
   it("reads an address it cannot read as the nearest page, and never loses or repeats a file", () => {
     fc.assert(fc.property(
-      fc.integer({ min: 1, max: 3 * BOX_PAGE_SIZE }),
+      fc.integer({ min: 1, max: 3 * FILES_PAGE_SIZE }),
       fc.oneof(fc.integer({ min: -2, max: 6 }).map(String), fc.constantFrom("x", "1.5", "")),
       (count, asked) => {
         const shown = names(render(count, `/dataset/NHA000001?files=${asked}`))
         expect(shown.length).toBeGreaterThan(0)
-        expect(shown.length).toBeLessThanOrEqual(BOX_PAGE_SIZE)
+        expect(shown.length).toBeLessThanOrEqual(FILES_PAGE_SIZE)
         expect(new Set(shown).size).toBe(shown.length)
       },
     ), { numRuns: 40 })

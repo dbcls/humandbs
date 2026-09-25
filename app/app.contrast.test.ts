@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 /**
- * The palette has to be readable, and this is where that requirement lives.
+ * The palette has to be readable, and this is where that requirement is kept.
  *
  * The values are read out of `app.css` rather than repeated here, so the test
  * cannot drift from the stylesheet: changing a colour changes what is measured.
  *
- * **A band only needs its two ends checked.** A linear gradient between two
+ * **A header bar only needs its two ends checked.** A linear gradient between two
  * colours passes through luminances between theirs, so text is at its least
  * readable at one end or the other.
  */
@@ -75,7 +75,7 @@ describe("the palette", () => {
     ])
   })
 
-  describe("carries white text", () => {
+  describe("has white text", () => {
     it.each([
       ["brand", TEXT],
       ["brand-dark", TEXT],
@@ -84,9 +84,9 @@ describe("the palette", () => {
       ["ink-muted", TEXT],
       ["accent", TEXT],
       ["danger", TEXT],
-      // Only ever the far end of the call-to-action band, whose label is large.
+      // Only ever the far end of the call-to-action header bar, whose label is large.
       ["accent-light", NON_TEXT],
-      // The far end of the two ways in, whose one word is large and bold.
+      // The far end of the two call-to-action buttons, whose one word is large and bold.
       ["accent-lighter", NON_TEXT],
       ["brand-lighter", NON_TEXT],
     ])("on %s", (name, least) => {
@@ -117,13 +117,13 @@ describe("the palette", () => {
 
   /**
    * The focus ring sits on the edge of the control it marks, so it has both the
-   * ground the control is on and the control's own fill on either side of it.
+   * background the control is on and the control's own fill on either side of it.
    * A refinement panel puts its boxes on the page's tint, which is the darkest
    * of the three and therefore the one that decides how light the ring can be.
    */
   it("keeps the focus ring visible wherever a control sits", () => {
-    for (const ground of [WHITE, colours["surface-input"] ?? "", colours.surface ?? ""]) {
-      expect(contrast(colours.focus ?? "", ground)).toBeGreaterThanOrEqual(NON_TEXT)
+    for (const background of [WHITE, colours["surface-input"] ?? "", colours.surface ?? ""]) {
+      expect(contrast(colours.focus ?? "", background)).toBeGreaterThanOrEqual(NON_TEXT)
     }
   })
 
@@ -136,16 +136,16 @@ describe("the palette", () => {
     expect(contrast(colours.ink ?? "", colours[name] ?? "")).toBeGreaterThanOrEqual(TEXT)
   })
 
-  it("tells a deeper piece from the line it stands in, on both sides of a comparison", () => {
+  it("tells a deeper piece from the line it is shown in, on both sides of a comparison", () => {
     expect(contrast(colours["diff-del-word"] ?? "", colours["diff-del"] ?? "")).toBeGreaterThan(1.1)
     expect(contrast(colours["diff-ins-word"] ?? "", colours["diff-ins"] ?? "")).toBeGreaterThan(1.1)
   })
 
-  it("reads an announcement on its own ground", () => {
-    const ground = colours["warning-surface"] ?? ""
-    expect(contrast(colours.ink ?? "", ground)).toBeGreaterThanOrEqual(TEXT)
+  it("reads an announcement on its own background", () => {
+    const background = colours["warning-surface"] ?? ""
+    expect(contrast(colours.ink ?? "", background)).toBeGreaterThanOrEqual(TEXT)
     // The glyph beside it and the rule around it, which are what mark the notice out.
-    expect(contrast(colours.warning ?? "", ground)).toBeGreaterThanOrEqual(NON_TEXT)
+    expect(contrast(colours.warning ?? "", background)).toBeGreaterThanOrEqual(NON_TEXT)
   })
 })
 
@@ -171,7 +171,7 @@ const COLOUR_PREFIX = [
   "caret", "from", "via", "to", "divide", "shadow", "placeholder",
 ]
 
-/** What these prefixes also spell, none of which names a colour. */
+/** What these prefixes also spell, none of which identifies a colour. */
 const NOT_A_COLOUR = new Set([
   "white", "black", "transparent", "current", "inherit",
   // edges: which ones, how thick, how they are drawn
@@ -189,9 +189,9 @@ const NOT_A_COLOUR = new Set([
  * The strings in a source file that are lists of classes.
  *
  * **Told apart by what they are made of**, rather than by where they sit: the
- * faces are held in constants (`BUTTON_VARIANT`, `CONTROL`, `FILE_FACE` …) as
+ * styles are held in constants (`BUTTON_VARIANT`, `CONTROL`, `FILE_FACE` …) as
  * often as they are written on an element, so reading only `className=` would
- * miss the places a face is actually decided. A class list is lower case and
+ * miss the places a style is actually decided. A class list is lower case and
  * punctuation; anything a reader would see — a sentence, a name, a heading —
  * has capitals or Japanese in it and is left alone.
  */

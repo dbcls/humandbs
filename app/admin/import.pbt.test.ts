@@ -7,9 +7,9 @@ import { draftInputArb } from "./arbitraries/draft"
 import { diffDraftInput } from "./diff"
 import { researchContentInput, type DraftInput } from "./form"
 import { readAt } from "./paths"
-import { heldIds, initialTake, isList, listRows, RESEARCH_TAKE, takePlaces, withElement } from "./take"
+import { heldIds, initialImport, isList, listRows, RESEARCH_IMPORT, importFieldPaths, withElement } from "./import"
 
-const shape = RESEARCH_TAKE
+const shape = RESEARCH_IMPORT
 
 /** Whether a value holds a slot that is a value with nothing in it, anywhere inside. */
 function hasBlank(value: unknown): boolean {
@@ -24,22 +24,22 @@ function hasBlank(value: unknown): boolean {
 const LISTS = ["dataProviders", "researchProjects", "grants", "relatedPublications", "listingSummary.dataProviders"]
 
 /**
- * The face opens holding a value the curator then edits, so what it opens with
+ * The form opens holding a value the curator then edits, so what it opens with
  * is the part that can quietly lose work. These are the laws that say it does
  * not: it moves only what the two disagree about, it never drops an element
  * the draft holds, and from nothing it opens holding the source.
  */
-describe("what the take-in face opens holding", () => {
-  it("is the draft itself when the source says the same", () => {
+describe("what the import form opens holding", () => {
+  it("is the draft itself when the source reports the same", () => {
     fc.assert(fc.property(draftInputArb, (mine) => {
-      expect(initialTake(shape, mine, mine)).toEqual(mine)
+      expect(initialImport(shape, mine, mine)).toEqual(mine)
     }))
   })
 
-  it("moves nothing outside the places the face shows", () => {
+  it("moves nothing outside the places the form shows", () => {
     fc.assert(fc.property(draftInputArb, draftInputArb, (mine, theirs) => {
-      const places = takePlaces(shape, mine, theirs)
-      const written = initialTake(shape, mine, theirs)
+      const places = importFieldPaths(shape, mine, theirs)
+      const written = initialImport(shape, mine, theirs)
 
       for (const path of diffDraftInput(mine, written)) expect(places).toContain(path)
     }))
@@ -47,7 +47,7 @@ describe("what the take-in face opens holding", () => {
 
   it("keeps every element the draft holds in every list", () => {
     fc.assert(fc.property(draftInputArb, draftInputArb, (mine, theirs) => {
-      const written = initialTake(shape, mine, theirs)
+      const written = initialImport(shape, mine, theirs)
 
       for (const path of LISTS) {
         const kept = heldIds(shape, written, path)
@@ -56,14 +56,14 @@ describe("what the take-in face opens holding", () => {
     }))
   })
 
-  it("holds the source everywhere the face shows, starting from an empty draft", () => {
+  it("holds the source everywhere the form shows, starting from an empty draft", () => {
     const empty: DraftInput = { content: researchContentInput(emptyResearchContent()) }
     fc.assert(fc.property(draftInputArb, (theirs) => {
-      const written = initialTake(shape, empty, theirs)
+      const written = initialImport(shape, empty, theirs)
 
       // What is left is only where the source itself leaves a blank, which
-      // the face fills from the draft — here the empty draft's own blank.
-      for (const path of takePlaces(shape, written, theirs)) {
+      // the form fills from the draft — here the empty draft's own blank.
+      for (const path of importFieldPaths(shape, written, theirs)) {
         expect(hasBlank(readAt(theirs, shape.keysOf(path)).value)).toBe(true)
       }
     }))
@@ -71,8 +71,8 @@ describe("what the take-in face opens holding", () => {
 
   it("offers nothing the draft decides elsewhere", () => {
     fc.assert(fc.property(draftInputArb, draftInputArb, (mine, theirs) => {
-      expect(takePlaces(shape, mine, theirs)).not.toContain("datasetIds")
-      expect(initialTake(shape, mine, theirs).content.datasetIds).toEqual(mine.content.datasetIds)
+      expect(importFieldPaths(shape, mine, theirs)).not.toContain("datasetIds")
+      expect(initialImport(shape, mine, theirs).content.datasetIds).toEqual(mine.content.datasetIds)
     }))
   })
 })
@@ -80,7 +80,7 @@ describe("what the take-in face opens holding", () => {
 describe("ticking an element of a list", () => {
   it("out and back in leaves the written value as it was", () => {
     fc.assert(fc.property(draftInputArb, draftInputArb, fc.nat(), (mine, theirs, pick) => {
-      const written = initialTake(shape, mine, theirs)
+      const written = initialImport(shape, mine, theirs)
       for (const path of LISTS) {
         if (!isList(shape, mine, theirs, path)) continue
         const rows = listRows(shape, mine, theirs, path)

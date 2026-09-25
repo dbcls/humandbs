@@ -6,15 +6,15 @@
  * that shows them does the same two things: pick the ones about what it is
  * drawing, and group them by place. That is here rather than in each screen.
  *
- * **There are no threads.** The comments at one place stand in the order they
- * were written, and whoever has more to say writes the next one there; each is
+ * **There are no threads.** The comments at one place are shown in the order they
+ * were written, and whoever has more to report writes the next one there; each is
  * resolved on its own. A reply nested under a comment would put two
  * conversations at one place and ask which to write in, and at a place the
  * size of a field that question has no answer.
  *
- * A comment carries a name and nothing else about who wrote it. Signing in
+ * A comment has a name and nothing else about who wrote it. Signing in
  * replaces the self-declared name with the account's, and that is the whole
- * difference — a mark from a signed-in reader means a person, one from an
+ * difference — an indicator from a signed-in reader means a person, one from an
  * anonymous reader means whoever held the link.
  */
 
@@ -58,8 +58,8 @@ export function checkComment(fields: { name: string, body: string }): CommentPro
 }
 
 /**
- * The name alone, for what a reader writes without a body — a mark. It is held
- * to the same limit: anyone holding the link can press a mark as often as they
+ * The name alone, for what a reader writes without a body — an indicator. It is held
+ * to the same limit: anyone holding the link can press a review button as often as they
  * like, and each press is a row.
  */
 export function checkName(name: string): "name-required" | "too-long" | null {
@@ -86,7 +86,7 @@ export function wholeComments(comments: readonly CommentView[]): CommentView[] {
  *
  * **It belongs to no subject and reaches no reader**, so nothing that draws a
  * research, a dataset or a preview picks it up: the one screen that wants it
- * asks for it by name.
+ * requests it by name.
  */
 export function memoComments(comments: readonly CommentView[]): CommentView[] {
   return comments.filter((one) => one.anchor.kind === "memo")
@@ -96,7 +96,7 @@ export function memoComments(comments: readonly CommentView[]): CommentView[] {
  * What a share link is shown: the comments on the draft as a whole, and those
  * about the subjects the page draws. A preview narrows to this before the
  * comments leave the loader — what the page does not draw is not sent, or the
- * hydration payload would carry the text of comments on datasets this version
+ * hydration payload would have the text of comments on datasets this version
  * does not list, and the memo with them.
  */
 export function commentsForPage(

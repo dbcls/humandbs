@@ -27,7 +27,7 @@ import type { Route } from "./+types/document"
  * as the unprefixed address and redirects to it, so one page keeps one address.
  *
  * **The address comes from the match, not from the request.** A client-side
- * navigation asks for `<path>.data`, and the suffix is taken off before the
+ * navigation requests `<path>.data`, and the suffix is taken off before the
  * route is matched but stays on `request.url`. Reading the URL here would look
  * up a slug ending in `.data` and answer 404 for every document on the site,
  * while an address opened directly kept working.

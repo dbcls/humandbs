@@ -10,11 +10,11 @@ import type { Route } from "./+types/preview"
 /**
  * A draft as it will be published, opened by whoever holds the link.
  *
- * The address carries its own credential, which is why the response says not to
+ * The address has its own credential, which is why the response indicates not to
  * index it and not to send a referrer: a link followed out of this page must
  * not hand the token to the site at the other end. The token is checked where
  * the data is fetched rather than here, so nothing else can reach the draft by
- * asking a different way.
+ * requesting a different way.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { locale } = readLocale(new URL(request.url).pathname)

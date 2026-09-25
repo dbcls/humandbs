@@ -9,7 +9,7 @@ import { CONTROL, CONTROL_ROW, Submit } from "./form"
 import { Icon } from "./icons"
 
 /**
- * The box a dataset's id is given in, and the two ways into it.
+ * The box a dataset's id is given in, and the two ways to fill it.
  *
  * **Issuing does not pin.** It puts the next NHA id into the box and shuts the
  * box, and「割り当て」settles it like a typed accession — the one operation that
@@ -41,8 +41,8 @@ export function IdForm({ nextNhaId, locale, onIssuing, size }: {
 
   return (
     <>
-      {/* An empty id is refused before it is sent: the ledger has nothing to
-          say about "", and the server answers it as a row that is not there. */}
+      {/* An empty id is refused before it is sent: the `label_pin` table has nothing to
+          say about "", and the server treats it as a row that is not there. */}
       <input
         key={issuing ? "issuing" : "typing"}
         type="text"

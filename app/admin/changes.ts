@@ -1,14 +1,14 @@
 /**
- * Where a draft says something other than the version that is out there now.
+ * Where a draft reports something other than the version that is out there now.
  *
- * This is what the preview and the page beside the form mark, and it answers
+ * This is what the preview and the page beside the form mark, and it responds
  * "what would a reader see change if this went out". So there is no base and no
  * three-way — the published version and the draft, compared with the same
- * functions the conflict band uses, reported as the same paths.
+ * functions the conflict banner uses, reported as the same paths.
  *
  * A research with nothing published has nothing to compare against. That is not
  * "everything changed": a first version is all new by definition, and marking
- * every field would say nothing.
+ * every field would report nothing.
  */
 
 import { diffDatasetInput } from "./dataset-diff"
@@ -20,9 +20,9 @@ import { readAt } from "./paths"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 
 /**
- * Whether the datasets both lists hold stand in a different order. A dataset on
+ * Whether the datasets both lists hold are shown in a different order. A dataset on
  * one side only is not compared: coming on or going off is a change of its own,
- * and says nothing about the order of the rest. **The order is what a reader
+ * and implies nothing about the order of the rest. **The order is what a reader
  * sees** — the public page lists a version's datasets as the version holds them
  * — so a draft that only moves rows still changes the page.
  */
@@ -54,11 +54,11 @@ export function changedDatasetFromPublished(
 /**
  * A value of the editing form as something a screen can show.
  *
- * The editor marks where the published version says something else, and opening
- * the mark shows what it says. Reaching a value by its path means arriving at
+ * The editor marks where the published version reports something else, and opening
+ * the indicator shows what it has. Reaching a value by its path means arriving at
  * one of a handful of shapes rather than at a known type, so this recognises
  * them and gives up on anything else — an array of elements, say, where the
- * difference is membership and the honest answer is the mark alone.
+ * difference is membership and the honest answer is the indicator alone.
  */
 export interface ShownLine {
   /** A language, or empty for a value that has none. */
@@ -67,7 +67,7 @@ export interface ShownLine {
   text: string
   /**
    * The identities this line names: the screen has the catalog and resolves
-   * the labels. A vocabulary value is nothing but these; a disease carries them
+   * the labels. A vocabulary value is nothing but these; a disease has them
    * beside the name somebody wrote, and both are shown.
    */
   termIds?: string[]
@@ -113,7 +113,7 @@ function described(input: unknown, paths: readonly string[]): Record<string, Sho
   return held
 }
 
-/** What the published version says at each of the paths that moved. */
+/** What the published version has at each of the paths that moved. */
 export function describedResearch(
   published: ResearchContent,
   paths: readonly string[],

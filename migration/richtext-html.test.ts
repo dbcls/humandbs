@@ -135,7 +135,7 @@ describe("recoverRichText", () => {
   })
 
   describe("links", () => {
-    it("turns a link into a span carrying its destination", () => {
+    it("turns a link into a span with its destination", () => {
       const result = recoverRichText({
         text: "see [it](https://example.com/x) here",
         rawHtml: "<p>see <a href=\"https://example.com/x\">it</a> here</p>",
@@ -271,7 +271,7 @@ describe("recoverRichText", () => {
     // A real leaf (hum0427, summary.targets.ja): v1's `text` replaced the `_`
     // in a riken.jp URL with a pair of control-character index markers, while
     // `rawHtml` kept the URL correctly. Recovery has to see these as the same
-    // leaf and prefer rawHtml, which also carries the field-name heading and
+    // leaf and prefer rawHtml, which also has the field-name heading and
     // the anchor `text` only reaches through a markdown link.
     const rawHtml = "<span><strong>対象： </strong>外耳道扁平上皮がん患者1名から採取した末梢血単核細胞、腫瘍原発巓組織、および腫瘍原発巓組織から樹立した細胞株（計3検体）。細胞株は細胞株（SCEACono2）として理化学研究所バイオリソース研究センターに寄託済（<a href=\"https://cellbank.brc.riken.jp/cell_bank/CellInfo/?cellNo=RCB5515&amp;lang=En\">https://cellbank.brc.riken.jp/cell_bank/CellInfo/?cellNo=RCB5515&amp;lang=En</a>）。</span>"
     const text = "外耳道扁平上皮がん患者1名から採取した末梢血単核細胞、腫瘍原発巓組織、および腫瘍原発巓組織から樹立した細胞株 (計3検体) 。細胞株は細胞株 (SCEACono2) として理化学研究所バイオリソース研究センターに寄託済 ([https://cellbank.brc.riken.jp/cell\u00050\u0006bank/CellInfo/?cellNo=RCB5515&lang=En](https://cellbank.brc.riken.jp/cell_bank/CellInfo/?cellNo=RCB5515&lang=En)) 。"

@@ -103,7 +103,7 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     expect(html).not.toMatch(/hum\d{4} の作成を開始/)
   })
 
-  it("研究があれば何も作らず、登録されたデータセットは読ませ、作成済みの研究の節に説明とその研究への経路を持つ", () => {
+  it("研究があれば何も作らず、登録されたデータセットは表示し、作成済みの研究の節に説明とその研究へのリンクがある", () => {
     const html = screen({ holder: { researchId: "r-597", humLabel: "hum0597" } })
     expect(html).not.toContain(t.creating)
     expect(html).not.toContain("DNBSEQ-T7")

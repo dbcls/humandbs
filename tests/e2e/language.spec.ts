@@ -21,7 +21,7 @@ test.describe("P-ANON 言語", () => {
     await expect(page.getByRole("heading", { level: 1, name: "研究一覧" })).toBeVisible()
   })
 
-  test("S-LANG-02: 絞り込んだまま言語を変えても、条件は落ちない", async ({ page }) => {
+  test("S-LANG-02: 絞り込んだまま言語を変えても、条件は解除されない", async ({ page }) => {
     await page.goto("/research")
     const box = page.getByRole("searchbox", { name: "キーワードで研究を検索" })
     await box.fill("cancer")

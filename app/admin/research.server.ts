@@ -8,16 +8,16 @@
  * as well, so there is nothing to rebuild — the research simply stops being
  * anywhere.
  *
- * **What survives is the event**, which is why it carries no foreign key. The
+ * **What survives is the event**, which is why it has no foreign key. The
  * labels are written into its detail before the rows go: afterwards nothing
- * else can say which hum this was.
+ * else can report which hum this was.
  *
- * **A research whose boxes hold files is not deleted.** The files live in the
- * store, which no cascade reaches: the public ones would keep answering at
+ * **A research whose prefixes hold files is not deleted.** The files are defined in the
+ * store, which no cascade reaches: the public ones would keep responding at
  * `/files/hum…/`, and whichever research is given that number next would list
- * them as its own. Each file is deleted from the box screen first, where
- * deleting one is confirmed on its own. The boxes are read before the
- * transaction opens, so a store that does not answer deletes nothing.
+ * them as its own. Each file is deleted from the files screen first, where
+ * deleting one is confirmed on its own. The prefixes are read before the
+ * transaction opens, so a store that does not respond deletes nothing.
  */
 
 import { eq } from "drizzle-orm"
@@ -29,7 +29,7 @@ import { researchHoldsFiles } from "~/files/jobs.server"
 
 export type DeleteResearchResult
   = | { status: "deleted" }
-    /** A box of the research still holds a file. */
+    /** A prefix of the research still holds a file. */
     | { status: "files-remain" }
     | { status: "gone" }
 
@@ -48,8 +48,8 @@ export async function deleteResearch(
     if (held === undefined) return { status: "gone" }
 
     // Only hum labels hang off a research; a dataset id hangs off its dataset.
-    // **One at a time**: a transaction is one connection, so asking for both at
-    // once wins nothing and asks the driver to run a query on a busy client.
+    // **One at a time**: a transaction is one connection, so requesting both at
+    // once wins nothing and requests the driver to run a query on a busy client.
     const pins = await tx
       .select({ label: labelPin.label })
       .from(labelPin)

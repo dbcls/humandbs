@@ -1,6 +1,6 @@
 /**
  * Fills in the review-screen states `db:load-dev-data` has no reason to
- * produce on its own: open comments, marks, unsettled and untranslated fields,
+ * produce on its own: open comments, review presses, unsettled and untranslated fields,
  * and a dataset nobody has pinned an accession to yet.
  *
  * Idempotent (`~/admin/seed-dev-review.server`) — run again after

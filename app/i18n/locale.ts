@@ -1,7 +1,7 @@
 /**
  * Choosing a language for a value.
  *
- * The content type says which of three kinds a field is (`app/content/types.ts`),
+ * The content type reports which of three kinds a field is (`app/content/types.ts`),
  * and each kind is resolved differently. A translated pair falls back to the
  * other language, because a research published with only Japanese still has to
  * render on the English page. A per-language value does not fall back, because
@@ -9,13 +9,13 @@
  * page — and showing one in place of the other would send the reader somewhere
  * that was never claimed to be the translation.
  *
- * **Each language carries its own state**, so resolving is a decision about the
+ * **Each language has its own state**, so resolving is a decision about the
  * wanted language first:
  *
  * - `not-applicable` is an answer, so it is returned as one and never falls back
  * - `unknown` is a question, and it is returned as its own state rather than as
  *   an empty value: the preview is where an unsettled value is meant to be
- *   visible as an empty frame with the comment asking for it. It does not fall
+ *   visible as an empty frame with the comment requesting it. It does not fall
  *   back either — filling that frame from the other language would hide what is
  *   being asked. A public page never sees one, because the projection has
  *   already turned it into an empty value that falls back like any other
@@ -27,7 +27,7 @@
  * describes.
  *
  * **Not every pair of languages is content.** Cached values from upstream (a
- * controlled-access usage record) carry whatever languages upstream has and no
+ * controlled-access usage record) have whatever languages upstream has and no
  * state at all, and curators cannot edit them, so nothing marks them as
  * untranslated.
  */
@@ -90,7 +90,7 @@ export function resolveText(text: TranslatedText, locale: Locale): Resolved<stri
 }
 
 /**
- * The same rule for prose, with "empty" meaning no line carries any text. A
+ * The same rule for prose, with "empty" meaning no line has any text. A
  * tree of blank lines reads as nothing having been written, exactly as an empty
  * string does.
  */
@@ -100,7 +100,7 @@ export function resolveRichText(text: TranslatedRichText, locale: Locale): Resol
 
 /**
  * No fallback: the languages of a link are different destinations, not
- * translations. The state is carried out as it is for every other kind of value
+ * translations. The state is passed through as it is for every other kind of value
  * — a URL can be marked unsettled or not applicable per language, and a screen
  * that collapsed both into "no links" would drop the very thing a preview is
  * meant to show.

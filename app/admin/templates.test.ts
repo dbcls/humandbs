@@ -15,7 +15,7 @@ import {
   TYPE_KEY,
 } from "./arbitraries/upstream"
 import { researchContentInput, type DraftInput } from "./form"
-import { initialTake, RESEARCH_TAKE, takePlaces } from "./take"
+import { initialImport, RESEARCH_IMPORT, importFieldPaths } from "./import"
 import {
   applicationInput,
   draDatasetSeed,
@@ -120,7 +120,7 @@ describe("the dataset a JGA registration seeds", () => {
     expect(jgadDatasetSeed(registration, branch, catalogFixture).label).toBe("JGAD000891")
   })
 
-  it("carries no date, because the archive's own is what the page shows", () => {
+  it("has no date, because the archive's own is what the page shows", () => {
     expect(jgadDatasetSeed(registration, branch, catalogFixture).content.releaseDate).toBeNull()
   })
 
@@ -130,7 +130,7 @@ describe("the dataset a JGA registration seeds", () => {
     expect(termsUnder(seed.content.values, ACCESS_KEY)).toEqual(["set-access/controlled-access-type-1"])
   })
 
-  it("writes no access type for an application covering both, which says nothing about one dataset", () => {
+  it("writes no access type for an application covering both, which implies nothing about one dataset", () => {
     const seed = jgadDatasetSeed(registration, { ...branch, dataAccess: 3 }, catalogFixture)
 
     expect(termsUnder(seed.content.values, ACCESS_KEY)).toEqual([])
@@ -142,7 +142,7 @@ describe("the dataset a JGA registration seeds", () => {
     expect(termsUnder(seed.content.values, ACCESS_KEY)).toEqual([])
   })
 
-  it("carries one experiment, which is what a published dataset holds four times in five", () => {
+  it("has one experiment, which is what a published dataset holds four times in five", () => {
     expect(jgadDatasetSeed(registration, branch, catalogFixture).content.experiments).toHaveLength(1)
   })
 
@@ -172,7 +172,7 @@ describe("the dataset a JGA registration seeds", () => {
       : null).toEqual([[null, null], [null, null]])
   })
 
-  it("rolls a code up until the vocabulary answers, which is what ICD-10-CM needs", () => {
+  it("rolls a code up until the vocabulary responds, which is what ICD-10-CM needs", () => {
     // The classification cannot spell `E110A`; `E110` is what stands for it.
     const seed = jgadDatasetSeed(registration, { ...branch, icd10: "E110A" }, catalogFixture)
 
@@ -180,7 +180,7 @@ describe("the dataset a JGA registration seeds", () => {
       .toEqual([["set-disease/E110"]])
   })
 
-  it("makes the field unsettled for a disease the catalog has no term for, and names the value against that field", () => {
+  it("makes the field unsettled for a disease the catalog has no term for, and identifies the value against that field", () => {
     const unknown = { ...branch, icd10: "Z999" }
     const seed = jgadDatasetSeed(registration, unknown, catalogFixture)
     const experiment = seed.content.experiments[0]
@@ -221,7 +221,7 @@ describe("the dataset a JGA registration seeds", () => {
     expect(seed.dropped).toContainEqual(expect.objectContaining({ value: "Exome sequencing", at: null }))
   })
 
-  it("does not offer the title to the methods when there is no assay: a title never names one", () => {
+  it("does not offer the title to the methods when there is no assay: a title never identifies one", () => {
     const seed = jgadDatasetSeed({ ...registration, datasetType: "" }, branch, catalogFixture)
 
     expect(termsUnder(seed.content.experiments[0]?.values ?? [], METHOD_KEY)).toEqual([])
@@ -273,14 +273,14 @@ describe("the dataset a DRA submission seeds", () => {
     expect(termsUnder(seed.content.values, ACCESS_KEY)).toEqual(["set-access/unrestricted-access"])
   })
 
-  it("carries one experiment per strategy, not one per library", () => {
+  it("has one experiment per strategy, not one per library", () => {
     const seed = draDatasetSeed(submission, null, catalogFixture)
 
     expect(seed.content.experiments.map((one) => one.label))
       .toEqual([{ state: "value", value: "WGS" }, { state: "value", value: "RNA-Seq" }])
   })
 
-  it("writes the instrument models the catalog knows and names the rest", () => {
+  it("writes the instrument models the catalog knows and identifies the rest", () => {
     const seed = draDatasetSeed(submission, null, catalogFixture)
 
     const experiment = seed.content.experiments[0]
@@ -326,7 +326,7 @@ describe("the dataset a DRA submission seeds", () => {
     expect(draDatasetSeed(empty, null, catalogFixture).content.experiments).toHaveLength(1)
   })
 
-  it("carries no date, because the archive's own is what the page shows", () => {
+  it("has no date, because the archive's own is what the page shows", () => {
     expect(draDatasetSeed(submission, null, catalogFixture).content.releaseDate).toBeNull()
   })
 })
@@ -347,19 +347,19 @@ describe("an application laid over a draft", () => {
 
   it("differs from the draft only where the application states something", () => {
     const mine = drafted()
-    const places = takePlaces(RESEARCH_TAKE, mine, applicationInput(mine, branch))
+    const places = importFieldPaths(RESEARCH_IMPORT, mine, applicationInput(mine, branch))
     expect(places).toEqual(["title", "summary.aims"])
   })
 
   /** 取り込みの動機が「申請が更新された」なので、既定は申請の側になる。 */
-  it("opens the face at the application, keeping the draft where the application is blank", () => {
+  it("opens the form at the application, keeping the draft where the application is blank", () => {
     const mine = drafted()
-    const written = initialTake(RESEARCH_TAKE, mine, applicationInput(mine, { ...branch, aimsJa: "" }))
+    const written = initialImport(RESEARCH_IMPORT, mine, applicationInput(mine, { ...branch, aimsJa: "" }))
     expect(written.content.title.ja).toEqual({ state: "value", text: "ゲノム解析による疾患研究" })
     expect(written.content.summary.aims.ja).toEqual({ state: "value", text: "下書きの目的" })
   })
 
-  it("carries the rest of the draft across untouched", () => {
+  it("passes the rest of the draft across untouched", () => {
     const mine = drafted()
     const laid = applicationInput(mine, { ...branch, titleJa: "新しい題目" })
     expect(laid.content.datasetIds).toEqual(["kept-1", "kept-2"])
@@ -367,7 +367,7 @@ describe("an application laid over a draft", () => {
     expect(laid.content.summary.url).toEqual(mine.content.summary.url)
   })
 
-  it("adds the investigator after the draft's providers, unless the draft already names them", () => {
+  it("adds the investigator after the draft's providers, unless the draft already identifies them", () => {
     const empty: DraftInput = { content: { ...drafted().content, dataProviders: [] } }
     const added = applicationInput(empty, branch).content.dataProviders
     expect(added.map((one) => one.name.ja.text)).toEqual(["田中 太郎"])

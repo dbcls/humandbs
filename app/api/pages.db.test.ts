@@ -21,7 +21,7 @@ import {
 /**
  * These go through the same functions the route modules call, against the
  * development database. What they are here for is the negative side of the
- * rules: nothing unpublished reaches an answer through any of the four ways in,
+ * rules: nothing unpublished reaches an answer through any of the four endpoints,
  * and the three ways of reaching one object agree about what it is.
  */
 const db = getDb()
@@ -76,8 +76,8 @@ async function lines(answer: Response): Promise<Record<string, unknown>[]> {
   return text.split("\n").filter(Boolean).map((line) => JSON.parse(line) as Record<string, unknown>)
 }
 
-describe("what the JSON API is allowed to answer with", () => {
-  it("does not answer for a research that has never been published", async () => {
+describe("what the JSON API is allowed to respond with", () => {
+  it("does not respond for a research that has never been published", async () => {
     await createResearch("hum0001")
     await rebuildSearchDocs(db)
 
@@ -85,7 +85,7 @@ describe("what the JSON API is allowed to answer with", () => {
     expect(answer.status).toBe(404)
   })
 
-  it("answers a label nobody pinned exactly as it answers an unpublished one", async () => {
+  it("responds to a label nobody pinned exactly as it responds to an unpublished one", async () => {
     await createResearch("hum0001")
     await rebuildSearchDocs(db)
 
@@ -94,7 +94,7 @@ describe("what the JSON API is allowed to answer with", () => {
     expect(await body(unpublished)).toEqual(await body(absent))
   })
 
-  it("says why it refused in a sentence that does not name the label", async () => {
+  it("reports why it refused in a sentence that does not name the label", async () => {
     // `instance` echoes the path the caller wrote, which tells them nothing they
     // did not already know. The sentence is fixed per kind of object, so two
     // refusals are the same refusal.
@@ -104,7 +104,7 @@ describe("what the JSON API is allowed to answer with", () => {
     expect(problem.instance).toBe("/api/research/hum0001")
   })
 
-  it("does not answer for a version that was withdrawn", async () => {
+  it("does not respond for a version that was withdrawn", async () => {
     const researchId = await createResearch("hum0001")
     await publish(researchId, 1, [])
     await publish(researchId, 2, [])
@@ -159,7 +159,7 @@ describe("the three ways of reaching one object", () => {
     expect(bulk).toEqual(entry)
   })
 
-  it("answers a superseded label without redirecting, under the current one", async () => {
+  it("responds to a superseded label without redirecting, under the current one", async () => {
     const researchId = await createResearch("hum0001")
     await db.insert(s.labelPin)
       .values({ kind: "hum", label: "hum0999", researchId, isPrimary: false })
@@ -173,7 +173,7 @@ describe("the three ways of reaching one object", () => {
 })
 
 describe("the spelling of an address", () => {
-  it("answers a label written in another case under the pinned spelling", async () => {
+  it("responds to a label written in another case under the pinned spelling", async () => {
     const researchId = await createResearch("hum0001")
     const datasetId = await createDataset(researchId, "JGAD000001")
     await publish(researchId, 1, [datasetId])
@@ -217,7 +217,7 @@ describe("every answer", () => {
     }
   })
 
-  it("says which of the two formats it is", async () => {
+  it("reports which of the two formats it is", async () => {
     expect((await apiBulk("research")).headers.get("content-type"))
       .toBe("application/x-ndjson; charset=utf-8")
     expect((await researchEntry(get("/x"), "hum9999", "latest")).headers.get("content-type"))
@@ -244,7 +244,7 @@ describe("the correspondence supplied to DDBJ Search", () => {
     expect(rows.map((row) => row.identifier)).toEqual(["JGAD000001"])
   })
 
-  it("answers for that accession the same as for one nobody has heard of", async () => {
+  it("responds for that accession the same as for one nobody has heard of", async () => {
     await withUpstream()
     const held = await body(await dblinkEntry(get("/x"), "jga-dataset", "JGAD000002")) as {
       dbXrefs: unknown[]
@@ -256,7 +256,7 @@ describe("the correspondence supplied to DDBJ Search", () => {
     expect(held.dbXrefs).toEqual(absent.dbXrefs)
   })
 
-  it("reports the label whose address answers, not the one upstream typed", async () => {
+  it("reports the label whose address responds, not the one upstream typed", async () => {
     const researchId = await createResearch("hum0001")
     await db.insert(s.labelPin)
       .values({ kind: "hum", label: "hum0O01", researchId, isPrimary: false })
@@ -275,7 +275,7 @@ describe("the correspondence supplied to DDBJ Search", () => {
   })
 })
 
-describe("what apiSearch answers about its own parameters", () => {
+describe("what apiSearch responds about its own parameters", () => {
   async function problemType(answer: Response): Promise<{ status: number, type: string }> {
     expect(answer.headers.get("content-type")).toBe("application/problem+json; charset=utf-8")
     const problem = await body(answer) as { status: number, type: string }
@@ -316,8 +316,8 @@ describe("what apiSearch answers about its own parameters", () => {
 
   /**
    * Relevance is not an ordering here. A score is only defined for a query
-   * carrying a full-text word, so an ordering built on it would come and go
-   * with the shape of the query — and a client that asks for one it cannot have
+   * with a full-text word, so an ordering built on it would come and go
+   * with the shape of the query — and a client that requests one it cannot have
    * hears so rather than being handed a different one.
    */
   it("refuses sort=relevance, whichever query it arrives with", async () => {
@@ -388,10 +388,10 @@ describe("what apiSearch answers about its own parameters", () => {
  * The usage records are a cache of an upstream table, and the key that matches
  * a cached row to that table is the one column in it no reader may see.
  * Types cannot hold that: the column is there and the projection simply has
- * to not carry it, so this is what says it does not.
+ * to not have it, so this is what reports it does not.
  */
 describe("the usage project a cached usage record came from", () => {
-  it("appears in no answer, though the row it came from carries it", async () => {
+  it("appears in no answer, though the row it came from has it", async () => {
     const researchId = await createResearch("hum0001")
     await publish(researchId, 1, [])
     await db.insert(s.cauEntry).values({

@@ -1,16 +1,16 @@
 /**
- * Unsent work, and the way off a screen that asks before losing it.
+ * Unsent work, and the way off a screen that requests before losing it.
  *
  * **One place holds who has unsent work, and one guard reads it.** A screen
  * may hold several forms at once — an alert per language, a language per
  * article, a row's panel over a table — and the router takes one blocker at a
- * time; so each form says here whether it is holding anything, and the guard
- * standing in the area's layout is the one thing that asks the router to wait.
+ * time; so each form shows here whether it is holding anything, and the guard
+ * shown in the area's layout is the one thing that requests the router to wait.
  *
  * **The guard reads the live answer, not a rendered one.** Sending a form is a
  * navigation too, and the form lets go of its hold in the same event that
  * sends it; a blocker holding a value captured at the last render would still
- * stop the save. Reading the set itself at the moment of asking means letting
+ * stop the save. Reading the set itself at the moment of requesting means letting
  * go takes effect before the router looks.
  *
  * **Two ways off, two askers.** A way inside the area is a router navigation
@@ -26,7 +26,7 @@ import { messagesFor } from "~/i18n/messages"
 
 const held = new Set<string>()
 
-/** What one form (or one editing screen) says about itself. Idempotent. */
+/** What one form (or one editing screen) shows about itself. Idempotent. */
 export function holdUnsaved(id: string, dirty: boolean): void {
   if (dirty) held.add(id)
   else held.delete(id)
@@ -63,7 +63,7 @@ function askBeforeUnload(event: BeforeUnloadEvent): void {
 /**
  * Stands once, in the management area's layout. Draws nothing until a way
  * off the screen has been taken with unsent work behind it; then the panel,
- * whose way out puts the reader back where they were.
+ * whose cancel button puts the reader back where they were.
  */
 export function LeaveGuard() {
   const t = messagesFor("ja").admin.leave

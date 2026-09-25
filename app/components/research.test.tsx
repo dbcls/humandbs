@@ -19,7 +19,7 @@ import { ResearchBody, ResearchListTable, ResearchVersionPage, runsLong } from "
 /**
  * The download section is the one part of this page that comes from outside the
  * portal, so it is the one part that has to be able to be absent. **A store that
- * did not answer arrives as an empty listing**, and an empty listing draws no
+ * did not respond arrives as an empty listing**, and an empty listing draws no
  * section at all — the rest of the page does not depend on the store, and
  * losing it because a bucket was unreachable would be the wrong trade.
  */
@@ -74,11 +74,11 @@ function renderPreview(links: LinksView): string {
 }
 
 describe("the research page", () => {
-  it("leaves the download section out when the box holds nothing to offer", () => {
+  it("leaves the download section out when the prefix holds nothing to offer", () => {
     expect(render(NOTHING)).not.toContain("ダウンロード")
   })
 
-  it("draws the section, with the range within the whole box rather than the page", () => {
+  it("draws the section, with the range within the whole prefix rather than the page", () => {
     const html = render({
       rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
       total: 101,
@@ -160,7 +160,7 @@ describe("the dataset column of the download list", () => {
     expect(downloadCells(html)[0]?.[1]).toBe("")
   })
 
-  it("names a dataset without a label the way the dataset table does, and leads where the preview says", () => {
+  it("names a dataset without a label the way the dataset table does, and leads where the preview shows", () => {
     const html = withDatasets(
       [{ ...ROW, id: "d1", label: "NHA000001" }, { ...ROW, id: "d2", label: "" }],
       [{ name: "a.zip", size: 1, isPublic: false, datasets: [1] }],
@@ -172,7 +172,7 @@ describe("the dataset column of the download list", () => {
     expect(cell).toContain("href=\"/preview/x/dataset/d2\"")
   })
 
-  it("cuts a long run of datasets short, the way every dataset cell does", () => {
+  it("truncates a long run of datasets, the way every dataset cell does", () => {
     const datasets = Array.from({ length: 5 }, (_, at) => ({ ...ROW, id: `d${at}`, label: `NHA00000${at + 1}` }))
     const html = withDatasets(datasets, [{ name: "a.zip", size: 1, isPublic: true, datasets: [0, 1, 2, 3, 4] }])
 
@@ -181,10 +181,10 @@ describe("the dataset column of the download list", () => {
 })
 
 /**
- * A URL carries the same four states as any other value on its way to a
+ * A URL has the same four states as any other value on its way to a
  * screen: settled information, an open question, or an answer with content.
  */
-describe("the state a links value carries to the page", () => {
+describe("the state a links value passes to the page", () => {
   it("draws a not-applicable URL as the not-applicable notice on the public page", () => {
     const html = render(NOTHING, { state: "not-applicable" })
 
@@ -231,18 +231,18 @@ function field(text: string) {
 
 /**
  * What has happened to a research since it was published, as against what the
- * research says about itself. The distinction decides whether a section is
+ * research shows about itself. The distinction decides whether a section is
  * drawn at all when it holds nothing.
  */
 describe("the record of who has used the controlled access data", () => {
-  it("keeps the section when nobody has used it yet, and says so", () => {
+  it("keeps the section when nobody has used it yet, and shows it", () => {
     const html = renderWith({ cau: [] })
 
     expect(html).toContain("制限公開データの利用者一覧")
     expect(html).toContain("制限公開データの利用実績はありません")
   })
 
-  it("addresses each dataset it names, so a row leads to what was used", () => {
+  it("addresses each dataset it identifies, so a row leads to what was used", () => {
     const html = renderWith({ cau: [usage(["JGAD000001"])] })
 
     expect(html).toContain("href=\"/dataset/JGAD000001\"")
@@ -263,7 +263,7 @@ describe("the record of who has used the controlled access data", () => {
  * A grant is read from the body that funded it inwards: the funder names the
  * programme, the programme names the project, and the number identifies it.
  */
-describe("what a grant says, in the order it says it", () => {
+describe("what a grant shows, in the order it shows it", () => {
   it("names the funder, then the project, then its number", () => {
     const html = renderWith({
       grants: [{
@@ -313,10 +313,10 @@ describe("the row of the research listing", () => {
     }])
     return renderToStaticMarkup(<Stub initialEntries={["/admin"]} />)
   }
-  /** Header cells, and not the `<thead>` they stand in. */
+  /** Header cells, and not the `<thead>` they are shown in. */
   const headers = (html: string): number => (html.match(/<th[\s>]/g) ?? []).length
 
-  it("is a way into the research and its datasets on the public listing, with the cart beside it", () => {
+  it("is a link into the research and its datasets on the public listing, with the cart beside it", () => {
     const html = drawn(false)
     expect(html).toContain("href=\"/research/hum0001\"")
     expect(html).toContain("href=\"/dataset/JGAD000001\"")
@@ -378,7 +378,7 @@ describe("the body beside the form", () => {
 })
 
 /**
- * A section stands whether or not the research has anything to put in it: once
+ * A section remains whether or not the research has anything to put in it: once
  * it is gone a reader cannot tell "none" from "no such section", and every
  * research reads in the same order.
  */
@@ -387,13 +387,13 @@ describe("a section with nothing in it", () => {
   const HEADINGS = [t.dataProvider, t.researchProjects, t.grants, t.relatedPublications]
   const SENTENCES = [t.noDataProviders, t.noResearchProjects, t.noGrants, t.noRelatedPublications]
 
-  it("stands on the page, and says in a sentence that nothing is registered", () => {
+  it("is shown on the page, and shows in a sentence that nothing is registered", () => {
     const html = render(NOTHING)
     for (const heading of HEADINGS) expect(html).toContain(heading)
     for (const sentence of SENTENCES) expect(html).toContain(sentence)
   })
 
-  it("stands in the share preview and beside the form as well", () => {
+  it("is shown in the share preview and beside the form as well", () => {
     const beside = renderToStaticMarkup(<ResearchBody view={view(NOTHING)} locale="ja" writtenOnly />)
     for (const html of [renderPreview(NO_LINKS), beside]) {
       for (const sentence of SENTENCES) expect(html).toContain(sentence)
@@ -468,10 +468,10 @@ describe("an ID in a table", () => {
   })
 })
 
-describe("研究概要の値が次の段へ続いてよいか", () => {
+describe("研究概要の値が段組みの次の列へ続いてよいか", () => {
   const plain = (length: number) => ({ state: "plain" as const, text: "あ".repeat(length), untranslated: false })
 
-  it("400 字から続いてよく、399 字までは 1 つの段に収める", () => {
+  it("400 字から続いてよく、399 字までは 1 つの列に収める", () => {
     expect(runsLong(plain(399))).toBe(false)
     expect(runsLong(plain(400))).toBe(true)
   })

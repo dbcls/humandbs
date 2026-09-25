@@ -20,7 +20,7 @@ export function isShareOpen(policy: SharePolicy, now: Date): boolean {
   return policy.expiresAt === null || policy.expiresAt.getTime() > now.getTime()
 }
 
-/** Enabled, but the date has gone by — a different thing to say than "private". */
+/** Enabled, but the date has gone by — a different thing to report than "private". */
 export function isShareExpired(policy: SharePolicy, now: Date): boolean {
   return policy.enabled && !isShareOpen(policy, now)
 }

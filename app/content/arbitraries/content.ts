@@ -46,7 +46,7 @@ const dateArb = fc.option(fc.constantFrom("2020-01-01", "2024-12-31"), { nil: nu
  * All three states, so that dropping one is visible and keeping two is checked.
  * Holding a value is weighted because a translated pair draws twice: with three
  * equal states the two sides would both hold one in a ninth of the samples, and
- * the laws about untranslated pairs need both sides settled to say anything.
+ * the laws about untranslated pairs need both sides settled to report anything.
  */
 export function slotArb<T>(value: fc.Arbitrary<T>): fc.Arbitrary<Slot<T>> {
   return fc.oneof(
@@ -69,7 +69,7 @@ export const translatedTextArb: fc.Arbitrary<TranslatedText> = fc.record({
 
 /**
  * A name the listing puts in its provider column. **Never blank in both
- * languages**: an empty list is what says "the research's own providers", so an
+ * languages**: an empty list is what means "the research's own providers", so an
  * element holding nothing is not content the save path stores
  * (`app/admin/form.server.ts` の `listingProvider`). Waiting on an answer is a
  * different thing and is drawn like everywhere else.
@@ -121,7 +121,7 @@ export const localizedLinksArb: fc.Arbitrary<LocalizedLinks> = fc.record({
 
 /**
  * `high`, when drawn, is a width's upper end: **never below `value`**, which is
- * the one law a `NumberValue` carries on its own shape rather than on how it is
+ * the one law a `NumberValue` has on its own shape rather than on how it is
  * used. `inputHigh` is drawn the same amount above `inputValue`, so the two
  * ends move together the way `value` and `inputValue` already do.
  */
@@ -144,7 +144,7 @@ const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
 /**
  * One disease. **Terms and names are drawn independently**, because a value
  * with no term and one with no name in a language are both ordinary states the
- * projections have to answer for.
+ * projections have to account for.
  */
 const diseaseValueArb: fc.Arbitrary<DiseaseValue> = fc.record({
   termIds: fc.array(idArb, { maxLength: 2 }),

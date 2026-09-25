@@ -6,13 +6,13 @@ import type { Route } from "./+types/cart-rows"
 /**
  * The rows for what the cart is holding, fetched by the cart's own page.
  *
- * **The cart is in the browser, and the browser is what asks.** The page used to
- * carry the collection in its address so that the server could draw the table
+ * **The cart is in the browser, and the browser is what requests.** The page used to
+ * have the collection in its address so that the server could draw the table
  * from it, which put a hundred accessions in the address bar for what is a
  * private, half-finished errand. The accessions come here in a request the
  * reader never sees instead, and `/cart` stays `/cart`.
  *
- * It answers the same shape as the listing rows because it is the same query
+ * It responds with the same shape as the listing rows because it is the same query
  * (`cartRows`): the set of what is published comes from the search rows, so a
  * dataset that has been withdrawn simply has no row.
  *

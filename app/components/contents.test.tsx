@@ -21,7 +21,7 @@ function render(element: React.ReactElement): string {
 
 /**
  * The state of one language down a listing is the part every row's state is
- * drawn with, so it stands in the same one-line box (`base.tsx` の `Stated`)
+ * drawn with, so it is shown in the same one-line box (`base.tsx` の `Stated`)
  * — a copy of the pair left on the baseline stretched the row and moved every
  * cell in it up.
  */
@@ -40,14 +40,14 @@ describe("StateCell", () => {
 /**
  * The one thing the shared panel has to hold whichever screen draws it: **the
  * box is in the panel, not on the page.** A screen that showed the box beside
- * the way in would be back to the two forms the panel was made to close.
+ * the trigger would be back to the two forms the panel was made to close.
  */
 describe("SlugEditor", () => {
   const drawn = render(
     <SlugEditor locale="ja" intent="rename" name="slug" value="committee-1" hint="規則" />,
   )
 
-  it("入口は警告の見た目の 1 つのボタンで、ラベルは「slug の編集」", () => {
+  it("編集を開くのは警告の見た目の 1 つのボタンで、ラベルは「slug の編集」", () => {
     expect(drawn.match(/<button/g)?.length).toBe(1)
     expect(drawn).toContain("slug の編集")
     expect(drawn).toMatch(/<button[^>]*class="[^"]*danger/)
@@ -83,7 +83,7 @@ describe("the lines a save refused", () => {
     ],
   }
 
-  it("stand under the box of the language they are in, each with its line, what is wrong and the way there", () => {
+  it("are shown under the box of the language they are in, each with its line, what is wrong and the way there", () => {
     const html = render(
       <LocaleEditors editors={[editor("ja"), editor("en")]} locale="ja" remember="document:x" result={refused} />,
     )
@@ -121,7 +121,7 @@ describe("the lines a save refused", () => {
     expect(list).not.toContain("三行目")
     expect(list).not.toContain("<code")
     // The way there is drawn as a control in a line: outlined, at the row size,
-    // carrying the glyph for going to a place in the same document.
+    // with the glyph for going to a place in the same document.
     expect(first).toMatch(/<button[^>]*class="[^"]*border-brand[^"]*"[^>]*><svg[^>]*>[\s\S]*?<\/svg>その行へ/)
     expect(first).not.toMatch(/<button[^>]*class="[^"]*border-transparent[^"]*"[^>]*>/)
   })
@@ -160,7 +160,7 @@ describe("the lines a save refused", () => {
  * save, which Ctrl+S finds by the form's id (`ArticleTools`).
  */
 describe("the languages' forms", () => {
-  it("carry their own save at the foot, right of the publish control, findable by the form's id", () => {
+  it("have their own save at the foot, right of the publish control, findable by the form's id", () => {
     const formId = articleFormId("document:x", "ja")
     const html = render(
       <LocaleEditors editors={[editor("ja", { published: true })]} locale="ja" remember="document:x" />,
@@ -177,7 +177,7 @@ describe("the languages' forms", () => {
     expect(html).toContain("公開中")
   })
 
-  it("の保存は、打つまで押せず、打つと accent になる — form の外にあるものではないので form 自身の状態を読む", () => {
+  it("保存は入力するまで押せず、入力すると accent になる — form の外にあるものではないので form 自身の状態を読む", () => {
     const html = render(<LocaleEditors editors={[editor("ja")]} locale="ja" remember="document:x" />)
     const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"))
     const save = form.slice(form.indexOf("value=\"save\"") - 400, form.indexOf("value=\"save\""))
@@ -188,7 +188,7 @@ describe("the languages' forms", () => {
     expect(form).not.toMatch(/<span class="col-start-1 row-start-1[^"]*">未保存の変更があります/)
   })
 
-  it("keep publishing inside the form — it is pressed back and forth, not on the way out of the box", () => {
+  it("keep publishing inside the form — it is pressed back and forth, not on the way out of the dialog", () => {
     const published = render(
       <LocaleEditors editors={[editor("ja", { published: true })]} locale="ja" remember="document:x" />,
     )
@@ -200,13 +200,13 @@ describe("the languages' forms", () => {
     expect(unpublished).toContain("value=\"publish\"")
   })
 
-  it("タイトルの欄だけ必須のマークを持ち、HTML の required は置かない — 断るのは server", () => {
+  it("タイトルの欄だけに必須のマークがあり、HTML の required は付けない — 拒否するのは server", () => {
     const html = render(<LocaleEditors editors={[editor("ja")]} locale="ja" remember="document:x" />)
 
     const title = html.slice(html.indexOf("タイトル"), html.indexOf("</label>"))
     expect(title).toContain("<span aria-hidden=\"true\" class=\"ml-1 text-danger\">*</span>")
     expect(title).toContain("<span class=\"sr-only\">必須</span>")
-    // Said once, for the title only: the body's own label carries none of it.
+    // Said once, for the title only: the body's own label has none of it.
     expect(html.match(/必須/g)).toHaveLength(1)
     expect(html).not.toMatch(/<input[^>]*\brequired\b/)
   })
@@ -214,7 +214,7 @@ describe("the languages' forms", () => {
 
 /** `articleFormId` is what both a language's form and Ctrl+S's lookup of its save are built from, so the two cannot disagree. */
 describe("articleFormId", () => {
-  it("記事とお知らせで別の根を持ち、言語ごとに別の id になる", () => {
+  it("記事とお知らせで別の接頭辞になり、言語ごとに別の id になる", () => {
     expect(articleFormId("document:x", "ja")).not.toBe(articleFormId("document:x", "en"))
     expect(articleFormId("document:x", "ja")).not.toBe(articleFormId("news:x", "ja"))
   })
@@ -229,7 +229,7 @@ describe("leftLanguageOf", () => {
     expect(leftLanguageOf({ left: "form-ja", showing: "both" })).toBe("ja")
   })
 
-  it("編集の言語が右だけにあるとき、左の Ctrl+S は宛先を持たない", () => {
+  it("編集の言語が右だけにあるとき、左の Ctrl+S には保存する form が無い", () => {
     expect(leftLanguageOf({ left: "page", showing: "both" })).toBeNull()
   })
 
@@ -244,11 +244,11 @@ describe("leftLanguageOf", () => {
 })
 
 /**
- * The tools row itself holds the pane switch and nothing that saves — each
- * language's save stands at the foot of its own form.
+ * The toolbar itself holds the pane switch and nothing that saves — each
+ * language's save is shown at the foot of its own form.
  */
 describe("ArticleTools", () => {
-  it("切替だけを持ち、保存は 1 つも立てない", () => {
+  it("切替だけがあり、保存ボタンは 1 つも置かない", () => {
     const html = render(<ArticleTools panesControl={<span>SWITCH</span>} leftFormId={null} />)
     expect(html).toContain("SWITCH")
     expect(html).not.toContain("value=\"save\"")
@@ -261,12 +261,12 @@ describe("an announcement's date, seen from its languages' forms", () => {
   const ahead = { dated: true, ahead: true }
   const arrived = { dated: true, ahead: false }
 
-  it("keeps publishing shut while the item is undated, and says why", () => {
+  it("keeps publishing shut while the item is undated, and shows why", () => {
     const html = render(
       <LocaleEditors editors={[editor("ja")]} locale="ja" remember="news:x" publishing={undated} />,
     )
     // The whole tag: the attributes come in the order React writes them, and
-    // `disabled` stands after the intent rather than before it.
+    // `disabled` is shown after the intent rather than before it.
     const at = html.indexOf("value=\"publish\"")
     const publish = html.slice(html.lastIndexOf("<button", at), html.indexOf(">", at) + 1)
     expect(publish).toMatch(/disabled=""/)
@@ -308,7 +308,7 @@ describe("an announcement's date, seen from its languages' forms", () => {
 })
 
 describe("StateCell, for an announcement", () => {
-  it("says 公開予定 for a published language whose date is ahead, and nothing new otherwise", () => {
+  it("shows 公開予定 for a published language whose date is ahead, and nothing new otherwise", () => {
     expect(render(<StateCell state={{ published: true }} locale="ja" ahead />)).toContain("公開予定")
     expect(render(<StateCell state={{ published: true }} locale="ja" />)).toContain("公開中")
     expect(render(<StateCell state={{ published: false }} locale="ja" ahead />)).toContain("未公開")

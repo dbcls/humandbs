@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest"
 import { calendarDayOf } from "./archive"
 
 /**
- * Upstream answers dates in more than one shape and the portal stores one:
- * a calendar day cut in JST. These are the laws that says holds whatever the
+ * Upstream responds with dates in more than one shape and the portal stores one:
+ * a calendar day cut in JST. These are the laws that reports holds whatever the
  * instant.
  */
 const instants = fc.date({

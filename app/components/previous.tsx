@@ -1,8 +1,8 @@
 /**
- * What the published version says where the draft says something else, set
- * beside what the draft says.
+ * What the published version shows where the draft shows something else, set
+ * beside what the draft shows.
  *
- * The mark exists so that nobody has to hunt for what changed, and it opens to
+ * The indicator exists so that nobody has to hunt for what changed, and it opens to
  * the two values side by side because the next question after "this changed"
  * is always "from what, to what". Each side is marked where it parts from the
  * other — what the published version loses on the left, what the draft adds
@@ -19,11 +19,11 @@ import type { AnchoredValue, RowsView } from "~/public/view.server"
 import { compareRows, type ComparedRow } from "~/review/compare-rows"
 import { afterParts, beforeParts, diffSentences, type DiffPart } from "~/passage-diff"
 
-import { Dialog, MarkButton } from "./base"
+import { Dialog, PanelButton } from "./base"
 import { Flag } from "./flags"
 import { Table, Td } from "./page"
 
-/** One side of one line: its text, or the state it says instead. */
+/** One side of one line: its text, or the state it shows instead. */
 type Side
   = | { state: "value", text: string }
     | { state: "unknown" | "not-applicable" }
@@ -37,19 +37,19 @@ export interface CompareRow {
 }
 
 /**
- * The mark, and the comparison it opens.
+ * The indicator, and the comparison it opens.
  *
- * **The mark wears the face of the comment mark beside it** (`base.tsx` の
- * `MarkButton`) — the two stand on one line and are both ways into a panel, and a
+ * **The indicator is styled as the comment button beside it** (`base.tsx` の
+ * `PanelButton`) — the two are shown on one line and are both triggers of a panel, and a
  * badge beside a button read as a state that could not be pressed. The word is
- * in the accent that says "changed" wherever it is said. **Where there is
+ * in the accent that shows "changed" wherever it is said. **Where there is
  * nothing to set side by side** — a list whose difference is which elements it
- * holds — the mark is a badge that opens nothing.
+ * holds — the indicator is a badge that opens nothing.
  */
-function ChangeMark({ locale, fieldLabel, children }: {
+function ChangeIndicator({ locale, fieldLabel, children }: {
   locale: Locale
   fieldLabel?: string
-  /** The comparison the mark opens, or null where there is none to open. */
+  /** The comparison the indicator opens, or null where there is none to open. */
   children: ReactNode
 }) {
   const t = messagesFor(locale)
@@ -59,9 +59,9 @@ function ChangeMark({ locale, fieldLabel, children }: {
 
   return (
     <span className="inline-flex">
-      <MarkButton icon="diff" onClick={() => { setOpen(true) }}>
+      <PanelButton icon="diff" onClick={() => { setOpen(true) }}>
         <span className="text-accent">{t.preview.differsHere}</span>
-      </MarkButton>
+      </PanelButton>
       <Dialog
         title={fieldLabel === undefined ? t.preview.changeHeading : t.preview.fieldChangeHeading(fieldLabel)}
         held={{ open, close: () => { setOpen(false) } }}
@@ -108,16 +108,16 @@ export function linesOf(row: CompareRow): Line[] {
  *
  * **A line is a sentence**, so a paragraph in which one sentence moved is
  * tinted at that sentence and not as a whole, and the sentences around it
- * stand as they were to find one's place by. **A side that changed is tinted
+ * are shown as they were to find one's place by. **A side that changed is tinted
  * as a line, and the pieces that differ a step deeper** — red where the
  * published version loses them, green where the draft gains them — and a
- * line through (or under) what changed says the same without the colour.
+ * line through (or under) what changed shows the same without the colour.
  * **The lines are set close**, at the leading of a code review rather than of
  * a page: a paragraph of ten sentences is ten lines, and at a page's spacing
  * one field's comparison outgrew the window. **The language column is ruled off** from
  * the two sides, so `ja` / `en` read as the name of the lines beside them and
  * not as the first word of the published side. **Both columns are one width**,
- * whichever says more. **A grid, not a table** — a table here is a listing
+ * whichever shows more. **A grid, not a table** — a table here is a listing
  * (`page.tsx` の `Table`), with floors and ceilings on its cells and a rail to
  * scroll along.
  */
@@ -125,7 +125,7 @@ export function CompareTable({ locale, against, after, rows }: {
   locale: Locale
   /** What the left column is (「公開中の v4」「現在の下書き」). */
   against: string
-  /** What the right column is, when it is not the draft being written (a take-in's source). */
+  /** What the right column is, when it is not the draft being written (an import's source). */
   after?: string
   rows: readonly CompareRow[]
 }) {
@@ -214,18 +214,18 @@ export function RowsCompare({ locale, against, before, after }: {
 }
 
 function RowCell({ row, at, text }: { row: ComparedRow, at: number, text: string }) {
-  if (row.kind === "removed") return <del className={LOOK.del.mark}>{text}</del>
-  if (row.kind === "added") return <ins className={LOOK.ins.mark}>{text}</ins>
+  if (row.kind === "removed") return <del className={LOOK.del.highlight}>{text}</del>
+  if (row.kind === "added") return <ins className={LOOK.ins.highlight}>{text}</ins>
   const parts = row.kind === "changed" ? row.parts[at] ?? null : null
   if (parts === null) return <>{text}</>
   const side = (kind: "del" | "ins") => {
-    const Mark = kind
+    const Tag = kind
     const look = LOOK[kind]
     return (
       <div className={`-mx-2 px-2 ${look.line}`}>
         {(kind === "del" ? beforeParts : afterParts)(parts).map((part, index) => part.kind === "same"
           ? <span key={index}>{part.text}</span>
-          : <Mark key={index} className={`rounded ${look.word} ${look.mark}`}>{part.text}</Mark>)}
+          : <Tag key={index} className={`rounded ${look.word} ${look.highlight}`}>{part.text}</Tag>)}
       </div>
     )
   }
@@ -239,15 +239,15 @@ function RowCell({ row, at, text }: { row: ComparedRow, at: number, text: string
 
 /**
  * The two sides' tints, and the line through (or under) what changed — the
- * mark that says the same without the colour. **No `−` / `+` at the head of a
+ * sign that shows the same without the colour. **No `−` / `+` at the head of a
  * line**: the values are prose, and a dash or a plus is as often a character
  * of the value as a sign beside it.
  */
 const LOOK = {
   // The line through is drawn lighter than the words it crosses, so that what
   // was struck can still be read.
-  del: { line: "bg-diff-del", word: "bg-diff-del-word", mark: "line-through decoration-ink/40" },
-  ins: { line: "bg-diff-ins", word: "bg-diff-ins-word", mark: "underline underline-offset-2" },
+  del: { line: "bg-diff-del", word: "bg-diff-del-word", highlight: "line-through decoration-ink/40" },
+  ins: { line: "bg-diff-ins", word: "bg-diff-ins-word", highlight: "underline underline-offset-2" },
 } as const
 
 /**
@@ -269,18 +269,18 @@ function SideCell({ locale, line, kind, edge }: {
   const side = kind === "del" ? line.before : line.after
   const parts = line.parts === null ? null : (kind === "del" ? beforeParts : afterParts)(line.parts)
   const changed = !line.same && side !== null
-  const Mark = kind
+  const Tag = kind
 
   let body: ReactNode = null
   if (side !== null && side.state !== "value") {
     body = <em className="text-ink-muted">{side.state === "unknown" ? states.unsettled : states.notApplicable}</em>
   } else if (side !== null && parts === null) {
-    body = changed ? <Mark className={look.mark}>{side.text}</Mark> : side.text
+    body = changed ? <Tag className={look.highlight}>{side.text}</Tag> : side.text
   } else if (parts !== null) {
     body = parts.map((part, at) => {
       const key = `${at}-${part.kind}`
       if (part.kind === "same") return <span key={key}>{part.text}</span>
-      return <Mark key={key} className={`rounded ${look.word} ${look.mark}`}>{part.text}</Mark>
+      return <Tag key={key} className={`rounded ${look.word} ${look.highlight}`}>{part.text}</Tag>
     })
   }
 
@@ -297,10 +297,10 @@ function sameSide(a: Side, b: Side | null): boolean {
 }
 
 /** On a preview, where both values are the ones the page draws. */
-export function PreviousMark({ locale, value, current, heading, fieldLabel }: {
+export function PreviousIndicator({ locale, value, current, heading, fieldLabel }: {
   locale: Locale
   value: AnchoredValue | undefined
-  /** What the draft says at the same place. */
+  /** What the draft shows at the same place. */
   current: AnchoredValue | undefined
   /** What is being compared against, as the screen words it. */
   heading: string
@@ -321,11 +321,11 @@ export function PreviousMark({ locale, value, current, heading, fieldLabel }: {
     const rows = [{ label: "", before: anchoredSide(value), after: current === undefined ? null : anchoredSide(current) }]
     body = <CompareTable locale={locale} against={against} rows={rows} />
   }
-  return <ChangeMark locale={locale} fieldLabel={fieldLabel}>{body}</ChangeMark>
+  return <ChangeIndicator locale={locale} fieldLabel={fieldLabel}>{body}</ChangeIndicator>
 }
 
 /**
- * The same mark on an editing screen, where a value is a form value rather than
+ * The same indicator on an editing screen, where a value is a form value rather than
  * a rendered one, and the draft's side is what the form holds now.
  */
 export function PreviousLines({ locale, lines, current, heading, fieldLabel, termLabel }: {
@@ -338,9 +338,9 @@ export function PreviousLines({ locale, lines, current, heading, fieldLabel, ter
 }) {
   const rows = lines === null || lines.length === 0 ? null : lineRows(lines, current ?? [], termLabel)
   return (
-    <ChangeMark locale={locale} fieldLabel={fieldLabel}>
+    <ChangeIndicator locale={locale} fieldLabel={fieldLabel}>
       {rows === null ? null : <CompareTable locale={locale} against={againstOf(locale, heading)} rows={rows} />}
-    </ChangeMark>
+    </ChangeIndicator>
   )
 }
 
@@ -351,7 +351,7 @@ function againstOf(locale: Locale, heading: string): string {
 /**
  * The two sides line by line. **Lines pair by position** — a value's lines are
  * its languages in a fixed order, or the rows of a list, and a row only one
- * side has stands against nothing.
+ * side has is shown against nothing.
  */
 export function lineRows(
   before: readonly ShownLine[],
@@ -375,8 +375,8 @@ function lineSide(line: ShownLine, termLabel?: (id: string) => string): Side {
 }
 
 /**
- * What one line says. A value made of identities reads as their labels; one
- * that also carries words of its own — a disease — reads as the words with the
+ * What one line shows. A value made of identities reads as their labels; one
+ * that also has words of its own — a disease — reads as the words with the
  * labels after them, which is how it reads on the page it came from.
  */
 function shownText(line: ShownLine, termLabel?: (id: string) => string): string {

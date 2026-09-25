@@ -78,7 +78,7 @@ async function ready(options: { describe?: boolean } = {}) {
   })
   const made = await createDatasetInDraft(db, { draftId: created.draftId, revision: 2 }, created.researchId)
   if (made.status !== "created") throw new Error(made.status)
-  // An id the portal issued, so that the upstream check has nothing to say
+  // An id the portal issued, so that the upstream check has nothing to report
   // about it: an accession missing from the cache is upstream not knowing it.
   await pinDataset(made.datasetId, "hum0001-NHA001")
   if (options.describe !== false) {
@@ -131,9 +131,9 @@ async function counts() {
 
 describe("publishing a draft", () => {
   it("writes a version and puts it, its research and its datasets into the search rows", async () => {
-    const ground = await ready()
+    const fixture = await ready()
 
-    const outcome = await publish({ draftId: ground.draftId, revision: ground.revision })
+    const outcome = await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     expect(outcome).toEqual({ status: "published", versionNumber: 1 })
     const version = await theVersion()
@@ -146,59 +146,59 @@ describe("publishing a draft", () => {
   })
 
   it("consumes the draft, and keeps the dataset that draft introduced", async () => {
-    const ground = await ready()
+    const fixture = await ready()
 
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
-    expect(await readDraft(db, ground.draftId)).toBeNull()
+    expect(await readDraft(db, fixture.draftId)).toBeNull()
     const dataset = only(await db.select().from(s.dataset))
-    expect(dataset.id).toBe(ground.datasetId)
+    expect(dataset.id).toBe(fixture.datasetId)
     expect(dataset.originDraftId).toBeNull()
   })
 
   it("publishes every dataset the research has, whatever the order names", async () => {
-    const ground = await ready()
+    const fixture = await ready()
     const spare = await createDatasetInDraft(
       db,
-      { draftId: ground.draftId, revision: ground.revision },
-      ground.researchId,
+      { draftId: fixture.draftId, revision: fixture.revision },
+      fixture.researchId,
     )
     if (spare.status !== "created") throw new Error(spare.status)
     await pinDataset(spare.datasetId, "JGAD000002")
     // The order names one of the two. The other is the research's all the same,
-    // so the version carries it — at the end, where what is unnamed stands.
-    const draft = await readDraft(db, ground.draftId)
-    await saveDraftContent(db, { draftId: ground.draftId, revision: draft?.revision ?? 0 }, {
-      content: { ...titled("研究"), datasetIds: [ground.datasetId] },
+    // so the version has it — at the end, where what is unnamed remains.
+    const draft = await readDraft(db, fixture.draftId)
+    await saveDraftContent(db, { draftId: fixture.draftId, revision: draft?.revision ?? 0 }, {
+      content: { ...titled("研究"), datasetIds: [fixture.datasetId] },
     })
 
-    const after = await readDraft(db, ground.draftId)
-    await publish({ draftId: ground.draftId, revision: after?.revision ?? 0 })
+    const after = await readDraft(db, fixture.draftId)
+    await publish({ draftId: fixture.draftId, revision: after?.revision ?? 0 })
 
     const remaining = await db.select({ id: s.dataset.id }).from(s.dataset)
     expect(remaining.map((row) => row.id).toSorted())
-      .toEqual([ground.datasetId, spare.datasetId].toSorted())
+      .toEqual([fixture.datasetId, spare.datasetId].toSorted())
     const version = await theVersion()
     expect(version.content.datasets.map((row) => row.datasetId))
-      .toEqual([ground.datasetId, spare.datasetId])
+      .toEqual([fixture.datasetId, spare.datasetId])
   })
 
-  it("folds the description of every dataset the version lists into the version", async () => {
-    const ground = await ready()
+  it("merges the description of every dataset the version lists into the version", async () => {
+    const fixture = await ready()
 
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     const version = await theVersion()
-    expect(version.content.datasets.map((row) => row.datasetId)).toEqual([ground.datasetId])
-    // The dataset carries an NHA ID, so this publish also gives it the day the
+    expect(version.content.datasets.map((row) => row.datasetId)).toEqual([fixture.datasetId])
+    // The dataset has an NHA ID, so this publish also gives it the day the
     // version is going out on (below).
     expect(await theDescription()).toEqual({ ...described("記述"), releaseDate: RELEASE_DATE })
   })
 
   it("publishes a listed dataset nobody described as an empty one rather than as nothing", async () => {
-    const ground = await ready({ describe: false })
+    const fixture = await ready({ describe: false })
 
-    const outcome = await publish({ draftId: ground.draftId, revision: ground.revision })
+    const outcome = await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     expect(outcome.status).toBe("published")
     expect(await theDescription())
@@ -207,40 +207,40 @@ describe("publishing a draft", () => {
 })
 
 /**
- * The one date the portal is master of. An NHA ID has no archive to ask, and
+ * The one date the portal is master of. An NHA ID has no archive to request, and
  * the day the version goes out is the only day this publish knows.
  */
 describe("the release date an NHA dataset is given", () => {
   it("is the day the version goes out, when the dataset has none of its own", async () => {
-    const ground = await ready()
+    const fixture = await ready()
 
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     expect((await theDescription()).releaseDate).toBe(RELEASE_DATE)
   })
 
   it("is left alone when the administrator set one", async () => {
-    const ground = await ready({ describe: false })
+    const fixture = await ready({ describe: false })
     const saved = await saveDatasetEntry(
       db,
-      { draftId: ground.draftId, datasetId: ground.datasetId, revision: null },
+      { draftId: fixture.draftId, datasetId: fixture.datasetId, revision: null },
       { ...emptyDatasetContent(), releaseDate: "2019-05-05" },
     )
     if (saved.status !== "saved") throw new Error(saved.status)
 
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     expect((await theDescription()).releaseDate).toBe("2019-05-05")
   })
 
-  it("is not given to a dataset an archive answers for", async () => {
+  it("is not given to a dataset an archive accounts for", async () => {
     // A JGAD accession takes both of its dates from the application system, so
     // a date written here would be a second source for the same fact.
-    const ground = await ready()
-    await db.delete(s.labelPin).where(eq(s.labelPin.datasetId, ground.datasetId))
-    await pinDataset(ground.datasetId, "JGAD000001")
+    const fixture = await ready()
+    await db.delete(s.labelPin).where(eq(s.labelPin.datasetId, fixture.datasetId))
+    await pinDataset(fixture.datasetId, "JGAD000001")
 
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     expect((await theDescription()).releaseDate).toBeNull()
   })
@@ -248,34 +248,34 @@ describe("the release date an NHA dataset is given", () => {
 
 describe("a publish that is refused", () => {
   it("writes nothing at all when the revision has moved", async () => {
-    const ground = await ready()
+    const fixture = await ready()
     const before = await counts()
 
-    const outcome = await publish({ draftId: ground.draftId, revision: ground.revision + 1 })
+    const outcome = await publish({ draftId: fixture.draftId, revision: fixture.revision + 1 })
 
     expect(outcome).toEqual({ status: "conflict" })
     expect(await counts()).toEqual(before)
   })
 
   it("writes nothing at all when a label that must be pinned is not", async () => {
-    const ground = await ready()
+    const fixture = await ready()
     await db.delete(s.labelPin).where(eq(s.labelPin.kind, "hum"))
     const before = await counts()
 
-    const outcome = await publish({ draftId: ground.draftId, revision: ground.revision })
+    const outcome = await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     expect(outcome).toEqual({ status: "blocked", blocks: [{ kind: "hum-label-missing" }] })
     expect(await counts()).toEqual(before)
   })
 
   it("writes nothing at all while the listed findings have not been passed", async () => {
-    const ground = await ready({ describe: false })
+    const fixture = await ready({ describe: false })
     const before = await counts()
 
     const outcome = await publishDraft(
       db,
       {
-        at: { draftId: ground.draftId, revision: ground.revision },
+        at: { draftId: fixture.draftId, revision: fixture.revision },
         number: 1,
         releaseDate: RELEASE_DATE,
         acknowledged: false,
@@ -292,21 +292,21 @@ describe("a publish that is refused", () => {
    * Any free number will do, gap or not: the sequence is not promised to be
    * unbroken.
    */
-  it("publishes under a number nothing ever carried", async () => {
-    const ground = await ready()
+  it("publishes under a number nothing ever kept", async () => {
+    const fixture = await ready()
 
-    const outcome = await publish({ draftId: ground.draftId, revision: ground.revision }, 7)
+    const outcome = await publish({ draftId: fixture.draftId, revision: fixture.revision }, 7)
 
     expect(outcome).toEqual({ status: "published", versionNumber: 7 })
     expect((await theVersion()).number).toBe(7)
   })
 
   it("refuses a number below one, and writes nothing", async () => {
-    const ground = await ready()
+    const fixture = await ready()
     const before = await counts()
 
     for (const number of [0, -1, 1.5]) {
-      expect(await publish({ draftId: ground.draftId, revision: ground.revision }, number), String(number))
+      expect(await publish({ draftId: fixture.draftId, revision: fixture.revision }, number), String(number))
         .toEqual({ status: "number-unavailable" })
     }
     expect(await counts()).toEqual(before)
@@ -322,13 +322,13 @@ async function copied(researchId: string): Promise<string> {
 
 describe("publishing under a number a version already holds", () => {
   it("refuses, and writes nothing: a held number is freed by withdrawing, not taken over", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const first = await theVersion()
 
-    const draftId = await copied(ground.researchId)
+    const draftId = await copied(fixture.researchId)
     await saveDraftContent(db, { draftId, revision: 1 }, {
-      content: { ...titled("直した"), datasetIds: [ground.datasetId] },
+      content: { ...titled("直した"), datasetIds: [fixture.datasetId] },
     })
     const before = await counts()
     const outcome = await publish({ draftId, revision: 2 }, 1, first.releaseDate)
@@ -338,33 +338,33 @@ describe("publishing under a number a version already holds", () => {
     expect((await theVersion()).id).toBe(first.id)
   })
 
-  it("carries the descriptions of the version it was copied from, as the draft holds them", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+  it("has the descriptions of the version it was copied from, as the draft holds them", async () => {
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
-    const draftId = await copied(ground.researchId)
+    const draftId = await copied(fixture.researchId)
     await saveDatasetEntry(
       db,
-      { draftId, datasetId: ground.datasetId, revision: 1 },
+      { draftId, datasetId: fixture.datasetId, revision: 1 },
       described("直した記述"),
     )
     await publish({ draftId, revision: 1 }, 2)
 
     // The draft was copied from the version, so the description it holds
-    // already carries the day that version went out.
+    // already has the day that version went out.
     const [second] = await db.select().from(s.researchVersion).where(eq(s.researchVersion.number, 2))
     expect(descriptionOf(only(second?.content.datasets ?? [])))
       .toEqual({ ...described("直した記述"), releaseDate: RELEASE_DATE })
   })
 
-  it("says nothing about a dataset it did not change", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+  it("implies nothing about a dataset it did not change", async () => {
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
-    const draftId = await copied(ground.researchId)
+    const draftId = await copied(fixture.researchId)
     const draft = await readDraft(db, draftId)
     await saveDraftContent(db, { draftId, revision: draft?.revision ?? 0 }, {
-      content: { ...titled("題目だけ直した"), datasetIds: [ground.datasetId] },
+      content: { ...titled("題目だけ直した"), datasetIds: [fixture.datasetId] },
     })
     const after = await readDraft(db, draftId)
     await publish({ draftId, revision: after?.revision ?? 0 }, 2)
@@ -372,7 +372,7 @@ describe("publishing under a number a version already holds", () => {
     const about = await db
       .select({ id: s.event.id })
       .from(s.event)
-      .where(and(eq(s.event.subjectType, "dataset"), eq(s.event.subjectId, ground.datasetId)))
+      .where(and(eq(s.event.subjectType, "dataset"), eq(s.event.subjectId, fixture.datasetId)))
     // One event, from the publish that first described it: the second publish
     // wrote the same description the first one did.
     expect(about).toHaveLength(1)
@@ -391,7 +391,7 @@ describe("a publish racing another administrator", () => {
     }, ms)
   })
 
-  function gate() {
+  function signal() {
     let open = (): void => undefined
     const opened = new Promise<void>((resolve) => {
       open = resolve
@@ -400,17 +400,17 @@ describe("a publish racing another administrator", () => {
   }
 
   it("refuses the same free number to the second of two drafts rather than failing", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
-    const first = await copied(ground.researchId)
-    const second = await copied(ground.researchId)
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
+    const first = await copied(fixture.researchId)
+    const second = await copied(fixture.researchId)
 
     // The first publish is held after it has written its version and before it
     // commits: the search rows it rebuilds are locked here.
-    const held = gate()
-    const locked = gate()
+    const held = signal()
+    const locked = signal()
     const holding = db.transaction(async (tx) => {
-      await tx.select().from(s.searchDoc).where(eq(s.searchDoc.researchId, ground.researchId)).for("update")
+      await tx.select().from(s.searchDoc).where(eq(s.searchDoc.researchId, fixture.researchId)).for("update")
       locked.open()
       await held.opened
     })
@@ -431,53 +431,53 @@ describe("a publish racing another administrator", () => {
     expect(await readDraft(db, second)).not.toBeNull()
   })
 
-  it("does not publish a dataset whose id is taken away while the gate is being checked", async () => {
-    const ground = await ready()
-    const pin = only(await db.select().from(s.labelPin).where(eq(s.labelPin.datasetId, ground.datasetId)))
+  it("does not publish a dataset whose id is taken away while the publish check runs", async () => {
+    const fixture = await ready()
+    const pin = only(await db.select().from(s.labelPin).where(eq(s.labelPin.datasetId, fixture.datasetId)))
 
     // The id is being taken away and has not been committed yet.
-    const held = gate()
-    const deleted = gate()
+    const held = signal()
+    const deleted = signal()
     const unpinning = db.transaction(async (tx) => {
       await tx.delete(s.labelPin).where(eq(s.labelPin.id, pin.id))
       deleted.open()
       await held.opened
     })
     await deleted.opened
-    const publishing = publish({ draftId: ground.draftId, revision: ground.revision })
+    const publishing = publish({ draftId: fixture.draftId, revision: fixture.revision })
     await Promise.race([publishing, pause(200)])
     held.open()
     await unpinning
 
     expect(await publishing).toEqual({
       status: "blocked",
-      blocks: [{ kind: "dataset-id-missing", datasetId: ground.datasetId }],
+      blocks: [{ kind: "dataset-id-missing", datasetId: fixture.datasetId }],
     })
     expect(await db.select().from(s.researchVersion)).toHaveLength(0)
   })
 })
 
 describe("the trail a publish leaves", () => {
-  it("records the version, the datasets it changed, and the gate it was let through", async () => {
-    const ground = await ready({ describe: false })
+  it("records the version, the datasets it changed, and the publish check it was let through", async () => {
+    const fixture = await ready({ describe: false })
 
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     const events = await db
       .select({ action: s.event.action, subjectType: s.event.subjectType, detail: s.event.detail })
       .from(s.event)
     // Consuming a draft by publishing it is not a discard: where it went is
-    // what the version event says.
+    // what the version event has.
     expect(events.map((row) => row.action).toSorted())
-      .toEqual(["pass-publish-gate", "publish-dataset", "publish-version"])
-    const passed = events.find((row) => row.action === "pass-publish-gate")
+      .toEqual(["pass-publish-check", "publish-dataset", "publish-version"])
+    const passed = events.find((row) => row.action === "pass-publish-check")
     expect(passed?.detail).toEqual({ passed: { "empty-dataset": 1 } })
   })
 
   it("names the person who did it rather than the fact that an administrator did", async () => {
-    const ground = await ready()
+    const fixture = await ready()
 
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
 
     const actors = await db.select({ sub: s.event.actorSub }).from(s.event)
     expect(new Set(actors.map((row) => row.sub))).toEqual(new Set([CURATOR.sub]))
@@ -486,8 +486,8 @@ describe("the trail a publish leaves", () => {
 
 describe("taking a version back", () => {
   it("removes it from the search rows and leaves its content as a draft", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const version = await theVersion()
 
     const outcome = await withdrawVersion(db, version.id, CURATOR)
@@ -498,28 +498,28 @@ describe("taking a version back", () => {
 
     const draft = only(await db.select().from(s.researchDraft))
     expect(draft.content.title.ja).toEqual(filled("研究"))
-    expect(draft.content.datasetIds).toEqual([ground.datasetId])
+    expect(draft.content.datasetIds).toEqual([fixture.datasetId])
   })
 
   it("brings the descriptions out with it, one entry each", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const version = await theVersion()
 
     await withdrawVersion(db, version.id, CURATOR)
 
     const entry = only(await db.select().from(s.draftDatasetEntry))
-    expect(entry.datasetId).toBe(ground.datasetId)
+    expect(entry.datasetId).toBe(fixture.datasetId)
     expect(entry.content).toEqual({ ...described("記述"), releaseDate: RELEASE_DATE })
   })
 
   /**
    * The row is gone, so nothing else remembers the number was ever issued —
-   * which is why the draft carries it and why publishing it back is allowed.
+   * which is why the draft keeps it and why publishing it back is allowed.
    */
   it("frees the number for the draft it produced", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const withdrawn = await withdrawVersion(db, (await theVersion()).id, CURATOR)
     if (withdrawn.status !== "withdrawn") throw new Error(withdrawn.status)
 
@@ -529,7 +529,7 @@ describe("taking a version back", () => {
     expect(outcome).toEqual({ status: "published", versionNumber: 1 })
   })
 
-  it("answers gone for a version that is not there", async () => {
+  it("responds gone for a version that is not there", async () => {
     const outcome = await withdrawVersion(db, "00000000-0000-0000-0000-000000000000", CURATOR)
 
     expect(outcome).toEqual({ status: "gone" })
@@ -545,7 +545,7 @@ describe("updating a version", () => {
     return draft
   }
 
-  /** An update names no number: it carries the number of the version it stands in for. */
+  /** An update names no number: it has the number of the version it stands in for. */
   function update(at: { draftId: string, revision: number }) {
     return publishDraft(
       db,
@@ -556,47 +556,47 @@ describe("updating a version", () => {
 
   /** A version out, and the draft it is updated in with its title changed. */
   async function corrected() {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const before = await theVersion()
-    const draft = await updating(ground.researchId, before.id)
+    const draft = await updating(fixture.researchId, before.id)
     const saved = await saveDraftContent(db, { draftId: draft.id, revision: draft.revision }, {
       content: { ...draft.content, title: { ja: filled("直した"), en: filled("直した") } },
     })
     if (saved.status !== "saved") throw new Error(saved.status)
-    return { ...ground, before, at: { draftId: draft.id, revision: saved.revision } }
+    return { ...fixture, before, at: { draftId: draft.id, revision: saved.revision } }
   }
 
   it("puts the draft in the version's place under the same number, and nothing else remains", async () => {
-    const ground = await corrected()
+    const fixture = await corrected()
 
-    const outcome = await update(ground.at)
+    const outcome = await update(fixture.at)
 
     expect(outcome).toEqual({ status: "published", versionNumber: 1 })
     const after = await theVersion()
-    expect(after.id).not.toBe(ground.before.id)
+    expect(after.id).not.toBe(fixture.before.id)
     expect(after.content.title.ja).toEqual(filled("直した"))
-    expect(after.content.datasets.map((row) => row.datasetId)).toEqual([ground.datasetId])
+    expect(after.content.datasets.map((row) => row.datasetId)).toEqual([fixture.datasetId])
     expect(await db.select().from(s.researchDraft)).toEqual([])
   })
 
   it("is recorded as an update of the version, with no withdrawal beside it", async () => {
-    const ground = await corrected()
+    const fixture = await corrected()
 
-    await update(ground.at)
+    await update(fixture.at)
 
     const events = await db.select({ action: s.event.action, detail: s.event.detail }).from(s.event)
     const replaced = events.filter((row) => row.action === "replace-version")
     expect(replaced).toHaveLength(1)
-    expect(replaced[0]?.detail).toMatchObject({ versionNumber: 1, draftId: ground.at.draftId })
+    expect(replaced[0]?.detail).toMatchObject({ versionNumber: 1, draftId: fixture.at.draftId })
     expect(events.filter((row) => row.action === "withdraw-version")).toEqual([])
   })
 
   it("puts the updated content into the search rows in the same transaction", async () => {
-    const ground = await corrected()
+    const fixture = await corrected()
     const before = (await db.select().from(s.searchDoc)).length
 
-    await update(ground.at)
+    await update(fixture.at)
 
     const docs = await db.select({ title: s.searchDoc.title }).from(s.searchDoc)
     expect(docs).toHaveLength(before)
@@ -604,14 +604,14 @@ describe("updating a version", () => {
   })
 
   it("measures against the version it stands in for, not the newest", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const first = await theVersion()
-    const second = await createEmptyDraft(db, ground.researchId)
+    const second = await createEmptyDraft(db, fixture.researchId)
     await saveDraftContent(db, { draftId: second, revision: 1 }, { content: titled("二つ目") })
     const published = await publish({ draftId: second, revision: 2 }, 2)
     if (published.status !== "published") throw new Error(published.status)
-    const draft = await updating(ground.researchId, first.id)
+    const draft = await updating(fixture.researchId, first.id)
 
     const preview = await publishPreview(db, draft.id, NO_PRIVATE_FILES)
 
@@ -622,13 +622,13 @@ describe("updating a version", () => {
   })
 
   it("leaves the other versions where they are", async () => {
-    const ground = await corrected()
-    const second = await createEmptyDraft(db, ground.researchId)
+    const fixture = await corrected()
+    const second = await createEmptyDraft(db, fixture.researchId)
     await saveDraftContent(db, { draftId: second, revision: 1 }, { content: titled("二つ目") })
     const published = await publish({ draftId: second, revision: 2 }, 2)
     if (published.status !== "published") throw new Error(published.status)
 
-    const outcome = await update(ground.at)
+    const outcome = await update(fixture.at)
 
     expect(outcome).toEqual({ status: "published", versionNumber: 1 })
     const versions = await db.select().from(s.researchVersion).orderBy(s.researchVersion.number)
@@ -639,21 +639,21 @@ describe("updating a version", () => {
   })
 
   it("refuses to withdraw the version while its update is open, and writes nothing", async () => {
-    const ground = await corrected()
+    const fixture = await corrected()
     const before = await counts()
 
-    const outcome = await withdrawVersion(db, ground.before.id, CURATOR)
+    const outcome = await withdrawVersion(db, fixture.before.id, CURATOR)
 
     expect(outcome).toEqual({ status: "updating" })
     expect(await counts()).toEqual(before)
-    expect((await theVersion()).id).toBe(ground.before.id)
+    expect((await theVersion()).id).toBe(fixture.before.id)
   })
 
-  it("refuses a draft of its own that names no number, and writes nothing", async () => {
-    const ground = await ready()
+  it("refuses a draft of its own that identifies no number, and writes nothing", async () => {
+    const fixture = await ready()
     const before = await counts()
 
-    const outcome = await update({ draftId: ground.draftId, revision: ground.revision })
+    const outcome = await update({ draftId: fixture.draftId, revision: fixture.revision })
 
     expect(outcome).toEqual({ status: "number-unavailable" })
     expect(await counts()).toEqual(before)
@@ -662,26 +662,26 @@ describe("updating a version", () => {
 
 describe("looking a publish over first", () => {
   it("counts what changes without writing any of it", async () => {
-    const ground = await ready()
+    const fixture = await ready()
     const before = await counts()
 
-    const preview = await publishPreview(db, ground.draftId, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, fixture.draftId, NO_PRIVATE_FILES)
 
     expect(preview?.nextNumber).toBe(1)
     expect(preview?.heldNumbers).toEqual([])
-    expect(preview?.listingAdded).toEqual([ground.datasetId])
+    expect(preview?.listingAdded).toEqual([fixture.datasetId])
     expect(preview?.datasetChanges).toEqual([{
-      datasetId: ground.datasetId,
+      datasetId: fixture.datasetId,
       fields: 0,
       isNew: true,
     }])
     expect(await counts()).toEqual(before)
   })
 
-  it("offers the next number, and names the ones versions hold", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
-    const draftId = await copied(ground.researchId)
+  it("offers the next number, and identifies the ones versions hold", async () => {
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
+    const draftId = await copied(fixture.researchId)
 
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
@@ -690,9 +690,9 @@ describe("looking a publish over first", () => {
   })
 
   it("finds nothing to change in a copy of the newest version", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
-    const draftId = await copied(ground.researchId)
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
+    const draftId = await copied(fixture.researchId)
 
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
@@ -700,24 +700,24 @@ describe("looking a publish over first", () => {
     expect(preview?.listingAdded).toEqual([])
     expect(preview?.listingRemoved).toEqual([])
     expect(preview?.datasetChanges).toEqual([])
-    expect(preview?.gate.findings).toEqual([])
+    expect(preview?.publishCheck.findings).toEqual([])
   })
 
   it("counts a new order of the same datasets as a change", async () => {
-    const ground = await ready()
-    const made = await createDatasetInDraft(db, { draftId: ground.draftId, revision: ground.revision }, ground.researchId)
+    const fixture = await ready()
+    const made = await createDatasetInDraft(db, { draftId: fixture.draftId, revision: fixture.revision }, fixture.researchId)
     if (made.status !== "created") throw new Error(made.status)
     await pinDataset(made.datasetId, "hum0001-NHA002")
-    await publish({ draftId: ground.draftId, revision: ground.revision + 1 })
-    const draftId = await copied(ground.researchId)
+    await publish({ draftId: fixture.draftId, revision: fixture.revision + 1 })
+    const draftId = await copied(fixture.researchId)
     const draft = await readDraft(db, draftId)
     if (draft === null) throw new Error("no copy")
-    expect(draft.content.datasetIds).toEqual([ground.datasetId, made.datasetId])
+    expect(draft.content.datasetIds).toEqual([fixture.datasetId, made.datasetId])
 
     expect((await publishPreview(db, draftId, NO_PRIVATE_FILES))?.reordered).toBe(false)
 
     await saveDraftContent(db, { draftId, revision: draft.revision }, {
-      content: { ...draft.content, datasetIds: [made.datasetId, ground.datasetId] },
+      content: { ...draft.content, datasetIds: [made.datasetId, fixture.datasetId] },
     })
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
@@ -730,22 +730,22 @@ describe("looking a publish over first", () => {
    * Publishing writes a version of its own, so another publish in the meantime
    * cannot have moved what this draft holds — there is no staleness to report.
    */
-  it("says nothing about what another publish did in the meantime", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
-    const behind = await copied(ground.researchId)
+  it("implies nothing about what another publish did in the meantime", async () => {
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
+    const behind = await copied(fixture.researchId)
 
-    const other = await createEmptyDraft(db, ground.researchId)
+    const other = await createEmptyDraft(db, fixture.researchId)
     const otherDraft = await readDraft(db, other)
     await saveDraftContent(db, { draftId: other, revision: otherDraft?.revision ?? 0 }, {
-      content: { ...titled("先に直した"), datasetIds: [ground.datasetId] },
+      content: { ...titled("先に直した"), datasetIds: [fixture.datasetId] },
     })
     const ready2 = await readDraft(db, other)
     await publish({ draftId: other, revision: ready2?.revision ?? 0 }, 2)
 
     const preview = await publishPreview(db, behind, NO_PRIVATE_FILES)
 
-    expect(preview?.gate.findings).toEqual([])
+    expect(preview?.publishCheck.findings).toEqual([])
     expect(preview?.heldNumbers).toEqual([2, 1])
   })
 })
@@ -758,15 +758,15 @@ describe("looking a publish over first", () => {
  * changed.
  */
 describe("a published dataset the draft has not written", () => {
-  it("is carried over as published, and counted as unchanged", async () => {
-    const ground = await ready()
-    await publish({ draftId: ground.draftId, revision: ground.revision })
+  it("is kept over as published, and counted as unchanged", async () => {
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const first = await theDescription()
 
-    const draftId = await createEmptyDraft(db, ground.researchId)
+    const draftId = await createEmptyDraft(db, fixture.researchId)
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
     expect(preview?.datasetChanges).toEqual([])
-    expect(preview?.gate.findings.filter((finding) => finding.kind === "empty-dataset")).toEqual([])
+    expect(preview?.publishCheck.findings.filter((finding) => finding.kind === "empty-dataset")).toEqual([])
 
     const draft = await readDraft(db, draftId)
     await publish({ draftId, revision: draft?.revision ?? 0 }, 2)

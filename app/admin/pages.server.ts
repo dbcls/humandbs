@@ -1,10 +1,10 @@
 /**
  * What the management screens load, and what their forms do.
  *
- * The order is always the same: establish who is asking and what they may do,
+ * The order is always the same: establish who is requesting and what they may do,
  * then read. Nothing here is reachable without a capability, and the two that
- * only read ask for `view-unpublished` while everything that writes asks for
- * `edit-content` — the operation names itself rather than saying "an
+ * only read request `view-unpublished` while everything that writes requests
+ * `edit-content` — the operation names itself rather than indicating "an
  * administrator did it", so a later role would need no new shape.
  *
  * The save path is the one worth reading twice. It refuses in three different
@@ -14,10 +14,10 @@
  * - prose holding a construct the tree cannot express is the author's to fix:
  *   **422**, with the problems attached to the fields they were written in
  * - a revision that no longer matches is somebody else's edit: **409**, with
- *   their version attached so the editor can say which fields moved
+ *   their version attached so the editor can report which fields moved
  *
- * In all three the answer carries no new content for the form. **What was typed
- * stays typed** — the screen decides what to take from the other version, one
+ * In all three the answer has no new content for the form. **What was typed
+ * stays typed** — the screen decides what to import from the other version, one
  * field at a time. Which fields the other version moved is worked out on the
  * screen rather than here, because the comparison is against what the screen
  * was handed when it opened, and only the screen still has that.
@@ -36,8 +36,8 @@ import { convertible } from "~/content/units"
 import type { DatasetContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb, type Executor } from "~/db/client.server"
-import { isUploadableName, type BoxEntry } from "~/files/box"
-import { adminBox, publicBox } from "~/files/listing.server"
+import { isUploadableName, type ListedFile } from "~/files/prefix"
+import { adminListing, publicListing } from "~/files/listing.server"
 import { pendingSwitches, privateNames, switchFiles } from "~/files/jobs.server"
 import { wakeFileRunner } from "~/files/runner.server"
 import { resolveText, type Locale } from "~/i18n/locale"
@@ -81,11 +81,11 @@ import {
 import { researchContentInput, type DraftInput } from "./form"
 import { researchContentOf, saveDraftSchema } from "./form.server"
 import {
-  GATE_FINDING_KINDS,
-  type GateBlock,
-  type GateFinding,
-  type GateFindingKind,
-} from "./gate"
+  PUBLISH_FINDING_KINDS,
+  type PublishBlock,
+  type PublishFinding,
+  type PublishFindingKind,
+} from "./publish-check"
 import { isHumLabel } from "./labels"
 import { issueNhaId, nextNhaId, pinLabel, promotePin, unpinLabel } from "./labels.server"
 import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
@@ -158,7 +158,7 @@ export function badRequest(): never {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** An address that cannot name a row answers as a row that is not there. */
+/** An address that cannot name a row responds as a row that is not there. */
 export function identity(value: string | undefined): string {
   if (value === undefined || !UUID.test(value)) notFound()
   return value
@@ -208,7 +208,7 @@ export interface AdminListView {
   rangeTo: number
 }
 
-/** The page asked for, or the first one when the address says nothing sensible. */
+/** The page asked for, or the first one when the address reports nothing sensible. */
 export function readPage(value: string | null): number {
   const page = Number(value ?? "1")
   return Number.isInteger(page) && page >= 1 ? page : 1
@@ -228,7 +228,7 @@ export async function researchListPage(
 
   // An ordering or a size that is not one of the offered ones is read as none
   // asked for, the way the public listings read theirs: an address arriving
-  // from somewhere else should answer rather than refuse.
+  // from somewhere else should respond rather than refuse.
   const askedSort = url.searchParams.get("sort")
   const sort = isSortKey(askedSort) ? askedSort : DEFAULT_SORT
   const askedOrder = url.searchParams.get("order")
@@ -287,7 +287,7 @@ function resolved(pair: TranslatedText, locale: Locale): string {
 
 /**
  * A version, with what only the research screen's table needs beside it:
- * how many datasets it lists. **Read once here rather than carried on
+ * how many datasets it lists. **Read once here rather than kept on
  * `AdminVersionRow`** — every other screen that touches a version already has
  * its content for its own reasons, and this is the one that does not.
  */
@@ -297,16 +297,16 @@ export interface AdminResearchVersionRow extends AdminVersionRow {
 
 /**
  * A draft's review, widened with what the research screen's table draws
- * beside it: how many datasets it lists and what the publish gate would say.
+ * beside it: how many datasets it lists and what the publish check would report.
  * **The share and the threads stay a `DraftReviewSummary`** — this only adds
  * to it, the way the table only adds two columns to what the row already
  * shows.
  */
 export interface AdminDraftReviewRow extends DraftReviewSummary {
   datasets: number
-  /** What the publish gate would stop. */
+  /** What the publish check would stop. */
   blocks: number
-  /** What the publish gate would ask to confirm. */
+  /** What the publish check would request to confirm. */
   findings: number
 }
 
@@ -315,20 +315,20 @@ export interface AdminResearchPageView {
   researchId: string
   humLabel: string | null
   /**
-   * The ledger's hum labels, each with whether its public box holds anything —
-   * null when the store did not answer for it.
+   * The `label_pin` table's hum labels, each with whether its public prefix holds anything —
+   * null when the store did not respond for it.
    */
   labels: { id: string, label: string, isPrimary: boolean, holdsFiles: boolean | null }[]
   versions: AdminResearchVersionRow[]
   drafts: AdminDraftRow[]
-  /** Whether a link is out there for each draft, what is unanswered, and what its gate says. */
+  /** Whether a link is out there for each draft, what is unanswered, and what its publish check has. */
   reviews: AdminDraftReviewRow[]
-  /** What the box holds. Null when the store did not answer. */
-  box: { count: number, bytes: number } | null
+  /** What the prefix holds. Null when the store did not respond. */
+  fileSummary: { count: number, bytes: number } | null
   /**
-   * Whether any box of the research holds a file — the private one and the
-   * public one of every hum label in the ledger, the boxes deleting the
-   * research is refused over. Null when the store did not answer for one of
+   * Whether any prefix of the research holds a file — the private one and the
+   * public one of every hum label in the `label_pin` table, the prefixes deleting the
+   * research is refused over. Null when the store did not respond for one of
    * them and none that did held anything.
    */
   filesRemain: boolean | null
@@ -350,7 +350,7 @@ export async function researchDetailPage(
 
   const humLabel = view.labels.find((label) => label.isPrimary)?.label ?? null
 
-  // A version being updated carries its draft's row rather than one of its
+  // A version being updated has its draft's row rather than one of its
   // own, so the table's facts for it come from the same draft this gathers
   // for every other one.
   const draftIds = [
@@ -358,32 +358,32 @@ export async function researchDetailPage(
     ...view.versions.flatMap((row) => row.updating === null ? [] : [row.updating.id]),
   ]
 
-  // **Each box is listed once.** The private box and the primary's public one
-  // are what `adminBox` lists for the summary, so what they hold is read off
-  // it; only the retired labels' boxes are listed on their own. A store that
-  // does not answer leaves a fact unknown rather than the page lost — the
+  // **Each prefix is listed once.** The private prefix and the primary's public one
+  // are what `adminListing` lists for the summary, so what they hold is read off
+  // it; only the retired labels' prefixes are listed on their own. A store that
+  // does not respond leaves a fact unknown rather than the page lost — the
   // controls it would close stay open, and the refusal on pressing them is
-  // what stands.
+  // what remains.
   const retired = view.labels.filter((label) => !label.isPrimary)
-  const [box, retiredBoxes, pending, reviews, draftRecords, versionContents] = await Promise.all([
-    adminBox(db, id, humLabel),
-    Promise.all(retired.map((label) => publicBox(label.label))),
+  const [listing, retiredPrefixes, pending, reviews, draftRecords, versionContents] = await Promise.all([
+    adminListing(db, id, humLabel),
+    Promise.all(retired.map((label) => publicListing(label.label))),
     pendingSwitches(db, id),
     draftReviewSummaries(db, id),
     Promise.all(draftIds.map((draftId) => readDraft(db, draftId))),
     Promise.all(view.versions.map((row) => comparableVersion(db, id, row.number))),
   ])
   const retiredHolds = new Map(retired.map((label, at) => {
-    const nodes = retiredBoxes[at] ?? null
+    const nodes = retiredPrefixes[at] ?? null
     return [label.id, nodes === null ? null : nodes.length > 0]
   }))
   const labels = view.labels.map((label) => ({
     ...label,
     holdsFiles: label.isPrimary
-      ? box === null ? null : box.some((entry) => entry.isPublic)
+      ? listing === null ? null : listing.some((entry) => entry.isPublic)
       : retiredHolds.get(label.id) ?? null,
   }))
-  const holds = [box === null ? null : box.length > 0, ...retiredHolds.values()]
+  const holds = [listing === null ? null : listing.length > 0, ...retiredHolds.values()]
 
   const drafts = draftRecords.flatMap((record) =>
     record === null ? [] : [{ id: record.id, content: record.content }])
@@ -396,9 +396,9 @@ export async function researchDetailPage(
       const found = steps.get(row.draftId)
       return { ...row, datasets: found?.datasets ?? 0, blocks: found?.blocks ?? 0, findings: found?.findings ?? 0 }
     }),
-    box: box === null
+    fileSummary: listing === null
       ? null
-      : { count: box.length, bytes: box.reduce((sum, entry) => sum + entry.size, 0) },
+      : { count: listing.length, bytes: listing.reduce((sum, entry) => sum + entry.size, 0) },
     humLabel,
     labels,
     filesRemain: holds.includes(true) ? true : holds.includes(null) ? null : false,
@@ -428,7 +428,7 @@ export interface VersionDatasetListView {
  * written in place**, so this has no action: the list is changed in the draft
  * the version's "編集" opens.
  *
- * The labels are the ledger's now rather than the version's then — a dataset
+ * The labels are the `label_pin` table's now rather than the version's then — a dataset
  * is known by its primary id, and correcting a label is not a new version.
  */
 export async function versionDatasetListPage(
@@ -465,7 +465,7 @@ export async function versionDatasetListPage(
   }
 }
 
-/** An address that cannot name a version answers as a version that is not there. */
+/** An address that cannot name a version responds as a version that is not there. */
 function versionNumber(value: string | undefined): number {
   if (value === undefined || !/^[1-9]\d*$/.test(value)) notFound()
   return Number(value)
@@ -474,9 +474,9 @@ function versionNumber(value: string | undefined): number {
 /**
  * What the review layer adds to an editing screen: where the draft differs from
  * what a reader sees now, and what has been said about the draft. Both are
- * carried by path, in the same vocabulary as everything else the screen marks.
+ * held by path, in the same vocabulary as everything else the screen marks.
  */
-export interface ReviewMarksView {
+export interface ReviewAnnotationsView {
   changed: string[]
   previous: Record<string, ShownLine[]>
   /** Everything said about the draft, the memo included: the screen picks what it draws. */
@@ -500,9 +500,9 @@ export interface AdminDraftPageView {
    * dataset table draws them — what a publication chooses from.
    */
   citable: DatasetRowView[]
-  review: ReviewMarksView
+  review: ReviewAnnotationsView
   /**
-   * The draft drawn as the page it is going to be, which the editor stands
+   * The draft drawn as the page it is going to be, which the editor places
    * beside the form. It is the same drawing the share link shows, so that the
    * question "where does this value come out" has one answer.
    */
@@ -513,13 +513,13 @@ export interface AdminDraftPageView {
    * of its own is offered the publish.
    */
   updating: number | null
-  /** Where the draft stands on each of its steps (`DraftSteps`). */
+  /** The draft's progress on each of its steps (`DraftSteps`). */
   steps: DraftStepsView
 }
 
 /**
  * The draft this screen is for, refused when it is reached under the wrong
- * research: a draft belongs to one, and an address that names another is not
+ * research: a draft belongs to one, and an address that identifies another is not
  * an address for it.
  */
 async function draftOf(
@@ -604,7 +604,7 @@ export interface DraftDatasetListView {
     edited: boolean
     shown: DatasetRowView | null
   })[]
-  /** The number of the version the draft updates, which names the last step. */
+  /** The number of the version the draft updates, which identifies the last step. */
   updating: number | null
   steps: DraftStepsView
 }
@@ -643,7 +643,7 @@ export interface DatasetListRefusal {
 
 /**
  * Making a dataset, taking one out of the research, and putting the ones that
- * go out in order. All change the draft's content, so all carry its revision.
+ * go out in order. All change the draft's content, so all have its revision.
  */
 export async function draftDatasetListAction(
   request: Request,
@@ -708,10 +708,10 @@ export interface DatasetEditorView {
   draftId: string
   datasetId: string
   humLabel: string | null
-  /** Where the draft stands on each of its steps (`DraftSteps`). */
+  /** The draft's progress on each of its steps (`DraftSteps`). */
   steps: DraftStepsView
   datasetLabel: string | null
-  /** The ledger row behind the label, which is what unpinning names. */
+  /** The `label_pin` row behind the label, which is what unpinning names. */
   datasetPinId: string | null
   /**
    * The NHA id an issue would give now, shown in the box before it is pinned.
@@ -728,26 +728,26 @@ export interface DatasetEditorView {
   revision: number | null
   input: DatasetContentInput
   /**
-   * The dataset drawn as the page it is going to be, which the editor stands
+   * The dataset drawn as the page it is going to be, which the editor places
    * beside the form. It is the same drawing the share link shows.
    */
   page: DrawnDataset
   catalog: EditableCatalog
   /**
-   * The terms this document names, and only those. The catalog carries none, so
+   * The terms this document names, and only those. The catalog has none, so
    * a chosen value is resolved by identity and everything else is searched for
    * (`findTerms`).
    */
   terms: EditableTerm[]
-  review: ReviewMarksView
+  review: ReviewAnnotationsView
   /**
-   * The research's box, both buckets merged, which the file selection is chosen
-   * from. Null when the store did not answer — the editor then offers nothing
-   * rather than pretending the box is empty.
+   * The research's prefix, both buckets merged, which the file selection is chosen
+   * from. Null when the store did not respond — the editor then offers nothing
+   * rather than pretending the prefix is empty.
    */
-  box: BoxEntry[] | null
+  listing: ListedFile[] | null
   /**
-   * Whether this dataset may carry a file selection at all, read off its id.
+   * Whether this dataset may have a file selection at all, read off its id.
    * An archive's dataset is distributed by the archive, so the screen does
    * not offer the picker and the save refuses a selection.
    */
@@ -785,14 +785,14 @@ export async function datasetEditorPage(
     readComments(db, draftId),
     draftSteps(db, researchId, draftId, draft.content),
   ])
-  const box = await adminBox(db, researchId, humLabel)
+  const listing = await adminListing(db, researchId, humLabel)
 
   const content = entry?.content ?? published?.content ?? emptyDatasetContent()
   const input = datasetContentInput(content)
   const changed = published === null
     ? []
     : changedDatasetFromPublished(published.content, content)
-  // What is published is resolved too: the review marks show the value a field
+  // What is published is resolved too: the review indicators show the value a field
   // held before, and a term dropped from the draft still has to be named there.
   const terms = await termsByIds(db, [
     ...namedTerms(content),
@@ -829,7 +829,7 @@ export async function datasetEditorPage(
       publishedNumber: published?.number ?? null,
       signedInName: actor.name,
     },
-    box,
+    listing,
     portalIssued: row.portalIssued,
   }
 }
@@ -875,7 +875,7 @@ async function catalogAccepts(
   catalog: EditableCatalog,
 ): Promise<boolean> {
   const keyById = new Map(catalog.keys.map((key) => [key.id, key]))
-  // Only the terms the payload names, because the catalog no longer carries
+  // Only the terms the payload names, because the catalog no longer has
   // all of them; an identity that resolves to nothing fails the test below.
   const named = [
     ...input.values,
@@ -918,7 +918,7 @@ async function catalogAccepts(
     && input.experiments.every((experiment) => accepts(experiment.values, "experiment"))
 }
 
-/** What pinning a dataset's id answers. */
+/** What pinning a dataset's id returns. */
 export type DatasetLabelResult
   = | { status: "pinned" | "unpinned" | "taken" | "reserved" }
     /** The id is read by the issue itself, so it is said: another issue may have taken the one shown. */
@@ -927,10 +927,10 @@ export type DatasetLabelResult
 /**
  * Attaching a dataset's id, or taking it off, from the screen the dataset is
  * written on. **A form post beside a JSON save**: the id is not part of the
- * description and goes into the ledger the moment it is pinned, so it neither
+ * description and goes into the `label_pin` table the moment it is pinned, so it neither
  * waits for a save nor moves the entry's revision. **Nothing is redirected** —
  * the screen posts through a fetcher so that what is typed around the id is
- * not lost, and reads its listing again once the ledger has moved.
+ * not lost, and reads its listing again once the `label_pin` table has moved.
  */
 export async function datasetLabelAction(
   request: Request,
@@ -996,7 +996,7 @@ export async function saveDatasetAction(
   const payload = saveDatasetSchema.safeParse(await request.json())
   if (!payload.success) badRequest()
   // The screen marks a disordered width `aria-invalid` the moment it is typed
-  // (`dataset-editor.tsx` の `NumberField`), so a save still carrying one went
+  // (`dataset-editor.tsx` の `NumberField`), so a save still with one went
   // around the form. Checked here rather than in the schema itself — the draw
   // preview below parses the same schema from content that is still being
   // typed, where a width caught mid-edit is ordinary
@@ -1037,8 +1037,8 @@ export async function saveDatasetAction(
  * A new research is created together with the draft it will be written in.
  *
  * **It lands on the research, not in the draft.** What was made is a research,
- * and its screen is where drafts are made and opened from; landing in the form
- * hides that the research exists until the way back is pressed. The one thing
+ * and its screen is where drafts are made and opened from; arriving in the form
+ * hides that the research exists until the back link is pressed. The one thing
  * to press there is the draft's row. A research made from an application is
  * different (`templates.server.ts`): its draft already holds values, and what
  * comes next is checking them.
@@ -1054,7 +1054,7 @@ export type ResearchDetailResult
   = | { status: "conflict" }
     /** The version is being updated; stopping the update comes first. */
     | { status: "updating" }
-    /** The label already names something. */
+    /** The label already identifies something. */
     | { status: "taken" }
     /** A research ID was typed in a shape no address could be made from. */
     | { status: "malformed" }
@@ -1067,12 +1067,12 @@ export type ResearchDetailResult
  * Everything the research screen does: open an empty draft or a copy of a
  * version, throw one away, take a version out of sight, and attach, promote
  * or remove a research ID. They are ordinary form posts told apart by what
- * the form says it is.
+ * the form reports it is.
  *
  * The capability is asked for per operation, so that what each one requires
  * is written where it is done. **Reading that the research exists is asked for
  * first**: a research that was never published is itself unpublished, and
- * answering "not found" before "forbidden" would tell whoever asks which
+ * responding "not found" before "forbidden" would tell whoever wants to know which
  * identities are real.
  */
 export async function researchDetailAction(
@@ -1175,20 +1175,20 @@ export async function researchDetailAction(
   return back
 }
 
-export interface PublishPlaceView {
+export interface PublishFieldView {
   /** What it is about: the research itself, or a dataset by its id. */
   label: string
   /** Where it can be dealt with, when there is such a screen. */
   href: string | null
   count: number
-  /** A second line where the count alone does not say enough. */
+  /** A second line where the count alone does not report enough. */
   note: string | null
 }
 
 export interface PublishGroupView {
-  kind: GateFindingKind
+  kind: PublishFindingKind
   count: number
-  places: PublishPlaceView[]
+  places: PublishFieldView[]
   /**
    * The files this group is about, for the one group that offers to act:
    * listing the private ones is also the way to make them public. Empty for
@@ -1198,12 +1198,12 @@ export interface PublishGroupView {
 }
 
 export interface PublishBlockView {
-  kind: GateBlock["kind"]
+  kind: PublishBlock["kind"]
   /** Set for a missing dataset id, which is pinned or issued from this screen. */
   datasetId: string | null
 }
 
-/** What the review says, for the screen's advice: it never stops a publish. */
+/** What the review has, for the screen's advice: it never stops a publish. */
 export interface PublishReviewView {
   shared: boolean
   /** Shared, but past the date the link stopped opening — said apart from never shared. */
@@ -1231,7 +1231,7 @@ export interface PublishPageView {
   researchId: string
   draftId: string
   humLabel: string | null
-  /** Where the draft stands on each of its steps (`DraftSteps`); the gate is this screen's own. */
+  /** The draft's progress on each of its steps (`DraftSteps`); the publish check is this screen's own. */
   steps: DraftStepsView
   revision: number
   /** The number offered first: one past the highest a version holds. */
@@ -1252,7 +1252,7 @@ export interface PublishPageView {
   findingCount: number
   researchFields: number | null
   datasetChanges: PublishDatasetChangeView[]
-  /** The datasets stand in another order than in the version compared with. */
+  /** The datasets are shown in another order than in the version compared with. */
   reordered: boolean
   /** The version the changes are measured against: the one updated, or the newest. Null before any. */
   comparedWith: number | null
@@ -1266,7 +1266,7 @@ export interface PublishPageView {
 /**
  * The last screen before a version exists.
  *
- * It reads rather than decides: the same gate runs again inside the publish,
+ * It reads rather than decides: the same publish check runs again inside the publish,
  * under a lock, and that run is the one that is allowed to refuse. What is
  * shown here is what the administrator is being asked to look at.
  */
@@ -1279,7 +1279,7 @@ export async function publishPage(
 
   const preview = await publishPreview(db, draftId, await privateNames(researchId))
   if (preview === null) notFound()
-  const steps = await draftSteps(db, researchId, draftId, draft.content, { gate: preview.gate })
+  const steps = await draftSteps(db, researchId, draftId, draft.content, { publishCheck: preview.publishCheck })
 
   const labelOf = new Map(preview.datasetLabels.map((row) => [row.datasetId, row.label]))
   const naming = (datasetId: string): string =>
@@ -1288,7 +1288,7 @@ export async function publishPage(
     href(locale, adminDraftDatasetPath(researchId, draftId, datasetId))
 
   const named = [
-    ...preview.gate.blocks.flatMap((block) => block.kind === "dataset-id-missing" ? [block.datasetId] : []),
+    ...preview.publishCheck.blocks.flatMap((block) => block.kind === "dataset-id-missing" ? [block.datasetId] : []),
     ...preview.datasetChanges.map((change) => change.datasetId),
   ]
   const [shown, acknowledgements, comments, share] = await Promise.all([
@@ -1308,19 +1308,19 @@ export async function publishPage(
     heldNumbers: preview.heldNumbers,
     releaseDate: preview.updating?.releaseDate ?? today(),
     updating: preview.updating === null ? null : { number: preview.updating.number },
-    nextNhaId: preview.gate.blocks.some((block) => block.kind === "dataset-id-missing")
+    nextNhaId: preview.publishCheck.blocks.some((block) => block.kind === "dataset-id-missing")
       ? await nextNhaId(db)
       : null,
-    blocks: preview.gate.blocks.map((block) => ({
+    blocks: preview.publishCheck.blocks.map((block) => ({
       kind: block.kind,
       datasetId: block.kind === "dataset-id-missing" ? block.datasetId : null,
     })),
-    groups: groupFindings(preview.gate.findings, locale, {
+    groups: groupFindings(preview.publishCheck.findings, locale, {
       researchHref: href(locale, adminDraftPath(researchId, draftId)),
       datasetHref,
       naming,
     }),
-    findingCount: preview.gate.findings.length,
+    findingCount: preview.publishCheck.findings.length,
     steps,
     researchFields: preview.researchFields,
     reordered: preview.reordered,
@@ -1346,11 +1346,11 @@ export async function publishPage(
 
 /**
  * The findings, gathered by kind and then by the screen that can deal with
- * them. A gate that listed twelve unsettled values one line each would be a
+ * them. A publish check that listed twelve unsettled values one line each would be a
  * list nobody reads; what is wanted is which screens to open.
  */
 function groupFindings(
-  findings: readonly GateFinding[],
+  findings: readonly PublishFinding[],
   locale: Locale,
   into: {
     researchHref: string
@@ -1359,12 +1359,12 @@ function groupFindings(
   },
 ): PublishGroupView[] {
   const t = messagesFor(locale).admin.publish
-  const groups = new Map<GateFindingKind, Map<string, PublishPlaceView>>()
+  const groups = new Map<PublishFindingKind, Map<string, PublishFieldView>>()
   // One file can be selected by several datasets, and it is switched once.
   const files = new Set<string>()
 
-  const place = (kind: GateFindingKind, key: string, view: () => PublishPlaceView): void => {
-    const held = groups.get(kind) ?? new Map<string, PublishPlaceView>()
+  const place = (kind: PublishFindingKind, key: string, view: () => PublishFieldView): void => {
+    const held = groups.get(kind) ?? new Map<string, PublishFieldView>()
     groups.set(kind, held)
     const found = held.get(key)
     if (found === undefined) held.set(key, view())
@@ -1419,7 +1419,7 @@ function groupFindings(
     }))
   }
 
-  return GATE_FINDING_KINDS.flatMap((kind) => {
+  return PUBLISH_FINDING_KINDS.flatMap((kind) => {
     const held = groups.get(kind)
     if (held === undefined) return []
     const places = [...held.values()]
@@ -1447,7 +1447,7 @@ export type PublishResult
     | { status: "gone" }
     /** An update that would change nothing — neither the description nor the release date. */
     | { status: "unchanged" }
-    /** A pin was refused because the label already names something. */
+    /** A pin was refused because the label already identifies something. */
     | { status: "taken" }
     /** A label spelled as an NHA id was typed; those are only issued. */
     | { status: "reserved" }
@@ -1498,8 +1498,8 @@ export async function publishAction(
     await requireCapability(request, "manage-files")
     const names = form.getAll("fileName")
       .flatMap((value) => typeof value === "string" ? [value] : [])
-    // The list only offers files of the box; any other name would become a key
-    // naming the box itself or somewhere outside it.
+    // The list only offers files of the prefix; any other name would become a key
+    // naming the prefix itself or somewhere outside it.
     if (!names.every(isUploadableName)) badRequest()
     await switchFiles(
       db,
@@ -1515,7 +1515,7 @@ export async function publishAction(
 
   const revision = Number(form.get("revision"))
   if (!Number.isInteger(revision)) badRequest()
-  // An update carries its version's number, and the screen asks for none.
+  // An update has its version's number, and the screen requests none.
   const numberField = form.get("number")
   const number = numberField === null ? null : Number(numberField)
   if (number !== null && (!Number.isInteger(number) || number < 1)) badRequest()
@@ -1619,8 +1619,8 @@ export async function saveDraftAction(
  * function draws it as the share link uses, so the two cannot disagree.
  *
  * **Prose the tree cannot keep is not an error here.** Refusing markup is the
- * save's job and it says where the problem is; a pane that answered 422 would
- * empty itself in the middle of a sentence. It answers with nothing instead and
+ * save's job and it reports where the problem is; a pane that responded with 422 would
+ * empty itself in the middle of a sentence. It responds with nothing instead and
  * the pane keeps the last drawing it had.
  */
 export async function draftPageAction(
@@ -1654,7 +1654,7 @@ export async function draftPageAction(
  *
  * The research's counterpart is `draftPageAction`, and the same two things hold:
  * the drawing is made without writing anything, and prose the tree cannot keep
- * answers with nothing rather than with half a page.
+ * responds with nothing rather than with half a page.
  */
 export async function datasetPageAction(
   request: Request,

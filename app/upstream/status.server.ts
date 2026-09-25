@@ -1,5 +1,5 @@
 /**
- * What the management screen says about the caches.
+ * What the management screen has about the caches.
  *
  * Every source is listed, including ones that have never been fetched, because
  * the answer people need is "is anything stalled" and a source missing from the

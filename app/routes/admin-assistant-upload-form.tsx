@@ -10,7 +10,7 @@ import { messagesFor } from "~/i18n/messages"
 interface AdminAssistantUploadFormProps {
   /**
    * The one file the send needs. **The other two are the chooser's own** — it
-   * says what was picked — so only this one is read here, to keep the send
+   * shows what was picked — so only this one is read here, to keep the send
    * closed until there is something to send.
    */
   application: File | null

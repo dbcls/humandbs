@@ -4,9 +4,9 @@ import { readLocale } from "~/public/urls"
 import type { Route } from "./+types/admin-draft-page"
 
 /**
- * The draft drawn as its page, for the pane standing beside the form.
+ * The draft drawn as its page, for the pane shown beside the form.
  *
- * **It answers with data rather than a page**, so it is registered once and the
+ * **It responds with data rather than a page**, so it is registered once and the
  * language it draws in comes from the request rather than from the address: the
  * pane's language is the reader's choice, not the screen's
  * (`app/components/admin.tsx`).

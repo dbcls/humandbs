@@ -110,7 +110,7 @@ describe("a value under a catalog key", () => {
     }])
   })
 
-  it("answers with the canonical number and unit, not with what was typed", () => {
+  it("responds with the canonical number and unit, not with what was typed", () => {
     const answer = dataset({
       ...emptyDatasetContent(),
       values: [{
@@ -132,7 +132,7 @@ describe("a value under a catalog key", () => {
     }])
   })
 
-  it("carries the upper end of a width, and null on a number that is not one", () => {
+  it("has the upper end of a width, and null on a number that is not one", () => {
     const answer = dataset({
       ...emptyDatasetContent(),
       values: [{
@@ -204,7 +204,7 @@ describe("what an answer names", () => {
     ])
   })
 
-  it("keeps only a file selection the box actually lists", () => {
+  it("keeps only a file selection the prefix actually lists", () => {
     const answer = dataset({ ...emptyDatasetContent(), fileSelection: ["a.zip", "gone.zip"] })
     expect(answer.files).toEqual([
       { name: "a.zip", size: 12, url: `${ORIGIN}/files/hum0001/a.zip` },

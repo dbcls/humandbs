@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest"
  * every write to a draft goes through `drafts.server.ts`, and every function
  * there that changes an existing row takes the revision to check it against.
  *
- * Nothing in the type system says so. An update written somewhere else would
+ * Nothing in the type system reports it. An update written somewhere else would
  * compile, would pass every other test, and would silently overwrite whatever
  * somebody else had saved. So the shape of the source is what is checked here —
  * the same reason a trigger would not do, one level up.
@@ -33,7 +33,7 @@ function writesTo(source: string, table: string): boolean {
 }
 
 describe("writing to a draft", () => {
-  it("happens in one module, so that every write can be made to carry a revision", () => {
+  it("happens in one module, so that every write can be made to have a revision", () => {
     // The detector has to see the writes that are allowed, or it sees nothing.
     expect(writesTo(readFileSync(WRITER, "utf8"), "researchDraft")).toBe(true)
 
@@ -54,7 +54,7 @@ describe("writing to a draft", () => {
       // Seeding datasets from upstream changes which ones the version lists,
       // which is a change to the draft's own content like any other.
       "addDatasetsFromUpstream",
-      // Taking an application into a draft that exists writes the content and
+      // Importing an application into a draft that exists writes the content and
       // appends the datasets in one go, so it is checked like a save.
       "applyUpstreamToDraft",
       "saveDraftContent",

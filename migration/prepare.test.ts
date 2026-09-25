@@ -84,7 +84,7 @@ describe("applyKeyRules", () => {
     expect(one.data).toEqual({ "Total Data Volume": cell("1 MB") })
   })
 
-  it("appends to a value the target already holds, and says the HTML no longer matches", () => {
+  it("appends to a value the target already holds, and reports the HTML no longer matches", () => {
     const one = experiment({ "Total Data Volume": cell("4 GB"), "データ容量": cell("1 MB") })
     applyKeyRules(one, rules)
 
@@ -123,7 +123,7 @@ describe("splitArchiveAccessions", () => {
   const JGA = "Japanese Genotype-phenotype Archive Dataset Accession"
   const SRA = "Sequence Read Archive Accession"
 
-  it("gives each archive only its own accessions when both keys carry the same list", () => {
+  it("gives each archive only its own accessions when both keys have the same list", () => {
     const one = experiment({ [JGA]: cell("① JGAD000261 ② DRA008482"), [SRA]: cell("① JGAD000261 ② DRA008482") })
     splitArchiveAccessions(one)
 
@@ -139,7 +139,7 @@ describe("splitArchiveAccessions", () => {
     expect(one.data?.[SRA]).toEqual(cell("DRA008482"))
   })
 
-  it("leaves a copied value alone when it names no accession of one archive, rather than emptying that key", () => {
+  it("leaves a copied value alone when it identifies no accession of one archive, rather than emptying that key", () => {
     const one = experiment({ [JGA]: cell("JGAD000261"), [SRA]: cell("JGAD000261") })
     splitArchiveAccessions(one)
 
@@ -162,7 +162,7 @@ describe("splitSharedExperiments", () => {
     expect(result.stats.split).toBeGreaterThan(0)
   })
 
-  it("says the HTML of a divided cell no longer matches, and keeps it where nothing changed", () => {
+  it("reports the HTML of a divided cell no longer matches, and keeps it where nothing changed", () => {
     const one = dataset("JGAD000001", [experiment({ "Total Data Volume": cell(volume), "Platform": cell("Illumina") })])
     const two = dataset("JGAD000002", [experiment({ "Total Data Volume": cell(volume), "Platform": cell("Illumina") })])
     splitSharedExperiments([{ label: "JGAD000001", doc: one }, { label: "JGAD000002", doc: two }], new Map())
@@ -171,7 +171,7 @@ describe("splitSharedExperiments", () => {
     expect(one.experiments?.[0]?.data?.Platform).toEqual(cell("Illumina"))
   })
 
-  it("does not touch a block only one dataset carries", () => {
+  it("does not touch a block only one dataset has", () => {
     const one = dataset("JGAD000001", [shared()])
     splitSharedExperiments([{ label: "JGAD000001", doc: one }], new Map())
 

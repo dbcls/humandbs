@@ -3,13 +3,13 @@
  *
  * v1 had no state for a value that does not exist, so the table's conditional
  * rows — targets "if Target Capture", sample source "if purchased" — were
- * answered with the letters `NA`. In v2 that is the not-applicable state, which
+ * responded with the letters `NA`. In v2 that is the not-applicable state, which
  * the page shows as such and which search and facets leave out; kept as text,
  * `NA` would be indexed and read as a value.
  *
  * Only a value that is `NA` and nothing else is turned: a value with other
- * words (`Illumina: NA`) says something about part of the experiment, and a
- * word such as `none` answers the question ("no deduplication was done").
+ * words (`Illumina: NA`) reports something about part of the experiment, and a
+ * word such as `none` handles the question ("no deduplication was done").
  */
 
 import type { Slot } from "~/content/types"

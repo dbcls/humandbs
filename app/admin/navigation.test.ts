@@ -44,7 +44,7 @@ describe("管理のナビ", () => {
     }
   })
 
-  /** 押すと何かが作られるものは、それを編集する画面へ落ちる。 */
+  /** 押すと何かが作られるものは、それを編集する画面へ移動する。 */
   it("操作の投げ先も管理の下にある", () => {
     const actions = adminTasks("ja").flatMap((task) => task.action ?? [])
     expect(actions.length).toBeGreaterThan(0)
@@ -55,7 +55,7 @@ describe("管理のナビ", () => {
   })
 
   /**
-   * 識別子を要らない管理画面は 9 つある。区画のトップ自身を除く 8 つが作業の
+   * 識別子を要らない管理画面は 9 つある。管理トップ自身を除く 8 つが作業の
    * どれかに入っていないと、そこから行けない画面が残る — 残る 14 画面は
    * 研究・下書き・記事・項目を選んだ先にある。
    */
@@ -116,7 +116,7 @@ describe("管理のナビ", () => {
   })
 
   /**
-   * 語は h1 と同じでなくてよいが、同じ画面を指す 2 つの入口の間では揃っている
+   * 語は h1 と同じでなくてよいが、同じ画面を指す 2 つのリンクの間では揃っている
    * 必要がある — バーとトップが違う名前で呼ぶと、行き先が 2 つあるように読める。
    */
   it("同じ行き先をバーとトップが同じ語で呼ぶ", () => {
@@ -129,16 +129,16 @@ describe("管理のナビ", () => {
     }
   })
 
-  /** 段が足りないと、そのエントリはどの幅でもバーに出ない。 */
-  it("バーの幅の段が、並べる数だけある", () => {
+  /** ブレークポイントが足りないと、そのエントリはどの幅でもバーに出ない。 */
+  it("バーのブレークポイントが、並べる数だけある", () => {
     expect(ADMIN_NAVBAR_STEP).toHaveLength(adminNavbar("ja").length)
   })
 
   /**
-   * 段は並びに従って広くなる。狭い段が後ろにあると、そのエントリは手前のものより
+   * ブレークポイントは並びに従って広くなる。狭いブレークポイントが後ろにあると、そのエントリは手前のものより
    * 先にバーへ出て、諦める順が並びと食い違う — 並べ替えたのに測り直さないと起きる。
    */
-  it("バーの段が前から順に広くなる", () => {
+  it("バーのブレークポイントが前から順に広くなる", () => {
     const widths = ADMIN_NAVBAR_STEP.map((step) => stepWidth(step.bar))
     expect(widths.filter(Number.isNaN)).toHaveLength(0)
     for (let i = 1; i < widths.length; i++) {
@@ -150,7 +150,7 @@ describe("管理のナビ", () => {
    * bar と menu は同じ幅を境に入れ替わる。食い違うと、その幅でエントリが両方に
    * 出るか、どちらからも消える。
    */
-  it("段の bar と menu が同じ幅で入れ替わる", () => {
+  it("ブレークポイントの bar と menu が同じ幅で入れ替わる", () => {
     for (const step of ADMIN_NAVBAR_STEP) {
       expect(stepWidth(step.menu)).toBe(stepWidth(step.bar))
     }
@@ -167,19 +167,19 @@ describe("現在地", () => {
   const research = { path: "/admin/research", label: "研究の管理" }
   const overview = { path: adminPath(), label: "管理トップ" }
 
-  it("その下にいるときも光る", () => {
+  it("その下にいるときも現在地として強調される", () => {
     expect(isHere(research, "/admin/research")).toBe(true)
     expect(isHere(research, "/admin/research/abc")).toBe(true)
     expect(isHere(research, "/admin/research/abc/draft/def/publish")).toBe(true)
   })
 
   /** The slash is what keeps a longer name from being read as a child. */
-  it("名前が前方一致するだけの別の行き先では光らない", () => {
+  it("名前が前方一致するだけの別の行き先では強調されない", () => {
     expect(isHere(research, "/admin/researchers")).toBe(false)
     expect(isHere(research, "/admin/research-list")).toBe(false)
   })
 
-  it("よその区画にいるときは光らない", () => {
+  it("別の画面にいるときは強調されない", () => {
     expect(isHere(research, "/admin/experiment-fields")).toBe(false)
     expect(isHere(research, "/research/hum0103")).toBe(false)
   })
@@ -189,7 +189,7 @@ describe("現在地", () => {
    * match itself and nothing else — otherwise two entries light at once on
    * every screen.
    */
-  it("管理トップは自分自身のときだけ光る", () => {
+  it("管理トップは自分自身のときだけ強調される", () => {
     expect(isHere(overview, "/admin")).toBe(true)
     expect(isHere(overview, "/admin/research")).toBe(false)
     expect(isHere(overview, "/admin/experiment-fields")).toBe(false)

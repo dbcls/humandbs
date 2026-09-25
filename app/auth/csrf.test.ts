@@ -39,11 +39,11 @@ describe("refusedAsCrossSite", () => {
     expect(refusedAsCrossSite(request("POST", { "origin": "https://humandbs.dbcls.jp", "sec-fetch-site": "cross-site" }))).toBe(true)
   })
 
-  it("refuses a write that names no origin at all, which no current browser sends", () => {
+  it("refuses a write that identifies no origin at all, which no current browser sends", () => {
     expect(refusedAsCrossSite(request("POST", {}))).toBe(true)
   })
 
-  it("never refuses a read, whatever it says about where it came from", () => {
+  it("never refuses a read, whatever it has about where it came from", () => {
     const site = fc.constantFrom("same-origin", "same-site", "cross-site", "none", undefined)
     const origin = fc.constantFrom("https://humandbs.dbcls.jp", "https://evil.example", "null", "garbage", undefined)
     fc.assert(fc.property(fc.constantFrom(...READS), site, origin, (method, s, o) => {

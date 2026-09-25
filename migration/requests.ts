@@ -6,16 +6,16 @@
  * `ご教示ください`, `プロジェクト名等ありましたらご教示ください(英語名)`,
  * `HeLa （購入情報をご教示ください）`. In v2 that is two things — the slot is
  * `unknown`, and what is being asked is a comment on that slot. Left as a value, the question would
- * pass the publish gate as an answer and reach the public page.
+ * pass the publish check as an answer and reach the public page.
  *
- * Only drafts carry these; the published content holds none.
+ * Only drafts have these; the published content holds none.
  *
  * **A value that contains a question is unsettled as a whole**, even when part
  * of it is an answer (`HeLa （購入情報をご教示ください）`): keeping it as a value
- * keeps the question in it. Nothing is lost, because the comment carries the
+ * keeps the question in it. Nothing is lost, because the comment has the
  * words as they were.
  *
- * **A question that says no more than "please tell us" leaves no comment.** The
+ * **A question that reports no more than "please tell us" leaves no comment.** The
  * preview already shows an unsettled slot as a red `ご教示ください`, so the
  * comment would repeat it. A list of plain strings (grant numbers) has no state,
  * so there the question is taken out of the list and always left as a comment.
@@ -26,7 +26,7 @@ import type { CommentAnchor, RichText, Slot } from "~/content/types"
 /** The phrasings curators asked in. Each is a request, never a data value. */
 const REQUEST = /ご教示|お知らせください|ご確認|でしょうか|ますか[？?]|お願いします|ご記入/
 
-/** A request that names nothing beyond itself. */
+/** A request that identifies nothing beyond itself. */
 const BARE_REQUEST = /^ご教示(?:ください|下さい)。?$/
 
 export function isRequest(text: string): boolean {
@@ -42,7 +42,7 @@ export interface Asked {
   text?: string
   /**
    * The question was taken out of a list rather than leaving an unsettled
-   * mark, so even a bare request has to be said in the comment.
+   * badge, so even a bare request has to be said in the comment.
    */
   unmarked?: true
 }
@@ -130,8 +130,8 @@ export function settleRequests<T>(content: T): { content: T, asked: Asked[] } {
     if (typeof node !== "object" || node === null) return node
     const record = node as Record<string, unknown>
     // A value slot is where the editor anchors whatever is said about its value.
-    const slotPlace = typeof record.keyId === "string" && "value" in record ? path : place
-    return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, walk(value, [...path, key], slotPlace)]))
+    const slotPath = typeof record.keyId === "string" && "value" in record ? path : place
+    return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, walk(value, [...path, key], slotPath)]))
   }
 
   return { content: walk(content, [], null) as T, asked }
@@ -145,7 +145,7 @@ function bodyOf(one: Asked): string | null {
   return said[0] ?? null
 }
 
-/** One comment per place that asked something the unsettled mark does not already say. */
+/** One comment per place that asked something the unsettled badge does not already say. */
 export function requestComments(subject: Subject, asked: readonly Asked[]): { anchor: CommentAnchor, body: string }[] {
   return asked.flatMap((one) => {
     const body = bodyOf(one)

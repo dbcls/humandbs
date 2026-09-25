@@ -143,7 +143,7 @@ describe("starting a draft of an existing research", () => {
     expect(await db.select().from(s.researchDraft)).toHaveLength(2)
   })
 
-  it("answers with nothing for a number no version holds, and opens no draft", async () => {
+  it("responds with nothing for a number no version holds, and opens no draft", async () => {
     const researchId = await createResearch()
     await publish(researchId, 1, titled("first"))
 
@@ -208,7 +208,7 @@ describe("updating a version", () => {
     expect(await db.select().from(s.researchDraft)).toHaveLength(1)
   })
 
-  it("answers gone for a version of another research, and opens no draft", async () => {
+  it("responds gone for a version of another research, and opens no draft", async () => {
     const researchId = await createResearch()
     const other = await createResearch()
     const versionId = await publish(other, 1, titled("theirs"))
@@ -232,7 +232,7 @@ describe("updating a version", () => {
 })
 
 describe("deciding what a version lists", () => {
-  async function ground(): Promise<{ researchId: string, draftId: string, a: string, b: string }> {
+  async function fixture(): Promise<{ researchId: string, draftId: string, a: string, b: string }> {
     const { researchId, draftId } = await createResearchWithDraft(db)
     const made = await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
     const madeAgain = await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
@@ -245,7 +245,7 @@ describe("deciding what a version lists", () => {
   }
 
   it("moves a dataset one step, and leaves the end where it is", async () => {
-    const { researchId, draftId, a, b } = await ground()
+    const { researchId, draftId, a, b } = await fixture()
 
     await changeListing(db, { draftId, revision: 3 }, researchId, { datasetId: b, by: -1 })
     expect(await listed(draftId)).toEqual([b, a])
@@ -254,7 +254,7 @@ describe("deciding what a version lists", () => {
   })
 
   it("moves one the order has never named, and writes the whole order back", async () => {
-    const { researchId, draftId, a, b } = await ground()
+    const { researchId, draftId, a, b } = await fixture()
     // A draft that has never been ordered: the datasets are the research's all
     // the same, so the step is taken on what the screen shows.
     await saveDraftContent(db, { draftId, revision: 3 }, {
@@ -265,12 +265,12 @@ describe("deciding what a version lists", () => {
       .toEqual({ status: "changed" })
 
     // The whole order is written back, not just the step: the identities are
-    // time-ordered, so a was made first and b now stands in front of it.
+    // time-ordered, so a was made first and b now comes before it.
     expect(await listed(draftId)).toEqual([b, a])
   })
 
   it("refuses a revision that has moved, and a draft that is gone", async () => {
-    const { researchId, draftId, a } = await ground()
+    const { researchId, draftId, a } = await fixture()
 
     expect(await changeListing(db, { draftId, revision: 1 }, researchId, { datasetId: a, by: 1 }))
       .toEqual({ status: "conflict" })
@@ -420,7 +420,7 @@ describe("writing a dataset of a draft", () => {
 
   /**
    * Nothing records what the entry started from: a draft is a copy, and what it
-   * is compared against is chosen when somebody asks for a comparison.
+   * is compared against is chosen when somebody requests a comparison.
    */
   it("keeps nothing beside the content it was saved with", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -526,7 +526,7 @@ describe("which datasets a draft has changed", () => {
     expect(await changedDatasets(db, draftId, researchId, null)).toEqual(new Set([two]))
   })
 
-  it("stops counting a dataset written back to what the version says", async () => {
+  it("stops counting a dataset written back to what the version has", async () => {
     const researchId = await createResearch()
     const datasetId = await makeDataset(researchId)
     await publish(researchId, 1, titled("v1"), [{ datasetId, content: described("one") }])
@@ -602,7 +602,7 @@ describe("a dataset a draft adds", () => {
     expect((await readDraft(db, draftId))?.content.datasetIds).toEqual([])
   })
 
-  it("takes a published one out too, with its published row, and says so in the trail", async () => {
+  it("takes a published one out too, with its published row, and reports it in the trail", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     const created = await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
     if (created.status !== "created") throw new Error("expected a dataset")
@@ -636,7 +636,7 @@ describe("a dataset a draft adds", () => {
     expect(event?.detail).toEqual({ researchId, label: "JGAD000999" })
   })
 
-  /** A published one whose research is found by what it says, and a dataset of it nothing else says. */
+  /** A published one whose research is found by what it has, and a dataset of it nothing else reports. */
   async function publishedPair() {
     const { researchId, draftId } = await createResearchWithDraft(db)
     await db.insert(s.labelPin).values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
@@ -662,7 +662,7 @@ describe("a dataset a draft adds", () => {
   }
 
   /**
-   * The research's row carries the text of its datasets. Dropping the dataset's
+   * The research's row has the text of its datasets. Dropping the dataset's
    * own row alone left the research found by what only the deleted dataset
    * said, until something else rebuilt it.
    */

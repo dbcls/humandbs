@@ -2,7 +2,7 @@
  * The four things the portal caches from somewhere else.
  *
  * **They are split by upstream system, not by table.** What fails is a system:
- * the application database being unreachable says nothing about DDBJ Search, and
+ * the application database being unreachable implies nothing about DDBJ Search, and
  * a refresh that treated the two as one unit would leave the JGA dates stale
  * whenever the other one was slow. Two of them share `accession_date` and are
  * told apart by its `source` column.

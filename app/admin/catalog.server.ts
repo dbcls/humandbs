@@ -1,7 +1,7 @@
 /**
  * The catalog screens: what they read, and what their forms do.
  *
- * Everything here asks for `manage-catalog`. Nothing here is written to the
+ * Everything here requests `manage-catalog`. Nothing here is written to the
  * event log — what that records is the operations that changed what is
  * published, and a catalog entry is a definition rather than a publication.
  *
@@ -14,7 +14,7 @@
  * **What is in use cannot be removed.** A key is in use when a dataset holds a
  * value under it, published or in a draft; a term is in use when a value names
  * it. A term that has served its purpose is merged into another instead, which
- * rewrites everything that names it and then removes it.
+ * rewrites everything that identifies it and then removes it.
  */
 
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
@@ -74,7 +74,7 @@ export interface CatalogKeyRow {
   used: number
   /**
    * Whether a published or drafted description holds a value under the key —
-   * the same question `deleteKey` asks, answered up front so the screen can say
+   * the same question `deleteKey` checks, answered up front so the screen can report
    * why the key cannot go rather than letting the press find out. Not `used > 0`:
    * a draft holds a key without any dataset being published under it.
    */
@@ -93,12 +93,12 @@ export interface VocabularyRow {
 /**
  * The fields screen.
  *
- * **Only the fields an analysis method carries are here.** The two a dataset
- * carries hold what the portal is rather than what the data brings, so the
+ * **Only the fields an analysis method has are here.** The two a dataset
+ * has hold what the portal is rather than what the data brings, so the
  * migration puts them in and nothing edits them afterwards.
  *
  * **The vocabularies are not a list of their own.** Each belongs to exactly one
- * field, so the field's row carries how many terms it draws from and the way to
+ * field, so the field's row has how many terms it draws from and the way to
  * open them — a list called 「語彙」 beside the fields could only be read as a
  * second, unrelated thing.
  */
@@ -106,7 +106,7 @@ export interface CatalogView {
   locale: Locale
   /** The fields the conditions leave, in the order the public table has them. */
   keys: CatalogKeyRow[]
-  /** The conditions in force, as the address carries them. */
+  /** The conditions in force, as the address has them. */
   keyword: string
   types: KeyValueType[]
   /**
@@ -123,7 +123,7 @@ export interface TermRow {
   code: string
   labelJa: string | null
   labelEn: string
-  /** How many published datasets carry this value (`usageOfTerms`). */
+  /** How many published datasets have this value (`usageOfTerms`). */
   used: number
   /**
    * Whether a published or drafted value points at the term. Not the same
@@ -157,7 +157,7 @@ export interface VocabularyView {
   /**
    * The term a merge is being aimed from, when the address names one.
    *
-   * **Choosing where to fold a term into is choosing a row of this listing.** A
+   * **Choosing where to merge a term into is choosing a row of this listing.** A
    * vocabulary runs to a few hundred values, so a panel holding them all would
    * be a select of every term on every row; putting the choice back into the
    * listing gives it the box and the pages that are already there.
@@ -174,7 +174,7 @@ export type CatalogProblem
     | "not-editable"
     | "unknown-target"
 
-/** Everything the screens may ask of the catalog, by the name the form sends. */
+/** Everything the screens may request of the catalog, by the name the form sends. */
 export type CatalogIntent
   = | "create-key"
     | "update-key"
@@ -204,14 +204,14 @@ export interface Moved {
   of: number
 }
 
-/** What one operation came to, before the action says which operation it was. */
+/** What one operation came to, before the action reports which operation it was. */
 type Outcome = { status: "ok", moved?: Moved } | { status: CatalogProblem }
 
 /**
  * What the form did.
  *
- * **The answer names the deed** (`did`), so that the screen can say "key を
- * 作成しました" rather than "保存しました" for everything, and a move says
+ * **The answer names the action** (`did`), so that the screen can report "key を
+ * 作成しました" rather than "保存しました" for everything, and a move reports
  * where the row went (`moved`) — which is also what taking it back needs.
  */
 export type CatalogResult
@@ -224,10 +224,10 @@ export type CatalogResult
  * and is read twice or missed altogether across a page boundary.
  */
 function termOrder(sort: TermSortKey, order: "asc" | "desc") {
-  const way = order === "asc" ? asc : desc
+  const direction = order === "asc" ? asc : desc
   return sort === "label"
-    ? [way(vocabularyTerm.labelEn), asc(vocabularyTerm.code)]
-    : [way(vocabularyTerm.code)]
+    ? [direction(vocabularyTerm.labelEn), asc(vocabularyTerm.code)]
+    : [direction(vocabularyTerm.code)]
 }
 
 async function keyRows(db: Executor): Promise<Omit<CatalogKeyRow, "inUse" | "used">[]> {
@@ -372,7 +372,7 @@ export async function fieldTermsPage(
   const used = await usageOfTerms(db, rows.map((row) => row.id))
   const held = await usedTermIds(db)
 
-  // Read on its own rather than found among the rows: the term being folded is
+  // Read on its own rather than found among the rows: the term being merged is
   // named by the address, and the page it sits on is not the page being read.
   const aimedFrom = url.searchParams.get("mergeFrom") ?? ""
   const [aimed] = aimedFrom === ""
@@ -385,7 +385,7 @@ export async function fieldTermsPage(
           labelEn: vocabularyTerm.labelEn,
         })
         .from(vocabularyTerm)
-        // Compared as text: the address carries whatever was typed, and a
+        // Compared as text: the address has whatever was typed, and a
         // uuid column refuses anything that is not one.
         .where(and(
           eq(vocabularyTerm.setId, set.id),
@@ -421,7 +421,7 @@ export async function fieldTermsPage(
 async function keyInUse(db: Executor, keyId: string): Promise<boolean> {
   const match = sql`jsonb_path_exists(content, '$.**.keyId ? (@ == $id)', ${JSON.stringify({ id: keyId })}::jsonb)`
   // Every published description is in the rows the public side reads, which is
-  // one place to ask rather than one version row per version.
+  // one place to request rather than one version row per version.
   const [published] = await db
     .select({ hit: sql<number>`1` })
     .from(searchDoc)
@@ -439,7 +439,7 @@ async function keyInUse(db: Executor, keyId: string): Promise<boolean> {
 /**
  * How many published datasets hold a value under each key.
  *
- * **One question for the whole table**, asked the way `keyInUse` asks it of one
+ * **One question for the whole table**, asked the way `keyInUse` checks it for one
  * key: the listing needs the answer for every row, and a path query per row
  * over every description is the same work done eighty times. Datasets only,
  * for the reason `usageOfTerms` gives.
@@ -454,7 +454,7 @@ async function publishedDatasetsByKey(db: Executor): Promise<Map<string, number>
   return new Map(rows.rows.map((row) => [row.id, row.n]))
 }
 
-/** Every key a draft holds a value under: the other half of what `keyInUse` asks. */
+/** Every key a draft holds a value under: the other half of what `keyInUse` checks. */
 async function draftedKeyIds(db: Executor): Promise<Set<string>> {
   const rows = await db.execute<{ id: string }>(sql`
     SELECT DISTINCT held #>> '{}' AS id
@@ -486,10 +486,10 @@ async function usedTermIds(db: Executor): Promise<Set<string>> {
 }
 
 /**
- * How many published datasets carry each of the given terms.
+ * How many published datasets have each of the given terms.
  *
- * **Datasets only.** A research row carries every term its datasets do, so
- * counting both kinds of row says 22 where the public listing the count leads
+ * **Datasets only.** A research row has every term its datasets do, so
+ * counting both kinds of row reports 22 where the public listing the count leads
  * to (`datasetsUsing`) shows 12 — and a number that does not match what it
  * opens is worse than none. Drafts are not counted either: the count is what
  * a reader of the site can find.
@@ -557,9 +557,9 @@ async function nextPosition(db: Executor, scope: "dataset" | "experiment"): Prom
 /**
  * **The catalogue is written and the search rows are made again.** Which change
  * could reach a row is not worked out operation by operation — doing that is
- * how the one that does reach a row ends up not saying so.
+ * how the one that does reach a row ends up not indicating so.
  *
- * **Where a key stands is the exception.** The refinement panel is ordered by
+ * **Where a key is placed is the exception.** The refinement panel is ordered by
  * `position` as each page is asked for, so rebuilding every document to move
  * one row rewrites the same documents it started with.
  */
@@ -616,7 +616,7 @@ async function apply(tx: Executor, intent: CatalogIntent, form: FormData): Promi
 /**
  * Why a field cannot be changed here, or null when it can.
  *
- * **The two a dataset carries are refused as well as undrawn.** The screen does
+ * **The two a dataset has are refused as well as undrawn.** The screen does
  * not offer them, but a form is reachable by anybody who can post one, and a
  * screen is not a check (`admin/catalog.ts`).
  */
@@ -668,7 +668,7 @@ async function updateKey(db: Executor, form: FormData): Promise<Outcome> {
   /*
     **Which box a field's facet sits in is not edited here.** The panel's groups
     are part of what the portal is rather than of what the data brings, so the
-    catalogue carries the placement and no screen offers it — a form that does
+    catalogue has the placement and no screen offers it — a form that does
     not hand it over cannot be made to.
   */
   const updated = await db
@@ -708,7 +708,7 @@ async function renumber(
 /**
  * The new position of every row, as one `case` over the rows being written.
  *
- * **Each branch says what type it is.** A bare parameter reaches Postgres as
+ * **Each branch reports what type it is.** A bare parameter reaches Postgres as
  * `unknown`, and a `case` whose every branch is unknown has no type to write
  * into an integer column.
  */
@@ -799,7 +799,7 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
   if (set === undefined) return { status: "unknown-target" }
   if (SETTLED_VOCABULARIES.has(set.code)) return { status: "not-editable" }
   // The code is made from the label (`catalog.ts` の `codeFrom`): it is an
-  // address the public side carries rather than a name to choose. The one
+  // address the public side has rather than a name to choose. The one
   // vocabulary whose codes are its own, ICD10, is settled and never made here.
   const asked = codeFrom(labelEn)
   if (termCodeProblem(asked) !== null) return { status: "no-code" }
@@ -821,7 +821,7 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
  * Why a term cannot be changed here, or null when it can.
  *
  * **A term of a settled vocabulary is refused as well as unreachable.** The
- * screen offers no way in, but a form is reachable by anybody who can post one
+ * screen offers no button for it, but a form is reachable by anybody who can post one
  * (`admin/catalog.ts` の `SETTLED_VOCABULARIES`).
  */
 async function refusedTerm(db: Executor, id: string): Promise<Outcome | null> {
@@ -863,25 +863,25 @@ async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
 }
 
 /**
- * Folding one term into another: every description pointing at it is rewritten
- * to point at the survivor, and the folded term goes.
+ * Merging one term into another: every description pointing at it is rewritten
+ * to point at the survivor, and the merged term goes.
  *
  * **This is what answers "still used, but should not be chosen again".**
- * Turning a term off says only that it will not be offered; a merge also says
+ * Turning a term off reports only that it will not be offered; a merge also reports
  * what to read instead, which is the half the data needs.
  *
  * **Only within one vocabulary.** Two terms of different sets are values of
- * different axes, and folding across would change what a refinement means
+ * different axes, and merging across would change what a refinement means
  * rather than tidy a spelling.
  *
  * **The draft rows move their revision on.** An editor holding one open is
- * looking at a description that no longer says what the row says, so the next
+ * looking at a description that no longer reports what the row has, so the next
  * save has to be refused the same way any other outside change refuses it.
  */
 async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
   const from = text(form, "termId")
   const into = text(form, "intoId")
-  // Folding a term into itself is not an operation; it would only delete it.
+  // Merging a term into itself is not an operation; it would only delete it.
   if (from === "" || from === into) return { status: "unknown-target" }
 
   const refused = await refusedTerm(db, from)
@@ -897,7 +897,7 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
 
   const match = pointingAt(from)
 
-  // Read, fold, write back — row by row, because what has to change is inside
+  // Read, merge, write back — row by row, because what has to change is inside
   // a JSONB document rather than in a column the database can update in place.
   const versions = await db
     .select({ id: researchVersion.id, content: researchVersion.content })
@@ -911,7 +911,7 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
   }
 
   // **Drafts are written in one module and nowhere else** — that is what lets
-  // every write to one carry a revision (`drafts.test.ts`).
+  // every write to one have a revision (`drafts.test.ts`).
   await mergeTermInDrafts(db, match, from, into)
 
   await db.delete(vocabularyTerm).where(eq(vocabularyTerm.id, from))

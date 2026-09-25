@@ -26,7 +26,7 @@ describe("isRequest", () => {
 })
 
 describe("settleRequests", () => {
-  it("unsettles only the language that asked, and names the field", () => {
+  it("unsettles only the language that asked, and identifies the field", () => {
     const { content, asked } = settleRequests({ title: pair("膵臓がんの研究", "ご教示ください(英語タイトル)") })
 
     expect(content.title).toEqual({ ja: text("膵臓がんの研究"), en: { state: "unknown" } })
@@ -88,7 +88,7 @@ describe("settleRequests", () => {
     expect(settleRequests(content)).toEqual({ content, asked: [] })
   })
 
-  it("changes nothing in content that asks nothing", () => {
+  it("changes nothing in content that requests nothing", () => {
     const words = fc.string({ maxLength: 20 }).filter((s) => !isRequest(s))
     fc.assert(fc.property(fc.array(fc.tuple(words, words), { maxLength: 5 }), (pairs) => {
       const content = { grants: pairs.map(([ja, en], i) => ({ id: `g${i}`, title: pair(ja, en) })) }
@@ -96,7 +96,7 @@ describe("settleRequests", () => {
     }))
   })
 
-  it("leaves no question standing as a value", () => {
+  it("leaves no question shown as a value", () => {
     const words = fc.oneof(fc.string({ maxLength: 10 }), fc.constantFrom("ご教示ください", "情報をお知らせください"))
     fc.assert(fc.property(fc.array(fc.tuple(words, words), { maxLength: 5 }), (pairs) => {
       const { content, asked } = settleRequests({ grants: pairs.map(([ja, en], i) => ({ id: `g${i}`, title: pair(ja, en) })) })
@@ -112,19 +112,19 @@ describe("settleRequests", () => {
 })
 
 describe("requestComments", () => {
-  it("drops a bare request, which the unsettled mark already says", () => {
+  it("drops a bare request, which the unsettled badge already reports", () => {
     expect(requestComments({ kind: "research" }, [
       { path: "title", ja: "ご教示ください", en: "ご教示下さい。" },
       { path: "doi", text: "ご教示ください" },
     ])).toEqual([])
   })
 
-  it("says even a bare request taken out of a list, which leaves no mark behind", () => {
+  it("reports even a bare request taken out of a list, which leaves no indicator behind", () => {
     expect(requestComments({ kind: "research" }, [{ path: "grants.g1.grantIds", text: "ご教示ください", unmarked: true }]))
       .toEqual([{ anchor: { kind: "research-field", path: "grants.g1.grantIds" }, body: "ご教示ください" }])
   })
 
-  it("keeps a question that says what is asked, once when both languages agree", () => {
+  it("keeps a question that reports what is asked, once when both languages agree", () => {
     expect(requestComments({ kind: "research" }, [
       { path: "researchProjects.p1.name", ja: "プロジェクト名等ありましたらご教示ください", en: "プロジェクト名等ありましたらご教示ください" },
     ])).toEqual([{ anchor: { kind: "research-field", path: "researchProjects.p1.name" }, body: "プロジェクト名等ありましたらご教示ください" }])

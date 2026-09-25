@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import { conditions } from "./search-as-typed"
 
 /**
- * A submission carries whatever the pane's fields are called, and the empty
+ * A submission has whatever the pane's fields are called, and the empty
  * ones are the point, so the values lean on `""` rather than being drawn from
  * the whole of the string space.
  */

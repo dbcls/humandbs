@@ -5,7 +5,7 @@
  * thing, and they differ in two ways only: where the form posts, and whether
  * the reader may resolve and delete. The preview posts to the page it is on
  * and gets a redirect back, so it works with JavaScript switched off; an
- * editing screen posts to a resource route that answers with the comments,
+ * editing screen posts to a resource route that responds with the comments,
  * because it is holding unsaved work and must not navigate.
  *
  * **The comments at one place are a flat timeline**: oldest first, one box to
@@ -20,14 +20,14 @@
  *
  * **The words on the controls follow the reader.** In the management area what
  * can be pressed is named by a noun; the preview is written for a provider and
- * says 「投稿する」. Which side a panel is on is
+ * shows 「投稿する」. Which side a panel is on is
  * what `canResolve` already tells it.
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useFetcher } from "react-router"
 
-import { Badge, Button, type ButtonSize, Dialog, MarkButton, Note, Stack } from "~/components/base"
+import { Badge, Button, type ButtonSize, Dialog, PanelButton, Note, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon, type IconName, SUBJECT_ICON } from "~/components/icons"
 import { minuteInJst } from "~/dates"
@@ -48,7 +48,7 @@ export interface CommentContext {
   action: string
   /** What is being commented on — a subject, the draft as a whole, or the administrators' memo. */
   subject: AnchorSubject | "draft" | "memo"
-  /** Only an administrator resolves and deletes; a link holder reads and answers. */
+  /** Only an administrator resolves and deletes; a link holder reads and responds. */
   canResolve: boolean
   /** The name comments will be signed with, when the reader is signed in. */
   signedInName: string | null
@@ -92,9 +92,9 @@ export function rememberName(name: string): void {
 }
 
 /**
- * Who said something, as a row draws it: the mark of a person, then the words.
+ * Who said something, as a row draws it: the indicator of a person, then the words.
  *
- * **Every author gets the mark**, so that a bare word at the head of a row
+ * **Every author gets the indicator**, so that a bare word at the head of a row
  * reads as a name and not as a label.
  */
 export function Author({ locale, name, bySignedIn }: {
@@ -116,8 +116,8 @@ export function Author({ locale, name, bySignedIn }: {
 type Fetcher = ReturnType<typeof useFetcher<Answer>>
 
 /**
- * Whether the fetcher a panel shares is carrying a posting right now. **The
- * one fetcher carries posting, resolving and deleting**, so the form cannot
+ * Whether the fetcher a panel shares is handling a posting right now. **The
+ * one fetcher has posting, resolving and deleting**, so the form cannot
  * read "busy" off its state alone: resolving a row would then say 投稿中 beside
  * a box nobody has sent, and hold the send button shut while it did.
  */
@@ -125,7 +125,7 @@ export function postingInFlight(fetcher: Pick<Fetcher, "state" | "formData">): b
   return fetcher.state !== "idle" && fetcher.formData?.get("intent") === "comment"
 }
 
-/** Whether the fetcher is carrying a resolve, reopen or delete of this one comment. */
+/** Whether the fetcher is handling a resolve, reopen or delete of this one comment. */
 export function actingOn(fetcher: Pick<Fetcher, "state" | "formData">, commentId: string): boolean {
   return fetcher.state !== "idle"
     && fetcher.formData?.get("intent") !== "comment"
@@ -141,7 +141,7 @@ function shownOf(
   return answer?.status === "comments" ? answer.comments.filter(pick) : [...given]
 }
 
-/** What a refused comment or mark was missing, said the same wherever it was refused. */
+/** What a refused comment or review press was missing, said the same wherever it was refused. */
 export function problemText(locale: Locale, problem: string): string {
   const t = messagesFor(locale).comment
   if (problem === "name-required") return t.nameRequired
@@ -149,15 +149,15 @@ export function problemText(locale: Locale, problem: string): string {
 }
 
 /**
- * The mark beside a place: how many people have said something about it
+ * The indicator beside a place: how many people have said something about it
  * (coloured if any of it is unresolved), and the way to open the panel that
  * reads, writes and resolves it.
  *
  * **Drawn at the height of a line of text, with the 36px target kept out of
- * sight.** What stands beside it is a heading or a value — the thing it is
+ * sight.** What is shown beside it is a heading or a value — the thing it is
  * about — and a box the size of its subject reads as the larger of the two.
- * The face is `row` (22px); what a finger has to find is widened past the
- * face by a pseudo-element, so the line the mark stands in keeps its own
+ * The style is `row` (22px); what a finger has to find is widened past the
+ * style by a pseudo-element, so the line the indicator is shown in keeps its own
  * height.
  */
 export function CommentSpot({ context, at, comments, fieldLabel }: {
@@ -166,9 +166,9 @@ export function CommentSpot({ context, at, comments, fieldLabel }: {
   comments: readonly CommentView[]
   /**
    * The field's own name, for the panel's heading. **Absent where the caller
-   * has none to give** — this and `Marks` (`preview.tsx`) know only the path,
+   * has none to give** — this and `FieldAnnotations` (`preview.tsx`) know only the path,
    * and a name has to be threaded down from whatever built the screen around
-   * them. Until one is, the panel says only "コメント".
+   * them. Until one is, the panel shows only "コメント".
    */
   fieldLabel?: string
 }) {
@@ -184,9 +184,9 @@ export function CommentSpot({ context, at, comments, fieldLabel }: {
 
   return (
     <span id={encodeURIComponent(at)} className="inline-flex align-top">
-      <MarkButton icon="comment" label={heading} onClick={() => { setHeld(true) }}>
+      <PanelButton icon="comment" label={heading} onClick={() => { setHeld(true) }}>
         {shown.length > 0 && <span className={open > 0 ? "text-accent" : ""}>{t.count(shown.length)}</span>}
-      </MarkButton>
+      </PanelButton>
       <Dialog
         title={fieldLabel === undefined ? t.heading : t.fieldHeading(fieldLabel)}
         held={{ open: held, close: () => { setHeld(false) } }}
@@ -210,7 +210,7 @@ export function CommentTimeline({ context, comments, at, fetcher, placeholder, e
   at?: string
   fetcher?: Fetcher
   placeholder: string
-  /** What stands where the list would, while nothing has been said. */
+  /** What is shown where the list would, while nothing has been said. */
   empty?: string
 }) {
   const own = useFetcher<Answer>()
@@ -241,14 +241,14 @@ export function CommentTimeline({ context, comments, at, fetcher, placeholder, e
  * One comment: who said it, when, what, and whether it is dealt with — and,
  * for an administrator, the two things to do about it at the row's right end.
  *
- * **A line of the memo carries no state**: it is a note rather than a question,
+ * **A line of the memo has no state**: it is a note rather than a question,
  * so it is neither open nor resolved and offers nothing to resolve. It can
  * still be deleted.
  *
- * **Deleting is not asked about.** The row already stands in a panel, and a
- * panel over a panel leaves the reader answering two questions at once; what
- * goes is one line whose words they have just read. The way in wears the
- * warning face all the same, since there is no way to press it back.
+ * **Deleting is not asked about.** The row already is shown in a panel, and a
+ * panel over a panel leaves the reader responding to two questions at once; what
+ * goes is one line whose words they have just read. The trigger is shown with the
+ * warning style all the same, since there is no way to press it back.
  */
 export function CommentRow({ context, comment, at, fetcher }: {
   context: CommentContext
@@ -276,7 +276,7 @@ export function CommentRow({ context, comment, at, fetcher }: {
           <Author locale={context.locale} name={comment.authorName} bySignedIn={comment.bySignedIn} />
           <span>{minuteInJst(comment.createdAt)}</span>
           {/* The state alone: who closed it and when is on record, but a
-              badge that recites it is a sentence in a row of marks. */}
+              badge that recites it is a sentence in a row of icons. */}
           {question && <Flag kind={comment.resolved ? "resolved" : "unresolved"}>{comment.resolved ? t.resolved : t.unresolved}</Flag>}
           {context.canResolve && (
             <span className="ml-auto flex items-center gap-2">
@@ -310,7 +310,7 @@ export function CommentRow({ context, comment, at, fetcher }: {
             </span>
           )}
         </div>
-        {/* Set in from the edge by the width of the person's mark, so the words
+        {/* Set in from the edge by the width of the person's icon, so the words
             start under the name rather than under the glyph before it. */}
         <p className="whitespace-pre-wrap pl-4 text-ink text-sm">{comment.body}</p>
       </Stack>
@@ -323,18 +323,18 @@ export interface CommentGroup {
   key: string
   /** Which of the three places it is — a field of the research, a dataset, the whole. */
   kind: CommentAnchor["kind"]
-  /** The mark before the name — the place's kind, or a field's where a dataset is cut by field. */
-  mark: IconName
+  /** The indicator before the name — the place's kind, or a field's where a dataset is cut by field. */
+  icon: IconName
   name: string
   comments: CommentView[]
 }
 
 /**
- * The mark a place carries before its name: the same mark the way to that
- * place carries elsewhere on the draft's screens, so that "ID 未発行" reads as
+ * The icon a place has before its name: the same icon the link to that
+ * place has elsewhere on the draft's screens, so that "ID 未発行" reads as
  * a dataset before its words are read.
  */
-const PLACE_MARK: Record<CommentAnchor["kind"], IconName> = {
+const ANCHOR_ICON: Record<CommentAnchor["kind"], IconName> = {
   "research-field": "type",
   "dataset-field": SUBJECT_ICON.dataset,
   "draft": "comment",
@@ -346,7 +346,7 @@ const PLACE_MARK: Record<CommentAnchor["kind"], IconName> = {
  * field**: its fields are written on that dataset's own screen, so a reader of
  * this panel is told which dataset to open rather than which box inside it.
  */
-function placeKey(anchor: CommentAnchor, perField: boolean): string {
+function groupKey(anchor: CommentAnchor, perField: boolean): string {
   if (anchor.kind === "research-field") return `research:${anchor.path}`
   if (anchor.kind === "dataset-field") return perField ? `dataset:${anchor.datasetId}:${anchor.path}` : `dataset:${anchor.datasetId}`
   return anchor.kind
@@ -357,7 +357,7 @@ function placeKey(anchor: CommentAnchor, perField: boolean): string {
  * were first spoken about. **Nothing is sorted** — what a reader has just been
  * told about stays where they saw it.
  */
-export function groupedByPlace(
+export function groupedByAnchor(
   comments: readonly CommentView[],
   nameOf: (anchor: CommentAnchor) => string,
   /**
@@ -369,9 +369,9 @@ export function groupedByPlace(
 ): CommentGroup[] {
   const groups = new Map<string, CommentGroup>()
   for (const one of comments) {
-    const key = placeKey(one.anchor, perField)
-    const mark = perField && one.anchor.kind === "dataset-field" ? "type" : PLACE_MARK[one.anchor.kind]
-    const held = groups.get(key) ?? { key, kind: one.anchor.kind, mark, name: nameOf(one.anchor), comments: [] }
+    const key = groupKey(one.anchor, perField)
+    const icon = perField && one.anchor.kind === "dataset-field" ? "type" : ANCHOR_ICON[one.anchor.kind]
+    const held = groups.get(key) ?? { key, kind: one.anchor.kind, icon, name: nameOf(one.anchor), comments: [] }
     held.comments.push(one)
     groups.set(key, held)
   }
@@ -383,15 +383,15 @@ export function groupedByPlace(
  * for one who has, the account's name is what the server signs with and the box
  * would be a second answer to the same question.
  *
- * **The box stands on the page's tint, apart from the rows above it.** Rows and
+ * **The box is shown on the page's tint, apart from the rows above it.** Rows and
  * the box are the same width in the same panel, and with nothing between them
  * the place to write reads as one more row.
  *
  * **The box empties once what was in it has been taken.** Only a posting
- * empties it: the same fetcher carries resolving and deleting, and an answer
+ * empties it: the same fetcher has resolving and deleting, and an answer
  * to those must not throw away what is being typed. A refused posting keeps
  * the words, so they can be fixed rather than typed again. **Only a posting
- * says 投稿中 and shuts the send button** (`postingInFlight`) — a row being
+ * shows 投稿中 and shuts the send button** (`postingInFlight`) — a row being
  * resolved is that row's business, and it shuts its own buttons.
  */
 export function CommentForm({ context, at, fetcher, placeholder }: {
@@ -447,7 +447,7 @@ export function CommentForm({ context, at, fetcher, placeholder }: {
             className={`${CONTROL} text-sm`}
           />
         )}
-        {/* **The way to send stands at the box's right, on its middle line**: the
+        {/* **The way to send is shown at the box's right, on its middle line**: the
             box is two lines and the control one, and a control hanging under a
             box is a second row the reader has to find. */}
         <div className="flex items-center gap-2">
@@ -483,7 +483,7 @@ export function CommentForm({ context, at, fetcher, placeholder }: {
  * to the field it is about, or said to the draft as a whole (`WholeNote`).
  *
  * **The entry is a `Button`; what it opens is a panel** — the same panel a
- * field's own mark opens, so reading, writing and resolving are learned once.
+ * field's own indicator opens, so reading, writing and resolving are learned once.
  */
 export function DraftNote({ context, comments }: {
   context: CommentContext
@@ -501,7 +501,7 @@ export function DraftNote({ context, comments }: {
         type="button"
         size="xs"
         // **Not the speech bubble**: a memo is a note kept, not a question
-        // asked, and the mark says which of the two the entry opens.
+        // asked, and the indicator shows which of the two the entry opens.
         icon={<Icon name="clipboard" aria-hidden="true" />}
         onClick={() => { setHeld(true) }}
       >
@@ -537,12 +537,12 @@ export interface WholeWords {
 /**
  * What has been said about the draft as a whole. The editing screen and the
  * share link open the same panel onto the same timeline, so a provider's remark
- * about the research and the office's answer stand in one place for both.
+ * about the research and the office's answer are shown in one place for both.
  *
  * **The entry is a `Button`; what it opens is a panel**, the same one
  * `DraftNote`'s does. **Only the words and the size differ**: the share
- * link speaks to a provider, and its entry
- * stands with the two marks at full size rather than in a tool row.
+ * link is addressed to a provider, and its entry
+ * is shown with the two indicators at full size rather than in a toolbar.
  */
 export function WholeNote({ context, comments, words, size = "xs" }: {
   context: CommentContext
@@ -594,13 +594,13 @@ export function WholeNote({ context, comments, words, size = "xs" }: {
 /**
  * Every question still open on the draft, wherever it was asked — a field of
  * the research, a field of one of its datasets, or the draft as a whole — in
- * one panel, each under the way to the place it is about.
+ * one panel, each under the link to the place it is about.
  *
- * **The entry stands with the memo and the whole**, the three panels a curator
+ * **The entry is shown with the memo and the whole**, the three panels a curator
  * reads while typing. **The rows are the rows the places' own panels draw**
  * (`CommentRow`), so resolving here is the same press as resolving there.
- * **Nothing is written here** — an answer belongs at the place it answers,
- * and the way there stands over each row.
+ * **Nothing is written here** — an answer belongs at the place it responds to,
+ * and the way there is shown over each row.
  * A memo line is never open: it is a note, not a question.
  */
 export function OpenComments({ context, comments, nameOf, perField = false }: {
@@ -608,7 +608,7 @@ export function OpenComments({ context, comments, nameOf, perField = false }: {
   comments: readonly CommentView[]
   /** What to call the place a comment is about, in the screen's own words. */
   nameOf: (anchor: CommentAnchor) => string
-  /** Cut a dataset by its fields (`groupedByPlace`). */
+  /** Cut a dataset by its fields (`groupedByAnchor`). */
   perField?: boolean
 }) {
   const t = messagesFor(context.locale).admin.editor
@@ -619,7 +619,7 @@ export function OpenComments({ context, comments, nameOf, perField = false }: {
   const close = () => {
     setHeld(false)
   }
-  const groups = groupedByPlace(shown, nameOf, perField)
+  const groups = groupedByAnchor(shown, nameOf, perField)
 
   return (
     <>
@@ -637,7 +637,7 @@ export function OpenComments({ context, comments, nameOf, perField = false }: {
         held={{ open: held, close }}
         dismiss={messagesFor(context.locale).comment.close}
       >
-        <PlaceGroups context={context} groups={groups} fetcher={fetcher} />
+        <AnchorGroups context={context} groups={groups} fetcher={fetcher} />
       </Dialog>
     </>
   )
@@ -647,7 +647,7 @@ export function OpenComments({ context, comments, nameOf, perField = false }: {
  * The open comments, one box per place — the same list in the panel and on the
  * review screen, so the two say "nothing open" the same way too.
  */
-export function PlaceGroups({ context, groups, fetcher }: {
+export function AnchorGroups({ context, groups, fetcher }: {
   context: CommentContext
   groups: readonly CommentGroup[]
   fetcher?: Fetcher
@@ -657,7 +657,7 @@ export function PlaceGroups({ context, groups, fetcher }: {
     <Stack as="ul" gap="normal">
       {groups.map((group) => (
         <li key={group.key}>
-          <PlaceGroup context={context} group={group} fetcher={fetcher} />
+          <AnchorGroup context={context} group={group} fetcher={fetcher} />
         </li>
       ))}
     </Stack>
@@ -667,14 +667,14 @@ export function PlaceGroups({ context, groups, fetcher }: {
 /**
  * One place and the open comments said about it.
  *
- * **The place is a box, and its name is the band on top of it.** A name set in
+ * **The place is a box, and its name is the header on top of it.** A name set in
  * small muted letters over a rule is weaker than the rows under it — each row
- * begins with a person, a time and a badge — and nothing says where one place
- * ends and the next begins. The border closes the place; the band, on the
+ * begins with a person, a time and a badge — and nothing shows where one place
+ * ends and the next begins. The border closes the place; the header, on the
  * page's tint, is read before the rows are. The name is the body's size and
- * colour, with the place's mark before it and the count after it.
+ * colour, with the place's icon before it and the count after it.
  */
-export function PlaceGroup({ context, group, fetcher }: {
+export function AnchorGroup({ context, group, fetcher }: {
   context: CommentContext
   group: CommentGroup
   fetcher?: Fetcher
@@ -682,11 +682,11 @@ export function PlaceGroup({ context, group, fetcher }: {
   return (
     <section className="rounded border border-line">
       <h3 className="flex items-center gap-2 rounded-t bg-surface px-4 py-2 font-semibold text-ink text-sm">
-        <Icon name={group.mark} aria-hidden="true" />
+        <Icon name={group.icon} aria-hidden="true" />
         {group.name}
         <Badge>{group.comments.length}</Badge>
       </h3>
-      {/* The band's lower edge is where the first row's rule would be, so the
+      {/* The header's lower edge is where the first row's rule would be, so the
           first row does not draw its own. */}
       <div className="px-4 pb-3 [&>*:first-child>*:first-child]:border-t-0">
         <Stack gap="tight">

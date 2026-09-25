@@ -51,7 +51,7 @@ describe("サイトコンテンツの変換の保存則", () => {
     }))
   })
 
-  it("表のセルの中身が 1 つも落ちない", () => {
+  it("表のセルの中身が 1 つも除かれない", () => {
     const table = fc.tuple(
       fc.integer({ min: 1, max: 4 }),
       fc.integer({ min: 1, max: 4 }),

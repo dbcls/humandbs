@@ -1,8 +1,8 @@
 import { useState } from "react"
 
 import { dayInJst } from "~/dates"
-import { formatSize, type BoxEntry } from "~/files/box"
-import { inBoxOrder } from "~/files/selection"
+import { formatSize, type ListedFile } from "~/files/prefix"
+import { inListingOrder } from "~/files/selection"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
@@ -15,21 +15,21 @@ import { Empty, Table, Td } from "./page"
 /**
  * Which of the research's files a dataset's page lists.
  *
- * **The form says only how many, and the table is in the panel.** What is
+ * **The form shows only how many, and the table is in the panel.** What is
  * chosen is read on the page beside the form, and the panel is where it is
- * changed: the box's table with a box to tick at the front of each row, the
+ * changed: the prefix's table with a checkbox at the front of each row, the
  * ones chosen already ticked. **Ticking changes nothing until the panel's own
- * deed** — a reader running down the rows is still deciding, and the form and
- * the page beside it would redraw at every tick; the way out leaves the choice
+ * action** — a reader running down the rows is still deciding, and the form and
+ * the page beside it would redraw at every tick; the cancel button leaves the choice
  * as it was.
  *
- * **The way to the files screen stands beside it, in a new tab** — a file not
+ * **The link to the files screen is shown beside it, in a new tab** — a file not
  * yet uploaded is added there, and the form here is not left unsaved.
  */
 export function FileSelection({ locale, listing, selected, filesAt, onChange }: {
   locale: Locale
-  /** Null when the store did not answer, which offers nothing rather than nothing existing. */
-  listing: readonly BoxEntry[] | null
+  /** Null when the store did not respond, which offers nothing rather than nothing existing. */
+  listing: readonly ListedFile[] | null
   selected: readonly string[]
   /** The research's files screen. */
   filesAt: string
@@ -94,7 +94,7 @@ export function FileSelection({ locale, listing, selected, filesAt, onChange }: 
             variant="primary"
             icon={<Icon name="link" />}
             onClick={() => {
-              onChange(inBoxOrder(ticked))
+              onChange(inListingOrder(ticked))
               close()
             }}
           >
@@ -116,16 +116,16 @@ export function FileSelection({ locale, listing, selected, filesAt, onChange }: 
 }
 
 /**
- * The box as its own screen draws it — name, size, date, side — with a box to
- * tick at the front of each row and a window over them that narrows by name.
+ * The prefix as its own screen draws it — name, size, date, side — with a checkbox
+ * at the front of each row and a window over them that narrows by name.
  *
- * **The box in the head takes every row the window shows, or none**, and says
- * when only some are: a dataset often has every file of a small box, and the
+ * **The checkbox in the table header takes every row the window shows, or none**, and shows
+ * when only some are: a dataset often has every file of a small prefix, and the
  * rows the window hides are not what the reader is looking at.
  */
 export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }: {
   locale: Locale
-  listing: readonly BoxEntry[]
+  listing: readonly ListedFile[]
   ticked: readonly string[]
   filter: string
   onFilter: (filter: string) => void
@@ -140,7 +140,7 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
     words.every((word) => entry.name.toLowerCase().includes(word)))
   const names = shown.map((entry) => entry.name)
   const chosen = names.filter((name) => ticked.includes(name)).length
-  // What the window hides stays as it is either way: the head's box speaks for
+  // What the window hides stays as it is either way: the table header's checkbox represents
   // the rows on screen and nothing else.
   const others = ticked.filter((name) => !names.includes(name))
 
@@ -165,7 +165,7 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
             aria-label={t.pickAllFiles}
             checked={names.length > 0 && chosen === names.length}
             disabled={names.length === 0}
-            ref={(box) => { if (box !== null) box.indeterminate = chosen > 0 && chosen < names.length }}
+            ref={(input) => { if (input !== null) input.indeterminate = chosen > 0 && chosen < names.length }}
             onChange={(event) => { onTick(event.target.checked ? [...others, ...names] : others) }}
           />,
           files.name,
@@ -177,7 +177,7 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
       >
         {shown.map((entry) => (
           <tr key={entry.name}>
-            <Td holds="mark">
+            <Td holds="icon">
               <input
                 type="checkbox"
                 aria-label={entry.name}

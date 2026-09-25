@@ -83,8 +83,8 @@ export default function News({ loaderData }: Route.ComponentProps) {
   )
 
   return (
-    // A listing's width, the same as the two the search answers with. The row
-    // above the list holds the box, the count and the way through the pages
+    // A listing's width, the same as the two the search responds with. The row
+    // above the list holds the box, the count and the pagination
     // side by side, and the reading measure is not wide enough for all three:
     // the page links are 596px at their longest, which is where they were
     // dropping to a second line.
@@ -102,7 +102,7 @@ export default function News({ loaderData }: Route.ComponentProps) {
             The box is a GET form, so the search is in the address and can be
             linked to. It is not the public search: announcements are not
             indexed, and this is one `ILIKE` over 682 rows. It is drawn as the
-            same box all the same — which index answers
+            same box all the same — which index responds
             is not something a reader can see. **It searches as the words are
             typed**, and clearing the box is what lifts the search.
           */}
@@ -119,7 +119,7 @@ export default function News({ loaderData }: Route.ComponentProps) {
                 name="q"
                 value={find}
                 label={messages.news.find}
-                placeholder={messages.search.boxHint}
+                placeholder={messages.search.searchHint}
                 submit={messages.search.submit}
                 size="compact"
                 searchAsTyped

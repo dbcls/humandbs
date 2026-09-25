@@ -7,7 +7,7 @@
  * that the marked places are where it differs from what is out there now, and
  * where the questions are.
  *
- * Marks come from the annotation layer, so nothing below the banner knows it is
+ * Annotations come from the annotation layer, so nothing below the banner knows it is
  * being previewed.
  */
 
@@ -31,15 +31,15 @@ import { Badge, Button, ButtonLink, Note, Stack } from "./base"
 import { type CommentContext, CommentSpot, problemText, rememberName, useRememberedName, WholeNote } from "./comments"
 import { DatasetBody } from "./dataset"
 import { Answer, CONTROL } from "./form"
-import { AnnotationLayer, Card, Code, Page, PageHead } from "./page"
+import { AnnotationLayer, Card, Code, Page, PageHeader } from "./page"
 import { Icon } from "./icons"
-import { PreviousMark } from "./previous"
+import { PreviousIndicator } from "./previous"
 import { ResearchBody } from "./research"
 import { firstSentence } from "./review"
 
 export function PreviewResearchScreen({ view, answer }: {
   view: PreviewResearchPageView
-  /** What a form posted from the page itself was answered with. */
+  /** What a form posted from the page itself was responded to with. */
   answer: PreviewActionResult | undefined
 }) {
   const locale = view.locale
@@ -55,7 +55,7 @@ export function PreviewResearchScreen({ view, answer }: {
 
   return (
     <Page>
-      <MarkAnswer answer={answer} locale={locale} />
+      <PreviewActionNotice answer={answer} locale={locale} />
       <PreviewHead
         shell={view}
         label={view.humLabel ?? title(view)}
@@ -65,7 +65,7 @@ export function PreviewResearchScreen({ view, answer }: {
       >
         <Stack gap="block">
           <AnnotationLayer annotate={(at, name) => (
-            <Marks
+            <FieldAnnotations
               context={context}
               at={at}
               view={view}
@@ -128,7 +128,7 @@ export function PreviewDatasetScreen({ view, problem }: {
             <Link to={href(locale, previewPath(view.token))}>{t.backToResearch}</Link>
           </p>
           <AnnotationLayer annotate={(at, name) => (
-            <Marks
+            <FieldAnnotations
               context={context}
               at={at}
               view={view}
@@ -153,15 +153,15 @@ export function PreviewDatasetScreen({ view, problem }: {
 }
 
 /**
- * Both marks of one place: what changed, and what has been said about it.
+ * Both indicators of one place: what changed, and what has been said about it.
  *
  * **They sit on the first line of the value and do not make it taller.** Both
  * are drawn no higher than the 22.4px line the words set (`CommentSpot`,
- * `Mark`), so a pair stands inside it and pushes no row of any table down.
- * Both stand with the name (`page.tsx` の `Annotate`), the comment first and
+ * `PreviousIndicator`), so a pair is shown inside it and pushes no row of any table down.
+ * Both are shown with the name (`page.tsx` の `Annotate`), the comment first and
  * the change after it — the same order the form beside the page uses.
  */
-export function Marks({ context, at, view, comments, heading, fieldLabel }: {
+export function FieldAnnotations({ context, at, view, comments, heading, fieldLabel }: {
   context: CommentContext
   at: string
   view: { changed: string[], previous: PreviewResearchPageView["previous"], current: PreviewResearchPageView["current"] }
@@ -174,7 +174,7 @@ export function Marks({ context, at, view, comments, heading, fieldLabel }: {
     <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-top">
       <CommentSpot context={context} at={at} comments={comments} fieldLabel={fieldLabel} />
       {view.changed.includes(at) && (
-        <PreviousMark
+        <PreviousIndicator
           locale={context.locale}
           value={view.previous[at]}
           current={view.current[at]}
@@ -190,21 +190,21 @@ export function Marks({ context, at, view, comments, heading, fieldLabel }: {
  * A preview in two boxes: what the reader is asked to do here, and then the
  * page as it will be published.
  *
- * **The request is a card of its own, above the page.** Folded into the page's
- * box it stood between the band and the first section, and the page no longer
+ * **The request is a card of its own, above the page.** Merged into the page's
+ * box it was shown between the header bar and the first section, and the page no longer
  * read as the published page it is meant to be checked as. Below it the page
- * wears exactly what a published one does — the band, then the white box.
+ * is shown with exactly what a published one does — the header bar, then the white box.
  *
  * **The steps come first and are written out**, numbered, rather than drawn as
  * a chart: a provider opening the link for the first time has to know what is
  * asked of them before reading, and a list is read in the same order by a
- * screen reader. **The whole's entry and the two marks stand under the steps
+ * screen reader. **The whole's entry and the two indicators are shown under the steps
  * that name them, in the steps' order.** What has been said about the whole is
  * read in its panel, as on the editing screen, rather than as a thread that
- * grows at the head of the page. **Who has pressed a mark is not listed here**:
+ * grows at the head of the page. **Who has pressed an indicator is not listed here**:
  * it is the office's record (the review screen), and a provider reading
  * another provider's name learns nothing about what to do. A dataset page,
- * one step down from the research, carries only the notice and the name.
+ * one step down from the research, has only the notice and the name.
  */
 export function PreviewHead({ shell, label, locale, problem, whole, children }: {
   shell: PreviewShell
@@ -257,9 +257,9 @@ export function PreviewHead({ shell, label, locale, problem, whole, children }: 
         </Stack>
       </Card>
       <div>
-        <PageHead label={label}>
-          <Badge onBand>{t.heading}</Badge>
-        </PageHead>
+        <PageHeader label={label}>
+          <Badge onHeaderBar>{t.heading}</Badge>
+        </PageHeader>
         <Card>{children}</Card>
       </div>
     </Stack>
@@ -271,17 +271,17 @@ export function PreviewHead({ shell, label, locale, problem, whole, children }: 
  *
  * **Saying who they are comes first**: a comment is refused without a name,
  * and a reader who learns that only on posting has to type the comment twice.
- * Signed in, the step says whose name the comments will carry instead of
- * asking for one. **The "変更あり" mark is explained only where it can
+ * Signed in, the step shows whose name the comments will have instead of
+ * requesting one. **The "変更あり" badge is explained only where it can
  * appear** — on a draft that updates a published version; elsewhere the
  * sentence describes nothing on the page. **The datasets are a step of their
  * own**: each has a page of its own, reached from the research's table, and a
  * reader who stops at the research page never sees those items. **The two
  * buttons are two steps, in the order the exchange goes** — commenting, the
  * office's corrections, then the final confirmation on the corrected content;
- * the second is also the only one to press when there is nothing to say.
+ * the second is also the only one to press when there is nothing to show.
  * **Each is named by the button's own word**, built from it, so the step and
- * the button cannot say different things.
+ * the button cannot show different things.
  */
 export function stepsFor(shell: PreviewShell): ReactNode[] {
   const t = messagesFor(shell.locale).preview
@@ -307,7 +307,7 @@ export function stepsFor(shell: PreviewShell): ReactNode[] {
 /**
  * The name of the account a reader is signed in with, set as code — an
  * identifier the account holder chose, which a sentence around it should not
- * be read into — on the tint inline code wears in the site's articles.
+ * be read into — on the tint inline code is shown with in the site's articles.
  */
 function AccountName({ name }: { name: string }) {
   return <Code className="rounded bg-surface px-1">{name}</Code>
@@ -329,7 +329,7 @@ function WhoBar({ shell, locale, joins }: {
 
   if (shell.signedInName !== null) {
     return (
-      // The size of the words it stands beside: the step above says this name
+      // The size of the words it is shown beside: the step above shows this name
       // and the reader looks for it here.
       <p className="text-sm">
         <span className="text-ink-muted">{`${t.who}: `}</span>
@@ -338,12 +338,12 @@ function WhoBar({ shell, locale, joins }: {
     )
   }
 
-  // The way back is this page, so a reader who signs in lands where they were.
+  // The return address is this page, so a reader who signs in lands where they were.
   const back = new URLSearchParams({ redirect: `${location.pathname}${location.search}` })
 
   return (
     <Stack gap="tight">
-      {/* **The two ways of saying who is writing stand on one line**, joined by
+      {/* **The two ways of indicating who is writing are shown on one line**, joined by
           "または": typing a name and signing in answer the same question, and
           the step above names both. */}
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -371,22 +371,22 @@ function WhoBar({ shell, locale, joins }: {
 }
 
 /**
- * The two marks a reader can leave: that they have finished commenting and it
+ * The two indicators a reader can leave: that they have finished commenting and it
  * is the office's turn, or that there is nothing to fix. Neither is an
- * approval, and neither says anything back once pressed — the office reads who
+ * approval, and neither shows anything back once pressed — the office reads who
  * pressed which on its own screen.
  *
- * **Each button says the whole sentence.** A reader who opens the link once
+ * **Each button shows the whole sentence.** A reader who opens the link once
  * has no other way to learn what pressing it means, so the words are long
- * rather than short, and an abbreviation would say nothing to them.
+ * rather than short, and an abbreviation would show nothing to them.
  */
 function Decide({ shell, children }: {
   shell: PreviewShell
-  /** What stands before the two, in the order the steps name them. */
+  /** What is shown before the two, in the order the steps name them. */
   children: ReactNode
 }) {
   const t = messagesFor(shell.locale).preview
-  // **While a mark is on its way, neither can be pressed again.** Both keep
+  // **While an indicator is on its way, neither can be pressed again.** Both keep
   // their words and widths, so nothing beside them moves at the moment the
   // reader is watching; the word for the wait is read out beside them.
   const navigation = useNavigation()
@@ -397,7 +397,7 @@ function Decide({ shell, children }: {
   return (
     <div className="flex flex-wrap items-center gap-3">
       {children}
-      {/* **One form, and the button pressed says which mark.** The name is the
+      {/* **One form, and the button pressed shows which indicator.** The name is the
           one typed under "お名前" (`WhoBar`), which joins this form by its id
           rather than being asked for a second time beside each button. */}
       <Form id={DECIDE_FORM} method="post" className="flex flex-wrap items-center gap-3">
@@ -415,7 +415,7 @@ function Decide({ shell, children }: {
 }
 
 /**
- * What pressing a mark answers: that it reached the office, naming the mark by
+ * What pressing an indicator reports: that it reached the office, naming the indicator by
  * its first sentence as the office's own screen does.
  *
  * **Over the page, and only for a moment** (`Answered`): the page is what the
@@ -423,7 +423,7 @@ function Decide({ shell, children }: {
  * down by the height of a thing already done. A refusal is not answered here —
  * it is the name that was missing, and it is said under the name.
  */
-export function MarkAnswer({ answer, locale }: { answer: PreviewActionResult | undefined, locale: Locale }) {
+export function PreviewActionNotice({ answer, locale }: { answer: PreviewActionResult | undefined, locale: Locale }) {
   const messages = messagesFor(locale)
   const t = messages.preview
   return (
@@ -440,5 +440,5 @@ export function MarkAnswer({ answer, locale }: { answer: PreviewActionResult | u
   )
 }
 
-/** The id the two marks' form is known by, so the name field can join it from outside. */
+/** The id the two indicators' form is known by, so the name field can join it from outside. */
 const DECIDE_FORM = "preview-decide"

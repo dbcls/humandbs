@@ -7,16 +7,16 @@
  * shareable by copying the address. Choosing a value and unchoosing it are the
  * same link, because both are just "the search with this condition toggled".
  *
- * **A facet carries every value it has**, and the list scrolls inside the box
- * it stands in rather than being cut short with a way to the rest. What a way
- * to the rest would cost is either an address that says something other than
+ * **A facet has every value it has**, and the list scrolls inside the box
+ * it is shown in rather than being truncated with a way to the rest. What a way
+ * to the rest would cost is either an address that reports something other than
  * the conditions in force, or a reader without script who cannot reach past
  * the cut; scrolling costs neither.
  * **The box that narrows the list is drawn in the browser** over the values
- * already sent (`facet-find.ts`), so it asks nothing of this module.
+ * already sent (`facet-find.ts`), so it requests nothing of this module.
  *
  * Counts come from [counts.server.ts](../search/counts.server.ts), which is
- * where the rule that a facet is counted with its own condition lifted lives.
+ * where the rule that a facet is counted with its own condition lifted is kept.
  */
 
 import type { Executor } from "~/db/client.server"
@@ -44,7 +44,7 @@ import { href, listPath, searchQuery } from "./urls"
 export interface FacetValueView {
   code: string
   label: string
-  /** Who makes what this names, drawn apart from the rest (`TermLabel`). */
+  /** Who makes what this identifies, drawn apart from the rest (`TermLabel`). */
   maker: string | null
   count: number
   selected: boolean
@@ -75,7 +75,7 @@ export interface FacetView {
    * classification and the level below is never offered.
    */
   kind: "vocabulary" | "number" | "date" | "disease"
-  /** Every value the result carries under this key, the chosen ones first. */
+  /** Every value the result has under this key, the chosen ones first. */
   values: FacetValueView[]
   /**
    * The address with this facet's own conditions dropped, or null when it has
@@ -218,8 +218,8 @@ export async function facetPanel(
     if (one.field.kind === "number") {
       const chosenRange = selection.ranges.get(code)
       const span = bounds.get(one.field.keyId)
-      // Nothing in the result carries a number under this key, and nobody is
-      // asking for one: a pair of inputs over an empty facet is only noise.
+      // Nothing in the result has a number under this key, and nobody is
+      // requesting one: a pair of inputs over an empty facet is only noise.
       if (span === undefined && chosenRange === undefined) return empty
       return {
         ...empty,
@@ -249,7 +249,7 @@ export async function facetPanel(
     }
 
     // **The chosen values come first.** The list can be longer than the box it
-    // stands in, and a condition in force that the reader would have to scroll
+    // is shown in, and a condition in force that the reader would have to scroll
     // to find is a filter they cannot see they are under.
     const taken = chosen.map((termCode) => valueOf(termCode, byCode.get(termCode), true))
     const rest = found
@@ -281,11 +281,11 @@ export async function facetPanel(
  * A date as the panel offers it: the same pair of inputs a number takes, over a
  * column of the search row rather than a facet table ([fields.ts](../search/fields.ts)).
  *
- * **A date the result never carries keeps its box and loses its inputs.** Two
- * empty boxes over a span that does not exist are a control that cannot do
+ * **A date the result never has keeps its box and loses its inputs.** Two
+ * empty fields over a span that does not exist are a control that cannot do
  * anything — the modification dates are exactly that until the application
- * system is reachable — but taking the whole dimension away says instead
- * that the listing cannot be narrowed by it at all. **The box stands
+ * system is reachable — but taking the whole dimension away reports instead
+ * that the listing cannot be narrowed by it at all. **The box remains
  * and opens on the reason it is empty**, which is what every other dimension
  * with no values does (`categorise`).
  */
@@ -322,7 +322,7 @@ function dateView(input: {
     kind: "date",
     values: [],
     clearHref: chosen === undefined ? null : lifted,
-    // Nothing in the result carries this date and nobody is asking for one, so
+    // Nothing in the result has this date and nobody is requesting one, so
     // the pair of inputs and the windows over them have nothing to act on.
     range: span === null && chosen === undefined
       ? null
@@ -377,7 +377,7 @@ function writtenBound(bound: string | undefined): string {
  * Facets grouped under their category heading, in the catalog's order.
  *
  * **Every facet the catalog holds is here, including the ones nothing in the
- * result carries.** What a facet's box says, folded, is that the listing can be
+ * result has.** What a facet's box has, collapsed, is that the listing can be
  * narrowed by that dimension — dropping the boxes whose values came back empty
  * takes the pane apart in front of a reader who has narrowed one step too far,
  * and at nothing found it took the whole pane away: what was left was a search

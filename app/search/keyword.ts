@@ -2,7 +2,7 @@
  * The search box and the tree.
  *
  * **What is typed into the box is keywords, not a query language.** The box
- * never reaches the parser: it is cut into terms here and handed over as a
+ * never reaches the parser: it is split into terms here and handed over as a
  * tree. That is what lets a term keep its punctuation — `NGS(Exome)` is one
  * value with brackets in it, and the writer quotes it on the way into the
  * address rather than the reader tripping over it.
@@ -15,9 +15,9 @@
  * - quotes hold a run together (`"Homo sapiens"`), which is how a term with a
  *   space in it is written
  *
- * The way back is partial on purpose. A tree can hold conditions the box has no
+ * The reverse conversion is partial on purpose. A tree can hold conditions the box has no
  * way to show — a field, a negation, a mixture of both — so the reverse
- * separates what the box can *carry* from what cannot be typed into it.
+ * separates what the box can *have* from what cannot be typed into it.
  *
  * **This is not the split between what is listed and what is not.** Everything
  * in force is listed, the typed words included (`app/public/lists.server.ts`
@@ -82,7 +82,7 @@ export function keywordToQuery(input: string): QueryNode | null {
 }
 
 export interface KeywordSplit {
-  /** What the box shows. Empty when the tree holds nothing the box can carry. */
+  /** What the box shows. Empty when the tree holds nothing the box can have. */
   keyword: string
   /** The conditions shown beside the box, each of which can be removed. */
   conditions: QueryNode[]

@@ -33,8 +33,8 @@ test.describe("public API", () => {
     expect(first.pageCount).toBeGreaterThan(1)
     expect(first.hits.length).toBeGreaterThan(0)
 
-    // **画面の表示件数は機械が読む窓口に効かない。** 一つの形だけを出すことが
-    // 呼ぶ側の予測を保つので、`size` は読まれずに落ちる
+    // **画面の表示件数は API には適用されない。** 一つの形だけを返すことが
+    // 呼ぶ側の予測を保つので、`size` は無視される
     const asked = await (await request.get("/api/research?size=1")).json() as {
       hits: { id: string }[]
     }
@@ -57,7 +57,7 @@ test.describe("public API", () => {
 
     const lines = (await bulk.text()).split("\n").filter((line) => line !== "")
     expect(lines).toHaveLength(listed.total)
-    // 行が JSON でなければ、1 行 1 件という約束は守られていない
+    // 行が JSON でなければ、1 行 1 件という仕様は守られていない
     const head = lines[0] ?? ""
     expect(() => JSON.parse(head) as unknown).not.toThrow()
   })
@@ -96,7 +96,7 @@ test.describe("public API", () => {
     expect(named.length).toBeGreaterThan(0)
 
     // **挙げるのは公開されている行が実際に持っている値**なので、どれを書いても
-    // 0 件にはならない。定義されているだけの値を挙げていれば、ここで落ちる
+    // 0 件にはならない。定義されているだけの値を挙げていれば、ここで失敗する
     for (const field of named.slice(0, 5)) {
       const q = `${field.code}:"${field.values?.[0]?.code ?? ""}"`
       const answer = await request.get(`/api/dataset?q=${encodeURIComponent(q)}`)
@@ -110,12 +110,12 @@ test.describe("public API", () => {
     await page.goto("/api/docs")
 
     // **operation が出るのは document を読めたときだけ。** 画面は JSON を自分で
-    // 取りに行くので、指している先が違えば枠だけが残る
+    // 取りに行くので、指している先が違えば外側の要素だけが残る
     const operations = page.locator("#swagger-ui .opblock")
     await expect(operations.first()).toBeVisible()
     expect(await operations.count()).toBeGreaterThan(1)
 
-    // **stylesheet が `text/css` で届かなければブラウザは捨てる。** 画面は描かれた
+    // **stylesheet が `text/css` で送られなければブラウザは無視する。** 画面は描かれた
     // ままなので見えるかどうかでは分からず、色が付いたかで見る
     const painted = await operations.first().evaluate((el) =>
       getComputedStyle(el).backgroundColor)

@@ -37,8 +37,8 @@ import { ActionButton, ActionRow, NewsList } from "~/components/site"
 import {
   Announcement,
   Badge,
-  Band,
-  BAND_FILL,
+  HeaderBar,
+  HEADER_BAR_FILL,
   BigAction,
   Breadcrumb,
   Button,
@@ -54,7 +54,7 @@ import {
   Heading,
   IconButton,
   LanguagePills,
-  MarkButton,
+  PanelButton,
   Menu,
   MoreLink,
   Note,
@@ -87,16 +87,16 @@ import {
 import { Icon, ICON_NAMES } from "~/components/icons"
 import {
   AccessTypeBadge,
-  BandBox,
+  HeaderBarSection,
   Card,
   DatasetIds,
   Empty,
   Fact,
   Facts,
-  IdMark,
+  IdWithIcon,
   KeyValue,
   Page,
-  PageHead,
+  PageHeader,
   PageLinks,
   Section,
   Table,
@@ -153,21 +153,21 @@ const SECTIONS = [
   ["type", "文字"],
   ["rhythm", "間隔"],
   ["icon", "アイコン"],
-  ["band", "Band と見出し"],
+  ["header-bar", "HeaderBar と見出し"],
   ["button", "ボタン"],
   ["big-action", "大きな導線"],
   ["badge", "バッジとマーク"],
   ["note", "注記"],
   ["announcement", "アラート"],
   ["header-controls", "ヘッダの操作"],
-  ["admin-shell", "Admin の区画"],
+  ["admin-parts", "管理画面の部品"],
   ["trail", "パンくず"],
   ["tabs", "タブ"],
   ["table", "表"],
   ["panel", "絞り込みパネル"],
   ["search", "検索まわり"],
   ["cart", "カート"],
-  ["entry", "入り口"],
+  ["entry", "導線の並べ方"],
   ["prose", "記事の本文"],
   ["input", "入力"],
   ["ask", "確認・メニュー・進行"],
@@ -176,18 +176,18 @@ const SECTIONS = [
 
 const COLOURS: [string, string, string][] = [
   ["brand", "bg-brand", "リンク・見出し・白地の上の線と字"],
-  ["brand-dark", "bg-brand-dark", "Band の左端"],
-  ["brand-light", "bg-brand-light", "Band の右端・添えものの塗り"],
-  ["brand-lighter", "bg-brand-lighter", "入り口の右端"],
+  ["brand-dark", "bg-brand-dark", "HeaderBar の左端"],
+  ["brand-light", "bg-brand-light", "HeaderBar の右端・添えものの塗り"],
+  ["brand-lighter", "bg-brand-lighter", "大きな導線 (BigAction) の右端"],
   ["accent", "bg-accent", "強調"],
-  ["accent-light", "bg-accent-light", "強調の Band の右端"],
-  ["accent-lighter", "bg-accent-lighter", "入り口の右端"],
-  ["deep", "bg-deep", "主題の Band の左端"],
+  ["accent-light", "bg-accent-light", "強調の HeaderBar の右端"],
+  ["accent-lighter", "bg-accent-lighter", "大きな導線 (BigAction) の右端"],
+  ["deep", "bg-deep", "主題の HeaderBar の左端"],
   ["ink", "bg-ink", "本文"],
-  ["ink-muted", "bg-ink-muted", "添え字・主題の Band の右端"],
+  ["ink-muted", "bg-ink-muted", "添え字・主題の HeaderBar の右端"],
   ["line", "bg-line", "罫線"],
-  ["line-strong", "bg-line-strong", "入力欄と操作の枠"],
-  ["surface", "bg-surface", "頁の地"],
+  ["line-strong", "bg-line-strong", "入力欄と操作の枠線"],
+  ["surface", "bg-surface", "ページの背景"],
   ["surface-hover", "bg-surface-hover", "指した行"],
   ["surface-input", "bg-surface-input", "入力欄の地"],
   ["warning", "bg-warning", "見てほしいこと"],
@@ -205,8 +205,8 @@ const NOTE_KINDS: NoteKind[] = ["info", "tip", "warning", "danger"]
 
 const FIELD_TABS = [
   { id: "title", label: "研究題目" },
-  { id: "summary", label: "研究概要", mark: <Badge tone="warning">未保存</Badge> },
-  { id: "providers", label: "提供者情報", mark: <Badge tone="brand">2</Badge> },
+  { id: "summary", label: "研究概要", badge: <Badge tone="warning">未保存</Badge> },
+  { id: "providers", label: "提供者情報", badge: <Badge tone="brand">2</Badge> },
   { id: "grant", label: "助成金情報" },
 ]
 
@@ -220,9 +220,9 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
 
   return (
     <Page>
-      <PageHead kicker="本番では出ない 1 枚" label="部品">
-        <Badge onBand>{`実データ ${String(ROWS.length)} 行を凍結`}</Badge>
-      </PageHead>
+      <PageHeader kicker="本番では出ない 1 枚" label="部品">
+        <Badge onHeaderBar>{`実データ ${String(ROWS.length)} 行を凍結`}</Badge>
+      </PageHeader>
       <Card>
         <Stack gap="block">
           <nav aria-label="この頁の節" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
@@ -241,7 +241,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             </div>
             <p className="mt-4 text-ink-muted text-sm">
               白文字を載せてよいのは brand / brand-light / accent / deep / ink-muted / danger の 6 つだけ。
-              比は app/app.contrast.test.ts が見張っている。
+              比は app/app.contrast.test.ts で検査している。
             </p>
           </Section>
 
@@ -261,7 +261,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <Stack gap="block">
               <p id="rhythm" className="text-ink-muted text-sm">
                 縦の間隔は 3 つだけで、画面は margin を書かない。間隔を管理するのは Stack。
-                tight はラベルと値、normal は枠の中の要素どうし、block は節と節。
+                tight はラベルと値、normal はカードの中の要素どうし、block は節と節。
               </p>
               {(["tight", "normal", "block"] as const).map((gap) => (
                 <Stack key={gap} gap="tight">
@@ -290,36 +290,36 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             </div>
           </Section>
 
-          <Section title="Band と見出し">
-            <div id="band" className="flex flex-col gap-8">
+          <Section title="HeaderBar と見出し">
+            <div id="header-bar" className="flex flex-col gap-8">
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  Band は「名前を持つ 1 つのものについての頁」だけ。deep が主題、brand がその下の節と表。
+                  HeaderBar は「名前を持つ 1 つのものについての頁」だけ。deep が主題、brand がその下の節と表。
                 </p>
-                <Band tone="deep" className="rounded-t">
+                <HeaderBar tone="deep" className="rounded-t">
                   <div>
                     <p className="text-white/80 text-xs">NBDC Research ID:</p>
                     <span className="flex items-center gap-3 font-bold text-xl">
                       <Icon name="book" />
                       hum0103-v4
-                      <Badge onBand>最新</Badge>
+                      <Badge onHeaderBar>最新</Badge>
                     </span>
                   </div>
                   <span className="text-sm">リリース情報</span>
-                </Band>
+                </HeaderBar>
                 <div className="rounded-b bg-white px-5 py-4 text-sm">
-                  Band の下は白い枠。頁の地が薄いグレーなので、枠が枠として読める。
+                  HeaderBar の下は白いカード。ページの背景が薄いグレーなので、カードの境目が見える。
                 </div>
               </div>
-              <Band>
+              <HeaderBar>
                 <span className="font-bold">brand — 節と表の見出し</span>
                 <span className="text-sm">添える語</span>
-              </Band>
-              <Band tone="accent">
-                <span className="font-bold">accent — 頁が 1 つだけ持てる呼びかけ</span>
-              </Band>
+              </HeaderBar>
+              <HeaderBar tone="accent">
+                <span className="font-bold">accent — ページに 1 つだけ置ける強調</span>
+              </HeaderBar>
               <div>
-                <p className="mb-2 text-ink-muted text-sm">一覧と記事はこちら。Band を使わない。</p>
+                <p className="mb-2 text-ink-muted text-sm">一覧と記事はこちら。HeaderBar を使わない。</p>
                 <Heading title="研究一覧" aside={`全 ${String(TOTAL)} 件`}>
                   <Button type="button" listing icon={<Icon name="copy" />}>コピー</Button>
                   <Button type="button" listing icon={<Icon name="download" />}>TSV</Button>
@@ -328,8 +328,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  切り詰めた枠から全部へ出る経路は 3 つで、同じ見た目をしている。別の画面へ渡すのが
-                  MoreLink (見出しの右端)、一覧の残りをその場で開くのが Clamped、文を刈って
+                  切り詰めた表示から全部を見る方法は 3 つで、同じ見た目をしている。別の画面へ移動するのが
+                  MoreLink (見出しの右端)、一覧の残りをその場で開くのが Clamped、文を切り詰めて
                   その場で開くのが Excerpt (どちらも表のセル、下の表)。その場で開く 2 つは、
                   開いているあいだ chevron が向きを変えて「戻す」を示す。
                 </p>
@@ -343,8 +343,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  一段下の見出し (PaneHeading)。青い棒の位置が 2 通り —
-                  edge はカードの余白へ張り出して h1 の棒と同じ縦線に乗り、
+                  1 階層下の見出し (PaneHeading)。青い縦線の位置が 2 通り —
+                  edge はカードの余白にはみ出して h1 の縦線と同じ位置に揃い、
                   start は指定するものの開始位置に置かれる。線はどちらも pane に沿う。
                 </p>
                 <div className="flex flex-col gap-6">
@@ -359,7 +359,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
                   pane の中の群の名前 (PANE_LABEL)。PaneHeading が pane 自身を示すのに対し、
-                  これはその中の 1 つの列を示す — 効いている条件と、facet の枠それぞれ。
+                  これはその中の 1 つの列を示す — 適用中の条件と、facet の各項目。
                 </p>
                 <div className="flex flex-col gap-2">
                   <span className={PANE_LABEL}>適用中</span>
@@ -373,7 +373,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="button" className="flex flex-col gap-4">
               <p className="text-ink-muted text-sm">
                 見た目を決めるのは「その画面がどれだけ押してほしいか」で、そこで何が似合うかではない。
-                塗りは画面に 1 つまで、枠が既定。字だけの見た目は無い — 素の語は文の続きに
+                塗りは画面に 1 つまで、枠線が既定。字だけの見た目は無い — 素の語は文の続きに
                 読め、押せると分かるのが押したあとになる。
               </p>
               <div className="flex flex-wrap items-center gap-3">
@@ -382,7 +382,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 ))}
               </div>
               <p className="text-ink-muted text-sm">
-                塗りの隣に枠を置いた形。取り消しも枠の見た目で、実行との違いは並びの左右と色が表す。
+                塗りの隣に枠線のボタンを置いた形。取り消しも枠線の見た目で、実行との違いは並びの左右と色が表す。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" variant="primary" icon={<Icon name="save" />}>保存する</Button>
@@ -391,15 +391,15 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <p className="text-ink-muted text-sm">
                 形も色も「どの場所にあるか」で決まる。丸いのは一覧の上の操作の行にあるボタン
                 (listing) で、好みで選ぶものではない。上の「研究一覧」の見出しに並んでいるのが
-                それ。同じ行でもページ送りの番号だけは 4px で、数字が枠を埋めないため。
+                それ。同じ行でもページ送りの番号だけは 4px で、数字がボタンを埋めないため。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" listing icon={<Icon name="search" />}>listing — 一覧の行</Button>
                 <Button type="button" icon={<Icon name="search" />}>listing 無し — それ以外</Button>
               </div>
               <p className="text-ink-muted text-sm">
-                コピーは 1 つの部品。押すとアイコンが ✓ に、語が「コピーしました」に入れ替わり、読み上げにも
-                届いて、数秒で戻る。2 つの語は同じ升に収まるので、切り替わっても幅は動かない。
+                コピーは 1 つの部品。押すとアイコンが ✓ に、語が「コピーしました」に入れ替わり、スクリーンリーダーにも
+                読み上げられて、数秒で戻る。2 つの語は同じ幅の領域に収まるので、切り替わっても幅は動かない。
               </p>
               <div id="copy" className="flex flex-wrap items-center gap-3">
                 <CopyButton listing text="hum0001" label="コピー" done={messages.copied} />
@@ -407,18 +407,18 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 <CopyButton size="row" text="/common/example.pdf" label="アドレスのコピー" done={messages.copied} />
               </div>
               <p className="text-ink-muted text-sm">
-                文の行の中にある、ダイアログを開くアイコン (MarkButton)。行の背丈 24px で描き、押せる範囲だけを
+                文の行の中にある、ダイアログを開くアイコン (PanelButton)。行の高さ 24px で描き、押せる範囲だけを
                 36px に広げる。コメントのアイコンと「変更あり」がこれ。
               </p>
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <span>研究題目</span>
-                <MarkButton icon="comment" label="コメント" onClick={() => undefined}>2</MarkButton>
-                <MarkButton icon="diff" onClick={() => undefined}><span className="text-accent">変更あり</span></MarkButton>
+                <PanelButton icon="comment" label="コメント" onClick={() => undefined}>2</PanelButton>
+                <PanelButton icon="diff" onClick={() => undefined}><span className="text-accent">変更あり</span></PanelButton>
               </div>
               <p className="text-ink-muted text-sm">
-                選ぶことは押すことではないので、ボタンの見た目を借りない。選択肢は 1 つの枠を分け合い、
-                選ばれた区画だけが塗られる — 溶接された形が、単独である塗りと読み分けさせる。
-                選択肢が多いか語が長いときは、枠を置かず折りたたむ (下の Chooser)。
+                選ぶことは押すことではないので、ボタンの見た目を借りない。選択肢は 1 つの枠線の中に並び、
+                選ばれた部分だけが塗られる — 選択肢がつながった形なので、単独の塗りのボタンと見分けられる。
+                選択肢が多いか語が長いときは、並べずに折りたたむ (下の Chooser)。
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Choice
@@ -443,27 +443,27 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 />
               </div>
               <p className="text-ink-muted text-sm">
-                Band の上では見た目が反転する (onBand)。ページの色はどれも Band の暗い側で 3:1 を割るので、
-                残っているのは白だけになる。順位はそのままで、塗りが白に、枠が白い縁になる。
+                HeaderBar の上では見た目が反転する (onHeaderBar)。ページの色はどれも HeaderBar の暗い側で 3:1 を下回るので、
+                残っているのは白だけになる。順位はそのままで、塗りが白に、枠線が白い線になる。
               </p>
-              <Band>
+              <HeaderBar>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button type="button" onBand variant="primary" icon={<Icon name="cart" />}>
+                  <Button type="button" onHeaderBar variant="primary" icon={<Icon name="cart" />}>
                     カートに追加
                   </Button>
-                  <Button type="button" onBand variant="secondary" icon={<Icon name="check" />}>
+                  <Button type="button" onHeaderBar variant="secondary" icon={<Icon name="check" />}>
                     カートに入っています
                   </Button>
-                  <Button type="button" onBand variant="secondary">取り消す</Button>
+                  <Button type="button" onHeaderBar variant="secondary">取り消す</Button>
                 </div>
-              </Band>
+              </HeaderBar>
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="button" variant="secondary" size="xs">xs — 値の隣</Button>
                 <Button type="button" variant="primary" size="md">md</Button>
-                <Button type="button" variant="primary" size="lg">lg — 頁の呼びかけ</Button>
+                <Button type="button" variant="primary" size="lg">lg — ページの主な操作</Button>
                 <Button type="button" variant="primary" disabled>変更がありません</Button>
                 <Button type="button" variant="danger" disabled icon={<Icon name="trash" />}>削除する</Button>
-                <ButtonLink to="/research" variant="secondary" way>
+                <ButtonLink to="/research" variant="secondary" chevron>
                   研究一覧へ
                 </ButtonLink>
                 <ButtonLink to="/research" external newTab newTabLabel={messages.newTab}>
@@ -498,13 +498,13 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 {FLAG_KINDS.map((kind) => <Stated key={kind} kind={kind}>{kind}</Stated>)}
               </div>
-              <Band className="rounded">
+              <HeaderBar className="rounded">
                 <span className="flex items-center gap-2 text-sm">
-                  Band の上では
-                  <Badge onBand>白い輪郭</Badge>
-                  <Badge onBand>下書き 1</Badge>
+                  HeaderBar の上では
+                  <Badge onHeaderBar>白い輪郭</Badge>
+                  <Badge onHeaderBar>下書き 1</Badge>
                 </span>
-              </Band>
+              </HeaderBar>
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <span className="text-ink-muted">アクセス制限は輪郭を持たない —</span>
                 {(first?.accessTypes ?? []).map((term) => (
@@ -549,8 +549,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 </Note>
               ))}
               {/*
-                隅の知らせ (`Toast`) の中身。`Toast` 自体は `fixed` なのでここには
-                置けない — カタログの隅に出しっぱなしになる。読み上げに使う実体は
+                トースト (`Toast`) の中身。`Toast` 自体は `fixed` なのでここには
+                置けない — カタログの隅に表示されたままになる。読み上げに使う実体は
                 `Toast` の側に常駐していて、ここに出ているのは見た目だけ。
               */}
               <div className="max-w-md shadow-lg">
@@ -592,12 +592,12 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               />
               <RoundLink to="/research" name="search" label="キーワード検索" />
               <RoundLink to="/auth/login" name="log-in" label="ログイン" filled external />
-              {/* 件数の丸 (CountBubble)。丸い操作の角に浮くか、枠の中で語の隣にある */}
+              {/* 件数の丸 (CountBubble)。丸いボタンの角に重ねるか、ボタンの中で語の隣に置く */}
               <CountBubble count={3} />
               <CountBubble count={12} tone="brand" />
-              {/* 数を持つ丸は `Menu` の側。中身を開くものなのでリンクではない */}
+              {/* 数の付いた丸は `Menu` の側。中身を開くものなのでリンクではない */}
               <Menu label="カート（3 件）" icon="cart" round count={3}>
-                <p className="px-4 py-2 text-ink-muted text-sm">3 件を集めています</p>
+                <p className="px-4 py-2 text-ink-muted text-sm">カートに 3 件入っています</p>
               </Menu>
               {/* ログイン中の丸。塗りと頭文字が状態そのもので、隣の丸とは別物に見える */}
               <Menu
@@ -632,7 +632,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
                   一覧の切り替え (公開側)。リンクなので共有できる。カードの右上に付き、右端はカードの右端と
-                  揃う。枠を持たず、色の違いだけで前後を示す — 選ばれていない側は surface-light で、
+                  揃う。枠線は無く、色の違いだけで前後を示す — 選ばれていない側は surface-light で、
                   ページの地より明るい。
                 </p>
                 <SwitchTabs
@@ -687,14 +687,14 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               >
                 {ROWS.map((row) => (
                   <tr key={row.humLabel} className="bg-white hover:bg-surface-hover">
-                    {/* `narrow`: a cell holding a mark keeps no room above and
+                    {/* `narrow`: a cell holding an indicator keeps no room above and
                         below, so the 36px control rides inside the row that the
                         words set rather than making it taller. */}
-                    <Td holds="mark">
+                    <Td holds="icon">
                       <IconButton name="cart" label={`${row.humLabel} をカートに入れる`} />
                     </Td>
                     <Td nowrap>
-                      <IdMark kind="research" to={`/research/${row.humLabel}`}>{row.humLabel}</IdMark>
+                      <IdWithIcon kind="research" to={`/research/${row.humLabel}`}>{row.humLabel}</IdWithIcon>
                     </Td>
                     <Td floor="min-w-72">
                       <Excerpt more="もっと見る" less="閉じる">
@@ -730,7 +730,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                     <Td nowrap>
                       {row.accessTypes[0] !== undefined && <AccessTypeBadge term={row.accessTypes[0]} />}
                     </Td>
-                    <Td holds="mark">
+                    <Td holds="icon">
                       <IconButton name="close" label={`${row.humLabel} をカートから外す`} />
                     </Td>
                   </tr>
@@ -758,11 +758,11 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                 next="次へ"
               />
               {/*
-                置き場が狭いときは上限を渡せる。削るのは隣のページからで、
-                倍々の段は落とさない (回数を抑えているのはそちら)。段だけで
-                上限を超える長さの一覧では、上限より多く出ることがある。
+                表示する幅が狭いときは上限を渡せる。削るのは隣のページからで、
+                倍々に離れたページの番号は削らない (押す回数を抑えているのはそちら)。倍々の番号だけで
+                上限を超える長さの一覧では、上限より多く表示されることがある。
               */}
-              <p className="text-ink-muted text-sm">50 ページの真ん中を、置き場が狭いとき (most 9)</p>
+              <p className="text-ink-muted text-sm">50 ページの真ん中を、表示する幅が狭いとき (most 9)</p>
               <PageLinks
                 label="ページ送り (狭いところ)"
                 page={25}
@@ -783,7 +783,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  1 つ選んで 1 つ開いたとき。条件が入っている区画は必ず開く。
+                  1 つ選んで 1 つ開いたとき。条件が入っている項目は必ず開く。
                 </p>
                 <FacetPanel
                   locale={LOCALE}
@@ -799,7 +799,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
           <Section title="検索まわり">
             <div id="search" className="flex flex-col gap-6">
               <div>
-                <p className="mb-2 text-ink-muted text-sm">トップの窓 (large) と一覧の窓。</p>
+                <p className="mb-2 text-ink-muted text-sm">トップの検索窓 (large) と一覧の検索窓。</p>
                 <div className="flex flex-col gap-4">
                   <SearchForm locale="ja" target="research" keyword="" query="" size="large" />
                   <SearchForm locale="ja" target="research" keyword="肺がん" query="" />
@@ -891,14 +891,14 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   <span className="text-ink-muted text-xs">(何も出ない)</span>
                 </span>
               </div>
-              <div className={`flex flex-wrap items-center gap-4 rounded p-3 ${BAND_FILL.deep}`}>
-                <span className="text-sm text-white">Band の上:</span>
+              <div className={`flex flex-wrap items-center gap-4 rounded p-3 ${HEADER_BAR_FILL.deep}`}>
+                <span className="text-sm text-white">HeaderBar の上:</span>
                 <AddToCartButton datasetLabel="JGAD000117" locale="ja" />
               </div>
             </div>
           </Section>
 
-          <Section title="入り口">
+          <Section title="導線の並べ方">
             <div id="entry" className="flex flex-col gap-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <BigAction to="/data-submission" tone="accent" icon="upload">データの提供</BigAction>
@@ -934,7 +934,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               </div>
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  一覧では日付が自分の列を持ち、日付どうしが縦に揃う。
+                  一覧では日付に専用の列があり、日付どうしが縦に揃う。
                 </p>
                 <NewsList locale="ja" items={NEWS} dateBeside />
               </div>
@@ -1030,8 +1030,8 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
             <div id="admin-parts" className="flex flex-col gap-8">
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
-                  管理画面の一覧のツールの行 (`ListingTools`)。並び替え・表示件数・件数・ページ送りが 1 行で、
-                  既定の並びと向きはアドレスに書かない。絞り込みの form は `ListingPresented` が並びと件数を運ぶ。
+                  管理画面の一覧のツールバー (`ListingTools`)。並び替え・表示件数・件数・ページ送りが 1 行で、
+                  既定の並びと向きはアドレスに書かない。絞り込みの form には `ListingPresented` が並び順と件数を引き継ぐ。
                 </p>
                 <ListingTools
                   locale="ja"
@@ -1054,13 +1054,13 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
                   表の操作の列 (`Table` の `actions`、見出しは読み上げだけ)、行の上げ下げ (`ReorderButtons`、端は押せない状態)、
-                  識別子の先頭のアイコン (`IdMark`)。
+                  識別子の先頭のアイコン (`IdWithIcon`)。
                 </p>
                 <Table actions align="middle" headers={["データセット ID", "研究 ID"]}>
                   {["JGAD000001", "JGAD000002", "JGAD000003"].map((label, at) => (
                     <tr key={label}>
-                      <Td nowrap><IdMark kind="dataset" to="/dev/ui">{label}</IdMark></Td>
-                      <Td nowrap><IdMark kind="research" to="/dev/ui" newTab locale="ja">hum0001</IdMark></Td>
+                      <Td nowrap><IdWithIcon kind="dataset" to="/dev/ui">{label}</IdWithIcon></Td>
+                      <Td nowrap><IdWithIcon kind="research" to="/dev/ui" newTab locale="ja">hum0001</IdWithIcon></Td>
                       <Td holds="control">
                         <span className="flex items-center gap-1">
                           <ReorderButtons at={at} of={3} labels={{ up: "上へ", down: "下へ" }} onMove={() => undefined} />
@@ -1086,10 +1086,10 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
                   </Facts>
                 </div>
                 <div>
-                  <p className="mb-2 text-ink-muted text-sm">同じ種類のものが並ぶ、Band 付きのカード (`BandBox`)。</p>
-                  <BandBox level={3} title="解析手法 1" aside={<span className="text-sm">2026-09-24</span>}>
+                  <p className="mb-2 text-ink-muted text-sm">同じ種類のものが並ぶ、HeaderBar 付きのカード (`HeaderBarSection`)。</p>
+                  <HeaderBarSection level={3} title="解析手法 1" aside={<span className="text-sm">2026-09-24</span>}>
                     <span className="text-sm">本文</span>
-                  </BandBox>
+                  </HeaderBarSection>
                 </div>
               </div>
               <div>
@@ -1109,7 +1109,7 @@ export default function DevUi({ loaderData }: Route.ComponentProps) {
               <div>
                 <p className="mb-2 text-ink-muted text-sm">
                   一覧に 1 件も無いとき。表は残り、行があった場所に 1 行入る (`whenEmpty`)。
-                  緩めた検索も打ち方の案内も出さない。
+                  条件を緩めた検索も入力方法の案内も表示しない。
                 </p>
                 <Table
                   headers={["研究 ID", "研究題目", "公開日"]}

@@ -16,7 +16,7 @@ import type { Route } from "./+types/admin-version-datasets"
  * A version is what a reader sees now, and nothing on it is edited in place:
  * correcting one is done in the update draft the
  * version's "編集" opens, and that draft's own dataset screen is where the
- * list is changed. This screen answers the other question the research's
+ * list is changed. This screen responds to the other question the research's
  * table raises — which ones are these — so that the count beside a version
  * is a way somewhere, as the count beside a draft is.
  *

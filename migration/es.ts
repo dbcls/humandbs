@@ -266,8 +266,7 @@ export interface DatasetSelection {
  * backwards in time.
  *
  * **Only what the latest published version pins gets a row.** A dataset belongs
- * to the research and every publish carries all of them
- * (docs/data-model.md の「research / experiment / dataset」), so a row made for
+ * to the research and every publish has all of them, so a row made for
  * a dataset that the latest version dropped would put it back on the public
  * side at the next publish. Four of them are reachable only from an older
  * version; those versions keep their description and lose the link, which is

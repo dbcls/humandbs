@@ -1,7 +1,7 @@
 /**
  * Liveness probes for the services the app cannot run without.
  *
- * The report says pass or fail per check and nothing else. Driver errors carry
+ * The report reports pass or fail per check and nothing else. Driver errors have
  * connection strings and internal hostnames, so they go to `onError` — which
  * writes to the log — instead of into the response body.
  */

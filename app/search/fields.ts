@@ -2,7 +2,7 @@
  * The fields a query may name, and what may be asked of each.
  *
  * A field is not a column of the content: it is a facet of the published set
- * that the search rows already carry. Four of them are built in and belong to
+ * that the search rows already have. Four of them are built in and belong to
  * the rows themselves; the rest come from the catalog, one per key typed as a
  * vocabulary or a disease, and one per number key that has been given a facet
  * category (`~/search/catalog.server` の `loadFacetDefinitions`) — most number
@@ -17,13 +17,13 @@
  * is that **a key may not take the name of a built-in field**.
  *
  * The target of a search — a research or a dataset — is **not** a field. The
- * address says which list is being read, so putting it in the query as well
+ * address reports which list is being read, so putting it in the query as well
  * would give one fact two places to disagree.
  */
 
 export type FieldType = "identifier" | "text" | "date" | "term" | "number"
 
-/** What a leaf asks of a field once its type and the shape of its value meet. */
+/** What a leaf requests of a field once its type and the shape of its value meet. */
 export type Operator = "eq" | "contains" | "wildcard" | "between"
 
 /**
@@ -107,7 +107,7 @@ export function queryFields(facets: readonly FacetField[]): QueryFields {
 
 /**
  * The operator a field and a value shape imply, or null when the two do not go
- * together. Deriving it means a query never names an operator, which keeps the
+ * together. Deriving it means a query never identifies an operator, which keeps the
  * written form close to what people already know from Lucene.
  *
  * A term takes neither a wildcard nor a range: its values are codes drawn from

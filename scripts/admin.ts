@@ -7,7 +7,7 @@
  * the real one at cutover.
  *
  * Whoever runs this has the database credentials, so there is nobody to
- * authorise. The events it writes carry the reserved bootstrap actor, because no
+ * authorise. The events it writes have the reserved bootstrap actor, because no
  * signed-in person caused them.
  */
 

@@ -15,12 +15,12 @@ import {
   Heading,
   Stack,
 } from "~/components/base"
-import { Flag, type FlagKind, KindMark, Stated } from "~/components/flags"
+import { Flag, type FlagKind, KindIcon, Stated } from "~/components/flags"
 import { Checkbox, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { Card, DatasetIds, IdMark, Page, Paging, Table, Td } from "~/components/page"
-import { formatSize } from "~/files/box"
-import { boxSummariesOf } from "~/files/listing.server"
+import { Card, DatasetIds, IdWithIcon, Page, Paging, Table, Td } from "~/components/page"
+import { formatSize } from "~/files/prefix"
+import { listingSummariesOf } from "~/files/listing.server"
 import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -36,12 +36,12 @@ import type { Route } from "./+types/admin-research-list"
 const SHOWN_DATASETS = 3
 
 /**
- * The way into everything a curator works on: every research, published or
+ * The starting screen for everything a curator works on: every research, published or
  * not.
  *
  * The box is a direct lookup rather than the public search — the full-text
  * index only holds what is published, and this listing exists mostly for what
- * is not. **A row says nothing about what is missing**: a research holds several
+ * is not. **A row implies nothing about what is missing**: a research holds several
  * versions and drafts, and a shortcoming belongs to one of them, which the
  * draft's confirmation screen names.
  *
@@ -54,10 +54,10 @@ const SHOWN_DATASETS = 3
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
   const view = await researchListPage(request, locale)
-  const boxes = await boxSummariesOf(view.rows)
+  const summaries = await listingSummariesOf(view.rows)
   return {
     ...view,
-    rows: view.rows.map((row) => ({ ...row, box: boxes.get(row.researchId) ?? null })),
+    rows: view.rows.map((row) => ({ ...row, fileSummary: summaries.get(row.researchId) ?? null })),
   }
 }
 
@@ -82,7 +82,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
 
-  // Folded, the way back into the pane says how much is in force, because the
+  // Collapsed, the button that reopens the pane shows how much is in force, because the
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.statuses.length
@@ -125,7 +125,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
             locale={locale}
             onToggle={togglePane}
             inForce={inForce}
-            // The box is never alone in the pane here: the status stands under
+            // The box is never alone in the pane here: the status is shown under
             // it whatever the reader has asked for.
             refineHasMore
             refine={<Filters view={view} locale={locale} />}
@@ -134,8 +134,8 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
             panel={null}
           >
             <Stack gap="normal">
-              {/* 9 列あって窓に入り切らないので、行がどれの話かを示す列だけ残す。
-                  2 列目以降を固定できるのは 1 列目が mark のときだけ (`page.tsx`
+              {/* 9 列あって画面の幅に入り切らないので、行がどれの話かを示す列だけ残す。
+                  2 列目以降を固定できるのは 1 列目が icon のときだけ (`page.tsx`
                   の `STUCK`)。 */}
               <Table
                 stuck={1}
@@ -158,17 +158,17 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                       {/* The same glyph the public listings give the two, so
                           that a curator reads one shape for a research and
                           another for a dataset wherever they are. */}
-                      <IdMark kind="research" to={href(locale, adminResearchPath(row.researchId))}>
+                      <IdWithIcon kind="research" to={href(locale, adminResearchPath(row.researchId))}>
                         {row.humLabel ?? <Flag kind="short">{t.unpinned}</Flag>}
-                      </IdMark>
+                      </IdWithIcon>
                     </Td>
                     <Td nowrap>
                       {/* **A published dataset opens its public page in a new
                           tab; one that is not out has no page to lead to** and
                           stays a word. The row itself leads to the research
                           these belong to, and a curator reading down the rows
-                          loses their place if the page opens here. The mark and
-                          the word are the ones every way out of the portal has
+                          loses their place if the page opens here. The indicator and
+                          the word are the ones every link out of the portal has
                           (`ExternalLink`). */}
                       <DatasetIds
                         shown={SHOWN_DATASETS}
@@ -190,7 +190,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           )}
                     </Td>
                     <Td nowrap>
-                      {/* The glyph says the one thing the status is about —
+                      {/* The glyph shows the one thing the status is about —
                           whether a reader can see this — and the word stays
                           beside it, because an eye and a lock are only obvious
                           once you know that is the question.
@@ -201,18 +201,18 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           draws that same glyph on the baseline two columns
                           over. The cell already refuses to wrap, so there is
                           nothing for a box to hold together. */}
-                      <Stated kind={STATUS_MARK[row.status]}>{t.statuses[row.status]}</Stated>
+                      <Stated kind={STATUS_FLAG[row.status]}>{t.statuses[row.status]}</Stated>
                     </Td>
                     <Td>{row.publishedVersions}</Td>
                     <Td>{row.draftCount}</Td>
                     <Td nowrap>
                       {/* The two numbers the research's own screen gives for
-                          its box, in the same words. A store that did not
+                          its prefix, in the same words. A store that did not
                           answer is said rather than left blank: a blank cell
                           in a column of counts reads as nothing there. */}
-                      {row.box === null
+                      {row.fileSummary === null
                         ? <span className="text-ink-muted">{t.filesUnavailable}</span>
-                        : messages.admin.files.summary(row.box.count, formatSize(row.box.bytes))}
+                        : messages.admin.files.summary(row.fileSummary.count, formatSize(row.fileSummary.bytes))}
                     </Td>
                     <Td nowrap>{row.publishedOn}</Td>
                     <Td nowrap>{row.updatedOn}</Td>
@@ -234,17 +234,17 @@ interface ViewProps {
 
 /**
  * GET forms, so a narrowed listing has an address that can be kept and shared
- * — the same rule the public listings follow. The address carries only the
+ * — the same rule the public listings follow. The address has only the
  * conditions that are set (`search-as-typed.ts` の `conditions`).
  *
- * **Nothing here waits to be confirmed.** The box asks once the typing has
- * stopped and a tick asks as it is made, which is how the public pane answers.
+ * **Nothing here waits to be confirmed.** The field sends the query once the typing has
+ * stopped and a tick sends as it is made, which is how the public pane responds.
  * A pane that only took effect on a press leaves the rows disagreeing with the
  * conditions above them, and the reader has to press to find out which is true.
  *
- * **The box and the ticks are two forms, and each carries what the other
+ * **The box and the ticks are two forms, and each has what the other
  * holds.** The box is one control with a submission of its own, and a form
- * cannot stand inside another.
+ * cannot be shown inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
@@ -259,7 +259,7 @@ function Filters({ view, locale }: ViewProps) {
         name="q"
         value={view.keyword}
         label={t.keyword}
-        placeholder={messages.search.boxHint}
+        placeholder={messages.search.searchHint}
         submit={messages.search.submit}
         size="compact"
         searchAsTyped
@@ -279,7 +279,7 @@ function Filters({ view, locale }: ViewProps) {
               <Checkbox
                 key={status}
                 label={t.statuses[status]}
-                icon={<KindMark kind={STATUS_MARK[status]} />}
+                icon={<KindIcon kind={STATUS_FLAG[status]} />}
                 name="status"
                 value={status}
                 checked={view.statuses.includes(status)}
@@ -297,11 +297,11 @@ function Filters({ view, locale }: ViewProps) {
  * The glyph a status is drawn by: the question is who can see this, and an
  * eye or a lock is only obvious once you know that is the question.
  */
-const STATUS_MARK: Record<AdminStatus, FlagKind> = { published: "live", unpublished: "hidden" }
+const STATUS_FLAG: Record<AdminStatus, FlagKind> = { published: "live", unpublished: "hidden" }
 
 /**
  * This listing under a different setting. Everything the reader chose is
- * carried, and the page is the first one unless the page is what changes.
+ * kept, and the page is the first one unless the page is what changes.
  */
 function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<ListingQuery>): string {
   return href(locale, adminResearchListPath() + listingQuery({
@@ -332,7 +332,7 @@ function presentation(view: ViewProps["view"], locale: Locale): Presentation<Sor
   }
 }
 
-/** The count and the way through the pages, over the rows and again under them. */
+/** The count and the pagination, over the rows and again under them. */
 function paging(view: ViewProps["view"], locale: Locale): ListingPaging {
   return {
     total: view.total,

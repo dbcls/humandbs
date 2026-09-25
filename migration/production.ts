@@ -1,13 +1,13 @@
 /**
  * The production migration: v1 production, frozen as a snapshot, into v2.
  *
- * Unlike the development load (`run.ts`) it carries everything the snapshot
+ * Unlike the development load (`run.ts`) it has everything the snapshot
  * holds rather than only what is published — the drafts too, with the datasets
  * they list — and it corrects what v1 lost or merged on the way:
  *
  * - the line breaks and links v1's extracted text dropped are recovered from
  *   the HTML it was extracted from, where the two still agree (`richtext-html.ts`),
- *   and elsewhere from the old portal's articles, where a one-line value says
+ *   and elsewhere from the old portal's articles, where a one-line value reports
  *   the same as a block the articles showed on several lines (`line-breaks.ts`);
  * - the research v1 never took in are added, and a test research is left out
  *   (`prepare.ts`);
@@ -15,9 +15,9 @@
  *   (`cell-edits.ts`), and experiment keys are renamed, merged and dropped by a
  *   reviewed table and by the rebuilt catalog, which gives the order and the
  *   labels (`catalog-plan.ts`);
- * - a block that several datasets carried word for word is divided among them
+ * - a block that several datasets kept word for word is divided among them
  *   (`inversion.ts`);
- * - the listing's provider column carries the programme each research was
+ * - the listing's provider column has the programme each research was
  *   funded under, as the old site's listing did;
  * - a curator's question written into a draft's value becomes an unsettled
  *   value with the question as a comment on it (`requests.ts`);
@@ -130,7 +130,7 @@ const OUT = join(INPUT, "out")
 /** Research the snapshot holds that are not research: a test entry. */
 const NOT_RESEARCH = ["hum9999"]
 
-/** The prefix a dataset with no accession yet carries in the input (`es-drafts/`). */
+/** The prefix a dataset with no accession yet has in the input (`es-drafts/`). */
 const UNISSUED = "placeholder:"
 
 function readJson(...path: string[]): unknown {
@@ -175,7 +175,7 @@ interface KeyMap {
 /**
  * The two keys the reviewed table left open. The institute that did the
  * genotyping joins the analysis methods, its one value reworded into a sentence
- * that says what the institute did (`hand/cell-edits.json`); a template
+ * that reports what the institute did (`hand/cell-edits.json`); a template
  * placeholder with no data is dropped.
  */
 const SETTLED: Record<string, KeyRule> = {
@@ -186,7 +186,7 @@ const SETTLED: Record<string, KeyRule> = {
 /**
  * v1's label table names a few rows with an instruction instead of a key. The
  * converter that reads a draft straight from the source leaves the instruction
- * standing as the key, so it is carried out here.
+ * shown as the key, so it is done here.
  */
 const INSTRUCTIONS: Record<string, KeyRule> = {
   不要な項目のため削除する: { action: "drop" },
@@ -282,7 +282,7 @@ type ListingProviders = Record<string, { ja?: ListingCell, en?: ListingCell }>
 /**
  * The provider column of the old listing for the research it named with a
  * programme: the name, then the programme in brackets. A programme only one
- * language named is spelled the same in both, so both carry it.
+ * language named is spelled the same in both, so both have it.
  */
 function listingProviders(cells: ListingProviders): Map<string, ListingProvider[]> {
   const out = new Map<string, ListingProvider[]>()
@@ -416,7 +416,7 @@ type Written = Record<"methods" | "targets" | "typeOfData", { ja: string, en: st
 
 /**
  * The listing summary written by hand for research the old listing never
- * carried, and so v1 had none to convert. A summary the snapshot holds is
+ * kept, and so v1 had none to convert. A summary the snapshot holds is
  * never replaced.
  */
 function withWrittenListings(held: Dump): Dump {
@@ -441,7 +441,7 @@ function withWrittenListings(held: Dump): Dump {
  * The files each dataset starts with selected, by the old name of the dataset:
  * what its page linked to and what is named after it, gathered once from the
  * old portal. The paths are the old server's, with the research's directory
- * first and sometimes deeper directories under it; the box is flat, so only
+ * first and sometimes deeper directories under it; the prefix is flat, so only
  * the file name is kept.
  */
 function fileSeed(): Map<string, string[]> {
@@ -656,7 +656,7 @@ async function load() {
       (chunk) => tx.insert(researchVersion).values(chunk),
     )
 
-    // A draft describes the research as it is being written, so it carries the
+    // A draft describes the research as it is being written, so it has the
     // listing the research has now.
     let draftEntries = 0
     let questions = 0

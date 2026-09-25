@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { closePools, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
-import { PRIVATE_BUCKET, PUBLIC_BUCKET } from "~/files/box"
+import { PRIVATE_BUCKET, PUBLIC_BUCKET } from "~/files/prefix"
 
 /**
  * `/healthz` against the real database, with only the S3 client faked. The
@@ -42,7 +42,7 @@ afterAll(async () => {
 })
 
 describe("the healthz loader", () => {
-  it("answers 503 when the public bucket does not answer", async () => {
+  it("responds with 503 when the public bucket does not respond", async () => {
     downBucket = PUBLIC_BUCKET
 
     const response = await loader()
@@ -50,7 +50,7 @@ describe("the healthz loader", () => {
     expect(response.status).toBe(503)
   })
 
-  it("answers 503 when the private bucket does not answer, not only the public one", async () => {
+  it("responds with 503 when the private bucket does not respond, not only the public one", async () => {
     downBucket = PRIVATE_BUCKET
 
     const response = await loader()
@@ -75,7 +75,7 @@ describe("the healthz loader", () => {
     expect(report.checks.find((check) => check.name === "storage")?.ok).toBe(false)
   })
 
-  it("answers 200 when both the database and the store answer", async () => {
+  it("responds with 200 when both the database and the store respond", async () => {
     const response = await loader()
 
     expect(response.status).toBe(200)

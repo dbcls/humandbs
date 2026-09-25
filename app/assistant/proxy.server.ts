@@ -2,18 +2,18 @@ import { loadConfig } from "~/config.server"
 
 import {
   assistantTarget,
-  carriesBody,
+  hasBody,
   forwardedRequestHeaders,
   forwardedResponseHeaders,
 } from "./target"
 
 /**
- * Hands a request on to the assistant and returns what it answers.
+ * Hands a request on to the assistant and returns what it responds.
  *
  * **This is the whole of the portal's part.** The assistant holds no
  * authorisation of its own and is not published outside the compose network, so
  * the guard in front of this call is the only one there is — and the two
- * invariants that keeps are worth saying plainly: the route asks for
+ * invariants that keeps are worth indicating plainly: the route requests
  * `use-assistant` before calling this, and nothing else in the portal calls the
  * service at all.
  *
@@ -37,7 +37,7 @@ export async function forwardToAssistant(request: Request, rest: string): Promis
     throw new Response(null, { status: 400, statusText: "Bad Request" })
   }
 
-  const sending = carriesBody(request.method)
+  const sending = hasBody(request.method)
   let answer: Response
   try {
     answer = await fetch(target, {
@@ -49,7 +49,7 @@ export async function forwardToAssistant(request: Request, rest: string): Promis
       // Required by the runtime whenever a body is a stream; without it the
       // request is refused before it is sent.
       ...(sending ? { duplex: "half" } : {}),
-      // An answer is passed on as it stands, so a redirect is the assistant's
+      // An answer is passed on as it remains, so a redirect is the assistant's
       // to give rather than something to resolve on its behalf.
       redirect: "manual",
       // A reader who closes the tab stops the work: without this the service
@@ -58,7 +58,7 @@ export async function forwardToAssistant(request: Request, rest: string): Promis
       signal: request.signal,
     })
   } catch {
-    // The service is configured but not answering, or took longer than the
+    // The service is configured but not responding, or took longer than the
     // runtime waits for a first byte (five minutes). Said apart from 503
     // above: that one means nobody deployed it, this one means it did not
     // answer.

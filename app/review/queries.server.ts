@@ -4,7 +4,7 @@
  * A preview shows the draft, so every dataset comes out of the draft's own
  * entry when there is one and out of the published description when there is
  * not — copy-on-write seen from the reading end, the same resolution the
- * dataset editor does. The published description is carried alongside because
+ * dataset editor does. The published description is kept alongside because
  * the preview marks what would change, and that is the thing it changes from.
  *
  * Dates are read but not resolved here. The projection (`app/content/public.ts`)
@@ -42,7 +42,7 @@ export interface PreviewDatasetRow {
   /** What is published for it now, or null if it has never been published. */
   published: DatasetContent | null
   /**
-   * The archive's dates for its accession. Carried unresolved: which of these
+   * The archive's dates for its accession. Kept unresolved: which of these
    * and the content's own release date wins is the projection's decision, and
    * making it here would be the second place that answer is written.
    */
@@ -159,7 +159,7 @@ export interface DraftReviewSummary {
 }
 
 /**
- * What the research screen says about each of its drafts: whether a link is out
+ * What the research screen has about each of its drafts: whether a link is out
  * there, and whether anybody is waiting for an answer.
  */
 export async function draftReviewSummaries(
@@ -208,7 +208,7 @@ export interface PublishedVersion {
 
 /**
  * The version a draft is measured against: the one it is the update of, when
- * it is one, and otherwise the one a reader sees now. The marks, the comparison
+ * it is one, and otherwise the one a reader sees now. The indicators, the comparison
  * and the confirmation all take this answer, so that "what changes" means one
  * thing on every screen of the draft.
  */

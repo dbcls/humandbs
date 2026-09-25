@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest"
 import { messagesFor } from "./messages"
 
 /**
- * The sentence a panel says under its name (`Confirm` の `warning`) is a
- * sentence: it says what pressing does and closes with whether that can be
+ * The sentence a panel reports under its name (`Confirm` の `warning`) is a
+ * sentence: it reports what pressing does and closes with whether that can be
  * taken back, so it ends the way a sentence does. A phrase left open reads as
- * a label, and the reader is left to guess whether the deed can be undone.
+ * a label, and the reader is left to guess whether the action can be undone.
  */
 function warnings(node: unknown, path: string): [string, string][] {
   // A word made from its arguments is read as what it makes — a string, or the
@@ -19,7 +19,7 @@ function warnings(node: unknown, path: string): [string, string][] {
   return []
 }
 
-describe("面の文", () => {
+describe("確認ダイアログの警告文", () => {
   const all = warnings(messagesFor("ja").admin, "admin")
     .filter(([path]) => path.endsWith("Warning"))
 
@@ -37,12 +37,12 @@ describe("面の文", () => {
     expect(admin.filter(([, text]) => /消[えせさす]/.test(text)).map(([path]) => path)).toStrictEqual([])
   })
 
-  it("research の版は「バージョン」で、「版」の字は出さない", () => {
+  it("research のバージョンは「バージョン」と書き、「版」の字を使わない", () => {
     const admin = warnings(messagesFor("ja").admin, "admin")
     expect(admin.filter(([, text]) => /(?<!出)版/.test(text)).map(([path]) => path)).toStrictEqual([])
   })
 
-  it("「いま」で始まる文は無い — 面が開いている時点のことしか言わないので", () => {
+  it("「いま」で始まる文は無い — ダイアログを開いている時点のことしか書かないため", () => {
     expect(all.filter(([, text]) => text.startsWith("いま")).map(([path]) => path)).toStrictEqual([])
   })
 })
@@ -63,8 +63,8 @@ const NOTE_OR_HINT_EXCEPTIONS = new Set([
 ])
 
 /**
- * h1 の下・節の説明 (note) と欄の下の説明 (hint) は常体で言い切る — 画面が読者に
- * 話しかける敬体と、事実を言うだけの常体を混ぜない (`decisions.md` の「語」)。
+ * h1 の下・節の説明 (note) と欄の下の説明 (hint) は常体で言い切る — 読者に向けた
+ * 敬体と、事実を述べるだけの常体を混ぜない。
  */
 describe("note と hint の文体", () => {
   const isNoteOrHint = (key: string): boolean =>
@@ -89,7 +89,7 @@ describe("note と hint の文体", () => {
 
 /**
  * 理由は「〜ため、」で結ぶ。「〜ので、」は同じ働きの和語で、2 つが混ざると読者は
- * 使い分けの意味を探してしまう (`decisions.md` の「語」)。
+ * 使い分けの意味を探してしまう。
  */
 describe("理由の結び方", () => {
   it("「〜ので、」を含まない", () => {
@@ -98,7 +98,7 @@ describe("理由の結び方", () => {
   })
 })
 
-/** Every Japanese string the interface says, public and admin alike. */
+/** Every Japanese string the interface reports, public and admin alike. */
 const JA = warnings(messagesFor("ja"), "ja")
 
 /**
@@ -110,7 +110,7 @@ function withoutLinkTargets(text: string): string {
 }
 
 /**
- * Where a bracket stands without the half-width space the rule asks for.
+ * Where a bracket remains without the half-width space the rule requests.
  * **At the start or end of the line and next to punctuation it needs none.**
  */
 function cramped(text: string): boolean {
@@ -123,7 +123,7 @@ function cramped(text: string): boolean {
  * 区切りの全角スラッシュ「／」も使わない。
  */
 describe("括弧と区切り", () => {
-  // A search example is a value typed into the box as it is, not a sentence.
+  // A search example is a value entered into the search field as it is, not a sentence.
   const QUERY_VALUES = new Set(["ja.search.exampleQueries.2"])
 
   it("規則に掛かる件数が十分ある", () => {
@@ -166,17 +166,17 @@ describe("news の語", () => {
 })
 
 /**
- * What stands where rows would be says there are none in one form:
+ * What is shown where rows would be reports there are none in one form:
  * 「{もの}はありません。」, and 「条件に合う{もの}はありません。」 when a narrowing
  * emptied the list. **Not in the past tense** — the list is empty now, not
  * "was found empty" — and not 「まだ」, which promises rows to come.
  */
 const EMPTY_KEY = /^(none|empty|emptyRow|nobodyYet|no[A-Z]\w*|\w+Empty|\w+None)$/
 
-/** Keys that match the naming but carry a refusal rather than an empty list. */
+/** Keys that match the naming but have a refusal rather than an empty list. */
 const NOT_EMPTY_STATES = new Set([
   "ja.admin.datasetEditor.filesEmpty", // 紐づけられない理由
-  "ja.admin.files.noBox", // 公開できない理由
+  "ja.admin.files.noHumLabel", // 公開できない理由
 ])
 
 /** Narrowed lists: the empty state after conditions were applied. */
@@ -186,7 +186,7 @@ function firstSentence(text: string): string {
   return `${text.split("。")[0] ?? ""}。`
 }
 
-/** 「{もの}はありません。」 (人なら「いません」) で、「まだ」を持たない — 2 文目は続けてよい。 */
+/** 「{もの}はありません。」 (人なら「いません」) で、「まだ」を含まない — 2 文目は続けてよい。 */
 function saysEmpty(text: string): boolean {
   const first = firstSentence(text)
   return /はありません。$|はいません。$/.test(first) && !first.includes("まだ")
@@ -216,7 +216,7 @@ describe("空の表示", () => {
     expect(JA.filter(([, text]) => text.includes("ありませんでした")).map(([path]) => path)).toStrictEqual([])
   })
 
-  it("「{もの}はありません。」の形で、「まだ」を持たない", () => {
+  it("「{もの}はありません。」の形で、「まだ」を含まない", () => {
     const offenders = empties.filter(([, text]) => !saysEmpty(text))
     expect(offenders.map(([path]) => path)).toStrictEqual([])
   })
@@ -235,34 +235,34 @@ describe("空の表示", () => {
 })
 
 /**
- * 別の場所で先に書かれたときの答えは 1 文で、全画面が同じ文を言う。次にすることが
- * どの画面でも同じなので、語も同じにする。
+ * 別の場所で先に保存されたときのメッセージは 1 文で、どの画面でも同じ文を表示する。
+ * 次にすることがどの画面でも同じなので、語も同じにする。
  */
-describe("衝突の答え", () => {
+describe("競合時のメッセージ", () => {
   const admin = messagesFor("ja").admin
-  const said = warnings(admin, "admin").filter(([, text]) => /別の場所で.*(編集|変更)されました/.test(text))
+  const conflicts = warnings(admin, "admin").filter(([, text]) => /別の場所で.*(編集|変更)されました/.test(text))
 
   it("規則に掛かる件数が十分ある — 共通の文と、記事の画面の 409", () => {
-    expect(said.length).toBeGreaterThanOrEqual(2)
+    expect(conflicts.length).toBeGreaterThanOrEqual(2)
     expect(admin.contents.problems.stale).toBe(admin.conflict)
   })
 
   it("どれも共通の 1 文と同じ", () => {
-    expect(said.filter(([, text]) => text !== admin.conflict).map(([path]) => path)).toStrictEqual([])
+    expect(conflicts.filter(([, text]) => text !== admin.conflict).map(([path]) => path)).toStrictEqual([])
   })
 })
 
 /**
- * 面の文・断り・操作の答えは敬体で結ぶ。常体で終わるのは
- * 画面の説明と欄の下の説明 (note / hint) だけで、読む人に話しかける文には混ぜない。
- * 公開側の文はどれも読者に話しかけるものなので、全部が敬体。
+ * ダイアログの文・エラー・操作結果のメッセージは敬体で結ぶ。常体で終わるのは
+ * 画面の説明と欄の下の説明 (note / hint) だけで、読者に向けた文には混ぜない。
+ * 公開側の文はどれも読者に向けたものなので、全部が敬体。
  */
 function plainEnding(sentence: string): boolean {
   if (/(です|ます|ません|ました|ましょう|ください|でした)。$/.test(sentence)) return false
   return /[うくすつぬふむゆるぐずづぶぷだたい]。$/.test(sentence)
 }
 
-describe("話しかける文の文体", () => {
+describe("読者に向けた文の文体", () => {
   const SPOKEN_KEY = /(Warning|Failed|Refused|Required|Taken|Malformed|Reserved|Updating|Switching)$|^(conflict|gone|missing|same|unchanged|blockedReason|notAdmin|absent|notConnected|queued|reanalyzing)$/
   const spokenAdmin = JA
     .filter(([path]) => path.startsWith("ja.admin."))
@@ -286,7 +286,7 @@ describe("話しかける文の文体", () => {
     expect(plainEnding("データ登録手順は[こちら]。")).toBe(false)
   })
 
-  it("admin の面の文・断り・答えは常体で結ばない", () => {
+  it("admin のダイアログの文・エラー・操作結果は常体で結ばない", () => {
     const offenders = spokenAdmin.filter(([, text]) => sentences(text).some(plainEnding))
     expect(offenders.map(([path]) => path)).toStrictEqual([])
   })
@@ -299,8 +299,7 @@ describe("話しかける文の文体", () => {
 
 /**
  * 「破棄」「外す」「未記載」「未割り当て」「English」「併合」はそれぞれ「削除」「解除」「未入力」
- * 「未発行」「英語」「統合」に言い換えた古い語で、1 つの概念を 2 つの語で言う状態に戻さない
- * (`decisions.md` の「語」)。
+ * 「未発行」「英語」「統合」に言い換えた古い語で、1 つの概念を 2 つの語で言う状態に戻さない。
  */
 describe("言い換えた古い語", () => {
   const admin = warnings(messagesFor("ja").admin, "admin")
@@ -313,20 +312,37 @@ describe("言い換えた古い語", () => {
 
 /**
  * 画面の語は、提供者やキュレーターが普段使う語で書く。作り手の間だけで通じる比喩
- * (「カートの印」「この面」「箱」「版」「DDBJ Search が答えない」など) は使わず、
- * バッジ・ボタン・アイコン・バージョン・取り込み元・内容・経路・文字列・コピーなど
- * 普通の語で言う。「画面」「矢印」「出版」のように一般の語の一部として現れる字は
- * `ORDINARY` で除いてから数える。
+ * (「カートの印」「この面」「箱」「版」「DDBJ Search が答えない」「ファイルの置き場」など) は
+ * 使わず、バッジ・ボタン・アイコン・バージョン・取り込み元・内容・経路・文字列・コピー・
+ * アップロード先など普通の語で言う。
+ * 「画面」「矢印」「出版」「検索窓」「枠線」「段階」「割り当て」のように一般の語の一部として
+ * 現れる字は `ORDINARY` で除いてから数える。
  */
-const COINED = [
-  "印", "箱", "版", "源", "器", "面", "姿", "道", "綴り", "台帳", "札", "帯", "写し",
-  "畳", "名乗", "答え", "立つ", "立っ", "倒れ", "区画", "張り替え",
+const COINED: RegExp[] = [
+  /印/, /箱/, /版/, /源/, /器/, /骨格/, /面/, /姿/, /道/, /綴り/, /台帳/, /札/, /帯/, /写[しす]/,
+  /畳/, /名乗/, /名指/, /答[えう]/, /立[つってた]/, /倒れ/, /区画/, /張り替え/,
+  /記述/, /主(の|でない) ID/, /(道具|ツール|名前|足元)の行/, /段/, /枠/, /窓/, /軸/, /約束/,
+  /効[くいかきけ]/, /届[くかいきけ]/, /断[るらりっれ]/, /撥ね|弾[くかきけ]/, /運[ぶびんばべ]|搬入/,
+  /割[るれっらり]/, /落[ちとさ]/, /置き場|置[いけく]/, /打[っつた]/, /出し直/, /入り?口|編集口/,
+  /持ち方/, /材料/, /欠け/, /焼/, /黙/, /渡[るらりっれ]/, /知らせ/, /読ませ/, /配って/,
+  /集めて/, /何の数/, /並[ぶべんば]|並び(?![替順])/,
 ]
-const ORDINARY = /画面|表面|場面|書面|矢印|印刷|出版|情報源|都道府県|北海道/g
+const ORDINARY = /画面|表面|場面|書面|矢印|印刷|出版|情報源|都道府県|北海道|段階|手段|段落|枠線|検索窓|有効|無効|届け出|割り当|割合|判断材料|お知らせ/g
 
 function coinedIn(text: string): string[] {
   const plain = text.replace(ORDINARY, "")
-  return COINED.filter((word) => plain.includes(word))
+  return COINED.flatMap((word) => plain.match(word)?.[0] ?? [])
+}
+
+/**
+ * 画面・下書き・データセットなどを、話したり選んだり持ったりする主語にしない。
+ * 「下書きが作った」は「下書きで作成した」、「データセットが選んだ」は「データセットに紐づけた」、
+ * 「画面が言う」は「画面に表示する」、「バージョンが持っている」は「バージョンで使われている」と書く。
+ */
+const PERSONIFIED = /(画面|ダイアログ|ページ|下書き|データセット|研究|バージョン|サーバー|ポータル|外部アーカイブ|システム|欄|ボタン|一覧)が(言[うっわい]|答え|選ん|選択して|作っ|持[つっちて]|更新して|扱[うっ]|断[るっ]|書い|集め)/
+
+function personifiedIn(text: string): string[] {
+  return [...text.matchAll(new RegExp(PERSONIFIED, "g"))].map((match) => match[0])
 }
 
 describe("作り手の間だけで通じる語", () => {
@@ -339,12 +355,47 @@ describe("作り手の間だけで通じる語", () => {
     expect(coinedIn("この面に出すもの")).toStrictEqual(["面"])
     expect(coinedIn("DDBJ Search が答えなかった")).toStrictEqual(["答え"])
     expect(coinedIn("代表アドレスを張り替えました。")).toStrictEqual(["張り替え"])
+    expect(coinedIn("絞り込みの軸になる key")).toStrictEqual(["軸"])
+    expect(coinedIn("研究に直接紐づくファイルの置き場。置いた時点で公開される。")).toStrictEqual(["置き場"])
+    expect(coinedIn("フォルダは置けません。")).toStrictEqual(["置け"])
+    expect(coinedIn("打って絞り込む。")).toStrictEqual(["打っ"])
+    expect(coinedIn("リンクは届かなくなります。")).toStrictEqual(["届か"])
+    expect(coinedIn("欠けや食い違いがあるもの")).toStrictEqual(["欠け"])
+    expect(coinedIn("カートの知らせ")).toStrictEqual(["知らせ"])
+    expect(coinedIn("3 件を集めています")).toStrictEqual(["集めて"])
+    expect(coinedIn("配ってあるリンク")).toStrictEqual(["配って"])
+    expect(coinedIn("何の数か")).toStrictEqual(["何の数"])
+    expect(coinedIn("公開ページに並ぶ。")).toStrictEqual(["並ぶ"])
+    expect(coinedIn("並び")).toStrictEqual(["並び"])
+    expect(coinedIn("申請書を読ませて、確認の材料を作る。")).toStrictEqual(["材料", "読ませ"])
+    expect(coinedIn("入力の窓と結果の枠")).toStrictEqual(["枠", "窓"])
+    expect(coinedIn("中のファイルを落としてください。")).toStrictEqual(["落と"])
+    expect(coinedIn("研究の記述")).toStrictEqual(["記述"])
+    expect(coinedIn("保存すると効く。")).toStrictEqual(["効く"])
     expect(coinedIn("この画面を開いた後に、矢印キーで動かす")).toStrictEqual([])
     expect(coinedIn("情報源間で不一致があります")).toStrictEqual([])
+    expect(coinedIn("下書きの段階から、検索窓と枠線を割り当てる。有効な判断材料。お知らせ")).toStrictEqual([])
+    expect(coinedIn("並び順を保存しました。つかんで並び替え")).toStrictEqual([])
   })
 
   it("ja の語に比喩の語を含まない", () => {
     const offenders = JA.flatMap(([path, text]) => coinedIn(text).map((word) => `${path}: ${word}`))
+    expect(offenders).toStrictEqual([])
+  })
+
+  it("検査は擬人化を見つけ、人やものを主語にした普通の文は通す", () => {
+    expect(personifiedIn("別の下書きが作ったもの")).toStrictEqual(["下書きが作っ"])
+    expect(personifiedIn("データセットが選んだファイル")).toStrictEqual(["データセットが選ん"])
+    expect(personifiedIn("公開中のバージョンが持っています。")).toStrictEqual(["バージョンが持っ"])
+    expect(personifiedIn("画面が言うとおり")).toStrictEqual(["画面が言う"])
+    expect(personifiedIn("サーバーが答えない")).toStrictEqual(["サーバーが答え"])
+    expect(personifiedIn("別の下書きで作成したもの")).toStrictEqual([])
+    expect(personifiedIn("共有リンクを持つ人にも見える。")).toStrictEqual([])
+    expect(personifiedIn("データセットが見つかりません。")).toStrictEqual([])
+  })
+
+  it("ja の語で画面やデータを擬人化しない", () => {
+    const offenders = JA.flatMap(([path, text]) => personifiedIn(text).map((word) => `${path}: ${word}`))
     expect(offenders).toStrictEqual([])
   })
 })
@@ -370,7 +421,7 @@ describe("解析手法の画面の語", () => {
 
 /**
  * 列見出しの日付語は 公開日・承認日・更新日・更新日時・公開日時・作成日時 の 6 つに絞る —
- * 「更新」単独は日付なのか時刻を含むのか読者に分からない (`decisions.md` の「語」)。
+ * 「更新」単独は日付なのか時刻を含むのか読者に分からない。
  */
 describe("列見出しの日付語", () => {
   function headerGroups(node: unknown, path: string): [string, unknown][] {
@@ -406,7 +457,7 @@ describe("列見出しの日付語", () => {
 
 /**
  * 押せるものの語は名詞で終わる。よく使う動作の語
- * (create/delete/save/add/remove) と、確かめる面の中で実行するボタン (`〜Confirm`)
+ * (create/delete/save/add/remove) と、確認ダイアログの中の実行ボタン (`〜Confirm`)
  * は「〜する」で終わらない、というよくある崩れをここで止める。
  */
 describe("button の語は動詞止めにしない", () => {
@@ -428,7 +479,7 @@ describe("button の語は動詞止めにしない", () => {
 /**
  * 押せるものの語は名詞で終わり、動詞の終止形で終わらない。
  * 押せるものかどうかは key の名前で見分ける — 動作の語で始まり、説明・見出し・状態の語尾を
- * 持たない key。**例外は「閉じる」1 つ**で、捨てるものを持たない面の出口の語として決まっている。
+ * 含まない key。**例外は「閉じる」1 つ**で、破棄する入力が無いダイアログを閉じるボタンの語として決まっている。
  */
 const PRESSABLE_KEY = /^(create|delete|save|add|remove|edit|publish|unpublish|withdraw|discard|unpin|reissue|merge|cancel|undo|look|upload|apply|choose|repoint|rename|cut|show|hide|post|resolve|reopen|copy|pin|dismiss|reanalyze|refresh|overwrite|schedule|issueNha|makePrimary|stopUpdating|stopSharing|startSharing|copyToDraft|createEmptyDraft|confirm|take|open|done|download|grab|goToLine|moveUp|moveDown|up|down|linkFiles|chooseFiles)([A-Z]\w*)?$/
 const NOT_PRESSABLE = /(Title|Warning|Note|Hint|Placeholder|Failed|Required|Blocked|Heading|Switching|Undated|Refused|Label|Column|Reason|Said|Field|Comment|Instructions|Start|Over|End|Choosing)$/
@@ -469,7 +520,7 @@ describe("押せるものの語は名詞で終わる", () => {
     expect(offenders.map(([path]) => path)).toStrictEqual([])
   })
 
-  it("確かめる面の実行の語は、面の名前が言う動作と同じ", () => {
+  it("確認ダイアログの実行ボタンの語は、タイトルに書いた動作と同じ", () => {
     const detail = messagesFor("ja").admin.detail
     const catalog = messagesFor("ja").admin.catalog
     expect(detail.stopUpdatingTitle("v1").endsWith(detail.stopUpdatingConfirm)).toBe(true)
@@ -481,7 +532,7 @@ describe("押せるものの語は名詞で終わる", () => {
 
 /**
  * What can be pressed in the admin area is named by a noun, and "〜を追加" is
- * not one: it is "追加する" with the verb cut short, so it reads as a verb even
+ * not one: it is "追加する" with the verb truncated, so it reads as a verb even
  * though the last characters are a noun. The object is joined with "の"
  * instead — 「リンクの追加」.
  */
@@ -496,11 +547,11 @@ describe("押せるものの語", () => {
 })
 
 /**
- * A word standing where a value would be is not wrapped in parentheses: the
- * quieter colour already says it is not the value, and a bracketed word says
+ * A word shown where a value would be is not wrapped in parentheses: the
+ * quieter colour already reports it is not the value, and a bracketed word reports
  * the same thing twice.
  */
-describe("値が無いことを言う語", () => {
+describe("値が無いことを示す語", () => {
   const admin = warnings(messagesFor("ja").admin, "admin")
   const preview = warnings(messagesFor("ja").preview, "preview")
 
@@ -513,7 +564,7 @@ describe("値が無いことを言う語", () => {
 })
 
 /**
- * The sentence the site says at the top of every page is an alert, and it is
+ * The sentence the site reports at the top of every page is an alert, and it is
  * called that in both areas: 「お知らせ」 is what news is called, and 「告知」 is
  * a third word for the same thing.
  */
@@ -535,7 +586,7 @@ describe("全ページの上部に出る 1 文の語", () => {
  * which button does what, by the button's own word in 「」. A word renamed on
  * the button and not in the note sends the reader looking for a button that
  * is not there — so every word the note quotes has to be a word some button
- * on the way actually carries.
+ * on the way actually has.
  */
 describe("研究の編集の「バージョンと下書き」の説明文", () => {
   const admin = messagesFor("ja").admin
@@ -544,18 +595,18 @@ describe("研究の編集の「バージョンと下書き」の説明文", () =
     admin.detail.createEmptyDraft,
     admin.detail.copyToDraft,
     admin.detail.edit,
-    admin.take.open,
+    admin.import.open,
   ])
 
-  it("「」で名指す語は、どれも実際のボタンの語", () => {
+  it("「」で囲んだ語は、どれも実際のボタンの語", () => {
     const quoted = [...note.matchAll(/「([^」]+)」/g)].map((match) => match[1])
     expect(quoted.length).toBeGreaterThan(0)
     for (const word of quoted) expect(buttons).toContain(word)
   })
 
-  it("下書きを作る 2 つの道、作成後の取り込み、公開中のバージョンの更新のすべてを名指す", () => {
+  it("下書きを作成する 2 つのボタン、作成後の取り込み、公開中のバージョンの更新のすべてを書いている", () => {
     for (const word of buttons) expect(note).toContain(`「${word}」`)
-    expect(note).toContain(admin.take.application)
+    expect(note).toContain(admin.import.application)
   })
 
   it("どの行も常体の文で閉じる", () => {

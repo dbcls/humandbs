@@ -48,7 +48,7 @@ describe("alert の作られた瞬間", () => {
     ))
   })
 
-  it("立っていないものは、どんな文字列が書かれていても瞬間を持たない", () => {
+  it("enabled でないものは、created_at にどんな文字列が書かれていても表示にした日時が無い", () => {
     fc.assert(fc.property(fc.string(), (createdAt) => {
       const [source] = standing(createdAt)
       if (source === undefined) throw new Error("standing() returned nothing")

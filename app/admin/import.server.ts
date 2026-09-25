@@ -1,12 +1,12 @@
 /**
- * The take-in screen: a source chosen, then the three-row face that settles
+ * The import screen: a source chosen, then the three-row import form that settles
  * what goes into the draft.
  *
  * **Every source arrives as the draft's own shape** — a version and another
  * draft already are one, and an application is laid over this draft
- * (`templates.ts` の `applicationInput`) — so the face and the write are one
+ * (`templates.ts` の `applicationInput`) — so the form and the write are one
  * path for all three. Only an application also creates datasets, and only it
- * asks for the right to pin their labels.
+ * requests the right to pin their labels.
  */
 
 import { redirect } from "react-router"
@@ -37,7 +37,7 @@ import {
   applicationBranches,
   readApplication,
   requireSeeding,
-  takeApplication,
+  importApplication,
   type UpstreamBranchView,
   type UpstreamChoiceView,
   type UpstreamResult,
@@ -49,11 +49,11 @@ import { adminDraftPath } from "./urls"
  * screen draws.
  *
  * **A draft that updates a version is that version's row**, as it is on the
- * research's screen: the row says the version is being updated and carries the
- * draft's time, and choosing it takes what the update has written (`update`).
+ * research's screen: the row reports the version is being updated and has the
+ * draft's time, and choosing it imports what the update has written (`update`).
  * So every draft row is a draft that updates nothing.
  */
-export type TakeSourceRow
+export type ImportSourceRow
   = | { kind: "draft", id: string, updatedAt: string }
     | {
       kind: "version"
@@ -63,13 +63,13 @@ export type TakeSourceRow
       update: { id: string, updatedAt: string } | null
     }
 
-export type TakeSource
+export type ImportSource
   = | { kind: "version", number: number }
-    /** A draft, or — where it updates a version — the update, named by that version (`TakeSourceRow`). */
+    /** A draft, or — where it updates a version — the update, named by that version (`ImportSourceRow`). */
     | { kind: "draft", id: string, updatedAt: string, updating: number | null }
     | { kind: "application", applicationId: string, branch: UpstreamBranchView, choice: UpstreamChoiceView }
 
-export interface TakeView {
+export interface ImportView {
   locale: Locale
   researchId: string
   draftId: string
@@ -79,22 +79,22 @@ export interface TakeView {
    * Drafts first, newest writing first; then versions, newest number first.
    * **This draft is among them, and cannot be chosen** — left out, the two
    * rows reading 「下書き」 would not say which of them is the one being
-   * written, and taking a draft into itself would offer back what is already
+   * written, and importing a draft into itself would offer back what is already
    * there (`SourceTable`).
    */
-  rows: TakeSourceRow[]
+  rows: ImportSourceRow[]
   application: {
-    /** Taking an application in pins dataset labels, which not everybody may. */
+    /** Importing an application in pins dataset labels, which not everybody may. */
     allowed: boolean
     /** False where the application system cannot be reached from here. */
     connected: boolean
     branches: UpstreamBranchView[]
-    /** An application ID that was typed and names no branch. */
+    /** An application ID that was typed and identifies no branch. */
     unknown: string | null
   }
-  /** The source chosen, and the two readings the face sets side by side. */
+  /** The source chosen, and the two readings the form sets side by side. */
   chosen: {
-    source: TakeSource
+    source: ImportSource
     mine: DraftInput
     theirs: DraftInput
     /** This research's datasets, which a publication's cited list chooses from. */
@@ -117,7 +117,7 @@ async function draftAt(
 
 /**
  * A cited dataset the research no longer holds is dropped from a source's
- * reading: a version written before a dataset was deleted still names it, and
+ * reading: a version written before a dataset was deleted still identifies it, and
  * the save refuses a list naming what the research does not hold.
  */
 function citingOnly(input: DraftInput, held: ReadonlySet<string>): DraftInput {
@@ -133,11 +133,11 @@ function citingOnly(input: DraftInput, held: ReadonlySet<string>): DraftInput {
   }
 }
 
-export async function takePage(
+export async function importPage(
   request: Request,
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
-): Promise<TakeView> {
+): Promise<ImportView> {
   const actor = await requireCapability(request, "edit-content")
   const allowed = can(actor, "manage-labels")
   const db = getDb()
@@ -149,7 +149,7 @@ export async function takePage(
   ])
   if (research === null) notFound()
 
-  const rows: TakeSourceRow[] = [
+  const rows: ImportSourceRow[] = [
     ...research.drafts
       .map((row) => ({ kind: "draft" as const, id: row.id, updatedAt: row.updatedAt }))
       .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
@@ -192,7 +192,7 @@ export async function takePage(
     const row = shown.get(id)
     return row === undefined ? [] : [row]
   })
-  const chosen = (source: TakeSource, theirs: DraftInput): TakeView => ({
+  const chosen = (source: ImportSource, theirs: DraftInput): ImportView => ({
     ...view,
     chosen: { source, mine, theirs: citingOnly(theirs, held), datasets, citable },
   })
@@ -211,10 +211,10 @@ export async function takePage(
     const found = await readDraft(db, identity(other))
     if (found?.researchId !== researchId || found.id === draftId) notFound()
     // **An update is found on its version's row**, not among the drafts: the
-    // table folds it there, and the time it is named by is the one that row shows.
+    // table merges it there, and the time it is named by is the one that row shows.
     const own = rows.find((one) => one.kind === "draft" && one.id === found.id)
-    const folded = rows.find((one) => one.kind === "version" && one.update?.id === found.id)
-    const updatedAt = own?.updatedAt ?? (folded?.kind === "version" ? folded.update?.updatedAt : undefined)
+    const merged = rows.find((one) => one.kind === "version" && one.update?.id === found.id)
+    const updatedAt = own?.updatedAt ?? (merged?.kind === "version" ? merged.update?.updatedAt : undefined)
     if (updatedAt === undefined) notFound()
     return chosen(
       { kind: "draft", id: found.id, updatedAt, updating: found.updating?.number ?? null },
@@ -236,21 +236,21 @@ export async function takePage(
   return view
 }
 
-export type TakeResult = UpstreamResult
+export type ImportResult = UpstreamResult
 
 /**
- * Writing what the face holds.
+ * Writing what the form holds.
  *
  * **The content arrives decided**, as the editor would post it, and goes
  * through the same checks and the same revision as a save. The dataset list is
- * the draft's own and is kept from the draft, whatever arrives: the face does
- * not offer it (`take.ts` の `RESEARCH_TAKE`).
+ * the draft's own and is kept from the draft, whatever arrives: the form does
+ * not offer it (`import.ts` の `RESEARCH_IMPORT`).
  */
-export async function takeAction(
+export async function importAction(
   request: Request,
   locale: Locale,
   params: { researchId: string | undefined, draftId: string | undefined },
-): Promise<Response | TakeResult> {
+): Promise<Response | ImportResult> {
   await requireCapability(request, "edit-content")
   const db = getDb()
   const { researchId, draftId, draft } = await draftAt(db, params)
@@ -278,7 +278,7 @@ export async function takeAction(
   if (typeof applicationId === "string" && applicationId !== "") {
     const seeding = await requireSeeding(request)
     const accessions = new Set(form.getAll("accession").filter((one): one is string => typeof one === "string"))
-    const outcome = await takeApplication(
+    const outcome = await importApplication(
       db,
       { draftId, revision },
       { researchId, applicationId, content, accessions },

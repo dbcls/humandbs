@@ -10,7 +10,7 @@ import { loader } from "./document"
 /**
  * The catch-all route as a reader following a link reaches it.
  *
- * **A client-side navigation asks for `<path>.data`.** The suffix is taken off
+ * **A client-side navigation requests `<path>.data`.** The suffix is taken off
  * before the route is matched but stays on the request, so the two ways of
  * arriving at the same page hand the loader two different URLs. Every case here
  * is given the data form, which is the one nobody sees by opening an address.

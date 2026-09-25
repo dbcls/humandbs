@@ -1,6 +1,6 @@
 import { useState, type SyntheticEvent } from "react"
 
-import { Button, Confirm, Fold, PANE_LABEL, Stack } from "~/components/base"
+import { Button, Confirm, Collapsible, PANE_LABEL, Stack } from "~/components/base"
 import { CONTROL } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Counted, KeyValue, Pairs, Section, Table, Td } from "~/components/page"
@@ -20,10 +20,10 @@ import {
 /**
  * Taking a dataset off an application.
  *
- * **It asks first, in the site's own panel.** What goes with it is the analysis
+ * **It requests first, in the site's own panel.** What goes with it is the analysis
  * the service ran for that dataset, so it is not a press to make by accident —
  * and the browser's own dialog is neither in the reader's language nor in any
- * of the site's faces.
+ * of the site's styles.
  */
 function RemoveDataset({ datasetId, busy, onRemove, words }: {
   datasetId: string
@@ -33,7 +33,7 @@ function RemoveDataset({ datasetId, busy, onRemove, words }: {
 }) {
   // **The cell keeps its control while a request is out.** Taking it away
   // empties the cell and the row changes height under the reader's hands; what
-  // the request needs is that the deed does not fire twice.
+  // the request needs is that the action does not fire twice.
   return (
     <Confirm
       label={words.removeDataset}
@@ -104,14 +104,14 @@ export function Datasets({
         {canManage && (
           <form onSubmit={(event) => { void add(event) }} className="rounded border border-line p-4">
             <Stack gap="tight">
-              {/* Named in the face every field's name takes (`Labelled`). */}
+              {/* Named in the style every field's name takes (`Labelled`). */}
               <label htmlFor="assistant-dataset-ids" className={`block ${PANE_LABEL}`}>
                 {words.addDatasets}
               </label>
               <div className="flex flex-wrap items-center gap-2">
                 {/* **The box and the button beside it take the site's one
-                    face** (`form.tsx` の `CONTROL`): the edge of something that
-                    can be typed into has to carry 3:1, and a face written out
+                    style** (`form.tsx` の `CONTROL`): the edge of something that
+                    can be typed into has to have 3:1, and a style written out
                     here would be the one that stopped matching. */}
                 <input
                   id="assistant-dataset-ids"
@@ -315,7 +315,7 @@ function DatasetDetails({
   words: AssistantWords
 }) {
   return (
-    <Fold summary={`${words.datasetId}: ${dataset.id}`} open>
+    <Collapsible summary={`${words.datasetId}: ${dataset.id}`} open>
       <Pairs>
         <KeyValue title={words.requestedPurpose}>
           {display(requestedPurpose, words)}
@@ -352,7 +352,7 @@ function DatasetDetails({
               ))}
         </KeyValue>
       </Pairs>
-    </Fold>
+    </Collapsible>
   )
 }
 

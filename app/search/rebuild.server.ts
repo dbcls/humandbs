@@ -10,12 +10,12 @@
  * The text is derived from the **public projection** rather than from the
  * content, so a value nobody has settled cannot be found by searching for it.
  *
- * A research row carries the text and the facet values of its datasets as well
+ * A research row has the text and the facet values of its datasets as well
  * as its own. A dataset belongs to exactly one research, so this duplicates
  * nothing, and it is what makes "find the study whose analysis method mentions
  * this" work in the research list and what lets both listings be filtered by
- * one shape of query. A version row carries only its datasets' labels: versions
- * are the ledger of what is published rather than something the lists search.
+ * one shape of query. A version row has only its datasets' labels: versions
+ * are the `label_pin` table of what is published rather than something the lists search.
  *
  * A full rebuild is a normal operation rather than a repair. The corpus is a
  * few thousand rows, and rebuilding it is how a change to the derivation, to
@@ -114,7 +114,7 @@ function newestPerResearch<T extends { researchId: string, number: number }>(
   return [...newest.values()]
 }
 
-/** Every value slot a dataset carries, its own and its experiments'. */
+/** Every value slot a dataset has, its own and its experiments'. */
 function valueSlots(content: DatasetContent): ValueSlot[] {
   return [...content.values, ...content.experiments.flatMap((e) => e.values)]
 }
@@ -153,7 +153,7 @@ interface NumberFacet {
  * a facet is made of, so projecting first would delete the facets that are
  * meant to exist. Unsettled and not-applicable slots are in neither.
  *
- * Each value appears once. A dataset saying the same thing under the same key
+ * Each value appears once. A dataset indicating the same thing under the same key
  * in two experiments is one fact about the dataset.
  */
 function facetValuesOf(
@@ -268,7 +268,7 @@ export async function rebuildSearchDocs(
     .where(within(researchVersion.researchId))
 
   // **The newest version is what describes a dataset here.** Every version
-  // carries the descriptions it published, but a dataset has one row and one
+  // has the descriptions it published, but a dataset has one row and one
   // address — so the row takes the description a reader arriving without a
   // version number gets. Older versions keep theirs; nothing reads them back
   // out except the version's own page, which lists identities rather than
@@ -280,7 +280,7 @@ export async function rebuildSearchDocs(
       content: descriptionOf(row),
     })))
 
-  // The archive owns the dates of an accession it issued; the content carries
+  // The archive owns the dates of an accession it issued; the content has
   // one only for an id the portal issued itself. Which of the two applies is
   // the projection's decision (`app/content/public.ts`) and its answer is baked
   // into the row here, which is what makes the daily cache refresh reach every
@@ -339,7 +339,7 @@ export async function rebuildSearchDocs(
     for (const row of version.content.datasets) listedDatasetIds.add(row.datasetId)
   }
 
-  // Datasets first: a research row carries the text and the facets of the ones
+  // Datasets first: a research row has the text and the facets of the ones
   // below it. The text is derived from the projection and the facets from the
   // content (`facetValuesOf`), which is why both are kept here.
   interface DatasetProjection {
@@ -347,9 +347,9 @@ export async function rebuildSearchDocs(
     researchId: string
     label: string
     /**
-     * What the version says about it, unprojected. **The published row carries
+     * What the version has about it, unprojected. **The published row has
      * the content rather than the public representation**: what the catalog
-     * hides is still content, and the screens asking "is this key still in use"
+     * hides is still content, and the screens requesting "is this key still in use"
      * would find nothing if the row had already dropped it.
      */
     content: DatasetContent
@@ -430,7 +430,7 @@ export async function rebuildSearchDocs(
     })
   }
 
-  // **Labels and nothing else.** A version is the ledger of what was published
+  // **Labels and nothing else.** A version is the `label_pin` table of what was published
   // at a number, not a page either listing searches (`SearchTarget` names the
   // two that are), so flattening its body again would index a copy of the
   // research row for every version and gain nothing to match it with.
@@ -474,8 +474,8 @@ export async function rebuildSearchDocs(
   }
 
   // Identities are needed to attach the facet rows. They come back keyed by the
-  // target the row is for rather than by position: `RETURNING` says nothing
-  // about the order it answers in, and a facet hung on the wrong document is a
+  // target the row is for rather than by position: `RETURNING` reports nothing
+  // about the order it responds in, and a facet hung on the wrong document is a
   // wrong answer nothing would raise.
   const idOfTarget = new Map<string, string>()
   for (let i = 0; i < docs.length; i += INSERT_CHUNK) {
@@ -486,9 +486,9 @@ export async function rebuildSearchDocs(
     for (const row of returned) idOfTarget.set(`${row.targetType}/${row.targetId}`, row.id)
   }
 
-  // A research carries the facet values of the datasets below it, so that both
+  // A research has the facet values of the datasets below it, so that both
   // listings are filtered and counted by one shape of query. It is a union
-  // rather than a copy: asking a research for two facets asks whether anything
+  // rather than a copy: asking a research for two facets checks whether anything
   // below it has each, not whether one dataset has both.
   const termRows: (typeof searchFacetTerm.$inferInsert)[] = []
   const numberRows: (typeof searchFacetNumber.$inferInsert)[] = []

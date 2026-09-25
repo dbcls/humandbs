@@ -1,5 +1,5 @@
 /**
- * What makes the caches refresh without anybody asking.
+ * What makes the caches refresh without anybody requesting.
  *
  * **It runs inside the application process; there is no separate worker.** The
  * same judgement as the file switches: the work is one long query and a few
@@ -63,7 +63,7 @@ async function tick(): Promise<void> {
     if (claimed.length === 0) return
     await runUpstreamRefresh(db, claimed)
   } catch (error) {
-    // There is no caller to answer to, and each source already records its own
+    // There is no caller to respond to, and each source already records its own
     // reason; what reaches here is the loop itself failing.
     console.error("the upstream refresh loop failed", error)
   } finally {

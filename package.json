@@ -24,7 +24,6 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:migrate:dev": "tsx scripts/schema-drift.ts && tsx scripts/migrate.ts && tsx scripts/test-db.ts",
     "db:check": "tsx scripts/schema-drift.ts",
-    "db:mark-baseline": "tsx scripts/migrate.ts --mark-baseline",
     "db:load-dev-data": "tsx migration/run.ts",
     "db:seed-review": "tsx scripts/seed-dev-review.ts",
     "s3:buckets": "tsx scripts/buckets.ts",

@@ -9,12 +9,12 @@
  * **A locale that is not published is a 404, not a fallback.** Publication is
  * per locale here — the rule that it goes by version rather than by language is
  * a statement about versions — so a document that exists only in Japanese
- * answers only in Japanese, and the English address for it says so.
+ * answers only in Japanese, and the English address for it reports it.
  *
  * **A slug resolves to a document, or to the revision a series names.** The
- * version-less address of a guideline holds no body of its own; it answers with
+ * version-less address of a guideline holds no body of its own; it responds with
  * whichever revision is current, at 200 rather than through a redirect, the way
- * `/research/{humId}` answers with the newest version.
+ * `/research/{humId}` responds with the newest version.
  */
 
 import { and, desc, eq, or, sql } from "drizzle-orm"
@@ -51,7 +51,7 @@ export async function findDocument(slug: string, locale: Locale): Promise<Articl
       eq(documentContent.locale, locale),
       eq(documentContent.published, true),
     ))
-    // A document answers at its own slug before it answers as somebody's
+    // A document responds at its own slug before it responds as somebody's
     // current revision, so one address cannot resolve to two pages. The two
     // cannot both exist — the save path refuses it — and this settles what
     // happens if they ever do.
@@ -96,7 +96,7 @@ export interface NewsListView {
 const NEWS_PER_PAGE = 20
 
 /**
- * Newest first, by the date the item carries rather than the row's age: the
+ * Newest first, by the date the item has rather than the row's age: the
  * announcements are dated by the release they announce.
  */
 /**
@@ -109,7 +109,7 @@ const NEWS_PER_PAGE = 20
  * read by date.
  */
 /**
- * The half of "is this readable" that the announcement itself answers: it is
+ * The half of "is this readable" that the announcement itself responds: it is
  * dated, and the date has come.
  *
  * **The stored value is a JST wall clock, and "now" is read in the same
@@ -142,7 +142,7 @@ export async function newsList(
            OR ${newsContent.content} ->> 'body' ILIKE ${`%${likeEscaped(wanted)}%`} ESCAPE '\\')`]),
   )
 
-  // Counted rather than answered with "is there one more page": the reader is
+  // Counted rather than responded with "is there one more page": the reader is
   // told how many announcements there are, and the page links need to know how
   // far the listing goes to offer the far end of it.
   const [counted] = await db
@@ -204,7 +204,7 @@ export async function newsItemPage(id: string, locale: Locale): Promise<NewsItem
     .from(newsContent)
     .innerJoin(news, eq(news.id, newsContent.newsId))
     .where(and(
-      // The address carries a uuid; anything else is not a news item rather
+      // The address has a uuid; anything else is not a news item rather
       // than a malformed query for one.
       sql`${newsContent.newsId}::text = ${id}`,
       eq(newsContent.locale, locale),
@@ -223,18 +223,18 @@ export async function newsItemPage(id: string, locale: Locale): Promise<NewsItem
 }
 
 /**
- * The alert every page carries. Its text is a translated pair rather than a
+ * The alert every page has. Its text is a translated pair rather than a
  * per-locale row, because an alert is one announcement shown in whichever
  * language the reader is on.
  */
 export interface AlertView {
   html: string
   /**
-   * The reader's language had nothing, so what stands here is the other one.
+   * The reader's language had nothing, so what is shown here is the other one.
    *
-   * **Shown rather than hidden**: what the office is saying today reaches more
+   * **Shown rather than hidden**: what the office is indicating today reaches more
    * readers in a language some of them cannot read than in none at all. The
-   * screen says which language it is, so that a reader who cannot read it knows
+   * screen reports which language it is, so that a reader who cannot read it knows
    * that is why rather than wondering what they are looking at.
    */
   untranslated: boolean
@@ -247,7 +247,7 @@ export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
     .from(alert)
     .where(eq(alert.active, true))
     // The id breaks the tie: alerts written in one statement share a
-    // timestamp, and the v7 id carries the order they were made in.
+    // timestamp, and the v7 id has the order they were made in.
     .orderBy(alert.createdAt, alert.id)
 
   return rows

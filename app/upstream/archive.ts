@@ -9,12 +9,12 @@
 import { dayInJst } from "~/dates"
 
 /**
- * Which DDBJ Search resource answers for an accession.
+ * Which DDBJ Search resource responds for an accession.
  *
- * Only the prefixes the portal's datasets actually carry are listed. An
- * unrecognised one answers null and is left without a date rather than guessed
+ * Only the prefixes the portal's datasets actually have are listed. An
+ * unrecognised one responds with null and is left without a date rather than guessed
  * at — a wrong resource would return somebody else's entry, and the accessions
- * upstream does not know about are exactly what a missing date should say.
+ * upstream does not know about are exactly what a missing date should report.
  */
 const RESOURCE_BY_PREFIX: readonly (readonly [string, string])[] = [
   ["DRA", "sra-submission"],
@@ -27,7 +27,7 @@ export function archiveResourceOf(accession: string): string | null {
   return RESOURCE_BY_PREFIX.find(([prefix]) => accession.startsWith(prefix))?.[1] ?? null
 }
 
-/** Whether this source is the one that answers for an accession at all. */
+/** Whether this source is the one that responds for an accession at all. */
 export function isArchiveAccession(accession: string): boolean {
   return archiveResourceOf(accession) !== null
 }
@@ -39,7 +39,7 @@ const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
  *
  * The answers are not one shape: some resources return a full instant
  * (`2020-09-28T02:03:50Z`) and others a day already (`2022-10-28`). A day is
- * taken as it stands — it carries no time to move — and an instant is shifted
+ * taken as it remains — it passes no time to move — and an instant is shifted
  * before the day is read off it (`dates.ts` の `dayInJst`), so an entry released
  * in the evening UTC does not show as the day before.
  */

@@ -7,36 +7,36 @@ import { ButtonLink, Choice, SectionTabs, Chevron, type ButtonSize } from "./bas
 import { Icon, type IconName } from "./icons"
 
 /**
- * The way out of a screen the bar does not open.
+ * The back link of a screen the bar does not open.
  *
- * **Only a screen whose parent is missing from the bar carries one**
+ * **Only a screen whose parent is missing from the bar has one**
  * (`admin/navigation.ts` is what the bar holds): the box and the draft lead to
  * their research, the datasets and the review screen lead to their draft, a
  * dataset leads to the list it is in. A screen the bar already reaches would be
- * saying the same thing twice, and a management area that repeats its own shape
+ * indicating the same thing twice, and a management area that repeats its own shape
  * at the top of every screen is one where a curator reads the depth instead of
  * the work.
  *
- * **It is drawn as a control, not as a line of text.** It stands beside the
+ * **It is drawn as a control, not as a line of text.** It is shown beside the
  * other places the screen leads to, and a bare link among outlined buttons
- * reads as a caption rather than as the one way out.
+ * reads as a caption rather than as the one back link.
  *
- * `onBand` is for the one standing in a page's opening band (`base.tsx` の
- * `Band`), where the colour the rest of the site draws links in is unreadable
+ * `onHeaderBar` is for the one shown in a page's opening header bar (`base.tsx` の
+ * `HeaderBar`), where the colour the rest of the site draws links in is unreadable
  * against the fill.
  */
-export function AdminBack({ to, label, icon, onBand = false }: {
+export function AdminBack({ to, label, icon, onHeaderBar = false }: {
   to: string
   label: string
-  /** The mark it carries, which the screen chooses along with the word. */
+  /** The icon it shows, which the screen chooses along with the word. */
   icon?: IconName
-  onBand?: boolean
+  onHeaderBar?: boolean
 }) {
   return (
     <ButtonLink
       to={to}
       variant="secondary"
-      onBand={onBand}
+      onHeaderBar={onHeaderBar}
       icon={icon === undefined
         ? undefined
         : icon === "chevron-left" || icon === "chevron-right"
@@ -81,19 +81,19 @@ interface Arrangement {
  *
  * **The two are the same width.** What is read here is a form beside the page it
  * writes and neither of them is the subject, so there is no width to prefer; a
- * seam that can be dragged asks for a decision on every visit and leaves
+ * seam that can be dragged requests a decision on every visit and leaves
  * whoever opens the screen next with somebody else's answer to it.
  *
  * **Each pane is a box that scrolls inside itself, and the pair is as tall as
  * the window.** Reading one beside the other is the whole point, and a single
- * scroll would carry both away together. **The pair sticks to the top of the
+ * scroll would have both away together. **The pair sticks to the top of the
  * window**, so scrolling takes the bar away and leaves two panes filling the
  * screen — which is what somebody writing is looking at most of the time. The
  * height is the window's rather than a number measured on the way past, so
  * nothing has to be told when the bar above wraps onto a second line.
  *
  * The switch is handed back apart from the panes, for a screen whose head
- * carries a tools row (`draft-tools.tsx` の `DraftTools`, `contents.tsx` の
+ * has a toolbar (`draft-tools.tsx` の `DraftTools`, `contents.tsx` の
  * `ArticleTools`) to put it on — at that row's far end, beside saving — rather
  * than floating above one of the two things it governs. A screen with no such
  * row keeps it where it always stood, on the showing pane's own tabs.
@@ -101,10 +101,10 @@ interface Arrangement {
 /**
  * How far from the top of the window the panes stick, and how tall they are.
  *
- * **Under a head that folds to one row, the panes start below that row.** The
- * folded head is one 36px row with 12px above and below (`draft-tools.tsx` の
+ * **Under a header that collapses to one row, the panes start below that row.** The
+ * collapsed head is one 36px row with 12px above and below (`draft-tools.tsx` の
  * `DraftHead`), so the two are a sum rather than a measurement: the row, then
- * the gap between it and the boxes. Without such a head the panes start at the
+ * the gap between it and the boxes. Without such a header the panes start at the
  * page's margin.
  */
 const PANE_STANCE = {
@@ -117,7 +117,7 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
   contents: PaneContent[]
   /** What the right pane opens on; the second content otherwise. */
   opens?: string
-  /** What the panes stand under: the page's margin, or a row that stays at the top. */
+  /** What the panes are shown under: the page's margin, or a row that stays at the top. */
   under?: keyof typeof PANE_STANCE
 }): { view: ReactNode, control: ReactNode, left: string, right: string, showing: Arrangement["showing"] } {
   const words = messagesFor(locale).admin.panes
@@ -135,14 +135,14 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
   }, [])
 
   // Left to right, the way the panes themselves stand: a list that starts with
-  // "both" asks the reader to find the arrangement they are looking at.
+  // "both" requests the reader to find the arrangement they are looking at.
   const shows = [
     { id: "left", label: words.left },
     { id: "both", label: words.both },
     { id: "right", label: words.right },
   ] as const
 
-  // **The word stands beside it, and once.** The group is named for whoever
+  // **The word is shown beside it, and once.** The group is named for whoever
   // is not looking, and the same word is shown for whoever is — hidden from
   // the reader that already has it as the group's name, so it is not said
   // twice. A step smaller than the save it shares a row with: it arranges the
@@ -161,12 +161,12 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
     </span>
   )
 
-  // **A screen whose head carries a tools row draws the switch there instead**
+  // **A screen whose head has a toolbar draws the switch there instead**
   // (`draft-tools.tsx` の `DraftTools`): that row stays at the top of the
   // window, and the switch belongs beside saving, not floating above one of
   // the two panes it governs. Every other screen keeps it where it always
   // stood — on the panes' own top edge, at the far end of the strip of
-  // whichever pane stands last, the right one or the only one.
+  // whichever pane is shown last, the right one or the only one.
   const onOwnEdge = under === "page"
   const holdsControl = state.showing === "left" ? "left" : "right"
 
@@ -176,7 +176,7 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded bg-white">
         {/* **The tabs are the top of the box, not a row above it.** What a pane
-            holds is part of that pane, and a strip standing on the tint belongs
+            holds is part of that pane, and a strip shown on the tint belongs
             to neither of the two boxes it sits between. */}
         <SectionTabs
           label={words.holds}
@@ -186,11 +186,11 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
           onSelect={(id) => { change(side === "left" ? { left: id } : { right: id }) }}
           aside={onOwnEdge && side === holdsControl ? control : undefined}
         />
-        {/* **The box that scrolls is also what the marks inside it are placed
+        {/* **The box that scrolls is also what the indicators inside it are placed
             against.** Left `static` it is not the containing block of anything
             absolutely positioned within, so those are placed against the page
             instead — and a box only clips what it is the containing block of,
-            so the comment marks hanging beside the fields escape the pane and
+            so the comment buttons hanging beside the fields escape the pane and
             stretch the document to the length of the form. */}
         <div data-pane-body className="relative min-h-0 flex-1 overflow-y-auto">{shown?.body}</div>
       </div>
@@ -212,25 +212,25 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
     </div>
   )
 
-  // **Which content stands where, for a screen whose own tools row has more to
+  // **Which content is shown where, for a screen whose own toolbar has more to
   // say about it than the switch alone.** An article's save is one control per
   // open language, so the row above the panes has to know which of them are
   // showing — and Ctrl+S sends the left one specifically — which the switch's
-  // own markup does not carry (`contents.tsx` の `ArticleTools`).
+  // own markup does not have (`contents.tsx` の `ArticleTools`).
   return { view, control, left: state.left, right: state.right, showing: state.showing }
 }
 
 /**
- * The way to another screen, standing in a row of controls.
+ * The link to another screen, shown in a row of controls.
  *
- * **The face of the way out, with the mark after the word** (`AdminBack`
- * turned around): an outlined button with no mark reads as something done
- * here, and a bare link reads as a caption. The mark before the word says
+ * **The style of the back link, with the indicator after the word** (`AdminBack`
+ * turned around): an outlined button with no indicator reads as something done
+ * here, and a bare link reads as a caption. The indicator before the word shows
  * what the screen is about; the chevron after
- * it says it is somewhere else, and moves that way when pointed at
+ * it shows it is somewhere else, and moves that way when pointed at
  * (`base.tsx` の `Chevron`).
  */
-export function WayTo({ to, icon, size, children }: {
+export function ScreenLink({ to, icon, size, children }: {
   to: string
   /** What the screen is about, before the word. */
   icon?: IconName
@@ -239,7 +239,7 @@ export function WayTo({ to, icon, size, children }: {
   children: ReactNode
 }) {
   return (
-    <ButtonLink to={to} size={size} way icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}>
+    <ButtonLink to={to} size={size} chevron icon={icon === undefined ? undefined : <Icon name={icon} aria-hidden="true" />}>
       {children}
     </ButtonLink>
   )

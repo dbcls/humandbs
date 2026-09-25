@@ -30,7 +30,7 @@ export function AdminAssistantTaskList({
   return (
     <Section title={words.listHeading}>
       <Stack gap="normal">
-        {/* **The way to ask again stands inside the part it reloads**, the way
+        {/* **The button that requests again is shown inside the part it reloads**, the way
             every other management screen puts an act under the name of what it
             acts on. */}
         <div>
@@ -63,7 +63,7 @@ export function AdminAssistantTaskList({
               }
             >
               <Td nowrap>
-                {/* The identifier opens the task beside the listing; the mark
+                {/* The identifier opens the task beside the listing; the indicator
                     says so, where the identifier alone reads as a cell of text. */}
                 <Button
                   type="button"
@@ -99,7 +99,7 @@ export function timeOf(value: string | undefined): string {
 }
 
 /**
- * Where a task stands, as the listing and the task's own screen both say it.
+ * Where a task remains, as the listing and the task's own screen both say it.
  *
  * **Every task has a status, so it is a glyph and a word** (`Stated`), and
  * **only a failure is a badge** (`Flag` の `stops`): a finished task is the

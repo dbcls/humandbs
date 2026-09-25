@@ -7,7 +7,7 @@ const capability = fc.constantFrom(...CAPABILITIES)
 
 /**
  * An actor as the request path builds it: whatever the identity, the capability
- * set is always derived from `isAdmin` and never carried alongside it.
+ * set is always derived from `isAdmin` and never kept alongside it.
  */
 const actor = fc.record({
   sessionId: fc.string(),

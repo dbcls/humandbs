@@ -32,7 +32,7 @@ export const filePublishJobState = pgEnum("file_publish_job_state", [
  * **One row per file.** A row is not a request to perform an action but the
  * bucket the file is meant to be in, so a second opinion overwrites the first
  * rather than queueing behind it. Without the constraint the intermediate
- * opinions would each be carried out as a copy of the actual bytes.
+ * opinions would each be done as a copy of the actual bytes.
  *
  * Completed jobs are deleted rather than kept: the durable record of who
  * changed a file's visibility is the event log.

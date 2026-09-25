@@ -7,8 +7,8 @@ import { PAGE_SIZE } from "~/search/page-size"
 import {
   ADMIN_STATUSES,
   axisCounts,
-  BRANCH_STANDINGS,
-  branchStanding,
+  BRANCH_STATUSES,
+  branchStatusOf,
   filterBranchRows,
   filterResearchRows,
   pageOf,
@@ -56,7 +56,7 @@ describe("the direct lookup", () => {
     expect(matching("HUM0001")).toBe(1)
   })
 
-  it("requires every word, as the public box does", () => {
+  it("requires every word, as the public search box does", () => {
     expect(matching("糖尿病 hum0001")).toBe(1)
     expect(matching("糖尿病 hum0002")).toBe(0)
   })
@@ -162,7 +162,7 @@ describe("the order and the page", () => {
       .toEqual(["b", "a", "unpinned"])
   })
 
-  it("runs a key the way it reads when nobody says which way", () => {
+  it("runs a key the way it reads when nobody reports which way", () => {
     const rows = [
       row({ researchId: "a", humLabel: "hum0001", updatedAt: "2025-01-01T00:00:00.000Z" }),
       row({ researchId: "b", humLabel: "hum0002", updatedAt: "2026-01-01T00:00:00.000Z" }),
@@ -199,7 +199,7 @@ describe("the order and the page", () => {
     expect(pageOf(rows, 3).pageCount).toBe(3)
   })
 
-  it("answers a page beyond the end with the last one rather than with nothing", () => {
+  it("responds to a page beyond the end with the last one rather than with nothing", () => {
     const rows = [row()]
 
     expect(pageOf(rows, 9).page).toBe(1)
@@ -229,34 +229,34 @@ const UNLABELLED = branch({ applicationId: "J-DS000300-001", humLabel: null, hel
 const UNREGISTERED = branch({ applicationId: "J-DS000400-001", datasets: [] })
 const ALL = [HELD, ABSENT, UNLABELLED, UNREGISTERED]
 
-describe("where a branch stands with the portal", () => {
-  it("reads the hum label first: no label is its own standing, not a missing research", () => {
-    expect(branchStanding(HELD)).toBe("held")
-    expect(branchStanding(ABSENT)).toBe("absent")
-    expect(branchStanding(UNLABELLED)).toBe("unlabelled")
+describe("the status of a branch in the portal", () => {
+  it("reads the hum label first: no label is its own status, not a missing research", () => {
+    expect(branchStatusOf(HELD)).toBe("held")
+    expect(branchStatusOf(ABSENT)).toBe("absent")
+    expect(branchStatusOf(UNLABELLED)).toBe("unlabelled")
   })
 
   it("keeps every branch when the axis is asked for in full, as when it is not asked at all", () => {
-    expect(filterBranchRows(ALL, { standings: BRANCH_STANDINGS })).toEqual(ALL)
-    expect(filterBranchRows(ALL, { standings: [] })).toEqual(ALL)
+    expect(filterBranchRows(ALL, { branchStatuses: BRANCH_STATUSES })).toEqual(ALL)
+    expect(filterBranchRows(ALL, { branchStatuses: [] })).toEqual(ALL)
   })
 
-  it("takes a branch in any of the ticked standings", () => {
-    const held = filterBranchRows(ALL, { standings: ["held"] })
+  it("keeps a branch with any of the ticked statuses", () => {
+    const held = filterBranchRows(ALL, { branchStatuses: ["held"] })
     expect(held.map((row) => row.applicationId))
       .toEqual([HELD.applicationId, UNREGISTERED.applicationId])
 
-    const two = filterBranchRows(ALL, { standings: ["absent", "unlabelled"] })
+    const two = filterBranchRows(ALL, { branchStatuses: ["absent", "unlabelled"] })
     expect(two.map((row) => row.applicationId))
       .toEqual([ABSENT.applicationId, UNLABELLED.applicationId])
   })
 
   it("does not narrow by whether the branch registered anything", () => {
-    for (const standing of BRANCH_STANDINGS) {
-      const kept = filterBranchRows(ALL, { standings: [standing] })
+    for (const branchStatus of BRANCH_STATUSES) {
+      const kept = filterBranchRows(ALL, { branchStatuses: [branchStatus] })
       const datasetsOf = new Set(kept.map((row) => row.datasets.length === 0))
-      expect(kept.every((row) => branchStanding(row) === standing)).toBe(true)
-      if (standing === "held") expect(datasetsOf).toEqual(new Set([true, false]))
+      expect(kept.every((row) => branchStatusOf(row) === branchStatus)).toBe(true)
+      if (branchStatus === "held") expect(datasetsOf).toEqual(new Set([true, false]))
     }
   })
 })

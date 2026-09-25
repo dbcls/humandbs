@@ -94,7 +94,7 @@ describe("語彙値の統合", () => {
     expect(nth(value.diseases.value, 0).nameJa).toBe("肝がん")
   })
 
-  it("experiment が持つ値にも効く", () => {
+  it("experiment の値にも適用される", () => {
     const merged = datasetWithTermMerged(dataset([], [[vocabulary(["a"])]]), "a", "b")
     expect(chosenOf(nth(nth(merged.experiments, 0).values, 0))).toEqual(["b"])
   })
@@ -112,7 +112,7 @@ describe("語彙値の統合", () => {
     expect(datasetWithTermMerged(before, "a", "b").values[0]).toBe(before.values[0])
   })
 
-  it("バージョンは、並べている dataset すべてに効く", () => {
+  it("バージョンでは、並べている dataset すべてに適用される", () => {
     const content = {
       datasets: [
         { datasetId: "one", ...dataset([vocabulary(["a"])]) },
@@ -180,7 +180,7 @@ describe("語彙値の統合 (性質)", () => {
     fc.assert(fc.property(datasetContentArb, (content) => {
       const merged = datasetWithTermMerged(content, "nothing-points-at-this", "somewhere")
       // 値の同一を見る。`fc.record` は prototype を持たない object を作るので、
-      // 作り直したぶんだけ `toStrictEqual` は形の違いとして落ちる。
+      // 作り直したぶんだけ `toStrictEqual` では形の違いとして失敗する。
       expect(merged).toEqual(content)
     }))
   })

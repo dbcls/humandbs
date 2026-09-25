@@ -64,7 +64,7 @@ const ASSAYS = facet({
   values: [value("wgs", "WGS")],
 })
 
-/** The same facet holding more values than stand in the box at once. */
+/** The same facet holding more values than are shown in the box at once. */
 const MANY_DISEASES = facet({
   code: "disease",
   label: "疾患",
@@ -172,7 +172,7 @@ describe("the refinement panel", () => {
     expect(volume).toContain("–")
   })
 
-  it("says nothing about the span the result covers", () => {
+  it("implies nothing about the span the result covers", () => {
     // A second kind of number in the pane reads as one of the value counts.
     expect(render([
       { code: null, label: null, facets: [DATES] },
@@ -183,7 +183,7 @@ describe("the refinement panel", () => {
   it("writes the ICD10 code beside a disease, ahead of the heading", () => {
     const html = render([{ code: "subjects", label: "対象者", facets: [DISEASES] }])
 
-    // The code is a key the reader can carry away — it is on the dataset page
+    // The code is a key the reader can have away — it is on the dataset page
     // and in the API — and it comes first so that the codes make a column.
     expect(html).toContain("<code")
     expect(html).toContain("C34")
@@ -198,20 +198,20 @@ describe("the refinement panel", () => {
   })
 
   /*
-    **A range has no button.** Both ends ask for themselves — a date the moment
+    **A range has no button.** Both ends validate on their own — a date the moment
     it has one, a number on the way out of the field — so all a button would add
     is a second way to do what has already happened. **The cost is that a range
     needs script**, which the values of a facet do not: those are all on the page
     whether anything runs or not.
   */
-  it("puts no button on a range, since both ends ask for themselves", () => {
+  it("puts no button on a range, since both ends validate on their own", () => {
     const html = render([{ code: null, label: null, facets: [DATES] }])
 
     expect(html).not.toContain("<button")
     expect(html).toContain("type=\"date\"")
   })
 
-  it("carries the ordering, its direction and the page size across a range", () => {
+  it("has the ordering, its direction and the page size across a range", () => {
     const html = render([{ code: null, label: null, facets: [DATES] }], { sort: "id", order: "asc", size: 50 })
 
     expect(html).toContain("name=\"sort\" value=\"id\"")
@@ -227,7 +227,7 @@ describe("the refinement panel", () => {
     expect(html).not.toContain("name=\"size\"")
   })
 
-  it("names the facet the range writes into, so the form says which one it is", () => {
+  it("names the facet the range writes into, so the form shows which one it is", () => {
     expect(render([{ code: null, label: null, facets: [DATES] }]))
       .toContain("name=\"rangeKey\" value=\"date_published\"")
   })
@@ -235,8 +235,8 @@ describe("the refinement panel", () => {
 
 describe("the values of a facet", () => {
   /**
-   * The widest facet carries 389 values. Cutting the list and offering a way to
-   * the rest costs either an address that says something other than the
+   * The widest facet has 389 values. Cutting the list and offering a way to
+   * the rest costs either an address that shows something other than the
    * conditions in force, or a reader without script who cannot reach past the
    * cut; scrolling costs neither.
    */
@@ -247,7 +247,7 @@ describe("the values of a facet", () => {
     expect(html).toContain("疾患 19")
   })
 
-  it("stand in a box with a ceiling, so a long one scrolls where it is", () => {
+  it("are shown in a box with a ceiling, so a long one scrolls where it is", () => {
     expect(render([{ code: null, label: null, facets: [MANY_DISEASES] }]))
       .toContain("max-h-72")
   })
@@ -257,7 +257,7 @@ describe("the values of a facet", () => {
    * words never reach the address — it changes what the reader is looking at,
    * not what the search returned.
    */
-  it("get a box to narrow them once they no longer stand in the ceiling", () => {
+  it("get a box to narrow them once they no longer are shown in the ceiling", () => {
     const html = render([{ code: null, label: null, facets: [MANY_DISEASES] }])
 
     expect(html).toContain("type=\"search\"")
@@ -270,9 +270,9 @@ describe("the values of a facet", () => {
   })
 
   /**
-   * A scrollbar does not say the list goes on — where the reader has it set to
+   * A scrollbar does not show the list goes on — where the reader has it set to
    * appear only while scrolling, it claims no space at all. **And the shading
-   * is drawn before anything measures it**, or the one thing saying so would
+   * is drawn before anything measures it**, or the one thing indicating so would
    * be the thing that needs script to appear.
    */
   it("shade the far edge of a list that goes on past its box", () => {
@@ -295,7 +295,7 @@ describe("which facets a panel opens", () => {
 
   /**
    * Opening the first group as well cost 800px of scroll before the reader
-   * reached the dimension they came for, and what stood there — dates and the
+   * reached the dimension they came for, and what was shown there — dates and the
    * access type — is not what a reader who has chosen nothing reaches for.
    */
   it("opens none of the rest, wherever in the panel they stand", () => {
@@ -308,7 +308,7 @@ describe("which facets a panel opens", () => {
   })
 })
 
-describe("a facet the result carries no value for", () => {
+describe("a facet the result has no value for", () => {
   const empty = render([{
     code: null,
     label: null,
@@ -316,12 +316,12 @@ describe("a facet the result carries no value for", () => {
   }])
 
   /*
-    What a folded box says is that the listing can be narrowed by that
-    dimension, which is true whether or not this result happens to carry any
+    What a collapsed box shows is that the listing can be narrowed by that
+    dimension, which is true whether or not this result happens to have any
     value for it. Dropping the boxes takes the pane apart in front of the reader
     who narrowed one step too far — and at nothing found, took the whole pane.
   */
-  it("keeps its box, so the pane still says what the listing narrows by", () => {
+  it("keeps its box, so the pane still shows what the listing narrows by", () => {
     expect(empty).toContain("プラットフォーム")
     expect(empty).toContain("<details")
   })

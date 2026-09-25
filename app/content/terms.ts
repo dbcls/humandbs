@@ -1,10 +1,10 @@
 /**
- * Folding one vocabulary value into another, wherever a description points at
+ * Merging one vocabulary value into another, wherever a description points at
  * it.
  *
  * **A merge rewrites the descriptions rather than leaving a forwarding note.**
  * The term a value points at is the description's reference rather than part of
- * what the description says, so two names for one thing have no reason to
+ * what the description has, so two names for one thing have no reason to
  * survive in the stored content — the same line that lets a label be renamed
  * and have every version read the new one.
  *
@@ -85,7 +85,7 @@ export function datasetWithTermMerged<C extends DatasetContent>(
   }
 }
 
-/** A published version, which carries the description of every dataset it listed. */
+/** A published version, which has the description of every dataset it listed. */
 export function versionWithTermMerged(
   content: VersionContent,
   from: string,

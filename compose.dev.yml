@@ -4,7 +4,7 @@
 #
 # The application runs the dev server from the bind-mounted sources, with its
 # modules in a named volume, and is where every development command is typed —
-# the schema push, the tests and the scripts — so it also gets the owner's
+# the migrations, the tests and the scripts — so it also gets the owner's
 # connection, which the served application never does.
 services:
   db:
@@ -27,7 +27,7 @@ services:
       disable: true
     restart: "no"
 
-  # The image carries its sources; these are mounted over them so that an edit
+  # The image has its sources; these are mounted over them so that an edit
   # is picked up by restarting the container rather than rebuilding it.
   assistant-api:
     volumes:
@@ -37,7 +37,7 @@ services:
       - ./assistant-api/tests:/app/tests
     restart: "no"
 
-  # The stock image with the configuration mounted: the dev server answers the
+  # The stock image with the configuration mounted: the dev server responds with the
   # assets itself, and an edit to the configuration needs only a restart.
   proxy:
     image: docker.io/library/nginx:1.29-alpine
@@ -65,7 +65,7 @@ services:
       # otherwise, so that a scenario can be tried before it is pointed at a
       # deployment.
       HUMANDBS_E2E_BASE_URL: ${HUMANDBS_E2E_BASE_URL:-http://proxy:8080}
-      # The session the signed-in scenarios carry, made on that instance with
+      # The session the signed-in scenarios have, made on that instance with
       # `npm run e2e:session`. Absent, they skip rather than pass
       # (`playwright.config.ts`).
       HUMANDBS_E2E_SESSION: ${HUMANDBS_E2E_SESSION:-}

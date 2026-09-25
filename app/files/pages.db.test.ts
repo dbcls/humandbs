@@ -14,7 +14,7 @@ import {
   PUBLIC_BUCKET,
   privatePrefix,
   publicPrefix,
-} from "./box"
+} from "./prefix"
 import { today } from "~/dates"
 import { emptyDatasetContent } from "~/content/empty"
 
@@ -30,13 +30,13 @@ import { claimJob, reconcile, settleJob } from "./jobs.server"
 import { clearPrefix, keysUnder, putThroughProxy, putTestObject } from "./_store"
 
 /**
- * The box screen with its guard on, and an upload taken all the way to the
+ * The files screen with its guard on, and an upload taken all the way to the
  * store.
  *
  * The upload is the part worth going the whole way for. **A presigned URL is
  * the only limit that can be placed on a transfer the application never sees**,
  * so what has to be shown is that the store refuses a body of the wrong size or
- * the wrong type — not that the application meant to ask for that. The request
+ * the wrong type — not that the application meant to request that. The request
  * is made to the proxy with the Host the signature was made for, which is what
  * a browser sends.
  */
@@ -120,7 +120,7 @@ function sentTo(answer: unknown): [string, [string, string][]] {
 }
 
 /** The ordering, page size and page a listing was read at, with something that is not one of them. */
-/** The settings this box is read at — what narrows it is one of them — with something that is not one. */
+/** The settings this prefix is read at — what narrows it is one of them — with something that is not one. */
 const READ_AT = "?sort=size&order=desc&size=50&page=2&q=unrelated&state=public&other=x"
 const KEPT: [string, string][] = [
   ["sort", "size"],
@@ -137,7 +137,7 @@ async function thrown(work: () => Promise<unknown>): Promise<Response> {
   return result
 }
 
-describe("the box screen", () => {
+describe("the files screen", () => {
   it("is refused to somebody signed in without the capability to manage files", async () => {
     await research()
     const token = await signIn(READER, false)
@@ -145,7 +145,7 @@ describe("the box screen", () => {
     expect((await thrown(() => filesPage(get(token), JA, researchId))).status).toBe(403)
   })
 
-  it("shows both buckets as one list, saying which side each name came from", async () => {
+  it("shows both buckets as one list, indicating which side each name came from", async () => {
     await research()
     const token = await signIn(CURATOR, true)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}open.zip`)
@@ -186,7 +186,7 @@ describe("the box screen", () => {
       expect(view.selectedBy).toEqual({ "a.zip": ["NHA000001", "NHA000002"], "b.zip": ["NHA000002"] })
     })
 
-    it("names only the files on the page shown, and none that the box does not hold", async () => {
+    it("names only the files on the page shown, and none that the prefix does not hold", async () => {
       await research()
       const token = await signIn(CURATOR, true)
       await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
@@ -211,7 +211,7 @@ describe("the box screen", () => {
     })
   })
 
-  it("counts the whole box rather than the page it shows", async () => {
+  it("counts the whole prefix rather than the page it shows", async () => {
     await research()
     const token = await signIn(CURATOR, true)
     for (const name of ["a.zip", "b.zip"]) {
@@ -248,24 +248,24 @@ describe("the box screen", () => {
     expect(narrowed.total).toBe(1)
   })
 
-  it("cuts the box at the page size asked for, and at the default for any other", async () => {
+  it("paginates the prefix at the page size asked for, and at the default for any other", async () => {
     await research()
     const token = await signIn(CURATOR, true)
     for (let at = 0; at < 21; at += 1) {
       await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}${String(at).padStart(2, "0")}.zip`)
     }
-    const cut = async (search: string) => {
+    const paged = async (search: string) => {
       const view = await filesPage(get(token, search), JA, researchId)
       return [view.size, view.rows?.length, view.pageCount, view.rangeFrom, view.rangeTo]
     }
 
-    expect(await cut("")).toEqual([20, 20, 2, 1, 20])
-    expect(await cut("?page=2")).toEqual([20, 1, 2, 21, 21])
-    expect(await cut("?size=50")).toEqual([50, 21, 1, 1, 21])
+    expect(await paged("")).toEqual([20, 20, 2, 1, 20])
+    expect(await paged("?page=2")).toEqual([20, 1, 2, 21, 21])
+    expect(await paged("?size=50")).toEqual([50, 21, 1, 1, 21])
     // Past the last page of a larger size is that last page, not an empty one.
-    expect(await cut("?size=100&page=2")).toEqual([100, 21, 1, 1, 21])
+    expect(await paged("?size=100&page=2")).toEqual([100, 21, 1, 1, 21])
     for (const asked of ["?size=21", "?size=0", "?size=-20", "?size=abc", "?size="]) {
-      expect(await cut(asked), asked).toEqual([20, 20, 2, 1, 20])
+      expect(await paged(asked), asked).toEqual([20, 20, 2, 1, 20])
     }
   })
 
@@ -314,7 +314,7 @@ describe("the box screen", () => {
     expect(only(await db.select().from(s.filePublishJob)).action).toBe("publish")
   })
 
-  it("refuses to make a file public while the research has no box to put it in", async () => {
+  it("refuses to make a file public while the research has no prefix to put it in", async () => {
     await research(false)
     const token = await signIn(CURATOR, true)
 
@@ -324,11 +324,11 @@ describe("the box screen", () => {
       researchId,
     )
 
-    expect(answer).toEqual({ status: "no-box" })
+    expect(answer).toEqual({ status: "no-hum-label" })
     expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
   })
 
-  it("says nothing was selected rather than acting on the whole box", async () => {
+  it("reports nothing was selected rather than acting on the whole prefix", async () => {
     await research()
     const token = await signIn(CURATOR, true)
 
@@ -402,7 +402,7 @@ describe("the box screen", () => {
     expect(only(await db.select().from(s.filePublishJob)).state).toBe("pending")
   })
 
-  it("refuses a name that is not one file of the box, and sends no delete to the store", async () => {
+  it("refuses a name that is not one file of the prefix, and sends no delete to the store", async () => {
     await research()
     const token = await signIn(CURATOR, true)
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
@@ -477,7 +477,7 @@ describe("the box screen", () => {
     expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}a.zip`])
   })
 
-  it("refuses a name with a separator, since the box is flat", async () => {
+  it("refuses a name with a separator, since the prefix is flat", async () => {
     await research()
     const token = await signIn(CURATOR, true)
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
@@ -510,7 +510,7 @@ describe("an upload", () => {
     expect(refusal.status).toBe(403)
   })
 
-  it("signs the size and the type, and asks for no checksum of its own", async () => {
+  it("signs the size and the type, and requests no checksum of its own", async () => {
     await research()
     const token = await signIn(CURATOR, true)
 
@@ -589,7 +589,7 @@ describe("an upload", () => {
     expect(await putThroughProxy(answer.url, "1234")).toBe(403)
   })
 
-  it("refuses a name that would put the object outside the box", async () => {
+  it("refuses a name that would put the object outside the prefix", async () => {
     await research()
     const token = await signIn(CURATOR, true)
 
@@ -649,7 +649,7 @@ describe("an upload", () => {
     )
   })
 
-  it("says which of the names the box already holds, from either side of the store", async () => {
+  it("reports which of the names the prefix already holds, from either side of the store", async () => {
     await research()
     const token = await signIn(CURATOR, true)
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
@@ -663,7 +663,7 @@ describe("an upload", () => {
     expect(answer).toEqual({ kind: "check", existing: ["b.zip", "a.zip"] })
   })
 
-  it("holds none of the names while the box is empty", async () => {
+  it("holds none of the names while the prefix is empty", async () => {
     await research()
     const token = await signIn(CURATOR, true)
 
@@ -688,7 +688,7 @@ describe("an upload", () => {
     expect(answer).toEqual({ kind: "check", existing: ["a.zip"] })
   })
 
-  it("refuses a check that names something outside the box, even among good names", async () => {
+  it("refuses a check that identifies something outside the prefix, even among good names", async () => {
     await research()
     const token = await signIn(CURATOR, true)
 
@@ -699,7 +699,7 @@ describe("an upload", () => {
     expect(refusal.status).toBe(400)
   })
 
-  it("refuses a check that names nothing", async () => {
+  it("refuses a check that identifies nothing", async () => {
     await research()
     const token = await signIn(CURATOR, true)
 
@@ -752,11 +752,11 @@ describe("an upload", () => {
 })
 
 /**
- * The `common/` box, which every test in this file shares with the development
+ * The `common/` prefix, which every test in this file shares with the development
  * data — it belongs to no research, so there is no identity to scope it by.
  *
  * **Everything here works under a prefix of its own** and clears only that,
- * because clearing the box would take the article assets somebody is looking at
+ * because clearing the prefix would take the article assets somebody is looking at
  * in the next tab with it.
  */
 describe("the article assets", () => {
@@ -798,14 +798,14 @@ describe("the article assets", () => {
     })
   }
 
-  /** A name an upload could carry: flat, under this test's own prefix all the same. */
+  /** A name an upload could have: flat, under this test's own prefix all the same. */
   const flat = (slug: string): string => `${MINE}${counter}-${slug}`
 
-  /** The box is shared with whatever else the store holds, so every question is put under this test's own prefix. */
+  /** The prefix is shared with whatever else the store holds, so every question is put under this test's own prefix. */
   const own = (): string => `${MINE}${counter}/`
   const under = (rest = ""): string => `?q=${encodeURIComponent(own())}${rest}`
 
-  /** The settings this box is read at — what narrows it is one of them — with something that is not one. */
+  /** The settings this prefix is read at — what narrows it is one of them — with something that is not one. */
   const READ_COMMON_AT = "?sort=size&order=desc&size=50&page=2&q=pdf%20dac&from=2026-09-01&to=2026-09-30&other=x"
   const KEPT_COMMON: [string, string][] = [
     ["sort", "size"],
@@ -817,7 +817,7 @@ describe("the article assets", () => {
     ["to", "2026-09-30"],
   ]
 
-  it("says which names are already in the box, and writes nothing to the trail for asking", async () => {
+  it("reports which names are already in the prefix, and writes nothing to the trail for requesting", async () => {
     const token = await signIn(CURATOR, true)
     await putTestObject(PUBLIC_BUCKET, at(flat("a.png")))
 
@@ -858,7 +858,7 @@ describe("the article assets", () => {
     expect(await names(`&from=${shifted(1)}&to=${shifted(-1)}`)).toEqual([])
   })
 
-  it("reads a day that is not one as an end left open, and says so", async () => {
+  it("reads a day that is not one as an end left open, and reports it", async () => {
     const token = await signIn(CURATOR, true)
     await putTestObject(PUBLIC_BUCKET, at(mine("a.png")))
 
@@ -885,7 +885,7 @@ describe("the article assets", () => {
     expect(await held()).toEqual([at(to)])
   })
 
-  it("writes the move down as the address that starts answering and the one that stops", async () => {
+  it("writes the move down as the address that starts responding and the one that stops", async () => {
     const token = await signIn(CURATOR, true)
     const from = mine("a.png")
     const to = mine("b.png")
@@ -904,7 +904,7 @@ describe("the article assets", () => {
       .toEqual([["delete-file", at(from)], ["publish-file", at(to)]].toSorted())
   })
 
-  it("refuses a slug another file already answers at, rather than overwriting it", async () => {
+  it("refuses a slug another file already responds at, rather than overwriting it", async () => {
     const token = await signIn(CURATOR, true)
     const from = mine("a.png")
     const taken = mine("b.png")
@@ -935,7 +935,7 @@ describe("the article assets", () => {
     expect(await held()).toEqual([at(from)])
   })
 
-  it("refuses a slug that is not one file of the box, and sends no delete to the store", async () => {
+  it("refuses a slug that is not one file of the prefix, and sends no delete to the store", async () => {
     const token = await signIn(CURATOR, true)
     const staying = mine("a.png")
     await putTestObject(PUBLIC_BUCKET, at(staying))

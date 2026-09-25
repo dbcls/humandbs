@@ -51,14 +51,14 @@ export async function importIcd10Terms(
     ...labelsOf(entry),
     parentId: ids.get(icd10Parent(entry.code) ?? "") ?? null,
   })))
-  // A search row carries the titles of the codes its content points at, so a
+  // A search row has the titles of the codes its content points at, so a
   // newer distribution that renames a code would otherwise leave the old name
   // findable and the new one not.
   await rebuildSearchDocs(db)
   return { roots: roots.length, children: children.length }
 }
 
-/** English is required of a term, so a code named only in Japanese carries that in both. */
+/** English is required of a term, so a code named only in Japanese has that in both. */
 function labelsOf(entry: Icd10Entry): { labelEn: string, labelJa: string | null } {
   return { labelEn: entry.titleEn ?? entry.titleJa ?? entry.code, labelJa: entry.titleJa }
 }

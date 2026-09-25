@@ -1,15 +1,15 @@
 /**
  * What a share link shows, and what it lets a reader write.
  *
- * The preview is the published face of a draft: the same projection, the same
+ * The preview is the published view of a draft: the same projection, the same
  * view builder and the same components as the public page, with one argument
  * different — unsettled values are kept. That is not a detail of the rendering;
  * it is the whole point of the link. The first thing a data provider is asked
- * is to fill in exactly those, and a preview that showed the published face
+ * is to fill in exactly those, and a preview that showed the published view
  * would hide the question.
  *
  * Every function that takes a token begins by turning it into a draft, and a
- * token that does not open answers as a page that is not there. Nothing else on
+ * token that does not open responds as a page that is not there. Nothing else on
  * this path consults the session: signing in only decides what a comment is
  * signed with.
  *
@@ -27,7 +27,7 @@ import { humLabelOf } from "~/admin/queries.server"
 import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent } from "~/content/empty"
 import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
-import { adminBox, boxRows, fileListOf, readFilePage } from "~/files/listing.server"
+import { adminListing, listingRows, fileListOf, readFilePage } from "~/files/listing.server"
 import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -78,7 +78,7 @@ import { draftDatasetIds } from "~/admin/queries.server"
 
 import { previewDatasets, versionAgainst } from "./queries.server"
 
-/** A preview keeps what has not been settled. No public route can ask for this. */
+/** A preview keeps what has not been settled. No public route can request this. */
 const PREVIEW = { keepUnsettled: true }
 
 function notFound(): never {
@@ -90,9 +90,9 @@ function badRequest(): never {
 }
 
 /**
- * The response headers a preview answers with.
+ * The response headers a preview responds with.
  *
- * Unpublished content is being served at an address that carries its own
+ * Unpublished content is being served at an address that has its own
  * credential, so it must not be indexed, and following a link out of the page
  * must not hand the token to whoever is at the other end.
  */
@@ -111,7 +111,7 @@ export interface PreviewShell {
   /** What this page draws: the draft as a whole and the subjects on it. Never the memo. */
   comments: CommentView[]
   acknowledgements: AcknowledgementView[]
-  /** The version a reader sees now, which is what the marks are measured against. */
+  /** The version a reader sees now, which is what the indicators are measured against. */
   publishedNumber: number | null
 }
 
@@ -119,9 +119,9 @@ export interface PreviewResearchPageView extends PreviewShell {
   view: ResearchView
   /** Anchors the page draws where the draft and the published version differ. */
   changed: string[]
-  /** What the published version says at each of those, and only at those. */
+  /** What the published version has at each of those, and only at those. */
   previous: Record<string, AnchoredValue>
-  /** What the draft says at the same anchors, for the other side of the comparison. */
+  /** What the draft has at the same anchors, for the other side of the comparison. */
   current: Record<string, AnchoredValue>
 }
 
@@ -137,7 +137,7 @@ export interface PreviewDatasetPageView extends PreviewShell {
 }
 
 /**
- * What every preview screen carries.
+ * What every preview screen has.
  *
  * **The comments are narrowed to what this screen draws.** A draft's comments
  * include ones about datasets the version does not list, and the memo, and
@@ -172,7 +172,7 @@ async function shellOf(
 }
 
 /** Only the anchors the page actually draws, and only where they differ. */
-function markedAnchors(changed: readonly string[], drawn: Record<string, AnchoredValue>): string[] {
+function changedAnchors(changed: readonly string[], drawn: Record<string, AnchoredValue>): string[] {
   return changed.filter((path) => path in drawn)
 }
 
@@ -197,7 +197,7 @@ function previousAt(
  * is the point of looking at a draft at all. A second way of drawing the same
  * thing would be a second answer to "what will this look like".
  *
- * Nothing here consults the session — who is asking decides whether they may
+ * Nothing here consults the session — who is requesting decides whether they may
  * ask, which is the caller's to settle.
  */
 export interface DrawnDraft {
@@ -212,9 +212,9 @@ export interface DrawnDraft {
   row: ResearchListRowView
   /** Anchors the page draws where the draft and the published version differ. */
   changed: string[]
-  /** What the published version says at each of those, and only at those. */
+  /** What the published version has at each of those, and only at those. */
   previous: Record<string, AnchoredValue>
-  /** What the draft says at the same anchors, for the other side of the comparison. */
+  /** What the draft has at the same anchors, for the other side of the comparison. */
   current: Record<string, AnchoredValue>
 }
 
@@ -279,7 +279,7 @@ export async function drawDraft(
   },
 ): Promise<DrawnDraft> {
   const db = getDb()
-  // **What the preview shows is what the next version carries**, which is the
+  // **What the preview shows is what the next version has**, which is the
   // research's datasets rather than what the draft's order happens to name
   // (`admin/datasets.ts`).
   const shown = await draftDatasetIds(db, draft.draftId, draft.researchId, draft.content.datasetIds)
@@ -292,7 +292,7 @@ export async function drawDraft(
   const cau = humLabel === null ? [] : await controlledAccessUsers(db, humLabel)
   // Both buckets: at draft time nothing is public yet, and showing only the
   // public side would empty the download list exactly when it is being checked.
-  const listing = boxRows(await adminBox(db, draft.researchId, humLabel))
+  const listing = listingRows(await adminListing(db, draft.researchId, humLabel))
 
   const projected = publicResearch(draft.content, { cau, files: listing }, PREVIEW)
   const rows: DatasetRowInput[] = datasets.map((row) => {
@@ -348,7 +348,7 @@ export async function drawDraft(
 
   const changed = published === null
     ? []
-    : markedAnchors(
+    : changedAnchors(
         changedFromPublished(published.content, draft.content),
         anchored.byAnchor,
       )
@@ -390,7 +390,7 @@ export async function previewResearchPage(
 }
 
 /**
- * The published version drawn the same way, so that "what it says here now" can
+ * The published version drawn the same way, so that "what it has here now" can
  * be read off it. Its datasets are resolved to labels only: the one anchor a
  * row takes part in is the list of them.
  */
@@ -418,7 +418,7 @@ async function publishedResearchAnchors(
     })),
     datasetLabelById: labelOf,
     cau: [],
-    // Only the anchors of this are read, and no file carries one.
+    // Only the anchors of this are read, and no file has one.
     files: { rows: [], total: 0, page: 1, pageCount: 1, rangeFrom: 0, rangeTo: 0 },
   }, locale, catalog).byAnchor
 }
@@ -461,7 +461,7 @@ export async function drawDatasetDraft(
   if (row === undefined) notFound()
   // What is being written, which is not what is filed while a form is open.
   const writing = content ?? row.content
-  const listing = boxRows(await adminBox(db, draft.researchId, humLabel))
+  const listing = listingRows(await adminListing(db, draft.researchId, humLabel))
 
   const dataset = publicDataset(
     writing,
@@ -482,7 +482,7 @@ export async function drawDatasetDraft(
 
   const changed = row.published === null
     ? []
-    : markedAnchors(
+    : changedAnchors(
         changedDatasetFromPublished(row.published, writing),
         anchored.byAnchor,
       )
@@ -525,7 +525,7 @@ export async function previewDatasetPage(
   const db = getDb()
   const draft = await sharedDraftByToken(db, token)
   if (draft === null) notFound()
-  // The preview is the version's face, so it shows what the version carries.
+  // The preview is the version's view, so it shows what the version has.
   const shown = await draftDatasetIds(db, draft.draftId, draft.researchId, draft.content.datasetIds)
   if (!shown.includes(datasetId)) notFound()
 
@@ -548,15 +548,15 @@ export async function previewDatasetPage(
 export type PreviewActionResult
   = | { status: "invalid", problem: CommentProblem }
   /**
-   * A mark was recorded. **It answers on the same page rather than sending
-   * back**: the page does not change when a mark is pressed, so an answer is the
+   * An indicator was recorded. **It responds on the same page rather than sending
+   * back**: the page does not change when an indicator is pressed, so an answer is the
    * only thing that tells the reader it reached the office.
    */
     | { status: "acknowledged", kind: AcknowledgementKind }
 
 /**
  * Writing from a share link: a comment on a place or on the draft as a whole,
- * or one of the two marks — "I have finished commenting", "nothing to fix".
+ * or one of the two indicators — "I have finished commenting", "nothing to fix".
  *
  * The author is the session when there is one and the typed name when there is
  * not — a data provider is among the intended readers, and requiring an account

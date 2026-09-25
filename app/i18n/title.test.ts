@@ -28,17 +28,17 @@ describe("windowTitle", () => {
       .toBe(`hum0006-v2 | hum0006 | 研究一覧 | ${site}`)
   })
 
-  it("段が無ければサイト名だけになる", () => {
+  it("要素が無ければサイト名だけになる", () => {
     expect(windowTitle(messages, [])).toBe(site)
   })
 
-  it("無い段は抜け、言い直しで埋めない", () => {
+  it("無い要素は抜け、別の語で埋めない", () => {
     expect(windowTitle(messages, [null, "公開前の確認"])).toBe(`公開前の確認 | ${site}`)
     expect(windowTitle(messages, ["JGAD000001", undefined, "  ", "公開前の確認"]))
       .toBe(`JGAD000001 | 公開前の確認 | ${site}`)
   })
 
-  it("直前と同じ段は 1 度だけ書き、離れた同じ語は残す", () => {
+  it("直前と同じ要素は 1 度だけ書き、離れた同じ語は残す", () => {
     expect(windowTitle(messages, ["研究", "研究", "Admin"])).toBe(`研究 | Admin | ${site}`)
     expect(windowTitle(messages, ["研究", "hum0006", "研究"])).toBe(`研究 | hum0006 | 研究 | ${site}`)
     expect(windowTitle(messages, [site])).toBe(site)
@@ -46,7 +46,7 @@ describe("windowTitle", () => {
 
   const steps = fc.array(fc.option(fc.string(), { nil: null }), { maxLength: 6 })
 
-  it("空の段を挟まず、隣り合う段が同じ語になることがない", () => {
+  it("空の要素を挟まず、隣り合う要素が同じ語になることがない", () => {
     fc.assert(fc.property(steps, (given) => {
       const parts = windowTitle(messages, given).split(" | ")
       for (const [i, part] of parts.entries()) {
@@ -56,7 +56,7 @@ describe("windowTitle", () => {
     }))
   })
 
-  it("いつもサイト名で終わり、最初の中身のある段で始まる", () => {
+  it("いつもサイト名で終わり、最初の空でない要素で始まる", () => {
     fc.assert(fc.property(steps, (given) => {
       const title = windowTitle(messages, given)
       const first = given.map((one) => one?.trim() ?? "").find((one) => one !== "") ?? site
@@ -84,22 +84,22 @@ describe("adminWindowTitle", () => {
       `データ提供申請の内容 | J-DS000136-010 | データ提供申請 | Admin | ${site}`,
     ],
     ["/admin/documents/d1", "記事の編集", "guidelines", `記事の編集 | guidelines | 記事 | Admin | ${site}`],
-  ])("%s は %s の窓になる", (at, name, subject, expected) => {
+  ])("%s は %s のウィンドウのタイトルになる", (at, name, subject, expected) => {
     expect(adminWindowTitle(messages, at, name, subject)).toBe(expected)
   })
 })
 
 describe("adminArea", () => {
-  it("区画はメニューの語ではなく区画の一覧が示す語で呼ぶ", () => {
+  it("バーの項目は、メニューの語ではなくその項目の画面の見出しで表示する", () => {
     expect(adminArea(messages.admin, "/admin/research/r1")).toBe(messages.admin.research.heading)
     expect(adminArea(messages.admin, "/admin/research/r1")).not.toBe(messages.admin.tasks.research.find)
   })
 
-  it("下に別の区画を持つ区画は、その下を表示しない", () => {
+  it("別の項目の下にあるアドレスは、深いほうの項目の見出しになる", () => {
     expect(adminArea(messages.admin, "/admin/research/upstream")).toBe(messages.admin.templates.heading)
   })
 
-  it("区画の外と、名前の途中で切れるアドレスは区画を持たない", () => {
+  it("管理画面の外と、名前の途中で切れるアドレスはどの項目にも入らない", () => {
     expect(adminArea(messages.admin, "/research/hum0006")).toBeNull()
     expect(adminArea(messages.admin, "/admin/researchers")).toBeNull()
   })
@@ -121,7 +121,7 @@ describe("画面の title", () => {
       if (!text.includes("export function meta")) continue
       const through = name.startsWith("admin") ? "adminWindowTitle(" : "windowTitle("
       if (!text.includes(through)) offenders.push(`${name}: ${through} を通していない`)
-      if (text.includes("title: `")) offenders.push(`${name}: title を自分で綴っている`)
+      if (text.includes("title: `")) offenders.push(`${name}: title を自分で組み立てている`)
     }
     expect(offenders).toEqual([])
   })

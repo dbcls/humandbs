@@ -5,13 +5,13 @@
  * APIs are read by the same people, and a second convention for the same thing
  * would be one more thing for a consumer to special-case.
  *
- * **A 404 says nothing about what was asked for.** The detail is fixed per kind
+ * **A 404 implies nothing about what was asked for.** The detail is fixed per kind
  * of resource and never repeats the label, because the public side does not
  * distinguish "not published" from "no such label", and a detail quoting the
  * label back would give that distinction away in the body even though the
  * status hides it.
  *
- * A validation failure answers 422 rather than 400: what went wrong is the shape
+ * A validation failure responds with 422 rather than 400: what went wrong is the shape
  * of a parameter, and the query a caller wrote is their own input, so quoting it
  * back gives nothing away.
  */
@@ -62,8 +62,8 @@ export function instanceOf(request: Request): string {
 }
 
 /**
- * The kinds of thing a caller can ask for by label, and the sentence each
- * answers with when it is not there.
+ * The kinds of thing a caller can request by label, and the sentence each
+ * responds with when it is not there.
  */
 const MISSING: Record<"research" | "research-version" | "dataset", string> = {
   "research": "The requested research entry was not found.",

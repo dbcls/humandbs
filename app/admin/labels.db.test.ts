@@ -5,7 +5,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { seedVersion } from "~/db/seed"
-import { PUBLIC_BUCKET, publicPrefix } from "~/files/box"
+import { PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
 import { clearPrefix, keysUnder, putTestObject } from "~/files/_store"
 import { runOneJob } from "~/files/jobs.server"
 import { listPrefix } from "~/files/store.server"
@@ -20,10 +20,10 @@ vi.mock("~/files/store.server", async (importOriginal) => {
 })
 
 /**
- * The pin ledger, against the development database.
+ * The `label_pin` table, against the development database.
  *
  * Two things here can only be shown with a database. **A refused pin has to
- * leave the ledger untouched** — it demotes the standing primary on the way to
+ * leave the `label_pin` table untouched** — it demotes the standing primary on the way to
  * inserting, and a label that turns out to be taken must not leave that
  * demotion behind. And **taking a dataset id away has to take the dataset off
  * the versions that list it**, which happens through the search rows rather
@@ -74,7 +74,7 @@ async function pins() {
 }
 
 describe("pinning a label", () => {
-  it("puts it in the ledger and derives the rows that name it", async () => {
+  it("puts it in the `label_pin` table and derives the rows that name it", async () => {
     const researchId = await createResearch()
     await publish(researchId, [])
 
@@ -128,7 +128,7 @@ describe("pinning a label", () => {
     ])
   })
 
-  it("refuses a label that already names something, and demotes nothing on the way", async () => {
+  it("refuses a label that already identifies something, and demotes nothing on the way", async () => {
     const mine = await createResearch()
     const other = await createResearch()
     await pinLabel(db, { kind: "hum", label: "hum0001", subjectId: mine, isPrimary: true }, CURATOR)
@@ -231,7 +231,7 @@ describe("taking a label away", () => {
     ])
   })
 
-  it("answers that a pin is gone rather than pretending to remove it", async () => {
+  it("reports that a pin is gone rather than pretending to remove it", async () => {
     const outcome = await unpinLabel(db, "00000000-0000-4000-8000-000000000000", CURATOR)
 
     expect(outcome).toEqual({ status: "gone" })
@@ -282,7 +282,7 @@ describe("issuing an NHA id", () => {
     expect(await issueNhaId(db, two, CURATOR)).toEqual({ status: "issued", label: "NHA000002" })
   })
 
-  it("counts past an NHA id that reached the ledger without a record", async () => {
+  it("counts past an NHA id that reached the `label_pin` table without a record", async () => {
     const researchId = await createResearch()
     const [one, two] = [await createDataset(researchId), await createDataset(researchId)]
     await db.insert(s.labelPin).values({ kind: "dataset", label: "NHA000041", datasetId: one, isPrimary: true })
@@ -323,7 +323,7 @@ describe("issuing an NHA id", () => {
     expect(await pins()).toEqual([{ label: "JGAD000001", isPrimary: true }])
   })
 
-  it("answers gone for a dataset that is not there", async () => {
+  it("responds gone for a dataset that is not there", async () => {
     expect(await issueNhaId(db, "00000000-0000-4000-8000-000000000000", CURATOR)).toEqual({ status: "gone" })
   })
 
@@ -369,7 +369,7 @@ describe("renumbering a research", () => {
     for (const label of [OLD, NEW]) await clearPrefix(PUBLIC_BUCKET, publicPrefix(label))
   })
 
-  it("queues every file in the retired box to become public under the new label", async () => {
+  it("queues every file in the retired prefix to become public under the new label", async () => {
     const researchId = await createResearch()
     await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
@@ -383,11 +383,11 @@ describe("renumbering a research", () => {
   })
 
   /**
-   * The move is part of the pin. Committed apart, a store that did not answer
-   * left the new label in place with the files in the old box, and pinning
+   * The move is part of the pin. Committed apart, a store that did not respond
+   * left the new label in place with the files in the old prefix, and pinning
    * again answered "taken" — nothing could queue the move any more.
    */
-  it("pins nothing when the store does not answer, so pinning again still moves the box", async () => {
+  it("pins nothing when the store does not respond, so pinning again still moves the prefix", async () => {
     const researchId = await createResearch()
     await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
@@ -403,7 +403,7 @@ describe("renumbering a research", () => {
     expect(only(await db.select().from(s.filePublishJob)).fileName).toBe("a.zip")
   })
 
-  it("promotes nothing when the store does not answer, so promoting again still moves the box", async () => {
+  it("promotes nothing when the store does not respond, so promoting again still moves the prefix", async () => {
     const researchId = await createResearch()
     await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
     await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: false }, CURATOR)
@@ -420,11 +420,11 @@ describe("renumbering a research", () => {
   })
 
   /**
-   * Unpinned first and a new number pinned after, the old box is in the ledger
-   * no more: nothing moved it, the new box stayed empty, and the old address
-   * kept answering — for whichever research was given that number next.
+   * Unpinned first and a new number pinned after, the old prefix is in the `label_pin` table
+   * no more: nothing moved it, the new prefix stayed empty, and the old address
+   * kept responding — for whichever research was given that number next.
    */
-  it("refuses to take away a hum label whose public box still holds files", async () => {
+  it("refuses to take away a hum label whose public prefix still holds files", async () => {
     const researchId = await createResearch()
     await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
@@ -435,14 +435,14 @@ describe("renumbering a research", () => {
     expect((await db.select().from(s.event)).map((row) => row.action)).toEqual(["pin-label"])
   })
 
-  it("takes the retired label away once the move has emptied its box", async () => {
+  it("takes the retired label away once the move has emptied its prefix", async () => {
     const researchId = await createResearch()
     await pinLabel(db, { kind: "hum", label: OLD, subjectId: researchId, isPrimary: true }, CURATOR)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(OLD)}a.zip`)
     await pinLabel(db, { kind: "hum", label: NEW, subjectId: researchId, isPrimary: true }, CURATOR)
     const retired = only(await db.select().from(s.labelPin).where(eq(s.labelPin.label, OLD)))
 
-    // Still moving: the box is not empty yet.
+    // Still moving: the prefix is not empty yet.
     expect(await unpinLabel(db, retired.id, CURATOR)).toEqual({ status: "holds-files" })
 
     while (await runOneJob(db)) { /* until the move is done */ }
@@ -469,7 +469,7 @@ describe("renumbering a research", () => {
     expect(await db.select().from(s.filePublishJob)).toHaveLength(0)
   })
 
-  it("queues nothing for a dataset id, which addresses no box", async () => {
+  it("queues nothing for a dataset id, which addresses no prefix", async () => {
     const researchId = await createResearch()
     const datasetId = await createDataset(researchId)
     await pinLabel(

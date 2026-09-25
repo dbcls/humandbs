@@ -3,7 +3,7 @@
  *
  * The single-object endpoints read the same way the public pages do
  * (`app/public/queries.server.ts`); what is here is the batched form the search
- * and the bulk stream need, so that answering for twenty researches — or for
+ * and the bulk stream need, so that responding for twenty researches — or for
  * all of them — is a fixed number of queries rather than one per row.
  *
  * **The set still comes from `search_doc` and from nowhere else.** Every query
@@ -27,7 +27,7 @@ import { latestOf } from "~/public/versions"
 
 import type { Edge } from "./dblink"
 
-/** A published research, at the version the API answers for. */
+/** A published research, at the version the API responds for. */
 export interface ResearchBundle {
   researchId: string
   humLabel: string
@@ -65,7 +65,7 @@ async function publishedResearchIds(
  *
  * The version list travels with the object because that is where the research's
  * own dates live: the answer holds no separate "last modified", so the newest
- * entry here is what says when the research last changed.
+ * entry here is what reports when the research last changed.
  */
 export async function researchBundles(
   db: Executor,
@@ -187,13 +187,13 @@ export async function cauByHumLabel(
 
 /**
  * The upstream correspondence, restricted to researches the portal publishes and
- * reported under the label whose address answers.
+ * reported under the label whose address responds.
  *
- * The join runs through the pin ledger rather than matching the cached label
+ * The join runs through the `label_pin` table rather than matching the cached label
  * against `search_doc` directly: upstream types the label by hand and has a
  * history of doing so wrongly, and a label that has since been corrected is kept
  * as a secondary pin precisely so that it still resolves. What comes back out is
- * always the primary label, because that is the one `/{humId}` answers at.
+ * always the primary label, because that is the one `/{humId}` is served at.
  */
 export async function publishedEdges(db: Executor): Promise<Edge[]> {
   const rows = await db

@@ -7,7 +7,7 @@ import type { Locale } from "~/i18n/locale"
 import { CartMenu } from "./cart"
 
 /**
- * The cart lives in the browser, so what is reachable here is the panel as the
+ * The cart is defined in the browser, so what is reachable here is the panel as the
  * server draws it — which is the empty one, and the one every reader meets
  * first. What it looks like holding something is `tests/e2e/cart.spec.ts`.
  */
@@ -17,14 +17,14 @@ function panel(locale: Locale, at: string): string {
 }
 
 describe("ヘッダのカート", () => {
-  it("何も入っていなくても、カートの画面への経路を持つ", () => {
+  it("何も入っていなくても、カートの画面へのリンクがある", () => {
     const html = panel("ja", "/research")
     expect(html).toContain("カートに入れたデータセットはありません。")
     expect(html).toContain("href=\"/cart\"")
     expect(html).toContain("カートを見る")
   })
 
-  it("何も入っていなければ、行に効く「すべて外す」は出さない", () => {
+  it("何も入っていなければ、行に対する「すべて外す」は表示しない", () => {
     expect(panel("ja", "/research")).not.toContain("すべて外す")
   })
 

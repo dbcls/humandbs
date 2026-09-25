@@ -1,15 +1,15 @@
 /**
- * What a research or a dataset is still missing, as far as its content can say.
+ * What a research or a dataset is still missing, as far as its content can report.
  *
- * The walk collects the places, so that the publish gate can name each one.
+ * The walk collects the places, so that the publish check can name each one.
  *
- * Whether a hum label has been pinned is not here: it is read off the ledger
- * rather than the content. Anything that needs the upstream cache to answer
- * ("the pins disagree with the application system") belongs to the gate, where
+ * Whether a hum label has been pinned is not here: it is read off the `label_pin` table
+ * rather than the content. Anything that needs the upstream cache to respond
+ * ("the pins disagree with the application system") belongs to the publish check, where
  * the answer decides something.
  *
- * **This says nothing about whether a research may be published.** A draft is
- * expected to be incomplete; these are a work list, not a gate.
+ * **This implies nothing about whether a research may be published.** A draft is
+ * expected to be incomplete; these are a work list, not a publish check.
  */
 
 import { isEmptyRichText } from "~/content/richtext"

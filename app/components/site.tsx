@@ -12,11 +12,11 @@ import { href, newsItemPath } from "~/public/urls"
 /**
  * The pieces the screens are built from — the ones that are layout rather than
  * text. They are components rather than something the CMS writes, so the
- * markdown dialect carries no directive for the button and no inline styles for
+ * markdown dialect has no directive for the button and no inline styles for
  * the row that holds them, and no document needs a raw-HTML route.
  */
 export function ActionRow({ children }: { children: ReactNode }) {
-  // Centred in the card. The ways in are the one thing on a page that is
+  // Centred in the card. The call-to-action buttons are the one thing on a page that is
   // addressed to the whole of it rather than read in sequence, and a pair of
   // filled blocks set left leaves the card lopsided at the width they are held
   // to; v1 centres them too.
@@ -39,18 +39,18 @@ export function ActionRow({ children }: { children: ReactNode }) {
 }
 
 /**
- * A way in, at the size the front page gives one.
+ * A call-to-action button, at the size the front page gives one.
  *
- * **The tone says which half of the site it belongs to** — providing data is
+ * **The tone shows which half of the site it belongs to** — providing data is
  * accent, using it is brand — and it is the same on the front page and on the
  * screen it leads to, so the two never disagree about what colour "データの
- * 提供" is. Both leave for the application system, so both carry the arrow.
+ * 提供" is. Both leave for the application system, so both have the arrow.
  */
 export function ActionButton({ href, label, note, tone, icon, locale, external = true }: {
   href: string
   label: string
   locale: Locale
-  /** Who the way in is for. The front page has one button each and no note. */
+  /** Who the button is for. The front page has one button each and no note. */
   note?: string
   tone: "accent" | "brand"
   icon: IconName
@@ -86,11 +86,11 @@ export function ActionButton({ href, label, note, tone, icon, locale, external =
  * two; the front page's column is 408px, where that would leave the title a
  * third of a line, so there the date stays above.
  *
- * **A rule between the entries.** An entry is three lines now that it carries
- * the opening of the article, and the date alone no longer says where one ends
+ * **A rule between the entries.** An entry is three lines now that it has
+ * the opening of the article, and the date alone no longer shows where one ends
  * and the next begins.
  *
- * **The opening is clamped rather than cut short by the server.** How many
+ * **The opening is clamped rather than truncated by the server.** How many
  * characters fit is a question about the width and the language, so the server
  * sends a generous plain-text lead (`leadingText`) and the screen decides how
  * much of it there is room for.
@@ -104,7 +104,7 @@ export function NewsList({ locale, items, dateBeside = false }: {
   return (
     // **The listing is closed on both ends, the front page's column is not.**
     // A listing is the whole of what the page is for, so a rule above the first
-    // entry and below the last says where it starts and stops; the column on
+    // entry and below the last shows where it starts and stops; the column on
     // the front page is one block among several in a card, and closing it would
     // draw a box inside a box.
     <ul className={dateBeside ? "border-line border-t" : ""}>
@@ -112,7 +112,7 @@ export function NewsList({ locale, items, dateBeside = false }: {
         // The padding is what sets the entries apart from each other. Where the
         // list is not closed, the first and the last give up the half of it
         // that faces outwards — otherwise it lands on top of the gap the list
-        // already sits in, and the heading stands 32px clear of its own first
+        // already sits in, and the heading remains 32px clear of its own first
         // line. Where it is closed, that padding is what keeps the words off
         // the rules.
         <li

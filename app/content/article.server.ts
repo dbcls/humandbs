@@ -4,7 +4,7 @@
  * Site content keeps a wider dialect than research prose does — headings,
  * numbered clauses and tables are the structure of a guideline rather than
  * decoration — so it stays a markdown string and the allowed set is "whatever
- * CommonMark and GFM tables can say".
+ * CommonMark and GFM tables can express".
  *
  * Two things are outside it, and both are refused here rather than dropped at
  * render time:
@@ -47,7 +47,7 @@ function lineOf(node: Nodes): number {
   return node.position?.start.line ?? 1
 }
 
-/** The destination a node carries, if it carries one. */
+/** The destination a node has, if it has one. */
 function destinationOf(node: Nodes): string | null {
   if (node.type === "link" || node.type === "image" || node.type === "definition") return node.url
   return null

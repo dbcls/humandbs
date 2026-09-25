@@ -3,10 +3,10 @@
  *
  * The listings are the public search. They read the same rows every other
  * public page reads its set from, so a draft cannot appear in one, and the two
- * differ only in which kind of row they ask for and what they show of it.
+ * differ only in which kind of row they request and what they show of it.
  *
  * **The address always holds the query language.** The box holds keywords, so a
- * submission arrives as `k` and is turned into a tree here, then answered with
+ * submission arrives as `k` and is turned into a tree here, then responded with
  * a redirect to the `q` that tree writes out. One search has one address, it
  * can be shared, and none of it needs JavaScript — the box is a GET form.
  */
@@ -72,14 +72,14 @@ import {
 
 export interface ConditionChip {
   /**
-   * The dimension the condition is about, or null when it names none. It is
+   * The dimension the condition is about, or null when it identifies none. It is
    * kept apart from the value because the panel draws the two apart
    * (`components/base.tsx` の `Chip`).
    */
   field: string | null
   value: string
   /**
-   * The code the value is filed under, where that is a key the reader can carry
+   * The code the value is filed under, where that is a key the reader can have
    * away — ICD10 and nothing else. Null on every other condition, whose codes
    * are slugs this site made up to put in an address
    * (`components/facets.tsx` の `Value`).
@@ -98,8 +98,8 @@ export interface ListShell {
   /**
    * The search with everything in force lifted, or null when nothing is.
    * **The typed words go too** — they are one of the conditions listed, so a
-   * control that says it lifts all of them and leaves one behind would be
-   * saying something untrue about the list right above it.
+   * control that reports it lifts all of them and leaves one behind would be
+   * indicating something untrue about the list right above it.
    */
   clearHref: string | null
   /** The normalised query, for building links off this search. */
@@ -112,12 +112,12 @@ export interface ListShell {
    */
   requestedSort: string | null
   order: SortOrder
-  /** What `?order=` held, carried for the same reason as `requestedSort`. */
+  /** What `?order=` held, kept for the same reason as `requestedSort`. */
   requestedOrder: string | null
   size: PageSize
   /**
    * The size to write into the links this page builds, or `null` for the
-   * default — carried for the same reason as `requestedSort`, and the reason
+   * default — kept for the same reason as `requestedSort`, and the reason
    * `app/public/urls.ts` does not know what the default is.
    */
   requestedSize: number | null
@@ -148,7 +148,7 @@ function readPage(value: string | null): number {
  * The last page rather than an empty one.
  *
  * A reader who followed a link from when there were more results is looking for
- * the results, not for a page saying there are none here. **The API answers the
+ * the results, not for a page indicating there are none here. **The API responds to the
  * question as it was asked** (`app/search/query.server.ts`), because something
  * walking the pages needs the walk to end.
  */
@@ -159,11 +159,11 @@ async function lastPageInstead(db: Executor, request: SearchRequest): Promise<Se
 }
 
 /**
- * A submission is answered with the address it should have had.
+ * A submission is responded to with the address it should have had.
  *
- * **Both forms on the page arrive here**: the keyword box, which carries what
+ * **Both forms on the page arrive here**: the keyword box, which has what
  * was typed under `k`, and the range inputs of a numeric or date facet, which
- * carry the key and the two ends. Neither is a way of asking a question the
+ * have the key and the two ends. Neither is a way of asking a question the
  * address cannot hold — they are turned into the query straight away and
  * redirected to, so one search has one address and the result can be shared.
  */
@@ -211,7 +211,7 @@ export async function canonicalRedirect(
 /**
  * An input left blank is an end that is not being asked about, and so is one
  * holding something the field could not take. **Both ends open means the facet
- * is not being asked at all**, which `withRange` answers by dropping the
+ * is not being asked at all**, which `withRange` responds by dropping the
  * condition rather than by making one that matches everything.
  */
 function bound(value: string | null, kind: "number" | "date"): string {
@@ -223,8 +223,8 @@ function bound(value: string | null, kind: "number" | "date"): string {
 
 /**
  * A range as a condition reads: both ends, or the one that is there with the
- * mark still showing which side is open. **`*` is how the address writes an
- * open end, and it is not how anything reads it** — a chip saying
+ * symbol still showing which side is open. **`*` is how the address writes an
+ * open end, and it is not how anything reads it** — a chip indicating
  * `2024-01-01 – *` is the query language leaking onto the screen.
  */
 function writtenRange(
@@ -244,7 +244,7 @@ function describeCondition(node: QueryNode, locale: Locale): { field: string | n
     if (only === undefined) return { field: null, value: "" }
     // The negation belongs to the value rather than to the field: what is
     // excluded is this value of that dimension, and moving the word to the
-    // field would say the dimension itself is being left out.
+    // field would report the dimension itself is being left out.
     const inner = describeCondition(only, locale)
     return { field: inner.field, value: `${words.exclude}: ${inner.value}` }
   }
@@ -282,7 +282,7 @@ function inForce(ast: QueryNode | null): QueryNode[] {
 /**
  * Whether the panel is what shows this condition. Those are left off the chips
  * above the result: the panel draws them as chosen values with a way to take
- * each one off, and saying the same thing twice invites the two to disagree.
+ * each one off, and indicating the same thing twice invites the two to disagree.
  */
 function shownByPanel(node: QueryNode, fields: QueryFields): boolean {
   if (node.op === "field") return onPanel(fields, node.field)
@@ -339,7 +339,7 @@ async function listShell(
   const order = isSortOrder(requestedOrder) ? requestedOrder : defaultOrder(sort)
   // A size that is not one of the offered ones is ignored rather than refused,
   // for the same reason an unusable ordering is: it can only have come from a
-  // hand-written address, and the listing it names still exists.
+  // hand-written address, and the listing it identifies still exists.
   const askedSize = Number(request.url.searchParams.get("size") ?? "")
   const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
 
@@ -440,7 +440,7 @@ export async function researchListPage(
 }
 
 /**
- * The rows behind a set of hits. The screen asks for a page of them and the
+ * The rows behind a set of hits. The screen requests a page of them and the
  * export for all of them, and neither may show the other something different.
  */
 async function researchRowsOf(
@@ -497,7 +497,7 @@ async function researchRowsOf(
  * key's code.
  *
  * **The research rows only.** A research row already holds the union of what
- * its datasets carry (`app/search/rebuild.server.ts`), so leaving the dataset
+ * its datasets have (`app/search/rebuild.server.ts`), so leaving the dataset
  * rows in would read the same values twice over and then throw the second copy
  * away. **The keys are asked for together** for the same reason: a column of
  * the listing each would be a query each, over the same twenty rows.
@@ -580,7 +580,7 @@ async function datasetRowsOf(
  *
  * **Read from the same rows as the listings**, so a dataset that has since been
  * withdrawn is simply not among them — the cart is held in the browser and can
- * name something the portal no longer publishes, and the screen says so rather
+ * name something the portal no longer publishes, and the screen reports it rather
  * than inventing a row for it.
  */
 export async function cartRows(
@@ -641,7 +641,7 @@ async function everyHit(
 /**
  * The research listing as a table.
  *
- * **The screen's columns without the mark.** A file has nowhere to put a study
+ * **The screen's columns without the indicator.** A file has nowhere to put a study
  * into a cart, and everything else a row holds is drawn on screen as well — so
  * what a reader takes away is what they were looking at.
  */

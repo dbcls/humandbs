@@ -36,7 +36,7 @@ const datasetCaseArb = datasetContentArb.chain((content) =>
   }))
 
 /**
- * The dataset as an endpoint answers it. **The catalog the public projection
+ * The dataset as an endpoint returns it. **The catalog the public projection
  * consults is the same one the API projection consults**, as it is on every
  * route: a law run against two independent catalogs would be watching values
  * disappear for a reason production does not have.
@@ -73,7 +73,7 @@ function researchAnswer(content: ResearchContent): unknown {
   }, { origin: ORIGIN, catalog: { keyById: new Map(), keyByCode: new Map(), termById: new Map() } }))
 }
 
-/** Every slot of a content turned into a question nobody has answered yet. */
+/** Every slot of a content turned into a question nobody has responded to yet. */
 function allUnknown<T>(value: T): T {
   if (Array.isArray(value)) return value.map(allUnknown) as T
   if (value === null || typeof value !== "object") return value
@@ -85,7 +85,7 @@ function allUnknown<T>(value: T): T {
 }
 
 describe("the API projection", () => {
-  it("never answers with an empty string for a language", () => {
+  it("never responds with an empty string for a language", () => {
     fc.assert(fc.property(researchContentArb, (content) => {
       walk(researchAnswer(content), (key, held) => {
         if (key === "ja" || key === "en") expect(held).not.toBe("")
@@ -93,7 +93,7 @@ describe("the API projection", () => {
     }))
   })
 
-  it("never answers with an empty string for a language of a dataset", () => {
+  it("never responds with an empty string for a language of a dataset", () => {
     fc.assert(fc.property(datasetCaseArb, (input) => {
       walk(datasetAnswer(input), (key, held) => {
         if (key === "ja" || key === "en") expect(held).not.toBe("")
@@ -128,7 +128,7 @@ describe("the API projection", () => {
     }))
   })
 
-  it("answers with every list present, empty rather than absent", () => {
+  it("responds with every list present, empty rather than absent", () => {
     const lists = [
       "versions",
       "dataProviders",
@@ -145,7 +145,7 @@ describe("the API projection", () => {
     }))
   })
 
-  it("answers with every list of a dataset present, empty rather than absent", () => {
+  it("responds with every list of a dataset present, empty rather than absent", () => {
     fc.assert(fc.property(datasetCaseArb, (input) => {
       const answer = datasetAnswer(input) as Record<string, unknown>
       for (const list of ["values", "experiments", "files"]) {

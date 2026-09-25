@@ -1,20 +1,20 @@
 /**
  * The management listing: what a row holds, and how the filters narrow it.
  *
- * **The box is a direct lookup, not the public search.** It matches a hum
+ * **The search box is a direct lookup, not the public search.** It matches a hum
  * label, a dataset id, a title or a provider's name, on whichever of the two
  * languages holds one — a curator arrives knowing which research they mean, and
  * the full-text index would not help because it only holds what is published.
- * Several words all have to match, as they do in the public box.
+ * Several words all have to match, as they do in the public search box.
  *
  * **The status narrows as an OR of the ticked states**, and nothing ticked
  * narrows nothing. Nothing here reaches the database, so a rule can be checked
  * against a row without one.
  *
- * **A row says nothing about what its research still lacks.** A research holds
+ * **A row implies nothing about what its research still lacks.** A research holds
  * several drafts and versions, and a shortcoming belongs to one of them; a
- * listing row has no single one to speak for. What would stop a publish is said
- * by the draft's own confirmation screen (`gate.ts`).
+ * listing row has no single one to use for. What would stop a publish is said
+ * by the draft's own confirmation screen (`publish-check.ts`).
  */
 
 import type { TranslatedText } from "~/content/types"
@@ -27,9 +27,9 @@ import { DEFAULT_SORT, defaultOrder, type SortKey, type SortOrder } from "~/sear
  *
  * **Taking a version back is not a third state.** It leaves the version in
  * place with its number spent and its `published` false, so a research whose
- * versions have all been taken back stands exactly where one that never had any
- * stands: nothing of it is readable. Which versions exist and which of them are
- * out is the research's own screen to say.
+ * versions have all been taken back remains exactly where one that never had any
+ * remains: nothing of it is readable. Which versions exist and which of them are
+ * out is the research's own screen to report.
  */
 export type AdminStatus = "published" | "unpublished"
 
@@ -87,7 +87,7 @@ function haystack(row: AdminResearchRow): string {
   ].join("\n").toLowerCase()
 }
 
-/** Words separated by whitespace all have to appear, as in the public box. */
+/** Words separated by whitespace all have to appear, as in the public search box. */
 function matchesKeyword(row: AdminResearchRow, keyword: string): boolean {
   const words = keyword.toLowerCase().split(/\s+/).filter((word) => word !== "")
   if (words.length === 0) return true
@@ -180,7 +180,7 @@ export function pageOf<Row>(
  * result instead, every value a reader has not chosen reads 0, and an axis that
  * has already been used cannot be told from one that leads nowhere — so the
  * second value of an axis would look unreachable the moment the first is
- * ticked. **The other axes stay on**, so a number says what the pane is about
+ * ticked. **The other axes stay on**, so a number reports what the pane is about
  * to do rather than what the whole table holds.
  *
  * Which rows those are is the listing's own business, so the caller hands in
@@ -203,19 +203,19 @@ export function axisCounts<Row, Value extends string>(
 // === the branches of approved applications ===
 
 /**
- * Where an approval branch stands with the portal, which is what decides what
- * taking it in can do.
+ * The status of an approval branch in the portal, which is what decides what
+ * importing it can do.
  *
  * **Most branches land on a research that already exists** — four in five, the
  * portal holding the hum label the application was approved under — so a
  * listing that cannot tell the three apart is mostly rows a curator has to open
- * to find out. A branch with no hum label at all is its own standing rather
+ * to find out. A branch with no hum label at all is its own status rather
  * than one of the other two: the number is issued upstream, and until it is
  * there is nothing to match a research by.
  */
-export type BranchStanding = "held" | "absent" | "unlabelled"
+export type BranchStatus = "held" | "absent" | "unlabelled"
 
-export const BRANCH_STANDINGS: readonly BranchStanding[] = ["held", "absent", "unlabelled"]
+export const BRANCH_STATUSES: readonly BranchStatus[] = ["held", "absent", "unlabelled"]
 
 /**
  * The orderings this listing offers.
@@ -237,8 +237,8 @@ export function branchOrder(sort: BranchSortKey): SortOrder {
   return sort === "application" ? "asc" : "desc"
 }
 
-export function isBranchStanding(value: string): value is BranchStanding {
-  return (BRANCH_STANDINGS as readonly string[]).includes(value)
+export function isBranchStatus(value: string): value is BranchStatus {
+  return (BRANCH_STATUSES as readonly string[]).includes(value)
 }
 
 export function isBranchSortKey(value: string | null): value is BranchSortKey {
@@ -256,13 +256,13 @@ export interface BranchRow {
   heldBy: string | null
 }
 
-export function branchStanding(row: BranchRow): BranchStanding {
+export function branchStatusOf(row: BranchRow): BranchStatus {
   if (row.heldBy !== null) return "held"
   return row.humLabel === null ? "unlabelled" : "absent"
 }
 
 export interface BranchFilter {
-  standings: readonly BranchStanding[]
+  branchStatuses: readonly BranchStatus[]
 }
 
 /**
@@ -283,7 +283,7 @@ export function filterBranchRows<Row extends BranchRow>(
   filter: BranchFilter,
 ): Row[] {
   return rows.filter((row) =>
-    filter.standings.length === 0 || filter.standings.includes(branchStanding(row)))
+    filter.branchStatuses.length === 0 || filter.branchStatuses.includes(branchStatusOf(row)))
 }
 
 /**

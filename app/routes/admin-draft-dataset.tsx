@@ -12,10 +12,10 @@ import type { Route } from "./+types/admin-draft-dataset"
  * Writing one dataset of a draft, experiments and all — and pinning its id.
  *
  * The unit of the save is the dataset's entry in the draft, so the answer
- * carries the status that entry deserves — 409 when its revision no longer
+ * has the status that entry deserves — 409 when its revision no longer
  * matches or when somebody else created it first, 422 when prose held markup
  * the tree cannot keep. **The id arrives as a form beside the JSON save**: it
- * is a ledger row rather than part of the description, and the two are told
+ * is a table row rather than part of the description, and the two are told
  * apart by what the request is encoded as.
  */
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -35,7 +35,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export function meta({ loaderData, location }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  // The same name and identifier the head gives it (`components/dataset-editor.tsx`).
+  // The same name and identifier the header gives it (`components/dataset-editor.tsx`).
   return [
     { title: adminWindowTitle(messages, location.pathname, messages.admin.datasetEditor.heading, loaderData.datasetLabel) },
     { name: "robots", content: "noindex" },

@@ -1,7 +1,7 @@
 /**
  * The site-content screens: what they read, and what their forms do.
  *
- * Everything here asks for `manage-site-content`. What is written down is the
+ * Everything here requests `manage-site-content`. What is written down is the
  * publishing — a guideline going out or coming down is a change to what readers
  * see, which is what the audit trail is for — while writing a draft, renaming
  * a slug and moving a pointer are not.
@@ -119,7 +119,7 @@ export interface BodyProblem {
 }
 
 /**
- * What a form that went through did, so that the answer can say so — 「公開しました」
+ * What a form that went through did, so that the answer can report it — 「公開しました」
  * rather than the same 「保存しました」 for every button on the screen.
  */
 export type ContentsDone
@@ -162,7 +162,7 @@ export interface AlertRow {
 
 export interface ContentsView extends ListingPage<TreeEntry> {
   locale: Locale
-  /** The conditions in force, as the address carries them. */
+  /** The conditions in force, as the address has them. */
   keyword: string
   versioning: Versioning[]
   ja: PublishState[]
@@ -178,7 +178,7 @@ export interface ContentsView extends ListingPage<TreeEntry> {
   }
   size: PageSize
   /**
-   * Version-less slugs whose current revision does not answer in some language.
+   * Version-less slugs whose current revision does not respond in some language.
    *
    * **Read from every series, not from the page.** It is a report of what is
    * broken rather than a part of the listing, and one that came and went as the
@@ -190,9 +190,9 @@ export interface ContentsView extends ListingPage<TreeEntry> {
 export interface SeriesView {
   locale: Locale
   series: SeriesRow
-  /** The revision the pointer names, or null if it names nothing readable. */
+  /** The revision the pointer names, or null if it identifies nothing readable. */
   current: DocumentRow | null
-  /** Languages the version-less slug does not answer in. */
+  /** Languages the version-less slug does not respond in. */
   unanswered: Locale[]
 }
 
@@ -225,7 +225,7 @@ export interface DocumentView {
 
 export interface NewsListView extends ListingPage<NewsRow> {
   locale: Locale
-  /** The conditions in force, as the address carries them. */
+  /** The conditions in force, as the address has them. */
   keyword: string
   dating: NewsDating[]
   ja: NewsState[]
@@ -344,13 +344,13 @@ async function seriesRows(
 }
 
 /**
- * The listing: one row per article, narrowed by what was typed and cut into
+ * The listing: one row per article, narrowed by what was typed and split into
  * pages.
  *
  * **The whole tree is built before it is narrowed**, because a row's depth and
  * a series' revisions are read from the set of articles rather than from the
  * rows on screen (`app/admin/contents.ts`). There are tens of articles, not
- * thousands, so the cut is made here rather than asked of the database.
+ * thousands, so the page is sliced here rather than asked of the database.
  */
 export async function contentsPage(request: Request): Promise<ContentsView> {
   await requireCapability(request, "manage-site-content")
@@ -364,7 +364,7 @@ export async function contentsPage(request: Request): Promise<ContentsView> {
   }
   // A size that is not one of the offered ones is read as none asked for, the
   // way the other listings read theirs: an address arriving from somewhere else
-  // should answer rather than refuse.
+  // should respond rather than refuse.
   const askedSize = Number(url.searchParams.get("size") ?? "")
   const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
 
@@ -414,7 +414,7 @@ export async function contentsPage(request: Request): Promise<ContentsView> {
  *
  * Everything that acts on a series as a whole is here rather than in the
  * listing — moving the pointer, adding a revision, retiring the lot. A listing
- * carrying them holds a row that is a form, which is a row that cannot be
+ * with them holds a row that is a form, which is a row that cannot be
  * scanned beside its neighbours.
  */
 export async function seriesPage(request: Request, seriesId: string): Promise<SeriesView | null> {
@@ -436,7 +436,7 @@ export async function seriesPage(request: Request, seriesId: string): Promise<Se
 export async function alertsPage(request: Request): Promise<AlertsView> {
   await requireCapability(request, "manage-site-content")
   // The last time each alert was put up, as the JST day (`AlertRow`). The
-  // trail is the one place that knows: the row only says whether it is up now.
+  // trail is the one place that knows: the row only reports whether it is up now.
   const lastShown = getDb()
     .select({
       subjectId: event.subjectId,
@@ -454,7 +454,7 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
     // **Two alerts made in the same moment still have an order.** Rows written
     // in one statement share a timestamp, and ordering by the time alone hands
     // them back in whatever order they happen to lie in — which moves as soon as
-    // one of them is saved. The id is a v7, so it carries the order they were
+    // one of them is saved. The id is a v7, so it has the order they were
     // made in.
     .orderBy(asc(alert.createdAt), asc(alert.id))
 
@@ -501,7 +501,7 @@ export async function documentPage(
   const [row] = await db
     .select({ id: document.id, slug: document.slug })
     .from(document)
-    // The address carries a uuid; anything else is not a document rather than a
+    // The address has a uuid; anything else is not a document rather than a
     // malformed request for one.
     .where(idIs(document.id, documentId))
     .limit(1)
@@ -544,9 +544,9 @@ export async function documentPage(
  * up to.
  *
  * **The two statements are the same two whatever the reader has asked for.**
- * The pane says how many rows each of its values would leave, which is a count
+ * The pane reports how many rows each of its values would leave, which is a count
  * over the announcements the other conditions leave rather than over the page —
- * so the cut is made here, as it is for the articles.
+ * so the page is sliced here, as it is for the articles.
  *
  * The locales are fetched after the items rather than joined to them: a row per
  * locale would make what is read depend on how many languages each item happens
@@ -558,7 +558,7 @@ async function newsRows(db: Executor): Promise<NewsRow[]> {
       id: news.id,
       publishedAt: news.publishedAt,
       // **Read in the clock the value is written in.** The column holds a JST
-      // wall clock, so comparing it against a bare `now()` would answer by the
+      // wall clock, so comparing it against a bare `now()` would respond by the
       // zone the database happens to run in. An undated item is not scheduled —
       // it is unwritten, and there is no moment it is waiting for.
       scheduled: sql<boolean>`coalesce(${news.publishedAt} > (now() at time zone 'Asia/Tokyo'), false)`,
@@ -704,7 +704,7 @@ export async function newsPage(request: Request, newsId: string): Promise<NewsVi
 
 // --- writing -----------------------------------------------------------------
 
-/** Whether either table already answers at this address. */
+/** Whether either table already responds at this address. */
 async function slugTaken(db: Executor, slug: string, exceptDocumentId?: string): Promise<boolean> {
   const [held] = await db
     .select({ slug: document.slug })
@@ -766,7 +766,7 @@ export async function contentsAction(request: Request): Promise<ContentsResult> 
  * the whole thing.
  *
  * **The series is named by the address rather than by a hidden field.** The
- * screen is about one of them, so a field saying which would be the second
+ * screen is about one of them, so a field indicating which would be the second
  * place that is written down — and the one a form could get wrong.
  */
 export async function seriesAction(request: Request, seriesId: string): Promise<ContentsResult> {
@@ -791,7 +791,7 @@ export async function seriesAction(request: Request, seriesId: string): Promise<
 
 /**
  * The alert is edited on a screen of its own, so its intents are answered
- * apart from the tree's. Both screens still speak the one result type: what a
+ * apart from the tree's. Both screens still use the one result type: what a
  * refusal reads like belongs to site content as a whole rather than to the
  * screen the refusal came from.
  */
@@ -850,7 +850,7 @@ async function repointSeries(
     .where(idIs(document.id, documentId))
     .limit(1)
   if (target === undefined) return { status: "unknown-target" }
-  // Only a revision of this series may be named: the pointer says which version
+  // Only a revision of this series may be named: the pointer reports which version
   // is current, not which page to show.
   if (versionNumberIn(series.slug, target.slug) === null) return { status: "not-a-revision" }
 
@@ -890,7 +890,7 @@ async function addVersion(tx: Executor, seriesId: string, form: FormData): Promi
  *
  * There is no way to take the versioning back off and keep the addresses — the
  * body would have to move to the version-less slug, which is what the numbered
- * address it left behind used to answer with. So a series is either kept or
+ * address it left behind used to respond with. So a series is either kept or
  * removed whole. One at a time would not do either: the revision the pointer
  * names cannot be deleted on its own, so it would be the one thing left with
  * nothing left to point at it.
@@ -916,7 +916,7 @@ async function deleteSeries(tx: Executor, seriesId: string, actor: Actor): Promi
         .from(documentContent)
         .where(and(inArray(documentContent.documentId, ids), eq(documentContent.published, true)))
 
-  // The pointer goes first: it names a revision and refuses to let it go.
+  // The pointer goes first: it identifies a revision and refuses to let it go.
   await tx.delete(documentSeries).where(eq(documentSeries.id, series.id))
   if (ids.length > 0) await tx.delete(document).where(inArray(document.id, ids))
 
@@ -966,7 +966,7 @@ async function updateAlert(
   ]
   if (problems.length > 0) return { status: "body", problems }
 
-  // **An alert that is up has to be up in both languages.** It stands on every
+  // **An alert that is up has to be up in both languages.** It is shown on every
   // page of the site, so a reader on the language that is missing is handed a
   // box they cannot read — and the announcement it holds is the kind that is
   // worth an alert. Only switching one on is held to this: an announcement can
@@ -1025,7 +1025,7 @@ function subjectOf(target: ContentTarget): { type: "document" | "news", detail: 
 
 /**
  * The first write to a locale. **The insert is conditional**: a form that
- * carried no revision is saying "there was no row when I was drawn", and if
+ * kept no revision is indicating "there was no row when I was drawn", and if
  * there is one now that claim is as stale as a revision that no longer matches.
  */
 async function insertLocale(
@@ -1063,7 +1063,7 @@ interface LocaleUpdate {
 
 /**
  * What a write to a locale sets, whichever of the two tables holds it. The two
- * tables carry the same columns, so the shape of a save is decided here and the
+ * tables have the same columns, so the shape of a save is decided here and the
  * branches below differ only in which table and which owner column they name —
  * which is the part the ORM's types cannot be made to share.
  */
@@ -1214,7 +1214,7 @@ async function unpublishLocale(
  * Taking the whole thing away: the item, and every language written into it.
  *
  * **What a series points at is refused before anything is deleted.** The
- * version-less address has to keep answering, and the way to take that down is
+ * version-less address has to keep responding, and the way to remove it is
  * the series' own screen, which takes the pointer with it.
  *
  * **One event for the item rather than one per language**, the way a series
@@ -1244,7 +1244,7 @@ async function deleteItem(tx: Executor, target: ContentTarget, actor: Actor): Pr
   // **A revision's screen goes back to its series, not to the listing.** The
   // listing has no row for a revision, and the curator who took one out is
   // looking at the rest of them. Read before the row goes, since the slug is
-  // what says which series it was under.
+  // what reports which series it was under.
   const owner = target.kind === "document"
     ? (await tx.select({ id: documentSeries.id, slug: documentSeries.slug }).from(documentSeries))
         .find((one) => versionNumberIn(one.slug, target.slug) !== null)
@@ -1332,7 +1332,7 @@ async function renameDocument(
 /**
  * Giving a document its first version: the body moves to `{slug}/version/{n}`
  * and the address it had becomes a pointer at it. Nothing is copied, so there
- * is never a moment where the same text lives at two addresses.
+ * is never a moment where the same text is kept at two addresses.
  *
  * The number is typed rather than fixed at 1, because a guideline that is
  * already at `Ver.9` when the portal first learns to version it should not
@@ -1346,7 +1346,7 @@ async function cutIntoVersion(
   const series = await tx
     .select({ slug: documentSeries.slug, currentId: documentSeries.currentId })
     .from(documentSeries)
-  // A revision cannot be split again: it already answers under a pointer, and
+  // A revision cannot be split again: it already responds under a pointer, and
   // `{base}/version/3/version/1` is not an address anybody meant to make.
   const already = series.some((one) => one.slug === target.slug
     || one.currentId === target.id
@@ -1426,7 +1426,7 @@ export async function newsAction(request: Request, newsId: string): Promise<Cont
  * **An empty field clears the date, but not from under a published language.**
  * A published language with no date is a state the public side reads as
  * nothing and the screen reads as "公開中" — the two would disagree, and the
- * way back is to take the languages down first. Anything else has to be the
+ * only undo is to take the languages down first. Anything else has to be the
  * minute the field is made of — the value reaches here as text, and one that
  * is not is a form that was not the screen's.
  */

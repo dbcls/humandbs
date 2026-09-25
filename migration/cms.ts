@@ -1,12 +1,12 @@
 /**
  * Reading v1's CMS database.
  *
- * The input is one JSON object taken from the staging CMS with the query in
- * `docs/development.md`. Types here describe the rows as they are; everything
+ * The input is one JSON object (`migration/input/cms.json`) taken from the
+ * staging CMS. Types here describe the rows as they are; everything
  * v2 decides is done in the functions below, so this file stays a faithful
  * reading of the input.
  *
- * Two shapes are dropped rather than carried:
+ * Two shapes are dropped rather than kept:
  *
  * - **the screens.** `data-submission`, `data-use` and `contact-us` are pages
  *   the app owns now, not documents. They are what put a button directive and a
@@ -15,11 +15,11 @@
  *   published, and a development database does not need the one that is not
  *
  * A slug with more than one published version becomes one document per version,
- * at the address it already answers at (`{slug}/version/{n}`) — **the newest
+ * at the address it already responds at (`{slug}/version/{n}`) — **the newest
  * included**, so none of those addresses is lost — plus a series row at the
  * version-less slug naming the newest. A slug with a single version is just a
  * document: the version machinery is an artefact of v1's CMS rather than
- * something the page carries.
+ * something the page has.
  */
 
 import { readFileSync } from "node:fs"
@@ -110,7 +110,7 @@ export interface BuiltSiteDocuments {
   series: BuiltSeries[]
 }
 
-/** Where a revision of `slug` answers. The shape the pointer looks for. */
+/** Where a revision of `slug` responds. The shape the pointer looks for. */
 export function versionSlug(slug: string, versionNumber: number): string {
   return `${slug}/version/${versionNumber}`
 }
@@ -132,10 +132,10 @@ function publishedOn(version: CmsDocumentVersion): string | null {
 /**
  * An announcement's date, as the JST wall clock its column keeps.
  *
- * **The hour is part of the value.** 126 days carry more than one announcement,
+ * **The hour is part of the value.** 126 days have more than one announcement,
  * and which went out first is in the hour — dropping it leaves those days in
  * whatever order the rows happen to be read in. The input writes its offset,
- * and only the instant it names is trusted: the shift to JST is done here
+ * and only the instant it identifies is trusted: the shift to JST is done here
  * rather than by reading the digits as if they were already local.
  */
 function jstStampOf(instant: string): string {
@@ -160,7 +160,7 @@ export function buildDocuments(documents: CmsDocument[]): BuiltSiteDocuments {
 
     const numbered = [...byNumber].sort((a, b) => a[0] - b[0])
     // One version is v1's bookkeeping rather than a revision anybody published:
-    // 54 of the 59 documents carry exactly one, and giving each a pointer would
+    // 54 of the 59 documents have exactly one, and giving each a pointer would
     // put a second address in front of a page that never had one.
     const versioned = numbered.length > 1
 
@@ -195,7 +195,7 @@ export interface BuiltNews {
 
 /**
  * Every item comes across published: v1 has no way to hold an unpublished one,
- * so there is nothing in the input that says otherwise.
+ * so there is nothing in the input that reports otherwise.
  */
 export function buildNews(items: CmsNews[]): BuiltNews[] {
   return items.map((item) => ({
@@ -238,7 +238,7 @@ export interface SuppliedAlertText {
  * The banner is one announcement in two languages rather than a row per
  * language, so the translations collapse into a pair.
  *
- * **A banner that is up has to be up in both languages.** It stands on every
+ * **A banner that is up has to be up in both languages.** It is shown on every
  * page, and a reader on the other one gets a box of an alphabet they may not
  * read. The old CMS lets one side be empty, so what is missing is filled from
  * translations written by hand (`input/alert-translations.json`) — matched on
@@ -248,10 +248,10 @@ export interface SuppliedAlertText {
  * **A banner that is up and still has a side missing stops the migration.** The
  * portal cannot write the announcement itself, and importing half of one puts
  * it on every page in a language it was not written for. One that is switched
- * off is carried as it is: it says nothing to anybody yet, and the editor asks
- * for the other side before it can be switched on (`docs/editing.md`).
+ * off is kept as it is: it reports nothing to anybody yet, and the editor requests
+ * for the other side before it can be switched on.
  *
- * **A banner that is up carries the instant it went up** (`shownAt`), read
+ * **A banner that is up has the instant it went up** (`shownAt`), read
  * from the offset the input writes rather than from the digits as if they were
  * already local. One whose instant cannot be read stops the migration too — a
  * day that cannot be made is not one to make up.
