@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto"
 
-import { eq } from "drizzle-orm"
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
+import { eq, sql } from "drizzle-orm"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
-import { closePools, getDb, getOwnerDb } from "~/db/client.server"
+import { closePools, getDb, getOwnerDb, getPool } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
@@ -75,6 +75,16 @@ async function ready(label: string) {
   )
   if (saved.status !== "saved") throw new Error(saved.status)
   return { ...created, datasetId: made.datasetId, revision: 3 }
+}
+
+/** Resolves once this many backends of the test database wait on a lock. */
+async function waitingOnLocks(count: number): Promise<void> {
+  await vi.waitFor(async () => {
+    const rows = await getOwnerDb().execute<{ waiting: number }>(sql`
+      SELECT count(*)::int AS waiting FROM pg_stat_activity
+      WHERE datname = current_database() AND wait_event_type = 'Lock'`)
+    expect(rows.rows[0]?.waiting).toBe(count)
+  }, { timeout: 5000, interval: 20 })
 }
 
 async function publish(fixture: Awaited<ReturnType<typeof ready>>): Promise<void> {
@@ -196,6 +206,41 @@ describe("deleting a research", () => {
 
       expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "deleted" })
     })
+  })
+
+  /**
+   * A third transaction holds the research row shared, so the delete queues on
+   * it first and the publish queues behind the delete. Letting go of the row
+   * then gives it to the delete while the publish is waiting — the interleaving
+   * in which the two would each wait for a row the other holds, if either took
+   * its locks out of order.
+   */
+  it("runs alongside a publish of the same research without a deadlock, and the publish reports gone", async () => {
+    const fixture = await ready("hum5207")
+    const holder = await getPool().connect()
+    try {
+      await holder.query("BEGIN")
+      await holder.query("SELECT id FROM research WHERE id = $1 FOR SHARE", [fixture.researchId])
+
+      const deleting = deleteResearch(db, fixture.researchId, CURATOR)
+      await waitingOnLocks(1)
+      const publishing = publishDraft(
+        db,
+        { at: { draftId: fixture.draftId, revision: fixture.revision }, ...AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+        CURATOR,
+      )
+      await waitingOnLocks(2)
+      await holder.query("COMMIT")
+
+      const [deleted, published] = await Promise.allSettled([deleting, publishing])
+      expect(deleted).toEqual({ status: "fulfilled", value: { status: "deleted" } })
+      expect(published).toEqual({ status: "fulfilled", value: { status: "gone" } })
+    } finally {
+      await holder.query("ROLLBACK").catch(() => undefined)
+      holder.release()
+    }
+    expect(await db.select().from(s.research)).toHaveLength(0)
+    expect(await db.select().from(s.researchVersion)).toHaveLength(0)
   })
 
   it("reports gone for a research that is not there, and writes no event", async () => {

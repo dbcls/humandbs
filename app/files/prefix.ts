@@ -30,6 +30,13 @@ export const PRIVATE_BUCKET = "private"
  */
 export const FILES_PAGE_SIZE = 20
 
+/**
+ * How long the address a private file is fetched from stays good for. **The
+ * address is a credential**: anyone holding it reads the file without signing in,
+ * so it only has to outlive the redirect the browser follows at once.
+ */
+export const DOWNLOAD_TTL_SECONDS = 5 * 60
+
 /** Above this a single PUT is a bad bet, and the upload is split into parts. */
 export const MULTIPART_THRESHOLD = 64 * 1024 * 1024
 
@@ -118,6 +125,21 @@ export function isFileSlug(slug: string): boolean {
     if (code < 0x20 || code === 0x7f) return false
   }
   return slug.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..")
+}
+
+/**
+ * The `Content-Disposition` a private file is fetched with: saved rather than
+ * shown, under its own name.
+ *
+ * **Only the `filename*` form**, written as UTF-8 and percent-encoded (RFC 8187),
+ * because the names are Japanese as often as not and the plain `filename` form
+ * has no way to write them. `encodeURIComponent` leaves `'()*` alone, and each of
+ * them has a meaning in the header's syntax, so they are encoded as well.
+ */
+export function attachmentDisposition(name: string): string {
+  const encoded = encodeURIComponent(name)
+    .replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `attachment; filename*=UTF-8''${encoded}`
 }
 
 /**

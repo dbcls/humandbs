@@ -56,6 +56,7 @@ import { wakeFileRunner } from "~/files/runner.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { isNhaId, NHA_ID_PATTERN, nhaId, nhaNumber } from "./labels"
+import { lockResearch } from "./locks.server"
 
 export interface PinRequest {
   kind: "hum" | "dataset"
@@ -140,7 +141,9 @@ export async function pinLabel(
 
   const done = await db.transaction(async (tx) => {
     const researchId = await researchOf(tx, request)
-    if (researchId === null) return { outcome: { status: "gone" } as PinOutcome, moved: false }
+    if (researchId === null || !await lockResearch(tx, researchId, "key share")) {
+      return { outcome: { status: "gone" } as PinOutcome, moved: false }
+    }
 
     const [held] = await tx
       .select({ id: labelPin.id })
@@ -240,7 +243,7 @@ export async function issueNhaId(
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('issue-nha-id'))`)
 
     const researchId = await researchOfDataset(tx, datasetId)
-    if (researchId === null) return { status: "gone" }
+    if (researchId === null || !await lockResearch(tx, researchId, "key share")) return { status: "gone" }
     const [held] = await tx
       .select({ id: labelPin.id })
       .from(labelPin)
@@ -314,6 +317,7 @@ export async function promotePin(
     : null
 
   const done = await db.transaction(async (tx) => {
+    if (!await lockResearchOfPin(tx, pinId)) return null
     const pin = await readPin(tx, pinId)
     if (pin === null) return null
     const subjectId = pin.researchId ?? pin.datasetId
@@ -372,6 +376,7 @@ export async function unpinLabel(
   if (seen?.kind === "hum" && await publicPrefixHoldsFiles(seen.label)) return { status: "holds-files" }
 
   return db.transaction(async (tx): Promise<UnpinOutcome> => {
+    if (!await lockResearchOfPin(tx, pinId)) return { status: "gone" }
     const [pin] = await tx
       .select({
         kind: labelPin.kind,
@@ -403,6 +408,17 @@ export async function unpinLabel(
     if (researchId !== null) await rebuildSearchDocs(tx, { researchIds: [researchId] })
     return { status: "unpinned" }
   })
+}
+
+/**
+ * Locks the research a pin belongs to, before the pin itself (`locks.server.ts`).
+ * False when the pin or its research is not there.
+ */
+async function lockResearchOfPin(tx: Transaction, pinId: string): Promise<boolean> {
+  const pin = await readPin(tx, pinId)
+  if (pin === null) return false
+  const researchId = pin.researchId ?? await researchOfDataset(tx, pin.datasetId)
+  return researchId !== null && await lockResearch(tx, researchId, "key share")
 }
 
 /** The research whose search rows a change to this pin moves. */

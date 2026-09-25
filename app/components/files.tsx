@@ -11,6 +11,7 @@ import {
 } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { fileDownloadHref } from "~/admin/urls"
 import { datasetPath, filePath, href } from "~/public/urls"
 
 import {
@@ -169,8 +170,10 @@ function NotPublicYet({ locale, humLabel, name }: {
  * download is shown beside the name as an act of its own, and a file nobody
  * outside can reach offers neither it nor its address.
  */
-export function FileTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
+export function FileTable({ locale, researchId, rows, humLabel, whenEmpty, selectedBy }: {
   locale: Locale
+  /** The research whose prefix this is: a private file is fetched through it. */
+  researchId: string
   rows: readonly ListedFile[]
   humLabel: string | null
   /** What to show in place of the rows when there are none. The prefix's own word by default. */
@@ -203,6 +206,7 @@ export function FileTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
         <FileRow
           key={row.name}
           row={row}
+          researchId={researchId}
           humLabel={humLabel}
           locale={locale}
           selectedBy={selectedBy === undefined ? undefined : (selectedBy[row.name] ?? [])}
@@ -227,8 +231,9 @@ export function FileTable({ locale, rows, humLabel, whenEmpty, selectedBy }: {
  * makes, so the trigger uses the same style and the same panel every slug is
  * changed in (`SlugEditor`).
  */
-function FileRow({ row, humLabel, locale, selectedBy }: {
+function FileRow({ row, researchId, humLabel, locale, selectedBy }: {
   row: ListedFile
+  researchId: string
   humLabel: string | null
   locale: Locale
   selectedBy: readonly string[] | undefined
@@ -237,6 +242,10 @@ function FileRow({ row, humLabel, locale, selectedBy }: {
   const t = messages.admin.files
   const address = humLabel === null ? null : filePath(humLabel, row.name)
   const reachable = row.isPublic && address !== null
+  // A private file has no address a reader could use. It is fetched through a
+  // route that checks who is asking and redirects to a signed address of the
+  // store, good for a few minutes.
+  const fetchedFrom = reachable ? address : row.isPublic ? null : fileDownloadHref(researchId, row.name)
   const running = row.pending !== null && !row.pending.failed
   const switching = running
     ? t.switchingReason(row.pending?.action === "publish" ? t.movingToPublic : t.movingToPrivate)
@@ -266,9 +275,9 @@ function FileRow({ row, humLabel, locale, selectedBy }: {
       </Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
-          {reachable && (
+          {fetchedFrom !== null && (
             <ButtonLink
-              to={address}
+              to={fetchedFrom}
               external
               download
               size="row"

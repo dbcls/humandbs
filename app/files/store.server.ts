@@ -21,6 +21,7 @@ import {
   CopyObjectCommand,
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
@@ -32,7 +33,13 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
 import { loadConfig, publicOrigin } from "~/config.server"
 
-import { PRIVATE_BUCKET, PUBLIC_BUCKET, type StoredNode } from "./prefix"
+import {
+  attachmentDisposition,
+  DOWNLOAD_TTL_SECONDS,
+  PRIVATE_BUCKET,
+  PUBLIC_BUCKET,
+  type StoredNode,
+} from "./prefix"
 
 /** How long a signature a browser is about to use stays good for. */
 const UPLOAD_TTL_SECONDS = 60 * 60
@@ -205,6 +212,26 @@ export async function presignPut(
       ContentLength: file.size,
     }),
     { expiresIn: UPLOAD_TTL_SECONDS, signableHeaders: new Set(["content-type", "content-length"]) },
+  )
+}
+
+/**
+ * A URL that reads one object for a few minutes, saved under the name given.
+ *
+ * **The disposition is part of the signature**: it travels as the
+ * `response-content-disposition` parameter, which the store sends back as the
+ * header, so an address edited to show the file inline is refused by the store.
+ * The proxy keeps the header only while it is an `attachment`.
+ */
+export async function presignGet(ref: ObjectRef, fileName: string): Promise<string> {
+  return getSignedUrl(
+    getSigner(),
+    new GetObjectCommand({
+      Bucket: ref.bucket,
+      Key: ref.key,
+      ResponseContentDisposition: attachmentDisposition(fileName),
+    }),
+    { expiresIn: DOWNLOAD_TTL_SECONDS },
   )
 }
 

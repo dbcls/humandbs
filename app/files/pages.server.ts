@@ -60,6 +60,7 @@ import {
   copyObject,
   deleteObject,
   objectExists,
+  presignGet,
   presignPut,
   type ObjectRef,
 } from "./store.server"
@@ -572,6 +573,40 @@ export async function fileUploadAction(
       : [privateAt(name), { bucket: PUBLIC_BUCKET, key: publicPrefix(label) + name }])
   }
   return signUpload(body, privateAt(body.name))
+}
+
+/**
+ * A private file of the research, handed to the browser as a redirect to a
+ * signed address of the store.
+ *
+ * **The guard is the files screen's own** (`manage-files`): the download is one
+ * more thing done to a row of that screen, and whoever may publish or delete
+ * the file may read it. Readers and data providers following a share link hold
+ * no capability, and the share preview has no route here.
+ *
+ * **The name is checked the way every other operation on a row checks it**, and
+ * then looked for in the private side of this research's prefix — a name that is
+ * not there is 404 rather than an address that would be refused later, and a
+ * public file is fetched from its public address instead.
+ *
+ * **Nothing is written to the trail.** Reading a file changes nothing anybody
+ * can fetch, and the trail records what does.
+ */
+export async function fileDownload(
+  request: Request,
+  researchId: string | undefined,
+): Promise<Response> {
+  await requireCapability(request, "manage-files")
+  const id = identity(researchId)
+  const name = new URL(request.url).searchParams.get("name")
+  if (name === null || !isUploadableName(name)) badRequest()
+
+  const ref: ObjectRef = { bucket: PRIVATE_BUCKET, key: privatePrefix(id) + name }
+  if (!(await objectExists(ref))) notFound()
+
+  // The address is good for anyone who holds it until it expires, so neither
+  // the browser nor anything between keeps the redirect.
+  return redirect(await presignGet(ref, name), { headers: { "Cache-Control": "no-store" } })
 }
 
 export interface CommonFilesView {

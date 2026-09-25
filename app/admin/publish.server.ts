@@ -22,7 +22,7 @@
  * out; taking somebody else's work in is an edit, made before publishing.
  */
 
-import { and, desc, eq, inArray, isNotNull, or } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, isNotNull, or } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyDatasetContent } from "~/content/empty"
@@ -39,7 +39,6 @@ import {
   draftDatasetEntry,
   humAccession,
   labelPin,
-  research,
   researchDraft,
   researchVersion,
 } from "~/db/schema"
@@ -52,6 +51,7 @@ import { draftDatasets } from "./datasets"
 import { diffDraftInput } from "./diff"
 import { consumeDraft, draftFromVersion, type DraftAt } from "./drafts.server"
 import { researchContentInput } from "./form"
+import { lockResearch } from "./locks.server"
 import {
   countFindings,
   checkPublish,
@@ -158,7 +158,7 @@ async function readPublishSnapshot(
   draftId: string,
   lock: boolean,
 ): Promise<PublishSnapshot | null> {
-  const held = tx
+  const held = () => tx
     .select({
       id: researchDraft.id,
       researchId: researchDraft.researchId,
@@ -169,37 +169,47 @@ async function readPublishSnapshot(
     .from(researchDraft)
     .where(eq(researchDraft.id, draftId))
     .limit(1)
-  const [draft] = await (lock ? held.for("update") : held)
+  const [seen] = await held()
+  if (seen === undefined) return null
+  if (!lock) return readSnapshotOf(tx, seen, false)
+
+  // The research before the draft (`locks.server.ts`). `no key update` rather
+  // than `update`: the rows that point at the research acquire a key-share lock
+  // on it, and nothing here changes its key.
+  if (!await lockResearch(tx, seen.researchId, "no key update")) return null
+  const [draft] = await held().for("update")
   if (draft === undefined) return null
 
-  if (lock) {
-    // `no key update` rather than `update`: the rows that point at the research
-    // take a key-share lock on it, and nothing here changes its key.
-    await tx
-      .select({ id: research.id })
-      .from(research)
-      .where(eq(research.id, draft.researchId))
-      .for("no key update")
-    // The datasets before their labels: deleting a dataset takes its label
-    // with it, so it has to wait here rather than hold the dataset while
-    // waiting for a label this publish holds.
-    await tx
-      .select({ id: dataset.id })
-      .from(dataset)
-      .where(eq(dataset.researchId, draft.researchId))
-      .for("key share")
-    await tx
-      .select({ id: labelPin.id })
-      .from(labelPin)
-      .where(or(
-        eq(labelPin.researchId, draft.researchId),
-        inArray(
-          labelPin.datasetId,
-          tx.select({ id: dataset.id }).from(dataset).where(eq(dataset.researchId, draft.researchId)),
-        ),
-      ))
-      .for("share")
-  }
+  // The datasets before their labels: deleting a dataset deletes its label with
+  // it, so it has to wait here rather than hold the dataset while waiting for a
+  // label this publish holds.
+  await tx
+    .select({ id: dataset.id })
+    .from(dataset)
+    .where(eq(dataset.researchId, draft.researchId))
+    .orderBy(asc(dataset.id))
+    .for("key share")
+  await tx
+    .select({ id: labelPin.id })
+    .from(labelPin)
+    .where(or(
+      eq(labelPin.researchId, draft.researchId),
+      inArray(
+        labelPin.datasetId,
+        tx.select({ id: dataset.id }).from(dataset).where(eq(dataset.researchId, draft.researchId)),
+      ),
+    ))
+    .orderBy(asc(labelPin.id))
+    .for("share")
+  return readSnapshotOf(tx, draft, true)
+}
+
+async function readSnapshotOf(
+  tx: Transaction,
+  draft: DraftRow,
+  lock: boolean,
+): Promise<PublishSnapshot> {
+  const draftId = draft.id
 
   // **One at a time.** A transaction is a single connection, so requesting the
   // five at once wins no time and requests the driver to start a query on a client
@@ -675,6 +685,16 @@ export async function withdrawVersion(
   actor: EventActor,
 ): Promise<WithdrawOutcome> {
   return db.transaction(async (tx): Promise<WithdrawOutcome> => {
+    // The research before the version (`locks.server.ts`): the draft written
+    // below references it, and deleting the research would wait on this version.
+    const [seen] = await tx
+      .select({ researchId: researchVersion.researchId })
+      .from(researchVersion)
+      .where(eq(researchVersion.id, versionId))
+      .limit(1)
+    if (seen === undefined || !await lockResearch(tx, seen.researchId, "key share")) {
+      return { status: "gone" }
+    }
     const [version] = await tx
       .select({
         id: researchVersion.id,

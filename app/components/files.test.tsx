@@ -15,6 +15,8 @@ import { FileTable, Downloads, UploadPanel, type DownloadRow } from "./files"
  * private bucket behind a link anybody with the share token could follow.
  */
 
+const RESEARCH = "0b9f3c2e-4a1d-4e6b-9c7f-2d8e5a6b7c10"
+
 function render(element: React.ReactElement): string {
   const Stub = createRoutesStub([{ path: "/", Component: () => element }])
   return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
@@ -103,6 +105,8 @@ describe("the download list", () => {
 
     expect(html).toContain("closed.zip")
     expect(html).not.toContain("href=\"/files/hum0009/closed.zip\"")
+    expect(html).not.toContain("/files/download")
+    expect(html).not.toContain("ダウンロード")
   })
 
   it("shows the address a file that is not public yet will have", () => {
@@ -142,6 +146,7 @@ describe("the research's file table", () => {
       return render(
         <FileTable
           locale="ja"
+          researchId={RESEARCH}
           humLabel="hum0009"
           rows={[entry({ name: "a.zip" }), entry({ name: "b.zip", isPublic: false })]}
           selectedBy={selectedBy}
@@ -183,6 +188,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
       />,
@@ -194,7 +200,7 @@ describe("the research's file table", () => {
   })
 
   it("names nothing to copy while the research has no label, since no address responds", () => {
-    const html = render(<FileTable locale="ja" humLabel={null} rows={[entry({ name: "open.zip" })]} />)
+    const html = render(<FileTable locale="ja" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "open.zip" })]} />)
 
     expect(html).not.toContain("アドレスをコピー")
   })
@@ -203,6 +209,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
       />,
@@ -212,25 +219,53 @@ describe("the research's file table", () => {
     expect(html).toContain("未公開")
   })
 
-  it("offers to fetch a public file as a download, and no other", () => {
+  it("fetches a public file from its public address", () => {
     const html = render(
       <FileTable
         locale="ja"
+        researchId={RESEARCH}
         humLabel="hum0009"
-        rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
+        rows={[entry({ name: "open.zip" })]}
       />,
     )
 
     expect([...html.matchAll(/ダウンロード/g)]).toHaveLength(1)
     expect(html).toMatch(/href="\/files\/hum0009\/open\.zip"[^>]*download/)
+    expect(html).not.toContain("/files/download")
     // The name itself is not a link: a fetch is not what reading a name requests.
     expect(html).not.toMatch(/<a[^>]*>[^<]*open\.zip<\/a>/)
+  })
+
+  it("fetches a private file through the screen's own download address, which signs it", () => {
+    const html = render(
+      <FileTable
+        locale="ja"
+        researchId={RESEARCH}
+        humLabel="hum0009"
+        rows={[entry({ name: "説明 (1).zip", isPublic: false })]}
+      />,
+    )
+
+    expect([...html.matchAll(/ダウンロード/g)]).toHaveLength(1)
+    expect(html).toContain(
+      `href="/admin/research/${RESEARCH}/files/download?name=%E8%AA%AC%E6%98%8E+%281%29.zip"`,
+    )
+    expect(html).not.toContain("/files/hum0009/")
+  })
+
+  it("offers a download for a private file while the research has no label", () => {
+    const html = render(
+      <FileTable locale="ja" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "a.zip", isPublic: false })]} />,
+    )
+
+    expect(html).toContain(`/admin/research/${RESEARCH}/files/download?name=a.zip`)
   })
 
   it("offers the other side on the one switch control", () => {
     const html = render(
       <FileTable
         locale="ja"
+        researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "open.zip" }), entry({ name: "closed.zip", isPublic: false })]}
       />,
@@ -245,6 +280,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ isPublic: false, pending: { action: "publish", failed: false, lastError: null } })]}
       />,
@@ -260,6 +296,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ pending: { action: "unpublish", failed: true, lastError: "copy refused" } })]}
       />,
@@ -276,6 +313,7 @@ describe("the research's file table", () => {
     const html = render(
       <FileTable
         locale="ja"
+        researchId={RESEARCH}
         humLabel="hum0009"
         rows={[entry({ name: "a.zip" }), entry({ name: "b.zip" })]}
       />,
@@ -287,13 +325,13 @@ describe("the research's file table", () => {
   })
 
   it("changes the name on the one panel every slug is changed in", () => {
-    const html = render(<FileTable locale="ja" humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
+    const html = render(<FileTable locale="ja" researchId={RESEARCH} humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
 
     expect(html).toContain("slug の編集")
   })
 
   it("does not offer deletion until it has been asked for twice", () => {
-    const html = render(<FileTable locale="ja" humLabel="hum0009" rows={[entry()]} />)
+    const html = render(<FileTable locale="ja" researchId={RESEARCH} humLabel="hum0009" rows={[entry()]} />)
 
     expect(html).not.toContain("value=\"delete\"")
   })

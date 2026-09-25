@@ -81,3 +81,37 @@ export async function putThroughProxy(
     call.end(payload)
   })
 }
+
+export interface ProxiedResponse {
+  status: number
+  headers: Record<string, string | string[] | undefined>
+  body: string
+}
+
+/** Fetches a presigned URL through the proxy, the way `putThroughProxy` puts to one. */
+export async function getThroughProxy(signed: string): Promise<ProxiedResponse> {
+  const url = new URL(signed)
+
+  return new Promise<ProxiedResponse>((resolve, reject) => {
+    const call = request({
+      host: "proxy",
+      port: 8080,
+      method: "GET",
+      path: `${url.pathname}${url.search}`,
+      headers: { Host: url.host },
+    }, (response) => {
+      const chunks: Buffer[] = []
+      response.on("data", (chunk: Buffer) => chunks.push(chunk))
+      response.on("end", () => {
+        resolve({
+          status: response.statusCode ?? 0,
+          headers: response.headers,
+          body: Buffer.concat(chunks).toString("utf8"),
+        })
+      })
+      response.on("error", reject)
+    })
+    call.on("error", reject)
+    call.end()
+  })
+}

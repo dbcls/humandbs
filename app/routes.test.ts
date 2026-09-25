@@ -77,6 +77,8 @@ describe("管理画面の登録", () => {
     // no frame to be inside of.
     expect(outside.every((path) => path?.startsWith("admin/assistant/api") === true
       || path?.includes("/upload") === true
+      // A redirect to a signed address of the store, which the browser saves.
+      || path?.endsWith("/files/download") === true
       || path?.includes("/comments") === true
       // The draft drawn as its page, which the editor's second pane requests
       // as the content changes. It responds with the drawing, not with a screen.

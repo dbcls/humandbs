@@ -27,6 +27,8 @@ import type { Executor } from "~/db/client.server"
 import { labelPin, research, researchVersion } from "~/db/schema"
 import { researchHoldsFiles } from "~/files/jobs.server"
 
+import { lockResearch } from "./locks.server"
+
 export type DeleteResearchResult
   = | { status: "deleted" }
     /** A prefix of the research still holds a file. */
@@ -40,12 +42,9 @@ export async function deleteResearch(
 ): Promise<DeleteResearchResult> {
   if (await researchHoldsFiles(db, researchId)) return { status: "files-remain" }
   return db.transaction(async (tx): Promise<DeleteResearchResult> => {
-    const [held] = await tx
-      .select({ id: research.id })
-      .from(research)
-      .where(eq(research.id, researchId))
-      .limit(1)
-    if (held === undefined) return { status: "gone" }
+    // Locked before anything else, so that a publish or an edit of this research
+    // waits here rather than holding a draft the cascade below has to delete.
+    if (!await lockResearch(tx, researchId, "update")) return { status: "gone" }
 
     // Only hum labels hang off a research; a dataset id hangs off its dataset.
     // **One at a time**: a transaction is one connection, so requesting both at

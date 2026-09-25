@@ -67,6 +67,19 @@ export function fileUploadPath(researchId: string): string {
 }
 
 /**
+ * Where a private file of the research is fetched from: a redirect to a signed
+ * address of the store. No language prefix, for the reason the upload has none.
+ */
+export function fileDownloadPath(researchId: string): string {
+  return `${adminResearchFilesPath(researchId)}/download`
+}
+
+/** The download of one private file. The name goes in the query, so it can hold anything a name can. */
+export function fileDownloadHref(researchId: string, name: string): string {
+  return `${fileDownloadPath(researchId)}?${new URLSearchParams({ name }).toString()}`
+}
+
+/**
  * What a published version lists, for reading. A version is addressed by its
  * number rather than its row: updating one puts a new row under the same
  * number, and the address should still open.

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import { dayInJst } from "~/dates"
 
-import { composeListing, narrowedFiles, pageOfFiles, selectedFrom, type FileFilter, type StoredNode } from "./prefix"
+import { attachmentDisposition, composeListing, narrowedFiles, pageOfFiles, selectedFrom, type FileFilter, type StoredNode } from "./prefix"
 
 /**
  * The laws the prefix is read by.
@@ -192,6 +192,25 @@ describe("narrowedFiles", () => {
     fc.assert(fc.property(fc.array(datedNodeArb, { maxLength: 12 }), filterArb, (rows, filter) => {
       expect(narrowedFiles(rows, { ...filter, keyword: filter.keyword.toUpperCase() }))
         .toEqual(narrowedFiles(rows, { ...filter, keyword: filter.keyword.toLowerCase() }))
+    }))
+  })
+})
+
+describe("attachmentDisposition", () => {
+  const HEAD = "attachment; filename*=UTF-8''"
+
+  it("decodes back to the name it was given", () => {
+    fc.assert(fc.property(fc.string({ unit: "grapheme", minLength: 1 }), (name) => {
+      const value = attachmentDisposition(name)
+      expect(value.startsWith(HEAD)).toBe(true)
+      expect(decodeURIComponent(value.slice(HEAD.length))).toBe(name)
+    }))
+  })
+
+  it("writes nothing after the name but the characters the syntax allows unencoded", () => {
+    fc.assert(fc.property(fc.string({ unit: "binary", minLength: 1 }), (name) => {
+      // RFC 8187 attr-char, and the % that introduces an encoded byte.
+      expect(attachmentDisposition(name).slice(HEAD.length)).toMatch(/^[A-Za-z0-9!#$&+\-.^_`|~%]*$/)
     }))
   })
 })

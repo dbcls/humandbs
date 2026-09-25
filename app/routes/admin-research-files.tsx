@@ -146,6 +146,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                 >
                   <FileTable
                     locale={locale}
+                    researchId={view.researchId}
                     rows={view.rows}
                     humLabel={view.humLabel}
                     selectedBy={view.selectedBy}

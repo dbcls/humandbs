@@ -198,6 +198,7 @@ const editing = [
   ),
   route("admin/terms", "routes/admin-terms.ts"),
   route("admin/research/:researchId/files/upload", "routes/admin-files-upload.ts"),
+  route("admin/research/:researchId/files/download", "routes/admin-files-download.ts"),
   route("admin/files/upload", "routes/admin-contents-files-upload.ts"),
   /**
    * The assistant's API, handed on unchanged to a service that holds no

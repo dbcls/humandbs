@@ -56,6 +56,7 @@ import {
   type TermSortKey,
 } from "./catalog"
 import { mergeTermInDrafts } from "./drafts.server"
+import { lockAllResearches } from "./locks.server"
 import { axisCounts } from "./listing"
 
 export interface CatalogKeyRow {
@@ -573,6 +574,10 @@ export async function catalogAction(request: Request): Promise<CatalogResult> {
   const db = getDb()
 
   return db.transaction(async (tx) => {
+    // A change that reaches the search rows rewrites them for every research, and
+    // merging a term rewrites versions and drafts of any of them: all research
+    // rows are locked before those rows (`locks.server.ts`).
+    if (!ORDER_ONLY.has(intent)) await lockAllResearches(tx, "key share")
     const result = await apply(tx, intent, form)
     if (result.status !== "ok") return result
     // Which catalog changes reach the search rows and which do not is a
@@ -903,6 +908,7 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
     .select({ id: researchVersion.id, content: researchVersion.content })
     .from(researchVersion)
     .where(match)
+    .orderBy(asc(researchVersion.id))
   for (const version of versions) {
     await db
       .update(researchVersion)

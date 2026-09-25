@@ -1,14 +1,20 @@
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
+
+import { fileDownloadPath } from "~/admin/urls"
 
 import { grantAdmin } from "~/auth/admins.server"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import { createSession, sessionCookie } from "~/auth/session.server"
+import { loadConfig, publicOrigin } from "~/config.server"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
 import {
   commonPrefix,
+  DOWNLOAD_TTL_SECONDS,
   MULTIPART_THRESHOLD,
   PRIVATE_BUCKET,
   PUBLIC_BUCKET,
@@ -22,12 +28,13 @@ import {
   commonFilesAction,
   commonFilesPage,
   commonUploadAction,
+  fileDownload,
   filesAction,
   filesPage,
   fileUploadAction,
 } from "./pages.server"
 import { claimJob, reconcile, settleJob } from "./jobs.server"
-import { clearPrefix, keysUnder, putThroughProxy, putTestObject } from "./_store"
+import { clearPrefix, getThroughProxy, keysUnder, putThroughProxy, putTestObject } from "./_store"
 
 /**
  * The files screen with its guard on, and an upload taken all the way to the
@@ -748,6 +755,167 @@ describe("an upload", () => {
     const events = (await db.select().from(s.event))
       .filter((row) => row.subjectType === "file")
     expect(events).toHaveLength(0)
+  })
+})
+
+/**
+ * A private file fetched from its row: the guard, the name, and a signature the
+ * store honours through the proxy for a few minutes and for nothing else.
+ */
+describe("a private file's download", () => {
+  function download(token: string | null, name: string | null): Request {
+    const headers = new Headers()
+    if (token !== null) headers.set("cookie", sessionCookie(token).split(";")[0] ?? "")
+    const query = name === null ? "" : `?${new URLSearchParams({ name }).toString()}`
+    return new Request(`http://localhost:8080${fileDownloadPath(researchId)}${query}`, { headers })
+  }
+
+  async function signed(token: string, name: string): Promise<URL> {
+    const answer = await fileDownload(download(token, name), researchId)
+    expect(answer.status).toBe(302)
+    return new URL(answer.headers.get("Location") ?? "")
+  }
+
+  it("sends somebody not signed in to sign in, and signs nothing", async () => {
+    await research()
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+    const refusal = await thrown(() => fileDownload(download(null, "a.zip"), researchId))
+
+    expect(refusal.status).toBe(302)
+    expect(refusal.headers.get("Location")).toMatch(/^\/auth\/login\?/)
+  })
+
+  it("is refused to somebody signed in without the capability to manage files", async () => {
+    await research()
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    const token = await signIn(READER, false)
+
+    expect((await thrown(() => fileDownload(download(token, "a.zip"), researchId))).status).toBe(403)
+  })
+
+  it.each([
+    ["no name", null],
+    ["an empty name", ""],
+    ["a name that walks out of the prefix", "../a.zip"],
+    ["a name with a separator", "sub/a.zip"],
+    ["a name that is the prefix's parent", ".."],
+    ["a name with a control character", "a\nb.zip"],
+  ])("refuses %s as a bad request", async (_, name) => {
+    await research()
+    const token = await signIn(CURATOR, true)
+
+    expect((await thrown(() => fileDownload(download(token, name), researchId))).status).toBe(400)
+  })
+
+  it("is not found for a name the private side does not hold, even when the public side does", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}open.zip`)
+
+    expect((await thrown(() => fileDownload(download(token, "missing.zip"), researchId))).status).toBe(404)
+    expect((await thrown(() => fileDownload(download(token, "open.zip"), researchId))).status).toBe(404)
+  })
+
+  it("is not found for a file of another research", async () => {
+    await research(false)
+    const other = researchId
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(other)}theirs.zip`)
+    await research(false)
+    const token = await signIn(CURATOR, true)
+
+    try {
+      expect((await thrown(() => fileDownload(download(token, "theirs.zip"), researchId))).status).toBe(404)
+    } finally {
+      await clearPrefix(PRIVATE_BUCKET, privatePrefix(other))
+    }
+  })
+
+  it("redirects to the private bucket at the site's own origin, for a few minutes, as an attachment", async () => {
+    await research(false)
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}説明 (1).zip`)
+
+    const url = await signed(token, "説明 (1).zip")
+
+    expect(url.origin).toBe("http://localhost:8080")
+    expect(decodeURIComponent(url.pathname)).toBe(`/${PRIVATE_BUCKET}/${researchId}/説明 (1).zip`)
+    expect(Number(url.searchParams.get("X-Amz-Expires"))).toBe(DOWNLOAD_TTL_SECONDS)
+    expect(url.searchParams.get("response-content-disposition"))
+      .toBe("attachment; filename*=UTF-8''%E8%AA%AC%E6%98%8E%20%281%29.zip")
+  })
+
+  it("is kept out of every cache, since the address it sends to is a credential", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+    const answer = await fileDownload(download(token, "a.zip"), researchId)
+
+    expect(answer.headers.get("Cache-Control")).toBe("no-store")
+  })
+
+  it("is served by the store through the proxy, saved under the file's name and never run as a page", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}説明.html`, "<script>1</script>")
+
+    const fetched = await getThroughProxy((await signed(token, "説明.html")).toString())
+
+    expect(fetched.status).toBe(200)
+    expect(fetched.body).toBe("<script>1</script>")
+    expect(fetched.headers["content-disposition"]).toBe("attachment; filename*=UTF-8''%E8%AA%AC%E6%98%8E.html")
+    expect(fetched.headers["content-security-policy"]).toMatch(/^sandbox/)
+    expect(fetched.headers["x-content-type-options"]).toBe("nosniff")
+  })
+
+  it("is refused by the store when the address is not the one that was signed", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+    const url = await signed(token, "a.zip")
+
+    const otherKey = new URL(url)
+    otherKey.pathname = otherKey.pathname.replace(/a\.zip$/, "b.zip")
+    const inline = new URL(url)
+    inline.searchParams.set("response-content-disposition", "inline")
+    const unsigned = new URL(url)
+    unsigned.search = ""
+
+    expect((await getThroughProxy(otherKey.toString())).status).toBe(403)
+    expect((await getThroughProxy(inline.toString())).status).toBe(403)
+    expect((await getThroughProxy(unsigned.toString())).status).toBe(403)
+  })
+
+  it("is refused by the store once the signature has expired", async () => {
+    await research()
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+    const config = loadConfig(process.env)
+    // The same signer the portal uses, dated to before the lifetime ran out.
+    const signer = new S3Client({
+      endpoint: publicOrigin(config.auth),
+      region: "us-east-1",
+      forcePathStyle: true,
+      credentials: { accessKeyId: config.store.accessKeyId, secretAccessKey: config.store.secretAccessKey },
+    })
+    const url = await getSignedUrl(
+      signer,
+      new GetObjectCommand({ Bucket: PRIVATE_BUCKET, Key: `${privatePrefix(researchId)}a.zip` }),
+      { expiresIn: DOWNLOAD_TTL_SECONDS, signingDate: new Date(Date.now() - (DOWNLOAD_TTL_SECONDS + 60) * 1000) },
+    )
+
+    expect((await getThroughProxy(url)).status).toBe(403)
+  })
+
+  it("writes nothing to the trail: reading a file changes nothing anybody can fetch", async () => {
+    await research()
+    const token = await signIn(CURATOR, true)
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+    await signed(token, "a.zip")
+
+    expect((await db.select().from(s.event)).filter((row) => row.subjectType === "file")).toEqual([])
   })
 })
 

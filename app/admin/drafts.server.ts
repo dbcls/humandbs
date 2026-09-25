@@ -26,7 +26,7 @@
 
 import { randomBytes, randomUUID } from "node:crypto"
 
-import { and, eq, sql, type SQL } from "drizzle-orm"
+import { and, asc, eq, sql, type SQL } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
@@ -52,6 +52,7 @@ import {
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { draftDatasets } from "./datasets"
+import { lockResearch } from "./locks.server"
 import type { DroppedValue } from "./templates"
 import { pinLabelsIn, type PinRequest } from "./labels.server"
 
@@ -122,11 +123,17 @@ async function draftExists(executor: Executor, draftId: string): Promise<boolean
 
 /** What a draft holds now, for the writes that add to it before they save it. */
 async function currentContent(tx: Transaction, draftId: string): Promise<ResearchContent | null> {
-  const [draft] = await tx
-    .select({ content: researchDraft.content })
+  const read = () => tx
+    .select({ researchId: researchDraft.researchId, content: researchDraft.content })
     .from(researchDraft)
     .where(eq(researchDraft.id, draftId))
     .limit(1)
+  const [seen] = await read()
+  if (seen === undefined) return null
+  // Every caller goes on to write the draft and rows under the research, so the
+  // research is locked first (`locks.server.ts`) and the draft read again under it.
+  if (!await lockResearch(tx, seen.researchId, "key share")) return null
+  const [draft] = await read()
   return draft?.content ?? null
 }
 
@@ -464,6 +471,7 @@ export async function draftUpdating(
   versionId: string,
 ): Promise<UpdatingOutcome> {
   return db.transaction(async (tx): Promise<UpdatingOutcome> => {
+    if (!await lockResearch(tx, researchId, "key share")) return { status: "gone" }
     const [version] = await tx
       .select({ researchId: researchVersion.researchId, content: researchVersion.content })
       .from(researchVersion)
@@ -933,7 +941,7 @@ export async function mergeTermInDrafts(
   from: string,
   into: string,
 ): Promise<void> {
-  // Held until the merge commits. A save that was writing a row when this read
+  // Held until the merge commits, in id order (`locks.server.ts`). A save that was writing a row when this read
   // it is waited for, and the row is read as that save left it; a save after
   // this is refused by the revision moved here.
   const entries = await db
@@ -943,6 +951,7 @@ export async function mergeTermInDrafts(
     })
     .from(draftDatasetEntry)
     .where(pointing)
+    .orderBy(asc(draftDatasetEntry.id))
     .for("update")
 
   for (const entry of entries) {

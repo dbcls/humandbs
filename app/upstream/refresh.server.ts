@@ -20,6 +20,7 @@ import { and, eq, inArray, isNull, or, sql } from "drizzle-orm"
 import type { Pool } from "pg"
 
 import { isPortalIssuedId } from "~/admin/labels"
+import { lockAllResearches } from "~/admin/locks.server"
 import { loadConfig, type ApplicationDbConfig } from "~/config.server"
 import type { Database, Executor, Transaction } from "~/db/client.server"
 import { accessionDate, cauEntry, humAccession, labelPin, upstreamRefresh } from "~/db/schema"
@@ -93,6 +94,9 @@ export async function runUpstreamRefresh(
 
   const at = new Date()
   await db.transaction(async (tx) => {
+    // Rebuilding the search rows rewrites them for every research, so all
+    // research rows are locked first (`locks.server.ts`).
+    if (written.size > 0) await lockAllResearches(tx, "key share")
     for (const fetched of written.values()) await fetched.write(tx)
     if (written.size > 0) await rebuildSearchDocs(tx)
     for (const outcome of outcomes) await record(tx, outcome, at)
