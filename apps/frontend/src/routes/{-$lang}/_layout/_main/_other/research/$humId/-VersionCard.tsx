@@ -150,7 +150,7 @@ export function VersionCard({
                   value={p.name[lang]?.text}
                 />
                 <KeyValueCard
-                  title={t("Research.fields.dataProvider.fields.organization.fields.name.label")}
+                  title={t("Research.fields.dataProvider.fields.organization.label")}
                   value={p.organization?.name[lang]?.text}
                 />
 

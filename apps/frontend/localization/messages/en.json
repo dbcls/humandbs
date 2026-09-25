@@ -167,7 +167,7 @@
             "label": "Affiliation",
             "fields": {
               "name": {
-                "label": "Name"
+                "label": "Affiliation"
               },
               "address": {
                 "label": "Address",
