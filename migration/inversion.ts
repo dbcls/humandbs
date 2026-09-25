@@ -8,7 +8,7 @@
  * line, or the study an accession's own JGAS resolves to).** The block itself
  * — header and every cell — is identical wherever it is pinned; only which
  * lines belong to which dataset differs, and that is what this module reads
- * back out (`survey/inversion.md`).
+ * back out.
  *
  * This is a generalisation of `ownLines`/`kept` in `build.ts`, which already
  * splits the `ID:` form by checking every dataset's own experiments against
@@ -28,8 +28,8 @@
  * on its own line followed by that one dataset's accession, repeated once per
  * dataset. This module tracks what a line has, not where it sits, so such a
  * pairing is invisible to it. `hum0014`'s master accession list is built
- * exactly this way and needs the individual review `survey/inversion.md`
- * already calls for, not a general rule.
+ * exactly this way, so its cells are divided by hand rather than by a
+ * general rule.
  */
 
 export type Language = "ja" | "en"
@@ -300,9 +300,9 @@ function handSplit(
  *
  * Every key and every language is decided on its own: `ja` may split cleanly
  * while `en` needs a reviewer, and the result holds whichever each cell
- * reached. A block that never identifies any of its own datasets — 2 節 of
- * `survey/inversion.md`'s "素直な共有" — needs no special case: every one of
- * its cells comes back `shared`, which is a plain copy already.
+ * reached. A block that never identifies any of its own datasets — one that
+ * is simply shared — needs no special case: every one of its cells comes back
+ * `shared`, which is a plain copy already.
  */
 export function splitSharedBlock(
   data: BlockData,

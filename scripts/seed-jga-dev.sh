@@ -7,17 +7,17 @@
 # SQL が prod で通るかは staging / prod の integration test が見る。
 #
 # **schema を手で書かない。** DDL は prod から取った列定義の生ダンプから機械
-# 生成したもので、view の定義は prod の `pg_views` そのまま。元データは repo の外
-# (`$JGA_DIR`) にあり、取り直しは `$JGA_DIR/dump.sh` が踏み台経由で行う。
+# 生成したもので、view の定義は prod の `pg_views` そのまま。元データは git に入らない
+# `$JGA_DIR` にあり、取り直しは `$JGA_DIR/dump.sh` が踏み台経由で行う。
 #
 #   docker compose up -d db
 #   scripts/seed-jga-dev.sh
 #
 set -euo pipefail
 
-JGA_DIR=${JGA_DIR:-"$HOME/git/github.com/dbcls/humandbs/.claude/jga-db"}
-DATA="$JGA_DIR/data"
 cd "$(dirname "$0")/.."
+JGA_DIR=${JGA_DIR:-"$PWD/.claude/docs/jga-db"}
+DATA="$JGA_DIR/data"
 
 [ -f "$JGA_DIR/jgasys-dev.sql" ] || { echo "no DDL at $JGA_DIR/jgasys-dev.sql" >&2; exit 1; }
 
