@@ -302,6 +302,26 @@ describe("rebuildSearchDocs", () => {
     expect(version.textJa).toContain("JGAD000001")
   })
 
+  it("puts a secondary ID into the text of its dataset and of its research, in both languages", async () => {
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "NHA000001")
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "hum0001.v1.freq.v1", datasetId, isPrimary: false })
+    await db.insert(s.labelPin).values({ kind: "hum", label: "hun0001", researchId, isPrimary: false })
+    await publish(researchId, 1, [datasetId])
+
+    await rebuildSearchDocs(db)
+
+    const texts = await db
+      .select({ targetType: s.searchDoc.targetType, ja: s.searchDoc.textJa, en: s.searchDoc.textEn, label: s.searchDoc.datasetLabel })
+      .from(s.searchDoc)
+    const dataset = only(texts.filter((row) => row.targetType === "dataset"))
+    const study = only(texts.filter((row) => row.targetType === "research"))
+    expect(dataset.label).toBe("NHA000001")
+    for (const text of [dataset.ja, dataset.en, study.ja, study.en]) expect(text).toContain("hum0001.v1.freq.v1")
+    expect(study.ja).toContain("hun0001")
+    expect(dataset.ja).not.toContain("hun0001")
+  })
+
   it("reads every value into the text and counts the typed ones as facets", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)

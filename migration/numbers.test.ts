@@ -32,6 +32,13 @@ describe("reading a number out of a v1 cell", () => {
     ])
   })
 
+  it("leaves out the markup v1's text kept at the end of a line", () => {
+    expect(rows("日本人集団: 8,858,017 variants<br />\nヨーロッパ人集団: 10,000 variants<br />&nbsp;&nbsp;", variants).got).toEqual([
+      { label: "日本人集団", value: 8858017, unit: "variants", high: null, note: null },
+      { label: "ヨーロッパ人集団", value: 10000, unit: "variants", high: null, note: null },
+    ])
+  })
+
   it("reads a line with no label as a number and nothing else", () => {
     expect(rows("1.32 TB", volume).got).toEqual([
       { label: null, value: 1.32, unit: "TB", high: null, note: null },

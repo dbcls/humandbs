@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { datasetKey, type Dump, type EsDataset, type EsExperiment } from "./es"
 import {
   applyKeyRules,
+  dropDatasets,
   dropResearch,
   mergeDumps,
   restoreDatasets,
@@ -55,6 +56,34 @@ describe("applyKeyRules", () => {
     applyKeyRules(e, new Map<string, KeyRule>([["MAG Construction", { action: "merge-into", to: "Analysis Methods" }]]))
 
     expect(e.data?.["Analysis Methods"]?.ja?.text).toBe("fastp\nMetaBAT2")
+  })
+})
+
+describe("dropDatasets", () => {
+  it("removes the datasets and every version's and publication's reference to them, keeping the latest version the same object", () => {
+    const one = { humId: "hum0014", humVersionId: "hum0014-v1", version: "v1",
+      datasets: [{ datasetId: "JGAD000460", version: "v1" }, { datasetId: "JGAD000461", version: "v1" }],
+      relatedPublication: [{ title: { en: "P" }, datasetIds: ["JGAD000460", "JGAD000461"] }] }
+    const held: Dump = {
+      research: new Map([["hum0014", { humId: "hum0014", latestVersion: "v1" }]]),
+      publishedVersions: [one],
+      latestVersion: new Map([["hum0014", one]]),
+      datasetsByKey: new Map([dataset("JGAD000460", [], "hum0014"), dataset("JGAD000461", [], "hum0014")].map((d) => [datasetKey(d.datasetId, d.version), d])),
+      versions: [one],
+    }
+    const left = dropDatasets(held, ["JGAD000461"])
+
+    expect([...left.datasetsByKey.keys()]).toEqual(["JGAD000460@v1"])
+    expect(left.publishedVersions[0]?.datasets).toEqual([{ datasetId: "JGAD000460", version: "v1" }])
+    expect(left.publishedVersions[0]?.relatedPublication?.[0]?.datasetIds).toEqual(["JGAD000460"])
+    expect(left.latestVersion.get("hum0014")).toBe(left.publishedVersions[0])
+    expect(left.versions[0]).toBe(left.publishedVersions[0])
+  })
+
+  it("leaves a dump without the datasets as it was", () => {
+    const held = dump(["hum0001"], [dataset("JGAD000001", [])])
+
+    expect(dropDatasets(held, ["JGAD999999"]).datasetsByKey).toEqual(held.datasetsByKey)
   })
 })
 

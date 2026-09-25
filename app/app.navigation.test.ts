@@ -131,3 +131,35 @@ describe("a link that leaves the site", () => {
     }
   })
 })
+
+/**
+ * **Only a link to a page or a file shows that it has been visited, and only on
+ * the public site** (`app.css`). A control that changes what the screen shows —
+ * an ordering, a page size, a menu — turned purple once pressed when every link
+ * inherited the visited colour, so the colour is opted into by the links that
+ * lead somewhere, and a management screen has none.
+ */
+describe("訪問済みのリンクの色", () => {
+  const read = async (file: string) => readFile(path.join(import.meta.dirname, file), "utf8")
+
+  it("どのリンクにも付く規則には無く、visitable の class を付けたリンクと記事の本文のリンクにだけ、公開サイトの中でだけ付く", async () => {
+    const css = await read("app.css")
+    const base = /\n {2}a \{\n([^}]*)\}/.exec(css)?.[1] ?? ""
+    expect(base).toContain("text-brand")
+    expect(base).not.toContain("visited")
+    expect(css).toContain(`[data-area="site"] :is(.visitable, .markdown a):visited { @apply text-visited; }`)
+    expect(css.match(/visited:text-visited|:visited/g)).toHaveLength(1)
+  })
+
+  it("管理画面かどうかを body が持つ", async () => {
+    expect(await read("root.tsx")).toContain(`data-area={managing ? "admin" : "site"}`)
+  })
+
+  it("visitable の class は行き先へのリンクにだけ付き、並び替え・表示件数・メニューには付かない", async () => {
+    const marked = ["components/page.tsx", "components/files.tsx", "components/site.tsx"]
+    for (const file of marked) expect(await read(file)).toContain(`"visitable`)
+    for (const file of ["components/search.tsx", "components/base.tsx", "components/layout.tsx"]) {
+      expect(await read(file)).not.toContain("visitable")
+    }
+  })
+})

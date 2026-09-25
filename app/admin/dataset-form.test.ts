@@ -40,6 +40,36 @@ function form(produce: (input: DatasetContentInput) => void = () => undefined): 
 }
 
 describe("reading a dataset back off the form", () => {
+  it("names a term once however many times the form sent it, for a vocabulary and for a disease", () => {
+    const content = datasetContentOf(form((input) => {
+      input.values = [{
+        keyId: "access-criteria",
+        value: { kind: "vocabulary", state: "value", termIds: ["term-a", "term-b", "term-a"] },
+      }]
+      input.experiments = [{
+        id: "exp-1",
+        label: { state: "value", text: "WES" },
+        values: [{
+          keyId: "disease",
+          value: {
+            kind: "disease",
+            state: "value",
+            diseases: [{ termIds: ["c18", "c71", "c18", "c18"], nameJa: "結腸がん", nameEn: "" }],
+          },
+        }],
+      }]
+    }), UNITS)
+
+    expect(content.values[0]?.value).toEqual({
+      kind: "vocabulary",
+      termIds: { state: "value", value: ["term-a", "term-b"] },
+    })
+    expect(content.experiments[0]?.values[0]?.value).toEqual({
+      kind: "disease",
+      diseases: { state: "value", value: [{ termIds: ["c18", "c71"], nameJa: "結腸がん", nameEn: null }] },
+    })
+  })
+
   it("keeps markup the tree cannot hold as the characters typed, against the key and language it was written in", () => {
     const content = datasetContentOf(form((input) => {
       input.values = [text("type-of-data", "ふつうの文", "| a | b |\n| - | - |\n| 1 | 2 |")]

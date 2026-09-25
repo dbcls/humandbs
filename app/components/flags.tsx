@@ -35,6 +35,8 @@ export const FLAG = {
   shared: { tone: "accent", icon: "link" },
   /** Seen by readers once its date comes. */
   scheduled: { tone: "accent", icon: "clock" },
+  /** Past the period it was to be seen in: an alert still switched on after its end. */
+  ended: { tone: "muted", icon: "calendar-x" },
   /** What publishing refuses, or a job that failed. */
   stops: { tone: "danger", icon: "alert" },
   /** A shortcoming: an id not issued, a value unsettled or untranslated, what publishing asks the curator to confirm. */

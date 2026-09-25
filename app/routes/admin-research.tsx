@@ -1,5 +1,6 @@
 import { data, Form } from "react-router"
 
+import { draftNameShown } from "~/admin/draft-name"
 import { HUM_LABEL_PATTERN, unpinHold, type UnpinHold } from "~/admin/labels"
 import type { AdminDraftReviewRow, AdminResearchVersionRow } from "~/admin/pages.server"
 import { researchDetailAction, researchDetailPage } from "~/admin/pages.server"
@@ -295,9 +296,11 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
 }
 
 /**
- * A draft: when it was last written to, what its steps say, and the four
- * things done to one. **A draft is a draft** — it does not show which version
- * it came from, because it does not know.
+ * A draft: what it is called, when it was last written to, and the four things
+ * done to one. **The name is in the version column**, where a version's number
+ * is: it is what the admins call the draft, which is often the version it is
+ * meant to become (`plannedDraftName`) — but it is only a name, and the
+ * draft does not know which version it came from.
  *
  * **Its dataset count is the link to the dataset listing**; the review and the
  * publish confirmation are offered as things to press (`DraftLinks`), since
@@ -321,7 +324,7 @@ function DraftRow({ draft, review, researchId, locale }: {
       <Td nowrap>
         <Stated kind="changed">{t.draft}</Stated>
       </Td>
-      <Td />
+      <Td>{draftNameShown(draft.name, locale)}</Td>
       <Td nowrap>{minuteInJst(draft.updatedAt)}</Td>
       <Td />
       <Td>

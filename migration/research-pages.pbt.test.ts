@@ -47,19 +47,23 @@ const lineArb = fc.tuple(
   fc.constantFrom("", "<strong>目的：</strong>", "- ", "・ "),
   fc.array(fc.constantFrom("がん", "（", "）", "(", ")", "：", "Exome", " ", "、", "’", "5"), { minLength: 1, maxLength: 6 }).map((pieces) => pieces.join("")),
   fc.boolean(),
-).map(([head, text, linked]) => `<p>${head}${linked ? `<a href="https://example.org/">${text}</a>` : text}</p>`)
+).map(([head, text, linked]) =>
+  // A link with no text shows its address instead (`richtext-html.ts`), which is not what this models.
+  `<p>${head}${linked && text.trim() !== "" ? `<a href="https://example.org/">${text}</a>` : text}</p>`)
 
 describe("researchPages passages", () => {
   it("gives stretches with exactly the words asked for", () => {
     fc.assert(fc.property(fc.array(lineArb, { minLength: 1, maxLength: 5 }), fc.nat(), fc.nat(), (lines, from, length) => {
       const pages = researchPages([{ site: "prod", articles: [{ title: "hum0001.v1", catid: 10, state: 1, introtext: lines.join("") }] }])
-      const words = sameWords(lines.join("").replace(/<\/?(?:strong|a)[^>]*>/g, "").replace(/<[^>]*>/g, "\n").replace(/^\s*[-・]\s+/gm, ""))
+      // A page's line as the words read it: trimmed, without the bullet typed before its text.
+      const shown = (line: string) => line.trim().replace(/^[-・]\s+/, "")
+      const words = sameWords(lines.map((line) => shown(line.replace(/<[^>]*>/g, ""))).join("\n"))
       const start = from % Math.max(words.length, 1)
       const asked = words.slice(start, start + 1 + (length % 8))
       const found = [...pages.passages("hum0001", "ja", asked, { version: 1, site: "prod" })]
       expect(found.length > 0).toBe(asked !== "")
       for (const one of found) {
-        const text = one.map((line) => line.map((span) => span.text).join("")).join("\n").replace(/^\s*[-・]\s+/gm, "")
+        const text = one.map((line) => shown(line.map((span) => span.text).join(""))).join("\n")
         expect(sameWords(text)).toBe(sameWords(asked))
       }
     }))

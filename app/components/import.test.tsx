@@ -73,8 +73,9 @@ describe("取り込み元の表", () => {
   /** Two versions, and this draft plus another as drafts unless an update merges one into a version. */
   function table({ v1 = null, v2 = null, drafts = [HERE, OTHER] }: { v1?: Update, v2?: Update, drafts?: string[] } = {}): string {
     const times: Record<string, string> = { [OTHER]: "2026-09-24T05:42:00Z", [HERE]: "2026-09-24T04:25:00Z" }
+    const names: Record<string, string> = { [OTHER]: "v3 予定", [HERE]: "" }
     const rows: ImportSourceRow[] = [
-      ...drafts.map((id) => ({ kind: "draft" as const, id, updatedAt: times[id] ?? "" })),
+      ...drafts.map((id) => ({ kind: "draft" as const, id, name: names[id] ?? "", updatedAt: times[id] ?? "" })),
       { kind: "version" as const, number: 2, updatedAt: "2026-09-23T14:07:00Z", releaseDate: "2025-01-01", update: v2 },
       { kind: "version" as const, number: 1, updatedAt: "2026-09-23T14:07:00Z", releaseDate: "2024-11-25", update: v1 },
     ]
@@ -89,6 +90,12 @@ describe("取り込み元の表", () => {
     return html.slice(html.lastIndexOf("<tr", at), html.indexOf("</tr>", at))
   }
   const disabledCount = (html: string): number => html.match(/disabled=""/g)?.length ?? 0
+
+  it("下書きの行はバージョンの列にその名前を示し、名前の無い下書きはそう示す", () => {
+    const html = table()
+    expect(rowOf(html, "2026-09-24 14:42")).toContain("v3 予定")
+    expect(rowOf(html, "2026-09-24 13:25")).toContain("名前未入力")
+  })
 
   it("取り込み先のこの下書きは表に載り、「この下書き」と表示され、押せない見た目で理由を示す", () => {
     const html = table()
@@ -168,12 +175,15 @@ describe("取り込みの画面の一覧 (提供者など)", () => {
 })
 
 describe("取り込み元の名前", () => {
-  const minute = (at: string): string => at.slice(0, 16).replace("T", " ")
-
-  it("下書きは更新日時で、バージョンを更新している下書きはそのバージョンで示す — 表の行と同じ", () => {
-    expect(sourceName({ kind: "draft", id: "d", updatedAt: "2026-09-24T04:25", updating: null }, "ja", minute))
-      .toBe("下書き (2026-09-24 04:25)")
-    expect(sourceName({ kind: "draft", id: "d", updatedAt: "2026-09-24T04:25", updating: 4 }, "ja", minute))
+  it("下書きはその名前で、バージョンを更新している下書きはそのバージョンで示す — 表の行と同じ", () => {
+    expect(sourceName({ kind: "draft", id: "d", name: "v3 予定", updatedAt: "2026-09-24T04:25", updating: null }, "ja"))
+      .toBe("下書き「v3 予定」")
+    expect(sourceName({ kind: "draft", id: "d", name: "", updatedAt: "2026-09-24T04:25", updating: 4 }, "ja"))
       .toBe("v4 (更新中)")
+  })
+
+  it("名前の無い下書きは、名前が無いことを示す", () => {
+    expect(sourceName({ kind: "draft", id: "d", name: "", updatedAt: "2026-09-24T04:25", updating: null }, "ja"))
+      .toBe("下書き「名前未入力」")
   })
 })

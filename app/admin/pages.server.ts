@@ -74,10 +74,12 @@ import {
   discardDraft,
   draftCopiedFrom,
   draftUpdating,
+  renameDraft,
   saveDatasetEntry,
   saveDraftContent,
   type ListingChange,
 } from "./drafts.server"
+import { draftNameOf } from "./draft-name"
 import { draftDatasets } from "./datasets"
 import { researchContentInput, type DraftInput } from "./form"
 import { researchContentOf, saveDraftSchema } from "./form.server"
@@ -491,6 +493,8 @@ export interface AdminDraftPageView {
   researchId: string
   draftId: string
   humLabel: string | null
+  /** What admins call the draft; null for an update, which is called by its version. */
+  draftName: string | null
   revision: number
   input: DraftInput
   datasets: ResearchDatasetRow[]
@@ -570,6 +574,7 @@ export async function draftEditorPage(
     researchId,
     draftId,
     humLabel,
+    draftName: draft.updating === null ? draft.name : null,
     revision: draft.revision,
     input,
     datasets,
@@ -592,6 +597,8 @@ export interface DraftDatasetListView {
   researchId: string
   draftId: string
   humLabel: string | null
+  /** What admins call the draft; null for an update, which is called by its version. */
+  draftName: string | null
   /** The draft's revision, which every change to the listing moves. */
   revision: number
   /**
@@ -626,6 +633,7 @@ export async function draftDatasetListPage(
     researchId,
     draftId,
     humLabel,
+    draftName: draft.updating === null ? draft.name : null,
     revision: draft.revision,
     rows: rows.map((row) => ({ ...row, edited: changed.has(row.id), shown: shown.get(row.id) ?? null })),
     updating: draft.updating?.number ?? null,
@@ -1227,6 +1235,8 @@ export interface PublishPageView {
   researchId: string
   draftId: string
   humLabel: string | null
+  /** What admins call the draft; null for an update, which is called by its version. */
+  draftName: string | null
   revision: number
   /** The number offered first: one past the highest a version holds. */
   nextNumber: number
@@ -1297,6 +1307,7 @@ export async function publishPage(
     researchId,
     draftId,
     humLabel: preview.humLabel,
+    draftName: draft.updating === null ? draft.name : null,
     revision: preview.revision,
     nextNumber: preview.nextNumber,
     heldNumbers: preview.heldNumbers,
@@ -1556,6 +1567,29 @@ export type SaveResult
       revision: number
       current: DraftInput
     }
+
+/** How renaming a draft went: done, or refused for a name with nothing in it. */
+export type RenameResult = { status: "renamed" } | { status: "unnamed" }
+
+/**
+ * Renaming a draft from its editing screen. **A name with nothing in it is
+ * refused and the name kept**: the draft is told apart from the others by it.
+ * An update has no name to change, and is answered as not found.
+ */
+export async function renameDraftAction(
+  request: Request,
+  params: { researchId: string | undefined, draftId: string | undefined },
+): Promise<RenameResult> {
+  const { db, draftId, draft } = await draftOf(request, params)
+  if (draft.updating !== null) notFound()
+  const form = await request.formData()
+  const typed = form.get("name")
+  const name = draftNameOf(typeof typed === "string" ? typed : "")
+  if (name === null) return { status: "unnamed" }
+  const outcome = await renameDraft(db, draftId, name)
+  if (outcome.status === "gone") notFound()
+  return { status: "renamed" }
+}
 
 export async function saveDraftAction(
   request: Request,

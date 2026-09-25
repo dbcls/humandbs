@@ -138,9 +138,10 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           <KeyValue title={t.dateModified}>{view.dateModified}</KeyValue>
         )}
         {/*
-          **Last, because it is the one that may not be there.** Two datasets in
-          three have a study; a slot that comes and goes from the middle would
-          move everything under it as the reader moves between them.
+          **Last, because they are the ones that may not be there.** Two
+          datasets in three have a study, and fewer still an id they were known
+          by before; a slot that comes and goes from the middle would move
+          everything under it as the reader moves between them.
         */}
         {view.studyAccession !== null && (
           <KeyValue title={t.jgaStudy}>
@@ -148,6 +149,11 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
               {view.studyAccession}
             </ExternalLink>
           </KeyValue>
+        )}
+        {/* The ids an old paper or an old address names, so a reader who came
+            by one sees it is this dataset. Not links: each leads here. */}
+        {view.secondaryLabels.length > 0 && (
+          <KeyValue title={t.secondaryIds}>{view.secondaryLabels.join(", ")}</KeyValue>
         )}
       </Pairs>
 

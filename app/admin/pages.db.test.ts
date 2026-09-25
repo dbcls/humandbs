@@ -30,6 +30,7 @@ import {
   researchDetailPage,
   researchListPage,
   saveDatasetAction,
+  renameDraftAction,
   saveDraftAction,
   versionDatasetListPage,
 } from "./pages.server"
@@ -338,6 +339,43 @@ describe("opening a draft", () => {
     const view = await draftEditorPage(get(token, "/x"), "ja", { researchId, draftId })
 
     expect(view.datasets.map((row) => row.id)).toEqual([mine.id])
+  })
+})
+
+describe("renaming a draft", () => {
+  it("takes the name with the spaces around it dropped, and shows it beside the research", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+
+    const result = await renameDraftAction(postForm(token, "/x", { name: "  図の差し替え  " }), { researchId, draftId })
+
+    expect(result).toEqual({ status: "renamed" })
+    const view = await draftEditorPage(get(token, "/x"), "ja", { researchId, draftId })
+    expect(view.draftName).toBe("図の差し替え")
+  })
+
+  it("keeps the name when the one sent has nothing in it", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+
+    for (const name of ["", "   ", "\t\n"]) {
+      expect(await renameDraftAction(postForm(token, "/x", { name }), { researchId, draftId })).toEqual({ status: "unnamed" })
+    }
+    expect((await readDraft(db, draftId))?.name).toBe("v1 予定")
+  })
+
+  it("answers not found for a draft of another research, and leaves its name", async () => {
+    const token = await signIn(CURATOR, true)
+    const mine = await createResearchWithDraft(db)
+    const theirs = await createResearchWithDraft(db)
+
+    const response = await thrown(() => renameDraftAction(
+      postForm(token, "/x", { name: "乗っ取り" }),
+      { researchId: mine.researchId, draftId: theirs.draftId },
+    ))
+
+    expect(response.status).toBe(404)
+    expect((await readDraft(db, theirs.draftId))?.name).toBe("v1 予定")
   })
 })
 

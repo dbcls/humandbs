@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Form, Link } from "react-router"
 
+import { draftAside } from "~/admin/draft-name"
 import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import type { PublishBlockView, PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
 import { adminDraftDatasetPath, adminDraftPath, adminDraftReviewPath, adminResearchPath, draftCommentsPath } from "~/admin/urls"
@@ -76,7 +77,7 @@ export function PublishConfirmation({ view, result }: {
         <Stack gap="block">
           <Heading
             title={view.updating === null ? t.heading : t.updateHeading}
-            aside={view.humLabel ?? undefined}
+            aside={draftAside(view.humLabel ?? undefined, view.draftName, locale)}
           >
             <AdminBack
               to={href(locale, adminResearchPath(view.researchId))}

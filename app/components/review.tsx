@@ -14,6 +14,7 @@ import {
   adminDraftReviewPath,
   adminResearchPath,
 } from "~/admin/urls"
+import { draftAside } from "~/admin/draft-name"
 import { minuteInJst } from "~/dates"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -91,7 +92,7 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
     <Page>
       <Card under={false}>
         <Stack gap="block">
-          <Heading title={t.heading} aside={view.humLabel ?? undefined}>
+          <Heading title={t.heading} aside={draftAside(view.humLabel ?? undefined, view.draftName, locale)}>
             <AdminBack
               to={href(locale, adminResearchPath(view.researchId))}
               label={editor.backToResearch}

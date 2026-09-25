@@ -3,15 +3,16 @@ import { Form } from "react-router"
 import { newsAction, newsPage } from "~/admin/contents.server"
 import { adminNewsListPath } from "~/admin/urls"
 import { Confirm, Stack } from "~/components/base"
-import { contentsSaid, useArticlePanes } from "~/components/contents"
+import { contentsSaid, PublicPageButtons, useArticlePanes } from "~/components/contents"
 import { DraftHead } from "~/components/draft-tools"
 import { Answer, Editing, Field, Submit, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Page, Section } from "~/components/page"
 import { asLocalInput, dayOf, minuteOf } from "~/dates"
+import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
-import { href } from "~/public/urls"
+import { href, newsItemPath } from "~/public/urls"
 
 import type { Route } from "./+types/admin-news-item"
 
@@ -97,6 +98,10 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
       </Stack>
     </Section>
   )
+  const closedReason = (language: Locale): string | null => {
+    if (editors.find((editor) => editor.locale === language)?.published !== true) return t.publicPageUnpublished
+    return scheduled ? t.publicPageScheduled : null
+  }
   const panes = useArticlePanes({
     locale,
     remember: `news:${id}`,
@@ -120,20 +125,28 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
           updating={null}
           back={{ to: href(locale, adminNewsListPath()), label: t.news.backToList, icon: "chevron-left" }}
           headExtra={(
-            // **What takes the whole announcement away is shown beside its
-            // name**, next to the back link, rather than among the languages:
-            // an announcement is made before anything is written into it,
-            // and a control placed on the last written language is out
-            // of reach exactly when there is nothing to keep.
-            <Form method="post">
-              <Confirm
-                label={t.news.remove}
-                title={t.news.removeTitle}
-                warning={t.news.removeWarning}
-                confirm={t.news.removeConfirm}
-                intent="delete-news"
+            <>
+              {/* A language is on the public side once it is published and its date has come. */}
+              <PublicPageButtons
+                locale={locale}
+                path={newsItemPath(id)}
+                closed={{ ja: closedReason("ja"), en: closedReason("en") }}
               />
-            </Form>
+              {/* **What takes the whole announcement away is shown beside its
+                  name**, next to the back link, rather than among the languages:
+                  an announcement is made before anything is written into it,
+                  and a control placed on the last written language is out
+                  of reach exactly when there is nothing to keep. */}
+              <Form method="post">
+                <Confirm
+                  label={t.news.remove}
+                  title={t.news.removeTitle}
+                  warning={t.news.removeWarning}
+                  confirm={t.news.removeConfirm}
+                  intent="delete-news"
+                />
+              </Form>
+            </>
           )}
           overview={dating}
           tools={panes.tools}

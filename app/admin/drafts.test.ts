@@ -80,9 +80,10 @@ describe("writing to a draft", () => {
       .map((match) => match[1] ?? "")
 
     // Six of these create a row (or find the one already made), which has no
-    // earlier version of itself to disagree with. Two are not content: the share
-    // settings, where the last press winning is the answer and a check would
-    // make flipping the switch fail every open editor's next save.
+    // earlier version of itself to disagree with. Three are not content: the
+    // share settings and the name, where the last press winning is the answer
+    // and a check would make flipping the switch fail every open editor's next
+    // save.
     //
     // The last one changes content with nothing to check against: a merge is
     // aimed at a vocabulary value rather than at a draft, so no row is one
@@ -98,6 +99,7 @@ describe("writing to a draft", () => {
         "draftUpdating",
         "draftFromVersion",
         "setDraftSharing",
+        "renameDraft",
         "reissueShareToken",
         "mergeTermInDrafts",
       ])

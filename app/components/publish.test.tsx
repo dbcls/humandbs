@@ -21,6 +21,7 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     researchId: "00000000-0000-0000-0000-000000000001",
     draftId: "00000000-0000-0000-0000-000000000002",
     humLabel: "hum0001",
+    draftName: "v2 予定",
     revision: 3,
     nextNumber: 2,
     nextNhaId: null,

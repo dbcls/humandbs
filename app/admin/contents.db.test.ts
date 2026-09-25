@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { grantAdmin } from "~/auth/admins.server"
@@ -901,6 +901,71 @@ describe("アラート", () => {
     expect(events.map((row) => row.action))
       .toEqual(["publish-site-content", "unpublish-site-content"])
     expect(only(await db.select().from(s.alert)).active).toBe(false)
+  })
+
+  it("表示期間は保存でも表示の切り替えでも書かれ、空の入力欄は端が無いことになる", async () => {
+    const token = await signIn(CURATOR, true)
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "notice",
+      displayFrom: "2026-10-01T09:00", displayUntil: "2026-10-02T18:30",
+    }))
+    expect(only(await db.select().from(s.alert))).toMatchObject({
+      displayFrom: "2026-10-01 09:00:00", displayUntil: "2026-10-02 18:30:00", active: false,
+    })
+
+    await alertAction(post(token, adminAlertPath(), {
+      intent: "show-alert", alertId: alert.id, ja: "お知らせ", en: "notice", displayFrom: "", displayUntil: "2026-10-03T00:00",
+    }))
+    expect(only(await db.select().from(s.alert))).toMatchObject({
+      displayFrom: null, displayUntil: "2026-10-03 00:00:00", active: true,
+    })
+  })
+
+  it("終了が開始と同じか前の期間は保存せず、何も変えない", async () => {
+    const token = await signIn(CURATOR, true)
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+
+    for (const displayUntil of ["2026-10-01T09:00", "2026-09-30T23:59"]) {
+      const result = await alertAction(post(token, adminAlertPath(), {
+        intent: "show-alert", alertId: alert.id, ja: "お知らせ", en: "notice",
+        displayFrom: "2026-10-01T09:00", displayUntil,
+      }))
+      expect(result.status).toBe("period-reversed")
+    }
+    expect(only(await db.select().from(s.alert))).toMatchObject({ displayFrom: null, displayUntil: null, active: false })
+  })
+
+  it("入力欄が送れない形の日時は、フォームを回り込んだものとして扱う", async () => {
+    const token = await signIn(CURATOR, true)
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const alert = only(await db.select().from(s.alert))
+
+    for (const displayFrom of ["2026-02-31T09:00", "tomorrow", "2026-10-01 09:00:00"]) {
+      const result = await alertAction(post(token, adminAlertPath(), {
+        intent: "update-alert", alertId: alert.id, ja: "お知らせ", en: "notice", displayFrom,
+      }))
+      expect(result.status).toBe("unknown-target")
+    }
+  })
+
+  it("一覧の状態は、表示中のものを期間の前・中・後に分ける", async () => {
+    const token = await signIn(CURATOR, true)
+    const jst = (by: string) => sql`(now() at time zone 'Asia/Tokyo') + ${by}::interval`
+    await db.insert(s.alert).values([
+      { content: { body: { ja: "前", en: "a" } }, active: true, displayFrom: jst("1 hour") },
+      { content: { body: { ja: "中", en: "b" } }, active: true, displayFrom: jst("-1 hour"), displayUntil: jst("1 hour") },
+      { content: { body: { ja: "後", en: "c" } }, active: true, displayUntil: jst("-1 hour") },
+      { content: { body: { ja: "端なし", en: "d" } }, active: true },
+    ])
+
+    const rows = (await alertsPage(get(token, adminAlertPath()))).alerts
+    expect(rows.map((row) => [row.ja, row.period])).toEqual([
+      ["前", "ahead"], ["中", "within"], ["後", "over"], ["端なし", "within"],
+    ])
   })
 
   it("片方の言語しか無いアラートは表示できない", async () => {

@@ -106,6 +106,7 @@ export type ContentsProblem
     | "duplicate-slug"
     | "missing-title"
     | "missing-translation"
+    | "period-reversed"
     | "stale"
     | "in-use"
     | "not-a-revision"
@@ -156,9 +157,16 @@ export interface AlertRow {
    * holds for it, so it has a day as well.
    */
   shownAt: string | null
+  /** The period it is seen in, as JST wall clocks (`news.publishedAt`); null is no end on that side. */
+  displayFrom: string | null
+  displayUntil: string | null
+  /** Where now falls against the period: before its start, within it, or at or past its end. */
+  period: AlertPeriod
   ja: string
   en: string
 }
+
+export type AlertPeriod = "ahead" | "within" | "over"
 
 export interface ContentsView extends ListingPage<TreeEntry> {
   locale: Locale
@@ -453,7 +461,16 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
     .groupBy(event.subjectId)
     .as("last_shown")
   const alerts = await getDb()
-    .select({ id: alert.id, active: alert.active, content: alert.content, shownDay: lastShown.day })
+    .select({
+      id: alert.id,
+      active: alert.active,
+      content: alert.content,
+      shownDay: lastShown.day,
+      displayFrom: alert.displayFrom,
+      displayUntil: alert.displayUntil,
+      ahead: sql<boolean>`coalesce(${alert.displayFrom} > (now() at time zone 'Asia/Tokyo'), false)`,
+      over: sql<boolean>`coalesce(${alert.displayUntil} <= (now() at time zone 'Asia/Tokyo'), false)`,
+    })
     .from(alert)
     // The trail names its subject as text, whatever the subject's own key is.
     .leftJoin(lastShown, sql`${lastShown.subjectId} = ${alert.id}::text`)
@@ -470,6 +487,9 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
       id: row.id,
       active: row.active,
       shownAt: row.active ? row.shownDay : null,
+      displayFrom: row.displayFrom,
+      displayUntil: row.displayUntil,
+      period: row.ahead ? "ahead" : row.over ? "over" : "within",
       ja: row.content.body.ja,
       en: row.content.body.en,
     })),
@@ -979,9 +999,23 @@ async function updateAlert(
   // be written a language at a time while it is off.
   if (active && (ja === "" || en === "")) return { status: "missing-translation" }
 
+  // **Either end may be left empty**, and an empty box is no end on that side.
+  // A value the box could not have sent is a form that was gone around.
+  const from = text(form, "displayFrom")
+  const until = text(form, "displayUntil")
+  const displayFrom = from === "" ? null : stampFromLocalInput(from)
+  const displayUntil = until === "" ? null : stampFromLocalInput(until)
+  if ((from !== "" && displayFrom === null) || (until !== "" && displayUntil === null)) {
+    return { status: "unknown-target" }
+  }
+  // The stamps are one fixed-width shape, so their order is the text's.
+  if (displayFrom !== null && displayUntil !== null && displayFrom >= displayUntil) {
+    return { status: "period-reversed" }
+  }
+
   await tx
     .update(alert)
-    .set({ content: { body: { ja, en } }, active, updatedAt: sql`now()` })
+    .set({ content: { body: { ja, en } }, active, displayFrom, displayUntil, updatedAt: sql`now()` })
     .where(eq(alert.id, before.id))
   if (active !== before.active) {
     await recordEvent(tx, {

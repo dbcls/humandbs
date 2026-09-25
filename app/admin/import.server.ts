@@ -54,7 +54,7 @@ import { adminDraftPath } from "./urls"
  * So every draft row is a draft that updates nothing.
  */
 export type ImportSourceRow
-  = | { kind: "draft", id: string, updatedAt: string }
+  = | { kind: "draft", id: string, name: string, updatedAt: string }
     | {
       kind: "version"
       number: number
@@ -66,7 +66,7 @@ export type ImportSourceRow
 export type ImportSource
   = | { kind: "version", number: number }
     /** A draft, or — where it updates a version — the update, named by that version (`ImportSourceRow`). */
-    | { kind: "draft", id: string, updatedAt: string, updating: number | null }
+    | { kind: "draft", id: string, name: string, updatedAt: string, updating: number | null }
     | { kind: "application", applicationId: string, branch: UpstreamBranchView, choice: UpstreamChoiceView }
 
 export interface ImportView {
@@ -151,7 +151,7 @@ export async function importPage(
 
   const rows: ImportSourceRow[] = [
     ...research.drafts
-      .map((row) => ({ kind: "draft" as const, id: row.id, updatedAt: row.updatedAt }))
+      .map((row) => ({ kind: "draft" as const, id: row.id, name: row.name, updatedAt: row.updatedAt }))
       .toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     ...research.versions.map((version) => ({
       kind: "version" as const,
@@ -217,7 +217,7 @@ export async function importPage(
     const updatedAt = own?.updatedAt ?? (merged?.kind === "version" ? merged.update?.updatedAt : undefined)
     if (updatedAt === undefined) notFound()
     return chosen(
-      { kind: "draft", id: found.id, updatedAt, updating: found.updating?.number ?? null },
+      { kind: "draft", id: found.id, name: found.name, updatedAt, updating: found.updating?.number ?? null },
       { content: researchContentInput(found.content) },
     )
   }

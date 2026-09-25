@@ -139,6 +139,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         397 rows it is texture behind text and nothing else.
       */}
       <body
+        data-area={managing ? "admin" : "site"}
         className={`flex min-h-screen flex-col bg-surface ${
           managing ? "" : "bg-[url(/bg.jpg)] bg-[length:100%_auto] bg-top bg-no-repeat bg-blend-multiply"
         }`}

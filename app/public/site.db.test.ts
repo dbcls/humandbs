@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
@@ -338,5 +339,33 @@ describe("alert", () => {
   it("両方空なら何も出ない", async () => {
     await db.insert(s.alert).values({ content: { body: { ja: "", en: "" } }, active: true })
     expect(await activeAlerts("ja")).toHaveLength(0)
+  })
+
+  describe("表示期間", () => {
+    /** Now in JST, moved by an interval, the clock the period is written in. */
+    const jst = (by: string) => sql`(now() at time zone 'Asia/Tokyo') + ${by}::interval`
+    const shownOf = async () => (await activeAlerts("ja")).map((one) => one.html.replace(/<[^>]+>/g, "").trim())
+
+    it("開始が来ていないもの・終了を過ぎたものは出ず、期間の中と端の無いものは出る", async () => {
+      await db.insert(s.alert).values([
+        { content: { body: { ja: "開始前", en: "a" } }, active: true, displayFrom: jst("1 hour") },
+        { content: { body: { ja: "終了後", en: "b" } }, active: true, displayUntil: jst("-1 hour") },
+        { content: { body: { ja: "期間中", en: "c" } }, active: true, displayFrom: jst("-1 hour"), displayUntil: jst("1 hour") },
+        { content: { body: { ja: "開始だけ過ぎた", en: "d" } }, active: true, displayFrom: jst("-1 day") },
+        { content: { body: { ja: "終了だけ先", en: "e" } }, active: true, displayUntil: jst("1 day") },
+        { content: { body: { ja: "期間中でも非表示", en: "f" } }, active: false, displayFrom: jst("-1 hour"), displayUntil: jst("1 hour") },
+      ])
+
+      expect(await shownOf()).toEqual(["期間中", "開始だけ過ぎた", "終了だけ先"])
+    })
+
+    it("終了が開始と同じか前の行は DB が拒否する", async () => {
+      await expect(db.insert(s.alert).values({
+        content: { body: { ja: "逆", en: "x" } },
+        active: true,
+        displayFrom: "2026-10-01 12:00:00",
+        displayUntil: "2026-10-01 12:00:00",
+      })).rejects.toThrow()
+    })
   })
 })

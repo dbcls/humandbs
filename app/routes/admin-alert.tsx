@@ -4,12 +4,13 @@ import { Form } from "react-router"
 import { alertAction, alertsPage, type AlertRow } from "~/admin/contents.server"
 import { Confirm, Heading, Stack } from "~/components/base"
 import { contentsSaid, SHOWING } from "~/components/contents"
-import { Answer, Editing, LanguagePair, Submit, TextArea, Unsaved } from "~/components/form"
+import { Answer, Editing, Field, LanguagePair, Submit, TextArea, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, Page } from "~/components/page"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
+import { asLocalInput } from "~/dates"
 
 import type { Route } from "./+types/admin-alert"
 import { Flag } from "~/components/flags"
@@ -141,9 +142,7 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           the day says since when. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex flex-wrap items-center gap-3 text-sm">
-          {row.active
-            ? <Flag kind="live">{t.alert.shown}</Flag>
-            : <Flag kind="off">{t.alert.hidden}</Flag>}
+          <AlertState row={row} locale={locale} />
           {row.shownAt !== null && (
             <span className="text-ink-muted text-xs">
               {t.alert.shownOn}
@@ -179,6 +178,28 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           rows={2}
         />
       </LanguagePair>
+      {/* **The period is part of the alert rather than of showing it**, so it is
+          written with the words and saved by either button: the state above
+          says whether the site shows it now, and the period says when. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-end gap-3">
+          <Field
+            label={t.alert.displayFrom}
+            name="displayFrom"
+            type="datetime-local"
+            width="w-56"
+            value={row.displayFrom === null ? "" : asLocalInput(row.displayFrom)}
+          />
+          <Field
+            label={t.alert.displayUntil}
+            name="displayUntil"
+            type="datetime-local"
+            width="w-56"
+            value={row.displayUntil === null ? "" : asLocalInput(row.displayUntil)}
+          />
+        </div>
+        <Empty>{t.alert.periodNote}</Empty>
+      </div>
       <div className="flex flex-wrap items-center gap-3">
         {row.active
           ? (
@@ -202,4 +223,18 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
       </div>
     </Editing>
   )
+}
+
+/**
+ * Whether the site shows the alert now. **Switched on is not the same as
+ * shown**: an alert that is on waits for its period to start and stops at
+ * its end, so the state is one of four, and the button beside the words still
+ * offers only the other side of on and off.
+ */
+function AlertState({ row, locale }: { row: AlertRow, locale: Locale }) {
+  const t = messagesFor(locale).admin.contents.alert
+  if (!row.active) return <Flag kind="off">{t.hidden}</Flag>
+  if (row.period === "ahead") return <Flag kind="scheduled">{t.scheduled}</Flag>
+  if (row.period === "over") return <Flag kind="ended">{t.ended}</Flag>
+  return <Flag kind="live">{t.shown}</Flag>
 }

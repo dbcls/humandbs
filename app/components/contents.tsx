@@ -14,12 +14,13 @@ import type { LocaleState, NewsState } from "~/admin/contents"
 import type { BodyProblem, ContentsResult, LocaleEditor } from "~/admin/contents.server"
 import { adminArticlePreviewPath } from "~/admin/urls"
 import type { ArticleContent } from "~/content/types"
-import type { Locale } from "~/i18n/locale"
+import { LOCALES, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { ArticleView } from "~/public/site.server"
+import { href } from "~/public/urls"
 
 import { usePanes } from "./admin"
-import { Button, type ButtonSize, Dialog, Heading, Stack, Chevron } from "./base"
+import { Button, ButtonLink, type ButtonSize, Dialog, Heading, Stack, Chevron } from "./base"
 import { useDrawn } from "./draft-tools"
 import { Editing, Field, MarkdownEditor, Submit, Unsaved } from "./form"
 import { Icon } from "./icons"
@@ -117,6 +118,48 @@ export function StateCell({ state, locale, ahead = false }: {
     <Stated kind={STATE_FLAG[shown]}>
       {stateWord(locale, shown)}
     </Stated>
+  )
+}
+
+/**
+ * The page readers see, one button per language, each opening it in a new tab
+ * — for an article, a versioned article's version-less address, or an
+ * announcement.
+ *
+ * **The panes beside the form are not it.** They draw the words as typed, before
+ * they are saved; this is the address itself, as it answers now.
+ *
+ * **A language with no page keeps its button, closed, with the reason**
+ * (`Button` の `disabled`): the reader side answers 404 there, and a button
+ * that is not shown is looked for.
+ */
+export function PublicPageButtons({ locale, path, closed }: {
+  locale: Locale
+  /** The public address, without a language (`href` adds it). */
+  path: string
+  /** Why each language has no page, or null where it has one. */
+  closed: Record<Locale, string | null>
+}) {
+  const messages = messagesFor(locale)
+  const t = messages.admin.editor
+  return (
+    <>
+      {LOCALES.map((language) => {
+        const label = language === "ja" ? t.panePageJa : t.panePageEn
+        const reason = closed[language]
+        return reason === null
+          ? (
+              <ButtonLink key={language} to={href(language, path)} newTab newTabLabel={messages.newTab}>
+                {label}
+              </ButtonLink>
+            )
+          : (
+              <Button key={language} type="button" disabled={reason} icon={<Icon name="external" aria-hidden="true" />}>
+                {label}
+              </Button>
+            )
+      })}
+    </>
   )
 }
 

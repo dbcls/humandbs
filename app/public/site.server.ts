@@ -20,6 +20,7 @@
 import { and, desc, eq, or, sql } from "drizzle-orm"
 
 import { getDb } from "~/db/client.server"
+import { likeEscaped } from "~/db/like"
 import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
 import { resolveBilingual } from "~/i18n/locale"
 import { pageRange } from "~/paging"
@@ -183,11 +184,6 @@ export async function newsList(
   }
 }
 
-/** A literal to match, with what LIKE would otherwise read as a pattern escaped. */
-function likeEscaped(value: string): string {
-  return value.replaceAll(/[\\%_]/g, (char) => `\\${char}`)
-}
-
 export interface NewsItemView extends ArticleView {
   /** A JST wall clock. Never absent here: an undated announcement is unpublished. */
   publishedAt: string
@@ -240,12 +236,22 @@ export interface AlertView {
   untranslated: boolean
 }
 
+/**
+ * The alerts a reader sees now: on, and within their period. An empty end is
+ * no end, and "now" is JST, the clock the period is written in
+ * (`news.publishedAt`); the end itself is already outside.
+ */
 export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
   const db = getDb()
+  const now = sql`(now() at time zone 'Asia/Tokyo')`
   const rows = await db
     .select({ content: alert.content })
     .from(alert)
-    .where(eq(alert.active, true))
+    .where(and(
+      eq(alert.active, true),
+      sql`(${alert.displayFrom} IS NULL OR ${alert.displayFrom} <= ${now})`,
+      sql`(${alert.displayUntil} IS NULL OR ${now} < ${alert.displayUntil})`,
+    ))
     // The id breaks the tie: alerts written in one statement share a
     // timestamp, and the v7 id encodes the order they were made in.
     .orderBy(alert.createdAt, alert.id)

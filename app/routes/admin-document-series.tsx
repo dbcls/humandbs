@@ -5,7 +5,7 @@ import { seriesAction, seriesPage } from "~/admin/contents.server"
 import { adminDocumentsPath, adminDocumentPath } from "~/admin/urls"
 import { AdminBack } from "~/components/admin"
 import { Confirm, Heading, Note, Stack } from "~/components/base"
-import { contentsSaid, StateCell } from "~/components/contents"
+import { contentsSaid, PublicPageButtons, StateCell } from "~/components/contents"
 import { Answer, Field, Select, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Code, Page, Section, Table, Td } from "~/components/page"
@@ -66,6 +66,15 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
               to={href(locale, adminDocumentsPath())}
               label={t.backToList}
               icon="chevron-left"
+            />
+            {/* The version-less address, which shows the revision it points at. */}
+            <PublicPageButtons
+              locale={locale}
+              path={`/${series.slug}`}
+              closed={{
+                ja: unanswered.includes("ja") ? t.publicPageUnpublished : null,
+                en: unanswered.includes("en") ? t.publicPageUnpublished : null,
+              }}
             />
             <Form method="post">
               <Confirm

@@ -1207,7 +1207,8 @@ function VocabularyField({
           locale={locale}
           setId={setId}
           disabled={state !== "value"}
-          chosen={resolveTerms(known, termIds)}
+          known={known}
+          termIds={termIds}
           onAdd={(id) => { onChange(state, multiple ? [...termIds, id] : [id]) }}
           onRemove={(id) => { onChange(state, termIds.filter((one) => one !== id)) }}
           trailing={(
@@ -1314,7 +1315,8 @@ function DiseaseField({ label, named = true, link, locale, annotations, setId, k
                     setId={setId}
                     kind="disease"
                     disabled={disabled}
-                    chosen={resolveTerms(known, row.termIds)}
+                    known={known}
+                    termIds={row.termIds}
                     onAdd={(id) => { edit(at, { termIds: [...row.termIds, id] }) }}
                     onRemove={(id) => {
                       edit(at, { termIds: row.termIds.filter((one) => one !== id) })
@@ -1355,10 +1357,13 @@ function DiseaseField({ label, named = true, link, locale, annotations, setId, k
   )
 }
 
-/** The terms these identities name, dropping the ones the document did not send. */
-function resolveTerms(known: readonly EditableTerm[], ids: readonly string[]): EditableTerm[] {
+/**
+ * The terms these identities name, each once, dropping the ones neither the
+ * document sent nor the search found.
+ */
+export function resolveTerms(known: readonly EditableTerm[], ids: readonly string[]): EditableTerm[] {
   const byId = new Map(known.map((term) => [term.id, term]))
-  return ids.flatMap((id) => {
+  return [...new Set(ids)].flatMap((id) => {
     const term = byId.get(id)
     return term === undefined ? [] : [term]
   })
@@ -1381,7 +1386,7 @@ function resolveTerms(known: readonly EditableTerm[], ids: readonly string[]): E
  * condition and the way to lift it are the same object, as they are for a chip
  * over a listing.
  */
-function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, trailing }: {
+function TermPicker({ locale, setId, kind, disabled, known, termIds, onAdd, onRemove, trailing }: {
   locale: Locale
   setId: string | null
   /**
@@ -1391,7 +1396,10 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
    */
   kind?: "disease"
   disabled: boolean
-  chosen: EditableTerm[]
+  /** The terms the document names. */
+  known: EditableTerm[]
+  termIds: string[]
+  /** Called only with a term not chosen already. */
   onAdd: (id: string) => void
   onRemove: (id: string) => void
   /**
@@ -1405,7 +1413,13 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
   const t = messagesFor(locale).admin.datasetEditor
   const search = useFetcher<EditableTerm[]>()
   const wait = useRef<number | null>(null)
-  const held = new Set(chosen.map((term) => term.id))
+  // **A term is shown the moment it is chosen.** The document sent only the
+  // terms it already names, so one the search found is kept here until the
+  // screen is read again after a save. Read from the document alone, the
+  // choice went unshown and was offered again, and chosen twice.
+  const [found, setFound] = useState<EditableTerm[]>([])
+  const chosen = resolveTerms([...known, ...found], termIds)
+  const held = new Set(termIds)
   const candidates = (search.data ?? [])
     .filter((term) => term.setId === setId && !held.has(term.id))
     .slice(0, PICKER_RESULTS)
@@ -1453,7 +1467,11 @@ function TermPicker({ locale, setId, kind, disabled, chosen, onAdd, onRemove, tr
           more={candidates.length >= PICKER_RESULTS ? t.typeToNarrow(PICKER_RESULTS) : undefined}
           words={{ searching: t.searching, count: t.candidateCount }}
           onQuery={(value, typed) => { ask(value, typed ? SEARCH_PAUSE_MS : 0) }}
-          onChoose={(term) => { onAdd(term.id) }}
+          onChoose={(term) => {
+            if (held.has(term.id)) return
+            setFound((before) => [...before, term])
+            onAdd(term.id)
+          }}
         />
         {trailing}
       </div>

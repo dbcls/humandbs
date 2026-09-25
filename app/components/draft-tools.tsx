@@ -9,15 +9,17 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useFetcher, type SubmitTarget } from "react-router"
 
+import { draftNamePath } from "~/admin/urls"
+import type { RenameResult } from "~/admin/pages.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useHoldsUnsaved } from "~/components/unsaved"
 
 import { AdminBack } from "./admin"
-import { Button, Heading, Stack } from "./base"
+import { Button, Dialog, Heading, Stack } from "./base"
 import { Icon, type IconName } from "./icons"
 import type { FieldAnnotations } from "./fields"
-import { SaveNews } from "./form"
+import { Field, SaveNews, Submit } from "./form"
 import { Flag } from "./flags"
 
 /**
@@ -451,4 +453,56 @@ export function useDraftEditing<T>({
     conflict,
     annotationsFor,
   }
+}
+
+/**
+ * The way a draft's name is changed, beside the name that shows it.
+ *
+ * **Sent on its own, without leaving the screen** (`routes/admin-draft-name.ts`):
+ * the form below holds work that has not been saved, and the name is not part
+ * of it — it takes no revision, and saving it does not save the form. The panel
+ * shuts once the name is taken, and stays open over a name with nothing in it,
+ * with the reason under the box.
+ */
+export function DraftNameEditor({ locale, researchId, draftId, name }: {
+  locale: Locale
+  researchId: string
+  draftId: string
+  name: string
+}) {
+  const t = messagesFor(locale).admin.draft
+  const fetcher = useFetcher<RenameResult>()
+  const refused = fetcher.state === "idle" && fetcher.data?.status === "unnamed"
+  return (
+    <fetcher.Form method="post" action={draftNamePath(researchId, draftId)}>
+      <Dialog
+        label={t.rename}
+        title={t.renameTitle}
+        icon={<Icon name="edit" />}
+        action={(close) => (
+          <>
+            <ShutWhenRenamed state={fetcher.state} result={fetcher.data} close={close} />
+            <Submit icon={<Icon name="save" />}>{t.renameConfirm}</Submit>
+          </>
+        )}
+      >
+        <Field label={t.name} name="name" value={name} width="w-full" hint={t.nameHint} error={refused ? t.unnamed : undefined} />
+      </Dialog>
+    </fetcher.Form>
+  )
+}
+
+/** Shuts the panel when a send it made comes back renamed. */
+function ShutWhenRenamed({ state, result, close }: {
+  state: "idle" | "loading" | "submitting"
+  result: RenameResult | undefined
+  close: () => void
+}) {
+  const was = useRef(false)
+  const pending = state !== "idle"
+  useEffect(() => {
+    if (was.current && !pending && result?.status === "renamed") close()
+    was.current = pending
+  }, [pending, result, close])
+  return null
 }

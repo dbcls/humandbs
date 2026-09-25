@@ -74,6 +74,7 @@ export type IconName
     | "user"
     | "send"
     | "clock"
+    | "calendar-x"
     | "help-circle"
     | "circle-slash"
     | "diff"
@@ -471,6 +472,17 @@ const NODES: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="10" />
       <path d="M12 6v6l4 2" />
+    </>
+  ),
+  /* A calendar crossed out: a period that is over. */
+  "calendar-x": (
+    <>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+      <path d="m14 14-4 4" />
+      <path d="m10 14 4 4" />
     </>
   ),
   /* A question mark in a circle: a field the reader has not answered yet. */

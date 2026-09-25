@@ -92,6 +92,17 @@ export const researchDraft = pgTable("research_draft", {
   researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
   content: jsonb().$type<ResearchContent>().notNull(),
   /**
+   * What admins call the draft, to tell a research's drafts apart. Given when
+   * the draft comes into being (`plannedDraftName`) and changed from the
+   * editing screen. **It is not the number the draft will be published
+   * under** — that is chosen at publishing — and it is never shown to a
+   * provider. An update has none: it is shown by its version's number.
+   *
+   * The default is for a row written by the release before, which had no name
+   * to give.
+   */
+  name: text().notNull().default(""),
+  /**
    * The published version this draft is the update of, when it is one.
    *
    * **An update is a state of the version, and the draft is only its vessel.**

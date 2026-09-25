@@ -81,6 +81,25 @@ async function resolveLabel(
   return primary === undefined ? null : { id: subjectId, primaryLabel: primary.label }
 }
 
+/**
+ * The labels a research or a dataset holds besides its primary one, in label
+ * order: the ids it was known by before, which old papers and addresses still
+ * name (`label_pin`).
+ */
+export async function secondaryLabels(
+  db: Executor,
+  kind: "hum" | "dataset",
+  subjectId: string,
+): Promise<string[]> {
+  const subject = kind === "hum" ? labelPin.researchId : labelPin.datasetId
+  const rows = await db
+    .select({ label: labelPin.label })
+    .from(labelPin)
+    .where(and(eq(labelPin.kind, kind), eq(labelPin.isPrimary, false), eq(subject, subjectId)))
+    .orderBy(labelPin.label)
+  return rows.map((row) => row.label)
+}
+
 export function resolveHumLabel(db: Executor, label: string): Promise<ResolvedLabel | null> {
   return resolveLabel(db, "hum", label)
 }

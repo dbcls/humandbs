@@ -99,6 +99,39 @@ export function dropResearch(held: Dump, humIds: readonly string[]): Dump {
 }
 
 /**
+ * The dump without the given datasets: their documents, and every version's
+ * and publication's reference to them. For a dataset the archive withdrew
+ * after publishing it, which the portal stops listing too.
+ */
+export function dropDatasets(held: Dump, labels: readonly string[]): Dump {
+  const gone = new Set(labels)
+  // One copy per version, shared by every list that holds it: the load tells
+  // the latest version by identity (`latestVersion.get(humId) === version`).
+  const copies = new Map<EsResearchVersion, EsResearchVersion>()
+  const withoutRefs = (version: EsResearchVersion): EsResearchVersion => {
+    const held = copies.get(version)
+    if (held !== undefined) return held
+    const copy = {
+      ...version,
+      datasets: version.datasets?.filter((ref) => !gone.has(ref.datasetId)) ?? version.datasets,
+      relatedPublication: version.relatedPublication?.map((one) => ({
+        ...one,
+        datasetIds: one.datasetIds?.filter((id) => !gone.has(id)) ?? one.datasetIds,
+      })) ?? version.relatedPublication,
+    }
+    copies.set(version, copy)
+    return copy
+  }
+  return {
+    research: held.research,
+    publishedVersions: held.publishedVersions.map(withoutRefs),
+    latestVersion: new Map([...held.latestVersion].map(([humId, version]) => [humId, withoutRefs(version)])),
+    datasetsByKey: new Map([...held.datasetsByKey].filter(([, d]) => !gone.has(d.datasetId))),
+    versions: held.versions.map(withoutRefs),
+  }
+}
+
+/**
  * What becomes of one v1 key. `labelled` keeps a heading in front of each line
  * of the value, for a key that said something the one it joins does not: the
  * old key's own name, or a heading per language.

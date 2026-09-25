@@ -100,6 +100,7 @@ function datasetAnchors(content: DatasetContent) {
     label: "JGAD000001",
     humLabel: "hum0001",
     studyAccession: null,
+    secondaryLabels: [],
     content,
     datePublished: null,
     dateModified: null,

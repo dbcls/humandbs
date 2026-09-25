@@ -53,7 +53,9 @@ import { join } from "node:path"
 import { sql } from "drizzle-orm"
 
 import { linkTermsToDocuments } from "~/admin/catalog.server"
+import { plannedDraftName } from "~/admin/draft-name"
 import { newShareToken } from "~/admin/drafts.server"
+import { MEMO_ANCHOR } from "~/review/anchors"
 import { isPortalIssuedId } from "~/admin/labels"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import type {
@@ -111,7 +113,7 @@ import {
   type PlannedKey,
 } from "./catalog-plan"
 import { loadCms, type CmsDump } from "./cms"
-import { selectDrafts } from "./drafts"
+import { selectDrafts, withdrawnDrafts, type WithdrawnData } from "./drafts"
 import {
   loadDump,
   selectPublishedDatasets,
@@ -132,6 +134,7 @@ import {
 import { byHand, labelTranslations, type ReadByHand } from "./numbers"
 import {
   applyKeyRules,
+  dropDatasets,
   dropResearch,
   followedRules,
   mergeDumps,
@@ -147,7 +150,7 @@ import { assignNhaIds, MISSPELT } from "./nha"
 import { requestComments, settleRequests } from "./requests"
 import { applySiteEdits, type SiteEdit } from "./site-edits"
 import { alike, researchPages, withoutInlineBullets, type PageArticle, type Preferred, type ResearchPages, type Site } from "./research-pages"
-import { assertEditsApplied, editText, type TextEdit } from "./text-edits"
+import { assertEditsApplied, assertPublicationEditsApplied, editPublications, editText, type PublicationEdit, type TextEdit } from "./text-edits"
 import { richTextFromPlain } from "./richtext"
 import { normalizeForComparison, plainAsV1, recoverRichText, richTextFromCell, type RecoverContext } from "./richtext-html"
 import { loadDatasetStudies, loadHumAccessions } from "./upstream"
@@ -701,24 +704,29 @@ function copied(datasets: readonly PublishedDataset[]): PublishedDataset[] {
 }
 
 async function load() {
-  const held = heldDump()
+  const loaded = heldDump()
   const keyMap = readJson("key-map.json") as KeyMap
   const fixes = existsSync(join(INPUT, "hand", "key-fixes.json")) ? readJson("hand", "key-fixes.json") as KeyFix[] : []
   const rules = keyRules(keyMap)
   if (existsSync(join(INPUT, "hand", "cell-edits.json"))) {
-    applyCellEdits(held.datasetsByKey.values(), readJson("hand", "cell-edits.json") as CellEdit[])
+    applyCellEdits(loaded.datasetsByKey.values(), readJson("hand", "cell-edits.json") as CellEdit[])
   }
   if (existsSync(join(INPUT, "hand", "searchable-fixes.json"))) {
-    applySearchableFixes(held.datasetsByKey.values(), readJson("hand", "searchable-fixes.json") as SearchableFix[])
+    applySearchableFixes(loaded.datasetsByKey.values(), readJson("hand", "searchable-fixes.json") as SearchableFix[])
   }
   if (existsSync(join(INPUT, "hand", "type-of-data.json"))) {
-    applyTypeOfDataFixes(held.datasetsByKey.values(), readJson("hand", "type-of-data.json") as TypeOfDataFix[])
+    applyTypeOfDataFixes(loaded.datasetsByKey.values(), readJson("hand", "type-of-data.json") as TypeOfDataFix[])
   }
   if (existsSync(join(INPUT, "hand", "data-providers.json"))) {
-    const versions = new Set([...held.versions, ...held.publishedVersions, ...held.latestVersion.values()])
+    const versions = new Set([...loaded.versions, ...loaded.publishedVersions, ...loaded.latestVersion.values()])
     applyProviderSplits(versions, readJson("hand", "data-providers.json") as ProviderSplit[])
   }
-  correctKeys(held.datasetsByKey.values(), rules, fixes)
+  correctKeys(loaded.datasetsByKey.values(), rules, fixes)
+  // What the archive withdrew after publishing is kept in a draft of its own
+  // and listed by no published version (`drafts.ts` の `withdrawnDrafts`).
+  const withdrawn = existsSync(join(INPUT, "hand", "withdrawn.json")) ? readJson("hand", "withdrawn.json") as WithdrawnData[] : []
+  const keptInDrafts = withdrawnDrafts(loaded, withdrawn)
+  const held = dropDatasets(loaded, withdrawn.flatMap((one) => one.datasets))
   const catalogPlan = readJson("hand", "catalog.json") as CatalogPlan
   const ordered = keyMap.order
     .toSorted((a, b) => a.position - b.position)
@@ -738,7 +746,8 @@ async function load() {
   }
 
   // Drafts: each with its own copies of the datasets it lists.
-  const drafts = selectDrafts(held.research, held.versions, held.datasetsByKey)
+  const selectedDrafts = selectDrafts(held.research, held.versions, held.datasetsByKey)
+  const drafts = { ...selectedDrafts, drafts: [...selectedDrafts.drafts, ...keptInDrafts] }
   const draftDatasets = drafts.drafts.map((draft) => {
     const datasets = draft.datasets.map((one) => ({ label: one.label, doc: structuredClone(one.doc) }))
     review.push(...splitSharedExperiments(datasets, jgasToJgad, divided).review)
@@ -762,6 +771,8 @@ async function load() {
   const cleansing = noCounts()
   const textEdits = existsSync(join(INPUT, "hand", "text-edits.json")) ? readJson("hand", "text-edits.json") as TextEdit[] : []
   const textEdited = new Set<TextEdit>()
+  const publicationEdits = existsSync(join(INPUT, "hand", "publication-edits.json")) ? readJson("hand", "publication-edits.json") as PublicationEdit[] : []
+  const publicationsEdited = new Set<PublicationEdit>()
   const linked = <T extends object>(content: T, where: { hum: string, dataset: boolean }): T => {
     const result = relink(content, moved)
     for (const url of result.used) followed.add(url)
@@ -769,7 +780,8 @@ async function load() {
     notApplicable += marked.marked
     const cleansed = cleanseContent(marked.content)
     for (const rule of Object.keys(cleansing) as (keyof CleansingCounts)[]) cleansing[rule] += cleansed.counts[rule]
-    return editText(cleansed.content, where, textEdits, textEdited)
+    const edited = editText(cleansed.content, where, textEdits, textEdited)
+    return where.dataset ? edited : editPublications(edited, where.hum, publicationEdits, publicationsEdited)
   }
   const db = getOwnerDb()
 
@@ -968,6 +980,7 @@ async function load() {
         .insert(researchDraft)
         .values({
           researchId: identityOf(researchIdByHum, humId, "research"),
+          name: draft.name ?? plannedDraftName(versionNumber(held.latestVersion.get(humId)?.version)),
           content,
           shareToken: newShareToken(),
         })
@@ -976,7 +989,10 @@ async function load() {
 
       // A draft's datasets were read from the draft's own page, on the site drafts were written on.
       const lines = ownLines(datasets, undefined, (one) => prose.readIn(one.humId, preferred))
-      const said = requestComments({ kind: "research" }, asking.asked)
+      const said = [
+        ...(draft.memo === undefined ? [] : [{ anchor: MEMO_ANCHOR, body: draft.memo }]),
+        ...requestComments({ kind: "research" }, asking.asked),
+      ]
       const entries = datasets.map((one) => {
         const datasetId = identityOf(datasetIdByLabel, one.label, "dataset")
         const described = settleRequests(linked(describe(one, lines, preferred), { hum: humId, dataset: true }))
@@ -1007,6 +1023,7 @@ async function load() {
     // A fix that landed on no experiment was written against another input;
     // stopping inside the transaction leaves the previous load as it was.
     assertEditsApplied(textEdits, textEdited)
+    assertPublicationEditsApplied(publicationEdits, publicationsEdited)
     const unlanded = vocabulary.fixes.filter((fix) => !fixesApplied.has(fix))
     if (unlanded.length > 0) {
       throw new Error(`vocabulary fixes that found nothing:\n${unlanded.map((fix) => `${fix.setCode} ${fix.hum} ${fix.datasetId} ${fix.header}`).join("\n")}`)

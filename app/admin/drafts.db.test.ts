@@ -21,9 +21,11 @@ import {
   discardDraft,
   draftCopiedFrom,
   draftUpdating,
+  renameDraft,
   saveDatasetEntry,
   saveDraftContent,
 } from "./drafts.server"
+import { withdrawVersion } from "./publish.server"
 import {
   changedDatasets,
   readDatasetEntry,
@@ -180,6 +182,63 @@ describe("starting a draft of an existing research", () => {
 
     const entry = await readDatasetEntry(db, draftId ?? "", datasetId)
     expect(entry?.content).toEqual(described("as published"))
+  })
+})
+
+describe("naming a draft", () => {
+  const nameOf = async (draftId: string | null): Promise<string | undefined> =>
+    (await readDraft(db, draftId ?? ""))?.name
+
+  it("calls a new research's draft the first version it plans", async () => {
+    const created = await createResearchWithDraft(db)
+    expect(await nameOf(created.draftId)).toBe("v1 予定")
+  })
+
+  it("calls a draft after the highest number published, whatever it was made from and however the numbers run", async () => {
+    const researchId = await createResearch()
+    expect(await nameOf(await createEmptyDraft(db, researchId))).toBe("v1 予定")
+
+    await publish(researchId, 1, titled("first"))
+    await publish(researchId, 4, titled("fourth"))
+
+    expect(await nameOf(await createEmptyDraft(db, researchId))).toBe("v5 予定")
+    // A copy of v1 plans the next version too, not v2.
+    expect(await nameOf(await draftCopiedFrom(db, researchId, 1))).toBe("v5 予定")
+  })
+
+  it("leaves an update without a name, since it is called by its version", async () => {
+    const researchId = await createResearch()
+    const versionId = await publish(researchId, 2, titled("out"))
+    const opened = await draftUpdating(db, researchId, versionId)
+    if (opened.status !== "opened") throw new Error(opened.status)
+
+    expect(await nameOf(opened.draftId)).toBe("")
+  })
+
+  it("calls what a withdrawal leaves after the versions still out, so the number it gave up is planned again", async () => {
+    const researchId = await createResearch()
+    await publish(researchId, 1, titled("first"))
+    const second = await publish(researchId, 2, titled("second"))
+
+    const outcome = await withdrawVersion(db, second, CURATOR)
+
+    if (outcome.status !== "withdrawn") throw new Error(outcome.status)
+    expect(await nameOf(outcome.draftId)).toBe("v2 予定")
+  })
+
+  it("renames without moving the revision, and has no name to change on an update", async () => {
+    const researchId = await createResearch()
+    const draftId = await createEmptyDraft(db, researchId)
+    const versionId = await publish(researchId, 1, titled("out"))
+    const opened = await draftUpdating(db, researchId, versionId)
+    if (opened.status !== "opened") throw new Error(opened.status)
+
+    expect(await renameDraft(db, draftId, "図の差し替え")).toEqual({ status: "renamed" })
+    expect(await readDraft(db, draftId)).toMatchObject({ name: "図の差し替え", revision: 1 })
+
+    expect(await renameDraft(db, opened.draftId, "更新")).toEqual({ status: "gone" })
+    expect(await nameOf(opened.draftId)).toBe("")
+    expect(await renameDraft(db, randomUUID(), "無い")).toEqual({ status: "gone" })
   })
 })
 

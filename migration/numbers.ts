@@ -200,7 +200,9 @@ export function readCell(
   const read: ReadNumber[] = []
   const declined: string[] = []
   for (const raw of text.split("\n")) {
-    const said = raw.trim()
+    // v1's text keeps some of the page's markup at the end of a line
+    // (`8,858,017 variants<br />`), which is markup and not part of the reading.
+    const said = raw.replace(/<br\s*\/?>/gi, " ").replace(/&nbsp;/g, " ").trim()
     if (said === "") continue
     const got = line(said)
     if (got === null) declined.push(said)

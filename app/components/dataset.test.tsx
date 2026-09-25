@@ -8,11 +8,12 @@ import type { DatasetView } from "~/public/view.server"
 
 import { DatasetBody } from "./dataset"
 
-function view(fileCount: number): DatasetView {
+function view(fileCount: number, secondaryLabels: string[] = []): DatasetView {
   return {
     label: "NHA000001",
     humLabel: "hum0001",
     studyAccession: null,
+    secondaryLabels,
     datePublished: null,
     dateModified: null,
     accessType: null,
@@ -90,5 +91,26 @@ describe("a dataset's files", () => {
         expect(new Set(shown).size).toBe(shown.length)
       },
     ), { numRuns: 40 })
+  })
+})
+
+describe("a dataset's secondary IDs", () => {
+  function page(secondaryLabels: string[]): string {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => <DatasetBody view={view(0, secondaryLabels)} locale="ja" researchHref="/research/hum0001" />,
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={["/dataset/NHA000001"]} />)
+  }
+
+  it("lists the ids the dataset was known by before, under Secondary ID, without linking them", () => {
+    const html = page(["hum0001.v1.freq.v1", "hum0001.v2.freq.v1"])
+
+    expect(html).toMatch(/Secondary ID[\s\S]*hum0001\.v1\.freq\.v1, hum0001\.v2\.freq\.v1/)
+    expect(html).not.toContain("href=\"/dataset/hum0001.v1.freq.v1\"")
+  })
+
+  it("has no Secondary ID row for a dataset that has none", () => {
+    expect(page([])).not.toContain("Secondary ID")
   })
 })

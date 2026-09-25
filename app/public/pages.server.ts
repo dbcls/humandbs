@@ -29,6 +29,7 @@ import {
   publishedVersions,
   resolveDatasetLabel,
   resolveHumLabel,
+  secondaryLabels,
 } from "./queries.server"
 import {
   datasetPath,
@@ -181,12 +182,17 @@ export async function datasetPage(
 
   const row = await publishedDataset(db, resolved.id)
   if (row === null) notFound()
-  const [catalog, listing] = await Promise.all([loadCatalog(db), publicListing(row.humLabel)])
+  const [catalog, listing, secondary] = await Promise.all([
+    loadCatalog(db),
+    publicListing(row.humLabel),
+    secondaryLabels(db, "dataset", resolved.id),
+  ])
 
   return datasetView({
     label: row.label,
     humLabel: row.humLabel,
     studyAccession: row.studyAccession,
+    secondaryLabels: secondary,
     content: publicDatasetContent(
       row.content,
       { files: listing ?? [] },

@@ -1,5 +1,6 @@
 import { data, Form } from "react-router"
 
+import { draftAside } from "~/admin/draft-name"
 import { draftDatasetListAction, draftDatasetListPage } from "~/admin/pages.server"
 import type { DraftDatasetListView } from "~/admin/pages.server"
 import {
@@ -77,7 +78,7 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
           {/* Who else is in this draft belongs to its name rather than to the
               listing under it. */}
           <Stack gap="tight">
-            <Heading title={t.datasets} aside={view.humLabel ?? undefined}>
+            <Heading title={t.datasets} aside={draftAside(view.humLabel ?? undefined, view.draftName, locale)}>
               <AdminBack
                 to={href(locale, adminResearchPath(view.researchId))}
                 label={messages.admin.editor.backToResearch}

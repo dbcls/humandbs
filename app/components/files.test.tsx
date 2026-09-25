@@ -153,7 +153,7 @@ describe("the download list", () => {
       { name: "closed.zip", size: 1, isPublic: false },
     ])
 
-    const icon = /<a href="\/files\/hum0009\/open\.zip">(<svg[^>]*aria-hidden="true"[\s\S]*?<\/svg>)/.exec(html)?.[1] ?? ""
+    const icon = /<a href="\/files\/hum0009\/open\.zip" class="visitable">(<svg[^>]*aria-hidden="true"[\s\S]*?<\/svg>)/.exec(html)?.[1] ?? ""
     expect(icon).not.toBe("")
     const closed = /<td[^>]*>(?:(?!<\/td>)[\s\S])*closed\.zip(?:(?!<\/td>)[\s\S])*<\/td>/.exec(html)?.[0] ?? ""
     expect(closed).not.toContain(icon)

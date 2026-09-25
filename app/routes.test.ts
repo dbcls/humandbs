@@ -72,6 +72,8 @@ describe("管理画面の登録", () => {
       // A redirect to a signed address of the store, which the browser saves.
       || path?.endsWith("/files/download") === true
       || path?.includes("/comments") === true
+      // A draft's name, sent from the editing screen without leaving it.
+      || path?.endsWith("/name") === true
       // The draft drawn as its page, which the editor's second pane requests
       // as the content changes. It responds with the drawing, not with a screen.
       || path?.endsWith("/page") === true

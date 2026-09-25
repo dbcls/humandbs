@@ -250,10 +250,19 @@ export async function rebuildSearchDocs(
     .from(labelPin)
   const humLabelOf = new Map<string, string>()
   const datasetLabelOf = new Map<string, string>()
+  // **A secondary ID is text in the index.** It is the id an old paper or an
+  // old address names, and a reader who types it into the search is looking
+  // for the row the address would redirect to.
+  const secondaryOf = new Map<string, string[]>()
   for (const pin of pins) {
-    if (!pin.isPrimary) continue
-    if (pin.kind === "hum" && pin.researchId) humLabelOf.set(pin.researchId, pin.label)
-    if (pin.kind === "dataset" && pin.datasetId) datasetLabelOf.set(pin.datasetId, pin.label)
+    const subject = pin.kind === "hum" ? pin.researchId : pin.datasetId
+    if (!subject) continue
+    if (!pin.isPrimary) {
+      secondaryOf.set(subject, [...secondaryOf.get(subject) ?? [], pin.label])
+      continue
+    }
+    if (pin.kind === "hum") humLabelOf.set(subject, pin.label)
+    else datasetLabelOf.set(subject, pin.label)
   }
 
   const versions = await db
@@ -370,7 +379,7 @@ export async function rebuildSearchDocs(
       PUBLISHED,
     )
     const text = concatSearchText([
-      searchTextOf(projected.content, [humLabel, label]),
+      searchTextOf(projected.content, [humLabel, label, ...secondaryOf.get(row.id) ?? []]),
       // The labels of what the projection kept. A shown vocabulary value is
       // text on the page, so it has to be text in the index.
       termsSearchText(chosenTerms(projected.content).flatMap((id) => {
@@ -424,7 +433,7 @@ export async function rebuildSearchDocs(
       datePublished: earliest(dates),
       dateModified: latest(dates),
       ...indexed(concatSearchText([
-        searchTextOf(content, [humLabel]),
+        searchTextOf(content, [humLabel, ...secondaryOf.get(row.id) ?? []]),
         ...(datasetTextByResearch.get(row.id) ?? []),
       ])),
     })

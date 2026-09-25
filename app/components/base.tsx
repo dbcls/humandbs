@@ -213,6 +213,13 @@ const HEADING_LOOK = {
  * aside and the controls are much smaller than the title, so a shared baseline
  * puts their middles below its middle — measured at 5.7px for the aside and
  * 2.8px for the controls, which reads as the title floating above its own row.
+ *
+ * **The controls stay at the right of the title's row, and the identifier
+ * wraps first.** A wrapping row decides by the controls' whole width at once, so
+ * a long slug beside the title dropped every button to the start of the next
+ * line while there was still room on the first. From `md` the row does not
+ * wrap; the identifier breaks over lines instead. Below it, where the row does
+ * wrap, the controls keep to the right edge of the line they land on.
  */
 export function Heading({ level = "h1", look = level, rule = "edge", title, aside, badge, from, note, children }: {
   level?: "h1" | "h2"
@@ -268,21 +275,21 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
 }) {
   const Tag = level
   const head = (
-    <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 ${rule === "edge" ? "-ml-6" : ""}`}>
-      <div className={`flex items-center gap-3 border-brand border-l-4 ${rule === "edge" ? "pl-5" : "pl-2.5"}`}>
-        <Tag className={`font-bold text-brand ${HEADING_LOOK[look]}`}>
+    <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 md:flex-nowrap ${rule === "edge" ? "-ml-6" : ""}`}>
+      <div className={`flex min-w-0 items-center gap-3 border-brand border-l-4 ${rule === "edge" ? "pl-5" : "pl-2.5"}`}>
+        <Tag className={`shrink-0 font-bold text-brand ${HEADING_LOOK[look]}`}>
           {title}
         </Tag>
         {/* **It is read rather than glanced at.** What is shown here is a number
             or a slug — hum0588, guidelines/data-sharing-guidelines — which a
             reader takes in character by character to know they are on the right
             screen, so it takes the size of body text rather than of an aside. */}
-        {aside !== undefined && <span className="text-ink-muted text-base">{aside}</span>}
+        {aside !== undefined && <span className="min-w-0 text-ink-muted text-base [overflow-wrap:anywhere]">{aside}</span>}
         {badge}
         {from !== undefined && <span className="ml-3 text-ink-muted text-sm">{from}</span>}
       </div>
       {children !== undefined && (
-        <div className="flex flex-wrap items-center gap-3 text-sm">{children}</div>
+        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-3 text-sm">{children}</div>
       )}
     </div>
   )

@@ -10,6 +10,7 @@ import {
   leftLanguageOf,
   LocaleEditors,
   contentsSaid,
+  PublicPageButtons,
   SlugEditor,
   StateCell,
 } from "./contents"
@@ -18,6 +19,25 @@ function render(element: React.ReactElement): string {
   const Stub = createRoutesStub([{ path: "/", Component: () => element }])
   return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
 }
+
+describe("PublicPageButtons", () => {
+  it("opens each published language's address in a new tab, the English one under /en", () => {
+    const html = render(<PublicPageButtons locale="ja" path="/guidelines/data-sharing-guidelines" closed={{ ja: null, en: null }} />)
+
+    expect(html).toContain("href=\"/guidelines/data-sharing-guidelines\" target=\"_blank\" rel=\"noopener noreferrer\"")
+    expect(html).toContain("href=\"/en/guidelines/data-sharing-guidelines\" target=\"_blank\" rel=\"noopener noreferrer\"")
+    expect(html).toContain("公開ページ ja")
+    expect(html).toContain("公開ページ en")
+  })
+
+  it("keeps a language with no page as a button that cannot be pressed, with its reason, and no address", () => {
+    const html = render(<PublicPageButtons locale="ja" path="/news/n1" closed={{ ja: null, en: "理由の文" }} />)
+
+    expect(html).not.toContain("href=\"/en/news/n1\"")
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>.*公開ページ en<\/button>/)
+    expect(html).toContain("理由の文")
+  })
+})
 
 /**
  * The state of one language down a listing is the part every row's state is

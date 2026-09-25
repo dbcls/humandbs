@@ -359,6 +359,25 @@ describe("the download list", () => {
   })
 })
 
+describe("a dataset page's secondary IDs", () => {
+  it("lists every ID the dataset holds besides the primary one, in label order", async () => {
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "NHA000001")
+    await db.insert(s.labelPin).values([
+      { kind: "dataset", label: "hum0001.v2.freq.v1", datasetId, isPrimary: false },
+      { kind: "dataset", label: "hum0001.v1.freq.v1", datasetId, isPrimary: false },
+    ])
+    const other = await createDataset(researchId, "NHA000002")
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "hum0001.v1.other.v1", datasetId: other, isPrimary: false })
+    await publish(researchId, 1, [datasetId, other])
+    await rebuildSearchDocs(db)
+
+    const view = await datasetPage({ locale: "ja", datasetId: "NHA000001" })
+
+    expect(view.secondaryLabels).toEqual(["hum0001.v1.freq.v1", "hum0001.v2.freq.v1"])
+  })
+})
+
 describe("the datasets a publication names", () => {
   it("reports whose another research's published dataset is, found by any ID it holds, and nothing of an unpublished one", async () => {
     const own = await createResearch("hum0001")

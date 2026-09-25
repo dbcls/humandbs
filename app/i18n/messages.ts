@@ -35,8 +35,13 @@ const ja = {
   notApplicable: "該当なし",
   // Said for anyone not looking at the indicator beside an outward link.
   newTab: " (新しいタブで開きます)",
-  /** What a copy control shows in place of its name while the copy is fresh. */
-  copied: "コピーしました",
+  /**
+   * What a copy control shows in place of its name while the copy is fresh.
+   * **As short as the names it replaces**: the control keeps the width of the
+   * longer of the two, and a sentence here made a three-character "コピー" as
+   * wide as seven.
+   */
+  copied: "Copied!",
   /** Asked above the text when it could not be put on the clipboard. */
   copyByHand: "クリップボードにコピーできませんでした。選択されている文字列をコピーしてください。",
   unsettled: "未確定",
@@ -268,6 +273,7 @@ const ja = {
     experiments: "解析手法",
     noExperiments: "解析手法の情報はありません。",
     files: "このデータセットに紐づく非制限公開ファイル",
+    secondaryIds: "Secondary ID",
   },
   cart: {
     heading: "利用申請の対象となるデータセット",
@@ -665,6 +671,8 @@ const ja = {
       versionNoDatasets: "このバージョンのデータセットはありません。",
       review: "レビュー",
       draft: "下書き",
+      /** A draft with no name, which only a row the release before wrote can be. */
+      unnamedDraft: "名前未入力",
       published: "公開中",
       createEmptyDraft: "空の下書きの作成",
       copyToDraft: "下書きの作成",
@@ -677,7 +685,7 @@ const ja = {
       openComments: (count: number) => `未解決のコメント ${count} 件`,
       unpublishedDataset: "未公開",
       filesNote: [
-        "研究に直接紐づくファイルのアップロード先。公開ページの「ダウンロード」に表示され、バージョンや下書きには属さない。",
+        "研究に直接紐づくファイルのアップロード先。公開ページの「非制限公開ファイル」に表示され、バージョンや下書きには属さない。",
         "下書きの段階からアップロードでき、共有リンクのプレビューには名前だけが表示される。",
         "公開・公開停止はファイルごとに行い、研究を公開しても自動では公開されない。データセットに紐づけたファイルに未公開のものがあれば、公開前の確認の画面にも表示され、そこからまとめて公開できる。",
       ],
@@ -728,6 +736,12 @@ const ja = {
     draft: {
       /** The research editor's own h1 — the hub above it is named "研究の編集". */
       heading: "研究の内容",
+      rename: "名前の編集",
+      renameTitle: "名前の編集",
+      name: "名前",
+      nameHint: "研究の編集の表と下書きの画面で、この下書きを見分けるための名前。公開するときのバージョン番号とは関係しない。",
+      renameConfirm: "保存",
+      unnamed: "名前が未入力のため保存できません。名前を入力してください。",
       datasets: "データセット",
       noDatasets: "この研究のデータセットはありません。",
       createDataset: "データセットの作成",
@@ -970,7 +984,7 @@ const ja = {
       current: "現在の下書き",
       written: "最終的な値",
       fromVersion: (number: number) => `v${number}`,
-      fromDraft: (at: string) => `下書き (${at})`,
+      fromDraft: (name: string) => `下書き「${name}」`,
       fromUpdate: (number: number) => `v${number} (更新中)`,
       fromApplication: (applicationId: string) => `データ提供申請 ${applicationId}`,
       same: "現在の下書きと同じです。取り込む値はありません。",
@@ -1218,6 +1232,9 @@ const ja = {
       heading: "記事",
       backToList: "記事へ",
       backToSeries: "記事のバージョンへ",
+      /** Why a language's public page cannot be opened: the reader side answers 404 there. */
+      publicPageUnpublished: "この言語は公開されていないため、公開ページがありません。",
+      publicPageScheduled: "公開日時になるまで、公開ページがありません。",
       languages: { ja: "日本語", en: "英語" },
       documentHeading: "記事の編集",
       addDocument: "記事の作成",
@@ -1295,8 +1312,15 @@ const ja = {
         none: "アラートはありません。",
         add: "アラートの作成",
         shown: "表示中",
+        /** Switched on, but its period has not started. */
+        scheduled: "表示予定",
+        /** Switched on, but its period is over. */
+        ended: "表示終了",
         hidden: "非表示",
         shownOn: "表示日",
+        displayFrom: "表示開始日時 (JST)",
+        displayUntil: "表示終了日時 (JST)",
+        periodNote: "開始・終了とも空にでき、空にした側は制限しない。表示中でも、この期間の外では公開ページに表示しない。",
         show: "表示",
         hide: "非表示",
         showBlocked: "表示するには日本語と英語の両方が必要です。",
@@ -1370,6 +1394,7 @@ const ja = {
         "duplicate-slug": "その slug は既に使われています。",
         "missing-title": "タイトルを入れてください。",
         "missing-translation": "アラートは全ページに表示されるため、日本語と英語の両方が必要です。",
+        "period-reversed": "表示終了日時が表示開始日時と同じか前のため、保存できません。表示終了日時を表示開始日時より後にしてください。",
         "stale": CONFLICT,
         "in-use": "代表アドレスが指すバージョンのため削除できません。先に別のバージョンを代表アドレスに割り当ててください。",
         "not-a-revision": "この操作の対象になりません。",
@@ -1379,7 +1404,7 @@ const ja = {
     },
     files: {
       heading: "ファイル",
-      note: "研究に直接紐づくファイルのアップロード先。公開ページの「ダウンロード」に表示される。アップロードした時点では未公開で、公開はファイルごとに行う。",
+      note: "研究に直接紐づくファイルのアップロード先。公開ページの「非制限公開ファイル」に表示される。アップロードした時点では未公開で、公開はファイルごとに行う。",
       backToResearch: "研究の編集へ",
       open: "ファイル",
       summary: (count: number, size: string) => `${count} 件 / ${size}`,
@@ -1440,7 +1465,7 @@ const en: Messages = {
   notFoundBody: "This page does not exist, or it is not published.",
   notApplicable: "Not applicable",
   newTab: " (opens in a new tab)",
-  copied: "Copied",
+  copied: "Copied!",
   copyByHand: "Could not copy to the clipboard. Copy the selected text instead.",
   unsettled: "Unsettled",
   untranslatedNotice: "Some items on this page are untranslated. The other language is shown instead.",
@@ -1614,6 +1639,7 @@ const en: Messages = {
     experiments: "Analysis method",
     noExperiments: "No information on analysis methods.",
     files: "Unrestricted-access files linked to this dataset",
+    secondaryIds: "Secondary ID",
   },
   cart: {
     heading: "Datasets for your access application",

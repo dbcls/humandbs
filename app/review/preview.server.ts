@@ -36,6 +36,7 @@ import {
   controlledAccessUsers,
   loadCatalog,
   publishedDatasetLabels,
+  secondaryLabels,
 } from "~/public/queries.server"
 import { askedPath } from "~/public/urls"
 import { PAGE_SIZE } from "~/search/page-size"
@@ -452,11 +453,12 @@ export async function drawDatasetDraft(
   content?: DatasetContent,
 ): Promise<DrawnDataset> {
   const db = getDb()
-  const [humLabel, catalog, rows, published] = await Promise.all([
+  const [humLabel, catalog, rows, published, secondary] = await Promise.all([
     humLabelOf(db, draft.researchId),
     loadCatalog(db),
     previewDatasets(db, draft.draftId, [datasetId]),
     versionAgainst(db, draft),
+    secondaryLabels(db, "dataset", datasetId),
   ])
   const row = rows[0]
   if (row === undefined) notFound()
@@ -475,6 +477,7 @@ export async function drawDatasetDraft(
     // A preview reads no upstream cache: what it is showing is a draft, and the
     // cache holds published accessions only.
     studyAccession: null,
+    secondaryLabels: secondary,
     content: dataset.content,
     datePublished: dataset.dates.datePublished,
     dateModified: dataset.dates.dateModified,
@@ -494,6 +497,7 @@ export async function drawDatasetDraft(
         label: row.label ?? "",
         humLabel: humLabel ?? "",
         studyAccession: null,
+        secondaryLabels: secondary,
         content: publicDatasetContent(
           row.published,
           { files: listing },

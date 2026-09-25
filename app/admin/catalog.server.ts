@@ -22,6 +22,7 @@ import type { PgColumn } from "drizzle-orm/pg-core"
 
 import { requireCapability } from "~/auth/actor.server"
 import { getDb, type Executor } from "~/db/client.server"
+import { likeEscaped } from "~/db/like"
 import {
   contentKey,
   document,
@@ -367,9 +368,9 @@ export async function fieldTermsPage(
 
   const matching = find === ""
     ? sql`TRUE`
-    : sql`(${vocabularyTerm.code} ILIKE ${`%${find}%`}
-        OR ${vocabularyTerm.labelEn} ILIKE ${`%${find}%`}
-        OR coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${`%${find}%`})`
+    : sql`(${vocabularyTerm.code} ILIKE ${`%${likeEscaped(find)}%`} ESCAPE '\\'
+        OR ${vocabularyTerm.labelEn} ILIKE ${`%${likeEscaped(find)}%`} ESCAPE '\\'
+        OR coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${`%${likeEscaped(find)}%`} ESCAPE '\\')`
 
   const [total] = await db
     .select({ count: sql<number>`count(*)::int` })

@@ -128,7 +128,7 @@ export function Downloads<Row extends DownloadRow>({
                   goes without. */}
               {row.isPublic && humLabel !== null
                 ? (
-                    <a href={filePath(humLabel, row.name)}>
+                    <a href={filePath(humLabel, row.name)} className="visitable">
                       <Icon name="download" aria-hidden="true" className="mr-1" />
                       <FileName name={row.name} />
                     </a>

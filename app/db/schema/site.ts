@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm"
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -114,9 +116,13 @@ export const newsContent = pgTable("news_content", {
 ])
 
 /**
- * The site-wide alert. On or off, with no schedule: the two alerts the
- * current site has both leave their window empty, and a window would make
- * "is this shown" a question with two answers to combine.
+ * The site-wide alert: on or off, and within its period.
+ *
+ * **The period is a JST wall clock in columns with no zone**, the way
+ * `news.publishedAt` is, and either end may be absent. Being on is what an
+ * admin sets and the period is when; a reader sees an alert that is on and
+ * whose period holds now, so an alert can be taken down mid-period without
+ * losing its dates.
  *
  * Navigation is not here. It is a constant in `app/public/navigation.ts`,
  * because nothing edits it at runtime — the labels are hand-written short forms
@@ -126,6 +132,13 @@ export const alert = pgTable("alert", {
   id: primaryId(),
   content: jsonb().$type<AlertContent>().notNull(),
   active: boolean().notNull().default(false),
+  displayFrom: timestamp({ mode: "string" }),
+  displayUntil: timestamp({ mode: "string" }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-})
+}, (t) => [
+  check(
+    "alert_display_period_ordered",
+    sql`${t.displayFrom} IS NULL OR ${t.displayUntil} IS NULL OR ${t.displayFrom} < ${t.displayUntil}`,
+  ),
+])

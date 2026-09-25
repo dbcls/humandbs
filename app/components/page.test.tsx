@@ -24,7 +24,7 @@ describe("a rendered value", () => {
 
   it("links a span whose destination the page may follow, and underlines it", () => {
     expect(prose([[{ text: "NBDC policy", href: "/nbdc-policy" }]]))
-      .toBe("<a href=\"/nbdc-policy\" class=\"underline\">NBDC policy</a>")
+      .toBe("<a href=\"/nbdc-policy\" class=\"visitable underline\">NBDC policy</a>")
   })
 
   it("keeps the text of a span whose destination it may not, and drops the link", () => {
@@ -493,7 +493,7 @@ describe("a table's column of things to press (Table actions)", () => {
 
 describe("an identifier with its indicator (IdWithIcon)", () => {
   it("chooses the indicator by what the identifier names, muted and before it", () => {
-    expect(routed(<IdWithIcon kind="research" to="/research/hum0001">hum0001</IdWithIcon>)).toMatch(/^<svg[^>]*class="[^"]*mr-1 text-ink-muted[^"]*"[^]*<path[^]*<a href="\/research\/hum0001">hum0001<\/a>$/)
+    expect(routed(<IdWithIcon kind="research" to="/research/hum0001">hum0001</IdWithIcon>)).toMatch(/^<svg[^>]*class="[^"]*mr-1 text-ink-muted[^"]*"[^]*<path[^]*<a class="visitable" href="\/research\/hum0001">hum0001<\/a>$/)
     const dataset = routed(<IdWithIcon kind="dataset">JGAD000001</IdWithIcon>)
     expect(dataset).toMatch(/JGAD000001$/)
     expect(dataset).not.toContain("<a ")
@@ -514,7 +514,7 @@ describe("a cell of dataset IDs (DatasetIds)", () => {
     expect(html).toContain("JGAD3")
     expect(html).not.toContain("JGAD4<")
     const cited = routed(<DatasetIds locale="ja" items={[{ label: "JGAD9", to: "/d/JGAD9", research: { label: "hum0009", to: "/r/hum0009" } }]} />)
-    expect(cited).toContain("<a href=\"/d/JGAD9\">JGAD9</a> (<a href=\"/r/hum0009\">hum0009</a>)")
+    expect(cited).toContain("<a class=\"visitable\" href=\"/d/JGAD9\">JGAD9</a> (<a class=\"visitable\" href=\"/r/hum0009\">hum0009</a>)")
   })
 })
 

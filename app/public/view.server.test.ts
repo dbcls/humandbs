@@ -329,6 +329,7 @@ describe("what a research page has", () => {
 function dataset(content: DatasetContent) {
   return datasetView({
     studyAccession: null,
+    secondaryLabels: [],
     label: "JGAD000001",
     humLabel: "hum0001",
     content,
@@ -471,6 +472,7 @@ describe("a vocabulary value naming an article", () => {
   function fieldOf(termIds: string[], locale: "ja" | "en") {
     return datasetView({
       studyAccession: null,
+      secondaryLabels: [],
       label: "JGAD000001",
       humLabel: "hum0001",
       content: {

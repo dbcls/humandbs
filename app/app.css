@@ -245,9 +245,12 @@
    * Hovering underlines anything that is a link. A part that is a control
    * rather than a link (a button, a round one in the bar, a chip, a row in the
    * refinement panel) writes `no-underline`, which holds through hover.
+   *
+   * **A link does not show that it has been visited unless it is marked for
+   * it** (`.visitable` below).
    */
   a {
-    @apply text-brand hover:text-brand-light hover:underline visited:text-visited;
+    @apply text-brand hover:text-brand-light hover:underline;
   }
 
   /*
@@ -292,6 +295,21 @@
  * (`app/public/markdown.server.ts`); nothing outside it can appear.
  */
 @layer components {
+  /*
+   * **Only a way to a page or a file shows that it has been visited, and only
+   * on the public site.** Knowing which ones were already read is what saves a
+   * reader from opening them again: a research or dataset ID, an announcement's
+   * title, a link in the prose or an article, a link out, a file. An ordering, a
+   * page size, a menu, the trail or the footer changes what this screen shows
+   * or moves around the site, and a control that turns purple once pressed
+   * reads as a different control. A management screen shows none, since what it
+   * links to changes between one visit and the next (`data-area` on the body,
+   * `root.tsx`).
+   *
+   * In this layer so that a link with a colour of its own keeps it.
+   */
+  [data-area="site"] :is(.visitable, .markdown a):visited { @apply text-visited; }
+
   /*
    * An article sits inside a `Stack`, whose gap is the distance to whatever is
    * above and below it. A flex item does not collapse margins with its

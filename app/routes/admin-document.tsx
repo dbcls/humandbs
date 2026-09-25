@@ -4,7 +4,7 @@ import { Form } from "react-router"
 import { documentAction, documentPage } from "~/admin/contents.server"
 import { adminDocumentsPath, adminSeriesPath } from "~/admin/urls"
 import { Confirm, Stack } from "~/components/base"
-import { contentsSaid, SlugEditor, useArticlePanes } from "~/components/contents"
+import { contentsSaid, PublicPageButtons, SlugEditor, useArticlePanes } from "~/components/contents"
 import { DraftHead } from "~/components/draft-tools"
 import { Answer, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
@@ -81,6 +81,14 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
           }}
           headExtra={(
             <>
+              <PublicPageButtons
+                locale={locale}
+                path={`/${slug}`}
+                closed={{
+                  ja: editors.find((editor) => editor.locale === "ja")?.published === true ? null : t.publicPageUnpublished,
+                  en: editors.find((editor) => editor.locale === "en")?.published === true ? null : t.publicPageUnpublished,
+                }}
+              />
               {/* **The slug is changed from beside the name that shows it.** It
                   is the one thing the article has apart from what it shows, and
                   it already stands at the name's side as the identifier; a part

@@ -7,13 +7,13 @@ import type { CommentAnchor } from "~/content/types"
 
 import { datasetContentInput, emptyValueInput, type DatasetContentInput } from "~/admin/dataset-form"
 import type { DatasetEditorView } from "~/admin/pages.server"
-import type { EditableCatalog } from "~/admin/queries.server"
+import type { EditableCatalog, EditableTerm } from "~/admin/queries.server"
 import { emptyDatasetContent, filled } from "~/content/empty"
 import type { DatasetContent } from "~/content/types"
 import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
 import type { DrawnDataset } from "~/review/preview.server"
 
-import { CandidateWords, ChoicesLink, comboKey, copiedExperiment, DatasetEditor } from "./dataset-editor"
+import { CandidateWords, ChoicesLink, comboKey, copiedExperiment, DatasetEditor, resolveTerms } from "./dataset-editor"
 import type { PlaceSources } from "./places"
 
 const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
@@ -153,6 +153,7 @@ function drawn(content: DatasetContent): DrawnDataset {
     label: "hum0001-NHA001",
     humLabel: "hum0001",
     studyAccession: null,
+    secondaryLabels: [],
     content,
     datePublished: null,
     dateModified: null,
@@ -744,6 +745,27 @@ describe("the keys of the term box", () => {
       (count, active, key) => {
         const next = comboKey({ open: true, active, find: "x" }, key, count)?.state.active ?? -1
         return next >= 0 && next < count
+      },
+    ))
+  })
+})
+
+describe("the chosen terms", () => {
+  const term = (id: string): EditableTerm => ({ id, setId: "icd10", code: id, labelJa: null, labelEn: id, position: 0 })
+
+  it("shows a term found by the search as soon as it is chosen, beside the ones the document sent", () => {
+    const sent = [term("c71")]
+    const found = [term("c18")]
+    expect(resolveTerms([...sent, ...found], ["c71", "c18"]).map((one) => one.id)).toEqual(["c71", "c18"])
+  })
+
+  it("shows each chosen term once, in the order chosen, and leaves out an identity nobody resolved", () => {
+    fc.assert(fc.property(
+      fc.array(fc.constantFrom("a", "b", "c", "d"), { maxLength: 12 }),
+      fc.subarray(["a", "b", "c"]),
+      (ids, knownIds) => {
+        const shown = resolveTerms(knownIds.map(term), ids).map((one) => one.id)
+        expect(shown).toEqual([...new Set(ids)].filter((id) => knownIds.includes(id)))
       },
     ))
   })

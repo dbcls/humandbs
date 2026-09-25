@@ -130,6 +130,13 @@ describe("the candidates for what was typed", () => {
     expect(await diseaseCodesOf("気管支")).toEqual(["C34", "C349"])
   })
 
+  it("reads % _ and \\ as the characters typed, not as a pattern matching every term", async () => {
+    for (const needle of ["%", "_", "\\", "C%4", "C_4"]) {
+      expect(await codesOf(needle)).toEqual([])
+      expect(await diseaseCodesOf(needle)).toEqual([])
+    }
+  })
+
   it("responds with nothing when no length of the code is held", async () => {
     expect(await diseaseCodesOf("Q999")).toEqual([])
   })

@@ -1565,7 +1565,8 @@ describe("字だけの経路", () => {
    * A class on a link is how a bare word gets dressed as a control — sized to
    * sit beside a button, or given the link colour it would have had anyway. The
    * classes that are not that: a style (`border`), a wrapper around a badge
-   * (`no-underline`), and a value underlined where it sits (`underline`).
+   * (`no-underline`), a value underlined where it sits (`underline`), and a
+   * value marked to show it has been visited on the public site (`visitable`).
    */
   it("管理画面の link は、素の語に大きさや色だけを加えて操作の位置に置かない", async () => {
     const offenders: string[] = []
@@ -1573,7 +1574,7 @@ describe("字だけの経路", () => {
       const text = await readFile(path.join(ROOT, file), "utf8")
       for (const link of text.matchAll(/<(?:Link|a)\s[^>]*?\bclassName="([^"]*)"/gs)) {
         const look = link[1] ?? ""
-        if (!/\bborder\b|\bunderline\b/.test(look)) offenders.push(`${file}: className="${look}"`)
+        if (!/\bborder\b|\bunderline\b|\bvisitable\b/.test(look)) offenders.push(`${file}: className="${look}"`)
       }
     }
     expect(offenders).toEqual([])

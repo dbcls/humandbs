@@ -86,6 +86,8 @@ export interface ReviewPageView {
   researchId: string
   draftId: string
   humLabel: string | null
+  /** What admins call the draft; null for an update, which is called by its version. */
+  draftName: string | null
   /** The administrator reading it, which is what their replies are signed with. */
   signedInName: string
   share: ShareView
@@ -126,6 +128,7 @@ export async function reviewPage(
     researchId,
     draftId,
     humLabel: places.humLabel,
+    draftName: draft.updating === null ? draft.name : null,
     signedInName: actor.name,
     share: shareNow,
     unresolved,

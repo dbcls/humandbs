@@ -21,6 +21,7 @@ function view(over: Partial<ReviewPageView> = {}): ReviewPageView {
     researchId: RESEARCH_ID,
     draftId: DRAFT_ID,
     humLabel: "hum0001",
+    draftName: "v2 予定",
     signedInName: "curator",
     share: { url: "https://example.invalid/preview/tok", enabled: false, open: false, expired: false, expiresOn: null },
     comments: [],

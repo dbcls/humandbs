@@ -7,7 +7,7 @@
  * draft entry described by the document version the draft pins.
  */
 
-import { datasetKey, versionNumber, type EsDataset, type EsResearch, type EsResearchVersion } from "./es"
+import { datasetKey, versionNumber, type Dump, type EsDataset, type EsResearch, type EsResearchVersion } from "./es"
 
 export interface DraftDataset {
   label: string
@@ -20,6 +20,10 @@ export interface SelectedDraft {
   updatesPublished: boolean
   /** In the order the draft lists them. */
   datasets: DraftDataset[]
+  /** What admins call the draft, where it is not the planned version. */
+  name?: string
+  /** The administrators' memo the draft starts with. */
+  memo?: string
 }
 
 export interface DraftSelection {
@@ -88,4 +92,38 @@ export function selectDrafts(
   }
 
   return { drafts, orphanVersions, unreadableVersions, supersededDrafts, missingDocuments }
+}
+
+/**
+ * Datasets of one research the archive withdrew after publishing them
+ * (`hand/withdrawn.json`), and the name and the memo of the draft that keeps them.
+ */
+export interface WithdrawnData {
+  hum: string
+  datasets: string[]
+  draftName: string
+  memo: string
+}
+
+/**
+ * A draft for each research whose datasets the archive withdrew after
+ * publishing them. **The portal stops listing the datasets, and keeps them in
+ * a draft**: the research's latest published version, listing those datasets
+ * only, each described by the document that version pins. Publishing the draft
+ * once the archive has them again lists them again.
+ */
+export function withdrawnDrafts(held: Dump, withdrawn: readonly WithdrawnData[]): SelectedDraft[] {
+  return withdrawn.map((one) => {
+    const latest = held.latestVersion.get(one.hum)
+    if (latest === undefined) throw new Error(`${one.hum} has withdrawn datasets but no published version`)
+    const refs = (latest.datasets ?? []).filter((ref) => one.datasets.includes(ref.datasetId))
+    const unlisted = one.datasets.filter((label) => !refs.some((ref) => ref.datasetId === label))
+    if (unlisted.length > 0) throw new Error(`${one.hum}'s latest version does not list ${unlisted.join(", ")}`)
+    const datasets = refs.map((ref) => {
+      const doc = held.datasetsByKey.get(datasetKey(ref.datasetId, ref.version))
+      if (doc === undefined) throw new Error(`${one.hum} pins ${ref.datasetId} ${ref.version}, which the dump does not hold`)
+      return { label: ref.datasetId, doc }
+    })
+    return { version: { ...latest, datasets: refs }, updatesPublished: true, datasets, name: one.draftName, memo: one.memo }
+  })
 }

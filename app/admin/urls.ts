@@ -122,6 +122,11 @@ export function draftCommentsPath(researchId: string, draftId: string): string {
   return `${adminDraftPath(researchId, draftId)}/comments`
 }
 
+/** Where the editing screen sends the draft's name (`routes/admin-draft-name.ts`). */
+export function draftNamePath(researchId: string, draftId: string): string {
+  return `${adminDraftPath(researchId, draftId)}/name`
+}
+
 /**
  * Where the draft is drawn as its page, for the pane beside the form.
  *

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { selectDrafts } from "./drafts"
-import { datasetKey, type EsDataset, type EsResearch, type EsResearchVersion } from "./es"
+import { selectDrafts, withdrawnDrafts, type WithdrawnData } from "./drafts"
+import { datasetKey, type Dump, type EsDataset, type EsResearch, type EsResearchVersion } from "./es"
 
 const research = (humId: string, latestVersion: string | null): EsResearch => ({ humId, latestVersion })
 
@@ -103,5 +103,34 @@ describe("selectDrafts", () => {
 
     expect(selection.drafts.map((d) => d.version.humVersionId)).toEqual(["hum0008-v3"])
     expect(selection.supersededDrafts).toEqual(["hum0008-v2"])
+  })
+})
+
+describe("withdrawnDrafts", () => {
+  const latest = version("hum0014", 37, [{ datasetId: "JGAD000460", version: "v2" }, { datasetId: "JGAD000461", version: "v1" }])
+  const held: Dump = {
+    research: new Map([["hum0014", research("hum0014", "v37")]]),
+    publishedVersions: [latest],
+    latestVersion: new Map([["hum0014", latest]]),
+    datasetsByKey: index([doc("JGAD000460", "v2", "hum0014"), doc("JGAD000461", "v1", "hum0014")]),
+    versions: [latest],
+  }
+  const withdrawn: WithdrawnData = { hum: "hum0014", datasets: ["JGAD000461"], draftName: "JGAD000461 (JGA で取り下げ)", memo: "取り下げられた" }
+
+  it("gives the research a draft of its latest version listing only the withdrawn datasets, named and with the memo", () => {
+    const [draft, ...rest] = withdrawnDrafts(held, [withdrawn])
+
+    expect(rest).toEqual([])
+    expect(draft?.version.humVersionId).toBe("hum0014-v37")
+    expect(draft?.version.datasets).toEqual([{ datasetId: "JGAD000461", version: "v1" }])
+    expect(draft?.datasets.map((one) => [one.label, one.doc.version])).toEqual([["JGAD000461", "v1"]])
+    expect(draft?.updatesPublished).toBe(true)
+    expect([draft?.name, draft?.memo]).toEqual(["JGAD000461 (JGA で取り下げ)", "取り下げられた"])
+    expect(latest.datasets).toHaveLength(2)
+  })
+
+  it("stops on a dataset the latest version does not list, and on a research with no published version", () => {
+    expect(() => withdrawnDrafts(held, [{ ...withdrawn, datasets: ["JGAD000999"] }])).toThrow(/JGAD000999/)
+    expect(() => withdrawnDrafts(held, [{ ...withdrawn, hum: "hum0484" }])).toThrow(/hum0484/)
   })
 })

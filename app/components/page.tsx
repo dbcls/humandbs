@@ -466,7 +466,7 @@ export function IdWithIcon(props: {
   return (
     <>
       {kindIcon}
-      {to === null ? children : <Link to={to}>{children}</Link>}
+      {to === null ? children : <Link to={to} className="visitable">{children}</Link>}
     </>
   )
 }
@@ -504,7 +504,7 @@ export function DatasetIds({ items, shown, newTab = false, locale }: {
               {item.research != null && (
                 <>
                   {" ("}
-                  {item.research.to === null ? item.research.label : <Link to={item.research.to}>{item.research.label}</Link>}
+                  {item.research.to === null ? item.research.label : <Link to={item.research.to} className="visitable">{item.research.label}</Link>}
                   )
                 </>
               )}
@@ -1301,7 +1301,7 @@ function SpanText({ span }: { span: Span }) {
   const href = span.href === undefined ? null : linkHref(span.href)
   // Underlined: this is the one place on a research page where a link is a
   // few words inside a sentence rather than a line of its own (`app.css`).
-  return href === null ? <>{span.text}</> : <a href={href} className="underline">{span.text}</a>
+  return href === null ? <>{span.text}</> : <a href={href} className="visitable underline">{span.text}</a>
 }
 
 /** Lines of spans, and nothing else — the whole of what prose can hold. */
@@ -1401,7 +1401,7 @@ export function ExternalLink({ to, locale, children }: {
       // monospace typeface has its baseline a pixel lower than the words in
       // the next cell — which put the whole link a pixel down and stretched
       // the row by two. The box is one line tall, so its top is the line's.
-      className="inline-flex items-center gap-1 align-top"
+      className="visitable inline-flex items-center gap-1 align-top"
     >
       {children}
       <Icon name="external" />

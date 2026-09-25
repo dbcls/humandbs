@@ -23,6 +23,7 @@ import { useRef, useState, type ReactNode } from "react"
 
 import { describeAt } from "~/admin/changes"
 import { diffDraftInput, importField } from "~/admin/diff"
+import { draftAside } from "~/admin/draft-name"
 import type {
   DataProviderInput,
   DraftInput,
@@ -54,7 +55,7 @@ import {
 
 import { usePanes, ScreenLink } from "./admin"
 import { Badge, Stack } from "./base"
-import { DraftHead, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
+import { DraftHead, DraftNameEditor, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote, OpenComments, WholeNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { pairLine, placeName, placeRows, sideLine, type StateWords } from "./places"
@@ -628,13 +629,16 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         <DraftHead
           locale={locale}
           title={messages.admin.draft.heading}
-          aside={view.humLabel ?? t.unlabelled}
+          aside={draftAside(view.humLabel ?? t.unlabelled, view.draftName, locale)}
           updating={view.updating}
           back={{
             to: href(locale, adminResearchPath(view.researchId)),
             label: t.backToResearch,
             icon: "chevron-left",
           }}
+          headExtra={view.draftName !== null && (
+            <DraftNameEditor locale={locale} researchId={view.researchId} draftId={view.draftId} name={view.draftName} />
+          )}
           overview={(
             <DraftOverview
               locale={locale}

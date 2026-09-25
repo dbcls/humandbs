@@ -197,7 +197,7 @@ function diseaseValue(row: DiseaseRow): DiseaseValue | null {
   const nameEn = row.nameEn.trim()
   if (row.termIds.length === 0 && nameJa === "" && nameEn === "") return null
   return {
-    termIds: [...row.termIds],
+    termIds: [...new Set(row.termIds)],
     nameJa: nameJa === "" ? null : nameJa,
     nameEn: nameEn === "" ? null : nameEn,
   }
@@ -212,7 +212,7 @@ function contentValue(body: ValueBody, keyId: string, units: CanonicalUnits): Co
     return {
       kind: "vocabulary",
       termIds: body.state === "value"
-        ? { state: "value", value: [...body.termIds] }
+        ? { state: "value", value: [...new Set(body.termIds)] }
         : { state: body.state },
     }
   }

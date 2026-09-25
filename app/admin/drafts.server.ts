@@ -26,7 +26,7 @@
 
 import { randomBytes, randomUUID } from "node:crypto"
 
-import { and, asc, eq, sql, type SQL } from "drizzle-orm"
+import { and, asc, eq, isNull, sql, type SQL } from "drizzle-orm"
 
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import { emptyResearchContent } from "~/content/empty"
@@ -52,6 +52,7 @@ import {
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { draftDatasets } from "./datasets"
+import { plannedDraftName } from "./draft-name"
 import { lockResearch } from "./locks.server"
 import type { DroppedValue } from "./templates"
 import { pinLabelsIn, type PinRequest } from "./labels.server"
@@ -154,6 +155,7 @@ export async function createResearchWithDraft(
       .insert(researchDraft)
       .values({
         researchId: created.id,
+        name: plannedDraftName(null),
         content: emptyResearchContent(),
         shareToken: newShareToken(),
       })
@@ -249,6 +251,7 @@ export async function createResearchFromUpstream(
       .insert(researchDraft)
       .values({
         researchId: created.id,
+        name: plannedDraftName(null),
         content: { ...seed.content, datasetIds: datasets.map((entry) => entry.id) },
         shareToken: newShareToken(),
       })
@@ -412,6 +415,19 @@ export function droppedComments(
 }
 
 /**
+ * The name a draft of this research is given now (`plannedDraftName`), from the
+ * versions it holds at this moment. A withdrawn version is taken out before the
+ * draft it leaves is written, so its number is the one planned again.
+ */
+async function plannedNameIn(db: Executor, researchId: string): Promise<string> {
+  const [row] = await db
+    .select({ highest: sql<number | null>`max(${researchVersion.number})` })
+    .from(researchVersion)
+    .where(eq(researchVersion.researchId, researchId))
+  return plannedDraftName(row?.highest ?? null)
+}
+
+/**
  * An empty draft of an existing research. Nothing is copied into it: what it
  * comes to hold is imported afterwards — from a version, an application or an
  * accession — or typed.
@@ -421,6 +437,7 @@ export async function createEmptyDraft(db: Database, researchId: string): Promis
     .insert(researchDraft)
     .values({
       researchId,
+      name: await plannedNameIn(db, researchId),
       content: emptyResearchContent(),
       shareToken: newShareToken(),
     })
@@ -512,6 +529,8 @@ export async function draftFromVersion(
     .insert(researchDraft)
     .values({
       researchId: version.researchId,
+      // An update is shown by its version's number, and has no name of its own.
+      name: updates === null ? await plannedNameIn(tx, version.researchId) : "",
       content: draftContentOf(version.content),
       replacesVersionId: updates,
       shareToken: newShareToken(),
@@ -840,6 +859,26 @@ export async function setDraftSharing(
     .where(eq(researchDraft.id, draftId))
     .returning({ id: researchDraft.id })
   return rows[0] === undefined ? { status: "gone" } : { status: "set" }
+}
+
+/**
+ * The name the draft is called by on the admin screens.
+ *
+ * **It takes no revision**, for the reason sharing takes none: the name is not
+ * content, and the last press winning is the answer. **An update has none to
+ * change** (`researchDraft.name`), so one is left as it is.
+ */
+export async function renameDraft(
+  db: Executor,
+  draftId: string,
+  name: string,
+): Promise<{ status: "renamed" | "gone" }> {
+  const rows = await db
+    .update(researchDraft)
+    .set({ name })
+    .where(and(eq(researchDraft.id, draftId), isNull(researchDraft.replacesVersionId)))
+    .returning({ id: researchDraft.id })
+  return rows[0] === undefined ? { status: "gone" } : { status: "renamed" }
 }
 
 /**

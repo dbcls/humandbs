@@ -10,7 +10,6 @@ import { Icon } from "~/components/icons"
 import { Card, Page, Section, Table, Td } from "~/components/page"
 import { ApplicationDatasets, ApplicationWarning, researchParts, sourceName, SourceTable, ImportForm } from "~/components/import"
 import { BranchCells, BranchDialog, UpstreamNotConnected } from "~/components/upstream"
-import { minuteInJst } from "~/dates"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
@@ -86,7 +85,7 @@ export default function AdminDraftImport({ loaderData, actionData }: Route.Compo
                 <Heading
                   title={t.chosenHeading}
                   aside={view.humLabel ?? undefined}
-                  from={t.chosenFrom(sourceName(chosen.source, locale, minuteInJst))}
+                  from={t.chosenFrom(sourceName(chosen.source, locale))}
                 >
                   <AdminBack to={href(locale, here)} label={t.backToSources} icon="chevron-left" />
                 </Heading>
@@ -106,7 +105,7 @@ export default function AdminDraftImport({ loaderData, actionData }: Route.Compo
                     parts={researchParts(locale, chosen.datasets, chosen.citable, [chosen.mine, chosen.theirs])}
                     mine={chosen.mine}
                     theirs={chosen.theirs}
-                    sourceLabel={sourceName(chosen.source, locale, minuteInJst)}
+                    sourceLabel={sourceName(chosen.source, locale)}
                     revision={view.revision}
                     hidden={application !== null && (
                       <input type="hidden" name="application" value={application.applicationId} />

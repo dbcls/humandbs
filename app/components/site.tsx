@@ -126,7 +126,7 @@ export function NewsList({ locale, items, dateBeside = false }: {
             <div className="min-w-0 flex-1">
               <Stack gap="tight">
                 {!dateBeside && <span className="text-ink-muted text-xs">{dayOf(item.publishedAt)}</span>}
-                <Link to={href(locale, newsItemPath(item.id))}>{item.title}</Link>
+                <Link to={href(locale, newsItemPath(item.id))} className="visitable">{item.title}</Link>
                 {item.excerpt !== "" && (
                   <p className="line-clamp-2 text-ink-muted text-sm">{item.excerpt}</p>
                 )}

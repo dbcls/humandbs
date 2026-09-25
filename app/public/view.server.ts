@@ -831,6 +831,8 @@ export interface DatasetView {
    * the portal itself issued an id for does not have one.
    */
   studyAccession: string | null
+  /** The dataset's secondary IDs, in label order: the ids it was known by before. */
+  secondaryLabels: string[]
   datePublished: string | null
   dateModified: string | null
   accessType: TermView | null
@@ -849,6 +851,7 @@ export interface DatasetViewInput {
   label: string
   humLabel: string
   studyAccession: string | null
+  secondaryLabels: readonly string[]
   content: DatasetContent
   datePublished: string | null
   dateModified: string | null
@@ -903,6 +906,7 @@ export function anchoredDatasetView(
     label: input.label,
     humLabel: input.humLabel,
     studyAccession: input.studyAccession,
+    secondaryLabels: [...input.secondaryLabels],
     datePublished: input.datePublished,
     dateModified: input.dateModified,
     accessType: row.accessType,

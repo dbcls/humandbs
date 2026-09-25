@@ -191,6 +191,7 @@ const management = [
  */
 const editing = [
   route("admin/research/:researchId/draft/:draftId/comments", "routes/admin-draft-comments.ts"),
+  route("admin/research/:researchId/draft/:draftId/name", "routes/admin-draft-name.ts"),
   route("admin/research/:researchId/draft/:draftId/page", "routes/admin-draft-page.ts"),
   route(
     "admin/research/:researchId/draft/:draftId/dataset/:datasetId/page",

@@ -24,6 +24,7 @@ import type {
   TranslatedText,
 } from "~/content/types"
 import type { Executor } from "~/db/client.server"
+import { likeEscaped } from "~/db/like"
 import { descriptionOf, draftContentOf } from "~/content/version"
 import {
   contentKey,
@@ -239,6 +240,8 @@ export interface AdminVersionRow {
 
 export interface AdminDraftRow {
   id: string
+  /** What admins call it (`researchDraft.name`). */
+  name: string
   revision: number
   createdAt: string
   updatedAt: string
@@ -282,6 +285,7 @@ export async function adminResearch(
     db
       .select({
         id: researchDraft.id,
+        name: researchDraft.name,
         revision: researchDraft.revision,
         replacesVersionId: researchDraft.replacesVersionId,
         createdAt: researchDraft.createdAt,
@@ -295,6 +299,7 @@ export async function adminResearch(
 
   const rows = drafts.map((row) => ({
     id: row.id,
+    name: row.name,
     revision: row.revision,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -316,6 +321,8 @@ export async function adminResearch(
 export interface DraftRecord {
   id: string
   researchId: string
+  /** What admins call it; empty for an update, which is called by its version. */
+  name: string
   revision: number
   content: ResearchContent
   /**
@@ -331,6 +338,7 @@ export async function readDraft(db: Executor, draftId: string): Promise<DraftRec
     .select({
       id: researchDraft.id,
       researchId: researchDraft.researchId,
+      name: researchDraft.name,
       revision: researchDraft.revision,
       content: researchDraft.content,
       versionId: researchDraft.replacesVersionId,
@@ -642,7 +650,7 @@ export async function findTerms(
   // **An empty field opens on the vocabulary's first terms**, in code order: a
   // vocabulary of a handful is then shown whole the moment its box is entered,
   // and a large one shows where it starts, with the box prompting to type.
-  const like = `%${find}%`
+  const like = `%${likeEscaped(find)}%`
   return db
     .select(TERM_COLUMNS)
     .from(vocabularyTerm)
@@ -651,9 +659,9 @@ export async function findTerms(
       : and(
           eq(vocabularyTerm.setId, setId),
           or(
-            sql`${vocabularyTerm.code} ILIKE ${like}`,
-            sql`${vocabularyTerm.labelEn} ILIKE ${like}`,
-            sql`coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${like}`,
+            sql`${vocabularyTerm.code} ILIKE ${like} ESCAPE '\\'`,
+            sql`${vocabularyTerm.labelEn} ILIKE ${like} ESCAPE '\\'`,
+            sql`coalesce(${vocabularyTerm.labelJa}, '') ILIKE ${like} ESCAPE '\\'`,
           ),
         ))
     .orderBy(vocabularyTerm.code)

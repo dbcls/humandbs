@@ -23,6 +23,7 @@ import { Form } from "react-router"
 
 import { describeInput, type ShownLine } from "~/admin/changes"
 import type { DraftInput, LinksPairInput, TextInput, TextPairInput } from "~/admin/form"
+import { draftNameShown } from "~/admin/draft-name"
 import { readAt, writeAt } from "~/admin/paths"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import type { DatasetRowView } from "~/public/view.server"
@@ -120,12 +121,12 @@ function readingAt<T>(shape: ImportShape<T>, side: T, path: string): ShownLine[]
   return describeInput(found.value)
 }
 
-export function sourceName(source: ImportSource, locale: Locale, minute: (at: string) => string): string {
+export function sourceName(source: ImportSource, locale: Locale): string {
   const t = messagesFor(locale).admin.import
   switch (source.kind) {
     case "version": return t.fromVersion(source.number)
     // An update is called by the version it updates, as its row in the table is.
-    case "draft": return source.updating === null ? t.fromDraft(minute(source.updatedAt)) : t.fromUpdate(source.updating)
+    case "draft": return source.updating === null ? t.fromDraft(draftNameShown(source.name, locale)) : t.fromUpdate(source.updating)
     case "application": return t.fromApplication(source.applicationId)
   }
 }
@@ -535,10 +536,12 @@ function SourceRow({ row, to, humLabel, self, locale }: {
               </span>
             )}
       </Td>
-      <Td nowrap>
-        {name !== null && (humLabel === null
-          ? <span>{name}</span>
-          : <ExternalLink to={href(locale, `${researchPath(humLabel)}/${name}`)} locale={locale}>{name}</ExternalLink>)}
+      <Td nowrap={row.kind === "version"}>
+        {row.kind === "draft"
+          ? draftNameShown(row.name, locale)
+          : name !== null && (humLabel === null
+            ? <span>{name}</span>
+            : <ExternalLink to={href(locale, `${researchPath(humLabel)}/${name}`)} locale={locale}>{name}</ExternalLink>)}
       </Td>
       <Td nowrap>{minuteInJst(updatedAt)}</Td>
       <Td nowrap>{row.kind === "version" ? row.releaseDate : ""}</Td>
