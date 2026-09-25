@@ -15,6 +15,9 @@ import { datasetContentOf, saveDatasetSchema, widthsOrdered } from "./dataset-fo
 /** The units of the keys these tests use. Only the numeric ones have any. */
 const UNITS = (keyId: string): string | null => (keyId === "data-volume-gb" ? "GB" : null)
 
+/** A number row's label or note, left untouched in both languages. */
+const EMPTY = { ja: "", en: "" }
+
 function text(keyId: string, ja: string, en = ""): ValueInput {
   return {
     keyId,
@@ -96,7 +99,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: "", value: "1.5", unit: "TB", high: "", note: "" }],
+          rows: [{ label: EMPTY, value: "1.5", unit: "TB", high: "", note: EMPTY }],
         },
       }]
     }), UNITS)
@@ -119,6 +122,48 @@ describe("reading a dataset back off the form", () => {
     })
   })
 
+  it("keeps a number's label and note as a pair, trimmed side by side", () => {
+    const result = datasetContentOf(form((input) => {
+      input.values = [{
+        keyId: "data-volume-gb",
+        value: {
+          kind: "number",
+          state: "value",
+          rows: [{
+            label: { ja: " 常染色体 ", en: "" },
+            value: "1.5",
+            unit: "TB",
+            high: "",
+            note: { ja: "", en: " average " },
+          }],
+        },
+      }]
+    }), UNITS)
+
+    const value = result.values[0]?.value
+    const [one] = value?.kind === "number" && value.values.state === "value" ? value.values.value : []
+    expect(one?.label).toEqual({ ja: "常染色体", en: "" })
+    expect(one?.note).toEqual({ ja: "", en: "average" })
+  })
+
+  it("stores a label or a note left untouched in both languages as null, not as an empty pair", () => {
+    const result = datasetContentOf(form((input) => {
+      input.values = [{
+        keyId: "data-volume-gb",
+        value: {
+          kind: "number",
+          state: "value",
+          rows: [{ label: { ja: " ", en: "" }, value: "1.5", unit: "TB", high: "", note: EMPTY }],
+        },
+      }]
+    }), UNITS)
+
+    const value = result.values[0]?.value
+    const [one] = value?.kind === "number" && value.values.state === "value" ? value.values.value : []
+    expect(one?.label).toBeNull()
+    expect(one?.note).toBeNull()
+  })
+
   it("converts a width's upper end the same way as its lower end, and keeps what was typed", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
@@ -126,7 +171,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: "", value: "0.9", unit: "TB", high: "1.3", note: "" }],
+          rows: [{ label: EMPTY, value: "0.9", unit: "TB", high: "1.3", note: EMPTY }],
         },
       }]
     }), UNITS)
@@ -164,7 +209,7 @@ describe("reading a dataset back off the form", () => {
           value: {
             kind: "number",
             state: "value",
-            rows: [{ label: "", value: "1.3", unit: "GB", high: "0.9", note: "" }],
+            rows: [{ label: EMPTY, value: "1.3", unit: "GB", high: "0.9", note: EMPTY }],
           },
         }]
       }),
@@ -180,7 +225,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: "", value: "1.3", unit: "GB", high: "0.9", note: "" }],
+          rows: [{ label: EMPTY, value: "1.3", unit: "GB", high: "0.9", note: EMPTY }],
         },
       }]
     })
@@ -193,7 +238,7 @@ describe("reading a dataset back off the form", () => {
           value: {
             kind: "number",
             state: "value",
-            rows: [{ label: "", value: "1.3", unit: "GB", high: "0.9", note: "" }],
+            rows: [{ label: EMPTY, value: "1.3", unit: "GB", high: "0.9", note: EMPTY }],
           },
         }],
       }]
@@ -204,7 +249,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: "", value: "0.9", unit: "GB", high: "1.3", note: "" }],
+          rows: [{ label: EMPTY, value: "0.9", unit: "GB", high: "1.3", note: EMPTY }],
         },
       }]
     })
@@ -222,7 +267,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: "", value: "  ", unit: "GB", high: "", note: "" }],
+          rows: [{ label: EMPTY, value: "  ", unit: "GB", high: "", note: EMPTY }],
         },
       }]
     }), UNITS)
@@ -237,7 +282,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "unknown",
-          rows: [{ label: "", value: "1.5", unit: "TB", high: "", note: "" }],
+          rows: [{ label: EMPTY, value: "1.5", unit: "TB", high: "", note: EMPTY }],
         },
       }]
     }), UNITS)
@@ -345,7 +390,7 @@ describe("putting a dataset on the form", () => {
     expect(datasetContentInput(content).values[0]?.value).toEqual({
       kind: "number",
       state: "value",
-      rows: [{ label: "", value: "1.5", unit: "TB", high: "", note: "" }],
+      rows: [{ label: EMPTY, value: "1.5", unit: "TB", high: "", note: EMPTY }],
     })
   })
 
@@ -378,7 +423,7 @@ describe("putting a dataset on the form", () => {
     expect(datasetContentInput(content).values[0]?.value).toEqual({
       kind: "number",
       state: "value",
-      rows: [{ label: "", value: "0.9", unit: "TB", high: "1.3", note: "" }],
+      rows: [{ label: EMPTY, value: "0.9", unit: "TB", high: "1.3", note: EMPTY }],
     })
   })
 
@@ -435,7 +480,7 @@ describe("putting a dataset on the form", () => {
 
 describe("highBelowValue", () => {
   const row = (value: string, high: string) =>
-    ({ label: "", value, unit: null, high, note: "" })
+    ({ label: EMPTY, value, unit: null, high, note: EMPTY })
 
   it("is false when nothing is typed for the upper end", () => {
     expect(highBelowValue(row("1.3", ""))).toBe(false)

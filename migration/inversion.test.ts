@@ -121,6 +121,54 @@ describe("splitting a cell keyed by accession", () => {
   })
 })
 
+describe("a cell that captions each dataset's line", () => {
+  const LABELS = ["hum0014.v17.AR.v1", "hum0014.v17.COPD.v1"]
+  const cell = [
+    "不整脈",
+    "[hum0014.v17.AR.v1](/files/hum0014/hum0014.v17.AR.v1.zip)",
+    "COPD",
+    "[hum0014.v17.COPD.v1](/files/hum0014/hum0014.v17.COPD.v1.zip)",
+    "[Dictionary file](/files/hum0014/README.txt)",
+  ].join("\n")
+
+  it("takes the caption away with the dataset line under it, and keeps the lines no dataset owns", () => {
+    const result = splitSharedBlock(block("NBDC Dataset Accession", cell), LABELS, NO_STUDIES)
+
+    expect(ownText(result, "hum0014.v17.COPD.v1", "NBDC Dataset Accession")).toBe([
+      "COPD",
+      "[hum0014.v17.COPD.v1](/files/hum0014/hum0014.v17.COPD.v1.zip)",
+      "[Dictionary file](/files/hum0014/README.txt)",
+    ].join("\n"))
+    expect(ownText(result, "hum0014.v17.AR.v1", "NBDC Dataset Accession")).toBe([
+      "不整脈",
+      "[hum0014.v17.AR.v1](/files/hum0014/hum0014.v17.AR.v1.zip)",
+      "[Dictionary file](/files/hum0014/README.txt)",
+    ].join("\n"))
+  })
+
+  it("takes away a group heading once every line under it has gone", () => {
+    const grouped = ["血球数", "赤血球数", "JGAD000155", "血糖・脂質関連", "総コレステロール", "JGAD000144", "HDLコレステロール", "JGAD000145"].join("\n")
+    const result = splitSharedBlock(block("NBDC Dataset Accession", grouped), ["JGAD000155", "JGAD000144", "JGAD000145"], NO_STUDIES)
+
+    expect(ownText(result, "JGAD000155", "NBDC Dataset Accession")).toBe("血球数\n赤血球数\nJGAD000155")
+    expect(ownText(result, "JGAD000145", "NBDC Dataset Accession")).toBe("血糖・脂質関連\nHDLコレステロール\nJGAD000145")
+  })
+
+  it("reads a table that repeats the group heading on every row", () => {
+    const rows = ["血糖・脂質関連", "総コレステロール", "JGAD000144", "血糖・脂質関連", "HDLコレステロール", "JGAD000145"].join("\n")
+    const result = splitSharedBlock(block("NBDC Dataset Accession", rows), ["JGAD000144", "JGAD000145"], NO_STUDIES)
+
+    expect(ownText(result, "JGAD000145", "NBDC Dataset Accession")).toBe("血糖・脂質関連\nHDLコレステロール\nJGAD000145")
+    expect(ownText(result, "JGAD000144", "NBDC Dataset Accession")).toBe("血糖・脂質関連\n総コレステロール\nJGAD000144")
+  })
+
+  it("leaves a heading over other datasets' lines in any other cell", () => {
+    const result = splitSharedBlock(block("Total Data Volume", "腫瘍組織:\nJGAD000001: 88 GB\nJGAD000002: 32 GB"), ["JGAD000001", "JGAD000002"], NO_STUDIES)
+
+    expect(ownText(result, "JGAD000002", "Total Data Volume")).toBe("腫瘍組織:\nJGAD000002: 32 GB")
+  })
+})
+
 describe("a line naming an accession outside the block", () => {
   it("drops it for every dataset in the block rather than keeping it for any of them", () => {
     // Real text from hum0018-v3 (WES): two lines of the five name JGAD ids

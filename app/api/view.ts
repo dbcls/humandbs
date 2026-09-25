@@ -145,6 +145,18 @@ function termsOf(slot: Slot<string[]>, catalog: CatalogView): ApiTerm[] | null |
 }
 
 /**
+ * A number's label or note, as a value per language. `undefined` when there is
+ * none to report — either the field was never given, or both languages hold
+ * nothing, which is the same fact the content type itself normalises to `null`
+ * (`app/content/types.ts`).
+ */
+function numberText(pair: NumberValue["label"]): ApiText | undefined {
+  if (pair === null) return undefined
+  const text = plainPair(pair.ja, pair.en)
+  return Object.keys(text).length === 0 ? undefined : text
+}
+
+/**
  * **A list, because a key holds a list** (`app/content/types.ts`). What each
  * entry is about and what qualifies it travel with it: a client that only wants
  * the number can read `value`, and one that wants to report which number it was
@@ -153,13 +165,17 @@ function termsOf(slot: Slot<string[]>, catalog: CatalogView): ApiTerm[] | null |
 function numberOf(slot: Slot<NumberValue[]>): ApiNumber[] | null | undefined {
   if (slot.state === "not-applicable") return null
   if (slot.state === "unknown") return undefined
-  return slot.value.map((one) => ({
-    value: one.value,
-    unit: one.unit,
-    high: one.high ?? null,
-    ...(one.label === null ? {} : { label: one.label }),
-    ...(one.note === null ? {} : { note: one.note }),
-  }))
+  return slot.value.map((one) => {
+    const label = numberText(one.label)
+    const note = numberText(one.note)
+    return {
+      value: one.value,
+      unit: one.unit,
+      high: one.high ?? null,
+      ...(label === undefined ? {} : { label }),
+      ...(note === undefined ? {} : { note }),
+    }
+  })
 }
 
 function valueOf(slot: ValueSlot, catalog: CatalogView): ApiValue | undefined {

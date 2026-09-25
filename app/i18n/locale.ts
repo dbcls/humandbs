@@ -121,3 +121,22 @@ export function resolveBilingual(text: Bilingual, locale: Locale): string {
   const wanted = text[locale]
   return wanted === "" ? text[other(locale)] : wanted
 }
+
+/**
+ * A translated pair that may not exist at all, rather than being unsettled or
+ * not applicable — a number's label and note (`NumberValue`), which a curator
+ * may leave off entirely. `null` means there is none. Once given, an empty
+ * side falls back to the other side and is reported as untranslated, the same
+ * as any other translated pair; both sides empty reads as no pair at all,
+ * which is what an empty pair is normalised to on the way in.
+ */
+export function resolveOptionalBilingual(
+  pair: Bilingual | null,
+  locale: Locale,
+): { text: string, untranslated: boolean } | null {
+  if (pair === null) return null
+  const wanted = pair[locale]
+  if (wanted !== "") return { text: wanted, untranslated: false }
+  const fallback = pair[other(locale)]
+  return fallback === "" ? null : { text: fallback, untranslated: true }
+}

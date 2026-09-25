@@ -26,6 +26,7 @@
 
 import { toMarkdown } from "~/content/richtext"
 import type {
+  Bilingual,
   ContentValue,
   DatasetContent,
   Experiment,
@@ -45,8 +46,9 @@ export type ValueKind = "text" | "vocabulary" | "number" | "disease"
  * that say which number it is and what qualifies it.
  *
  * **A key holds a row per number** (`app/content/types.ts`), so the editor edits
- * a list. The label and the note are empty strings rather than nulls because
- * that is what a text box holds; they become nulls on the way in.
+ * a list. The label and the note are a plain pair of strings rather than a
+ * `Bilingual | null` because that is what a text box holds for each language;
+ * both sides empty becomes `null` on the way in, the same as one side ever was.
  *
  * **`high` is a width's upper end, typed in the same unit as `value`.** Empty
  * rather than null for the same reason `value` is a string — there is no
@@ -55,11 +57,11 @@ export type ValueKind = "text" | "vocabulary" | "number" | "disease"
  * (`app/admin/dataset-form.server.ts`).
  */
 export interface NumberRow {
-  label: string
+  label: Bilingual
   value: string
   unit: string | null
   high: string
-  note: string
+  note: Bilingual
 }
 
 /**
@@ -184,11 +186,11 @@ function valueBody(keyId: string, value: ContentValue): ValueBody {
             kind: "number",
             state: "value",
             rows: value.values.value.map((one) => ({
-              label: one.label ?? "",
+              label: one.label ?? emptyBilingual(),
               value: String(one.inputValue),
               unit: one.inputUnit,
               high: one.inputHigh == null ? "" : String(one.inputHigh),
-              note: one.note ?? "",
+              note: one.note ?? emptyBilingual(),
             })),
           }
         : { kind: "number", state: value.values.state, rows: [] }
@@ -261,8 +263,12 @@ export function emptyValueInput(keyId: string, kind: ValueKind, unit?: string | 
   }
 }
 
+function emptyBilingual(): Bilingual {
+  return { ja: "", en: "" }
+}
+
 export function emptyNumberRow(unit: string | null): NumberRow {
-  return { label: "", value: "", unit, high: "", note: "" }
+  return { label: emptyBilingual(), value: "", unit, high: "", note: emptyBilingual() }
 }
 
 export function emptyDiseaseRow(): DiseaseRow {

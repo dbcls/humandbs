@@ -213,6 +213,47 @@ function lineOwner(
   return foreign ? { kind: "foreign" } : { kind: "shared" }
 }
 
+/**
+ * The cells that list a table's datasets an item each, a caption line and then
+ * the line with the dataset's link (`不整脈` over `hum0014.v17.AR.v1`), under
+ * group headings where the table has them (`血糖・脂質関連`). **Here a line
+ * naming no dataset belongs to the lines under it**: a caption goes with the
+ * dataset line below it, and a heading goes once every line under it has.
+ * Elsewhere a line naming no dataset is shared, since a heading over several
+ * datasets' lines (`腫瘍組織:` over `JGAD000001: 10`) is a fact about each of them.
+ */
+const CAPTIONED_KEYS = new Set(["NBDC Dataset Accession"])
+
+/**
+ * Which lines of a captioned cell stay, given which dataset lines do. A line
+ * naming no dataset directly above a dataset line is its caption and stays with
+ * it; one above a caption or another heading is a heading, and stays while any
+ * dataset line under it does, up to the next heading that starts a new group.
+ */
+function withCaptions(lines: readonly string[], owners: readonly LineOwner[], keeps: readonly boolean[]): boolean[] {
+  const n = lines.length
+  const isData = (i: number) => owners[i]?.kind === "owned" || owners[i]?.kind === "foreign"
+  const isText = (i: number) => owners[i]?.kind === "shared" && (lines[i] ?? "").trim() !== ""
+  const caption = lines.map((_line, i) => isText(i) && i + 1 < n && isData(i + 1))
+  const heading = new Array<boolean>(n).fill(false)
+  for (let i = n - 2; i >= 0; i -= 1) {
+    heading[i] = isText(i) && !caption[i] && (caption[i + 1] === true || heading[i + 1] === true)
+  }
+  const out = [...keeps]
+  for (let i = 0; i < n; i += 1) {
+    if (caption[i]) out[i] = keeps[i + 1] === true
+    if (!heading[i]) continue
+    let j = i + 1
+    while (j < n && heading[j]) j += 1
+    let kept = false
+    for (; j < n && !(heading[j] && !heading[j - 1]); j += 1) {
+      if (isData(j) && keeps[j]) kept = true
+    }
+    out[i] = kept
+  }
+  return out
+}
+
 type CellOutcome
   = | { kind: "shared" | "split" | "hand", perDataset: ReadonlyMap<string, string> }
     | { kind: "review", perDataset: ReadonlyMap<string, string>, reason: string }
@@ -223,7 +264,8 @@ type CellOutcome
  *
  * A line stays for every dataset unless it identifies one — `readLine` in
  * `build.ts` calls this "about" — in which case it stays only for the
- * dataset(s) it identifies among the block's own. **A line naming an accession
+ * dataset(s) it identifies among the block's own (and, in a cell that captions
+ * each dataset's line, the caption above it: `CAPTIONED_KEYS`). **A line naming an accession
  * that is not one of the block's own datasets is dropped for all of them**:
  * whatever it is about is not any of this block's datasets, so it is not this
  * block's line to keep, and keeping it on a sibling would attribute someone
@@ -238,6 +280,7 @@ function splitCellText(
   datasetLabels: readonly string[],
   datasets: ReadonlySet<string>,
   jgasToJgad: ReadonlyMap<string, readonly string[]>,
+  captioned = false,
 ): CellOutcome {
   const lines = text.split("\n")
   const owners = lines.map((line) => lineOwner(line, datasets, jgasToJgad))
@@ -264,11 +307,11 @@ function splitCellText(
   }
 
   const perDataset = new Map(datasetLabels.map((label) => {
-    const kept = lines.filter((_line, i) => {
+    const keeps = lines.map((_line, i) => {
       const owner = owners[i]
       return owner?.kind === "shared" || (owner?.kind === "owned" && owner.dataset === label)
     })
-    return [label, kept.join("\n")] as const
+    return [label, lines.filter((_line, i) => (captioned ? withCaptions(lines, owners, keeps) : keeps)[i]).join("\n")] as const
   }))
   return { kind: covered.size === 0 ? "shared" : "split", perDataset }
 }
@@ -319,7 +362,7 @@ export function splitSharedBlock(
   for (const [key, cell] of Object.entries(data)) {
     for (const lang of ["ja", "en"] as const) {
       const outcome = handSplit(byHand, labels, key, lang, cell[lang])
-        ?? splitCellText(cell[lang], labels, datasets, jgasToJgad)
+        ?? splitCellText(cell[lang], labels, datasets, jgasToJgad, CAPTIONED_KEYS.has(key))
       stats[outcome.kind] += 1
       if (outcome.kind === "review") {
         for (const label of labels) {

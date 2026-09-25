@@ -411,8 +411,8 @@ describe("the dataset editing form", () => {
           values: {
             state: "value",
             value: [
-              { label: "常染色体", value: 1, unit: null, inputValue: 1, inputUnit: null, note: null },
-              { label: "", value: 2, unit: null, inputValue: 2, inputUnit: null, note: null },
+              { label: { ja: "常染色体", en: "" }, value: 1, unit: null, inputValue: 1, inputUnit: null, note: null },
+              { label: null, value: 2, unit: null, inputValue: 2, inputUnit: null, note: null },
             ],
           },
         },
@@ -441,6 +441,53 @@ describe("the dataset editing form", () => {
 
     expect(withoutCandidates).not.toContain("<datalist")
     expect(withoutCandidates).not.toContain("<option")
+  })
+
+  it("draws a label and a note as a box per language, and shows what each already holds", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: NUMBER_KEY,
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [{
+              label: { ja: "常染色体", en: "" },
+              value: 1,
+              unit: "GB",
+              inputValue: 1,
+              inputUnit: "GB",
+              note: { ja: "", en: "average" },
+            }],
+          },
+        },
+      }],
+    }))
+
+    const tagOf = (ariaLabel: string) =>
+      new RegExp(`<input[^>]*aria-label="${ariaLabel}"[^>]*>`).exec(html)?.[0] ?? ""
+
+    expect(tagOf("内訳 \\(日本語\\)")).toContain("value=\"常染色体\"")
+    expect(tagOf("内訳 \\(英語\\)")).toContain("value=\"\"")
+    expect(tagOf("但し書き \\(日本語\\)")).toContain("value=\"\"")
+    expect(tagOf("但し書き \\(英語\\)")).toContain("value=\"average\"")
+  })
+
+  it("draws no label or note box at all when nobody gave a number either one", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: NUMBER_KEY,
+        value: {
+          kind: "number",
+          values: { state: "value", value: [{ label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", note: null }] },
+        },
+      }],
+    }))
+
+    expect(html).not.toContain("内訳")
+    expect(html).not.toContain("但し書き")
   })
 
   it("shows a disease as the name somebody wrote and the code it is filed under", () => {

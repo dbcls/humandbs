@@ -3,13 +3,21 @@ import { describe, expect, it } from "vitest"
 
 import {
   localizedLinksArb,
+  optionalBilingualArb,
   translatedRichTextArb,
   translatedTextArb,
 } from "~/content/arbitraries/content"
 import { isEmptyRichText } from "~/content/richtext"
 import type { Slot } from "~/content/types"
 
-import { LOCALES, type Locale, resolveLinks, resolveRichText, resolveText } from "./locale"
+import {
+  LOCALES,
+  type Locale,
+  resolveLinks,
+  resolveOptionalBilingual,
+  resolveRichText,
+  resolveText,
+} from "./locale"
 
 const localeArb = fc.constantFrom(...LOCALES)
 
@@ -94,6 +102,32 @@ describe("resolveRichText", () => {
     fc.assert(fc.property(translatedRichTextArb, localeArb, (text, locale) => {
       if (text[locale].state !== "unknown") return
       expect(resolveRichText(text, locale)).toEqual({ state: "unsettled" })
+    }))
+  })
+})
+
+describe("resolveOptionalBilingual", () => {
+  it("returns null exactly when there is no pair, or both sides are empty", () => {
+    fc.assert(fc.property(optionalBilingualArb, localeArb, (pair, locale) => {
+      const expected = pair === null || (pair.ja === "" && pair.en === "")
+      expect(resolveOptionalBilingual(pair, locale) === null).toBe(expected)
+    }))
+  })
+
+  it("returns text held by one of the two languages, never a mixture", () => {
+    fc.assert(fc.property(optionalBilingualArb, localeArb, (pair, locale) => {
+      const resolved = resolveOptionalBilingual(pair, locale)
+      if (resolved === null) return
+      expect([pair?.ja, pair?.en]).toContain(resolved.text)
+    }))
+  })
+
+  it("reports untranslated exactly when one language holds a value and the other is empty", () => {
+    fc.assert(fc.property(optionalBilingualArb, localeArb, (pair, locale) => {
+      const resolved = resolveOptionalBilingual(pair, locale)
+      if (pair === null) return
+      const expected = pair[locale] === "" && pair[other(locale)] !== ""
+      expect(resolved?.untranslated ?? false).toBe(expected)
     }))
   })
 })

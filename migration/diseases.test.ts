@@ -28,6 +28,20 @@ describe("the diseases a line names", () => {
     expect(mentionsIn("【JGAS000009】神経筋変性疾患(ICD10: G12)")[0]?.name).toBe("神経筋変性疾患")
     expect(mentionsIn("HNC1: 声門上がん(ICD10: C32.1)")[0]?.name).toBe("声門上がん")
     expect(mentionsIn("・大腸がん(ICD10: C18)")[0]?.name).toBe("大腸がん")
+    expect(mentionsIn("[JGAS000393] Sporadic ALS (ICD10: G12.21)")[0]?.name).toBe("Sporadic ALS")
+    expect(mentionsIn("[including liver cancer (ICD10: C220) patients]")[0]?.name).toBe("including liver cancer")
+  })
+
+  it("keeps a number's thousands separator in the name", () => {
+    expect(mentionsIn("1,005 pancreatic cancer patients (ICD10: C25)")[0]?.name).toBe("1,005 pancreatic cancer patients")
+    expect(mentionsIn("12,503 colorectal cancer patients (ICD10: C18, C19, C20)")[0]?.name).toBe("12,503 colorectal cancer patients")
+  })
+
+  it("still splits at a comma that is not inside a number", () => {
+    expect(mentionsIn("asthma (ICD10: J45), 3 cases, atopic dermatitis (ICD10: L20)").map((one) => one.name))
+      .toEqual(["asthma", "atopic dermatitis"])
+    expect(mentionsIn("Type 2,diabetes (ICD10: E11)")[0]?.name).toBe("diabetes")
+    expect(mentionsIn("group 1,2345 cases (ICD10: E11)")[0]?.name).toBe("2345 cases")
   })
 
   it("keeps a disease that has no code, and one that has no name", () => {

@@ -14,6 +14,7 @@
 
 import { isEmptyRichText } from "~/content/richtext"
 import type {
+  Bilingual,
   ContentValue,
   DatasetContent,
   Link,
@@ -72,6 +73,16 @@ function ofLinks(slot: Slot<Link[]>): Presence {
 }
 
 /**
+ * One side of a number's label or note (`NumberValue`), whose two languages
+ * are plain strings with no state of their own. `null` reads as both sides
+ * absent, the same as a slot nobody has given a value to — it is never
+ * unsettled, because there is no third state to ask for.
+ */
+function ofOptionalBilingual(pair: Bilingual | null, language: Language): Presence {
+  return (pair === null ? "" : pair[language]) === "" ? "empty" : "filled"
+}
+
+/**
  * Collecting as it walks.
  *
  * A pair is looked at twice over: each language can be unsettled on its own,
@@ -120,6 +131,14 @@ class Walk {
       this.slot(path, presence(value.termIds, (ids) => ids.length === 0))
     } else if (value.kind === "number") {
       this.slot(path, presence(value.values, (numbers) => numbers.length === 0))
+      // Each number's label and note is its own translated pair, addressed by
+      // its position: numbers carry no identity of their own (`app/content/types.ts`).
+      if (value.values.state === "value") {
+        value.values.value.forEach((number, at) => {
+          this.pair(`${path}.${at}.label`, ofOptionalBilingual(number.label, "ja"), ofOptionalBilingual(number.label, "en"))
+          this.pair(`${path}.${at}.note`, ofOptionalBilingual(number.note, "ja"), ofOptionalBilingual(number.note, "en"))
+        })
+      }
     } else if (value.kind === "disease") {
       // A disease whose name is written in one language only is ordinary, the
       // same way a vocabulary term with no Japanese label is. Only an empty

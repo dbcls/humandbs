@@ -37,7 +37,7 @@
  *   real archive and is checked by hand
  */
 
-import type { NumberValue } from "~/content/types"
+import type { Bilingual, NumberValue } from "~/content/types"
 
 /** A line as it was written, split into what v2 stores. */
 export interface ReadNumber {
@@ -48,6 +48,41 @@ export interface ReadNumber {
   /** The upper end of a width (`0.9-1.3 GB`), converted the same way `value` is. */
   high: number | null
   note: string | null
+}
+
+/**
+ * A source string translated by hand, keyed by the exact string. Optional: a
+ * run without the file translates by which script a string is written in
+ * alone (`bilingualOf`), the same as a run before anybody has translated
+ * anything.
+ */
+export type LabelTranslations = ReadonlyMap<string, Bilingual>
+
+/** Kana and kanji, the two scripts a v1 label or note is written in when it is Japanese. */
+const JAPANESE = /[぀-ヿ㐀-䶿一-鿿]/
+
+/**
+ * A v1 string, sorted to the side of its own language. **The table wins when it
+ * has both sides** — a hand translation is a fact about the string, not a guess
+ * from its script — and a string the table does not hold goes to `ja` when it
+ * contains kana or kanji and to `en` otherwise. Nothing here decides that a
+ * string needs no translation: `ja` holding a Japanese string with `en` empty
+ * is the ordinary, untranslated shape a curator later fills in.
+ */
+export function bilingualOf(source: string, table: LabelTranslations): Bilingual {
+  const found = table.get(source)
+  if (found !== undefined) return found
+  return JAPANESE.test(source) ? { ja: source, en: "" } : { ja: "", en: source }
+}
+
+/**
+ * The hand translation table, read into the map `bilingualOf` looks a string
+ * up in. The file it comes from (`input/l12/hand/number-labels.json`) is
+ * gitignored and may not exist yet, so a caller passes `{}` where it is
+ * absent rather than this function reading the file itself.
+ */
+export function labelTranslations(raw: Readonly<Record<string, Bilingual>>): LabelTranslations {
+  return new Map(Object.entries(raw))
 }
 
 /** The multipliers a Japanese count may be written with. */
@@ -413,23 +448,26 @@ export function counts(units: readonly string[] = []) {
 /**
  * What the catalog stores, once the unit a line was written in is converted.
  * `convertedHigh` is the upper end of a width, converted the same way; null on
- * every reading that is not one.
+ * every reading that is not one. `translations` sorts the label and the note
+ * to the side of their own language, or takes both sides from a hand
+ * translation where one is on record (`bilingualOf`).
  */
 export function storedNumber(
   read: ReadNumber,
   converted: number,
   canonical: string | null,
   convertedHigh: number | null = null,
+  translations: LabelTranslations = new Map(),
 ): NumberValue {
   return {
-    label: read.label,
+    label: read.label === null ? null : bilingualOf(read.label, translations),
     value: converted,
     unit: canonical,
     inputValue: read.value,
     inputUnit: read.unit,
     high: convertedHigh,
     inputHigh: read.high,
-    note: read.note,
+    note: read.note === null ? null : bilingualOf(read.note, translations),
   }
 }
 

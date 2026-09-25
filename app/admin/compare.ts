@@ -12,6 +12,8 @@
  * change to the array rather than as a change to a field nobody can see.
  */
 
+import type { Bilingual } from "~/content/types"
+
 import type { TextInput, TextPairInput } from "./form"
 
 export interface Diff {
@@ -41,6 +43,11 @@ export function sameText(a: TextInput, b: TextInput): boolean {
 
 export function sameTextPair(a: TextPairInput, b: TextPairInput): boolean {
   return sameText(a.ja, b.ja) && sameText(a.en, b.en)
+}
+
+/** A number's label or note (`app/admin/dataset-form.ts`), which has no state of its own. */
+export function sameBilingual(a: Bilingual, b: Bilingual): boolean {
+  return a.ja === b.ja && a.en === b.en
 }
 
 export type Compare<T> = (into: Diff, a: T, b: T, at: string) => void

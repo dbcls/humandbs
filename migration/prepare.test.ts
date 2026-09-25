@@ -5,6 +5,7 @@ import {
   applyKeyRules,
   dropResearch,
   mergeDumps,
+  restoreDatasets,
   splitArchiveAccessions,
   splitSharedExperiments,
   type KeyRule,
@@ -194,5 +195,54 @@ describe("splitSharedExperiments", () => {
     splitSharedExperiments([{ label: "JGAD000001", doc: one }, { label: "JGAD000002", doc: two }], new Map())
 
     expect(one.experiments?.[0]?.data?.["Total Data Volume"]?.ja?.text).toBe(volume)
+  })
+})
+
+describe("restoreDatasets", () => {
+  const version = (humId: string, n: number, datasets: { datasetId: string, version: string }[]) =>
+    ({ humId, humVersionId: `${humId}-v${n}`, version: `v${n}`, datasets })
+  const held = (): Dump => {
+    const v2 = version("hum0009", 2, [{ datasetId: "JGAD000006", version: "v2" }])
+    const v3 = version("hum0009", 3, [{ datasetId: "DRA003802", version: "v1" }])
+    return {
+      research: new Map(),
+      publishedVersions: [v2, v3],
+      latestVersion: new Map([["hum0009", v3]]),
+      datasetsByKey: new Map([[datasetKey("JGAD000006", "v2"), { datasetId: "JGAD000006", version: "v2", humId: "hum0009" }]]),
+      versions: [v2, v3],
+    }
+  }
+  const cpg: EsDataset = { datasetId: "hum0009.v1.CpG.v1", version: "v1", humId: "hum0009" }
+
+  it("adds the dataset and lists it in every version named, the latest included", () => {
+    const out = restoreDatasets(held(), [cpg], [{ datasetId: "hum0009.v1.CpG.v1", version: "v1", listedBy: ["hum0009-v2", "hum0009-v3"] }])
+
+    expect(out.datasetsByKey.get(datasetKey("hum0009.v1.CpG.v1", "v1"))).toBe(cpg)
+    for (const versions of [out.publishedVersions, out.versions, [...out.latestVersion.values()]]) {
+      for (const one of versions) expect(one.datasets).toContainEqual({ datasetId: "hum0009.v1.CpG.v1", version: "v1" })
+    }
+    expect(out.publishedVersions[0]?.datasets?.[0]).toEqual({ datasetId: "JGAD000006", version: "v2" })
+  })
+
+  it("gives every list the same copy of a version, so the latest is still told by identity", () => {
+    const out = restoreDatasets(held(), [cpg], [{ datasetId: "hum0009.v1.CpG.v1", version: "v1", listedBy: ["hum0009-v3"] }])
+
+    expect(out.latestVersion.get("hum0009")).toBe(out.publishedVersions[1])
+    expect(out.versions[1]).toBe(out.publishedVersions[1])
+  })
+
+  it("leaves the input as it was", () => {
+    const before = held()
+    restoreDatasets(before, [cpg], [{ datasetId: "hum0009.v1.CpG.v1", version: "v1", listedBy: ["hum0009-v3"] }])
+
+    expect(before.versions[1]?.datasets).toEqual([{ datasetId: "DRA003802", version: "v1" }])
+    expect(before.datasetsByKey.size).toBe(1)
+  })
+
+  it("stops on a dataset already in the dump, one with no document, and a version not in the dump", () => {
+    expect(() => restoreDatasets(held(), [{ datasetId: "JGAD000006", version: "v2", humId: "hum0009" }], [{ datasetId: "JGAD000006", version: "v2", listedBy: [] }]))
+      .toThrow(/already/)
+    expect(() => restoreDatasets(held(), [], [{ datasetId: "hum0009.v1.CpG.v1", version: "v1", listedBy: [] }])).toThrow(/no document/)
+    expect(() => restoreDatasets(held(), [cpg], [{ datasetId: "hum0009.v1.CpG.v1", version: "v1", listedBy: ["hum0009-v9"] }])).toThrow(/not in the dump/)
   })
 })

@@ -119,10 +119,12 @@ function plainList(values: readonly (string | null | undefined)[] | null | undef
  * three. The last of these is not a spelling at all — a cohort's name reached
  * the field a maker belongs in.
  *
- * **Companies that bought each other are not merged.** `Thermo Fisher
+ * **Companies that bought each other are not merged here.** `Thermo Fisher
  * Scientific`, `Life Technologies`, `Applied Biosystems` and `Affymetrix` name
  * one another's histories rather than one another, and so do `BGI` and `MGI`;
- * a machine is remembered by the name on it when it was sold.
+ * telling which machines are the same needs the machine, not the company. The
+ * production load settles that by hand, machine by machine, and there one
+ * machine sold under two company names is one term (`vocabulary-plan.ts`).
  */
 const MAKER_SPELLINGS: Record<string, string> = {
   "MGI Tech": "MGI",
@@ -276,6 +278,23 @@ function diseasesOf(experiment: EsExperiment): ReturnType<typeof diseasesIn> {
   return diseasesIn(node.ja?.text ?? "", node.en?.text ?? "")
 }
 
+/**
+ * A policy a research wrote for its own data. v1 gave every one of them the
+ * same id, `custom-policy`, and told them apart only by the name, which is the
+ * research the policy was written for (`hum0004`, `hum0175 policy`) — so the
+ * research in the name is what makes the term. A dataset of one research can
+ * carry another's policy (hum0248 carries hum0184's).
+ */
+const CUSTOM_POLICY = "custom-policy"
+
+function customPolicy(nameEn: string | null): TermSeed[] {
+  const hum = /hum\d{4}/.exec(nameEn ?? "")?.[0]
+  // A name that names no research leaves nothing to tell the policy from the
+  // others by; one term for all of them would give every dataset the wrong one.
+  if (hum === undefined) return []
+  return [{ code: `policy-${hum}`, labelEn: `${hum} policy`, labelJa: null, parentCode: null, maker: null }]
+}
+
 export const VOCABULARY_FACETS: VocabularyFacet[] = [
   {
     code: "policies",
@@ -290,6 +309,7 @@ export const VOCABULARY_FACETS: VocabularyFacet[] = [
     retyped: true,
     valueType: "vocabulary",
     read: (s) => (s.policies ?? []).flatMap((policy) => {
+      if (policy.id === CUSTOM_POLICY) return customPolicy(policy.name?.en ?? null)
       const code = policy.id
       const labelEn = policy.name?.en ?? code
       if (!code || !labelEn) return []
@@ -878,16 +898,23 @@ export function facetValueSlots(
     keyIdByCode: Map<string, string>
     termIdBySetAndCode: Map<string, string>
     knownCode: (code: string) => boolean
+    /**
+     * The terms a code goes to where the vocabulary was settled by hand: one,
+     * several, or none (`vocabulary-plan.ts`). Without it, a code is its own term.
+     */
+    termIdsOf?: (setCode: string, code: string) => string[]
   },
 ): ValueSlot[] {
   const searchable = experiment.searchable ?? {}
   const slots: ValueSlot[] = []
+  const termIdsOf = identity.termIdsOf ?? ((setCode: string, code: string) => {
+    const id = identity.termIdBySetAndCode.get(`${setCode}/${code}`)
+    return id === undefined ? [] : [id]
+  })
   for (const facet of VOCABULARY_FACETS) {
     const keyId = identity.keyIdByCode.get(facet.code)
     if (keyId === undefined || facet.read === null) continue
-    const termIds = [...new Set(facet.read(searchable)
-      .map((term) => identity.termIdBySetAndCode.get(`${facet.setCode}/${term.code}`))
-      .filter((id) => id !== undefined))]
+    const termIds = [...new Set(facet.read(searchable).flatMap((term) => termIdsOf(facet.setCode, term.code)))]
     if (termIds.length === 0) continue
     slots.push({ keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } })
   }

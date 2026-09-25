@@ -20,6 +20,7 @@
 import { z } from "zod"
 
 import type {
+  Bilingual,
   ContentValue,
   DatasetContent,
   DiseaseValue,
@@ -46,6 +47,9 @@ import {
   textSlot,
 } from "./form.server"
 
+/** A number's label or note as typed: a plain string per language, with no state of its own. */
+const bilingualInputSchema = z.object({ ja: z.string(), en: z.string() })
+
 /**
  * One number row, as typed. **This shape alone does not refuse a width whose
  * upper end sits below its lower end** — unlike a stray key or a malformed
@@ -56,11 +60,11 @@ import {
  * succeeded (`widthsOrdered`, below).
  */
 const numberRowSchema = z.object({
-  label: z.string(),
+  label: bilingualInputSchema,
   value: z.string(),
   unit: z.string().nullable(),
   high: z.string(),
-  note: z.string(),
+  note: bilingualInputSchema,
 })
 
 const valueBodySchema = z.discriminatedUnion("kind", [
@@ -129,6 +133,17 @@ export const saveDatasetSchema = z.object({
 })
 
 /**
+ * A number's label or note, trimmed side by side. `null` when both sides are
+ * empty — that is what the type treats as no label at all
+ * (`app/content/types.ts`), so a box left untouched in both languages does not
+ * become a pair the publish check counts as untranslated.
+ */
+function bilingualOrNull(pair: Bilingual): Bilingual | null {
+  const trimmed = { ja: pair.ja.trim(), en: pair.en.trim() }
+  return trimmed.ja === "" && trimmed.en === "" ? null : trimmed
+}
+
+/**
  * The stored form of a number: converted to the key's unit, with what was typed
  * kept beside it. Null when there is nothing to store — an empty field, or a unit
  * the key cannot convert from, which the catalog has already refused.
@@ -140,14 +155,14 @@ function numberValue(row: NumberRow, canonical: string | null): NumberValue | nu
   if (converted === null) return null
   const high = highValue(row.high, row.unit, canonical)
   return {
-    label: row.label.trim() === "" ? null : row.label.trim(),
+    label: bilingualOrNull(row.label),
     value: converted,
     unit: canonical,
     inputValue: typed,
     inputUnit: row.unit,
     high: high?.converted ?? null,
     inputHigh: high?.typed ?? null,
-    note: row.note.trim() === "" ? null : row.note.trim(),
+    note: bilingualOrNull(row.note),
   }
 }
 

@@ -1,4 +1,4 @@
-import { Form } from "react-router"
+import { Form, Link } from "react-router"
 
 import {
   TERM_SORT,
@@ -8,10 +8,11 @@ import {
 import {
   catalogAction,
   fieldTermsPage,
+  type TermDocumentOption,
   type TermRow,
   type VocabularyView,
 } from "~/admin/catalog.server"
-import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
+import { adminDocumentPath, adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
 import { ICD10_SET_CODE } from "~/icd10/codes"
 import { AdminBack } from "~/components/admin"
 import {
@@ -27,6 +28,7 @@ import {
   Editing,
   Field,
   LanguagePair,
+  Select,
   Submit,
   Unsaved,
 } from "~/components/form"
@@ -230,6 +232,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                     <Field label={t.labelJa} name="labelJa" width="w-full" />
                     <Field label={t.labelEn} name="labelEn" width="w-full" />
                   </LanguagePair>
+                  <DocumentSelect documents={view.documents} value={null} locale={locale} />
                 </Dialog>
               </Form>
             )}
@@ -283,6 +286,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                 ...(set.code === ICD10_SET_CODE ? [t.code] : []),
                 t.labelJa,
                 t.labelEn,
+                t.document,
                 t.usage,
               ]}
               whenEmpty={view.find === "" ? t.noTerm : t.noMatchingTerm}
@@ -297,6 +301,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                   mergeFrom={view.mergeFrom}
                   mergeAt={(termId) => at(view, { mergeFrom: termId })}
                   locale={locale}
+                  documents={view.documents}
                 />
               ))}
             </Table>
@@ -352,7 +357,7 @@ function Filters({ view, locale }: { view: VocabularyView, locale: Locale }) {
  * one that grows to hold a form leaves the listing a column of boxes of
  * different heights.
  */
-function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
+function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, documents }: {
   term: TermRow
   /** The code of the field these values belong to, which the address needs. */
   field: string
@@ -365,8 +370,11 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
   /** Where to go to aim a merge from this row. */
   mergeAt: (termId: string) => string
   locale: Locale
+  /** Every document on the site, for naming the one this term's label links to. */
+  documents: readonly TermDocumentOption[]
 }) {
   const t = messagesFor(locale).admin.catalog
+  const linked = term.documentId === null ? null : documents.find((doc) => doc.id === term.documentId) ?? null
 
   return (
     <tr>
@@ -378,6 +386,14 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
         {term.labelJa ?? <Flag kind="short">{t.untranslated}</Flag>}
       </Td>
       <Td floor="min-w-40">{term.labelEn}</Td>
+      {/* **The article the public page links this term's label to.** Read here as
+          a link to the article's own screen, so a curator checking what a term
+          points at does not have to open the edit panel first. */}
+      <Td floor="min-w-32">
+        {linked === null
+          ? <span className="text-ink-muted">{t.documentNone}</span>
+          : <Link to={href(locale, adminDocumentPath(linked.id))}>{documentLabel(linked)}</Link>}
+      </Td>
       {/* **How many published objects name it**, which is the one thing that
           decides whether it can still be taken away — and the way to see which
           ones they are. **The count goes to the public listing narrowed by this
@@ -441,7 +457,13 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                       icon={<Icon name="edit" />}
                       action={() => (
                         <>
-                          <Submit intent="update-term" icon={<Icon name="save" />} saves>
+                          {/* **Not `saves`.** That would disable the button
+                              until `Editing`'s walk of the form finds a
+                              change, and the walk skips hidden fields — which
+                              is where the article chosen travels (`Select`) —
+                              so a save that only changes which article the
+                              term links to would leave the button disabled. */}
+                          <Submit intent="update-term" icon={<Icon name="save" />}>
                             {t.save}
                           </Submit>
                           <Unsaved locale={locale} />
@@ -452,6 +474,7 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
                         <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} width="w-full" />
                         <Field label={t.labelEn} name="labelEn" value={term.labelEn} width="w-full" />
                       </LanguagePair>
+                      <DocumentSelect documents={documents} value={term.documentId} locale={locale} />
                     </Dialog>
                   </Editing>
                   {/* **Merging is where a used term goes.** It is offered on
@@ -482,5 +505,37 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale }: {
               )}
       </Td>
     </tr>
+  )
+}
+
+/** A document named by its title, or by its slug where it has none yet. */
+function documentLabel(doc: TermDocumentOption): string {
+  return doc.title === "" ? doc.slug : `${doc.title} (${doc.slug})`
+}
+
+/**
+ * The article a term's label links to on the public page, or none. Shared by
+ * the panel that makes a term and the one that edits it: the choice travels
+ * under the same name either way, so the intent alone decides what else is
+ * saved with it (`catalog.server.ts` の `documentIdFrom`).
+ */
+function DocumentSelect({ documents, value, locale }: {
+  documents: readonly TermDocumentOption[]
+  /** The term's current article, or null when creating one with no article yet. */
+  value: string | null
+  locale: Locale
+}) {
+  const t = messagesFor(locale).admin.catalog
+  return (
+    <Select
+      label={t.document}
+      name="documentId"
+      value={value ?? ""}
+      width="w-full"
+      options={[
+        { value: "", label: t.documentNone },
+        ...documents.map((doc) => ({ value: doc.id, label: documentLabel(doc) })),
+      ]}
+    />
   )
 }

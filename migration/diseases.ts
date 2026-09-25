@@ -30,8 +30,12 @@ const BRACKETED = /[（(]([^）)]*)[）)]/g
  */
 const NAMES_ICD10 = /ICD\s*-?\s*10\s*[:：]?\s*/i
 
-/** What separates one disease from the next inside a line. */
-const BETWEEN = /[、,，;；]/
+/**
+ * What separates one disease from the next inside a line. **A comma between
+ * digits is a thousands separator** (`1,005 pancreatic cancer patients`), not
+ * the end of the disease before it.
+ */
+const BETWEEN = /[、，;；]|(?<!\d),|,(?!\d{3}(?!\d))/
 
 /**
  * The name that belongs to an annotation, taken from the text between
@@ -41,14 +45,16 @@ const BETWEEN = /[、,，;；]/
  * (ICD10: C50)`), so reading from the start of the line would give the second
  * disease the first one's name as well. What is kept is the part closest to the
  * code, with the labels the articles put in front of it removed — a list
- * marker, the `【JGAS000009】` an article uses to mark which submission a group
- * came from, and an identifier standing in for the case (`HNC1:`).
+ * marker or an opening bracket, the `【JGAS000009】` (`[JGAS000009]` in English)
+ * an article uses to mark which submission a group came from, and an
+ * identifier standing in for the case (`HNC1:`).
  */
 function nameBefore(fragment: string): string {
   const parts = fragment.split(BETWEEN)
   return (parts[parts.length - 1] ?? "")
     .replace(/<[^>]*>|&nbsp;|&amp;/g, " ")
-    .replace(/^[\s・\-*＊+＋(（]+/, "")
+    .replace(/^\s*(?:【[^】]*】|\[[^\]]*\])\s*/, "")
+    .replace(/^[\s・\-*＊+＋(（[［]+/, "")
     .replace(/^【[^】]*】\s*/, "")
     .replace(/^[A-Za-z0-9_]+\s*[:：]\s*/, "")
     .replace(/^[^:：]{1,4}群\s*[:：]\s*/, "")

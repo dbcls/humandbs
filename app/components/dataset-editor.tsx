@@ -81,6 +81,7 @@ import {
 import { Answer, CONTROL, Select } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { AnnotationLayer, Card, Empty, Page, PageHeader } from "~/components/page"
+import type { Bilingual } from "~/content/types"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -1006,7 +1007,8 @@ function NumberField({ label, named: drawsName = true, locale, annotations, unit
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const disabled = state !== "value"
-  const named = rows.length > 1 || rows.some((row) => row.label !== "" || row.note !== "")
+  const filled = (pair: Bilingual) => pair.ja !== "" || pair.en !== ""
+  const named = rows.length > 1 || rows.some((row) => filled(row.label) || filled(row.note))
   const box = `${CONTROL} text-sm disabled:opacity-50`
   const labelListId = useId()
   const edit = (at: number, next: Partial<NumberRow>) => {
@@ -1039,16 +1041,27 @@ function NumberField({ label, named: drawsName = true, locale, annotations, unit
               return (
                 <div key={at} className="flex flex-wrap items-center gap-2">
                   {named && (
-                    <input
-                      type="text"
-                      value={row.label}
-                      disabled={disabled}
-                      aria-label={t.numberLabel}
-                      placeholder={t.numberLabel}
-                      list={labelCandidates.length > 0 ? labelListId : undefined}
-                      onChange={(event) => { edit(at, { label: event.target.value }) }}
-                      className={`${box} w-36`}
-                    />
+                    <>
+                      <input
+                        type="text"
+                        value={row.label.ja}
+                        disabled={disabled}
+                        aria-label={t.numberLabelJa}
+                        placeholder={t.numberLabelJa}
+                        list={labelCandidates.length > 0 ? labelListId : undefined}
+                        onChange={(event) => { edit(at, { label: { ...row.label, ja: event.target.value } }) }}
+                        className={`${box} w-24`}
+                      />
+                      <input
+                        type="text"
+                        value={row.label.en}
+                        disabled={disabled}
+                        aria-label={t.numberLabelEn}
+                        placeholder={t.numberLabelEn}
+                        onChange={(event) => { edit(at, { label: { ...row.label, en: event.target.value } }) }}
+                        className={`${box} w-24`}
+                      />
+                    </>
                   )}
                   <input
                     type="number"
@@ -1091,15 +1104,26 @@ function NumberField({ label, named: drawsName = true, locale, annotations, unit
                       )
                     : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
                   {named && (
-                    <input
-                      type="text"
-                      value={row.note}
-                      disabled={disabled}
-                      aria-label={t.numberNote}
-                      placeholder={t.numberNote}
-                      onChange={(event) => { edit(at, { note: event.target.value }) }}
-                      className={`${box} w-36`}
-                    />
+                    <>
+                      <input
+                        type="text"
+                        value={row.note.ja}
+                        disabled={disabled}
+                        aria-label={t.numberNoteJa}
+                        placeholder={t.numberNoteJa}
+                        onChange={(event) => { edit(at, { note: { ...row.note, ja: event.target.value } }) }}
+                        className={`${box} w-24`}
+                      />
+                      <input
+                        type="text"
+                        value={row.note.en}
+                        disabled={disabled}
+                        aria-label={t.numberNoteEn}
+                        placeholder={t.numberNoteEn}
+                        onChange={(event) => { edit(at, { note: { ...row.note, en: event.target.value } }) }}
+                        className={`${box} w-24`}
+                      />
+                    </>
                   )}
                   {rows.length > 1 && (
                     <IconButton

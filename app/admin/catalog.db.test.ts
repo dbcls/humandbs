@@ -12,7 +12,7 @@ import * as s from "~/db/schema"
 import { seedVersion } from "~/db/seed"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
-import { catalogAction, catalogPage, fieldTermsPage } from "./catalog.server"
+import { catalogAction, catalogPage, fieldTermsPage, linkTermsToDocuments } from "./catalog.server"
 import { saveDatasetEntry } from "./drafts.server"
 
 /**
@@ -97,6 +97,13 @@ async function term(setId: string, code: string): Promise<string> {
   const { id } = only(await db.insert(s.vocabularyTerm)
     .values({ setId, code, labelEn: code })
     .returning({ id: s.vocabularyTerm.id }))
+  return id
+}
+
+async function documentAt(slug: string): Promise<string> {
+  const { id } = only(await db.insert(s.document)
+    .values({ slug })
+    .returning({ id: s.document.id }))
   return id
 }
 
@@ -420,6 +427,90 @@ describe("the terms of a vocabulary", () => {
 
     expect(only(await db.select().from(s.researchVersion)).content).toEqual(before)
     expect(only(await db.select().from(s.vocabularyTerm)).labelEn).toBe("Whole genome sequencing")
+  })
+
+  it("links a term's label to an article by id, and reads it back on the terms screen", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("data-use-policy")
+    const termId = await term(setId, "policy-hum0001")
+    await fieldFor("data-use-policy", setId)
+    const documentId = await documentAt("guidelines/data-use-policy")
+
+    expect(await catalogAction(post(token, {
+      intent: "update-term",
+      termId,
+      labelEn: "hum0001 policy",
+      labelJa: "",
+      documentId,
+    }))).toMatchObject({ status: "ok" })
+
+    expect(only(await db.select().from(s.vocabularyTerm)).documentId).toBe(documentId)
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/data-use-policy"), "data-use-policy")
+    expect(view?.terms.find((row) => row.id === termId)?.documentId).toBe(documentId)
+    expect(view?.documents).toEqual([{ id: documentId, slug: "guidelines/data-use-policy", title: "" }])
+  })
+
+  it("clears the article a term's label links to, sending an empty choice", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("data-use-policy")
+    const documentId = await documentAt("guidelines/data-use-policy")
+    const { id: termId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId, code: "policy-hum0001", labelEn: "hum0001 policy", documentId })
+      .returning({ id: s.vocabularyTerm.id }))
+
+    expect(await catalogAction(post(token, {
+      intent: "update-term",
+      termId,
+      labelEn: "hum0001 policy",
+      labelJa: "",
+      documentId: "",
+    }))).toMatchObject({ status: "ok" })
+
+    expect(only(await db.select().from(s.vocabularyTerm)).documentId).toBeNull()
+  })
+
+  it("refuses to link a term to a document that does not exist, and changes nothing", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("data-use-policy")
+    const termId = await term(setId, "policy-hum0001")
+    const before = only(await db.select().from(s.vocabularyTerm))
+
+    expect(await catalogAction(post(token, {
+      intent: "update-term",
+      termId,
+      labelEn: "hum0001 policy",
+      documentId: "00000000-0000-7000-8000-000000000000",
+    }))).toEqual({ status: "unknown-target" })
+
+    expect(only(await db.select().from(s.vocabularyTerm))).toEqual(before)
+  })
+
+  it("creates a term already linked to an article", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("data-use-policy")
+    const documentId = await documentAt("guidelines/data-use-policy")
+
+    expect(await catalogAction(post(token, {
+      intent: "create-term",
+      setId,
+      labelEn: "hum0001 policy",
+      documentId,
+    }))).toMatchObject({ status: "ok" })
+
+    expect(only(await db.select().from(s.vocabularyTerm)).documentId).toBe(documentId)
+  })
+
+  it("clears a term's article when the article is deleted, rather than leaving a link to nothing", async () => {
+    const setId = await vocabulary("data-use-policy")
+    const documentId = await documentAt("guidelines/data-use-policy")
+    const { id: termId } = only(await db.insert(s.vocabularyTerm)
+      .values({ setId, code: "policy-hum0001", labelEn: "hum0001 policy", documentId })
+      .returning({ id: s.vocabularyTerm.id }))
+
+    await db.delete(s.document).where(eq(s.document.id, documentId))
+
+    expect((await db.select().from(s.vocabularyTerm).where(eq(s.vocabularyTerm.id, termId)))[0]?.documentId)
+      .toBeNull()
   })
 
   it("counts the published datasets that have a term, and not the research rows beside them", async () => {
@@ -854,5 +945,43 @@ describe("what the terms screen opens on", () => {
       "assay",
     )
     expect(view?.mergeFrom).toBeNull()
+  })
+})
+
+describe("linking terms to documents by slug, the way the migration does it", () => {
+  it("sets document_id on the named term", async () => {
+    const setId = await vocabulary("data-use-policy")
+    const termId = await term(setId, "policy-hum0001")
+    await documentAt("guidelines/data-use-policy")
+
+    await linkTermsToDocuments(db, [
+      { setCode: "data-use-policy", termCode: "policy-hum0001", documentSlug: "guidelines/data-use-policy" },
+    ])
+
+    expect(only(await db.select().from(s.vocabularyTerm)).id).toBe(termId)
+    const [row] = await db.select({ documentId: s.vocabularyTerm.documentId }).from(s.vocabularyTerm)
+    const [doc] = await db.select({ id: s.document.id }).from(s.document)
+    expect(row?.documentId).toBe(doc?.id)
+  })
+
+  it("throws on a term the vocabulary does not hold, and sets nothing", async () => {
+    const setId = await vocabulary("data-use-policy")
+    await documentAt("guidelines/data-use-policy")
+
+    await expect(linkTermsToDocuments(db, [
+      { setCode: "data-use-policy", termCode: "no-such-policy", documentSlug: "guidelines/data-use-policy" },
+    ])).rejects.toThrow()
+    expect(only(await db.select().from(s.vocabularySet)).id).toBe(setId)
+  })
+
+  it("throws on a slug no document has", async () => {
+    const setId = await vocabulary("data-use-policy")
+    const termId = await term(setId, "policy-hum0001")
+
+    await expect(linkTermsToDocuments(db, [
+      { setCode: "data-use-policy", termCode: "policy-hum0001", documentSlug: "no-such-document" },
+    ])).rejects.toThrow()
+    expect(only(await db.select().from(s.vocabularyTerm)).id).toBe(termId)
+    expect(only(await db.select().from(s.vocabularyTerm)).documentId).toBeNull()
   })
 })

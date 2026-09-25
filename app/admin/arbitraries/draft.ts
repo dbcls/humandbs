@@ -16,6 +16,7 @@ import {
   translatedRichTextArb,
 } from "~/content/arbitraries/content"
 import type {
+  Bilingual,
   ContentValue,
   DatasetContent,
   DiseaseValue,
@@ -103,6 +104,20 @@ export function CANONICAL_UNITS(keyId: string): string | null {
 }
 
 /**
+ * A number's label or note, as it might be typed: no pair at all, or one with
+ * at least one side holding something once trimmed. A pair that trims to
+ * nothing on both sides is not a shape the save path ever produces — it
+ * normalises that to `null` instead (`app/admin/dataset-form.server.ts` の
+ * `bilingualOrNull`) — so drawing one here would fail a round trip over a
+ * fixture the code under test never sees rather than over a fault in it.
+ */
+const numberTextArb: fc.Arbitrary<Bilingual | null> = fc.option(
+  fc.record({ ja: fc.string(), en: fc.string() })
+    .filter((pair) => pair.ja.trim() !== "" || pair.en.trim() !== ""),
+  { nil: null },
+)
+
+/**
  * A stored number under a key with the given unit: already in that unit.
  *
  * **`high`, when drawn, is never below `value`** — the one shape a width
@@ -113,18 +128,19 @@ export function CANONICAL_UNITS(keyId: string): string | null {
  */
 function numberValueArb(unit: string | null): fc.Arbitrary<NumberValue> {
   const held = fc.integer({ min: -1_000_000, max: 1_000_000 })
-  return held.chain((value) => fc.option(
-    fc.integer({ min: 0, max: 1_000_000 }),
-    { nil: null },
-  ).map((span): NumberValue => ({
-    label: null,
+  return held.chain((value) => fc.record({
+    span: fc.option(fc.integer({ min: 0, max: 1_000_000 }), { nil: null }),
+    label: numberTextArb,
+    note: numberTextArb,
+  }).map(({ span, label, note }): NumberValue => ({
+    label,
     value,
     unit,
     inputValue: value,
     inputUnit: unit,
     high: span === null ? null : value + span,
     inputHigh: span === null ? null : value + span,
-    note: null,
+    note,
   })))
 }
 

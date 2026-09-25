@@ -35,6 +35,7 @@ import {
 } from "./catalog"
 import type { EsExperiment } from "./es"
 import { collectTerms, DISEASE_SET, vocabularySetSeeds } from "./facets"
+import { plannedCodesOf, type VocabularyPlan } from "./vocabulary-plan"
 import { heldIcd10Entries } from "./icd10-input"
 import type { ReadByHand } from "./numbers"
 
@@ -99,7 +100,9 @@ export async function insertChunked<Row>(
  *
  * The terms are minted from the data rather than declared, because what a
  * controlled set ought to hold is a decision and this load is not the place for
- * it. **The one exception is the disease vocabulary**, which is the ICD10
+ * it — unless `plan` holds the decision, set by set: the production load
+ * passes the vocabularies settled by hand (`vocabulary-plan.ts`) and they take
+ * the place of the minted terms. **The one exception is the disease vocabulary**, which is the ICD10
  * classification put in whole from the distributions on disk
  * (`~/icd10/vocabulary.server`); the dump's codes are looked up in it.
  */
@@ -107,6 +110,7 @@ export async function seedCatalog(
   tx: Executor,
   experiments: EsExperiment[],
   seeds: ReturnType<typeof contentKeySeeds> = contentKeySeeds(),
+  plan: VocabularyPlan = { terms: new Map(), map: new Map(), fixes: [] },
 ) {
   const categories = await insertReturning(
     FACET_CATEGORIES,
@@ -155,8 +159,16 @@ export async function seedCatalog(
       parentCode: null,
       maker: null,
     })),
-    ...[...collectTerms(experiments)].flatMap(([setCode, held]) =>
-      held.map((term) => ({ setCode, ...term }))),
+    ...[...collectTerms(experiments)].flatMap(([setCode, held]) => {
+      const planned = plan.terms.get(setCode)
+      if (planned === undefined) return held.map((term) => ({ setCode, ...term }))
+      // Every code the reading mints has to be placed by the map before its
+      // terms are replaced; one that is not stops the load here.
+      for (const term of held) plannedCodesOf(plan, setCode, term.code)
+      return planned
+        .toSorted((a, b) => (a.maker ?? "").localeCompare(b.maker ?? "", "en") || a.labelEn.localeCompare(b.labelEn, "en"))
+        .map((term) => ({ setCode, ...term, parentCode: null }))
+    }),
   ]
 
   const termRow = (
@@ -226,7 +238,15 @@ export async function seedCatalog(
       .returning({ id: contentKey.id }),
   )
 
-  return { keyIdByCode, termIdBySetAndCode, codeBySourceKey, knownCode }
+  const termIdsOf = (setCode: string, code: string): string[] => {
+    const codes = plannedCodesOf(plan, setCode, code) ?? [code]
+    return codes.flatMap((one) => {
+      const id = termIdBySetAndCode.get(`${setCode}/${one}`)
+      return id === undefined ? [] : [id]
+    })
+  }
+
+  return { keyIdByCode, termIdBySetAndCode, termIdsOf, codeBySourceKey, knownCode }
 }
 
 /**
@@ -236,9 +256,21 @@ export async function seedCatalog(
  *
  * The version-less slug of a guideline becomes a series row naming the newest
  * revision, and every revision keeps its own numbered address.
+ *
+ * `finish` is applied to every body once it is markdown; the production load
+ * cleans the characters there (`cleanseMarkdown`).
  */
-export async function loadSiteContent(tx: Executor, cms: CmsDump = loadCms()) {
-  const { documents, series } = buildDocuments(cms.documents)
+export async function loadSiteContent(
+  tx: Executor,
+  cms: CmsDump = loadCms(),
+  finish: (markdown: string) => string = (markdown) => markdown,
+) {
+  const built = buildDocuments(cms.documents)
+  const series = built.series
+  const documents = built.documents.map((d) => ({
+    ...d,
+    contents: d.contents.map((c) => ({ ...c, content: { ...c.content, body: finish(c.content.body) } })),
+  }))
   const idBySlug = await insertReturning(
     documents,
     (d) => d.slug,
@@ -267,7 +299,10 @@ export async function loadSiteContent(tx: Executor, cms: CmsDump = loadCms()) {
     (chunk) => tx.insert(documentContent).values(chunk),
   )
 
-  const items = buildNews(cms.news)
+  const items = buildNews(cms.news).map((item) => ({
+    ...item,
+    contents: item.contents.map((c) => ({ ...c, content: { ...c.content, body: finish(c.content.body) } })),
+  }))
   const newsIds = await insertReturning(
     items,
     (_, index) => index,
@@ -287,7 +322,10 @@ export async function loadSiteContent(tx: Executor, cms: CmsDump = loadCms()) {
     (chunk) => tx.insert(newsContent).values(chunk),
   )
 
-  const alerts = buildAlerts(cms.alerts, suppliedAlertText())
+  const alerts = buildAlerts(cms.alerts, suppliedAlertText()).map((a) => ({
+    ...a,
+    content: { ...a.content, body: { ja: finish(a.content.body.ja), en: finish(a.content.body.en) } },
+  }))
   const alertIds = await insertReturning(
     alerts,
     (_, index) => index,

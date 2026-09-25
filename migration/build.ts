@@ -48,6 +48,7 @@ import type {
   EsBilingual,
   EsBilingualRich,
   EsControlledAccessUser,
+  EsExperiment,
   EsLink,
   EsResearchVersion,
   EsRichText,
@@ -62,7 +63,7 @@ import {
   TEXT_NUMBERS,
   type TextNumberKey,
 } from "./facets"
-import { readCell, storedNumber, withHandReadings, type ReadNumber } from "./numbers"
+import { readCell, storedNumber, withHandReadings, type LabelTranslations, type ReadNumber } from "./numbers"
 import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
 function held<T>(value: T): Slot<T> {
@@ -342,6 +343,8 @@ export interface DatasetContentInput {
   codeBySourceKey: Map<string, string>
   /** `{set code}/{term code}` to identity. */
   termIdBySetAndCode: Map<string, string>
+  /** The terms a code the reading mints goes to, where the vocabulary was settled by hand (`vocabulary-plan.ts`). */
+  termIdsOf?: (setCode: string, code: string) => string[]
   /** Whether the ICD10 dictionary holds a code, which is what resolves one. */
   knownCode: (code: string) => boolean
   accessCriteriaKeyCode: string
@@ -358,13 +361,56 @@ export interface DatasetContentInput {
   unread: { dataset: string, sourceKey: string, line: string }[]
   /** The lines somebody read by hand (`numbers.ts` の `byHand`). */
   byHand: ReadonlyMap<string, ReadNumber[]>
+  /**
+   * Hand translations of a number's label or note (`numbers.ts` の
+   * `labelTranslations`). Absent before anybody has translated one, which
+   * leaves every label and note sorted by script alone (`bilingualOf`).
+   */
+  labelTranslations?: LabelTranslations
   /** The same reader `ownLines` was given, if any. */
   readProse?: ProseReader
+}
+
+/**
+ * The caption the article's dataset table gives this dataset: the line above
+ * the one with its link in `NBDC Dataset Accession` (`COPD` over
+ * `hum0014.v17.COPD.v1`), in each language, or null where there is none.
+ */
+export function captionOf(experiment: EsExperiment, label: string): { ja: string | null, en: string | null } {
+  const cell = experiment.data?.["NBDC Dataset Accession"]
+  const find = (text: string): string | null => {
+    const lines = text.split("\n")
+    const at = lines.findIndex((line) => line.includes(label))
+    const above = at > 0 ? (lines[at - 1] ?? "").trim() : ""
+    return above === "" || /\]\(|https?:\/\//.test(above) ? null : above
+  }
+  return { ja: find(cell?.ja?.text ?? ""), en: find(cell?.en?.text ?? "") }
+}
+
+const comparableName = (name: string): string => name.replace(/[＊*\s]/g, "").toLowerCase()
+
+/**
+ * The disease values narrowed to the one the caption names. The materials of a
+ * disease-by-disease table list every disease of the cohort, and each dataset
+ * copied them; a dataset whose caption is one of those diseases is about that
+ * disease alone. Where no disease has the caption's name, all of them stay.
+ */
+export function narrowedToCaption(slots: ValueSlot[], caption: { ja: string | null, en: string | null }): ValueSlot[] {
+  if (caption.ja === null && caption.en === null) return slots
+  return slots.map((slot) => {
+    if (slot.value.kind !== "disease" || slot.value.diseases.state !== "value") return slot
+    const named = slot.value.diseases.value.filter((one) =>
+      (caption.ja !== null && one.nameJa !== null && comparableName(one.nameJa) === comparableName(caption.ja))
+      || (caption.en !== null && one.nameEn !== null && comparableName(one.nameEn) === comparableName(caption.en)))
+    if (named.length === 0) return slot
+    return { ...slot, value: { kind: "disease", diseases: { state: "value", value: named } } }
+  })
 }
 
 export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
   const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode, knownCode } = input
   const doc = dataset.doc
+  const translations = input.labelTranslations ?? new Map()
 
   /** Whether a line of a cell stays, or is about another dataset (`ownLines`). */
   const stays = (sourceKey: string, lang: Language, line: string): boolean => {
@@ -479,7 +525,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           // nothing: the label existed to tell sibling rows apart, and those
           // have gone to the datasets they were about (`ownLines`).
           const one = raw.label === dataset.label ? { ...raw, label: null } : raw
-          if (canonical === null) return [storedNumber(one, one.value, one.unit, one.high)]
+          if (canonical === null) return [storedNumber(one, one.value, one.unit, one.high, translations)]
           const converted = one.unit === canonical ? one.value : convert(one.value, one.unit, canonical)
           // A number in a sibling key's unit is that key's to store: a depth
           // read by the breadth half of a split cell is not residue.
@@ -498,7 +544,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           const convertedHigh = one.high === null
             ? null
             : (one.unit === canonical ? one.high : convert(one.high, one.unit, canonical))
-          return [storedNumber(one, converted, canonical, convertedHigh)]
+          return [storedNumber(one, converted, canonical, convertedHigh, translations)]
         })
         numbers.set(key.code, [...(numbers.get(key.code) ?? []), ...stored])
         if (trulyDeclined.length > 0) unresolved.add(key.code)
@@ -536,7 +582,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
             ? [{ keyId, value: { kind: "number", values: { state: "unknown" } } }]
             : []
         }),
-        ...facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode }),
+        ...narrowedToCaption(facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode, termIdsOf: input.termIdsOf }), captionOf(e, dataset.label)),
       ],
     }
   })

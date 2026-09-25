@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 import { primaryId } from "./common"
+import { document } from "./site"
 
 /**
  * A set of controlled terms. Flat unless `hierarchical` — only ICD10 needs a
@@ -49,6 +50,12 @@ export const vocabularySet = pgTable("vocabulary_set", {
  * **It is not the parent of the term.** Counting rolls values up to the root of
  * their tree (`app/search/counts.server.ts`), so a maker held as a parent would
  * put makers in the refinement panel where the models belong.
+ *
+ * **`documentId` is the one article the public page links the term's label
+ * to** — the use-policy vocabulary points this at the article carrying the
+ * policy's text. It names the article rather than its slug, so renaming the
+ * slug never breaks the link, and removing the article clears it
+ * (`onDelete: set null`) rather than leaving a value that points at nothing.
  */
 export const vocabularyTerm = pgTable("vocabulary_term", {
   id: primaryId(),
@@ -58,6 +65,7 @@ export const vocabularyTerm = pgTable("vocabulary_term", {
   labelEn: text().notNull(),
   maker: text(),
   parentId: uuid().references((): AnyPgColumn => vocabularyTerm.id, { onDelete: "set null" }),
+  documentId: uuid().references(() => document.id, { onDelete: "set null" }),
   position: integer().notNull().default(0),
 }, (t) => [
   unique("vocabulary_term_code_unique").on(t.setId, t.code),

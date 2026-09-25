@@ -31,11 +31,15 @@ export type Slot<T>
     | { state: "not-applicable" }
 
 /**
- * A plain pair of languages, with no state.
+ * A plain pair of languages, with no state of its own.
  *
- * This is for what curators do not edit: the cache of an upstream system, whose
- * two languages are whatever upstream has, and site content, which has neither
- * versions nor pins. Neither is ever counted as untranslated.
+ * Two different things are shaped this way. The cache of an upstream system
+ * (whose two languages are whatever upstream has) and site content (which has
+ * neither versions nor pins) are never edited by a curator and never counted as
+ * untranslated. A number's label and note (`NumberValue`) are edited, and the
+ * field as a whole is `null` rather than a `Bilingual` where a curator gave
+ * none — once given, an empty side is untranslated the way any other
+ * translated pair is (`resolveOptionalBilingual` in `app/i18n/locale.ts`).
  */
 export interface Bilingual {
   ja: string
@@ -133,10 +137,17 @@ export interface Link {
 export interface NumberValue {
   /**
    * What this number is about, where the key holds more than one — the part of
-   * the genome counted, the data product measured. Null when the key holds a
+   * the genome counted, the data product measured. `null` when the key holds a
    * single number, which is most of them and wants no label at all.
+   *
+   * Each language is a plain string rather than a slot with a state of its
+   * own — a label is either given or it is not, and there is no third state to
+   * hold. Once given, an empty side falls back to the other and counts toward
+   * the untranslated total the same as every other translated pair
+   * (`resolveOptionalBilingual` in `app/i18n/locale.ts`). A pair with both
+   * sides empty is written as `null`, the same value an absent label is.
    */
-  label: string | null
+  label: Bilingual | null
   /** Converted to the key's canonical unit. A width's lower end when `high` is set. */
   value: number
   unit: string | null
@@ -158,9 +169,11 @@ export interface NumberValue {
   /**
    * What qualifies the number without being part of it — `平均`, the assembly a
    * count was made against, the format a volume is in. Kept apart from the
-   * label because it implies nothing about which number this is.
+   * label because it implies nothing about which number this is. The same
+   * shape as `label`, and the same rule: `null` when there is none, and an
+   * empty side of a given pair falls back and counts as untranslated.
    */
-  note: string | null
+  note: Bilingual | null
 }
 
 /**

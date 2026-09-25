@@ -57,6 +57,9 @@ export function catalogViewArb(termIds: readonly string[]): fc.Arbitrary<Catalog
         labelEn: `Term ${at}`,
         maker: null,
         position: known.length - at,
+        // The API never links a term's label to an article (`app/api/view.ts`),
+        // so nothing here exercises one.
+        documentSlug: null,
       }])),
     }
   })

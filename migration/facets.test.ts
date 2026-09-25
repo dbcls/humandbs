@@ -239,3 +239,32 @@ describe("a value that comes from a closed set", () => {
     expect(readerOf("sex")({ sex: "female" }).map((term) => term.labelJa)).toEqual(["女性"])
   })
 })
+
+describe("a policy a research wrote for its own data", () => {
+  const policiesOf = (...written: { id: string, name: { ja: string, en: string } }[]) =>
+    readerOf("policies")({ policies: written } satisfies EsSearchable)
+
+  it("is a term of the research the policy was written for, not one shared by all of them", () => {
+    const terms = policiesOf(
+      { id: "custom-policy", name: { ja: "hum0004", en: "hum0004" } },
+      { id: "custom-policy", name: { ja: "hum0175 policy", en: "hum0175 policy" } },
+    )
+
+    expect(terms.map((term) => [term.code, term.labelEn])).toEqual([
+      ["policy-hum0004", "hum0004 policy"],
+      ["policy-hum0175", "hum0175 policy"],
+    ])
+  })
+
+  it("keeps the research the name gives when a dataset carries another research's policy", () => {
+    expect(policiesOf({ id: "custom-policy", name: { ja: "hum0184", en: "hum0184" } })[0]?.code).toBe("policy-hum0184")
+  })
+
+  it("leaves the policies the portal defines as they are", () => {
+    expect(policiesOf({ id: "nbdc-policy", name: { ja: "NBDC policy", en: "NBDC policy" } })[0]?.code).toBe("nbdc-policy")
+  })
+
+  it("is not made from a name that names no research", () => {
+    expect(policiesOf({ id: "custom-policy", name: { ja: "独自", en: "own" } })).toEqual([])
+  })
+})

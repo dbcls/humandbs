@@ -7,7 +7,7 @@
  * from, and a text that no longer came from it must not be recovered out of it.
  */
 
-import { datasetKey, type Dump, type EsDataset, type EsExperiment, type EsRichText } from "./es"
+import { datasetKey, type Dump, type EsDataset, type EsExperiment, type EsResearchVersion, type EsRichText } from "./es"
 import { blockDataFromEs, splitSharedBlock, type HandSplits, type ReviewItem, type SplitStats } from "./inversion"
 
 type Cell = NonNullable<EsExperiment["data"]>[string]
@@ -33,6 +33,56 @@ export function mergeDumps(base: Dump, extra: Dump): Dump {
     latestVersion: new Map([...base.latestVersion, ...extra.latestVersion]),
     datasetsByKey: new Map([...base.datasetsByKey, ...extra.datasetsByKey]),
     versions: [...base.versions, ...extra.versions],
+  }
+}
+
+/** A dataset v1 never took in, and the research versions whose article listed it. */
+export interface RestoredDataset {
+  datasetId: string
+  version: string
+  /** `humVersionId` of every version whose data ID table lists it. */
+  listedBy: string[]
+}
+
+/**
+ * The dump with the datasets v1 dropped put back, each listed by the versions
+ * whose article listed it.
+ *
+ * **Nothing already in the dump is replaced**, and a dataset or a version the
+ * list names that is not there stops the load: the list was written against the
+ * input.
+ */
+export function restoreDatasets(held: Dump, docs: readonly EsDataset[], restored: readonly RestoredDataset[]): Dump {
+  const datasetsByKey = new Map(held.datasetsByKey)
+  const addTo = new Map<string, { datasetId: string, version: string }[]>()
+  const known = new Set(held.versions.map((v) => v.humVersionId))
+  for (const one of restored) {
+    const key = datasetKey(one.datasetId, one.version)
+    if (datasetsByKey.has(key)) throw new Error(`${key} is already in the dump`)
+    const doc = docs.find((d) => d.datasetId === one.datasetId && d.version === one.version)
+    if (doc === undefined) throw new Error(`no document for ${key}`)
+    datasetsByKey.set(key, doc)
+    for (const humVersionId of one.listedBy) {
+      if (!known.has(humVersionId)) throw new Error(`${key} is listed by ${humVersionId}, which is not in the dump`)
+      addTo.set(humVersionId, [...addTo.get(humVersionId) ?? [], { datasetId: one.datasetId, version: one.version }])
+    }
+  }
+  // One copy per version, shared by every list that holds it: the load tells
+  // the latest version by identity (`latestVersion.get(humId) === version`).
+  const copies = new Map<EsResearchVersion, EsResearchVersion>()
+  const withRefs = (version: EsResearchVersion): EsResearchVersion => {
+    const refs = addTo.get(version.humVersionId)
+    if (refs === undefined) return version
+    const copy = copies.get(version) ?? { ...version, datasets: [...version.datasets ?? [], ...refs] }
+    copies.set(version, copy)
+    return copy
+  }
+  return {
+    research: held.research,
+    publishedVersions: held.publishedVersions.map(withRefs),
+    latestVersion: new Map([...held.latestVersion].map(([humId, version]) => [humId, withRefs(version)])),
+    datasetsByKey,
+    versions: held.versions.map(withRefs),
   }
 }
 

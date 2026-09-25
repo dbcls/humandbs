@@ -17,6 +17,7 @@
 import fc from "fast-check"
 
 import type {
+  Bilingual,
   ContentValue,
   DatasetContent,
   DiseaseValue,
@@ -66,6 +67,16 @@ export const translatedTextArb: fc.Arbitrary<TranslatedText> = fc.record({
   ja: slotArb(textArb),
   en: slotArb(textArb),
 })
+
+/**
+ * A number's label or note (`NumberValue`), which has no state of its own —
+ * only whether it was given at all. Both sides empty is drawn on purpose,
+ * the same as `textArb`: it is what a pair collapses to on save, and code that
+ * reads one still has to see it.
+ */
+export const bilingualArb: fc.Arbitrary<Bilingual> = fc.record({ ja: textArb, en: textArb })
+
+export const optionalBilingualArb: fc.Arbitrary<Bilingual | null> = fc.option(bilingualArb, { nil: null })
 
 /**
  * A name the listing puts in its provider column. **Never blank in both
@@ -126,12 +137,12 @@ export const localizedLinksArb: fc.Arbitrary<LocalizedLinks> = fc.record({
  * ends move together the way `value` and `inputValue` already do.
  */
 const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
-  label: fc.option(fc.string(), { nil: null }),
+  label: optionalBilingualArb,
   value: fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e12, max: 1e12 }),
   unit: fc.option(fc.string(), { nil: null }),
   inputValue: fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e12, max: 1e12 }),
   inputUnit: fc.option(fc.string(), { nil: null }),
-  note: fc.option(fc.string(), { nil: null }),
+  note: optionalBilingualArb,
 }).chain((base) => fc.option(
   fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1e6 }),
   { nil: null },

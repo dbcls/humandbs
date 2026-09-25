@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest"
 
 import { isPortalIssuedId } from "~/admin/labels"
 import { filled } from "~/content/empty"
-import type { Slot } from "~/content/types"
+import type { Slot, ValueSlot } from "~/content/types"
 
-import { buildCauRows, buildDatasetContent, buildResearchContent, ownLines, type ProseReader } from "./build"
-import type { EsDataset, EsResearchVersion, PublishedDataset } from "./es"
-import { byHand, type ReadNumber } from "./numbers"
+import { buildCauRows, buildDatasetContent, buildResearchContent, captionOf, narrowedToCaption, ownLines, type ProseReader } from "./build"
+import type { EsDataset, EsExperiment, EsResearchVersion, PublishedDataset } from "./es"
+import { byHand, labelTranslations, type LabelTranslations, type ReadNumber } from "./numbers"
 
 interface UnreadLine { dataset: string, sourceKey: string, line: string }
 
@@ -65,6 +65,7 @@ function datasetOf(
   readProse?: ProseReader,
   unread: UnreadLine[] = [],
   hand: ReadonlyMap<string, ReadNumber[]> = new Map(),
+  translations?: LabelTranslations,
 ) {
   const one = all.find((row) => row.label === label)
   if (one === undefined) throw new Error(`no dataset ${label}`)
@@ -80,6 +81,7 @@ function datasetOf(
     ownLines: ownLines(all, readProse),
     unread,
     byHand: hand,
+    labelTranslations: translations,
     readProse,
   })
 }
@@ -303,6 +305,48 @@ describe("buildDatasetContent", () => {
     expect(unread.length).toBeGreaterThan(0)
   })
 
+  it("sorts a number's label to the side of its own language when no translation is on record", () => {
+    const hand = byHand([{
+      sourceKey: "Coverage",
+      line: "常染色体: 31.8x",
+      why: "",
+      read: [{ label: "常染色体", value: 31.8, unit: "x", high: null, note: null }],
+    }])
+    const content = datasetOf(
+      [dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "常染色体: 31.8x" } } } }] }, "JGAD000001", null)],
+      "JGAD000001",
+      undefined,
+      [],
+      hand,
+    )
+    const values = new Map(first(content.experiments).values.map((v) => [v.keyId, v.value]))
+    expect(values.get("key-coverage-depth")).toMatchObject({
+      values: { state: "value", value: [{ label: { ja: "常染色体", en: "" } }] },
+    })
+  })
+
+  it("takes both sides of a number's label from the hand translation table when one is on record", () => {
+    const hand = byHand([{
+      sourceKey: "Coverage",
+      line: "常染色体: 31.8x",
+      why: "",
+      read: [{ label: "常染色体", value: 31.8, unit: "x", high: null, note: null }],
+    }])
+    const table = labelTranslations({ 常染色体: { ja: "常染色体", en: "Autosome" } })
+    const content = datasetOf(
+      [dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "常染色体: 31.8x" } } } }] }, "JGAD000001", null)],
+      "JGAD000001",
+      undefined,
+      [],
+      hand,
+      table,
+    )
+    const values = new Map(first(content.experiments).values.map((v) => [v.keyId, v.value]))
+    expect(values.get("key-coverage-depth")).toMatchObject({
+      values: { state: "value", value: [{ label: { ja: "常染色体", en: "Autosome" } }] },
+    })
+  })
+
   it("reads a width as a value with an upper end, both converted to the canonical unit", () => {
     const content = dataset({
       experiments: [{ data: { "Total Data Volume": { ja: { text: "0.9-1.3 TB" } } } }],
@@ -457,5 +501,43 @@ describe("a cell read by the load's own reader", () => {
   it("keeps a paragraph break between two lines that stay", () => {
     const one = [dumpRow(cell("first|~|second"), "JGAD000001", null)]
     expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["first", "", "second"])
+  })
+})
+
+describe("the disease of one row of a disease-by-disease table", () => {
+  const disease = (nameJa: string, nameEn: string) => ({ termIds: [nameEn], nameJa, nameEn })
+  const slot = (...diseases: ReturnType<typeof disease>[]): ValueSlot => ({ keyId: "k", value: { kind: "disease", diseases: { state: "value", value: diseases } } })
+  const table = (label: string): EsExperiment => ({
+    data: {
+      "NBDC Dataset Accession": {
+        ja: { text: `心不全＊\n[${label}](/files/hum0014/${label}.zip)\n[Dictionary file](/files/x.txt)`, rawHtml: null },
+        en: { text: `Heart failure*\n[${label}](/files/hum0014/${label}.zip)`, rawHtml: null },
+      },
+    },
+  })
+
+  it("reads the caption above the dataset's own link, in each language", () => {
+    expect(captionOf(table("hum0014.v17.HF.v1"), "hum0014.v17.HF.v1")).toEqual({ ja: "心不全＊", en: "Heart failure*" })
+  })
+
+  it("reads no caption where the line above is a link or there is none", () => {
+    const linkAbove: EsExperiment = { data: { "NBDC Dataset Accession": { ja: { text: "[a](/files/a.zip)\n[b](/files/b.zip)", rawHtml: null } } } }
+
+    expect(captionOf(linkAbove, "b")).toEqual({ ja: null, en: null })
+    expect(captionOf({ data: {} }, "b")).toEqual({ ja: null, en: null })
+  })
+
+  it("keeps only the disease the caption names, marks and spacing aside", () => {
+    const slots = [slot(disease("不整脈", "Cardiac arrhythmia"), disease("心不全", "heart failure"))]
+
+    expect(narrowedToCaption(slots, { ja: "心不全＊", en: null })).toEqual([slot(disease("心不全", "heart failure"))])
+    expect(narrowedToCaption(slots, { ja: null, en: "Heart Failure *" })).toEqual([slot(disease("心不全", "heart failure"))])
+  })
+
+  it("keeps every disease when the caption names none of them, or there is no caption", () => {
+    const slots = [slot(disease("不整脈", "Cardiac arrhythmia"))]
+
+    expect(narrowedToCaption(slots, { ja: "総コレステロール", en: null })).toEqual(slots)
+    expect(narrowedToCaption(slots, { ja: null, en: null })).toBe(slots)
   })
 })

@@ -24,6 +24,7 @@ import type { Executor } from "~/db/client.server"
 import {
   cauEntry,
   contentKey,
+  document,
   humAccession,
   labelPin,
   researchVersion,
@@ -334,8 +335,10 @@ export async function loadCatalog(db: Executor): Promise<CatalogView> {
       labelEn: vocabularyTerm.labelEn,
       maker: vocabularyTerm.maker,
       position: vocabularyTerm.position,
+      documentSlug: document.slug,
     })
     .from(vocabularyTerm)
+    .leftJoin(document, eq(document.id, vocabularyTerm.documentId))
 
   return {
     keyById: new Map(keys.map((key) => [key.id, key])),

@@ -16,6 +16,7 @@ import { inListingOrder } from "~/files/selection"
 import {
   diff,
   elements,
+  sameBilingual,
   sameStrings,
   sameText,
   sameTextPair,
@@ -49,8 +50,8 @@ function sameValueBody(a: ValueBody, b: ValueBody): boolean {
     // is on screen while the state indicates there is no value.
     return a.state !== "value" || (a.rows.length === b.rows.length && a.rows.every((row, at) => {
       const other = b.rows[at]
-      return row.label === other?.label && row.value === other.value
-        && row.unit === other.unit && row.note === other.note
+      return other !== undefined && sameBilingual(row.label, other.label) && row.value === other.value
+        && row.unit === other.unit && sameBilingual(row.note, other.note)
     }))
   }
   if (a.kind === "disease" && b.kind === "disease") {

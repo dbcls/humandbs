@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest"
 
 import { applyCellEdits, type CellEdit } from "./cell-edits"
-import type { EsDataset } from "./es"
+import type { EsBilingualRich, EsDataset } from "./es"
 
 const cell = (ja: string, en: string) => ({ ja: { text: ja, rawHtml: null }, en: { text: en, rawHtml: null } })
-const doc = (humId: string, data: Record<string, ReturnType<typeof cell>>): EsDataset => ({
+const doc = (humId: string, data: Record<string, EsBilingualRich>): EsDataset => ({
   datasetId: "JGAD000001", version: "v1", humId, experiments: [{ data }],
 })
 
@@ -41,6 +41,34 @@ describe("applyCellEdits", () => {
     }])
 
     expect(docs[0]?.experiments?.[0]?.data?.["Sample Description"]?.ja?.text).toBe("血漿\n実験期間: 2020/11/1 - 2021/7/31")
+  })
+
+  it("replaces a part of a cell in the text and in the HTML it was read from, in every version", () => {
+    const written = { text: "関節リウマチ (ICD10: M05) 、バセドウ病 (ICD10: C719)", rawHtml: "<p>バセドウ病（ICD10：C719）</p>" }
+    const docs = [
+      doc("hum0197", { "Materials and Participants": { ja: { ...written }, en: { text: "Graves' disease (ICD10: C719)", rawHtml: null } } }),
+      doc("hum0197", { "Materials and Participants": { ja: { ...written }, en: { text: "x", rawHtml: null } } }),
+    ]
+    applyCellEdits(docs, [
+      { op: "substitute", hum: "hum0197", key: "Materials and Participants", lang: "ja", find: "バセドウ病 (ICD10: C719)", replace: "バセドウ病 (ICD10: E050)" },
+      { op: "substitute", hum: "hum0197", key: "Materials and Participants", lang: "ja", find: "バセドウ病（ICD10：C719）", replace: "バセドウ病（ICD10：E050）" },
+    ])
+
+    expect(docs.map((one) => one.experiments?.[0]?.data?.["Materials and Participants"]?.ja)).toEqual([
+      { text: "関節リウマチ (ICD10: M05) 、バセドウ病 (ICD10: E050)", rawHtml: "<p>バセドウ病（ICD10：E050）</p>" },
+      { text: "関節リウマチ (ICD10: M05) 、バセドウ病 (ICD10: E050)", rawHtml: "<p>バセドウ病（ICD10：E050）</p>" },
+    ])
+    expect(docs[0]?.experiments?.[0]?.data?.["Materials and Participants"]?.en?.text).toBe("Graves' disease (ICD10: C719)")
+  })
+
+  it("stops when a substitution finds its text nowhere", () => {
+    const docs = [doc("hum0197", { "Materials and Participants": cell("バセドウ病 (ICD10: E050)", "") })]
+
+    expect(() => {
+      applyCellEdits(docs, [
+        { op: "substitute", hum: "hum0197", key: "Materials and Participants", lang: "ja", find: "C719", replace: "E050" },
+      ])
+    }).toThrow(/found nothing/)
   })
 
   it("stops when an edit lands nowhere, including in another research", () => {

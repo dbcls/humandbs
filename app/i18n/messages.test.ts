@@ -49,9 +49,9 @@ describe("確認ダイアログの警告文", () => {
 
 /**
  * The last path segment names the kind of string, not the component that
- * happened to render it: a field's own name (`accessionHint`, `numberNote`)
- * can end the same way a description does without being one, so those two
- * are named exceptions rather than a broader pattern.
+ * happened to render it: a field's own name (`accessionHint`) can end the
+ * same way a description does without being one, so it is a named exception
+ * rather than a broader pattern.
  */
 function lastKey(path: string): string {
   return path.split(".").at(-1) ?? path
@@ -59,7 +59,6 @@ function lastKey(path: string): string {
 
 const NOTE_OR_HINT_EXCEPTIONS = new Set([
   "admin.templates.accessionHint", // Field の label (欄の名前) で、説明文ではない
-  "admin.datasetEditor.numberNote", // 欄の aria-label/placeholder (欄の名前) で、説明文ではない
 ])
 
 /**

@@ -43,8 +43,8 @@ const catalog: CatalogView = {
   keyById: new Map(KEYS.map((k) => [k.id, k])),
   keyByCode: new Map(KEYS.map((k) => [k.code, k])),
   termById: new Map([
-    ["t-open", { code: "unrestricted-access", labelJa: "非制限公開", labelEn: "Unrestricted-access", maker: null, position: 0 }],
-    ["t-en-only", { code: "en-only", labelJa: null, labelEn: "English only", maker: null, position: 1 }],
+    ["t-open", { code: "unrestricted-access", labelJa: "非制限公開", labelEn: "Unrestricted-access", maker: null, position: 0, documentSlug: null }],
+    ["t-en-only", { code: "en-only", labelJa: null, labelEn: "English only", maker: null, position: 1, documentSlug: null }],
   ]),
 }
 
@@ -453,6 +453,72 @@ describe("what a dataset page has", () => {
   })
 })
 
+describe("a vocabulary value naming an article", () => {
+  const linked: VocabularyTermView = {
+    code: "policy-hum0001", labelJa: null, labelEn: "hum0001 policy", maker: null, position: 0,
+    documentSlug: "guidelines/data-use-policy",
+  }
+  const plain: VocabularyTermView = {
+    code: "policy-hum0002", labelJa: null, labelEn: "hum0002 policy", maker: null, position: 1,
+    documentSlug: null,
+  }
+  const withDocuments: CatalogView = {
+    ...catalog,
+    termById: new Map([...catalog.termById, ["t-linked", linked], ["t-plain", plain]]),
+  }
+
+  function fieldOf(termIds: string[], locale: "ja" | "en") {
+    return datasetView({
+      studyAccession: null,
+      label: "JGAD000001",
+      humLabel: "hum0001",
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "e1",
+          label: filled("WES"),
+          values: [{ keyId: "k-early", value: { kind: "vocabulary", termIds: filled(termIds) } }],
+        }],
+      },
+      datePublished: "2020-01-01",
+      dateModified: null,
+      files: [],
+    }, locale, withDocuments).experiments[0]?.values[0]?.field
+  }
+
+  it("renders the label as a link to the article's Japanese address", () => {
+    expect(fieldOf(["t-linked"], "ja")).toEqual({
+      state: "rich",
+      text: [[{ text: "hum0001 policy", href: "/guidelines/data-use-policy" }]],
+      untranslated: false,
+    })
+  })
+
+  it("renders the same link under the English prefix on the English page", () => {
+    expect(fieldOf(["t-linked"], "en")).toEqual({
+      state: "rich",
+      text: [[{ text: "hum0001 policy", href: "/en/guidelines/data-use-policy" }]],
+      untranslated: false,
+    })
+  })
+
+  it("keeps a term with no article as plain text beside one that has a link", () => {
+    expect(fieldOf(["t-plain", "t-linked"], "ja")).toEqual({
+      state: "rich",
+      text: [[
+        { text: "hum0001 policy", href: "/guidelines/data-use-policy" },
+        { text: "、" },
+        { text: "hum0002 policy" },
+      ]],
+      untranslated: false,
+    })
+  })
+
+  it("stays the plain joined text when none of the values names an article", () => {
+    expect(fieldOf(["t-plain"], "ja")).toEqual({ state: "plain", text: "hum0002 policy", untranslated: false })
+  })
+})
+
 describe("the maker a label is drawn apart from", () => {
   it("is kept while the label still opens with it", () => {
     expect(makerOf("Illumina", "Illumina NovaSeq 6000")).toBe("Illumina")
@@ -484,6 +550,7 @@ describe("the several values one listing cell holds", () => {
       labelEn: "Oxford Nanopore Technologies MinION",
       maker: "Oxford Nanopore Technologies",
       position: 20,
+      documentSlug: null,
     }],
     ["t-novaseq", {
       code: "illumina-novaseq-6000",
@@ -491,6 +558,7 @@ describe("the several values one listing cell holds", () => {
       labelEn: "Illumina NovaSeq 6000",
       maker: "Illumina",
       position: 8,
+      documentSlug: null,
     }],
     ["t-hiseq", {
       code: "illumina-hiseq-2500",
@@ -498,6 +566,7 @@ describe("the several values one listing cell holds", () => {
       labelEn: "Illumina HiSeq 2500",
       maker: "Illumina",
       position: 4,
+      documentSlug: null,
     }],
   ]
   const withPlatforms: CatalogView = {

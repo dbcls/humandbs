@@ -297,7 +297,13 @@ interface ContentRow {
   title: string | null
 }
 
-async function documentRows(db: Executor): Promise<DocumentRow[]> {
+/**
+ * Every document, whichever screen is asking. **The catalog screen reads this
+ * too**, to offer the vocabulary editor a document to link a term's label to
+ * (`app/admin/catalog.server.ts`) — the same rows, because there is one list
+ * of documents on the site rather than one per screen that wants to name one.
+ */
+export async function documentRows(db: Executor): Promise<DocumentRow[]> {
   const rows: ContentRow[] = await db
     .select({
       id: document.id,

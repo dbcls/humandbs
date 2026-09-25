@@ -20,7 +20,7 @@ function catalogOf(): CatalogView {
     keyById: new Map([[key.id, key], [later.id, later]]),
     keyByCode: new Map([[key.code, key], [later.code, later]]),
     termById: new Map([["term-1", {
-      code: "hiseq-2500", labelJa: "HiSeq 2500", labelEn: "HiSeq 2500", maker: null, position: 0,
+      code: "hiseq-2500", labelJa: "HiSeq 2500", labelEn: "HiSeq 2500", maker: null, position: 0, documentSlug: null,
     }]]),
   }
 }
@@ -130,6 +130,49 @@ describe("a value under a catalog key", () => {
       type: "number",
       numbers: [{ value: 100, unit: "bp", high: null }],
     }])
+  })
+
+  it("reports a number's label and note as a value per language", () => {
+    const answer = dataset({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: "key-2",
+        value: {
+          kind: "number",
+          values: {
+            state: "value",
+            value: [{
+              label: { ja: "常染色体", en: "" },
+              value: 100,
+              unit: "bp",
+              inputValue: 0.1,
+              inputUnit: "kbp",
+              note: { ja: "", en: "average" },
+            }],
+          },
+        },
+      }],
+    })
+    expect(answer.values[0]).toMatchObject({
+      numbers: [{ label: { ja: "常染色体" }, note: { en: "average" } }],
+    })
+  })
+
+  it("leaves out a number's label and note where neither language was given one", () => {
+    const answer = dataset({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: "key-2",
+        value: {
+          kind: "number",
+          values: { state: "value", value: [{ label: null, value: 100, unit: "bp", inputValue: 0.1, inputUnit: "kbp", note: null }] },
+        },
+      }],
+    })
+    const value = answer.values[0]
+    const [one] = value?.type === "number" ? value.numbers ?? [] : []
+    expect(one).not.toHaveProperty("label")
+    expect(one).not.toHaveProperty("note")
   })
 
   it("has the upper end of a width, and null on a number that is not one", () => {

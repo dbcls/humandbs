@@ -24,6 +24,7 @@ import { requireCapability } from "~/auth/actor.server"
 import { getDb, type Executor } from "~/db/client.server"
 import {
   contentKey,
+  document,
   draftDatasetEntry,
   researchVersion,
   searchDoc,
@@ -55,6 +56,7 @@ import {
   type KeyValueType,
   type TermSortKey,
 } from "./catalog"
+import { documentRows } from "./contents.server"
 import { mergeTermInDrafts } from "./drafts.server"
 import { lockAllResearches } from "./locks.server"
 import { axisCounts } from "./listing"
@@ -132,6 +134,15 @@ export interface TermRow {
    * published under it, and that is enough to keep it from being deleted.
    */
   inUse: boolean
+  /** The article the public page links this term's label to, or none. */
+  documentId: string | null
+}
+
+/** A document as the term editor offers it: enough to name it in a list. */
+export interface TermDocumentOption {
+  id: string
+  slug: string
+  title: string
 }
 
 export interface VocabularyView {
@@ -164,6 +175,13 @@ export interface VocabularyView {
    * listing gives it the box and the pages that are already there.
    */
   mergeFrom: TermRow | null
+  /**
+   * Every document on the site, for the control that links a term's label to
+   * one. There are tens of them, not thousands, so the whole list is read once
+   * rather than searched per keystroke the way a vocabulary's own values are
+   * (`admin-terms.ts`).
+   */
+  documents: TermDocumentOption[]
 }
 
 /** What a form did, when it did not simply work. */
@@ -363,6 +381,7 @@ export async function fieldTermsPage(
       code: vocabularyTerm.code,
       labelJa: vocabularyTerm.labelJa,
       labelEn: vocabularyTerm.labelEn,
+      documentId: vocabularyTerm.documentId,
     })
     .from(vocabularyTerm)
     .where(and(eq(vocabularyTerm.setId, set.id), matching))
@@ -384,6 +403,7 @@ export async function fieldTermsPage(
           code: vocabularyTerm.code,
           labelJa: vocabularyTerm.labelJa,
           labelEn: vocabularyTerm.labelEn,
+          documentId: vocabularyTerm.documentId,
         })
         .from(vocabularyTerm)
         // Compared as text: the address has whatever was typed, and a
@@ -394,6 +414,10 @@ export async function fieldTermsPage(
         ))
         .limit(1)
   const aimedUsed = aimed === undefined ? new Map() : await usageOfTerms(db, [aimed.id])
+
+  const documents = (await documentRows(db)).map((row) => (
+    { id: row.id, slug: row.slug, title: row.title }
+  ))
 
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
@@ -411,6 +435,7 @@ export async function fieldTermsPage(
     mergeFrom: aimed === undefined
       ? null
       : { ...aimed, used: (aimedUsed.get(aimed.id) ?? 0) as number, inUse: held.has(aimed.id) },
+    documents,
   }
 }
 
@@ -791,6 +816,18 @@ async function freeTermCode(db: Executor, setId: string, wanted: string): Promis
   return freeCode(wanted, taken)
 }
 
+/**
+ * The document a term's form is proposing to link its label to, or the
+ * problem stopping it. Empty text is the choice of no document, and is not a
+ * problem — most terms point at nothing.
+ */
+async function documentIdFrom(db: Executor, form: FormData): Promise<{ documentId: string | null } | Outcome> {
+  const raw = text(form, "documentId")
+  if (raw === "") return { documentId: null }
+  const [found] = await db.select({ id: document.id }).from(document).where(eq(document.id, raw)).limit(1)
+  return found === undefined ? { status: "unknown-target" } : { documentId: found.id }
+}
+
 async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
   const setId = text(form, "setId")
   const labelEn = text(form, "labelEn")
@@ -803,6 +840,8 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
     .limit(1)
   if (set === undefined) return { status: "unknown-target" }
   if (SETTLED_VOCABULARIES.has(set.code)) return { status: "not-editable" }
+  const resolvedDocument = await documentIdFrom(db, form)
+  if ("status" in resolvedDocument) return resolvedDocument
   // The code is made from the label (`catalog.ts` の `codeFrom`): it is an
   // address the public side has rather than a name to choose. The one
   // vocabulary whose codes are its own, ICD10, is settled and never made here.
@@ -818,6 +857,7 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
     labelJa: labelJa === "" ? null : labelJa,
     // Every vocabulary an administrator adds to is flat; the one tree is ICD10's.
     parentId: null,
+    documentId: resolvedDocument.documentId,
   })
   return { status: "ok" }
 }
@@ -840,7 +880,10 @@ async function refusedTerm(db: Executor, id: string): Promise<Outcome | null> {
   return SETTLED_VOCABULARIES.has(term.setCode) ? { status: "not-editable" } : null
 }
 
-/** The labels a term is offered under, settled together as the one panel that holds them. */
+/**
+ * The labels a term is offered under, and the article its label links to,
+ * settled together as the one panel that holds them.
+ */
 async function updateTerm(db: Executor, form: FormData): Promise<Outcome> {
   const id = text(form, "termId")
   const labelEn = text(form, "labelEn")
@@ -848,11 +891,14 @@ async function updateTerm(db: Executor, form: FormData): Promise<Outcome> {
   if (labelEn === "") return { status: "missing-label" }
   const refused = await refusedTerm(db, id)
   if (refused !== null) return refused
+  const resolvedDocument = await documentIdFrom(db, form)
+  if ("status" in resolvedDocument) return resolvedDocument
   await db
     .update(vocabularyTerm)
     .set({
       labelEn,
       labelJa: labelJa === "" ? null : labelJa,
+      documentId: resolvedDocument.documentId,
     })
     .where(eq(vocabularyTerm.id, id))
   return { status: "ok" }
@@ -922,4 +968,39 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
 
   await db.delete(vocabularyTerm).where(eq(vocabularyTerm.id, from))
   return { status: "ok" }
+}
+
+/**
+ * Sets `document_id` on the named terms by slug, for the migration to call
+ * once the site content the slugs name has been loaded.
+ *
+ * **It throws rather than reporting a problem.** The screen's writes answer a
+ * form a curator can retype; a set, a term or a slug this is asked for and
+ * does not find is the migration's own input disagreeing with itself, which
+ * has to stop the load rather than continue with a link silently left unset.
+ */
+export async function linkTermsToDocuments(
+  tx: Executor,
+  links: readonly { setCode: string, termCode: string, documentSlug: string }[],
+): Promise<void> {
+  for (const link of links) {
+    const [term] = await tx
+      .select({ id: vocabularyTerm.id })
+      .from(vocabularyTerm)
+      .innerJoin(vocabularySet, eq(vocabularySet.id, vocabularyTerm.setId))
+      .where(and(eq(vocabularySet.code, link.setCode), eq(vocabularyTerm.code, link.termCode)))
+      .limit(1)
+    if (term === undefined) {
+      throw new Error(`linkTermsToDocuments: no term ${link.termCode} in vocabulary ${link.setCode}`)
+    }
+    const [found] = await tx
+      .select({ id: document.id })
+      .from(document)
+      .where(eq(document.slug, link.documentSlug))
+      .limit(1)
+    if (found === undefined) {
+      throw new Error(`linkTermsToDocuments: no document at ${link.documentSlug}`)
+    }
+    await tx.update(vocabularyTerm).set({ documentId: found.id }).where(eq(vocabularyTerm.id, term.id))
+  }
 }

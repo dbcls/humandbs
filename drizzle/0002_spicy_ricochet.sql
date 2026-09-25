@@ -1,0 +1,2 @@
+ALTER TABLE "vocabulary_term" ADD COLUMN "document_id" uuid;--> statement-breakpoint
+ALTER TABLE "vocabulary_term" ADD CONSTRAINT "vocabulary_term_document_id_document_id_fk" FOREIGN KEY ("document_id") REFERENCES "public"."document"("id") ON DELETE set null ON UPDATE no action;

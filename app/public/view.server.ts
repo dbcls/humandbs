@@ -19,6 +19,7 @@ import type {
   ContentValue,
   DatasetContent,
   DiseaseValue,
+  Line,
   Link,
   LocalizedLinks,
   ResearchContent,
@@ -34,11 +35,13 @@ import { messagesFor } from "~/i18n/messages"
 import {
   resolveBilingual,
   resolveLinks,
+  resolveOptionalBilingual,
   resolveRichText,
   resolveText,
   type Locale,
   type Resolved,
 } from "~/i18n/locale"
+import { href } from "./urls"
 
 /**
  * A value as a page shows it. `unsettled` only ever reaches a screen through a
@@ -56,7 +59,12 @@ function writtenFigure(value: number): string {
   return Math.abs(value) >= 10_000 ? value.toLocaleString("en-US") : String(value)
 }
 
-export function writtenNumber(number: NumberValue): string {
+/**
+ * A number written out, and whether writing it fell back to the other
+ * language for its label or its note — the two places a number holds a
+ * translated pair (`resolveOptionalBilingual`).
+ */
+export function writtenNumber(number: NumberValue, locale: Locale): { text: string, untranslated: boolean } {
   // **What was typed, not what was stored.** The canonical unit exists so that
   // a range can be asked of the key at all; nobody wrote `1351.68 GB`, they
   // wrote `1.32 TB`, and showing the conversion back to them is the page
@@ -76,8 +84,13 @@ export function writtenNumber(number: NumberValue): string {
     ? writtenFigure(value)
     : `${writtenFigure(value)}–${writtenFigure(high)}`
   const said = unit === null ? shown : `${shown}${close ? "" : " "}${unit}`
-  const named = number.label === null ? said : `${number.label}: ${said}`
-  return number.note === null ? named : `${named} (${number.note})`
+  const label = resolveOptionalBilingual(number.label, locale)
+  const note = resolveOptionalBilingual(number.note, locale)
+  const named = label === null ? said : `${label.text}: ${said}`
+  return {
+    text: note === null ? named : `${named} (${note.text})`,
+    untranslated: (label?.untranslated ?? false) || (note?.untranslated ?? false),
+  }
 }
 
 export type FieldView
@@ -175,6 +188,8 @@ export interface VocabularyTermView {
    * order at all.
    */
   position: number
+  /** The slug of the article this term's label links to, or null where it names none. */
+  documentSlug: string | null
 }
 
 export interface CatalogView {
@@ -327,12 +342,25 @@ function valueField(
       // Catalog order, for the reason `termViews` gives: the ids themselves
       // have none, and a key holding several values is read down a column
       // beside the same key on other pages.
-      const labels = slot.value
+      const terms = slot.value
         .map((id) => catalog.termById.get(id))
         .filter((term) => term !== undefined)
         .sort((a, b) => a.position - b.position || a.code.localeCompare(b.code, "en"))
-        .map((term) => catalogLabel(term, locale))
-      return { state: "plain", text: labels.join(locale === "ja" ? "、" : ", "), untranslated: false }
+      const separator = locale === "ja" ? "、" : ", "
+      // **A term naming an article keeps its label a link to it.** The value
+      // only becomes prose — rather than the plain joined string every other
+      // vocabulary value is — once one of its terms asks for that.
+      if (terms.some((term) => term.documentSlug !== null)) {
+        const line: Line = terms.flatMap((term, at) => {
+          const span = term.documentSlug === null
+            ? { text: catalogLabel(term, locale) }
+            : { text: catalogLabel(term, locale), href: href(locale, `/${term.documentSlug}`) }
+          return at === 0 ? [span] : [{ text: separator }, span]
+        })
+        return { state: "rich", text: [line], untranslated: false }
+      }
+      const labels = terms.map((term) => catalogLabel(term, locale))
+      return { state: "plain", text: labels.join(separator), untranslated: false }
     }
     case "disease": {
       if (value.diseases.state === "not-applicable") return { state: "not-applicable" }
@@ -351,10 +379,11 @@ function valueField(
       // A line each, because that is what they are: a key holding several
       // numbers holds several facts, and running them together makes one
       // sentence out of readings taken separately.
+      const written = value.values.value.map((number) => writtenNumber(number, locale))
       return {
         state: "rich",
-        text: value.values.value.map((number) => [{ text: writtenNumber(number) }]),
-        untranslated: false,
+        text: written.map((one) => [{ text: one.text }]),
+        untranslated: fallbacks.note(written.some((one) => one.untranslated)),
       }
     }
   }

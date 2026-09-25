@@ -92,7 +92,9 @@ export const diseaseSchema = z.object({
  * `label` reports which number this is where a key holds several — the part of the
  * genome counted, the data product measured — and `note` has what qualifies
  * it without being part of it. Both are absent when the value does not have one,
- * so the common case is the same two fields it has always been.
+ * so the common case is the same two fields it has always been. Each is a
+ * value per language, the same shape every other translated field on the API
+ * has, since a label written in one language only is ordinary.
  *
  * `high` is the upper end of a value written as a width — `0.9-1.3 GB` reads as
  * `value: 0.9, high: 1.3` — and is `null` on every number that is not one.
@@ -101,16 +103,17 @@ export const numberValueSchema = z.object({
   value: z.number(),
   unit: z.string().nullable(),
   high: z.number().nullable(),
-  label: z.string().optional(),
-  note: z.string().optional(),
+  label: textSchema.optional(),
+  note: textSchema.optional(),
 }).meta({
   id: "NumberValue",
   description:
     "A number in the key's canonical unit, which is the unit `/api/fields` gives for that field "
     + "and not necessarily the one it was entered in. `label` identifies which number this is where a "
     + "key holds several; `note` holds what qualifies it without being part of it. Both are "
-    + "absent when there is none. `high` is the upper end of a value written as a width, and "
-    + "`null` on every number that is not one.",
+    + "absent when there is none, and a value in one language only where a curator gave just that "
+    + "one. `high` is the upper end of a value written as a width, and `null` on every number "
+    + "that is not one.",
 })
 
 const valueHead = { key: z.string(), label: textSchema }

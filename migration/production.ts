@@ -41,10 +41,12 @@ import { join } from "node:path"
 
 import { sql } from "drizzle-orm"
 
+import { linkTermsToDocuments } from "~/admin/catalog.server"
 import { newShareToken } from "~/admin/drafts.server"
 import { isPortalIssuedId } from "~/admin/labels"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import type {
+  Bilingual,
   DatasetContent,
   ListingProvider,
   ResearchContent,
@@ -63,6 +65,7 @@ import {
   researchDraft,
   researchVersion,
 } from "~/db/schema"
+import { renderMarkdown } from "~/public/markdown.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
@@ -75,6 +78,12 @@ import {
 } from "./build"
 import { ACCESS_CRITERIA_KEY, contentKeySeeds, TYPE_OF_DATA_KEY } from "./catalog"
 import { applyCellEdits, type CellEdit } from "./cell-edits"
+import { applyListingEdits, type ListingEdit } from "./listing-edits"
+import { applyProviderSplits, type ProviderSplit } from "./providers"
+import { applySearchableFixes, type SearchableFix } from "./searchable-fixes"
+import { applyVocabularyFixes, readVocabularyPlan, type VocabularyFix } from "./vocabulary-plan"
+import { VOCABULARY_FACETS } from "./facets"
+import { cleanseCharacters, cleanseContent, cleanseMarkdown, noCounts, type CleansingCounts } from "./cleansing"
 import { datasetIdentity, researchIdentity } from "./identity"
 import { markNotApplicable } from "./not-applicable"
 import {
@@ -106,12 +115,14 @@ import {
   readByHand,
   seedCatalog,
 } from "./load"
-import { byHand, type ReadByHand } from "./numbers"
+import { byHand, labelTranslations, type ReadByHand } from "./numbers"
 import {
   applyKeyRules,
   dropResearch,
   followedRules,
   mergeDumps,
+  restoreDatasets,
+  type RestoredDataset,
   splitArchiveAccessions,
   splitSharedExperiments,
   type KeyRule,
@@ -144,8 +155,9 @@ interface DraftManifest {
 
 /**
  * The snapshot with what v1 never took in: the published research it missed,
- * and the drafts its source held that it had not converted, or had converted
- * before they were written further.
+ * the drafts its source held that it had not converted, or had converted
+ * before they were written further, and the datasets it dropped from research
+ * it did take in (`es-restored/`).
  */
 function heldDump(): Dump {
   let held = mergeDumps(loadDump(join(INPUT, "es")), loadDump(join(INPUT, "es-extra")))
@@ -164,7 +176,19 @@ function heldDump(): Dump {
     }
   }
 
-  return withWrittenListings(dropResearch(held, NOT_RESEARCH))
+  if (existsSync(join(INPUT, "es-restored", "manifest.json"))) {
+    const restored = readJson("es-restored", "dataset.json") as { hits: { hits: { _source: EsDataset }[] } }
+    held = restoreDatasets(
+      held,
+      restored.hits.hits.map((hit) => hit._source),
+      readJson("es-restored", "manifest.json") as RestoredDataset[],
+    )
+  }
+
+  const listed = withWrittenListings(dropResearch(held, NOT_RESEARCH))
+  return existsSync(join(INPUT, "hand", "listing-edits.json"))
+    ? applyListingEdits(listed, readJson("hand", "listing-edits.json") as ListingEdit[])
+    : listed
 }
 
 interface KeyMap {
@@ -382,7 +406,47 @@ function siteContent(): CmsDump {
 
   const edited = { ...cms, documents: [...documents, ...added] }
   const edits = join(INPUT, "hand", "site-edits.json")
-  return existsSync(edits) ? applySiteEdits(edited, readJson("hand", "site-edits.json") as SiteEdit[]) : edited
+  return cleansedSite(existsSync(edits) ? applySiteEdits(edited, readJson("hand", "site-edits.json") as SiteEdit[]) : edited)
+}
+
+/**
+ * A translation table keyed by the strings as the portal holds them, which is
+ * after the character clean-ups (`cleanseCharacters`). The build reads a label
+ * before those, so a key is looked up in its cleaned form.
+ */
+class CleanedKeys extends Map<string, Bilingual> {
+  constructor(table: ReadonlyMap<string, Bilingual>) {
+    super([...table].map(([key, pair]) => [cleanseCharacters(key, noCounts()), pair]))
+  }
+
+  override get(key: string): Bilingual | undefined {
+    return super.get(cleanseCharacters(key, noCounts()))
+  }
+
+  override has(key: string): boolean {
+    return super.has(cleanseCharacters(key, noCounts()))
+  }
+}
+
+/** Counts of the clean-ups applied to the articles, news and alerts. */
+const siteCleansing = noCounts()
+
+/** The site's titles with the character clean-ups. The bodies are cleaned once they are markdown (`siteBody`). */
+function cleansedSite(site: CmsDump): CmsDump {
+  const plain = (text: string) => cleanseCharacters(text, siteCleansing)
+  return {
+    ...site,
+    documents: site.documents.map((doc) => ({
+      ...doc,
+      versions: doc.versions.map((version) => ({ ...version, title: version.title === null ? null : plain(version.title) })),
+    })),
+    news: site.news.map((one) => ({ ...one, translations: one.translations.map((t) => ({ ...t, title: plain(t.title) })) })),
+  }
+}
+
+/** A body of an article, a news item or an alert, cleaned rendering as it did (`cleanseMarkdown`). */
+function siteBody(markdown: string): string {
+  return cleanseMarkdown(markdown, (source) => renderMarkdown(source, "ja", { headingLinks: false }), siteCleansing)
 }
 
 interface HandDivision {
@@ -472,6 +536,13 @@ async function load() {
   if (existsSync(join(INPUT, "hand", "cell-edits.json"))) {
     applyCellEdits(held.datasetsByKey.values(), readJson("hand", "cell-edits.json") as CellEdit[])
   }
+  if (existsSync(join(INPUT, "hand", "searchable-fixes.json"))) {
+    applySearchableFixes(held.datasetsByKey.values(), readJson("hand", "searchable-fixes.json") as SearchableFix[])
+  }
+  if (existsSync(join(INPUT, "hand", "data-providers.json"))) {
+    const versions = new Set([...held.versions, ...held.publishedVersions, ...held.latestVersion.values()])
+    applyProviderSplits(versions, readJson("hand", "data-providers.json") as ProviderSplit[])
+  }
   correctKeys(held.datasetsByKey.values(), rules, fixes)
   const catalogPlan = readJson("hand", "catalog.json") as CatalogPlan
   const ordered = keyMap.order
@@ -505,8 +576,11 @@ async function load() {
   const moved = relinks()
   const followed = new Set<string>()
   const lineBreaks = articleLines()
+  const vocabulary = readVocabularyPlan(join(INPUT, "hand", "vocabulary"))
+  const fixesApplied = new Set<VocabularyFix>()
   let lineBreaksRestored = 0
   let notApplicable = 0
+  const cleansing = noCounts()
   const linked = <T>(content: T): T => {
     const cut = restoreLineBreaksIn(content, lineBreaks)
     lineBreaksRestored += cut.restored
@@ -514,7 +588,9 @@ async function load() {
     for (const url of result.used) followed.add(url)
     const marked = markNotApplicable(result.content)
     notApplicable += marked.marked
-    return marked.content
+    const cleansed = cleanseContent(marked.content)
+    for (const rule of Object.keys(cleansing) as (keyof CleansingCounts)[]) cleansing[rule] += cleansed.counts[rule]
+    return cleansed.content
   }
   const db = getOwnerDb()
 
@@ -524,11 +600,12 @@ async function load() {
                      hum_accession, accession_date, upstream_refresh, document, news, alert CASCADE
     `)
 
-    const { keyIdByCode, termIdBySetAndCode, codeBySourceKey, knownCode } = await seedCatalog(
+    const { keyIdByCode, termIdBySetAndCode, termIdsOf, codeBySourceKey, knownCode } = await seedCatalog(
       tx,
       [...published.map((d) => d.doc), ...draftDatasets.flat().map((d) => d.doc)]
         .flatMap((doc) => doc.experiments ?? []),
       reshapeCatalog(contentKeySeeds(ordered), catalogPlan.keys, new Set(catalogPlan.gone)),
+      vocabulary,
     )
 
     const humIds = [...held.research.keys()].sort()
@@ -599,17 +676,30 @@ async function load() {
       ...readByHand(),
       ...(existsSync(join(INPUT, "hand", "read-by-hand.json")) ? readJson("hand", "read-by-hand.json") as ReadByHand[] : []),
     ])
+    // What each number's label and note say in the other language (`numbers.ts` の `bilingualOf`).
+    const numberLabels = existsSync(join(INPUT, "hand", "number-labels.json"))
+      ? new CleanedKeys(labelTranslations(readJson("hand", "number-labels.json") as Record<string, Bilingual>))
+      : new Map<string, Bilingual>()
     const datasetLabels = new Set(labels)
     const selected = fileSeed()
-    const describe = (one: PublishedDataset, siblings: ReadonlySet<string>): DatasetContent => ({
-      ...describeFromDump(one, siblings),
-      fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [],
-    })
+    // The key each vocabulary's values are under, for the fixes to find.
+    const keyCodeOfSet = new Map(VOCABULARY_FACETS.map((facet) => [facet.setCode, facet.code]))
+    const describe = (one: PublishedDataset, siblings: ReadonlySet<string>): DatasetContent => {
+      const fixed = applyVocabularyFixes(describeFromDump(one, siblings), vocabulary.fixes, {
+        hum: one.humId,
+        datasetId: one.label,
+        keyIdOfSet: (setCode) => keyIdByCode.get(keyCodeOfSet.get(setCode) ?? setCode),
+        termIdOf: (setCode, code) => termIdBySetAndCode.get(`${setCode}/${code}`),
+      })
+      for (const fix of fixed.applied) fixesApplied.add(fix)
+      return { ...fixed.dataset, fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [] }
+    }
     const describeFromDump = (one: PublishedDataset, siblings: ReadonlySet<string>): DatasetContent => buildDatasetContent({
       dataset: one,
       keyIdByCode,
       codeBySourceKey,
       termIdBySetAndCode,
+      termIdsOf,
       knownCode,
       accessCriteriaKeyCode: ACCESS_CRITERIA_KEY,
       typeOfDataKeyCode: TYPE_OF_DATA_KEY,
@@ -617,6 +707,7 @@ async function load() {
       ownLines: siblings,
       unread,
       byHand: hand,
+      labelTranslations: numberLabels,
       readProse: prose.read,
     })
 
@@ -719,7 +810,17 @@ async function load() {
     const dates = buildAccessionDates(selection.datasets)
     await insertChunked(dates, (chunk) => tx.insert(accessionDate).values(chunk))
 
-    const site = await loadSiteContent(tx, cms)
+    // A fix that landed on no experiment was written against another input;
+    // stopping inside the transaction leaves the previous load as it was.
+    const unlanded = vocabulary.fixes.filter((fix) => !fixesApplied.has(fix))
+    if (unlanded.length > 0) {
+      throw new Error(`vocabulary fixes that found nothing:\n${unlanded.map((fix) => `${fix.setCode} ${fix.hum} ${fix.datasetId} ${fix.header}`).join("\n")}`)
+    }
+
+    const site = await loadSiteContent(tx, cms, siteBody)
+    // The articles each settled term links to, such as a data use policy's text.
+    await linkTermsToDocuments(tx, [...vocabulary.terms].flatMap(([setCode, terms]) => terms.flatMap((term) =>
+      term.document === null ? [] : [{ setCode, termCode: term.code, documentSlug: term.document }])))
     const search = await rebuildSearchDocs(tx)
 
     return {
@@ -742,10 +843,10 @@ async function load() {
   })
 
   const unfollowed = [...moved.keys()].filter((url) => !followed.has(url))
-  return { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, relinked: { followed: followed.size, unfollowed } }
+  return { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, cleansing, relinked: { followed: followed.size, unfollowed } }
 }
 
-const { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, relinked } = await load()
+const { counts, selection, drafts, review, prose, lineBreaksRestored, notApplicable, cleansing, relinked } = await load()
 
 mkdirSync(OUT, { recursive: true })
 const written = (name: string, value: unknown) => {
@@ -771,6 +872,8 @@ console.log("cells to divide    ", review.length, written("inversion-review.json
 console.log("prose notes        ", prose.notes.length, written("prose-notes.json", prose.notes))
 console.log("line breaks from the articles", lineBreaksRestored, "paragraphs")
 console.log("NA made not-applicable", notApplicable)
+console.log("cleansed content   ", cleansing)
+console.log("cleansed site      ", siteCleansing)
 console.log("dead links followed", relinked.followed, "not found in content", relinked.unfollowed.length,
   written("relinks-not-found.json", relinked.unfollowed))
 if (counts.claimedTwice.length > 0) console.log("claimed twice:", written("claimed-twice.json", counts.claimedTwice))
