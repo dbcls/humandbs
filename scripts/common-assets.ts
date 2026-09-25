@@ -24,12 +24,12 @@
  */
 
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
-import { sql } from "drizzle-orm"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 import { loadConfig } from "~/config.server"
 import { closePools, getDb } from "~/db/client.server"
+import { referencedCommonFiles } from "~/files/common-references.server"
 import { COMMON_PREFIX_NAME, PUBLIC_BUCKET } from "~/files/prefix"
 import { contentTypeOf } from "~/files/content-types"
 
@@ -49,29 +49,6 @@ const client = new S3Client({
   credentials: { accessKeyId: store.accessKeyId, secretAccessKey: store.secretAccessKey },
 })
 
-/**
- * Every `common/` file the stored content points at.
- *
- * The reference is written into the body as a URL, so it is read back out of
- * the text of the JSON. Anything a link or an image can be written in ends the
- * match: a quote, a bracket, a space.
- */
-async function referenced(): Promise<string[]> {
-  const db = getDb()
-  const { rows } = await db.execute<{ path: string }>(sql`
-    with bodies as (
-      select content::text as body from document_content
-      union all select content::text from news_content
-      union all select content::text from content_snapshot
-      union all select content::text from dataset_content
-    )
-    select distinct match[1] as path
-    from bodies, regexp_matches(bodies.body, '/files/common/[^"()\\ ]+', 'g') as match
-    order by 1
-  `)
-  return rows.map((row) => row.path.slice(`/files/${COMMON_PREFIX_NAME}/`.length))
-}
-
 /** The body, from what was kept last time or from the portal that still has it. */
 async function bodyOf(name: string): Promise<Buffer> {
   const local = join(LOCAL_ROOT, name)
@@ -80,7 +57,7 @@ async function bodyOf(name: string): Promise<Buffer> {
   } catch {
     const from = `${ORIGIN}${LEGACY_PREFIX}${name.split("/").map(encodeURIComponent).join("/")}`
     const response = await fetch(from)
-    if (!response.ok) throw new Error(`${from} answered ${response.status}`)
+    if (!response.ok) throw new Error(`${from} returned ${response.status}`)
     const body = Buffer.from(await response.arrayBuffer())
     mkdirSync(dirname(local), { recursive: true })
     writeFileSync(local, body)
@@ -88,7 +65,7 @@ async function bodyOf(name: string): Promise<Buffer> {
   }
 }
 
-const names = await referenced()
+const names = await referencedCommonFiles(getDb())
 console.log(`${names.length} files are referred to`)
 
 let copied = 0
