@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
@@ -9,6 +10,7 @@ import {
   researchListRowView,
   type CatalogView,
   type CauView,
+  type DatasetRowView,
   type LinksView,
   type ResearchFileListView,
   type ResearchView,
@@ -229,27 +231,89 @@ function field(text: string) {
   return { state: "plain" as const, text, untranslated: false }
 }
 
+/** A row of the dataset table under the given access type code, or with none. */
+function datasetRow(label: string, accessCode: string | null): DatasetRowView {
+  return {
+    id: label,
+    label,
+    accessType: accessCode === null ? null : { code: accessCode, label: accessCode, maker: null },
+    typeOfData: null,
+    datePublished: null,
+  }
+}
+
+const CONTROLLED = [datasetRow("JGAD000001", "controlled-access-type-1")]
+
 /**
  * What has happened to a research since it was published, as against what the
  * research shows about itself. The distinction decides whether a section is
  * drawn at all when it holds nothing.
  */
 describe("the record of who has used the controlled access data", () => {
+  const t = messagesFor("ja").research
+  const ACCESS_CODES = [null, "unrestricted-access", "controlled-access-type-1", "controlled-access-type-2"]
+
   it("keeps the section when nobody has used it yet, and shows it", () => {
-    const html = renderWith({ cau: [] })
+    const html = renderWith({ datasets: CONTROLLED, cau: [] })
 
     expect(html).toContain("制限公開データの利用者一覧")
     expect(html).toContain("制限公開データの利用実績はありません")
   })
 
-  it("addresses each dataset it identifies, so a row leads to what was used", () => {
-    const html = renderWith({ cau: [usage(["JGAD000001"])] })
+  it("leaves the section out of a version with no datasets", () => {
+    expect(renderWith({ datasets: [], cau: [] })).not.toContain(t.controlledAccessUsers)
+  })
 
-    expect(html).toContain("href=\"/dataset/JGAD000001\"")
+  it("leaves the section out when every dataset is unrestricted", () => {
+    const html = renderWith({
+      datasets: [datasetRow("hum0001.v1.freq.v1", "unrestricted-access"), datasetRow("DRA000001", "unrestricted-access")],
+      cau: [],
+    })
+
+    expect(html).not.toContain(t.controlledAccessUsers)
+  })
+
+  it("keeps the section when a single dataset among unrestricted ones is controlled", () => {
+    const html = renderWith({
+      datasets: [
+        datasetRow("hum0001.v1.freq.v1", "unrestricted-access"),
+        datasetRow("JGAD000001", "controlled-access-type-2"),
+      ],
+      cau: [],
+    })
+
+    expect(html).toContain(t.noControlledAccessUsers)
+  })
+
+  it("counts a dataset with no access type as controlled, and keeps the section", () => {
+    const html = renderWith({
+      datasets: [datasetRow("hum0001.v1.freq.v1", "unrestricted-access"), datasetRow("JGAD000001", null)],
+      cau: [],
+    })
+
+    expect(html).toContain(t.noControlledAccessUsers)
+  })
+
+  it("is drawn exactly when some dataset is not unrestricted, whatever the order and count", () => {
+    fc.assert(fc.property(fc.array(fc.constantFrom(...ACCESS_CODES), { maxLength: 6 }), (codes) => {
+      const html = renderWith({
+        datasets: codes.map((code, at) => datasetRow(`JGAD00000${at + 1}`, code)),
+        cau: [],
+      })
+
+      expect(html.includes(t.controlledAccessUsers)).toBe(codes.some((code) => code !== "unrestricted-access"))
+    }))
+  })
+
+  it("addresses each dataset it identifies, so a row leads to what was used", () => {
+    const html = renderWith({ datasets: CONTROLLED, cau: [usage(["JGAD000002"])] })
+
+    expect(html).toContain("href=\"/dataset/JGAD000002\"")
   })
 
   it("cuts a long list to three and holds the rest behind their count", () => {
     const html = renderWith({
+      datasets: [datasetRow("JGAD000009", "controlled-access-type-1")],
       cau: [usage(["JGAD000001", "JGAD000002", "JGAD000003", "JGAD000004", "JGAD000005"])],
     })
 
@@ -355,12 +419,18 @@ describe("the body beside the form", () => {
   const t = messagesFor("ja").research
 
   function beside(writtenOnly: boolean): string {
-    return renderToStaticMarkup(<ResearchBody view={view(FILES)} locale="ja" writtenOnly={writtenOnly} />)
+    const Stub = createRoutesStub([{
+      path: "/",
+      Component: () => (
+        <ResearchBody view={{ ...view(FILES), datasets: CONTROLLED }} locale="ja" writtenOnly={writtenOnly} />
+      ),
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
   }
 
   it("leaves out the datasets, the downloads and the controlled-access users, which the form does not write", () => {
     const html = beside(true)
-    expect(html).not.toContain(t.noDatasets)
+    expect(html).not.toContain("JGAD000001")
     expect(html).not.toContain(t.downloads)
     expect(html).not.toContain(t.controlledAccessUsers)
   })
@@ -371,7 +441,7 @@ describe("the body beside the form", () => {
 
   it("draws all three for the page and the share preview", () => {
     const html = beside(false)
-    expect(html).toContain(t.noDatasets)
+    expect(html).toContain("JGAD000001")
     expect(html).toContain(t.downloads)
     expect(html).toContain(t.controlledAccessUsers)
   })
@@ -455,6 +525,7 @@ describe("an ID in a table", () => {
         datasetLabels: ["JGAD000107"],
         datasets: [{ label: "JGAD000107", known: true, humLabel: null }],
       }],
+      datasets: CONTROLLED,
       cau: [usage(["JGAD000107", "JGAD000113"])],
     })
     // The box each occurrence of the ID sits in: the last span, cell or item opened before it.

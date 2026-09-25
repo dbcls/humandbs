@@ -41,6 +41,9 @@ import {
 
 const SHOWN_PLATFORMS = 3
 
+/** The access type whose data needs no application to use. */
+const UNRESTRICTED_ACCESS = "unrestricted-access"
+
 /**
  * The published view of one version of a research. `/research/{humId}` and
  * `/research/{humId}/v{n}` render the same thing — the first is the second with
@@ -392,13 +395,16 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
       </Section>
 
       {/*
-        Drawn even with nothing in it. What a research shows about itself is
-        absent when it has none — a version with no grant simply has no grants
-        section — but this reports what has happened since it was published, and
-        an empty one is an answer: nobody has been granted this data yet. Left
-        out, a reader cannot tell that from a page that forgot to request.
+        Drawn even with nothing in it, like the provider, project, grant and
+        publication sections: an empty list shows that nobody has been granted
+        this data yet, which a page without the section cannot.
+
+        Left out of a version with no controlled data — no datasets, or every
+        one unrestricted. Unrestricted data needs no application, so nobody is
+        ever listed here. A dataset with no access type counts as controlled:
+        nothing shows that it needs no application.
       */}
-      {!writtenOnly && (
+      {!writtenOnly && view.datasets.some((row) => row.accessType?.code !== UNRESTRICTED_ACCESS) && (
         <Section title={t.controlledAccessUsers}>
           {view.cau.length === 0
             ? <Empty>{t.noControlledAccessUsers}</Empty>
