@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import type { ListedFile } from "~/files/prefix"
 import { fileListQuery } from "~/public/urls"
 
-import { FileName, FileTable, Downloads, UploadPanel, type DownloadRow } from "./files"
+import { FileName, FileTable, Downloads, UploadPanel, UrlListLink, type DownloadRow } from "./files"
 
 /**
  * What the two lists put on the page.
@@ -24,7 +24,7 @@ function render(element: React.ReactElement): string {
   return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
 }
 
-function downloads(rows: DownloadRow[], humLabel: string | null = "hum0009"): string {
+function downloads(rows: DownloadRow[], humLabel: string | null = "hum0009", origin?: string): string {
   return render(
     <Downloads
       locale="ja"
@@ -37,6 +37,7 @@ function downloads(rows: DownloadRow[], humLabel: string | null = "hum0009"): st
       pageCount={1}
       size={20}
       at={fileListQuery}
+      origin={origin}
     />,
   )
 }
@@ -114,25 +115,46 @@ describe("the download list", () => {
     expect(html).toContain("href=\"/?files=1\"")
   })
 
-  it("offers the list of every file's address where one is given, and nothing where none is", () => {
-    const listed = render(
-      <Downloads
-        locale="ja"
-        humLabel="hum0009"
-        rows={[{ name: "a.zip", size: 1, isPublic: true }]}
-        total={1}
-        rangeFrom={1}
-        rangeTo={1}
-        page={1}
-        pageCount={1}
-        size={20}
-        at={fileListQuery}
-        urlList="/research/hum0009/files.txt"
-      />,
+  it("offers the list of every file's address as a download", () => {
+    const html = render(<UrlListLink locale="ja" to="/research/hum0009/files.txt" />)
+
+    expect(html).toMatch(/<a[^>]*href="\/research\/hum0009\/files\.txt"[^>]*download=""[^>]*>[\s\S]*URL の一覧のダウンロード/)
+  })
+
+  it("ends each row in a copy of the file's whole URL on the given origin", () => {
+    const html = downloads(
+      [{ name: "a.zip", size: 1, isPublic: true }, { name: "dac/DAC summary (1).pdf", size: 1, isPublic: true }],
+      "hum0009",
+      "https://humandbs.example",
     )
 
-    expect(listed).toMatch(/<a[^>]*href="\/research\/hum0009\/files\.txt"[^>]*download=""[^>]*>[\s\S]*URL の一覧のダウンロード/)
-    expect(downloads([{ name: "a.zip", size: 1, isPublic: true }])).not.toContain("files.txt")
+    expect([...html.matchAll(/title="https:\/\/humandbs\.example\/files\//g)]).toHaveLength(2)
+    expect(html).toContain("title=\"https://humandbs.example/files/hum0009/a.zip\"")
+    expect(html).toContain("title=\"https://humandbs.example/files/hum0009/dac/DAC%20summary%20(1).pdf\"")
+  })
+
+  it("names the copy column for a reader hearing the row, and not on the screen", () => {
+    const html = downloads([{ name: "a.zip", size: 1, isPublic: true }], "hum0009", "https://humandbs.example")
+
+    expect(html).toContain("<span class=\"sr-only\">URL のコピー</span>")
+  })
+
+  it("offers no copy and no column for it where no origin is given, as in a preview", () => {
+    const html = downloads([{ name: "a.zip", size: 1, isPublic: true }])
+
+    expect(html).not.toContain("URL のコピー")
+    expect(heads(html)).toEqual(["ファイル名", "サイズ"])
+  })
+
+  it("offers no copy for a row that is not public, even where an origin is given", () => {
+    const html = downloads(
+      [{ name: "open.zip", size: 1, isPublic: true }, { name: "closed.zip", size: 1, isPublic: false }],
+      "hum0009",
+      "https://humandbs.example",
+    )
+
+    expect([...html.matchAll(/title="https:\/\/humandbs\.example\/files\//g)]).toHaveLength(1)
+    expect(html).not.toContain("title=\"https://humandbs.example/files/hum0009/closed.zip\"")
   })
 
   it("links a public file at the address the proxy serves it from", () => {
@@ -273,7 +295,7 @@ describe("the research's file table", () => {
       />,
     )
 
-    expect([...html.matchAll(/アドレスのコピー/g)]).toHaveLength(1)
+    expect([...html.matchAll(/URL のコピー/g)]).toHaveLength(1)
     expect(html).toContain("title=\"https://humandbs.example/files/hum0009/open.zip\"")
     expect(html).not.toContain("title=\"https://humandbs.example/files/hum0009/closed.zip\"")
   })
@@ -281,7 +303,7 @@ describe("the research's file table", () => {
   it("names nothing to copy while the research has no label, since no address responds", () => {
     const html = render(<FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "open.zip" })]} />)
 
-    expect(html).not.toContain("アドレスをコピー")
+    expect(html).not.toContain("URL のコピー")
   })
 
   it("shows which side of the store each file is on", () => {

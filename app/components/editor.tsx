@@ -28,6 +28,7 @@ import type {
   DataProviderInput,
   DraftInput,
   LinksPairInput,
+  SlotState,
   TextInput,
   ResearchContentInput,
 } from "~/admin/form"
@@ -44,7 +45,7 @@ import {
 import type { CommentAnchor } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { AnnotationLayer, Card, Page, PageHeader } from "~/components/page"
+import { AnnotationLayer, Card, NotApplicable, Page, PageHeader } from "~/components/page"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 import {
@@ -58,7 +59,7 @@ import { Badge, Stack } from "./base"
 import { DraftHead, DraftNameEditor, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote, OpenComments, WholeNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
-import { pairLine, placeName, placeRows, sideLine, type StateWords } from "./places"
+import { placeName, placeRows } from "./places"
 import { ResearchBody, ResearchListTable } from "./research"
 import { CitableTable, datasetName, GrantIds, IdList, LinksField, researchFieldLabel } from "./research-fields"
 import {
@@ -285,8 +286,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 organization: { name: emptyPair() },
               })}
               columns={[
-                { header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) },
-                { header: words.organization, cell: (item) => pairCell(item.organization.name, t.stateChoice) },
+                { header: words.principalInvestigator, cell: (item) => pairCell(item.name, locale) },
+                { header: words.organization, cell: (item) => pairCell(item.organization.name, locale) },
               ]}
             >
               {(item, path, set) => (
@@ -320,7 +321,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               onChange={(next) => { editContent((c) => ({ ...c, researchProjects: next })) }}
               makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
               columns={[
-                { header: words.researchProjectName, cell: (item) => pairCell(item.name, t.stateChoice) },
+                { header: words.researchProjectName, cell: (item) => pairCell(item.name, locale) },
                 { header: words.url, cell: (item) => <LinkLines links={item.url} /> },
               ]}
             >
@@ -358,8 +359,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 grantIds: { state: "value" as const, ids: [] },
               })}
               columns={[
-                { header: words.grantAgency, cell: (item) => pairCell(item.agency.name, t.stateChoice) },
-                { header: words.grantTitle, cell: (item) => pairCell(item.title, t.stateChoice) },
+                { header: words.grantAgency, cell: (item) => pairCell(item.agency.name, locale) },
+                { header: words.grantTitle, cell: (item) => pairCell(item.title, locale) },
                 // A line each, as the page draws them: several numbers on one
                 // line run into one long code.
                 { header: words.grantId, cell: (item) => item.grantIds.state === "value"
@@ -370,7 +371,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                         ))}
                       </ul>
                     )
-                  : t.stateChoice[item.grantIds.state] },
+                  : stateCell(item.grantIds.state, locale) },
               ]}
             >
               {(item, path, set) => (
@@ -415,10 +416,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               })}
               wide
               columns={[
-                { header: words.publicationTitle, cell: (item) => slotCell(item.title, t.stateChoice) },
-                { header: t.doi, cell: (item) => <span className="break-all">{slotCell(item.doi, t.stateChoice)}</span> },
+                { header: words.publicationTitle, cell: (item) => slotCell(item.title, locale) },
+                { header: t.doi, cell: (item) => <span className="break-all">{slotCell(item.doi, locale)}</span> },
                 { header: messages.dataset.datasetId, cell: (item) => item.datasetIds.state !== "value"
-                  ? t.stateChoice[item.datasetIds.state]
+                  ? stateCell(item.datasetIds.state, locale)
                   : (
                       <ul className="flex flex-col gap-1">
                         {view.datasets
@@ -528,7 +529,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   locale={locale}
                   items={content.listingSummary.dataProviders}
                   title={words.principalInvestigator}
-                  columns={[{ header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) }]}
+                  columns={[{ header: words.principalInvestigator, cell: (item) => pairCell(item.name, locale) }]}
                   makeEmpty={() => ({ id: newId(), name: emptyPair() })}
                   onChange={(next) => {
                     editContent((c) => ({
@@ -809,17 +810,23 @@ function RepeatingSection<T extends { id: string }>({
   )
 }
 
-/** A line as a table cell: a state's word in the muted style of a collapsed field (`fields.tsx`), a value as it is. */
-function lineCell(line: { text: string, isState: boolean }): ReactNode {
-  return line.isState ? <span className="text-ink-muted">{line.text}</span> : line.text
+/**
+ * A value set to a state, as a table cell. **Not applicable is the page's
+ * `N/A`.** **Unsettled is nothing**: the row's first cell has the 未確定 badge
+ * for everything unsettled in the element (`fields.tsx` の `ItemList`), and the
+ * word beside it again said the same thing twice in one row.
+ */
+function stateCell(state: Exclude<SlotState, "value">, locale: Locale): ReactNode {
+  return state === "not-applicable" ? <NotApplicable locale={locale} /> : null
 }
 
-function pairCell(pair: { ja: TextInput, en: TextInput }, states: StateWords): ReactNode {
-  return lineCell(pairLine(pair, states))
+function slotCell(slot: TextInput, locale: Locale): ReactNode {
+  return slot.state === "value" ? slot.text : stateCell(slot.state, locale)
 }
 
-function slotCell(slot: TextInput, states: StateWords): ReactNode {
-  return lineCell(sideLine(slot, states))
+/** The Japanese side, or the English while the Japanese side is a value with nothing typed. */
+function pairCell(pair: { ja: TextInput, en: TextInput }, locale: Locale): ReactNode {
+  return pair.ja.state === "value" && pair.ja.text === "" ? slotCell(pair.en, locale) : slotCell(pair.ja, locale)
 }
 
 /** A pair of link lists as lines, the way the page draws them: a link's text, or its address. */

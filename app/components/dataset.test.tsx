@@ -68,16 +68,44 @@ describe("a dataset's files", () => {
     expect(names(render(60, "/dataset/NHA000001?fileRows=30"))).toHaveLength(FILES_PAGE_SIZE)
   })
 
-  it("offers the list of the files' addresses only where it is given one", () => {
+  it("offers the list of the files' addresses and a copy of each only where it is given where they are fetched from", () => {
     const Stub = createRoutesStub([{
       path: "/*",
       Component: () => (
-        <DatasetBody view={view(1)} locale="ja" researchHref="/research/hum0001" urlList="/dataset/NHA000001/files.txt" />
+        <DatasetBody
+          view={view(1)}
+          locale="ja"
+          researchHref="/research/hum0001"
+          fileUrls={{ list: "/dataset/NHA000001/files.txt", origin: "https://humandbs.example" }}
+        />
       ),
     }])
+    const html = renderToStaticMarkup(<Stub initialEntries={["/dataset/NHA000001"]} />)
 
-    expect(renderToStaticMarkup(<Stub initialEntries={["/dataset/NHA000001"]} />)).toContain("href=\"/dataset/NHA000001/files.txt\"")
+    expect(html).toContain("href=\"/dataset/NHA000001/files.txt\"")
+    expect(html).toContain("URL のコピー")
     expect(render(1)).not.toContain("files.txt")
+    expect(render(1)).not.toContain("URL のコピー")
+  })
+
+  it("puts the list of the files' addresses on the section's name row, outside the name and above the table", () => {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => (
+        <DatasetBody
+          view={view(1)}
+          locale="ja"
+          researchHref="/research/hum0001"
+          fileUrls={{ list: "/dataset/NHA000001/files.txt", origin: "https://humandbs.example" }}
+        />
+      ),
+    }])
+    const html = renderToStaticMarkup(<Stub initialEntries={["/dataset/NHA000001"]} />)
+    const nameEnds = html.indexOf(">このデータセットに紐づく非制限公開ファイル</h2>")
+
+    expect(nameEnds).toBeGreaterThan(0)
+    expect(html.indexOf("files.txt")).toBeGreaterThan(nameEnds)
+    expect(html.indexOf("files.txt")).toBeLessThan(html.indexOf("<table", nameEnds))
   })
 
   it("reads an address it cannot read as the nearest page, and never loses or repeats a file", () => {
@@ -91,6 +119,26 @@ describe("a dataset's files", () => {
         expect(new Set(shown).size).toBe(shown.length)
       },
     ), { numRuns: 40 })
+  })
+})
+
+describe("a dataset's entry in DDBJ Search", () => {
+  function page(label: string): string {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => <DatasetBody view={{ ...view(0), label }} locale="ja" researchHref="/research/hum0001" />,
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={[`/dataset/${label}`]} />)
+  }
+
+  it("links a dataset DDBJ Search holds to its entry, under DDBJ Search, in a new tab", () => {
+    const html = page("E-GEAD-1107")
+
+    expect(html).toMatch(/DDBJ Search[\s\S]*<a[^>]*href="https:\/\/ddbj\.nig\.ac\.jp\/search\/entry\/gea\/E-GEAD-1107\/"[^>]*target="_blank"[^>]*>[\s\S]*E-GEAD-1107/)
+  })
+
+  it("has no DDBJ Search row for an id the portal issued", () => {
+    expect(page("NHA000001")).not.toContain("DDBJ Search")
   })
 })
 

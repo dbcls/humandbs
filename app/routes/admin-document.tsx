@@ -58,7 +58,22 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
   const t = messagesFor(locale).admin.contents
   const [number, setNumber] = useState("1")
 
-  const panes = useArticlePanes({ locale, remember: `document:${id}`, editors, result: actionData })
+  const panes = useArticlePanes({
+    locale,
+    remember: `document:${id}`,
+    editors,
+    result: actionData,
+    publicPages: (
+      <PublicPageButtons
+        locale={locale}
+        path={`/${slug}`}
+        closed={{
+          ja: editors.find((editor) => editor.locale === "ja")?.published === true ? null : t.publicPageUnpublished,
+          en: editors.find((editor) => editor.locale === "en")?.published === true ? null : t.publicPageUnpublished,
+        }}
+      />
+    ),
+  })
 
   return (
     <Page>
@@ -81,14 +96,6 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
           }}
           headExtra={(
             <>
-              <PublicPageButtons
-                locale={locale}
-                path={`/${slug}`}
-                closed={{
-                  ja: editors.find((editor) => editor.locale === "ja")?.published === true ? null : t.publicPageUnpublished,
-                  en: editors.find((editor) => editor.locale === "en")?.published === true ? null : t.publicPageUnpublished,
-                }}
-              />
               {/* **The slug is changed from beside the name that shows it.** It
                   is the one thing the article has apart from what it shows, and
                   it already stands at the name's side as the identifier; a part

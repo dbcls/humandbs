@@ -956,35 +956,21 @@ export function ListingTools<K extends string>({ locale, presented, at, paging }
 }
 
 /**
- * The row over a research's or a dataset's file list: the list of every file's
- * address on the left, and on the right how many rows a page holds, the count
- * and the page steps — the same controls as over a listing
- * (`ListingTools`), with the steps kept in place (`Paging`'s `inPlace`).
- * Under the table sits `Paging` alone, with the same `paging`.
- *
- * `sizing` is left out where the list is no longer than the smallest page:
- * there is nothing to page or choose.
+ * The row over a research's or a dataset's file list: how many rows a page
+ * holds, the count and the page steps, on the right — the same controls as
+ * over a listing (`ListingTools`), with the steps kept in place (`Paging`'s
+ * `inPlace`). Under the table sits `Paging` alone, with the same `paging`.
  */
-export function FileListTools({ locale, urlList, sizing }: {
+export function FileListTools({ locale, size, at, paging }: {
   locale: Locale
-  /** Where the addresses of every file in the list are fetched from, one to a line. */
-  urlList?: string
-  sizing: { size: PageSize, at: (size: PageSize | null) => string, paging: ListingPaging } | null
+  size: PageSize
+  at: (size: PageSize | null) => string
+  paging: ListingPaging
 }) {
-  const messages = messagesFor(locale)
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-      {urlList !== undefined && (
-        <ButtonLink to={urlList} external download listing icon={<Icon name="download" />}>
-          {messages.research.downloadUrlList}
-        </ButtonLink>
-      )}
-      {sizing !== null && (
-        <div className={`ml-auto ${TOOLS_ROW}`}>
-          <SizeChoice locale={locale} sizes={PAGE_SIZES} size={sizing.size} at={sizing.at} inPlace />
-          <Paging locale={locale} {...sizing.paging} inPlace />
-        </div>
-      )}
+    <div className={TOOLS_ROW}>
+      <SizeChoice locale={locale} sizes={PAGE_SIZES} size={size} at={at} inPlace />
+      <Paging locale={locale} {...paging} inPlace />
     </div>
   )
 }

@@ -2004,6 +2004,20 @@ export function Excerpt({ more, less, children }: {
 /** How tall a shut `Excerpt` is, in the units its own class is written in. */
 const SHUT = 96
 
+/**
+ * Words given as lines. **One string is one line**, so a note of two points
+ * breaks where the second begins rather than where the box happens to end —
+ * the same rule as a section's note (`page.tsx` の `Section`). Only a note that
+ * reads badly run together is given as several; most are one string.
+ */
+export type Lines = string | readonly string[]
+
+export function LinesOf({ text }: { text: Lines }) {
+  return typeof text === "string"
+    ? <>{text}</>
+    : <>{text.map((line) => <span key={line} className="block">{line}</span>)}</>
+}
+
 /* ------------------------------------------------------------------ notes */
 
 /**
@@ -2198,7 +2212,7 @@ export function Toast({ label, announce, at = "headerBar", children }: {
  * halves the width it is given, and at 672px each side is a column of a few
  * words.
  */
-export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, children, disabled, reasonAt, wide = false }: {
+export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, status, children, disabled, reasonAt, wide = false }: {
   /** The trigger, when the panel has one of its own. */
   label?: string
   /**
@@ -2228,7 +2242,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
    * ends by indicating so; what can, ends by indicating how — a reader deciding whether
    * to press is deciding on exactly that.
    */
-  note?: string
+  note?: Lines
   /** The style of the trigger, which is the style of what it opens. */
   variant?: ButtonVariant
   /**
@@ -2259,6 +2273,13 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
    * and the word-only style is for a cancel button shown beside an action.
    */
   action?: (close: () => void) => ReactNode
+  /**
+   * What the action's save is doing (`form.tsx` の `Unsaved`), at the left of
+   * the foot. **Not beside the buttons**: it keeps the room of its longest word
+   * whether or not a word is shown, and to their right that room pushed the
+   * buttons off the panel's right edge.
+   */
+  status?: ReactNode
   /** What is written in the panel — the fields, and only those. */
   children?: ReactNode
   /** Two values side by side, which need twice the width of one. */
@@ -2355,9 +2376,10 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
                 The rule starts on the line rather than hanging out through a
                 card's padding, because there is no card around it. */}
             <Heading level="h2" look="bar" rule="start" title={title} />
-            {note !== undefined && <p className="text-ink text-sm">{note}</p>}
+            {note !== undefined && <p className="text-ink text-sm"><LinesOf text={note} /></p>}
             {children}
             <span className="flex flex-wrap items-center justify-end gap-2">
+              {status !== undefined && <span className="mr-auto">{status}</span>}
               <Button
                 type="button"
                 variant="secondary"

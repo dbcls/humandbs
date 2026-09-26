@@ -46,6 +46,30 @@ export interface DownloadRow {
   isPublic: boolean
 }
 
+/**
+ * Where a published page's files are fetched from. A preview has none: its
+ * files are not public yet.
+ */
+export interface PublicFileUrls {
+  /** Where the addresses of every file in the list are fetched from, one to a line. */
+  list: string
+  /** The site's public origin, which a copied address is written on (`publicOrigin`). */
+  origin: string
+}
+
+/**
+ * The list of every file's address, for the end of the files section's name
+ * row (`page.tsx` の `Section` の `end`): it acts on the whole list rather than
+ * on the page of rows under it.
+ */
+export function UrlListLink({ locale, to }: { locale: Locale, to: string }) {
+  return (
+    <ButtonLink to={to} external download icon={<Icon name="download" />}>
+      {messagesFor(locale).research.downloadUrlList}
+    </ButtonLink>
+  )
+}
+
 export function Downloads<Row extends DownloadRow>({
   locale,
   humLabel,
@@ -58,7 +82,7 @@ export function Downloads<Row extends DownloadRow>({
   size,
   at,
   selectedBy,
-  urlList,
+  origin,
 }: {
   locale: Locale
   /** Null while nothing has been pinned, which is only ever the case in a preview. */
@@ -81,10 +105,11 @@ export function Downloads<Row extends DownloadRow>({
    */
   selectedBy?: (row: Row) => ReactNode
   /**
-   * Where the addresses of every file in the list are fetched from, one to a
-   * line. Only where every row is public: a preview's rows are not yet.
+   * The site's public origin, given where every row is public: each row then
+   * ends in a copy of its address, as the administrator's list of the prefix
+   * does. A preview's rows are not public yet.
    */
-  urlList?: string
+  origin?: string
 }) {
   const messages = messagesFor(locale)
   const t = messages.research
@@ -98,26 +123,23 @@ export function Downloads<Row extends DownloadRow>({
 
   return (
     <Stack gap="tight">
-      {(urlList !== undefined || tools) && (
+      {tools && (
         <FileListTools
           locale={locale}
-          urlList={urlList}
-          sizing={tools
-            ? {
-                size,
-                at: (chosen) => at(1, chosen),
-                paging: { total, from: rangeFrom, to: rangeTo, page, pageCount, at: (to) => at(to, written) },
-              }
-            : null}
+          size={size}
+          at={(chosen) => at(1, chosen)}
+          paging={{ total, from: rangeFrom, to: rangeTo, page, pageCount, at: (to) => at(to, written) }}
         />
       )}
       {/* `whenEmpty` は要らない — 配布するものが無い研究では、この節ごと描かれない
           (`research.tsx` / `dataset.tsx`)。 */}
-      <Table headers={[
-        t.downloadName,
-        t.downloadSize,
-        ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
-      ]}
+      <Table
+        headers={[
+          t.downloadName,
+          t.downloadSize,
+          ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
+        ]}
+        actions={origin === undefined ? undefined : t.copyUrl}
       >
         {rows.map((row) => (
           <tr key={row.name}>
@@ -137,6 +159,13 @@ export function Downloads<Row extends DownloadRow>({
             </Td>
             <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
             {selectedBy !== undefined && <Td nowrap>{selectedBy(row)}</Td>}
+            {origin !== undefined && (
+              <Td nowrap holds="control">
+                {row.isPublic && humLabel !== null && (
+                  <CopyAddress address={filePath(humLabel, row.name)} origin={origin} locale={locale} />
+                )}
+              </Td>
+            )}
           </tr>
         ))}
       </Table>
@@ -712,7 +741,7 @@ export function CopyAddress({ address, origin, locale }: { address: string, orig
       size="row"
       text={url}
       title={url}
-      label={messages.admin.files.copyAddress}
+      label={messages.research.copyUrl}
       done={messages.copied}
       byHand={messages.copyByHand}
     />

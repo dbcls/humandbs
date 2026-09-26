@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { EsDataset } from "./es"
-import { applyTypeOfDataFixes } from "./type-of-data-fixes"
+import { applyCriteriaFixes, applyTypeOfDataFixes } from "./type-of-data-fixes"
 
 const doc = (version: string): EsDataset => ({
   datasetId: "JGAD000770", version, humId: "hum0358",
@@ -34,6 +34,29 @@ describe("applyTypeOfDataFixes", () => {
   it("stops when a fix names a document that is not there", () => {
     expect(() => {
       applyTypeOfDataFixes([doc("v3")], [{ datasetId: "JGAD000770", version: "v9", lang: "ja", typeOfData: "x" }])
+    }).toThrow(/found nothing/)
+  })
+})
+
+describe("applyCriteriaFixes", () => {
+  const sv = (version: string): EsDataset => ({ datasetId: "hum0178.v1.sv.v1", version, humId: "hum0178", criteria: "Controlled-access (Type I)" })
+
+  it("writes the access criteria into the version the fix names", () => {
+    const docs = [sv("v1"), sv("v2")]
+    applyCriteriaFixes(docs, [{ datasetId: "hum0178.v1.sv.v1", version: "v1", criteria: "Unrestricted-access" }])
+
+    expect(docs.map((one) => one.criteria)).toEqual(["Unrestricted-access", "Controlled-access (Type I)"])
+  })
+
+  it("stops on criteria that are none of the three", () => {
+    expect(() => {
+      applyCriteriaFixes([sv("v1")], [{ datasetId: "hum0178.v1.sv.v1", version: "v1", criteria: "Unrestricted" }])
+    }).toThrow(/Unrestricted/)
+  })
+
+  it("stops when a fix names a document that is not there", () => {
+    expect(() => {
+      applyCriteriaFixes([sv("v1")], [{ datasetId: "hum0178.v1.sv.v1", version: "v9", criteria: "Unrestricted-access" }])
     }).toThrow(/found nothing/)
   })
 })

@@ -1,5 +1,3 @@
-import { Fragment, type ReactNode } from "react"
-
 import { Clamped } from "~/components/base"
 import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
@@ -14,34 +12,6 @@ import { datasetPath, href, readLocale, researchPath } from "~/public/urls"
 import type { Route } from "./+types/dataset-list"
 
 const SHOWN_EXPERIMENTS = 3
-
-/**
- * A dataset label, allowed to wrap only where it is already divided.
- *
- * **The column would otherwise be as wide as the longest label in the archive.**
- * Three quarters of them are ten characters (`JGAD001067`), but the portal's own
- * run to twenty-six (`hum0014.v2.jsnp.934ctrl.v1`) — a column held open for the
- * one longest leaves ninety pixels unused on every page that does not hold it,
- * and the column is frozen, so that width is taken from the table on every
- * screen.
- *
- * **A label that wraps anywhere is a label read wrong**, so the breaks are put
- * where the label already has them: after each dot, which is where its parts
- * divide. Nothing else in the cell can break, so a label with no dots keeps the
- * column open by itself — which is what the ten-character ones do.
- */
-function wrappable(label: string): ReactNode {
-  const parts = label.split(".")
-  const last = parts.length - 1
-  // The dot stays with the part before it, so a label broken here reads as
-  // `hum0014.v2.` and not as a fragment beginning with punctuation.
-  return parts.map((part, index) => (
-    <Fragment key={index}>
-      {index === last ? part : `${part}.`}
-      {index !== last && <wbr />}
-    </Fragment>
-  ))
-}
 
 /**
  * What a dataset's experiments are called. **The line above the table in the
@@ -123,8 +93,8 @@ export default function DatasetList({ loaderData }: Route.ComponentProps) {
         {view.rows.map((row) => (
           <tr key={row.label}>
             <Td stuck={0} holds="icon"><CartToggle ids={[row.label]} locale={locale} /></Td>
-            <Td stuck={1} floor="min-w-32">
-              <IdWithIcon kind="dataset" to={href(locale, datasetPath(row.label))}>{wrappable(row.label)}</IdWithIcon>
+            <Td stuck={1} nowrap>
+              <IdWithIcon kind="dataset" to={href(locale, datasetPath(row.label))}>{row.label}</IdWithIcon>
             </Td>
             <Td nowrap>
               <IdWithIcon kind="research" to={href(locale, researchPath(row.humLabel))}>{row.humLabel}</IdWithIcon>

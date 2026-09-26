@@ -67,15 +67,6 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
               label={t.backToList}
               icon="chevron-left"
             />
-            {/* The version-less address, which shows the revision it points at. */}
-            <PublicPageButtons
-              locale={locale}
-              path={`/${series.slug}`}
-              closed={{
-                ja: unanswered.includes("ja") ? t.publicPageUnpublished : null,
-                en: unanswered.includes("en") ? t.publicPageUnpublished : null,
-              }}
-            />
             <Form method="post">
               <Confirm
                 label={t.removeSeries}
@@ -100,7 +91,22 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
             under it shows the one thing a curator cannot work out from the
             controls — that publishing does not move it.
           */}
-          <Section title={t.representative} note={t.representativeNote(series.slug)}>
+          <Section
+            title={t.representative}
+            note={t.representativeNote(series.slug)}
+            // The version-less address, which shows the revision it points at:
+            // the ways to it are on the part about it.
+            end={(
+              <PublicPageButtons
+                locale={locale}
+                path={`/${series.slug}`}
+                closed={{
+                  ja: unanswered.includes("ja") ? t.publicPageUnpublished : null,
+                  en: unanswered.includes("en") ? t.publicPageUnpublished : null,
+                }}
+              />
+            )}
+          >
             {series.revisions.length > 0 && (
               <Form method="post" className="flex flex-wrap items-end gap-2">
                 <Select

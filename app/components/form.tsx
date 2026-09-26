@@ -30,6 +30,8 @@ import {
   type ButtonSize,
   type ButtonVariant,
   IconButton,
+  type Lines,
+  LinesOf,
   MENU_ITEM,
   MENU_ITEM_HERE,
   MENU_PANEL,
@@ -268,7 +270,7 @@ function Labelled({
    * side of a row.
    */
   after?: ReactNode
-  hint?: string
+  hint?: Lines
   error?: string
   children: ReactNode
   inline?: boolean
@@ -340,7 +342,7 @@ function Labelled({
               {children}
             </>
           )}
-      {hint !== undefined && <span className="text-ink-muted text-xs">{hint}</span>}
+      {hint !== undefined && <span className="text-ink-muted text-xs"><LinesOf text={hint} /></span>}
       {error !== undefined && (
         <span id={`${id}-error`} className="flex items-center gap-1 text-danger text-xs">
           <Icon name="alert" />
@@ -365,7 +367,7 @@ interface FieldLook {
    * control); the indicator shows that before anything is pressed.
    */
   required?: string
-  hint?: string
+  hint?: Lines
   error?: string
   disabled?: boolean
 }
@@ -528,7 +530,7 @@ export function Select({
   options: { value: string, label: string }[]
   /** That a choice has to be made — see `FieldLook`. */
   required?: string
-  hint?: string
+  hint?: Lines
   error?: string
   disabled?: boolean
   width?: string
@@ -666,7 +668,7 @@ export function MarkdownEditor({ label, name, value, required, accepts, hint, er
   /** That the body has to be written — see `FieldLook`. */
   required?: string
   accepts?: string
-  hint?: string
+  hint?: Lines
   error?: string
   /**
    * The lines a save refused: the list under the box that identifies them, and
@@ -816,7 +818,7 @@ export function RadioGroup({ label, name, value, options, hint, disabled }: {
   name: string
   value?: string
   options: { value: string, label: string }[]
-  hint?: string
+  hint?: Lines
   disabled?: boolean
 }) {
   return (
@@ -836,7 +838,7 @@ export function RadioGroup({ label, name, value, options, hint, disabled }: {
           </label>
         ))}
       </div>
-      {hint !== undefined && <span className="text-ink-muted text-xs">{hint}</span>}
+      {hint !== undefined && <span className="text-ink-muted text-xs"><LinesOf text={hint} /></span>}
     </fieldset>
   )
 }
@@ -985,10 +987,13 @@ const Changed = createContext<boolean | undefined>(undefined)
  * which is a second place for the screen's own values to live.
  *
  * Hidden fields are left out: they have the id and the revision, which the
- * reader cannot type into.
+ * reader cannot type into. So are controls with no name, which are not sent.
  */
 function changedIn(form: HTMLFormElement): boolean {
   for (const element of form.elements) {
+    // A control with no name is not sent — a box that narrows a list — so
+    // nothing typed into it is unsent.
+    if ("name" in element && element.name === "") continue
     if (element instanceof HTMLTextAreaElement) {
       if (element.defaultValue !== element.value) return true
     } else if (element instanceof HTMLSelectElement) {

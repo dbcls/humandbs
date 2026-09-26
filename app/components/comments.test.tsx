@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
+import { Icon } from "~/components/icons"
 import type { CommentAnchor } from "~/content/types"
 import type { CommentView } from "~/review/comments"
 
@@ -89,6 +90,33 @@ describe("the indicator beside a field's comments", () => {
       <CommentSpot context={CONTEXT} at={AT} comments={[comment(FIELD_ANCHOR)]} fieldLabel="目的" />,
     )
     expect(html).not.toContain(PANEL_BODY_TEXT)
+  })
+})
+
+describe("a timeline nothing has been said on yet", () => {
+  const timeline = (context: CommentContext) => render(
+    <CommentTimeline context={context} comments={[]} placeholder="書く" empty="メモはありません。" />,
+  )
+  const icon = (name: "clipboard" | "comment") => renderToStaticMarkup(<Icon name={name} />)
+
+  it("shows it in a light dashed box with the dialog's icon, not in a notice's solid edge", () => {
+    const html = timeline({ ...CONTEXT, subject: "memo" })
+    expect(html).toMatch(/<p class="[^"]*\bborder-line border-dashed\b[^"]*text-ink-muted[^"]*"><svg[\s\S]*?<\/svg>メモはありません。<\/p>/)
+    expect(html).toContain(icon("clipboard"))
+    const box = /<p class="([^"]*)"><svg[\s\S]*?<\/svg>メモはありません。/.exec(html)?.[1] ?? ""
+    expect(box).not.toContain("border-line-strong")
+    expect(box).not.toContain("bg-white")
+  })
+
+  it("draws a comment's icon where what is said is comments", () => {
+    const html = timeline({ ...CONTEXT, subject: "draft" })
+    expect(html).toContain(icon("comment"))
+    expect(html).not.toContain(icon("clipboard"))
+  })
+
+  it("shows nothing where no sentence for it is given", () => {
+    const html = render(<CommentTimeline context={CONTEXT} comments={[]} placeholder="書く" />)
+    expect(html).not.toContain("border-dashed")
   })
 })
 

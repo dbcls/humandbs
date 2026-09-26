@@ -39,6 +39,17 @@ describe("splitting a cell keyed by accession", () => {
     expect(ownText(result, "JGAD000002", "Total Data Volume")).toContain("32 GB")
   })
 
+  it("reads JGA's long form of an accession as the block's dataset it folds to", () => {
+    // hum0178-v1 (draft): the JGA dataset in the long form JGA once issued, beside the portal's own dataset.
+    const result = splitSharedBlock(
+      block("Total Data Volume", "JGAD00000000276: 7 TB(fastq)\nhum0178.v1.sv.v1: 10 MB"),
+      ["JGAD000276", "hum0178.v1.sv.v1"],
+      NO_STUDIES,
+    )
+    expect(ownText(result, "JGAD000276", "Total Data Volume")).toBe("JGAD00000000276: 7 TB(fastq)")
+    expect(ownText(result, "hum0178.v1.sv.v1", "Total Data Volume")).toBe("hum0178.v1.sv.v1: 10 MB")
+  })
+
   it("resolves a 【JGAS…】 marker to the JGAD it stands for", () => {
     // Real text from hum0018-v3 (WES, draft): a bracketed JGAS per disease
     // category, each covering exactly one of this block's own JGAD datasets.

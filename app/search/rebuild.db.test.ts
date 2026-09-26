@@ -322,6 +322,33 @@ describe("rebuildSearchDocs", () => {
     expect(dataset.ja).not.toContain("hun0001")
   })
 
+  it("puts the JGA study of a dataset into the text of the dataset and of its research", async () => {
+    const researchId = await createResearch("hum0001")
+    const inStudy = await createDataset(researchId, "JGAD000001")
+    const withoutStudy = await createDataset(researchId, "JGAD000002")
+    await publish(researchId, 1, [inStudy, withoutStudy])
+    await db.insert(s.humAccession).values([
+      { accession: "JGAS000001", humLabel: "hum0001", kind: "jga-study" },
+      { accession: "JGAS000009", humLabel: "hum0001", kind: "jga-study" },
+      { accession: "JGAD000001", humLabel: "hum0001", kind: "jga-dataset", study: "JGAS000001" },
+      { accession: "JGAD000002", humLabel: "hum0001", kind: "jga-dataset" },
+    ])
+
+    await rebuildSearchDocs(db)
+
+    const texts = await db
+      .select({ targetType: s.searchDoc.targetType, ja: s.searchDoc.textJa, en: s.searchDoc.textEn, label: s.searchDoc.datasetLabel })
+      .from(s.searchDoc)
+    const dataset = (label: string) => only(texts.filter((row) => row.label === label))
+    const study = only(texts.filter((row) => row.targetType === "research"))
+    for (const text of [dataset("JGAD000001").ja, dataset("JGAD000001").en, study.ja, study.en]) {
+      expect(text).toContain("JGAS000001")
+    }
+    expect(dataset("JGAD000002").ja).not.toContain("JGAS")
+    // A study no dataset sits under is shown nowhere, so it is not text anywhere.
+    for (const row of texts) expect(row.ja).not.toContain("JGAS000009")
+  })
+
   it("reads every value into the text and counts the typed ones as facets", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)

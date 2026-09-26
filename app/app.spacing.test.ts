@@ -979,8 +979,10 @@ describe("ダイアログの幅・文・見出し", () => {
    */
   it("Dialog の note と Confirm の warning は句点で終わり「いま」で始まらない", async () => {
     function flatten(node: unknown, at: string): [string, string][] {
-      if (typeof node === "function") return [[at, (node as (...args: unknown[]) => string)("x", "y", "z")]]
+      if (typeof node === "function") return flatten((node as (...args: unknown[]) => unknown)("x", "y", "z"), at)
       if (typeof node === "string") return [[at, node]]
+      // A note given as lines (`base.tsx` の `Lines`) is one note: each line is held to the rule.
+      if (Array.isArray(node)) return node.flatMap((line) => flatten(line, at))
       if (node !== null && typeof node === "object") {
         return Object.entries(node).flatMap(([key, value]) => flatten(value, at === "" ? key : `${at}.${key}`))
       }

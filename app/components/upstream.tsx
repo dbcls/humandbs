@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useFetcher } from "react-router"
 
-import type { BranchStatus } from "~/admin/listing"
+import type { ApplicationType, BranchStatus } from "~/admin/listing"
 import type { DroppedValue } from "~/admin/templates"
 import type { DatasetChoiceView, SeededFieldView, UpstreamBranchView, UpstreamChoiceView } from "~/admin/templates.server"
 import { adminUpstreamBranchPath } from "~/admin/urls"
@@ -46,6 +46,12 @@ export const BRANCH_STATUS_FLAG: Record<BranchStatus, FlagKind> = {
   held: "resolved",
   absent: "absent",
   unlabelled: "unknown",
+}
+
+/** The kind each type of application is drawn as, in its column and in the pane that narrows by it. */
+export const APPLICATION_TYPE_FLAG: Record<ApplicationType, FlagKind> = {
+  new: "newApplication",
+  update: "updateApplication",
 }
 
 export function BranchStatusBadge({ branchStatus, locale }: {

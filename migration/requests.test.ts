@@ -152,11 +152,31 @@ describe("settleRequests", () => {
 })
 
 describe("requestComments", () => {
-  it("drops a bare request, which the unsettled badge already shows", () => {
+  it("drops a request for no more than the value, which the unsettled badge already shows", () => {
     expect(requestComments({ kind: "research" }, [
       { path: "title", ja: "ご教示ください", en: "ご教示下さい。" },
       { path: "doi", text: "ご教示ください" },
+      { path: "grants.g1.title", ja: "ご教示ください", en: "ご教示ください (英語名)" },
+      { path: "researchProjects.p1.name", ja: "プロジェクト名等ありましたらご教示ください", en: "\\-プロジェクト名等ありましたらご教示ください(英語名)" },
+      { path: "researchProjects.p2.name", ja: "プロジェクト名がありましたらご教示ください。", en: "プロジェクト名がありましたらご教示ください (英語)。" },
+      { path: "researchProjects.p3.name", ja: "プロジェクト名や関連するHPなどがありましたらご教示ください。", en: "プロジェクト名や関連する英語のHPなどがありましたらご教示ください。" },
+      { path: "researchProjects.p4.name", text: "プロジェクト名やプロジェクトに関連するHPなどがありましたらご教示ください。" },
+      { path: "researchProjects.p5.name", text: "プロジェクト名や関連するサイト等がありましたらご教示ください" },
+      { path: "relatedPublications.r1.doi", text: "発番されましたらご教示ください" },
+      { path: "relatedPublications.r2.doi", text: "出版社よりお知らせがあり次第ご教示下さい" },
+      { path: "grants.g2.grantIds", text: "追加がありましたらご教示ください" },
+      { path: "dataProviders.d1.organization.name", ja: "ご所属をご教示ください。", en: "ご教示下さい (英文)" },
     ])).toEqual([])
+  })
+
+  it("keeps a request about some particular of the value, or holding part of it", () => {
+    const asked = [
+      { path: "values.k1", text: "HeLa （購入情報をご教示ください）" },
+      { path: "values.k2", text: "【JGAS000464】SH-SY5Yの情報をお知らせください" },
+      { path: "dataProviders.d1.organization.name", text: "東京大学医学部附属病院 胃食道外科 英語の所属名をご教示ください" },
+      { path: "summary.methods", text: "Illumina bead arrays（アレイの名称をご教示下さい）を使用したDNAメチル化解析" },
+    ]
+    expect(requestComments({ kind: "research" }, asked).map((one) => one.body)).toEqual(asked.map((one) => one.text))
   })
 
   it("keeps a comment even for a bare request taken out of a list, which leaves no indicator behind", () => {
@@ -166,16 +186,16 @@ describe("requestComments", () => {
 
   it("keeps a question that states what is asked, once when both languages agree", () => {
     expect(requestComments({ kind: "research" }, [
-      { path: "researchProjects.p1.name", ja: "プロジェクト名等ありましたらご教示ください", en: "プロジェクト名等ありましたらご教示ください" },
-    ])).toEqual([{ anchor: { kind: "research-field", path: "researchProjects.p1.name" }, body: "プロジェクト名等ありましたらご教示ください" }])
+      { path: "summary.targets", ja: "対象者数をお知らせください", en: "対象者数をお知らせください" },
+    ])).toEqual([{ anchor: { kind: "research-field", path: "summary.targets" }, body: "対象者数をお知らせください" }])
   })
 
   it("names the language when the two asked differently", () => {
     expect(requestComments({ kind: "dataset", datasetId: "d1" }, [
-      { path: "values.k1", ja: "ご教示ください", en: "ご教示ください(英語名)" },
+      { path: "values.k1", ja: "HeLa に関する情報をご教示ください", en: "HeLa (ご教示ください)" },
     ])).toEqual([{
       anchor: { kind: "dataset-field", datasetId: "d1", path: "values.k1" },
-      body: "日本語: ご教示ください\n英語: ご教示ください(英語名)",
+      body: "日本語: HeLa に関する情報をご教示ください\n英語: HeLa (ご教示ください)",
     }])
   })
 })

@@ -13,7 +13,7 @@ import type { DatasetContent } from "~/content/types"
 import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
 import type { DrawnDataset } from "~/review/preview.server"
 
-import { CandidateWords, ChoicesLink, comboKey, copiedExperiment, DatasetEditor, resolveTerms } from "./dataset-editor"
+import { CandidateWords, ChoicesLink, copiedExperiment, DatasetEditor, resolveTerms } from "./dataset-editor"
 import type { PlaceSources } from "./places"
 
 const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
@@ -697,56 +697,6 @@ describe("the comment panel's own name", () => {
     }]
     const html = render(withComment)
     expect(html).toContain("title=\"解析手法 へのコメント\"")
-  })
-})
-
-describe("the keys of the term box", () => {
-  const typed = { open: false, active: 0, find: "ゲノム" }
-
-  it("opens on Down or Up once closed, whether anything is typed or not, at the first option", () => {
-    for (const find of ["", "  ", "ゲノム"]) {
-      for (const key of ["ArrowDown", "ArrowUp"]) {
-        expect(comboKey({ open: false, active: 3, find }, key, 5)?.state).toEqual({ open: true, active: 0, find })
-      }
-    }
-  })
-
-  it("walks the list round at both ends", () => {
-    const open = { ...typed, open: true }
-    expect(comboKey({ ...open, active: 4 }, "ArrowDown", 5)?.state.active).toBe(0)
-    expect(comboKey({ ...open, active: 0 }, "ArrowUp", 5)?.state.active).toBe(4)
-  })
-
-  it("takes the walked-to option on Enter only while the list is open and holds something", () => {
-    expect(comboKey({ ...typed, open: true }, "Enter", 3)).toEqual({ state: { ...typed, open: true }, choose: true })
-    expect(comboKey({ ...typed, open: true }, "Enter", 0)?.choose).toBe(false)
-    // Closed, Enter is still caught — the box never sends the form.
-    expect(comboKey(typed, "Enter", 3)).toEqual({ state: typed, choose: false })
-  })
-
-  it("closes on Escape, empties on a second, and leaves a third to whatever is around it", () => {
-    const first = comboKey({ ...typed, open: true }, "Escape", 3)
-    expect(first?.state).toEqual({ ...typed, open: false })
-    const second = comboKey(first?.state ?? typed, "Escape", 3)
-    expect(second?.state.find).toBe("")
-    expect(comboKey({ open: false, active: 0, find: "" }, "Escape", 3)).toBeNull()
-  })
-
-  it("leaves every other key to the box", () => {
-    expect(comboKey(typed, "a", 3)).toBeNull()
-    expect(comboKey(typed, "Tab", 3)).toBeNull()
-  })
-
-  it("never walks outside the list, whatever the list's length or where it stood", () => {
-    fc.assert(fc.property(
-      fc.integer({ min: 1, max: 50 }),
-      fc.integer({ min: -5, max: 60 }),
-      fc.constantFrom("ArrowDown", "ArrowUp"),
-      (count, active, key) => {
-        const next = comboKey({ open: true, active, find: "x" }, key, count)?.state.active ?? -1
-        return next >= 0 && next < count
-      },
-    ))
   })
 })
 

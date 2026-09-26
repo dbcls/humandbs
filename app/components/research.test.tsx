@@ -61,7 +61,7 @@ function view(files: ResearchFileListView, links: LinksView = NO_LINKS): Researc
 function render(files: ResearchFileListView, links: LinksView = NO_LINKS): string {
   const Stub = createRoutesStub([{
     path: "/",
-    Component: () => <ResearchVersionPage view={view(files, links)} locale="ja" />,
+    Component: () => <ResearchVersionPage view={view(files, links)} locale="ja" origin="https://humandbs.example" />,
   }])
   return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
 }
@@ -209,7 +209,7 @@ describe("the state a links value passes to the page", () => {
   it("draws a not-applicable URL as the not-applicable notice on the public page", () => {
     const html = render(NOTHING, { state: "not-applicable" })
 
-    expect(html).toContain("<abbr title=\"該当なし\" class=\"font-mono text-ink-muted\">N/A</abbr>")
+    expect(html).toContain("<abbr title=\"該当なし\" class=\"text-ink-muted no-underline\">N/A</abbr>")
   })
 
   it("draws an unsettled URL as the unsettled frame in a preview", () => {
@@ -229,7 +229,7 @@ describe("the state a links value passes to the page", () => {
 function renderWith(over: Partial<ResearchView>): string {
   const Stub = createRoutesStub([{
     path: "/",
-    Component: () => <ResearchVersionPage view={{ ...view(NOTHING), ...over }} locale="ja" />,
+    Component: () => <ResearchVersionPage view={{ ...view(NOTHING), ...over }} locale="ja" origin="https://humandbs.example" />,
   }])
   return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
 }
@@ -455,7 +455,7 @@ describe("the row of the research listing", () => {
       "listingSummary.dataProviders",
     ])
     const highlighted = (html: string): string[] =>
-      [...html.matchAll(/data-field-path="([^"]+)" class="[^"]*\bbg-surface-hover/g)].map((found) => found[1] ?? "")
+      [...html.matchAll(/data-field-path="([^"]+)" class="[^"]*\bbg-warning-surface/g)].map((found) => found[1] ?? "")
     expect(highlighted(beside("listingSummary.targets"))).toEqual(["listingSummary.targets"])
     // One of the listing's own names, or the panel writing it, is the provider column's caret too.
     expect(highlighted(beside("listingSummary.dataProviders.p1"))).toEqual(["listingSummary.dataProviders"])

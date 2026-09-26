@@ -178,7 +178,7 @@ describe("the rows of a list", () => {
     for (const label of ["編集", "上へ", "下へ", "削除"]) expect(grants).toContain(`aria-label="${label}"`)
   })
 
-  it("shows a value's state — 該当なし, 未確定 — in the table rather than 未入力", () => {
+  it("shows a value not applicable as the page's N/A, and one unsettled by the row's badge alone, rather than 未入力", () => {
     const marked = (state: "unknown" | "not-applicable") => {
       const made = emptyPair()
       made.ja.state = state
@@ -186,14 +186,31 @@ describe("the rows of a list", () => {
     }
     const html = render(view((input) => {
       input.content.grants = [
-        { id: "g1", title: marked("not-applicable"), agency: { name: marked("unknown") }, grantIds: { state: "value", ids: [] } },
+        { id: "g1", title: marked("not-applicable"), agency: { name: marked("unknown") }, grantIds: { state: "not-applicable", ids: [] } },
       ]
     }))
     const grants = html.slice(html.indexOf("id=\"grants\""), html.indexOf("id=\"relatedPublications\""))
     const table = grants.slice(grants.indexOf("<table"), grants.indexOf("</table>"))
-    expect(table).toContain("該当なし")
-    expect(table).toContain("未確定")
+    expect([...table.matchAll(/<abbr title="該当なし"[^>]*>N\/A<\/abbr>/g)]).toHaveLength(2)
+    expect([...table.matchAll(/未確定/g)]).toHaveLength(1)
+    expect(table).not.toContain(">該当なし<")
     expect(table).not.toContain("未入力")
+  })
+
+  it("leaves the cell of an unsettled value empty wherever it is in the row", () => {
+    const html = render(view((input) => {
+      input.content.relatedPublications = [{
+        id: "p1",
+        title: { state: "value", text: "A paper" },
+        doi: { state: "unknown", text: "" },
+        datasetIds: { state: "unknown", ids: [] },
+        externalIds: [],
+      }]
+    }))
+    const publications = html.slice(html.indexOf("id=\"relatedPublications\""), html.indexOf("id=\"listingSummary\""))
+    const table = publications.slice(publications.indexOf("<table"), publications.indexOf("</table>"))
+    expect(table).toContain("A paper")
+    expect([...table.matchAll(/未確定/g)]).toHaveLength(1)
   })
 
   /**
@@ -280,6 +297,14 @@ describe("the header", () => {
     expect(row).toMatch(/<label[^>]*>下書き名<\/label><input[^>]*name="name"[^>]*value="v2 予定"/)
     expect(row).toMatch(/<button type="submit"[^>]*disabled=""[^>]*>[\s\S]*?保存/)
     expect(head).not.toContain("名前の編集")
+  })
+
+  it("names the draft's name the way the form names its fields", () => {
+    const html = render(view())
+    const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
+    const fieldName = /<span class="([^"]*)">目的<\/span>/.exec(html)?.[1]
+    expect(fieldName).toBeDefined()
+    expect(head).toContain(`class="${fieldName ?? ""}">下書き名</label>`)
   })
 
   it("has no name row for the draft of an update, which is called by its version", () => {

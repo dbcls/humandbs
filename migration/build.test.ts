@@ -514,6 +514,27 @@ describe("a cell holding a table about several datasets", () => {
     expect(said(datasetOf(plain, "JGAD000001"))).toContain("147,353")
   })
 
+  it("drops a number's label that is its own dataset in JGA's long form", () => {
+    const own = [dumpRow({ experiments: [{ data: { "Total Data Volume": { ja: { text: "JGAD00000000276: 7 TB" } } } }] }, "JGAD000276", null)]
+    const held = first(first(datasetOf(own, "JGAD000276").experiments).values).value
+    if (held.kind !== "number") throw new Error("expected numbers")
+    expect(value(held.values).map((one) => one.label)).toEqual([null])
+  })
+
+  it("reads a dataset named in brackets after a caption as the line's dataset", () => {
+    const table = "大腸がん(JGAD000001): 150 bp\n肺腺がん(JGAD000002): 100 bp"
+    const captioned = [dumpRow(volume(table), "JGAD000001", null), dumpRow(volume(table), "JGAD000002", null)]
+    expect(said(datasetOf(captioned, "JGAD000001"))).toContain("150 bp")
+    expect(said(datasetOf(captioned, "JGAD000001"))).not.toContain("100 bp")
+  })
+
+  it("keeps a line whose brackets name its own dataset beside another", () => {
+    const shared = "JGAD000001、JGAD000002: 150 bp\n大腸がん(JGAD000001、JGAD000002): 100 bp"
+    const both = [dumpRow(volume(shared), "JGAD000001", null), dumpRow(volume(shared), "JGAD000002", null)]
+    expect(said(datasetOf(both, "JGAD000001"))).toContain("150 bp")
+    expect(said(datasetOf(both, "JGAD000001"))).toContain("100 bp")
+  })
+
   /** A value has colons of its own, and those are not labels. */
   it("does not read a colon inside brackets as a label", () => {
     const bracketed = [
@@ -521,6 +542,99 @@ describe("a cell holding a table about several datasets", () => {
       dumpRow(volume("JGAD000002: 88 GB"), "JGAD000002", null),
     ]
     expect(said(datasetOf(bracketed, "JGAD000001"))).toContain("hg19")
+  })
+})
+
+describe("a line headed by the study or dataset it is about", () => {
+  const studies = new Map([["JGAS000001", ["JGAD000001"]], ["JGAS000002", ["JGAD000002"]], ["JGAS000009", ["JGAD000001", "JGAD000002"]]])
+  const materials = (text: string) => ({ experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }] })
+  const linesOf = (text: string, label: string) => {
+    const all = [dumpRow(materials(text), "JGAD000001", null), dumpRow(materials(text), "JGAD000002", null)]
+    const one = all.find((row) => row.label === label)
+    if (one === undefined) throw new Error(`no dataset ${label}`)
+    const content = buildDatasetContent({
+      dataset: one,
+      keyIdByCode: KEY_IDS,
+      codeBySourceKey: CODE_BY_SOURCE,
+      termIdBySetAndCode: TERM_IDS,
+      knownCode: () => false,
+      accessCriteriaKeyCode: "access-criteria",
+      typeOfDataKeyCode: "type-of-data",
+      datasetLabels: new Set(all.map((row) => row.label)),
+      ownLines: ownLines(all, undefined, undefined, studies),
+      studies,
+      unread: [],
+      byHand: new Map(),
+    })
+    const held = first(first(content.experiments).values).value
+    if (held.kind !== "text") throw new Error("expected text")
+    return value(held.text.ja).map((line) => line.map((span) => span.text).join(""))
+  }
+
+  it("keeps only the lines headed by the dataset's own study", () => {
+    const text = "【JGAS000001】1症例：腫瘍組織\n【JGAS000002】2症例：正常組織"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001】1症例：腫瘍組織"])
+    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAS000002】2症例：正常組織"])
+  })
+
+  it("reads the English page's square brackets as the heading", () => {
+    const text = "[JGAS000001] 1 case: tumor\n[JGAS000002] 2 cases: normal"
+    expect(linesOf(text, "JGAD000001")).toEqual(["[JGAS000001] 1 case: tumor"])
+  })
+
+  it("does not read a link as a heading, nor its address as naming a dataset", () => {
+    const text = "[JGAS000001] 1 case: tumor\n[JGAD000002](https://example.org/JGAD000002) 3 cases: blood"
+    expect(linesOf(text, "JGAD000001")).toEqual(["[JGAS000001] 1 case: tumor", "JGAD000002 3 cases: blood"])
+  })
+
+  it("reads a study before a colon the same as one in lenticular brackets", () => {
+    const text = "JGAS000001：CD19+細胞のRNA\nJGAS000002：Treg細胞のRNA"
+    expect(linesOf(text, "JGAD000001")).toEqual(["JGAS000001：CD19+細胞のRNA"])
+  })
+
+  it("reads a dataset in lenticular brackets", () => {
+    const text = "【JGAD000001】腫瘍組織：22検体\n【JGAD000002】腫瘍組織：4検体"
+    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAD000002】腫瘍組織：4検体"])
+  })
+
+  it("leaves a heading with nothing after it, and the lines under it, where they are", () => {
+    const text = "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：2検体"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001】", "腫瘍組織：1検体", "【JGAS000002】", "正常組織：2検体"])
+  })
+
+  it("leaves a cell whole where a heading has lines under it that are not headed", () => {
+    const text = "【JGAS000001】寒冷凝集素症：1症例\n頬粘膜：1検体\n【JGAS000002】寒冷凝集素症：1症例\n頬粘膜：2検体"
+    expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
+  })
+
+  it("leaves a cell whole where a caption heads a later group", () => {
+    const text = "子宮頸がん\n【JGAS000001】4症例：腫瘍組織\n\nNIKS18細胞株\n【JGAS000002】siNPM3：2検体"
+    expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
+  })
+
+  it("leaves a cell whole where a note follows a heading", () => {
+    const text = "【JGAS000001】腫瘍組織：2検体※\n※EM-seqと同じ組織由来\n【JGAS000002】正常組織：1検体"
+    expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
+  })
+
+  it("leaves a cell whole where no heading is the dataset's own", () => {
+    const text = "【JGAS000002】2症例：正常組織\n【JGAS000002】3症例：腫瘍組織"
+    expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
+  })
+
+  it("divides a line naming its dataset directly beside the study as before, whatever else the cell holds", () => {
+    const text = "【オルガノイド】\nJGAS000001/JGAD000001：21症例\nJGAS000002/JGAD000002：27症例\n（v4に正常肺オルガノイド含む）"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【オルガノイド】", "JGAS000001/JGAD000001：21症例", "（v4に正常肺オルガノイド含む）"])
+  })
+
+  it("keeps the lines above the first heading for every dataset", () => {
+    const text = "子宮頸がん（ICD10：C539）\n【JGAS000001】4症例：腫瘍組織\n【JGAS000002】1症例：オルガノイド"
+    expect(linesOf(text, "JGAD000002")).toEqual(["子宮頸がん（ICD10：C539）", "【JGAS000002】1症例：オルガノイド"])
+  })
+
+  it("leaves a line headed by no study or dataset, or by a study of both", () => {
+    const text = "【GWAS集計情報】要約統計量\n【JGAS000009】共通の対照群：100名"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【GWAS集計情報】要約統計量", "【JGAS000009】共通の対照群：100名"])
   })
 })
 
@@ -568,6 +682,22 @@ describe("a cell read by the load's own reader", () => {
     expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["first", "", "second"])
   })
 
+  it("drops a sibling's line from a number cell when the reader writes the sibling's own line in full-width forms", () => {
+    const table = "JGAD000001: 88 GB(fastq)\nJGAD000002: 32 GB(fastq)"
+    const volume = { experiments: [{ data: { "Total Data Volume": { ja: { text: table }, en: { text: table } } } }] }
+    const siblings = [dumpRow(volume, "JGAD000001", null), dumpRow(volume, "JGAD000002", null)]
+    const fullWidth: ProseReader = (value, lang) => (value?.text ?? "").split("\n")
+      .map((line) => [{ text: lang === "ja" ? line.replace(": ", "：").replace("(", "（").replace(")", "）") : line }])
+    const volumes = (label: string) => {
+      const held = first(first(datasetOf(siblings, label, fullWidth).experiments).values).value
+      if (held.kind !== "number") throw new Error("expected numbers")
+      return value(held.values).map((one) => one.value)
+    }
+
+    expect(volumes("JGAD000001")).toEqual([88])
+    expect(volumes("JGAD000002")).toEqual([32])
+  })
+
   it("reads each dataset's lines with the reader given for it", () => {
     const table = "JGAD000001: 88 GB|JGAD000002: 32 GB"
     const siblings = [dumpRow(cell(table), "JGAD000001", null), dumpRow(cell(table), "JGAD000002", null)]
@@ -576,8 +706,8 @@ describe("a cell read by the load's own reader", () => {
     const keys = [...ownLines(siblings, undefined, readFor)]
 
     // JGAD000001's reader keeps the cell one line; JGAD000002's reads each row as a line.
-    expect(keys.filter((key) => key.startsWith("JGAD000001")).map((key) => key.endsWith("88 GB|JGAD000002: 32 GB"))).toEqual([true, true])
-    expect(keys.filter((key) => key.startsWith("JGAD000002")).map((key) => key.endsWith("32 GB") && !key.includes("88 GB"))).toEqual([true, true])
+    expect(keys.filter((key) => key.startsWith("JGAD000001")).map((key) => key.endsWith("88GB|JGAD000002:32GB"))).toEqual([true, true])
+    expect(keys.filter((key) => key.startsWith("JGAD000002")).map((key) => key.endsWith("32GB") && !key.includes("88GB"))).toEqual([true, true])
   })
 })
 

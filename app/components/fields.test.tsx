@@ -80,7 +80,7 @@ describe("what a state toggle shows it does", () => {
 })
 
 describe("a slot marked unsettled or not-applicable", () => {
-  it("collapses the box and shows the state's own word in its place", () => {
+  it("collapses the box of an unsettled slot and shows the state's own word in its place", () => {
     const html = render(
       <SlotEditor
         language="ja"
@@ -91,10 +91,10 @@ describe("a slot marked unsettled or not-applicable", () => {
     )
     expect(html).not.toContain("<input")
     expect(html).not.toContain("<textarea")
-    expect(html).toContain("未確定")
+    expect(html).toMatch(/<div class="flex h-9 items-center rounded[^"]*">未確定<\/div>/)
   })
 
-  it("collapses a multiline box the same way for not-applicable", () => {
+  it("collapses a multiline box for not-applicable, with the page's N/A in its place", () => {
     const html = render(
       <SlotEditor
         language="ja"
@@ -105,7 +105,7 @@ describe("a slot marked unsettled or not-applicable", () => {
       />,
     )
     expect(html).not.toContain("<textarea")
-    expect(html).toContain("該当なし")
+    expect(html).toMatch(/<div class="flex h-9 items-center rounded[^"]*"><abbr title="該当なし"[^>]*>N\/A<\/abbr><\/div>/)
   })
 
   it("keeps showing the typed text once the state is a value again", () => {

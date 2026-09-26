@@ -15,7 +15,7 @@ import type { DatasetRowView } from "~/public/view.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Button, IconButton, Stack } from "./base"
+import { Button, IconButton, type Lines, LinesOf, Stack } from "./base"
 import { FieldHead, LanguageLabel, type FieldAnnotations, newId, StatedControls, StateSwitch } from "./fields"
 import { CONTROL } from "./form"
 import { Icon } from "./icons"
@@ -229,7 +229,7 @@ export function IdList({ label, itemLabel, addLabel, hint, placeholder, locale, 
   itemLabel: string
   addLabel: string
   /** What goes in the boxes and how, said under them. */
-  hint?: string
+  hint?: Lines
   /** The shape of one ID, shown in an empty field. */
   placeholder?: string
   locale: Locale
@@ -285,7 +285,7 @@ export function IdList({ label, itemLabel, addLabel, hint, placeholder, locale, 
           ? list
           : <StatedControls state={state} onState={onState} locale={locale}>{list}</StatedControls>}
       </div>
-      {hint !== undefined && <span className="text-ink-muted text-xs">{hint}</span>}
+      {hint !== undefined && <span className="text-ink-muted text-xs"><LinesOf text={hint} /></span>}
     </Stack>
   )
 }

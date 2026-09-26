@@ -20,7 +20,7 @@ import type { ArticleView } from "~/public/site.server"
 import { href } from "~/public/urls"
 
 import { usePanes } from "./admin"
-import { Button, ButtonLink, type ButtonSize, Dialog, Heading, Stack, Chevron } from "./base"
+import { Button, ButtonLink, type ButtonSize, Dialog, Heading, type Lines, Stack, Chevron } from "./base"
 import { useDrawn } from "./draft-tools"
 import { Editing, Field, MarkdownEditor, Submit, Unsaved } from "./form"
 import { Icon } from "./icons"
@@ -188,7 +188,7 @@ export function SlugEditor({ locale, intent, name, value, hint, size, disabled }
   name: string
   value: string
   /** The rule the slug has to follow, under the box. */
-  hint: string
+  hint: Lines
   /** How large the trigger is drawn among its neighbours (`Dialog`). */
   size?: ButtonSize
   /** Why the slug cannot be changed now, when it cannot (`Dialog`). */
@@ -531,8 +531,13 @@ export function leftLanguageOf(panes: Pick<PaneArrangement, "left" | "showing">)
 }
 
 /**
- * The toolbar an article or an announcement keeps at hand: the pane switch,
- * in the same place a research draft's `DraftTools` keeps it (`draft-tools.tsx`).
+ * The toolbar an article or an announcement keeps at hand: the ways to its
+ * public pages at the near end, and the pane switch at the far end, in the same
+ * place a research draft's `DraftTools` keeps it (`draft-tools.tsx`).
+ *
+ * **The public pages are here rather than beside the name**, which keeps the
+ * way back and what takes the whole thing away: they are looked at while the
+ * words are being written, and the row stays when the header collapses.
  *
  * **The save is not here but at the foot of each language's form** — one per
  * form, beside the publish state, since two forms can be open at once and
@@ -542,7 +547,9 @@ export function leftLanguageOf(panes: Pick<PaneArrangement, "left" | "showing">)
  * **Ctrl+S and Cmd+S send the left pane's form**, when it holds one — the one
  * form a curator typing has to reach without moving the pointer.
  */
-export function ArticleTools({ panesControl, leftFormId }: {
+export function ArticleTools({ publicPages, panesControl, leftFormId }: {
+  /** The ways to the public pages (`PublicPageButtons`). */
+  publicPages: ReactNode
   panesControl: ReactNode
   leftFormId: string | null
 }) {
@@ -562,6 +569,7 @@ export function ArticleTools({ panesControl, leftFormId }: {
 
   return (
     <div className="flex h-9 items-center gap-4">
+      {publicPages}
       {/* **The pane switch at the far end**, where a research draft's row
           keeps it. */}
       <span className="ml-auto">{panesControl}</span>
@@ -580,12 +588,14 @@ export function ArticleTools({ panesControl, leftFormId }: {
  * reading of the markdown to keep in step. Each language is drawn on its own,
  * since each is its own form.
  */
-export function useArticlePanes({ locale, remember, editors, result, dated = null, publishing }: {
+export function useArticlePanes({ locale, remember, editors, result, publicPages, dated = null, publishing }: {
   locale: Locale
   /** The root each language's form id is built from (`articleFormId`). */
   remember: string
   editors: LocaleEditor[]
   result: ContentsResult | undefined
+  /** The ways to the public pages, at the near end of the toolbar (`ArticleTools`). */
+  publicPages: ReactNode
   /** What the page shows under its title — the day an announcement went out. */
   dated?: string | null
   /** What an announcement's date means for its forms (`LocaleEditors`). */
@@ -646,6 +656,7 @@ export function useArticlePanes({ locale, remember, editors, result, dated = nul
   const leftLanguage = leftLanguageOf(panes)
   const tools = (
     <ArticleTools
+      publicPages={publicPages}
       panesControl={panes.control}
       leftFormId={leftLanguage === null ? null : articleFormId(remember, leftLanguage)}
     />

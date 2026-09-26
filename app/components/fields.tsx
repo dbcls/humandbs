@@ -25,10 +25,10 @@ import { useId, useState } from "react"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { Button, ButtonLink, Chevron, Dialog, IconButton, Note, PANE_LABEL, ReorderButtons, Stack, TOOLTIP } from "./base"
+import { Button, ButtonLink, Chevron, Dialog, IconButton, type Lines, LinesOf, Note, PANE_LABEL, ReorderButtons, Stack, TOOLTIP } from "./base"
 import { Accepts, CONTROL } from "./form"
 import { Icon, type IconName } from "./icons"
-import { Section as PageSection, Table, Td } from "./page"
+import { NotApplicable, Section as PageSection, Table, Td } from "./page"
 import { Flag } from "./flags"
 
 /**
@@ -339,6 +339,19 @@ export function StateSwitch({ state, onChange, locale }: {
 const COLLAPSED_SLOT = "flex h-9 items-center rounded border border-line bg-surface px-2 text-ink-muted text-sm"
 
 /**
+ * What a field set to a state shows in place of its controls: unsettled by the
+ * state's name, not applicable as the page shows it (`N/A`) — the form and the
+ * page beside it write the same answer the same way.
+ */
+function CollapsedState({ state, locale }: { state: Exclude<SlotState, "value">, locale: Locale }) {
+  return (
+    <div className={COLLAPSED_SLOT}>
+      {state === "not-applicable" ? <NotApplicable locale={locale} /> : messagesFor(locale).admin.editor.stateChoice[state]}
+    </div>
+  )
+}
+
+/**
  * One language of one field. The text stays in state whatever the state is,
  * so switching to "unsettled" and back gives the half-written value back.
  *
@@ -360,8 +373,6 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
   onChange: (next: TextInput) => void
   locale: Locale
 }) {
-  const t = messagesFor(locale).admin.editor
-  const settled = value.state === "value"
   const classes = `${CONTROL} w-full text-sm`
 
   /*
@@ -374,7 +385,7 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
   return (
     <div className={`grid items-start gap-x-2 gap-y-1 ${named ? "grid-cols-[1.5rem_1fr_auto]" : "grid-cols-[1fr_auto]"}`}>
       {named && <LanguageLabel language={language} tall />}
-      {settled
+      {value.state === "value"
         ? (
             multiline === true
               ? (
@@ -400,7 +411,7 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
                   />
                 )
           )
-        : <div className={COLLAPSED_SLOT}>{t.stateChoice[value.state]}</div>}
+        : <CollapsedState state={value.state} locale={locale} />}
       <span className="flex h-9 items-center">
         <StateSwitch
           state={value.state}
@@ -425,10 +436,9 @@ export function StatedControls({ state, onState, locale, children }: {
   locale: Locale
   children: React.ReactNode
 }) {
-  const t = messagesFor(locale).admin.editor
   return (
     <div className="grid grid-cols-[1fr_auto] items-start gap-x-2">
-      {state === "value" ? <div className="min-w-0">{children}</div> : <div className={COLLAPSED_SLOT}>{t.stateChoice[state]}</div>}
+      {state === "value" ? <div className="min-w-0">{children}</div> : <CollapsedState state={state} locale={locale} />}
       <span className="flex h-9 items-center">
         <StateSwitch state={state} onChange={onState} locale={locale} />
       </span>
@@ -507,7 +517,7 @@ export function SingleField({ label, value, annotations, locale, wide = false, h
   /** Whether the box takes the whole row: a title, an address. */
   wide?: boolean
   /** What to put in the box and how, said under it. */
-  hint?: string
+  hint?: Lines
   onChange: (next: TextInput) => void
 }) {
   return (
@@ -522,7 +532,7 @@ export function SingleField({ label, value, annotations, locale, wide = false, h
           onChange={onChange}
         />
       </div>
-      {hint !== undefined && <span className="text-ink-muted text-xs">{hint}</span>}
+      {hint !== undefined && <span className="text-ink-muted text-xs"><LinesOf text={hint} /></span>}
     </Stack>
   )
 }
@@ -530,6 +540,12 @@ export function SingleField({ label, value, annotations, locale, wide = false, h
 /** One column of the table a list of elements is shown as: its name, and what of an element it shows. */
 export interface ItemColumn<T> {
   header: string
+  /**
+   * What the column shows of an element. **An empty string is a value with
+   * nothing written**, which the first column names 未入力; `null` is a value
+   * with nothing to show here — an unsettled one, which the badge under the
+   * first cell already names.
+   */
   cell: (item: T) => React.ReactNode
 }
 
@@ -621,7 +637,7 @@ export function ItemList<T extends { id: string }>({
             <tr key={item.id} data-at={`${path}.${item.id}`} className="transition-colors data-highlighted:bg-warning-surface">
               {columns.map((column, index) => {
                 const drawn = column.cell(item)
-                const empty = drawn === "" || drawn === null || drawn === undefined
+                const empty = drawn === ""
                 if (index !== 0) return <Td key={column.header}>{drawn}</Td>
                 const short = shortfallsOf(item)
                 return (

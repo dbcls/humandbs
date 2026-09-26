@@ -72,7 +72,7 @@ export interface CmsDump {
 }
 
 /** Documents that are screens in v2 and therefore have no row of their own. */
-export const SCREEN_SLUGS = ["data-submission", "data-use", "contact-us"]
+export const SCREEN_SLUGS = ["home", "data-submission", "data-use", "contact-us"]
 
 const INPUT = join(process.cwd(), "migration", "input")
 

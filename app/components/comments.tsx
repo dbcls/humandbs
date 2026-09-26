@@ -37,7 +37,6 @@ import { unresolvedCount, type CommentView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { Flag } from "./flags"
-import { Empty } from "./page"
 
 const NAME_KEY = "humandbs.review.name"
 
@@ -199,6 +198,22 @@ export function CommentSpot({ context, at, comments, fieldLabel }: {
 }
 
 /**
+ * What a list of comments shows while it holds none: the icon of the dialog it
+ * is in and the sentence, in a light dashed box. **Dashed and uncoloured**, so
+ * it reads as a place nothing has been put yet — a solid edge is a notice
+ * (`Note`), and a box in a dialog with a text box under it reads as one more
+ * box to type in.
+ */
+function NothingSaid({ icon, children }: { icon: IconName, children: string }) {
+  return (
+    <p className="flex items-center gap-2 rounded border border-line border-dashed px-4 py-3 text-ink-muted text-sm">
+      <Icon name={icon} aria-hidden="true" />
+      {children}
+    </p>
+  )
+}
+
+/**
  * What was said at one place, in the order it was said, and the box for the
  * next thing. The list screen draws rows on its own (`CommentRow`); everything
  * else draws the timeline whole.
@@ -219,7 +234,9 @@ export function CommentTimeline({ context, comments, at, fetcher, placeholder, e
 
   return (
     <Stack gap="normal">
-      {comments.length === 0 && empty !== undefined && <Note kind="plain">{empty}</Note>}
+      {comments.length === 0 && empty !== undefined && (
+        <NothingSaid icon={context.subject === "memo" ? "clipboard" : "comment"}>{empty}</NothingSaid>
+      )}
       {comments.length > 0 && (
         <Stack as="ul" gap="normal">
           {comments.map((one) => (
@@ -644,7 +661,7 @@ export function AnchorGroups({ context, groups, fetcher }: {
   groups: readonly CommentGroup[]
   fetcher?: Fetcher
 }) {
-  if (groups.length === 0) return <Empty>{messagesFor(context.locale).admin.editor.openCommentsEmpty}</Empty>
+  if (groups.length === 0) return <NothingSaid icon="comment">{messagesFor(context.locale).admin.editor.openCommentsEmpty}</NothingSaid>
   return (
     <Stack as="ul" gap="normal">
       {groups.map((group) => (

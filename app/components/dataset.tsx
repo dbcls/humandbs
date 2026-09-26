@@ -6,10 +6,10 @@ import { Icon } from "~/components/icons"
 import { filePageOf, fileRowsOf, pageOfFiles } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { datasetFileListPath, fileListQuery, href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
+import { datasetFileListPath, ddbjSearchEntryUrl, fileListQuery, href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
 import type { DatasetView } from "~/public/view.server"
 
-import { Downloads } from "./files"
+import { Downloads, UrlListLink, type PublicFileUrls } from "./files"
 import {
   AccessTypeBadge,
   Annotation,
@@ -34,7 +34,12 @@ import {
  * the archived data does not change, only the description of it does, so every
  * research version that lists this dataset shows this same page.
  */
-export function DatasetPage({ view, locale }: { view: DatasetView, locale: Locale }) {
+export function DatasetPage({ view, locale, origin }: {
+  view: DatasetView
+  locale: Locale
+  /** The site's public origin, which a file's copied address is written on. */
+  origin: string
+}) {
   const messages = messagesFor(locale)
 
   return (
@@ -60,7 +65,7 @@ export function DatasetPage({ view, locale }: { view: DatasetView, locale: Local
           view={view}
           locale={locale}
           researchHref={href(locale, researchPath(view.humLabel))}
-          urlList={datasetFileListPath(view.label)}
+          fileUrls={{ list: datasetFileListPath(view.label), origin }}
         />
       </Card>
     </Page>
@@ -78,18 +83,15 @@ export function DatasetPage({ view, locale }: { view: DatasetView, locale: Local
  * from, so a comment about the access type is a comment about that slot however
  * the page chose to draw it.
  */
-export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDataAnchor, urlList }: {
+export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDataAnchor, fileUrls }: {
   view: DatasetView
   locale: Locale
   researchHref: string
   /** Where the two placed values are anchored, when the catalog knows the keys. */
   accessAnchor?: string | null
   typeOfDataAnchor?: string | null
-  /**
-   * Where the addresses of the files the dataset selects are listed. The
-   * published page has one; a preview's files are not public yet.
-   */
-  urlList?: string
+  /** Where the files the dataset selects are fetched from. The published page has them. */
+  fileUrls?: PublicFileUrls
 }) {
   const messages = messagesFor(locale)
   const t = messages.dataset
@@ -100,6 +102,9 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
   const [params] = useSearchParams()
   const size = fileRowsOf(params)
   const files = pageOfFiles(view.files, filePageOf(params), size)
+  // Where the archive describes the dataset: the registration's details are
+  // there, and the portal holds none of them.
+  const ddbjSearch = ddbjSearchEntryUrl(view.label)
 
   return (
     <Stack gap="block">
@@ -138,11 +143,17 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
           <KeyValue title={t.dateModified}>{view.dateModified}</KeyValue>
         )}
         {/*
-          **Last, because they are the ones that may not be there.** Two
-          datasets in three have a study, and fewer still an id they were known
-          by before; a slot that comes and goes from the middle would move
-          everything under it as the reader moves between them.
+          **Last, because they are the ones that may not be there.** Four
+          datasets in five have an entry in DDBJ Search, two in three a study,
+          and fewer still an id they were known by before; a slot that comes
+          and goes from the middle would move everything under it as the reader
+          moves between them.
         */}
+        {ddbjSearch !== null && (
+          <KeyValue title={t.ddbjSearch}>
+            <ExternalLink to={ddbjSearch} locale={locale}>{view.label}</ExternalLink>
+          </KeyValue>
+        )}
         {view.studyAccession !== null && (
           <KeyValue title={t.jgaStudy}>
             <ExternalLink to={jgaEntryUrl(view.studyAccession)} locale={locale}>
@@ -158,7 +169,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
       </Pairs>
 
       {view.files.length > 0 && (
-        <Section title={t.files}>
+        <Section title={t.files} end={fileUrls && <UrlListLink locale={locale} to={fileUrls.list} />}>
           <Downloads
             locale={locale}
             humLabel={view.humLabel === "" ? null : view.humLabel}
@@ -170,7 +181,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
             pageCount={files.pageCount}
             size={size}
             at={fileListQuery}
-            urlList={urlList}
+            origin={fileUrls?.origin}
           />
         </Section>
       )}

@@ -16,7 +16,7 @@ import { messagesFor } from "~/i18n/messages"
 import { useHoldsUnsaved } from "~/components/unsaved"
 
 import { AdminBack } from "./admin"
-import { Button, Heading, Stack } from "./base"
+import { Button, Heading, PANE_LABEL, Stack } from "./base"
 import { Icon, type IconName } from "./icons"
 import type { FieldAnnotations } from "./fields"
 import { CONTROL, SaveNews, Submit } from "./form"
@@ -490,7 +490,9 @@ export function DraftNameEditor({ locale, researchId, draftId, name }: {
   return (
     <fetcher.Form method="post" action={draftNamePath(researchId, draftId)} className="flex flex-col gap-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={id} className="text-ink">{t.name}</label>
+        {/* Named the way the form names its fields: it is a field too, kept apart
+            only because it is saved on its own. */}
+        <label htmlFor={id} className={PANE_LABEL}>{t.name}</label>
         <input
           id={id}
           type="text"

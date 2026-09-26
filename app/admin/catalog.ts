@@ -109,6 +109,15 @@ export function freeKeyCode(wanted: string, held: Iterable<string>): string {
  * a refinement is called is the administrator's to write, and only what it may
  * hold is fixed.
  */
+/**
+ * The one vocabulary whose values link their label to an article: the data use
+ * policies, each of which has its text written in an article. **A special case
+ * of this vocabulary, not something every refinement offers** — a tissue or a
+ * platform has no article to point at, and a control for one on every
+ * vocabulary is a question nobody there has to answer.
+ */
+export const DOCUMENT_LINKED_VOCABULARY = "policies"
+
 export const SETTLED_VOCABULARIES: ReadonlySet<string> = new Set([
   "access-criteria",
   "age-group",

@@ -110,6 +110,9 @@ export function ValueAtPath({ at, onHeaderBar = false, within = false, children 
    * marks the caret's place is the header bar's own white, not the page's tint**:
    * the tint under white words leaves the words unreadable at the one moment
    * they are being pointed at.
+   *
+   * Elsewhere the tint is the one the form marks the same place with
+   * (`form.tsx` の `CONTROL`), so the two panes show one place in one colour.
    */
   onHeaderBar?: boolean
   /**
@@ -143,7 +146,7 @@ export function ValueAtPath({ at, onHeaderBar = false, within = false, children 
       // written yet, and a place with nothing in it is no height at all — the
       // caret in its box would light nothing here, and there would be nothing
       // to press to go back to it.
-      className={`-mx-2 min-h-[1lh] rounded px-2 transition-colors ${here ? (onHeaderBar ? "bg-white/20" : "bg-surface-hover") : ""} ${
+      className={`-mx-2 min-h-[1lh] rounded px-2 transition-colors ${here ? (onHeaderBar ? "bg-white/20" : "bg-warning-surface") : ""} ${
         go === null ? "" : "cursor-pointer"
       }`}
       onClick={go === null
@@ -335,7 +338,7 @@ export function Card({ under = true, fill = false, children }: {
  * the 32px that separates one part from the next, 8px leaves the page a single
  * rhythm, and the name crowds the first thing in the block.
  */
-export function Section({ title, note, at, aside, fill = false, children }: {
+export function Section({ title, note, at, aside, end, fill = false, children }: {
   title: string
   /**
    * What the part is for, for the parts whose name does not show it.
@@ -360,10 +363,24 @@ export function Section({ title, note, at, aside, fill = false, children }: {
    * show it on.
    */
   aside?: ReactNode
+  /**
+   * What acts on the whole section, at the right end of the name's row: the
+   * list of every file's address over a list of files. It is not part of the
+   * name, so it sits outside the heading. On a row too narrow for both it
+   * moves under the name, still at the right end.
+   */
+  end?: ReactNode
   /** Take the room left in the column above (`base.tsx` の `Stack` の `fill`). */
   fill?: boolean
   children: ReactNode
 }) {
+  const heading = (
+    <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
+      {title}
+      {aside}
+      {at !== undefined && <Annotation at={at} name={title} />}
+    </h2>
+  )
   return (
     <Stack gap="normal" as="section" fill={fill}>
       {/* **The line belongs to the name, not to what follows.** At `tight` it
@@ -375,11 +392,14 @@ export function Section({ title, note, at, aside, fill = false, children }: {
         {/* The name has no colour: on a screen made of fields and buttons, a
             blue line is read as something to press before it is read as a name.
             What says "this names what follows" is the rule beside it. */}
-        <h2 className="flex flex-wrap items-center gap-2 border-brand border-l-4 pl-2.5 font-medium text-ink text-lg">
-          {title}
-          {aside}
-          {at !== undefined && <Annotation at={at} name={title} />}
-        </h2>
+        {end === undefined
+          ? heading
+          : (
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                {heading}
+                <div className="ml-auto flex flex-wrap items-center gap-3">{end}</div>
+              </div>
+            )}
         {note !== undefined && (
           <div className="flex flex-col gap-1 text-ink-muted text-sm">
             {(typeof note === "string" ? [note] : note).map((line) => <p key={line}>{line}</p>)}
@@ -1334,14 +1354,16 @@ function Prose({ text }: { text: RichText }) {
  * A value settled as not applicable, as every page shows it: `N/A`, with the
  * words in full on pointing at it.
  *
- * **Short, and set apart from the values by its typeface.** Tables of
+ * **Short, and set apart from the values by its colour alone.** Tables of
  * experiments hold it in cell after cell, where the words in full crowded the
- * values out; in the muted monospace it cannot be read as a value somebody
- * typed as "N/A".
+ * values out; muted, it cannot be read as a value somebody typed as "N/A". The
+ * typeface is the values' and the abbreviation's underline is taken off: in a
+ * table of values, a word in another typeface or underlined reads as a different
+ * kind of thing, or as a link.
  */
 export function NotApplicable({ locale }: { locale: Locale }) {
   const messages = messagesFor(locale)
-  return <abbr title={messages.notApplicable} className="font-mono text-ink-muted">{messages.notApplicableShort}</abbr>
+  return <abbr title={messages.notApplicable} className="text-ink-muted no-underline">{messages.notApplicableShort}</abbr>
 }
 
 /**

@@ -444,17 +444,15 @@ function Row({ entry, ordered, at, of, locale }: {
               size="row"
               icon={<Icon name="edit" />}
               action={() => (
-                <>
-                  {/* **The filled style belongs to the screen's own act**, which
-                      is making a field; a row's save is the ordinary one. */}
-                  <Submit intent="update-key" icon={<Icon name="save" />} saves>
-                    {t.save}
-                  </Submit>
-                  {/* The style shows there is something to send to whoever is
-                      looking at it; this says it to whoever is not. */}
-                  <Unsaved locale={locale} />
-                </>
+                // **The filled style belongs to the screen's own act**, which
+                // is making a field; a row's save is the ordinary one.
+                <Submit intent="update-key" icon={<Icon name="save" />} saves>
+                  {t.save}
+                </Submit>
               )}
+              // The style shows there is something to send to whoever is
+              // looking at it; this shows it to whoever is not.
+              status={<Unsaved locale={locale} />}
             >
               <LanguagePair>
                 <Field label={t.labelJa} name="labelJa" value={entry.labelJa} width="w-full" />

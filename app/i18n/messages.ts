@@ -66,6 +66,17 @@ const ja = {
     none: "お知らせはありません。",
     undated: "日付未定",
   },
+  home: {
+    heading: "NBDCヒトデータベースについて",
+    // Markdown, one paragraph to a string: the sentences have their links.
+    intro: [
+      "ヒトに関するデータは、次世代シークエンサーをはじめとした解析技術の発達に伴って膨大な量が産生されつつあり、それらを整理・格納して、生命科学の進展のために有効に活用するためのルールや仕組みが必要です。",
+      "[大学共同利用機関法人 情報・システム研究機構 (ROIS) 国立遺伝学研究所 (NIG) バイオデータ研究拠点 (BSI) ライフサイエンス統合データベース部門 (DBCLS)](https://dbcls.rois.ac.jp/) では、個人情報の保護に配慮しつつヒトに関するデータの共有や利用を推進するために、ヒトに関する様々なデータを共有するためのプラットフォーム『NBDCヒトデータベース』を運営しています。",
+      "本Webサイトを通じて、ヒトに関するデータの利用及びヒトに関するデータの提供を行なうことができます。",
+      "なお、本データベースの目的・意義、扱うデータの種類、データ利用者の範囲、責任者については[こちら](/aim)をご覧ください。",
+      "> [!TIP]\n> データ利用終了報告未提出のガイドライン違反者は[こちら](/violation)に公表されることになります。",
+    ],
+  },
   submission: {
     heading: "データの提供",
     navigator: "登録ナビゲーション",
@@ -264,12 +275,14 @@ const ja = {
     downloadName: "ファイル名",
     downloadSize: "サイズ",
     downloadUrlList: "URL の一覧のダウンロード",
+    copyUrl: "URL のコピー",
   },
   dataset: {
     datasetId: "データセット ID",
     datasets: "データセット",
     research: "研究",
     jgaStudy: "JGA Study",
+    ddbjSearch: "DDBJ Search",
     datePublished: "公開日",
     dateModified: "更新日",
     typeOfData: "データの種類",
@@ -863,7 +876,10 @@ const ja = {
     },
     editor: {
       memo: "メモ",
-      memoHint: "この下書きについてのメモ。Admin の連絡用に用いる。公開ページにもプレビューにも表示されない。",
+      memoHint: [
+        "この下書きについてのメモ。Admin の連絡用に用いる。",
+        "公開ページにもプレビューにも表示されない。",
+      ],
       memoEmpty: "メモはありません。",
       memoPlaceholder: "メモを書く",
       whole: "全体へのコメント",
@@ -945,7 +961,10 @@ const ja = {
       externalIds: "外部データセット ID",
       externalIdPlaceholder: "JGAD000000",
       addExternalId: "ID の追加",
-      externalIdsHint: "この研究のデータセット以外で、論文で使われたデータセットの ID を 1 つずつ書く。ポータルが公開しているデータセットの ID なら、公開ページではその研究の ID を添えて表示される。",
+      externalIdsHint: [
+        "この研究のデータセット以外で、論文で使われたデータセットの ID を 1 つずつ書く。",
+        "ポータルが公開しているデータセットの ID なら、公開ページではその研究の ID を添えて表示される。",
+      ],
       noDatasets: "この研究のデータセットはありません。",
       unpinnedDataset: "ID 未発行",
       conflictHeading: "別の場所で保存されました",
@@ -1056,7 +1075,7 @@ const ja = {
       branchSummary: "申請の内容",
       fields: "研究に反映される値",
       neither: "未入力",
-      noDatasets: "この申請に登録されたデータセットはありません。",
+      noDatasets: "この申請で登録されたデータセットはありません。",
       taken: "研究に登録済み",
       /** The name of the box listing what matches no choice. */
       droppedHeading: (count: number) => `選択肢に無い値 ${count} 件`,
@@ -1184,6 +1203,8 @@ const ja = {
       noMatchingTerm: "条件に合う値はありません。",
       document: "リンク先の記事",
       documentNone: "指定なし",
+      documentFind: "題名か slug で探す",
+      documentNoMatch: "条件に合う記事はありません。",
       addKey: "key の作成",
       termCount: (count: number) => `${count} 個 (編集)`,
       untranslated: "未翻訳",
@@ -1301,8 +1322,10 @@ const ja = {
       revisionList: "バージョン一覧",
       noRevision: "バージョンはありません。",
       representative: "代表アドレス",
-      representativeNote: (slug: string) =>
-        `この記事はバージョン管理されている。読者が代表アドレス ${slug} を開くと、ここで選んだバージョンの本文が表示される。代表アドレスへの割り当ては手で行い、バージョンを公開しても自動では変わらない。`,
+      representativeNote: (slug: string) => [
+        `この記事はバージョン管理されている。読者が代表アドレス ${slug} を開くと、ここで選んだバージョンの本文が表示される。`,
+        "代表アドレスへの割り当ては手で行い、バージョンを公開しても自動では変わらない。",
+      ],
       pointed: "代表アドレスが指すバージョン",
       noCurrent: "代表のバージョンは未選択",
       isCurrent: "代表",
@@ -1377,7 +1400,10 @@ const ja = {
           size: "サイズ",
           updated: "更新日",
         },
-        renameHint: "/files/common/ の下のアドレスになる。/ で階層を作れる (例: dir_name/file_name)。",
+        renameHint: [
+          "/files/common/ の下のアドレスになる。",
+          "/ で階層を作れる (例: dir_name/file_name)。",
+        ],
         malformedSlug: "slug に空の区切りや . は書けません。",
         slugTaken: "その slug は既に使われています。",
         removeFile: "削除",
@@ -1459,7 +1485,6 @@ const ja = {
       chooseFiles: "ファイルの選択",
       noFileChosen: "未選択",
       uploadFolder: "フォルダはアップロードできません。中のファイルをドロップしてください。",
-      copyAddress: "アドレスのコピー",
     },
   },
 }
@@ -1496,6 +1521,15 @@ const en: Messages = {
     all: "All news",
     none: "There is no news.",
     undated: "Undated",
+  },
+  home: {
+    heading: "About NBDC Human Database",
+    intro: [
+      "An enormous amount of human data is being generated with advances in next-generation sequencing and other analytical technologies. We therefore need rules and mechanisms for organizing and storing such data and for effectively utilizing them to make progress in the life sciences.",
+      "The \"NBDC Human Database\" is a platform operated by [the Database Division for Life Science (DBCLS) BioData Science Initiative (BSI) National Institute of Genetics (NIG) Research Organization of Information and Systems (ROIS)](https://dbcls.rois.ac.jp/index-en.html). It promotes the sharing and use of diverse human-derived datasets, balanced with a commitment to protecting personal privacy.",
+      "You can apply to use or submit human data through this website.",
+      "> [!TIP]\n> Violators of the guidelines who have not submitted a report on the deletion of Controlled-access data shall be disclosed [here](/en/violation).",
+    ],
   },
   submission: {
     heading: "Data Submission",
@@ -1636,12 +1670,14 @@ const en: Messages = {
     downloadName: "File",
     downloadSize: "Size",
     downloadUrlList: "Download the URL list",
+    copyUrl: "Copy URL",
   },
   dataset: {
     datasetId: "Dataset ID",
     datasets: "Datasets",
     research: "Research",
     jgaStudy: "JGA Study",
+    ddbjSearch: "DDBJ Search",
     datePublished: "Date published",
     dateModified: "Date modified",
     typeOfData: "Type of data",

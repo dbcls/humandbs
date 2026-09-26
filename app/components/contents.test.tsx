@@ -264,15 +264,26 @@ describe("leftLanguageOf", () => {
 })
 
 /**
- * The toolbar itself holds the pane switch and nothing that saves — each
- * language's save is shown at the foot of its own form.
+ * The toolbar itself holds the ways to the public pages and the pane switch,
+ * and nothing that saves — each language's save is shown at the foot of its own form.
  */
 describe("ArticleTools", () => {
-  it("切替だけがあり、保存ボタンは 1 つも置かない", () => {
-    const html = render(<ArticleTools panesControl={<span>SWITCH</span>} leftFormId={null} />)
+  const tools = () => render(
+    <ArticleTools publicPages={<span>PUBLIC</span>} panesControl={<span>SWITCH</span>} leftFormId={null} />,
+  )
+
+  it("公開ページと切替があり、保存ボタンは 1 つも置かない", () => {
+    const html = tools()
+    expect(html).toContain("PUBLIC")
     expect(html).toContain("SWITCH")
     expect(html).not.toContain("value=\"save\"")
     expect(html).not.toContain("保存")
+  })
+
+  it("公開ページは行の左端、切替は右端", () => {
+    const html = tools()
+    expect(html.indexOf("PUBLIC")).toBeLessThan(html.indexOf("SWITCH"))
+    expect(html).toMatch(/<span class="ml-auto"><span>SWITCH<\/span><\/span>/)
   })
 })
 

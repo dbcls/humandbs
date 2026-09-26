@@ -49,6 +49,7 @@ import {
   KEY_VALUE_TYPES,
   moved,
   movedTo,
+  DOCUMENT_LINKED_VOCABULARY,
   SETTLED_VOCABULARIES,
   termCodeProblem,
   TERM_SORT,
@@ -179,8 +180,14 @@ export interface VocabularyView {
    */
   mergeFrom: TermRow | null
   /**
+   * Whether a term's label can link to an article here — only in the data use
+   * policies (`DOCUMENT_LINKED_VOCABULARY`).
+   */
+  linksDocuments: boolean
+  /**
    * Every document on the site, for the control that links a term's label to
-   * one. There are tens of them, not thousands, so the whole list is read once
+   * one, and none where terms link to nothing. There are tens of them, not
+   * thousands, so the whole list is read once and narrowed on the screen
    * rather than searched per keystroke the way a vocabulary's own values are
    * (`admin-terms.ts`).
    */
@@ -419,9 +426,10 @@ export async function fieldTermsPage(
         .limit(1)
   const aimedUsed = aimed === undefined ? new Map() : await usageOfTerms(db, [aimed.id])
 
-  const documents = (await documentRows(db)).map((row) => (
-    { id: row.id, slug: row.slug, title: row.title }
-  ))
+  const linksDocuments = found.code === DOCUMENT_LINKED_VOCABULARY
+  const documents = linksDocuments
+    ? (await documentRows(db)).map((row) => ({ id: row.id, slug: row.slug, title: row.title }))
+    : []
 
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
@@ -439,6 +447,7 @@ export async function fieldTermsPage(
     mergeFrom: aimed === undefined
       ? null
       : { ...aimed, used: (aimedUsed.get(aimed.id) ?? 0) as number, inUse: held.has(aimed.id) },
+    linksDocuments,
     documents,
   }
 }
@@ -829,11 +838,14 @@ async function freeTermCode(db: Executor, setId: string, wanted: string): Promis
 /**
  * The document a term's form is proposing to link its label to, or the
  * problem stopping it. Empty text is the choice of no document, and is not a
- * problem — most terms point at nothing.
+ * problem — most terms point at nothing. **Only a data use policy links to
+ * one** (`DOCUMENT_LINKED_VOCABULARY`); the screen offers the control nowhere
+ * else, and a form posted by hand is refused.
  */
-async function documentIdFrom(db: Executor, form: FormData): Promise<{ documentId: string | null } | Outcome> {
+async function documentIdFrom(db: Executor, form: FormData, setCode: string): Promise<{ documentId: string | null } | Outcome> {
   const raw = text(form, "documentId")
   if (raw === "") return { documentId: null }
+  if (setCode !== DOCUMENT_LINKED_VOCABULARY) return { status: "not-editable" }
   const [found] = await db.select({ id: document.id }).from(document).where(eq(document.id, raw)).limit(1)
   return found === undefined ? { status: "unknown-target" } : { documentId: found.id }
 }
@@ -850,7 +862,7 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
     .limit(1)
   if (set === undefined) return { status: "unknown-target" }
   if (SETTLED_VOCABULARIES.has(set.code)) return { status: "not-editable" }
-  const resolvedDocument = await documentIdFrom(db, form)
+  const resolvedDocument = await documentIdFrom(db, form, set.code)
   if ("status" in resolvedDocument) return resolvedDocument
   // The code is made from the label (`catalog.ts` の `codeFrom`): it is an
   // address the public side has rather than a name to choose. The one
@@ -873,13 +885,13 @@ async function createTerm(db: Executor, form: FormData): Promise<Outcome> {
 }
 
 /**
- * Why a term cannot be changed here, or null when it can.
+ * Why a term cannot be changed here, or the vocabulary it is in when it can.
  *
  * **A term of a settled vocabulary is refused as well as unreachable.** The
  * screen offers no button for it, but a form is reachable by anybody who can post one
  * (`admin/catalog.ts` の `SETTLED_VOCABULARIES`).
  */
-async function refusedTerm(db: Executor, id: string): Promise<Outcome | null> {
+async function refusedTerm(db: Executor, id: string): Promise<Outcome | { setCode: string }> {
   const [term] = await db
     .select({ setCode: vocabularySet.code })
     .from(vocabularyTerm)
@@ -887,7 +899,7 @@ async function refusedTerm(db: Executor, id: string): Promise<Outcome | null> {
     .where(eq(vocabularyTerm.id, id))
     .limit(1)
   if (term === undefined) return { status: "unknown-target" }
-  return SETTLED_VOCABULARIES.has(term.setCode) ? { status: "not-editable" } : null
+  return SETTLED_VOCABULARIES.has(term.setCode) ? { status: "not-editable" } : { setCode: term.setCode }
 }
 
 /**
@@ -900,8 +912,8 @@ async function updateTerm(db: Executor, form: FormData): Promise<Outcome> {
   const labelJa = text(form, "labelJa")
   if (labelEn === "") return { status: "missing-label" }
   const refused = await refusedTerm(db, id)
-  if (refused !== null) return refused
-  const resolvedDocument = await documentIdFrom(db, form)
+  if ("status" in refused) return refused
+  const resolvedDocument = await documentIdFrom(db, form, refused.setCode)
   if ("status" in resolvedDocument) return resolvedDocument
   await db
     .update(vocabularyTerm)
@@ -917,7 +929,7 @@ async function updateTerm(db: Executor, form: FormData): Promise<Outcome> {
 async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
   const id = text(form, "termId")
   const refused = await refusedTerm(db, id)
-  if (refused !== null) return refused
+  if ("status" in refused) return refused
   if (await termInUse(db, id)) return { status: "in-use" }
   await db.delete(vocabularyTerm).where(eq(vocabularyTerm.id, id))
   return { status: "ok" }
@@ -946,7 +958,7 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
   if (from === "" || from === into) return { status: "unknown-target" }
 
   const refused = await refusedTerm(db, from)
-  if (refused !== null) return refused
+  if ("status" in refused) return refused
 
   const ends = await db
     .select({ setId: vocabularyTerm.setId })
@@ -988,12 +1000,17 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
  * form a curator can retype; a set, a term or a slug this is asked for and
  * does not find is the migration's own input disagreeing with itself, which
  * has to stop the load rather than continue with a link silently left unset.
+ * A term outside the data use policies is refused the same way, as the
+ * screen refuses it (`DOCUMENT_LINKED_VOCABULARY`).
  */
 export async function linkTermsToDocuments(
   tx: Executor,
   links: readonly { setCode: string, termCode: string, documentSlug: string }[],
 ): Promise<void> {
   for (const link of links) {
+    if (link.setCode !== DOCUMENT_LINKED_VOCABULARY) {
+      throw new Error(`linkTermsToDocuments: ${link.setCode} is not a vocabulary whose terms link to articles`)
+    }
     const [term] = await tx
       .select({ id: vocabularyTerm.id })
       .from(vocabularyTerm)

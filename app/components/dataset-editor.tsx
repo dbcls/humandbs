@@ -71,7 +71,6 @@ import {
   CollapsibleChevron,
   collapsibleOpen,
   IconButton,
-  MENU_PANEL,
   PANE_LABEL,
   PaneHeading,
   ReorderButtons,
@@ -90,6 +89,7 @@ import { commentsByPath } from "~/review/comments"
 import type { DrawnDataset } from "~/review/preview.server"
 
 import { usePanes } from "./admin"
+import { ComboBox } from "./combobox"
 import { DraftHead, DraftTools, useDraftEditing, useDrawn, type DraftEditing } from "./draft-tools"
 import { OpenComments } from "./comments"
 import { IdForm } from "./dataset-id"
@@ -1480,150 +1480,6 @@ function TermPicker({ locale, setId, kind, disabled, known, termIds, onAdd, onRe
 }
 
 /**
- * A box to type in with a list that opens under it — **one combobox for every
- * list chosen from on this screen** (a vocabulary's terms, the keys to add), so
- * the keys and the look are learned once.
- *
- * WAI-ARIA APG, "list autocomplete" (`comboKey`): the list opens as the box is
- * entered, by the pointer or the keyboard, and as it is typed into; Up and Down
- * walk it while the caret stays in the box; Enter takes the one walked to and
- * never sends the form; Escape closes, a second empties. The caret stays in the
- * box after a choice, so the next one is a key away.
- */
-function ComboBox<T>({ label, placeholder, disabled = false, options, keyOf, render, loading = false, empty, more, words, onQuery, onChoose, kept }: {
-  label: string
-  /** The grey word in the empty field; the label when absent. */
-  placeholder?: string
-  disabled?: boolean
-  /** What the list offers for what is typed now. */
-  options: readonly T[]
-  keyOf: (option: T) => string
-  render: (option: T) => React.ReactNode
-  /** Whether the options are still being asked for. */
-  loading?: boolean
-  empty: string
-  /** A line under a truncated list, indicating so. */
-  more?: string
-  words: { searching: string, count: (count: number) => string }
-  /** What is typed, whenever it changes or the box is entered (typed: false). */
-  onQuery?: (value: string, typed: boolean) => void
-  onChoose: (option: T) => void
-  /**
-   * Keep the choice in the box, as these words, rather than emptying it — for a
-   * choice that is confirmed by a button beside the box rather than acted on
-   * as it is made. Typing again goes back to looking.
-   */
-  kept?: (option: T) => string
-}) {
-  const [find, setFind] = useState("")
-  const [open, setOpen] = useState(false)
-  const [active, setActive] = useState(0)
-  const listId = useId()
-  const optionId = (at: number) => `${listId}-${String(at)}`
-  const shown = open && !disabled
-  const at = Math.min(active, options.length - 1)
-  const current = options[at]
-
-  const look = (value: string) => {
-    setFind(value)
-    setActive(0)
-    setOpen(true)
-    onQuery?.(value, true)
-  }
-  const enter = () => {
-    if (disabled || open) return
-    setOpen(true)
-    setActive(0)
-    onQuery?.(find, false)
-  }
-  const choose = (option: T) => {
-    onChoose(option)
-    setFind(kept === undefined ? "" : kept(option))
-    setOpen(false)
-    setActive(0)
-  }
-  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const next = comboKey({ open: shown, active, find }, event.key, options.length)
-    if (next === null) return
-    event.preventDefault()
-    if (event.key === "Escape") event.stopPropagation()
-    if (next.choose && current !== undefined) {
-      choose(current)
-      return
-    }
-    if (next.state.open && !shown) onQuery?.(find, false)
-    setOpen(next.state.open)
-    setActive(next.state.active)
-    setFind(next.state.find)
-  }
-
-  return (
-    <div className="relative min-w-0 flex-1">
-      <input
-        type="text"
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded={shown}
-        aria-controls={listId}
-        aria-activedescendant={shown && current !== undefined ? optionId(at) : undefined}
-        // The browser's own suggestions are what someone typed in some other
-        // box; over this one they hide the list that responds.
-        autoComplete="off"
-        spellCheck={false}
-        value={find}
-        disabled={disabled}
-        aria-label={label}
-        placeholder={placeholder ?? label}
-        onChange={(event) => { look(event.target.value) }}
-        onKeyDown={onKeyDown}
-        onFocus={enter}
-        onClick={enter}
-        onBlur={() => { setOpen(false) }}
-        className={`${CONTROL} w-full pr-8 text-sm disabled:opacity-50`}
-      />
-      {/* The indicator of a list that opens here, the way a pull-down draws it.
-          Not a control of its own: the box is what is pressed. */}
-      <Icon
-        name="chevron-down"
-        className={`pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-ink-muted transition-transform ${shown ? "rotate-180" : ""}`}
-      />
-      {shown && (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-label={label}
-          className={`absolute top-[calc(100%+0.25rem)] left-0 z-20 flex max-h-72 w-full overflow-y-auto ${MENU_PANEL}`}
-        >
-          {options.length === 0 && (
-            <li role="presentation" className="px-4 py-2 text-ink-muted text-sm">{loading ? words.searching : empty}</li>
-          )}
-          {!loading && more !== undefined && (
-            <li role="presentation" className="order-last border-line border-t px-4 py-2 text-ink-muted text-xs">{more}</li>
-          )}
-          {options.map((option, index) => (
-            <li
-              key={keyOf(option)}
-              id={optionId(index)}
-              role="option"
-              aria-selected={index === at}
-              // Pressed with the pointer, the box keeps the caret: taking it
-              // away would close the list before the press lands.
-              onMouseDown={(event) => { event.preventDefault() }}
-              onMouseEnter={() => { setActive(index) }}
-              onClick={() => { choose(option) }}
-              className={`flex items-baseline gap-2 px-4 py-2 text-sm ${index === at ? "bg-surface-hover" : ""}`}
-            >
-              {render(option)}
-            </li>
-          ))}
-        </ul>
-      )}
-      <span role="status" className="sr-only">{shown && !loading ? words.count(options.length) : ""}</span>
-    </div>
-  )
-}
-
-/**
  * One candidate as the list reads it: **the words, not the key they are stored
  * under** — an id like `controlled-access-type-2` shows nothing a reader chooses
  * by. A disease keeps its code before the words: ICD-10 is what the box is typed
@@ -1636,42 +1492,6 @@ export function CandidateWords({ term, locale, kind }: { term: EditableTerm, loc
       <span>{catalogLabel(term, locale)}</span>
     </>
   )
-}
-
-/** What a combobox holds between keys: whether its list is open, which option is walked to, what is typed. */
-export interface ComboState {
-  open: boolean
-  active: number
-  find: string
-}
-
-/**
- * **The keys of a combobox** (WAI-ARIA APG, "list autocomplete"). The list
- * opens as the box is entered — by the pointer or the keyboard — and as it is
- * typed into, and Down opens it again once it has been closed. Up and Down walk
- * it, wrapping, while the caret stays in the box; Enter takes the one walked to
- * and is never the form's submit; Escape closes the list, and a second Escape
- * empties the box. Any other key is the box's own (null).
- */
-export function comboKey(
-  state: ComboState,
-  key: string,
-  count: number,
-): { state: ComboState, choose: boolean } | null {
-  if (key === "ArrowDown" || key === "ArrowUp") {
-    if (!state.open) return { state: { ...state, open: true, active: 0 }, choose: false }
-    if (count === 0) return { state, choose: false }
-    const from = Math.min(Math.max(state.active, 0), count - 1)
-    const by = key === "ArrowDown" ? 1 : -1
-    return { state: { ...state, active: (from + by + count) % count }, choose: false }
-  }
-  if (key === "Enter") return { state, choose: state.open && count > 0 }
-  if (key === "Escape") {
-    if (state.open) return { state: { ...state, open: false }, choose: false }
-    if (state.find !== "") return { state: { ...state, find: "" }, choose: false }
-    return null
-  }
-  return null
 }
 
 /**

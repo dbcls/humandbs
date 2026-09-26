@@ -3,13 +3,13 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { BRANCH_STATUSES } from "~/admin/listing"
+import { APPLICATION_TYPES, BRANCH_STATUSES } from "~/admin/listing"
 import type { UpstreamBranchView, UpstreamChoiceView } from "~/admin/templates.server"
 import { messagesFor } from "~/i18n/messages"
 
 import { BranchCreate } from "~/routes/admin-upstream-branch"
 
-import { BranchCells, BranchDatasets, BranchDialog, BranchPairs, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamChoice } from "./upstream"
+import { APPLICATION_TYPE_FLAG, BranchCells, BranchDatasets, BranchDialog, BranchPairs, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamChoice } from "./upstream"
 
 function routed(element: ReactNode): string {
   const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
@@ -29,6 +29,14 @@ describe("枝番の一覧のポータル側の判定", () => {
       expect(html).toContain(t.branchStatuses[branchStatus])
       expect(html).toContain("aria-hidden=\"true\"")
     }
+  })
+})
+
+describe("申請の種類", () => {
+  it("新規とデータ更新はアイコンだけでも見分けられ、枝番の状態のアイコンとも重ならない", () => {
+    const flags = APPLICATION_TYPES.map((applicationType) => APPLICATION_TYPE_FLAG[applicationType])
+    expect(new Set(flags).size).toBe(APPLICATION_TYPES.length)
+    for (const flag of flags) expect(Object.values(BRANCH_STATUS_FLAG)).not.toContain(flag)
   })
 })
 

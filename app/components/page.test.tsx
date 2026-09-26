@@ -44,9 +44,9 @@ describe("a rendered value", () => {
   })
 
   it("shows a settled 'no such value' rather than an empty space, as N/A with the words in full on pointing at it", () => {
-    expect(render({ state: "not-applicable" })).toBe("<abbr title=\"該当なし\" class=\"font-mono text-ink-muted\">N/A</abbr>")
+    expect(render({ state: "not-applicable" })).toBe("<abbr title=\"該当なし\" class=\"text-ink-muted no-underline\">N/A</abbr>")
     expect(renderToStaticMarkup(<Value field={{ state: "not-applicable" }} locale="en" />))
-      .toBe("<abbr title=\"Not applicable\" class=\"font-mono text-ink-muted\">N/A</abbr>")
+      .toBe("<abbr title=\"Not applicable\" class=\"text-ink-muted no-underline\">N/A</abbr>")
   })
 
   it("asks for an unsettled value with a large red badge: dashed, tinted, a question glyph", () => {

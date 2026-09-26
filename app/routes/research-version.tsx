@@ -2,6 +2,7 @@ import { ResearchVersionPage } from "~/components/research"
 import { readFilePage, readFileRows } from "~/files/listing.server"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
+import { fileOrigin } from "~/public/file-lists.server"
 import { researchPage } from "~/public/pages.server"
 import { parseVersionSegment, readLocale } from "~/public/urls"
 
@@ -16,7 +17,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const filePage = readFilePage(new URL(request.url))
   const fileRows = readFileRows(new URL(request.url))
   const view = await researchPage({ locale, humId: params.humId, wanted, filePage, fileRows })
-  return { locale, view }
+  return { locale, view, origin: fileOrigin() }
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -26,5 +27,5 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function ResearchVersion({ loaderData }: Route.ComponentProps) {
-  return <ResearchVersionPage view={loaderData.view} locale={loaderData.locale} numbered />
+  return <ResearchVersionPage view={loaderData.view} locale={loaderData.locale} origin={loaderData.origin} numbered />
 }

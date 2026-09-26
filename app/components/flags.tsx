@@ -63,6 +63,10 @@ export const FLAG = {
   unknown: { tone: "muted", icon: "help-circle" },
   /** The notation a field reads what is typed as. */
   notation: { tone: "muted", icon: "type" },
+  /** A J-DS application registering data for the first time. */
+  newApplication: { tone: "muted", icon: "file-plus" },
+  /** A J-DS application updating data already registered. */
+  updateApplication: { tone: "muted", icon: "file-pen" },
 } as const satisfies Record<string, { tone: Tone, icon: IconName }>
 
 export type FlagKind = keyof typeof FLAG

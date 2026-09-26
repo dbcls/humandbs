@@ -5,7 +5,8 @@ import { SearchExamples, SearchForm } from "~/components/search"
 import { ActionButton, ActionRow, NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
-import { findDocument, newsList } from "~/public/site.server"
+import { renderMarkdown } from "~/public/markdown.server"
+import { newsList } from "~/public/site.server"
 import { href, newsPath, readLocale } from "~/public/urls"
 
 import type { Route } from "./+types/home"
@@ -13,10 +14,10 @@ import type { Route } from "./+types/home"
 const LATEST_NEWS = 5
 
 /**
- * The front page is a screen, but its introduction is prose the office writes,
- * so it comes from the `home` document — the screen supplies the frame and the
- * document supplies the words. A missing or unpublished introduction leaves the
- * frame standing rather than turning the front page into a 404.
+ * The front page is a screen, and its introduction is part of it: a few
+ * paragraphs that change as seldom as the rest of the screen, held in the
+ * dictionary as markdown the way the provision and use screens hold theirs. A
+ * document would be a second page with the same words (`/home`).
  *
  * The search box sits here and in the two listings, and nowhere else. Those are
  * the places a reader starts from, and a box in the header would have to be
@@ -24,10 +25,8 @@ const LATEST_NEWS = 5
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = readLocale(new URL(request.url).pathname).locale
-  const [intro, news] = await Promise.all([
-    findDocument("home", locale),
-    newsList(locale, 1, LATEST_NEWS),
-  ])
+  const news = await newsList(locale, 1, LATEST_NEWS)
+  const intro = renderMarkdown(messagesFor(locale).home.intro.join("\n\n"), locale)
   return { locale, intro, news: news.items }
 }
 
@@ -51,12 +50,10 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       <div className="grid items-start gap-6 lg:grid-cols-[2fr_1fr]">
         <Card under={false}>
           <Stack gap="block">
-            {intro !== null && (
-              <Stack gap="normal">
-                <Heading title={intro.title} />
-                <Markdown html={intro.html} />
-              </Stack>
-            )}
+            <Stack gap="normal">
+              <Heading title={messages.home.heading} />
+              <Markdown html={intro} />
+            </Stack>
 
             <Stack gap="normal">
               <SearchForm locale={locale} target="research" keyword="" query="" size="large" />

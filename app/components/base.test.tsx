@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, IconButton, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -493,5 +493,29 @@ describe("copyText", () => {
     })
     await expect(copyText("x", given)).resolves.toBe("shown")
     expect(calls).toEqual(["show:x"])
+  })
+})
+
+describe("the foot of a panel", () => {
+  const panel = (status?: React.ReactNode) => render(
+    <Dialog
+      title="値の編集"
+      held={{ open: true, close: () => { /* shut from outside */ } }}
+      action={() => <button type="submit">保存</button>}
+      status={status}
+    >
+      <p>fields</p>
+    </Dialog>,
+  )
+
+  it("shows what the save is doing at its left, before the buttons, so they end at the panel's right edge", () => {
+    const html = panel(<span>STATUS</span>)
+    const foot = html.slice(html.indexOf("justify-end"))
+    expect(foot).toMatch(/^justify-end[^"]*"><span class="mr-auto"><span>STATUS<\/span><\/span><button[^>]*>キャンセル<\/button><button type="submit">保存<\/button>/)
+  })
+
+  it("has nothing before the buttons where there is nothing to say", () => {
+    const html = panel()
+    expect(html).not.toContain("mr-auto")
   })
 })

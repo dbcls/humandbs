@@ -13,7 +13,8 @@
  * loaded data.
  *
  * A publication is corrected by its title (`PublicationEdit`): a DOI the old
- * pages left out is filled in, and a paper listed twice is listed once.
+ * pages left out is filled in, and a paper listed twice is listed once. A
+ * grant listed twice is listed once the same way (`GrantEdit`).
  */
 
 export interface TextEdit {
@@ -149,5 +150,80 @@ export function assertPublicationEditsApplied(edits: readonly PublicationEdit[],
   const unlanded = edits.filter((edit) => !applied.has(edit))
   if (unlanded.length > 0) {
     throw new Error(`publication edits that found nothing:\n${unlanded.map((edit) => `${edit.hum} "${edit.title}"`).join("\n")}`)
+  }
+}
+
+/**
+ * A correction to the grants of one research, found by a title as it is
+ * stored, in either language. `repeated` lists the grant once, keeping the
+ * first entry with the title and dropping the later ones. **A later entry
+ * holding a value the first does not stops the load**, since dropping it
+ * would lose that value. `grantIds` then writes the numbers of the entries
+ * with the title anew: a number the article put on another grant's row.
+ */
+export interface GrantEdit {
+  hum: string
+  title: string
+  repeated?: boolean
+  grantIds?: string[]
+}
+
+interface GrantEntry {
+  id: string
+  title: { ja: { state: string, value?: unknown }, en: { state: string, value?: unknown } }
+  grantIds?: { state: string, value?: unknown }
+}
+
+const isEmpty = (value: unknown) => value === "" || (Array.isArray(value) && value.length === 0)
+
+/** Whether `later` holds a value, other than its id, that `first` does not. */
+function holdsMore(later: unknown, first: unknown): boolean {
+  if (typeof later !== "object" || later === null) return false
+  const node = later as Record<string, unknown>
+  if (typeof node.state === "string") {
+    if (node.state !== "value" || isEmpty(node.value)) return false
+    const other = first as { state?: unknown, value?: unknown } | undefined
+    return other?.state !== "value" || JSON.stringify(other.value) !== JSON.stringify(node.value)
+  }
+  const counterpart = (typeof first === "object" && first !== null ? first : {}) as Record<string, unknown>
+  return Object.entries(node).some(([key, value]) => key !== "id" && holdsMore(value, counterpart[key]))
+}
+
+/** The grants of one research's content with its edits made, adding each edit that found its title to `applied`. */
+export function editGrants<T extends object>(
+  content: T,
+  hum: string,
+  edits: readonly GrantEdit[],
+  applied: Set<GrantEdit>,
+): T {
+  const listed = (content as { grants?: GrantEntry[] }).grants
+  if (listed === undefined) return content
+  let grants = listed
+  for (const edit of edits) {
+    if (edit.hum !== hum) continue
+    const titled = (one: GrantEntry) => one.title.ja.value === edit.title || one.title.en.value === edit.title
+    const [first, ...later] = grants.filter(titled)
+    if (first === undefined) continue
+    applied.add(edit)
+    if (edit.repeated === true) {
+      const lossy = later.find((one) => holdsMore(one, first))
+      if (lossy !== undefined) {
+        throw new Error(`${hum} grant "${edit.title}": ${lossy.id} holds a value that ${first.id} does not`)
+      }
+      if (later.length > 0) grants = grants.filter((one) => !later.includes(one))
+    }
+    const { grantIds } = edit
+    if (grantIds !== undefined) {
+      grants = grants.map((one) => (titled(one) ? { ...one, grantIds: { state: "value", value: grantIds } } : one))
+    }
+  }
+  return grants === listed ? content : { ...content, grants }
+}
+
+/** Stops the load if a grant edit found its title nowhere. */
+export function assertGrantEditsApplied(edits: readonly GrantEdit[], applied: ReadonlySet<GrantEdit>): void {
+  const unlanded = edits.filter((edit) => !applied.has(edit))
+  if (unlanded.length > 0) {
+    throw new Error(`grant edits that found nothing:\n${unlanded.map((edit) => `${edit.hum} "${edit.title}"`).join("\n")}`)
   }
 }

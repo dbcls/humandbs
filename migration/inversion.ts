@@ -187,7 +187,11 @@ function lineOwner(
 
   for (const m of line.matchAll(JGA_TOKEN)) {
     const token = jgaToken(m[1] ?? "", m[2] ?? "")
-    if (datasets.has(token)) continue // already an owner from the direct pass above
+    // A long form (`JGAD00000000276`) names the dataset the direct pass could not see.
+    if (datasets.has(token)) {
+      owners.add(token)
+      continue
+    }
     const studyOf = jgasToJgad.get(token)
     if (studyOf === undefined) {
       foreign = true

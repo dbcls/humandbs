@@ -31,7 +31,8 @@ function listed(listing: StoredNode[] | null): StoredNode[] {
   return listing
 }
 
-function origin(): string {
+/** The origin a file's address is written on, in the lists and in the pages' copies of it. */
+export function fileOrigin(): string {
   return publicOrigin(loadConfig(process.env).auth)
 }
 
@@ -43,7 +44,7 @@ export async function researchUrlList(humId: string): Promise<Response> {
   if (latestOf(await publishedVersions(db, resolved.id)) === null) notFound()
 
   const names = listed(await publicListing(resolved.primaryLabel)).map((node) => node.name)
-  return fileUrlListResponse(resolved.primaryLabel, fileUrlList(origin(), resolved.primaryLabel, names))
+  return fileUrlListResponse(resolved.primaryLabel, fileUrlList(fileOrigin(), resolved.primaryLabel, names))
 }
 
 export async function datasetUrlList(datasetId: string): Promise<Response> {
@@ -57,5 +58,5 @@ export async function datasetUrlList(datasetId: string): Promise<Response> {
   // The selection the dataset's page lists: what it names and the prefix holds.
   const files = listed(await publicListing(row.humLabel))
   const names = publicDatasetContent(row.content, { files }, PUBLISHED).fileSelection
-  return fileUrlListResponse(row.label, fileUrlList(origin(), row.humLabel, names))
+  return fileUrlListResponse(row.label, fileUrlList(fileOrigin(), row.humLabel, names))
 }

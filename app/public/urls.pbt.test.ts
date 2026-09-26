@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { LOCALES } from "~/i18n/locale"
 
 import {
+  ddbjSearchEntryUrl,
   href,
   legacyTarget,
   normalizeQuery,
@@ -164,5 +165,22 @@ describe("the query of the address being read", () => {
       const once = normalizeQuery(looseSpelling(pairs))
       expect(normalizeQuery(once)).toBe(once)
     }))
+  })
+})
+
+describe("ddbjSearchEntryUrl", () => {
+  it("keeps whatever follows a known prefix inside the one path segment of the entry", () => {
+    fc.assert(fc.property(
+      fc.constantFrom("JGAD", "DRA", "E-GEAD-", "MTBKS", "PRJDB"),
+      fc.string(),
+      (prefix, rest) => {
+        const url = new URL(ddbjSearchEntryUrl(prefix + rest) ?? "")
+        expect(url.origin).toBe("https://ddbj.nig.ac.jp")
+        // `/search/entry/{resource}/{accession}/`
+        const segments = url.pathname.split("/")
+        expect(segments).toHaveLength(6)
+        expect(decodeURIComponent(segments[4] ?? "")).toBe(prefix + rest)
+      },
+    ))
   })
 })

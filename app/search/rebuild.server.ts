@@ -46,6 +46,7 @@ import type { Executor } from "~/db/client.server"
 import {
   accessionDate,
   contentKey,
+  humAccession,
   labelPin,
   research,
   researchVersion,
@@ -305,6 +306,18 @@ export async function rebuildSearchDocs(
       .map((row) => [row.accession, { datePublished: row.datePublished, dateModified: row.dateModified }]),
   )
 
+  // The JGA study a dataset sits under, as its page shows it under "JGA Study"
+  // (`queries.server.ts` の `publishedDataset`): text on the page, so text in
+  // the index, and a reader who has the study's accession looks by it. It is
+  // the same cache as the dates, refreshed the same way.
+  const studyOf = new Map(
+    (await db
+      .select({ accession: humAccession.accession, study: humAccession.study })
+      .from(humAccession)
+      .where(isNotNull(humAccession.study)))
+      .flatMap((row) => row.study === null ? [] : [[row.accession, row.study] as const]),
+  )
+
   const terms = await db
     .select({
       id: vocabularyTerm.id,
@@ -378,8 +391,14 @@ export async function rebuildSearchDocs(
       { files: [], archive: archiveDates.get(label) ?? null },
       PUBLISHED,
     )
+    const study = studyOf.get(label)
     const text = concatSearchText([
-      searchTextOf(projected.content, [humLabel, label, ...secondaryOf.get(row.id) ?? []]),
+      searchTextOf(projected.content, [
+        humLabel,
+        label,
+        ...secondaryOf.get(row.id) ?? [],
+        ...study === undefined ? [] : [study],
+      ]),
       // The labels of what the projection kept. A shown vocabulary value is
       // text on the page, so it has to be text in the index.
       termsSearchText(chosenTerms(projected.content).flatMap((id) => {

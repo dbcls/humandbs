@@ -16,11 +16,16 @@
  * keeps the question in it. Nothing is lost, because the comment has the
  * words as they were.
  *
- * **A question that asks no more than "please tell us" leaves no comment.** The
- * preview already shows an unsettled slot as a red `ご教示ください`, so the
- * comment would repeat it. A list of IDs with a state (grant numbers) is
- * unsettled as a whole; one without (the IDs typed for a publication) has the
- * question taken out and always left as a comment.
+ * **A question that asks for no more than the value leaves no comment**:
+ * `ご教示ください (英語名)`, `プロジェクト名等ありましたらご教示ください`,
+ * `発番されましたらご教示ください`. The preview already shows an unsettled slot as a
+ * red `ご教示ください`, so the comment would repeat it. A question about some
+ * particular of the value, or one holding part of it
+ * (`HeLa （購入情報をご教示ください）`), is kept.
+ *
+ * A list of IDs with a state (grant numbers) is unsettled as a whole; one
+ * without (the IDs typed for a publication) has the question taken out and
+ * always left as a comment.
  */
 
 import type { CommentAnchor, NumberValue, RichText, Slot } from "~/content/types"
@@ -28,8 +33,17 @@ import type { CommentAnchor, NumberValue, RichText, Slot } from "~/content/types
 /** The phrasings curators asked in. Each is a request, never a data value. */
 const REQUEST = /ご教示|お知らせください|ご確認|でしょうか|ますか[？?]|お願いします|ご記入/
 
-/** A request that mentions nothing beyond itself. */
-const BARE_REQUEST = /^ご教示(?:ください|下さい)。?$/
+/**
+ * A request for the value and nothing more: the form's own wording, with the
+ * value named only as what the slot holds (a project's name, its English
+ * name, a DOI once issued).
+ */
+const VALUE_REQUEST = new RegExp(
+  "^(?:\\\\?-)?"
+  + "(?:(?:プロジェクト名(?:等|など)?|プロジェクト名や(?:プロジェクトに)?関連する(?:英語の)?(?:HP|サイト)(?:など|等)?|追加)が?ありましたら"
+  + "|発番されましたら|出版社よりお知らせがあり次第|ご所属を)?"
+  + "ご教示(?:ください|下さい)\\s*(?:[(（](?:英語名|英語|英文|英語版|英語タイトル)[)）])?。?$",
+)
 
 export function isRequest(text: string): boolean {
   return REQUEST.test(text)
@@ -179,7 +193,7 @@ export function settleRequests<T>(content: T): { content: T, asked: Asked[] } {
 /** The words of a question, once when both languages asked the same. */
 function bodyOf(one: Asked): string | null {
   const said = [one.ja, one.en, one.text].filter((words): words is string => words !== undefined)
-  if (one.unmarked !== true && said.every((words) => BARE_REQUEST.test(words.trim()))) return null
+  if (one.unmarked !== true && said.every((words) => VALUE_REQUEST.test(words.trim()))) return null
   if (one.ja !== undefined && one.en !== undefined && one.ja !== one.en) return `日本語: ${one.ja}\n英語: ${one.en}`
   return said[0] ?? null
 }

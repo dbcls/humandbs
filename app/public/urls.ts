@@ -20,6 +20,7 @@
 
 import { DEFAULT_LOCALE, isLocale, type Locale } from "~/i18n/locale"
 import type { ListingSize } from "~/search/page-size"
+import { archiveResourceOf } from "~/upstream/archive"
 
 /** Every locale except the default one is addressed under its own prefix. */
 export function localePrefix(locale: Locale): string {
@@ -248,8 +249,24 @@ export function exportPath(target: "research" | "dataset"): string {
  * accessions the portal ever holds of it.
  */
 export function jgaEntryUrl(accession: string): string {
-  const kind = accession.startsWith("JGAS") ? "jga-study" : "jga-dataset"
-  return `https://ddbj.nig.ac.jp/search/entry/${kind}/${encodeURIComponent(accession)}/`
+  return ddbjSearchEntry(accession.startsWith("JGAS") ? "jga-study" : "jga-dataset", accession)
+}
+
+/**
+ * Where DDBJ Search describes a dataset, or null for one it does not hold.
+ *
+ * **The resource is the one the dates are read from** (`archive.ts`), so a
+ * dataset whose dates come from DDBJ Search links to the same entry. The
+ * portal's own ids (`NHA…`) are registered nowhere else and have none.
+ */
+export function ddbjSearchEntryUrl(accession: string): string | null {
+  if (accession.startsWith("JGAD")) return ddbjSearchEntry("jga-dataset", accession)
+  const resource = archiveResourceOf(accession)
+  return resource === null ? null : ddbjSearchEntry(resource, accession)
+}
+
+function ddbjSearchEntry(resource: string, accession: string): string {
+  return `https://ddbj.nig.ac.jp/search/entry/${resource}/${encodeURIComponent(accession)}/`
 }
 
 /**

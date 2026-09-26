@@ -24,10 +24,10 @@ import {
   Stack,
 } from "~/components/base"
 import { Checkbox } from "~/components/form"
-import { Flag, KindIcon } from "~/components/flags"
+import { Flag, KindIcon, Stated } from "~/components/flags"
 import { Card, IdWithIcon, Page, Paging, Table, Td } from "~/components/page"
 import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { BranchCells, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamNotConnected } from "~/components/upstream"
+import { APPLICATION_TYPE_FLAG, BranchCells, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
@@ -144,7 +144,9 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                               {row.applicationId}
                             </Link>
                           </Td>
-                          <Td nowrap floor="min-w-0">{t.applicationTypes[row.applicationType]}</Td>
+                          <Td nowrap floor="min-w-0">
+                            <Stated kind={APPLICATION_TYPE_FLAG[row.applicationType]}>{t.applicationTypes[row.applicationType]}</Stated>
+                          </Td>
                           <Td nowrap>
                             {/* **The label, and a link into the research when
                                 the portal holds one.** Whether it does is said
@@ -239,6 +241,7 @@ function Filters({ view, locale }: ViewProps) {
               <Checkbox
                 key={applicationType}
                 label={t.applicationTypes[applicationType]}
+                icon={<KindIcon kind={APPLICATION_TYPE_FLAG[applicationType]} />}
                 name="type"
                 value={applicationType}
                 checked={view.applicationTypes.includes(applicationType)}

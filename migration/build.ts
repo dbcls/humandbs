@@ -304,22 +304,88 @@ type Language = (typeof LANGUAGES)[number]
 
 const LINE_PART = "\u0000"
 
+/**
+ * A line's words as two copies of one row compare. A number cell is read from
+ * v1's text and a sibling's own lines through the article's
+ * (`JGAD000976: 47.9 GB(fastq)` and `JGAD000976：47.9 GB（fastq）`), so the
+ * widths of brackets and colons, and the spaces, do not tell them apart.
+ */
+const comparable = (said: string) => said.normalize("NFKC").replace(/\s+/g, "")
+
 function lineKey(label: string, sourceKey: string, lang: Language, said: string): string {
-  return [label, sourceKey, lang, said].join(LINE_PART)
+  return [label, sourceKey, lang, comparable(said)].join(LINE_PART)
 }
 
-/** What a line states, and the datasets its label names, if any. */
-function readLine(line: string, labels: ReadonlySet<string>): {
+const BRACKETED = /[（(]([^)）]*)[)）]/g
+
+/**
+ * A line that opens with what it is about in lenticular brackets
+ * (`【JGAS000586】13症例：腫瘍組織`), or in the square ones the English page
+ * writes them as (`[JGAS000586] 13 cases: tumor`) — not a link.
+ */
+const HEADED = /^\s*(?:【([^】]*)】|\[([^\]]*)\](?!\())(.*)$/
+
+/** JGAS to the JGAD registered under it (`inversion.ts` の `jgadsByStudy`). */
+export type Studies = ReadonlyMap<string, readonly string[]>
+
+const NO_STUDIES: Studies = new Map()
+
+/**
+ * What a line states, and the datasets it is about, if any. The label before
+ * the colon names them itself (`JGAD000001(追加)`), in the brackets after a
+ * caption (`大腸がん(JGAD000139)`), or by the study they are registered under
+ * (`JGAS000630：…`); so does a heading in brackets at the start
+ * (`【JGAS000586】…`). **A heading with nothing after it names no dataset
+ * here**: it heads the lines under it, and taking it away alone would leave
+ * them without it.
+ */
+function readLine(line: string, labels: ReadonlySet<string>, studies: Studies = NO_STUDIES): {
   said: string
   about: string[]
+  /** Named by a heading in brackets or by a study: a line of a list the cell is made of (`staying`). */
+  headed: boolean
 } {
+  const headed = HEADED.exec(line)
+  if (headed !== null) {
+    const said = (headed[3] ?? "").trim()
+    const { about } = namedIn(headed[1] ?? headed[2] ?? "", labels, studies)
+    if (said !== "" && about.length > 0) return { said, about, headed: true }
+  }
   const at = topLevelColon(line)
-  if (at === -1) return { said: line.trim(), about: [] }
-  const about = line.slice(0, at)
-    .split(/[、,/／・]|および/)
-    .map((part) => part.replace(/[（(][^)）]*[)）]/g, "").trim())
-    .filter((part) => labels.has(part))
-  return { said: line.slice(at + 1).trim(), about }
+  if (at === -1) return { said: line.trim(), about: [], headed: false }
+  const label = line.slice(0, at)
+  const direct = namedIn(label.replace(BRACKETED, ""), labels, studies)
+  // A link's address is in brackets too, and names nothing.
+  const inBrackets = [...label.matchAll(BRACKETED)]
+    .map((match) => (match[1]?.includes("://") ? { about: [], byStudy: false, byLabel: false } : namedIn(match[1] ?? "", labels, studies)))
+  const found = direct.about.length > 0
+    ? direct
+    : {
+        about: inBrackets.flatMap((one) => one.about),
+        byStudy: inBrackets.some((one) => one.byStudy),
+        byLabel: inBrackets.some((one) => one.byLabel),
+      }
+  // A label naming a dataset directly is read as it always was; one naming only a study is a heading.
+  return { said: line.slice(at + 1).trim(), about: found.about, headed: found.byStudy && !found.byLabel }
+}
+
+/** The datasets a label or heading names, directly or by the study they are registered under. */
+function namedIn(text: string, labels: ReadonlySet<string>, studies: Studies): { about: string[], byStudy: boolean, byLabel: boolean } {
+  const about: string[] = []
+  let byStudy = false
+  let byLabel = false
+  for (const part of text.split(/[、,/／・]|および/)) {
+    const label = citedLabel(part.trim())
+    if (labels.has(label)) {
+      about.push(label)
+      byLabel = true
+      continue
+    }
+    const registered = (studies.get(label) ?? []).filter((one) => labels.has(one))
+    if (registered.length > 0) byStudy = true
+    about.push(...registered)
+  }
+  return { about, byStudy, byLabel }
 }
 
 /**
@@ -353,6 +419,7 @@ export function ownLines(
   datasets: readonly PublishedDataset[],
   read?: ProseReader,
   readFor?: (dataset: PublishedDataset) => ProseReader,
+  studies?: Studies,
 ): ReadonlySet<string> {
   const labels = new Set(datasets.map((one) => one.label))
   const keys = new Set<string>()
@@ -362,7 +429,7 @@ export function ownLines(
       for (const [sourceKey, value] of Object.entries(experiment.data ?? {})) {
         for (const lang of LANGUAGES) {
           for (const line of plainLines(value[lang], lang, reader)) {
-            const { said, about } = readLine(line, labels)
+            const { said, about } = readLine(line, labels, studies)
             if (about.includes(one.label)) keys.add(lineKey(one.label, sourceKey, lang, said))
           }
         }
@@ -390,6 +457,8 @@ export interface DatasetContentInput {
   datasetLabels: ReadonlySet<string>
   /** What each dataset states about itself (`ownLines`). */
   ownLines: ReadonlySet<string>
+  /** The studies a line may name its datasets by, the same as `ownLines` was given. */
+  studies?: Studies
   /**
    * Where the lines no rule could read are collected. **They are not dropped
    * quietly**: a cell that states something this cannot hold as a number is work
@@ -451,31 +520,45 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   const doc = dataset.doc
   const translations = input.labelTranslations ?? new Map()
 
-  /** Whether a line of a cell stays, or is about another dataset (`ownLines`). */
-  const stays = (sourceKey: string, lang: Language, line: string): boolean => {
-    const { said, about } = readLine(line, input.datasetLabels)
-    if (about.length === 0 || about.includes(dataset.label)) return true
-    // Only where every dataset it identifies has the same line itself. Anything
-    // else is the one copy of that value, wherever it happens to sit.
-    return !about.every((label) => input.ownLines.has(lineKey(label, sourceKey, lang, said)))
+  /**
+   * Which lines of a cell stay. A line about other datasets goes where every
+   * one of them has the same line itself (`ownLines`); anything else is the one
+   * copy of that value, wherever it happens to sit.
+   *
+   * **A heading divides a cell only where the cell is a list of headed lines**:
+   * every line after the first heading is one, and one of them is this
+   * dataset's own. A heading with lines under it, a caption over a later group,
+   * a note after a heading — each would be left behind without the line it
+   * belongs to, so such a cell keeps its headed lines whole.
+   */
+  const staying = (sourceKey: string, lang: Language, lines: readonly string[]): boolean[] => {
+    const read = lines.map((line) => readLine(line, input.datasetLabels, input.studies))
+    const stays = read.map(({ said, about }) => about.length === 0 || about.includes(dataset.label)
+      || !about.every((label) => input.ownLines.has(lineKey(label, sourceKey, lang, said))))
+    const first = read.findIndex((one) => one.headed)
+    if (first === -1) return stays
+    const listed = lines.every((line, at) => at < first || line.trim() === "" || read[at]?.headed === true)
+    const own = read.some((one) => one.headed && one.about.includes(dataset.label))
+    return listed && own ? stays : stays.map((stay, at) => stay || read[at]?.headed === true)
   }
 
   /** A cell with the lines about other datasets taken out. */
   const kept = (sourceKey: string, lang: Language, text: string): string => {
     const lines = text.split("\n")
-    const staying = lines.filter((line) => stays(sourceKey, lang, line))
-    return staying.length === lines.length ? text : staying.join("\n")
+    const mask = staying(sourceKey, lang, lines)
+    return mask.every(Boolean) ? text : lines.filter((_, at) => mask[at]).join("\n")
   }
 
   /** The same, for a cell read as prose by the load's reader. */
   const keptProse = (sourceKey: string, lang: Language, value: EsRichText | null | undefined): RichText => {
     if (input.readProse === undefined) return richTextFromMarkdown(kept(sourceKey, lang, value?.text ?? ""))
-    const staying = input.readProse(value, lang)
-      .filter((line) => stays(sourceKey, lang, line.map((span) => span.text).join("")))
+    const lines = input.readProse(value, lang)
+    const mask = staying(sourceKey, lang, lines.map((line) => line.map((span) => span.text).join("")))
+    const remaining = lines.filter((_, at) => mask[at])
     // A dropped line can leave two paragraph breaks side by side, or one at an
     // edge; neither means anything.
     const joined: RichText = []
-    for (const line of staying) {
+    for (const line of remaining) {
       if (line.length > 0 || (joined.at(-1)?.length ?? 0) > 0) joined.push(line)
     }
     if (joined.at(-1)?.length === 0) joined.pop()
@@ -605,7 +688,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           // A row labelled with the dataset it is already filed under adds
           // nothing: the label existed to tell sibling rows apart, and those
           // have gone to the datasets they were about (`ownLines`).
-          const one = raw.label === dataset.label ? { ...raw, label: null } : raw
+          const one = raw.label !== null && citedLabel(raw.label) === dataset.label ? { ...raw, label: null } : raw
           if (canonical === null) return [storedNumber(one, one.value, one.unit, one.high, translations)]
           const converted = one.unit === canonical ? one.value : convert(one.value, one.unit, canonical)
           // A number in a sibling key's unit is that key's to store: a depth

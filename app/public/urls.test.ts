@@ -4,6 +4,7 @@ import {
   applicationUrl,
   askedPath,
   datasetPath,
+  ddbjSearchEntryUrl,
   href,
   legacyTarget,
   normalizeQuery,
@@ -196,5 +197,23 @@ describe("applicationUrl", () => {
   it("asks the application system for English on an English page and for nothing on a Japanese one", () => {
     expect(applicationUrl("en")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/?lang=en")
     expect(applicationUrl("ja")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/")
+  })
+})
+
+describe("ddbjSearchEntryUrl", () => {
+  it("leads a dataset of each archive to its entry in the resource its dates are read from", () => {
+    expect(ddbjSearchEntryUrl("JGAD000461")).toBe("https://ddbj.nig.ac.jp/search/entry/jga-dataset/JGAD000461/")
+    expect(ddbjSearchEntryUrl("DRA000908")).toBe("https://ddbj.nig.ac.jp/search/entry/sra-submission/DRA000908/")
+    expect(ddbjSearchEntryUrl("E-GEAD-1107")).toBe("https://ddbj.nig.ac.jp/search/entry/gea/E-GEAD-1107/")
+    expect(ddbjSearchEntryUrl("MTBKS213")).toBe("https://ddbj.nig.ac.jp/search/entry/metabobank/MTBKS213/")
+    expect(ddbjSearchEntryUrl("PRJDB10000")).toBe("https://ddbj.nig.ac.jp/search/entry/bioproject/PRJDB10000/")
+  })
+
+  it("has no entry for the portal's own ids, a label not pinned yet, or a prefix it does not know", () => {
+    expect(ddbjSearchEntryUrl("NHA000061")).toBeNull()
+    expect(ddbjSearchEntryUrl("")).toBeNull()
+    expect(ddbjSearchEntryUrl("hum0014.v1.freq.v1")).toBeNull()
+    expect(ddbjSearchEntryUrl("jgad000461")).toBeNull()
+    expect(ddbjSearchEntryUrl("E-GEOD-1")).toBeNull()
   })
 })

@@ -17,7 +17,7 @@ import {
 } from "~/public/urls"
 import type { DatasetRowView, FieldView, ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
 
-import { Downloads } from "./files"
+import { Downloads, UrlListLink, type PublicFileUrls } from "./files"
 import {
   AccessTypeBadge,
   Card,
@@ -61,9 +61,11 @@ const UNRESTRICTED_ACCESS = "unrestricted-access"
  * articles put them in cannot be recovered, so a version lists its datasets and
  * each dataset describes its own.
  */
-export function ResearchVersionPage({ view, locale, numbered = false }: {
+export function ResearchVersionPage({ view, locale, origin, numbered = false }: {
   view: ResearchView
   locale: Locale
+  /** The site's public origin, which a file's copied address is written on. */
+  origin: string
   /** Whether the address names the version (`/research/{humId}/v{n}`). */
   numbered?: boolean
 }) {
@@ -124,7 +126,7 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
             )}
       </PageHeader>
 
-      <Card><ResearchBody view={view} locale={locale} cart urlList={researchFileListPath(view.humLabel)} /></Card>
+      <Card><ResearchBody view={view} locale={locale} cart fileUrls={{ list: researchFileListPath(view.humLabel), origin }} /></Card>
     </Page>
   )
 }
@@ -141,7 +143,7 @@ export function ResearchVersionPage({ view, locale, numbered = false }: {
  * `datasetHref` exists because a draft's datasets may have no id pinned yet:
  * a preview addresses them by identity, the public page by label.
  */
-export function ResearchBody({ view, locale, datasetHref, releaseNote = false, cart = false, writtenOnly = false, urlList }: {
+export function ResearchBody({ view, locale, datasetHref, releaseNote = false, cart = false, writtenOnly = false, fileUrls }: {
   view: ResearchView
   locale: Locale
   datasetHref?: (ref: { id: string | null, label: string }) => string | null
@@ -167,11 +169,8 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
    * what the provider is being asked to check.
    */
   releaseNote?: boolean
-  /**
-   * Where the addresses of the research's public files are listed. The
-   * published page has one; a preview's files are not public yet.
-   */
-  urlList?: string
+  /** Where the research's public files are fetched from. The published page has them. */
+  fileUrls?: PublicFileUrls
 }) {
   const messages = messagesFor(locale)
   const t = messages.research
@@ -249,7 +248,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
       )}
 
       {!writtenOnly && view.files.total > 0 && (
-        <Section title={t.downloads}>
+        <Section title={t.downloads} end={fileUrls && <UrlListLink locale={locale} to={fileUrls.list} />}>
           <Downloads
             locale={locale}
             humLabel={view.humLabel === "" ? null : view.humLabel}
@@ -263,7 +262,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
             // Only the query string changes, so the same links work from the
             // published address and from a preview without either being named.
             at={fileListQuery}
-            urlList={urlList}
+            origin={fileUrls?.origin}
             // The datasets are named and led to the way the dataset table above
             // names them — a preview's dataset with no label yet is the same
             // "データセット ID N" in both — and a file none selects has an

@@ -1,3 +1,4 @@
+import { useRef, useState } from "react"
 import { Form, Link } from "react-router"
 
 import {
@@ -21,14 +22,15 @@ import {
   Dialog,
   Heading,
   Note,
+  PANE_LABEL,
   Stack,
 } from "~/components/base"
+import { ComboBox } from "~/components/combobox"
 import {
   Answer,
   Editing,
   Field,
   LanguagePair,
-  Select,
   Submit,
   Unsaved,
 } from "~/components/form"
@@ -232,7 +234,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                     <Field label={t.labelJa} name="labelJa" width="w-full" />
                     <Field label={t.labelEn} name="labelEn" width="w-full" />
                   </LanguagePair>
-                  <DocumentSelect documents={view.documents} value={null} locale={locale} />
+                  {view.linksDocuments && <DocumentPicker documents={view.documents} value={null} locale={locale} />}
                 </Dialog>
               </Form>
             )}
@@ -286,7 +288,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                 ...(set.code === ICD10_SET_CODE ? [t.code] : []),
                 t.labelJa,
                 t.labelEn,
-                t.document,
+                ...(view.linksDocuments ? [t.document] : []),
                 t.usage,
               ]}
               whenEmpty={view.find === "" ? t.noTerm : t.noMatchingTerm}
@@ -301,7 +303,7 @@ export default function AdminFieldTerms({ loaderData, actionData }: Route.Compon
                   mergeFrom={view.mergeFrom}
                   mergeAt={(termId) => at(view, { mergeFrom: termId })}
                   locale={locale}
-                  documents={view.documents}
+                  documents={view.linksDocuments ? view.documents : null}
                 />
               ))}
             </Table>
@@ -370,11 +372,16 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, doc
   /** Where to go to aim a merge from this row. */
   mergeAt: (termId: string) => string
   locale: Locale
-  /** Every document on the site, for naming the one this term's label links to. */
-  documents: readonly TermDocumentOption[]
+  /**
+   * Every document on the site, for naming the one this term's label links to,
+   * or null in a vocabulary whose terms link to nothing (`DOCUMENT_LINKED_VOCABULARY`).
+   */
+  documents: readonly TermDocumentOption[] | null
 }) {
   const t = messagesFor(locale).admin.catalog
-  const linked = term.documentId === null ? null : documents.find((doc) => doc.id === term.documentId) ?? null
+  const linked = term.documentId === null || documents === null
+    ? null
+    : documents.find((doc) => doc.id === term.documentId) ?? null
 
   return (
     <tr>
@@ -389,11 +396,13 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, doc
       {/* **The article the public page links this term's label to.** Read here as
           a link to the article's own screen, so a curator checking what a term
           points at does not have to open the edit panel first. */}
-      <Td floor="min-w-32">
-        {linked === null
-          ? <span className="text-ink-muted">{t.documentNone}</span>
-          : <Link to={href(locale, adminDocumentPath(linked.id))}>{documentLabel(linked)}</Link>}
-      </Td>
+      {documents !== null && (
+        <Td floor="min-w-32">
+          {linked === null
+            ? <span className="text-ink-muted">{t.documentNone}</span>
+            : <Link to={href(locale, adminDocumentPath(linked.id))}>{documentLabel(linked)}</Link>}
+        </Td>
+      )}
       {/* **How many published objects name it**, which is the one thing that
           decides whether it can still be taken away — and the way to see which
           ones they are. **The count goes to the public listing narrowed by this
@@ -456,25 +465,17 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, doc
                       size="row"
                       icon={<Icon name="edit" />}
                       action={() => (
-                        <>
-                          {/* **Not `saves`.** That would disable the button
-                              until `Editing`'s walk of the form finds a
-                              change, and the walk skips hidden fields — which
-                              is where the article chosen travels (`Select`) —
-                              so a save that only changes which article the
-                              term links to would leave the button disabled. */}
-                          <Submit intent="update-term" icon={<Icon name="save" />}>
-                            {t.save}
-                          </Submit>
-                          <Unsaved locale={locale} />
-                        </>
+                        <Submit intent="update-term" icon={<Icon name="save" />} saves>
+                          {t.save}
+                        </Submit>
                       )}
+                      status={<Unsaved locale={locale} />}
                     >
                       <LanguagePair>
                         <Field label={t.labelJa} name="labelJa" value={term.labelJa ?? ""} width="w-full" />
                         <Field label={t.labelEn} name="labelEn" value={term.labelEn} width="w-full" />
                       </LanguagePair>
-                      <DocumentSelect documents={documents} value={term.documentId} locale={locale} />
+                      {documents !== null && <DocumentPicker documents={documents} value={term.documentId} locale={locale} />}
                     </Dialog>
                   </Editing>
                   {/* **Merging is where a used term goes.** It is offered on
@@ -518,24 +519,58 @@ function documentLabel(doc: TermDocumentOption): string {
  * the panel that makes a term and the one that edits it: the choice travels
  * under the same name either way, so the intent alone decides what else is
  * saved with it (`catalog.server.ts` の `documentIdFrom`).
+ *
+ * **Typed into and narrowed** (`ComboBox`): the site has about a hundred
+ * articles, and a policy's is found by what its title holds (`JGAP`, ポリシー).
+ * The box shows the article in force; entering it opens the whole list, and
+ * typing narrows it.
+ *
+ * **The choice is sent in a text field the reader does not see**, not a hidden
+ * one, and set the way a keystroke would be: `Editing` counts what a text field
+ * holds against what it was drawn with, and leaves hidden fields out
+ * (`form.tsx` の `changedIn`), so the save would not know the article changed.
  */
-function DocumentSelect({ documents, value, locale }: {
+function DocumentPicker({ documents, value, locale }: {
   documents: readonly TermDocumentOption[]
   /** The term's current article, or null when creating one with no article yet. */
   value: string | null
   locale: Locale
 }) {
   const t = messagesFor(locale).admin.catalog
+  const words = messagesFor(locale).admin.datasetEditor
+  const sent = useRef<HTMLInputElement>(null)
+  const [find, setFind] = useState("")
+  const choices = [
+    { value: "", label: t.documentNone },
+    ...documents.map((doc) => ({ value: doc.id, label: documentLabel(doc) })),
+  ]
+  const needle = find.trim().toLowerCase()
+  const offered = choices.filter((choice) => choice.label.toLowerCase().includes(needle))
   return (
-    <Select
-      label={t.document}
-      name="documentId"
-      value={value ?? ""}
-      width="w-full"
-      options={[
-        { value: "", label: t.documentNone },
-        ...documents.map((doc) => ({ value: doc.id, label: documentLabel(doc) })),
-      ]}
-    />
+    <div className="flex flex-col gap-2 text-sm">
+      <span className={PANE_LABEL}>{t.document}</span>
+      <input ref={sent} type="text" name="documentId" defaultValue={value ?? ""} hidden />
+      <ComboBox
+        label={t.document}
+        placeholder={t.documentFind}
+        options={offered}
+        keyOf={(choice) => choice.value}
+        render={(choice) => <span>{choice.label}</span>}
+        empty={t.documentNoMatch}
+        words={{ searching: words.searching, count: words.candidateCount }}
+        // Entering the box shows every article; only what is typed narrows.
+        onQuery={(typedNow, typed) => { setFind(typed ? typedNow : "") }}
+        onChoose={(choice) => {
+          const field = sent.current
+          if (field !== null) {
+            field.value = choice.value
+            field.dispatchEvent(new Event("input", { bubbles: true }))
+          }
+          setFind("")
+        }}
+        kept={(choice) => choice.label}
+        initial={choices.find((choice) => choice.value === (value ?? ""))?.label ?? ""}
+      />
+    </div>
   )
 }

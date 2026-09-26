@@ -107,6 +107,14 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
     remember: `news:${id}`,
     editors,
     result: actionData,
+    // A language is on the public side once it is published and its date has come.
+    publicPages: (
+      <PublicPageButtons
+        locale={locale}
+        path={newsItemPath(id)}
+        closed={{ ja: closedReason("ja"), en: closedReason("en") }}
+      />
+    ),
     dated: publishedAt === null ? null : dayOf(publishedAt),
     publishing: { dated: publishedAt !== null, ahead: scheduled },
   })
@@ -126,12 +134,6 @@ export default function AdminContentsNewsItem({ loaderData, actionData }: Route.
           back={{ to: href(locale, adminNewsListPath()), label: t.news.backToList, icon: "chevron-left" }}
           headExtra={(
             <>
-              {/* A language is on the public side once it is published and its date has come. */}
-              <PublicPageButtons
-                locale={locale}
-                path={newsItemPath(id)}
-                closed={{ ja: closedReason("ja"), en: closedReason("en") }}
-              />
               {/* **What takes the whole announcement away is shown beside its
                   name**, next to the back link, rather than among the languages:
                   an announcement is made before anything is written into it,
