@@ -55,9 +55,11 @@ export interface RecoverContext {
    * text, given as the leaf's folded plain text (`research-pages.ts`). A leaf
    * with such a cell is built from it: `text` is what v1 rewrote, and `rawHtml`
    * a copy that has at times lost the cell's paragraphs. Absent, or finding
-   * none, the leaf is read from `rawHtml` and `text` as below.
+   * none, the leaf is read from `rawHtml` and `text` as below. `links` are the
+   * addresses of the links in v1's text, which tell apart cells with the same
+   * words (a dataset ID in the data ID table and in the experiment's table).
    */
-  pageCell?: (plain: string, lang: Lang) => Element | null
+  pageCell?: (plain: string, lang: Lang, links: readonly string[]) => Element | null
   /**
    * The stretch of the old portal's research page or release note page with
    * the words of a leaf's text, given as the leaf's folded plain text
@@ -143,11 +145,13 @@ function unescapeMarkdown(value: string): string {
 // eslint-disable-next-line no-control-regex -- the corruption this repairs is itself a pair of control characters
 const CORRUPTED_UNDERSCORE = /\u0005[0-9]+\u0006/g
 
+const MARKDOWN_LINK = /(?<!\\)\[([^\]]*)\]\(([^)]*)\)/g
+
 /** Folds v1's markdown `text` down to plain content, the way v1's own round-trip check did. */
 function plainOfMarkdown(markdown: string, lang: Lang): string {
   let t = markdown
     .replace(CORRUPTED_UNDERSCORE, "_")
-    .replace(/(?<!\\)\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(MARKDOWN_LINK, "$1")
     .replace(/<\/?(?:sup|sub)>/g, "")
     .replace(/^\s*-\s+/gm, "")
     .replace(/\*\*/g, "")
@@ -542,6 +546,11 @@ function withSource(built: Built, source: "rawHtml" | "split" | "page"): Recover
     : { value: built.value, source, note: built.note }
 }
 
+/** The addresses of the links in v1's markdown `text`, as written. */
+function linksOfMarkdown(markdown: string): string[] {
+  return [...markdown.matchAll(MARKDOWN_LINK)].map((match) => match[2] ?? "")
+}
+
 /* -------------------------------------------------------------------- */
 /* Entry point                                                           */
 /* -------------------------------------------------------------------- */
@@ -560,7 +569,7 @@ function withSource(built: Built, source: "rawHtml" | "split" | "page"): Recover
 export function recoverRichText(input: RecoverInput, ctx: RecoverContext = {}): RecoveredRichText {
   const { text, rawHtml, lang } = input
   const targetPlain = plainOfMarkdown(text, lang)
-  const cell = targetPlain === "" ? null : ctx.pageCell?.(targetPlain, lang) ?? null
+  const cell = targetPlain === "" ? null : ctx.pageCell?.(targetPlain, lang, linksOfMarkdown(text)) ?? null
   if (cell !== null) return withSource(richTextFromCell(cell, ctx), "page")
   const passage = targetPlain === "" ? null : ctx.pagePassage?.(targetPlain, lang) ?? null
   if (passage !== null) return { value: passage, source: "page" }

@@ -201,6 +201,25 @@ export function tableRows(table: Element): Element[][] {
   })
 }
 
+/**
+ * A link's address as v1's text and a page both write it: v1 wrote the
+ * portal's own addresses from the root (`/files/…`, `/en/nbdc-policy`), a page
+ * relative to it (`files/…`), at times with the portal's host.
+ */
+function comparableAddress(href: string): string {
+  let address = href.trim()
+  try {
+    address = decodeURI(address)
+  } catch {
+    // An address with a stray `%` is compared as it is written.
+  }
+  return address
+    .replace(/^https?:\/\/humandbs\.(?:biosciencedbc|dbcls)\.jp/, "")
+    .replace(/^\/+/, "")
+    .replace(/^(?:en|ja)\//, "")
+    .replace(/\/+$/, "")
+}
+
 const squashed = (text: string) => text.replace(/\s+/g, "").toLowerCase()
 const TYPE_OF_DATA_HEADERS = new Set(["内容", "typeofdata"])
 const RELEASE_DATE_HEADERS = new Set(["公開日", "releasedate"])
@@ -227,7 +246,9 @@ interface PageCell {
 
 /**
  * Which page's cell to take when several have the words: the nearest page to
- * the preferred version, on it the cell that gives exactly what v1 stored, then
+ * the preferred version, on it the cell with every link v1's text has (the ID
+ * linked to its file in the experiment's table, not to the page's own anchor
+ * in the data ID table), then the one that gives exactly what v1 stored, then
  * a later page before an earlier and the preferred site's before the other's.
  */
 export interface Preferred {
@@ -239,8 +260,8 @@ export interface Preferred {
 export interface ResearchPages {
   /** The type-of-data cell of the data ID table with the words of `text`, on a page of the research. */
   typeOfData: (humId: string, lang: Lang, text: string, preferred: Preferred) => Element | null
-  /** Any other table cell with the words of `text`, on a page of the research. */
-  tableValue: (humId: string, lang: Lang, text: string, preferred: Preferred) => Element | null
+  /** Any other table cell with the words of `text`, on a page of the research; `links` are the addresses v1's text links. */
+  tableValue: (humId: string, lang: Lang, text: string, preferred: Preferred, links?: readonly string[]) => Element | null
   /**
    * The stretches of the research's pages and release note pages with the
    * words of `text`, as each page shows it: its lines, and its links resolved
@@ -309,13 +330,19 @@ export function researchPages(
     }
   }
 
-  const find = (index: Map<string, PageCell[]>) => (humId: string, lang: Lang, text: string, preferred: Preferred): Element | null => {
+  const find = (index: Map<string, PageCell[]>) => (humId: string, lang: Lang, text: string, preferred: Preferred, links: readonly string[] = []): Element | null => {
     const found = index.get(`${humId}/${lang}/${sameWords(text)}`)
     if (found === undefined) return null
     const stored = asV1Stored(text)
     const distance = (one: PageCell) => preferred.version === null ? 0 : Math.abs(one.version - preferred.version)
+    const wanted = links.map(comparableAddress)
+    const linked = (one: PageCell) => {
+      const held = new Set(elements(one.cell, "a").flatMap((a) => (typeof a.properties.href === "string" ? [comparableAddress(a.properties.href)] : [])))
+      return wanted.every((address) => held.has(address))
+    }
     const ranked = found.toSorted((a, b) =>
       distance(a) - distance(b)
+      || Number(!linked(a)) - Number(!linked(b))
       || Number(a.stored !== stored) - Number(b.stored !== stored)
       || b.version - a.version
       || Number(a.site !== preferred.site) - Number(b.site !== preferred.site))

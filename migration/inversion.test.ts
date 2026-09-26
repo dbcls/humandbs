@@ -180,6 +180,42 @@ describe("a cell that captions each dataset's line", () => {
   })
 })
 
+describe("a link's address", () => {
+  // hum0014: the experiment v1 put under both hum0014.v1.freq.v1 and hum0014.v3.T2DM-1.v1,
+  // whose dictionary is named after the other dataset.
+  const LABELS = ["hum0014.v1.freq.v1", "hum0014.v3.T2DM-1.v1"]
+  const cell = [
+    "[hum0014.v3.T2DM-1.v1](/files/hum0014/hum0014.v3.T2DM-1.v1.xlsx)",
+    "(データのダウンロードは上記Dataset IDをクリックしてください)",
+    "[Dictionary file](/files/hum0014/hum0014.v1.freq.v1_dictionary.xlsx)",
+  ].join("\n")
+
+  it("names no dataset, so a line naming one only there is not that dataset's", () => {
+    const result = splitSharedBlock(block("NBDC Dataset Accession", cell), LABELS, NO_STUDIES)
+
+    // Only one of the two has a line of its own, so the cell is left whole for both.
+    expect(ownText(result, "hum0014.v3.T2DM-1.v1", "NBDC Dataset Accession")).toBe(cell)
+    expect(ownText(result, "hum0014.v1.freq.v1", "NBDC Dataset Accession")).toBe(cell)
+    expect(result.review.map((one) => one.dataset).sort()).toEqual([...LABELS, ...LABELS].sort())
+  })
+
+  it("names no accession outside the block either", () => {
+    const text = "共通の説明\n[こちら](https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD999999)"
+    const result = splitSharedBlock(block("Materials and Participants", text), ["JGAD000001", "JGAD000002"], NO_STUDIES)
+
+    expect(ownText(result, "JGAD000001", "Materials and Participants")).toBe(text)
+    expect(ownText(result, "JGAD000002", "Materials and Participants")).toBe(text)
+  })
+
+  it("leaves the dataset the link's words name as the line's", () => {
+    const text = "[JGAD000001](https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000002): 88 GB\n[JGAD000002](https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000001): 32 GB"
+    const result = splitSharedBlock(block("Total Data Volume", text), ["JGAD000001", "JGAD000002"], NO_STUDIES)
+
+    expect(ownText(result, "JGAD000001", "Total Data Volume")).toContain("88 GB")
+    expect(ownText(result, "JGAD000001", "Total Data Volume")).not.toContain("32 GB")
+  })
+})
+
 describe("a line naming an accession outside the block", () => {
   it("drops it for every dataset in the block rather than keeping it for any of them", () => {
     // Real text from hum0018-v3 (WES): two lines of the five name JGAD ids

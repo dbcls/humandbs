@@ -136,6 +136,37 @@ describe("researchPages", () => {
       expect(textOf(pages.typeOfData("hum0001", "ja", "NGS(Exome)", { version: 2, site: "prod" }))).toBe("NGS（Exome）")
     })
 
+    describe("the links v1's text has", () => {
+      // hum0248: the data ID table links the ID to the page's own anchor, the experiment's table to the file.
+      const pages = researchPages([{ site: "prod", articles: [
+        page("hum0001.v2", [
+          "<table><tr><td><a href=\"#AP023461-AP024084\">AP023461-AP024084</a></td></tr></table>",
+          "<table><tr><td><a href=\"files/hum0001/Accession-Numbers.txt\" download>AP023461-AP024084</a></td></tr></table>",
+          "<table><tr><td>AP023461-AP024084</td></tr></table>",
+        ].join("")),
+        page("hum0001.v3", "<table><tr><td>AP023461-AP024084</td></tr></table>"),
+      ] }])
+      const hrefOf = (cell: Element | null) => cell?.children.find((one): one is Element => one.type === "element")?.properties.href ?? "(no link)"
+
+      it("take, on one page, the cell with every one of them, whatever the root and escapes of the address", () => {
+        expect(hrefOf(pages.tableValue("hum0001", "ja", "AP023461-AP024084", { version: 2, site: "prod" }, ["/files/hum0001/Accession-Numbers.txt"])))
+          .toBe("files/hum0001/Accession-Numbers.txt")
+        expect(hrefOf(pages.tableValue("hum0001", "ja", "AP023461-AP024084", { version: 2, site: "prod" }, ["https://humandbs.dbcls.jp/files/hum0001/Accession%2DNumbers.txt"])))
+          .toBe("files/hum0001/Accession-Numbers.txt")
+      })
+
+      it("do not take a cell on a farther page over the preferred version's", () => {
+        expect(hrefOf(pages.tableValue("hum0001", "ja", "AP023461-AP024084", { version: 3, site: "prod" }, ["/files/hum0001/Accession-Numbers.txt"])))
+          .toBe("(no link)")
+      })
+
+      it("leave the cells ranked as before where v1's text links nothing, or where no cell has its links", () => {
+        const first = hrefOf(pages.tableValue("hum0001", "ja", "AP023461-AP024084", { version: 2, site: "prod" }))
+        expect(first).toBe("#AP023461-AP024084")
+        expect(hrefOf(pages.tableValue("hum0001", "ja", "AP023461-AP024084", { version: 2, site: "prod" }, ["/files/hum0001/other.txt"]))).toBe(first)
+      })
+    })
+
     it("takes the preferred version's page even where another page gives exactly what v1 stored", () => {
       const pages = versions([2, "NGS （Exome）"], [3, "NGS（Exome）"])
 

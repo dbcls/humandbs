@@ -429,6 +429,19 @@ describe("recoverRichText", () => {
       expect(result).toEqual({ value: [[{ text: "腎がん（ICD10：C64）：7症例" }]], source: "page" })
     })
 
+    it("asks for the cell with the addresses v1's text links, as written, and none for an escaped bracket", () => {
+      const asked: (readonly string[])[] = []
+      recoverRichText(
+        { text: "[hum0014.v3.T2DM-1.v1](/files/hum0014/a.xlsx)\n\\[注\\](b)\n[Dictionary file](/files/hum0014/b.xlsx)", rawHtml: null, lang: "ja" },
+        { pageCell: (_plain, _lang, links) => {
+          asked.push(links)
+          return null
+        } },
+      )
+
+      expect(asked).toEqual([["/files/hum0014/a.xlsx", "/files/hum0014/b.xlsx"]])
+    })
+
     it("builds a leaf from the cell even where rawHtml agrees, since v1's copy may have lost the cell's paragraphs", () => {
       const result = recoverRichText(
         { text: "健常者: 3名 単離したCD4+ T細胞", rawHtml: "<span>健常者：3名 単離したCD4+ T細胞</span>", lang: "ja" },

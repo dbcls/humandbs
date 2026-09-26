@@ -155,6 +155,7 @@ import {
 import { lineDictionary, restoreLineBreaks, type LineDictionary } from "./line-breaks"
 import { readRelinks, relink, type Relink } from "./links"
 import { assignNhaIds, MISSPELT } from "./nha"
+import { settleNbdcCells, type DroppedCell, type NbdcCellContext } from "./nbdc-cells"
 import { requestComments, settleRequests } from "./requests"
 import { assertValueEditsApplied, editValues, type ValueEdit } from "./value-edits"
 import { applySiteEdits, type SiteEdit } from "./site-edits"
@@ -405,7 +406,7 @@ function recovery(ctx: RecoverContext, pages: ResearchPages, lines: LineDictiona
   const readers = cached((key) => {
     const [humId = "", version = "", site = "prod"] = key.split("/")
     const preferred: Preferred = { version: version === "" ? null : Number(version), site: site as Site }
-    return reader({ ...ctx, pageCell: (plain, lang) => pages.tableValue(humId, lang, plain, preferred) })
+    return reader({ ...ctx, pageCell: (plain, lang, links) => pages.tableValue(humId, lang, plain, preferred, links) })
   })
   const researchReaders = cached((key) => {
     const [humId = "", version = "", site = "prod"] = key.split("/")
@@ -894,8 +895,9 @@ async function load() {
 
     // The words the old pages linked each file with, as the file's label (`file-labels.ts`).
     const labelEntries = existsSync(join(INPUT, "hand", "file-labels.json")) ? readJson("hand", "file-labels.json") as FileLabelEntry[] : []
+    const inStore = storedFiles((hum) => researchIdByHum.get(hum))
     const fileLabels = await insertChunked(
-      fileLabelRows(labelEntries, (hum) => researchIdByHum.get(hum), storedFiles((hum) => researchIdByHum.get(hum))),
+      fileLabelRows(labelEntries, (hum) => researchIdByHum.get(hum), inStore),
       (chunk) => tx.insert(fileLabel).values(chunk),
     )
 
@@ -947,6 +949,18 @@ async function load() {
       }
     }
     await insertChunked(pins, (chunk) => tx.insert(labelPin).values(chunk.map((pin) => ({ kind: "dataset" as const, ...pin }))))
+
+    // The files a portal dataset's NBDC cells link are selected, and a cell whose
+    // every line its file table already shows is taken out (`nbdc-cells.ts`).
+    const portalDatasets = new Set([...nha.keys()].map((label) => identityOf(datasetIdByLabel, label, "dataset")))
+    const labelsOfDataset = new Map<string, Set<string>>()
+    for (const pin of pins) {
+      if (portalDatasets.has(pin.datasetId)) labelsOfDataset.set(pin.datasetId, (labelsOfDataset.get(pin.datasetId) ?? new Set()).add(pin.label))
+    }
+    const labelOfFile = new Map(labelEntries.map((one) => [`${one.hum}/${one.name}`, { ja: one.ja, en: one.en }]))
+    const primaryOf = new Map(pins.filter((pin) => pin.isPrimary).map((pin) => [pin.datasetId, pin.label]))
+    const nbdcSelected = new Map<string, { hum: string, dataset: string, name: string }>()
+    const nbdcDropped = new Map<string, { hum: string, dataset: string } & Omit<DroppedCell, "datasetId">>()
 
     const unread: { dataset: string, sourceKey: string, line: string }[] = []
     // The shared readings, and the lines read for this load (`hand/read-by-hand.json`).
@@ -1000,6 +1014,22 @@ async function load() {
       site: "prod",
     })
     const publishedLines = ownLines(published, undefined, (one) => prose.readIn(one.humId, publishedPreferred(one.humId)), jgasToJgad)
+    const nbdcKeyId = keyIdByCode.get("nbdc-dataset-accession")
+    const settledCells = <D extends DatasetContent & { datasetId: string }>(hum: string, datasets: D[]): D[] => {
+      if (nbdcKeyId === undefined) return datasets
+      const context: NbdcCellContext = {
+        keyId: nbdcKeyId,
+        hum,
+        labelsOf: (datasetId) => labelsOfDataset.get(datasetId),
+        stored: (name) => inStore(hum, name),
+        labelOf: (name) => labelOfFile.get(`${hum}/${name}`),
+      }
+      const outcome = settleNbdcCells(datasets, context)
+      const dataset = (datasetId: string) => primaryOf.get(datasetId) ?? datasetId
+      for (const one of outcome.selected) nbdcSelected.set(`${one.datasetId}/${one.name}`, { hum, dataset: dataset(one.datasetId), name: one.name })
+      for (const { datasetId, ...one } of outcome.dropped) nbdcDropped.set(JSON.stringify([datasetId, one]), { hum, dataset: dataset(datasetId), ...one })
+      return outcome.datasets
+    }
     const descriptionOfDataset = new Map(published.map((one) => [
       identityOf(datasetIdByLabel, one.label, "dataset"),
       describe(one, publishedLines, publishedPreferred(one.humId)),
@@ -1022,16 +1052,17 @@ async function load() {
           readListing: prose.listingIn(rv.humId, "prod"),
           readText: prose.textIn(rv.humId, preferred),
         }) satisfies ResearchContent
+        const content = linked({
+          ...withListing(body, isLatest ? listing.get(rv.humId) : undefined),
+          datasets: datasetIds.flatMap((datasetId) => {
+            const content = descriptionOfDataset.get(datasetId)
+            return content === undefined ? [] : [{ datasetId, ...content }]
+          }),
+        } satisfies VersionContent, { hum: rv.humId, dataset: false, keyIdOf: (code) => keyIdByCode.get(code) })
         return {
           researchId: identityOf(researchIdByHum, rv.humId, "research"),
           number,
-          content: linked({
-            ...withListing(body, isLatest ? listing.get(rv.humId) : undefined),
-            datasets: datasetIds.flatMap((datasetId) => {
-              const content = descriptionOfDataset.get(datasetId)
-              return content === undefined ? [] : [{ datasetId, ...content }]
-            }),
-          } satisfies VersionContent, { hum: rv.humId, dataset: false, keyIdOf: (code) => keyIdByCode.get(code) }),
+          content: { ...content, datasets: settledCells(rv.humId, content.datasets) },
           releaseDate: rv.versionReleaseDate,
         }
       }),
@@ -1083,9 +1114,12 @@ async function load() {
         ...(draft.memo === undefined ? [] : [{ anchor: MEMO_ANCHOR, body: draft.memo }]),
         ...requestComments({ kind: "research" }, asking.asked),
       ]
-      const entries = datasets.map((one) => {
-        const datasetId = identityOf(datasetIdByLabel, one.label, "dataset")
-        const described = settleRequests(linked(describe(one, lines, preferred), { hum: humId, dataset: true, keyIdOf: (code) => keyIdByCode.get(code) }))
+      const linkedDatasets = settledCells(humId, datasets.map((one) => ({
+        datasetId: identityOf(datasetIdByLabel, one.label, "dataset"),
+        ...linked(describe(one, lines, preferred), { hum: humId, dataset: true, keyIdOf: (code) => keyIdByCode.get(code) }),
+      })))
+      const entries = linkedDatasets.map(({ datasetId, ...content }) => {
+        const described = settleRequests(content)
         said.push(...requestComments({ kind: "dataset", datasetId }, described.asked))
         return { draftId: row.id, datasetId, content: described.content }
       })
@@ -1146,6 +1180,7 @@ async function load() {
       search,
       unread,
       claimedTwice,
+      nbdc: { selected: [...nbdcSelected.values()], dropped: [...nbdcDropped.values()] },
     }
   })
 
@@ -1191,6 +1226,8 @@ console.log("cleansed content   ", cleansing)
 console.log("cleansed site      ", siteCleansing)
 console.log("dead links followed", relinked.followed, "not found in content", relinked.unfollowed.length,
   written("relinks-not-found.json", relinked.unfollowed))
+console.log("NBDC cells          ", counts.nbdc.dropped.filter((one) => one.whole).length, "taken out,", counts.nbdc.dropped.filter((one) => !one.whole).length,
+  "with groups taken out;", counts.nbdc.selected.length, "files selected from them", written("nbdc-cells.json", counts.nbdc))
 if (counts.claimedTwice.length > 0) console.log("claimed twice:", written("claimed-twice.json", counts.claimedTwice))
 if (selection.missingDocuments.length > 0) console.log("pinned with no document:", selection.missingDocuments)
 if (drafts.missingDocuments.length > 0) console.log("draft pins with no document:", drafts.missingDocuments)

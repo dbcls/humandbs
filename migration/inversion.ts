@@ -172,11 +172,19 @@ type LineOwner
     /** Names more than one dataset, or a study spanning more than one — not this module's call to make. */
     | { kind: "unsettled", reason: string }
 
+/**
+ * A markdown link's address. **It names nothing**: a file shared by several
+ * datasets is named after one of them (`[Dictionary file](…/hum0014.v1.freq.v1_dictionary.xlsx)`
+ * on `hum0014.v3.T2DM-1.v1`'s line), so only the words a line shows are read.
+ */
+const LINK_ADDRESS = /\]\([^)]*\)/g
+
 function lineOwner(
-  line: string,
+  written: string,
   datasets: ReadonlySet<string>,
   jgasToJgad: ReadonlyMap<string, readonly string[]>,
 ): LineOwner {
+  const line = written.replace(LINK_ADDRESS, "]")
   const owners = new Set<string>()
   let foreign = false
   let studySpansSeveral = false
