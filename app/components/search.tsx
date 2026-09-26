@@ -12,7 +12,7 @@ import type { ConditionChip, ListShell } from "~/public/lists.server"
 import { exportPath, href, listPath, searchQuery } from "~/public/urls"
 import { useAsk, useSearchAsTyped } from "~/search-as-typed"
 import type { DateWindow } from "~/search/date-window"
-import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
+import { ALL_ROWS, LISTING_SIZES, type ListingSize, PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 import type { SortKey } from "~/search/query.server"
 import { DEFAULT_SORT, defaultOrder, SORT_KEYS, type SortOrder } from "~/search/sort"
 
@@ -211,7 +211,7 @@ export function SearchForm({
    * see at once is about the reader, where the ordering follows what was asked
    * for (a keyword search comes back sorted by how well it matched).
    */
-  rows?: number | null
+  rows?: ListingSize | null
   size?: "compact" | "normal" | "large"
   searchAsTyped?: boolean
 }) {
@@ -782,7 +782,7 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
  */
 export interface Presentation<K extends string> {
   sort?: ListingSort<K>
-  size: number
+  size: ListingSize
 }
 
 export interface ListingSort<K extends string> {
@@ -807,7 +807,7 @@ export interface ListingSort<K extends string> {
 export interface PresentedQuery<K extends string> {
   sort: K | null
   order: SortOrder | null
-  size: number | null
+  size: ListingSize | null
 }
 
 export function presentedQuery<K extends string>({ sort, size }: Presentation<K>): PresentedQuery<K> {
@@ -889,17 +889,20 @@ function SortChoice<K extends string>({ locale, sort, at }: {
  * at is at a different place in a differently sized listing, and the honest
  * answer to "show me a hundred at a time" is the first hundred.
  */
-function SizeChoice({ locale, size, at, inPlace = false }: {
+function SizeChoice<S extends ListingSize>({ locale, sizes, size, at, inPlace = false }: {
   locale: Locale
-  size: number
-  at: (size: PageSize | null) => string
+  /** What is offered: every size with `ALL_ROWS` on a listing, the numbers alone over a table of files. */
+  sizes: readonly S[]
+  size: S
+  at: (size: S | null) => string
   /** The rows are one section of a page (`Paging`'s `inPlace`): the choice replaces the history entry. */
   inPlace?: boolean
 }) {
   const messages = messagesFor(locale)
+  const named = (option: ListingSize): string => option === ALL_ROWS ? messages.search.allRows : String(option)
   return (
-    <Chooser label={messages.search.pageSize} value={String(size)}>
-      {PAGE_SIZES.map((option) => (
+    <Chooser label={messages.search.pageSize} value={named(size)}>
+      {sizes.map((option) => (
         <Link
           key={option}
           to={at(option === PAGE_SIZE ? null : option)}
@@ -908,7 +911,7 @@ function SizeChoice({ locale, size, at, inPlace = false }: {
           aria-current={option === size ? "true" : undefined}
           className={option === size ? MENU_ITEM_HERE : MENU_ITEM}
         >
-          {option}
+          {named(option)}
         </Link>
       ))}
     </Chooser>
@@ -946,7 +949,7 @@ export function ListingTools<K extends string>({ locale, presented, at, paging }
           at={(sort, order) => at({ ...written, sort, order })}
         />
       )}
-      <SizeChoice locale={locale} size={presented.size} at={(size) => at({ ...written, size })} />
+      <SizeChoice locale={locale} sizes={LISTING_SIZES} size={presented.size} at={(size) => at({ ...written, size })} />
       <Paging locale={locale} {...paging} />
     </div>
   )
@@ -978,7 +981,7 @@ export function FileListTools({ locale, urlList, sizing }: {
       )}
       {sizing !== null && (
         <div className={`ml-auto ${TOOLS_ROW}`}>
-          <SizeChoice locale={locale} size={sizing.size} at={sizing.at} inPlace />
+          <SizeChoice locale={locale} sizes={PAGE_SIZES} size={sizing.size} at={sizing.at} inPlace />
           <Paging locale={locale} {...sizing.paging} inPlace />
         </div>
       )}
@@ -1031,7 +1034,7 @@ export function SortChooser({ locale, target, query, sort, order, rows }: {
   sort: SortKey
   order: SortOrder
   /** The page size to keep, or `null` for the default. */
-  rows: number | null
+  rows: ListingSize | null
 }) {
   return (
     <SortChoice
@@ -1057,11 +1060,12 @@ export function PageSizeChooser({ locale, target, query, sort, order, size }: {
   sort: string | null
   /** The direction to keep, or `null` when it is the one the key runs by. */
   order: string | null
-  size: PageSize
+  size: ListingSize
 }) {
   return (
     <SizeChoice
       locale={locale}
+      sizes={LISTING_SIZES}
       size={size}
       at={(rows) => href(locale, listPath(target) + searchQuery({
         q: query,
@@ -1090,7 +1094,7 @@ export function Pagination({ locale, target, query, sort, order, page, pageCount
   page: number
   pageCount: number
   /** The page size to keep, or `null` for the default. */
-  rows: number | null
+  rows: ListingSize | null
   total: number
   /** 1-based positions of the shown rows within the whole result. */
   from: number

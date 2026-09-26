@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
+import type { ListingSize } from "~/search/page-size"
+
 import type {
   FacetCategoryView,
   FacetRangeView,
@@ -15,7 +17,7 @@ import { FacetPanel } from "./facets"
 /** Rendered at a given address, since the links are built relative to none. */
 function render(
   categories: FacetCategoryView[],
-  presented: { sort: string | null, order: string | null, size: number | null } = { sort: null, order: null, size: null },
+  presented: { sort: string | null, order: string | null, size: ListingSize | null } = { sort: null, order: null, size: null },
 ): string {
   const element = (
     <FacetPanel

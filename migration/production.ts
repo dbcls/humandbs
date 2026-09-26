@@ -93,6 +93,10 @@ import {
 } from "./build"
 import { ACCESS_CRITERIA_KEY, contentKeySeeds, TYPE_OF_DATA_KEY } from "./catalog"
 import { applyCellEdits, type CellEdit } from "./cell-edits"
+import { headingKeys, restoreDashes } from "./dashes"
+import { settleEmptyCells } from "./empty-cells"
+import { assertTranslationsApplied, fillResearchTranslations, fillTranslations, type ResearchTranslation, type Translation } from "./translations"
+import { assertDiseaseEditsApplied, type DiseaseEdit, editDiseases } from "./disease-edits"
 import { applyListingEdits, type ListingEdit } from "./listing-edits"
 import { applyProviderSplits, type ProviderSplit } from "./providers"
 import { applySearchableFixes, type SearchableFix } from "./searchable-fixes"
@@ -722,6 +726,14 @@ async function load() {
     applyProviderSplits(versions, readJson("hand", "data-providers.json") as ProviderSplit[])
   }
   correctKeys(loaded.datasetsByKey.values(), rules, fixes)
+  const articles = { prod: oldArticles("prod"), staging: oldArticles("staging") }
+  // The rows v1 dropped for a dash (`dashes.ts`), put back once the keys are the ones the catalog has.
+  const dashes = restoreDashes(
+    loaded.datasetsByKey.values(),
+    [{ site: "prod", articles: articles.prod }, { site: "staging", articles: articles.staging }],
+    headingKeys(readFileSync(join(INPUT, "header-map.tsv"), "utf8")),
+    rules,
+  )
   // What the archive withdrew after publishing is kept in a draft of its own
   // and listed by no published version (`drafts.ts` の `withdrawnDrafts`).
   const withdrawn = existsSync(join(INPUT, "hand", "withdrawn.json")) ? readJson("hand", "withdrawn.json") as WithdrawnData[] : []
@@ -754,7 +766,6 @@ async function load() {
     return datasets
   })
 
-  const articles = { prod: oldArticles("prod"), staging: oldArticles("staging") }
   const aliases: RecoverContext = { articleAliases: articleAliases() }
   const prose = recovery(
     aliases,
@@ -768,11 +779,21 @@ async function load() {
   const vocabulary = readVocabularyPlan(join(INPUT, "hand", "vocabulary"))
   const fixesApplied = new Set<VocabularyFix>()
   let notApplicable = 0
+  let emptyCells = 0
   const cleansing = noCounts()
   const textEdits = existsSync(join(INPUT, "hand", "text-edits.json")) ? readJson("hand", "text-edits.json") as TextEdit[] : []
   const textEdited = new Set<TextEdit>()
   const publicationEdits = existsSync(join(INPUT, "hand", "publication-edits.json")) ? readJson("hand", "publication-edits.json") as PublicationEdit[] : []
   const publicationsEdited = new Set<PublicationEdit>()
+  const diseaseEdits = existsSync(join(INPUT, "hand", "disease-edits.json")) ? readJson("hand", "disease-edits.json") as DiseaseEdit[] : []
+  const diseasesEdited = new Set<DiseaseEdit>()
+  const diseaseNames = new Map<string, Set<string>>()
+  const translations = existsSync(join(INPUT, "hand", "translations.json")) ? readJson("hand", "translations.json") as Translation[] : []
+  const translated = new Set<Translation>()
+  const researchTranslations = existsSync(join(INPUT, "hand", "research-translations.json"))
+    ? readJson("hand", "research-translations.json") as ResearchTranslation[]
+    : []
+  const researchTranslated = new Set<ResearchTranslation>()
   const linked = <T extends object>(content: T, where: { hum: string, dataset: boolean }): T => {
     const result = relink(content, moved)
     for (const url of result.used) followed.add(url)
@@ -781,7 +802,12 @@ async function load() {
     const cleansed = cleanseContent(marked.content)
     for (const rule of Object.keys(cleansing) as (keyof CleansingCounts)[]) cleansing[rule] += cleansed.counts[rule]
     const edited = editText(cleansed.content, where, textEdits, textEdited)
-    return where.dataset ? edited : editPublications(edited, where.hum, publicationEdits, publicationsEdited)
+    if (where.dataset) return edited
+    const published = editPublications(edited, where.hum, publicationEdits, publicationsEdited)
+    const translatedContent = fillResearchTranslations(published, where.hum, researchTranslations, researchTranslated)
+    const settled = settleEmptyCells(translatedContent as unknown as Omit<ResearchContent, "datasetIds">)
+    emptyCells += settled.settled
+    return settled.content as unknown as T
   }
   const db = getOwnerDb()
 
@@ -883,7 +909,9 @@ async function load() {
         termIdOf: (setCode, code) => termIdBySetAndCode.get(`${setCode}/${code}`),
       })
       for (const fix of fixed.applied) fixesApplied.add(fix)
-      return { ...fixed.dataset, fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [] }
+      const named = editDiseases(fixed.dataset, one.humId, diseaseEdits, diseasesEdited, diseaseNames)
+      const both = fillTranslations(named, { hum: one.humId, label: nha.get(one.label) ?? one.label }, translations, (code) => keyIdByCode.get(code), translated)
+      return { ...both, fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [] }
     }
     const describeFromDump = (one: PublishedDataset, siblings: ReadonlySet<string>, preferred: Preferred): DatasetContent => buildDatasetContent({
       dataset: one,
@@ -1024,6 +1052,8 @@ async function load() {
     // stopping inside the transaction leaves the previous load as it was.
     assertEditsApplied(textEdits, textEdited)
     assertPublicationEditsApplied(publicationEdits, publicationsEdited)
+    assertDiseaseEditsApplied(diseaseEdits, diseasesEdited, diseaseNames)
+    assertTranslationsApplied(translations, translated, researchTranslations, researchTranslated)
     const unlanded = vocabulary.fixes.filter((fix) => !fixesApplied.has(fix))
     if (unlanded.length > 0) {
       throw new Error(`vocabulary fixes that found nothing:\n${unlanded.map((fix) => `${fix.setCode} ${fix.hum} ${fix.datasetId} ${fix.header}`).join("\n")}`)
@@ -1055,10 +1085,10 @@ async function load() {
   })
 
   const unfollowed = [...moved.keys()].filter((url) => !followed.has(url))
-  return { counts, selection, drafts, review, prose, notApplicable, cleansing, relinked: { followed: followed.size, unfollowed } }
+  return { counts, selection, drafts, review, prose, notApplicable, dashes, emptyCells, cleansing, relinked: { followed: followed.size, unfollowed } }
 }
 
-const { counts, selection, drafts, review, prose, notApplicable, cleansing, relinked } = await load()
+const { counts, selection, drafts, review, prose, notApplicable, dashes, emptyCells, cleansing, relinked } = await load()
 
 mkdirSync(OUT, { recursive: true })
 const written = (name: string, value: unknown) => {
@@ -1087,6 +1117,9 @@ console.log("line breaks from the articles", prose.lineBreaksRestored(), "paragr
 console.log("single lines as the pages wrote them", prose.textFromPages())
 console.log("kept as v1 wrote them", prose.kept.length, written("pages-kept.json", prose.kept))
 console.log("NA made not-applicable", notApplicable)
+console.log("empty cells of research tables made not-applicable", emptyCells)
+console.log("dash rows put back  ", dashes.restored, "in", dashes.matched, "experiments;", dashes.unmatched, "experiments matched no table;",
+  "headings v1 did not map", [...dashes.unknownHeadings].map(([heading, n]) => `${heading} (${n})`).join(", ") || "none")
 console.log("cleansed content   ", cleansing)
 console.log("cleansed site      ", siteCleansing)
 console.log("dead links followed", relinked.followed, "not found in content", relinked.unfollowed.length,

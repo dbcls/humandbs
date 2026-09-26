@@ -98,11 +98,14 @@ export interface PublicationEdit {
 interface Publication {
   title: { state: string, value?: unknown }
   doi: { state: string, value?: unknown }
-  datasetIds?: string[]
+  datasetIds?: { state: string, value?: string[] }
   externalIds?: string[]
 }
 
 const union = (a: string[] | undefined, b: string[] | undefined) => [...new Set([...(a ?? []), ...(b ?? [])])]
+
+/** The datasets a publication names, where its column holds a value. */
+const cited = (one: Publication) => (one.datasetIds?.state === "value" ? one.datasetIds.value : undefined)
 
 /** The publications of one research's content with its edits made, adding each edit that found its title to `applied`. */
 export function editPublications<T extends object>(
@@ -127,7 +130,7 @@ export function editPublications<T extends object>(
         if (one !== kept) return []
         return [{
           ...one,
-          datasetIds: found.reduce<string[]>((all, each) => union(all, each.datasetIds), []),
+          datasetIds: { state: "value", value: found.reduce<string[]>((all, each) => union(all, cited(each)), []) },
           externalIds: found.reduce<string[]>((all, each) => union(all, each.externalIds), []),
         }]
       }

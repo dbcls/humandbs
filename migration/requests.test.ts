@@ -33,6 +33,34 @@ describe("settleRequests", () => {
     expect(asked).toEqual([{ path: "title", en: "ご教示ください(英語タイトル)" }])
   })
 
+  it("unsettles a number slot whose note asks, and keeps every number in the question", () => {
+    const number = (inputValue: number, label: { ja: string, en: string } | null, note: { ja: string, en: string } | null) =>
+      ({ value: inputValue, unit: null, inputValue, inputUnit: null, high: null, inputHigh: null, label, note })
+    const content = {
+      experiments: [{
+        id: "experiment-1",
+        values: [{ keyId: "k1", value: { kind: "number", values: { state: "value", value: [
+          number(450, { ja: "EPIC", en: "EPIC" }, null),
+          number(450, null, { ja: "K: ご教示ください", en: "K: Please advise" }),
+        ] } } }],
+      }],
+    }
+    const settledContent = settleRequests(content)
+
+    expect(settledContent.content.experiments[0]?.values[0]?.value.values).toEqual({ state: "unknown" })
+    expect(settledContent.asked).toEqual([{
+      path: "experiments.experiment-1.values.k1",
+      text: "日本語: EPIC: 450\n450 (K: ご教示ください)\n英語: EPIC: 450\n450 (K: Please advise)",
+    }])
+  })
+
+  it("leaves a number slot whose notes ask nothing", () => {
+    const values = { state: "value", value: [{ value: 3, unit: "GB", inputValue: 3, inputUnit: "GB", high: null, inputHigh: null, label: null, note: { ja: "平均", en: "mean" } }] }
+    const content = { values: [{ keyId: "k1", value: { kind: "number", values } }] }
+
+    expect(settleRequests(content)).toEqual({ content, asked: [] })
+  })
+
   it("addresses a list element by its identity rather than its position", () => {
     const { asked } = settleRequests({
       grants: [
@@ -71,11 +99,23 @@ describe("settleRequests", () => {
     expect(asked).toEqual([{ path: "relatedPublications.p1.doi", text: "公開されましたらご教示ください" }])
   })
 
-  it("takes a question out of a list of plain strings, keeping the rest", () => {
-    const { content, asked } = settleRequests({ grants: [{ id: "g1", grantIds: ["JP21ck0106", "ご教示ください"] }] })
+  it("unsettles a list of IDs holding a question, and keeps every ID in the question", () => {
+    const { content, asked } = settleRequests({ grants: [{ id: "g1", grantIds: { state: "value", value: ["JP21ck0106", "ご教示ください"] } }] })
 
-    expect(content.grants[0]?.grantIds).toEqual(["JP21ck0106"])
-    expect(asked).toEqual([{ path: "grants.g1.grantIds", text: "ご教示ください", unmarked: true }])
+    expect(content.grants[0]?.grantIds).toEqual({ state: "unknown" })
+    expect(asked).toEqual([{ path: "grants.g1.grantIds", text: "JP21ck0106\nご教示ください" }])
+  })
+
+  it("leaves a list of IDs that asks nothing", () => {
+    const content = { grants: [{ id: "g1", grantIds: { state: "value", value: ["JP21ck0106"] } }] }
+    expect(settleRequests(content)).toEqual({ content, asked: [] })
+  })
+
+  it("takes a question out of a list of plain strings, keeping the rest", () => {
+    const { content, asked } = settleRequests({ relatedPublications: [{ id: "p1", externalIds: ["JGAD000001", "ご教示ください"] }] })
+
+    expect(content.relatedPublications[0]?.externalIds).toEqual(["JGAD000001"])
+    expect(asked).toEqual([{ path: "relatedPublications.p1.externalIds", text: "ご教示ください", unmarked: true }])
   })
 
   it("leaves slots that are not sentences, and states other than a value, as they are", () => {

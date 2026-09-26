@@ -92,6 +92,8 @@ describe("研究 ID の解除", () => {
     const html = screen({ labels: [NEW, { ...OLD, holdsFiles: true }], switching: true })
     const old = rowOf(html, "hum0101")
     expect(old).toContain(t.movingFiles)
+    // Right of the delete it holds back, not beside the ID.
+    expect(old.indexOf(t.movingFiles)).toBeGreaterThan(old.lastIndexOf(t.unpin))
     expect(reasonOf(old, t.unpin)).toBe(t.unpinHeld.moving)
     // The new primary's folder is empty, but a switch running may still land a file in it.
     expect(reasonOf(rowOf(html, "hum0102"), t.unpin)).toBe(t.unpinHeld.switching)

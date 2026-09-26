@@ -171,5 +171,9 @@ function lineOf(label: string, slot: Record<string, unknown>): ShownLine | null 
       isRecord(link) && typeof link.url === "string" ? [link.url] : [])
     return { label, state, text: urls.join("\n") }
   }
+  // A list of IDs with its state (`IdsInput`): a grant's numbers.
+  if (Array.isArray(slot.ids)) {
+    return { label, state, text: state === "value" ? slot.ids.filter((id) => typeof id === "string").join(", ") : "" }
+  }
   return null
 }

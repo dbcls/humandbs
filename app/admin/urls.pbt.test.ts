@@ -1,7 +1,9 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { branchListingQuery, filesQuery } from "./urls"
+import type { ListingSize } from "~/search/page-size"
+
+import { branchListingQuery, filesQuery, listingQuery } from "./urls"
 
 /** A setting of the listing of branches, of any shape the screen can write. */
 const branchListing = fc.record({
@@ -9,8 +11,9 @@ const branchListing = fc.record({
   page: fc.integer({ min: 1, max: 50 }),
   sort: fc.constantFrom(null, "approved", "application"),
   order: fc.constantFrom(null, "asc", "desc"),
-  size: fc.constantFrom(null, 50, 100),
+  size: fc.constantFrom<ListingSize | null>(null, 50, 100, "all"),
   branchStatuses: fc.subarray(["held", "absent", "unlabelled"]),
+  applicationTypes: fc.subarray(["new", "update"]),
 })
 
 function read(address: string): URLSearchParams {
@@ -23,6 +26,7 @@ describe("the address of the listing of branches", () => {
       const written = read(branchListingQuery(query))
       expect(written.get("q") ?? "").toBe(query.keyword)
       expect(written.getAll("status")).toEqual(query.branchStatuses)
+      expect(written.getAll("type")).toEqual(query.applicationTypes)
       expect(written.has("registered")).toBe(false)
     }))
   })
@@ -59,5 +63,35 @@ describe("the address of the common prefix", () => {
 
   it("is the bare address when nothing differs from the default", () => {
     expect(filesQuery({ keyword: "", page: 1, sort: null, order: null, size: null, from: null, to: null })).toBe("")
+  })
+})
+
+/** A setting of the research listing, of any shape the screen can write. */
+const end = fc.option(fc.constantFrom("2024-01-01", "2025-06-30", "2026-09-26"), { nil: null })
+const researchListing = fc.record({
+  keyword: fc.string(),
+  page: fc.integer({ min: 1, max: 50 }),
+  sort: fc.constantFrom(null, "id", "datePublished", "dateModified"),
+  order: fc.constantFrom(null, "asc", "desc"),
+  size: fc.constantFrom<ListingSize | null>(null, 50, 100, "all"),
+  statuses: fc.subarray(["published", "unpublished"]),
+  publishedFrom: end,
+  publishedTo: end,
+  updatedFrom: end,
+  updatedTo: end,
+  files: fc.subarray(["with", "without"]),
+})
+
+describe("the address of the research listing", () => {
+  it("writes each end of the two ranges it was given, the file ticks and the size, and nothing else", () => {
+    fc.assert(fc.property(researchListing, (query) => {
+      const written = read(listingQuery(query))
+      for (const name of ["publishedFrom", "publishedTo", "updatedFrom", "updatedTo"] as const) {
+        expect(written.get(name)).toBe(query[name])
+      }
+      expect(written.getAll("files")).toEqual(query.files)
+      expect(written.getAll("status")).toEqual(query.statuses)
+      expect(written.get("size")).toBe(query.size === null ? null : String(query.size))
+    }))
   })
 })

@@ -111,6 +111,22 @@ export type FieldView
 export type LinksView = Resolved<Link[]>
 
 /**
+ * A list of IDs as a page shows it — a grant's numbers, the datasets a
+ * publication names. **The state is the whole list's**: a grant with no number
+ * is not applicable, one the provider has been asked for is unsettled.
+ */
+export type IdsView
+  = | { state: "value", items: string[] }
+    | { state: "unsettled" }
+    | { state: "not-applicable" }
+
+function idsOf(slot: Slot<string[]>, read: (ids: string[]) => string[] = (ids) => [...ids]): IdsView {
+  if (slot.state === "unknown") return { state: "unsettled" }
+  if (slot.state === "not-applicable") return { state: "not-applicable" }
+  return { state: "value", items: read(slot.value) }
+}
+
+/**
  * One place a page draws, kept under the anchor it draws it at.
  *
  * The anchors are the path vocabulary of the editing form, which is what makes
@@ -124,6 +140,7 @@ export type AnchoredValue
   = | { kind: "field", field: FieldView }
     | { kind: "links", links: LinksView }
     | { kind: "list", items: string[] }
+    | { kind: "ids", ids: IdsView }
     | { kind: "rows", rows: RowsView }
     | { kind: "term", term: TermView | null }
 
@@ -148,6 +165,7 @@ interface Anchors {
   field: (at: string, field: FieldView) => FieldView
   links: (at: string, links: LinksView) => LinksView
   list: (at: string, items: string[]) => string[]
+  ids: (at: string, ids: IdsView) => IdsView
   rows: (at: string, rows: RowsView) => RowsView
   term: (at: string, term: TermView | null) => TermView | null
   taken: () => Record<string, AnchoredValue>
@@ -163,6 +181,7 @@ function anchorRecorder(): Anchors {
     field: (at, field) => keep(at, { kind: "field", field }, field),
     links: (at, links) => keep(at, { kind: "links", links }, links),
     list: (at, items) => keep(at, { kind: "list", items }, items),
+    ids: (at, ids) => keep(at, { kind: "ids", ids }, ids),
     rows: (at, rows) => keep(at, { kind: "rows", rows }, rows),
     term: (at, term) => keep(at, { kind: "term", term }, term),
     taken: () => taken,
@@ -221,13 +240,19 @@ export const PLATFORM_KEY = "platform"
 /** A cell of a compared table: the words, or the state said in words. */
 function cellText(field: FieldView, words: ReturnType<typeof messagesFor>): string {
   if (field.state === "unsettled") return words.unsettled
-  if (field.state === "not-applicable") return words.notApplicable
+  if (field.state === "not-applicable") return words.notApplicableShort
   return fieldText(field)
+}
+
+function idsText(ids: IdsView, words: ReturnType<typeof messagesFor>): string {
+  if (ids.state === "unsettled") return words.unsettled
+  if (ids.state === "not-applicable") return words.notApplicableShort
+  return ids.items.join("\n")
 }
 
 function linksText(links: LinksView, words: ReturnType<typeof messagesFor>): string {
   if (links.state === "unsettled") return words.unsettled
-  if (links.state === "not-applicable") return words.notApplicable
+  if (links.state === "not-applicable") return words.notApplicableShort
   return links.value.map((link) => link.url).join("\n")
 }
 
@@ -553,14 +578,14 @@ export interface ResearchView {
   datasets: DatasetRowView[]
   dataProviders: { id: string, principalInvestigator: FieldView, organization: FieldView }[]
   researchProjects: { id: string, name: FieldView, links: LinksView }[]
-  grants: { id: string, title: FieldView, agency: FieldView, grantIds: string[] }[]
+  grants: { id: string, title: FieldView, agency: FieldView, grantIds: IdsView }[]
   relatedPublications: {
     id: string
     title: FieldView
     doi: FieldView
-    /** Every ID the publication names, chosen and typed, in that order: what its place is compared by. */
-    datasetLabels: string[]
-    /** The same IDs as they are drawn. */
+    /** Every ID the publication names, chosen and typed, in that order, or the state the column is in: what its place is compared by. */
+    datasetLabels: IdsView
+    /** The same IDs as they are drawn; none while the column holds no value. */
     datasets: CitedDatasetView[]
   }[]
   cau: CauView[]
@@ -716,20 +741,22 @@ export function anchoredResearchView(
         `grants.${grant.id}.agency.name`,
         translated(grant.agency.name, locale, fallbacks),
       ),
-      grantIds: at.list(`grants.${grant.id}.grantIds`, grant.grantIds),
+      grantIds: at.ids(`grants.${grant.id}.grantIds`, idsOf(grant.grantIds)),
     })),
     relatedPublications: content.relatedPublications.map((publication) => ({
       id: publication.id,
       title: at.field(`relatedPublications.${publication.id}.title`, plainOf(publication.title)),
       doi: at.field(`relatedPublications.${publication.id}.doi`, plainOf(publication.doi)),
-      datasetLabels: at.list(
+      datasetLabels: at.ids(
         `relatedPublications.${publication.id}.datasetIds`,
-        [...labelsOf(publication.datasetIds), ...(publication.externalIds ?? [])],
+        idsOf(publication.datasetIds, (ids) => [...labelsOf(ids), ...(publication.externalIds ?? [])]),
       ),
-      datasets: [
-        ...labelsOf(publication.datasetIds).map((label) => cited(label, true)),
-        ...(publication.externalIds ?? []).map((label) => cited(label, humByLabel.has(label))),
-      ],
+      datasets: publication.datasetIds.state === "value"
+        ? [
+            ...labelsOf(publication.datasetIds.value).map((label) => cited(label, true)),
+            ...(publication.externalIds ?? []).map((label) => cited(label, humByLabel.has(label))),
+          ]
+        : [],
     })),
     cau: input.cau.map((entry) => cauView(entry, locale)),
     files: {
@@ -770,14 +797,14 @@ export function anchoredResearchView(
     columns: [w.grantAgency, w.grantTitle, w.grantId],
     rows: view.grants.map((row) => ({
       id: row.id,
-      cells: [cell(row.agency), cell(row.title), row.grantIds.join("\n")],
+      cells: [cell(row.agency), cell(row.title), idsText(row.grantIds, words)],
     })),
   })
   at.rows("relatedPublications", {
     columns: [w.publicationTitle, "DOI", words.dataset.datasetId],
     rows: view.relatedPublications.map((row) => ({
       id: row.id,
-      cells: [cell(row.title), cell(row.doi), row.datasetLabels.join("\n")],
+      cells: [cell(row.title), cell(row.doi), idsText(row.datasetLabels, words)],
     })),
   })
 

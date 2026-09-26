@@ -127,7 +127,7 @@ function citingOnly(input: DraftInput, held: ReadonlySet<string>): DraftInput {
       ...input.content,
       relatedPublications: input.content.relatedPublications.map((row) => ({
         ...row,
-        datasetIds: row.datasetIds.filter((id) => held.has(id)),
+        datasetIds: { ...row.datasetIds, ids: row.datasetIds.ids.filter((id) => held.has(id)) },
       })),
     },
   }
@@ -271,7 +271,7 @@ export async function importAction(
 
   const datasets = await researchDatasets(db, researchId)
   const known = new Set(datasets.map((row) => row.id))
-  if (payload.data.relatedPublications.some((row) => row.datasetIds.some((id) => !known.has(id)))) badRequest()
+  if (payload.data.relatedPublications.some((row) => row.datasetIds.ids.some((id) => !known.has(id)))) badRequest()
   const content = researchContentOf({ ...payload.data, datasetIds: draft.content.datasetIds })
 
   const applicationId = form.get("application")

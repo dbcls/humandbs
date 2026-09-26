@@ -330,8 +330,13 @@ export interface Grant {
   id: string
   title: TranslatedText
   agency: { name: TranslatedText }
-  /** Grant numbers as issued. Not translated. */
-  grantIds: string[]
+  /**
+   * Grant numbers as issued. Not translated. **The state belongs to the list**,
+   * not to each number: a grant with none has a row whose other cells are
+   * written, and that is not-applicable; one the provider has been asked for
+   * is unknown.
+   */
+  grantIds: Slot<string[]>
 }
 
 export interface RelatedPublication {
@@ -342,13 +347,17 @@ export interface RelatedPublication {
    */
   title: Slot<string>
   doi: Slot<string>
-  /** This research's datasets the publication covers, by identity. */
-  datasetIds: string[]
+  /**
+   * This research's datasets the publication covers, by identity. **The state
+   * is the whole column's**, `externalIds` included: a paper that used no
+   * dataset is not-applicable, and then neither list is read.
+   */
+  datasetIds: Slot<string[]>
   /**
    * Dataset IDs written by hand: another research's dataset, or an accession
    * the portal does not hold. Kept as written and looked up in the portal's
    * `label_pin` table when drawn, so one that is registered later is found then. Absent
-   * means none.
+   * means none. Read only while `datasetIds` holds a value.
    */
   externalIds?: string[]
 }

@@ -61,12 +61,18 @@ describe("the indicator showing that the published version reads otherwise", () 
     expect(html.indexOf("変更あり")).toBeGreaterThan(html.indexOf("title=\"コメント\""))
   })
 
-  it("is a button with the comment button's style, and opens the comparison in a panel over the page", () => {
+  /*
+    What changed is what a provider reviewing an update reads first, so it is
+    the large badge the request for a value is, in the accent — not the small
+    comment button beside it.
+  */
+  it("is a large accent badge that is a button, and opens the comparison in a panel over the page", () => {
     const html = render(<FieldAnnotations context={CONTEXT} at="summary.aims" view={CHANGED} comments={[]} heading="公開中の v8" />)
     expect(html).not.toContain("<details")
-    const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1])
+    const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((match) => match[1] ?? "")
     expect(classes).toHaveLength(2)
-    expect(classes[1]).toBe(classes[0])
+    expect(classes[1]).not.toBe(classes[0])
+    expect(classes[1]).toMatch(/\bborder-dashed\b.*\btext-sm\b.*\bborder-accent text-accent bg-accent-surface\b/)
     expect(html).toMatch(/<button[^>]*>[\s\S]*?変更あり[\s\S]*?<\/button>/)
     // The two are shown on one line, centred against each other rather than hung from the top.
     expect(html).toMatch(/^<span class="[^"]*\bitems-center\b/)

@@ -23,6 +23,7 @@ import type {
   DataProviderInput,
   DraftInput,
   GrantInput,
+  IdsInput,
   LinkInput,
   ListingProviderInput,
   LinksInput,
@@ -44,6 +45,11 @@ function sameLinks(a: LinksInput, b: LinksInput): boolean {
       const counterpart = b.links[at]
       return counterpart !== undefined && sameLink(link, counterpart)
     })
+}
+
+/** The IDs count only while the list holds a value, as a slot's text does. */
+function sameIds(a: IdsInput, b: IdsInput): boolean {
+  return a.state === b.state && (a.state !== "value" || sameStrings(a.ids, b.ids))
 }
 
 function sameLinksPair(a: LinksPairInput, b: LinksPairInput): boolean {
@@ -71,7 +77,7 @@ function project(into: Diff, a: ResearchProjectInput, b: ResearchProjectInput, a
 function grant(into: Diff, a: GrantInput, b: GrantInput, at: string): void {
   into.when(sameTextPair(a.title, b.title), `${at}.title`)
   into.when(sameTextPair(a.agency.name, b.agency.name), `${at}.agency.name`)
-  into.when(sameStrings(a.grantIds, b.grantIds), `${at}.grantIds`)
+  into.when(sameIds(a.grantIds, b.grantIds), `${at}.grantIds`)
 }
 
 function publication(
@@ -83,7 +89,10 @@ function publication(
   into.when(sameText(a.title, b.title), `${at}.title`)
   into.when(sameText(a.doi, b.doi), `${at}.doi`)
   // One place on the page: the column lists both the chosen and the typed.
-  into.when(sameStrings(a.datasetIds, b.datasetIds) && sameStrings(a.externalIds, b.externalIds), `${at}.datasetIds`)
+  into.when(
+    sameIds(a.datasetIds, b.datasetIds) && (a.datasetIds.state !== "value" || sameStrings(a.externalIds, b.externalIds)),
+    `${at}.datasetIds`,
+  )
 }
 
 /**

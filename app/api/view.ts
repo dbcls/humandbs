@@ -77,6 +77,14 @@ function held(slot: Slot<string>): string | null | undefined {
   return slot.value === "" ? undefined : slot.value
 }
 
+/** A list of IDs: the IDs, `null` where the list does not apply, and nothing where it is empty or unsettled. */
+function heldIds(slot: Slot<string[]>, read: (ids: string[]) => string[] = (ids) => [...ids]): string[] | null | undefined {
+  if (slot.state === "not-applicable") return null
+  if (slot.state === "unknown") return undefined
+  const ids = read(slot.value)
+  return ids.length === 0 ? undefined : ids
+}
+
 /** A pair with nothing in either language is left out rather than sent empty. */
 function pair(ja: string | null | undefined, en: string | null | undefined): ApiText | undefined {
   if (ja === undefined && en === undefined) return undefined
@@ -299,12 +307,12 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
     grants: input.content.grants.map((grant) => ({
       title: textOf(grant.title),
       agency: textOf(grant.agency.name),
-      grantIds: [...grant.grantIds],
+      grantIds: heldIds(grant.grantIds),
     })),
     relatedPublications: input.content.relatedPublications.map((publication) => ({
       title: held(publication.title),
       doi: held(publication.doi),
-      datasets: [...labelsOf(publication.datasetIds), ...(publication.externalIds ?? [])],
+      datasets: heldIds(publication.datasetIds, (ids) => [...labelsOf(ids), ...(publication.externalIds ?? [])]),
     })),
     datasets: labelsOf(input.content.datasetIds),
     controlledAccessUsers: input.cau.map((usage) => ({

@@ -29,6 +29,7 @@ import type {
 } from "~/content/types"
 
 import type {
+  IdsInput,
   LinksPairInput,
   ListingProviderInput,
   ResearchContentInput,
@@ -58,6 +59,8 @@ const linksInputSchema = z.object({
 })
 
 export const textPairSchema = z.object({ ja: textInputSchema, en: textInputSchema })
+
+const idsInputSchema = <T extends z.ZodType<string>>(id: T) => z.object({ state: slotState, ids: z.array(id) })
 const linksPairSchema = z.object({ ja: linksInputSchema, en: linksInputSchema })
 
 /**
@@ -104,13 +107,13 @@ const researchContentInputSchema = z.object({
     id: z.string().min(1),
     title: textPairSchema,
     agency: z.object({ name: textPairSchema }),
-    grantIds: z.array(z.string()),
+    grantIds: idsInputSchema(z.string()),
   })),
   relatedPublications: elements(z.object({
     id: z.string().min(1),
     title: textInputSchema,
     doi: textInputSchema,
-    datasetIds: z.array(z.uuid()),
+    datasetIds: idsInputSchema(z.uuid()),
     externalIds: z.array(z.string().max(64)).max(200),
   })),
   datasetIds: z.array(z.uuid()),
@@ -125,6 +128,11 @@ export const saveDraftSchema = z.object({
 /** Whatever was typed is dropped once the state indicates there is no value. */
 export function textSlot(input: TextInput): Slot<string> {
   return input.state === "value" ? { state: "value", value: input.text } : { state: input.state }
+}
+
+/** A list of IDs as it is kept: the IDs only while the state is a value. */
+function idsSlot(input: IdsInput, kept: (ids: readonly string[]) => string[] = (ids) => [...ids]): Slot<string[]> {
+  return input.state === "value" ? { state: "value", value: kept(input.ids) } : { state: input.state }
 }
 
 function textPair(pair: TextPairInput): TranslatedText {
@@ -208,14 +216,14 @@ export function researchContentOf(input: ResearchContentInput): ResearchContent 
       id: grant.id,
       title: textPair(grant.title),
       agency: { name: textPair(grant.agency.name) },
-      grantIds: [...grant.grantIds],
+      grantIds: idsSlot(grant.grantIds),
     })),
     relatedPublications: input.relatedPublications.map((publication) => ({
       id: publication.id,
       title: textSlot(publication.title),
       doi: textSlot(publication.doi),
-      datasetIds: [...publication.datasetIds],
-      externalIds: typedIds(publication.externalIds),
+      datasetIds: idsSlot(publication.datasetIds),
+      externalIds: publication.datasetIds.state === "value" ? typedIds(publication.externalIds) : [],
     })),
     datasetIds: [...input.datasetIds],
   }

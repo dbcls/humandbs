@@ -298,8 +298,9 @@ export function cleanseContent<T>(content: T): { content: T, counts: CleansingCo
     const walked = Object.fromEntries(Object.entries(node).map(([key, value]) =>
       [key, KEPT_AS_WRITTEN.has(key) && isWritten(value) ? value : walk(value, english)])) as { grantIds?: unknown }
     const { grantIds } = walked
-    if (Array.isArray(grantIds) && grantIds.every((one) => typeof one === "string")) {
-      return { ...walked, grantIds: splitGrantIds(grantIds, counts) }
+    if (isSlot(grantIds) && grantIds.state === "value" && Array.isArray(grantIds.value)
+      && grantIds.value.every((one) => typeof one === "string")) {
+      return { ...walked, grantIds: { ...grantIds, value: splitGrantIds(grantIds.value, counts) } }
     }
     return walked
   }

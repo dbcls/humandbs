@@ -64,7 +64,8 @@ describe("CompareTable", () => {
       />,
     )
     expect(html).toMatch(/<del[^>]*>血液<\/del>/)
-    expect(html).toContain("該当なし")
+    // Not applicable reads as the page shows it; the office's open question keeps its state's name.
+    expect(html).toContain(">N/A</abbr>")
   })
 
   it("leaves a side empty where only the other side has the line", () => {

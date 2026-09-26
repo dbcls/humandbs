@@ -19,9 +19,9 @@ import type { AnchoredValue, RowsView } from "~/public/view.server"
 import { compareRows, type ComparedRow } from "~/review/compare-rows"
 import { afterParts, beforeParts, diffSentences, type DiffPart } from "~/passage-diff"
 
-import { Dialog, PanelButton } from "./base"
+import { Dialog } from "./base"
 import { Flag } from "./flags"
-import { Table, Td } from "./page"
+import { NotApplicable, Table, Td } from "./page"
 
 /** One side of one line: its text, or the state it shows instead. */
 type Side
@@ -39,12 +39,13 @@ export interface CompareRow {
 /**
  * The indicator, and the comparison it opens.
  *
- * **The indicator is styled as the comment button beside it** (`base.tsx` の
- * `PanelButton`) — the two are shown on one line and are both triggers of a panel, and a
- * badge beside a button read as a state that could not be pressed. The word is
- * in the accent that shows "changed" wherever it is said. **Where there is
- * nothing to set side by side** — a list whose difference is which elements it
- * holds — the indicator is a badge that opens nothing.
+ * **The indicator is a large badge** (`base.tsx` の `Badge` の `large`): a
+ * dashed accent edge on a pale accent tint, with its kind's ± glyph — the same shape as
+ * the request for a value, in red. What changed is what a provider reviewing
+ * an update reads first, and styled as the small comment button beside it the
+ * word was lost among the headings. It is a button that opens the comparison.
+ * **Where there is nothing to set side by side** — a list whose difference is
+ * which elements it holds — it is the same badge, opening nothing.
  */
 function ChangeIndicator({ locale, fieldLabel, children }: {
   locale: Locale
@@ -55,13 +56,13 @@ function ChangeIndicator({ locale, fieldLabel, children }: {
   const t = messagesFor(locale)
   const [open, setOpen] = useState(false)
 
-  if (children === null) return <Flag kind="differs">{t.preview.differsHere}</Flag>
+  if (children === null) return <Flag kind="differs" large>{t.preview.differsHere}</Flag>
 
   return (
     <span className="inline-flex">
-      <PanelButton icon="diff" onClick={() => { setOpen(true) }}>
-        <span className="text-accent">{t.preview.differsHere}</span>
-      </PanelButton>
+      <Flag kind="differs" large onClick={() => { setOpen(true) }}>
+        {t.preview.differsHere}
+      </Flag>
       <Dialog
         title={fieldLabel === undefined ? t.preview.changeHeading : t.preview.fieldChangeHeading(fieldLabel)}
         held={{ open, close: () => { setOpen(false) } }}
@@ -273,7 +274,9 @@ function SideCell({ locale, line, kind, edge }: {
 
   let body: ReactNode = null
   if (side !== null && side.state !== "value") {
-    body = <em className="text-ink-muted">{side.state === "unknown" ? states.unsettled : states.notApplicable}</em>
+    body = side.state === "unknown"
+      ? <em className="text-ink-muted">{states.unsettled}</em>
+      : <NotApplicable locale={locale} />
   } else if (side !== null && parts === null) {
     body = changed ? <Tag className={look.highlight}>{side.text}</Tag> : side.text
   } else if (parts !== null) {
@@ -390,6 +393,11 @@ function shownText(line: ShownLine, termLabel?: (id: string) => string): string 
 function anchoredSide(value: AnchoredValue): Side {
   if (value.kind === "term") return { state: "value", text: value.term?.label ?? "" }
   if (value.kind === "list") return { state: "value", text: value.items.join("\n") }
+  if (value.kind === "ids") {
+    if (value.ids.state === "unsettled") return { state: "unknown" }
+    if (value.ids.state === "not-applicable") return { state: "not-applicable" }
+    return { state: "value", text: value.ids.items.join("\n") }
+  }
   if (value.kind === "rows") return { state: "value", text: value.rows.rows.map((row) => row.cells.join(" / ")).join("\n") }
   const shown = value.kind === "field" ? value.field : value.links
   if (shown.state === "unsettled") return { state: "unknown" }

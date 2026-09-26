@@ -58,7 +58,7 @@ describe("showing what the published version has at a path", () => {
       id: "g1",
       title: { ja: filled("研究費"), en: filled("Grant") },
       agency: { name: { ja: filled(""), en: filled("") } },
-      grantIds: ["JP1", "JP2"],
+      grantIds: filled(["JP1", "JP2"]),
     }],
     summary: {
       ...emptyResearchContent().summary,

@@ -25,6 +25,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale, researchPath } from "~/public/urls"
+import { useRevalidateWhile } from "~/components/revalidate"
 
 import type { Route } from "./+types/admin-research"
 import { Flag, Stated } from "~/components/flags"
@@ -77,6 +78,10 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.detail
+  // Files leaving a retired label's prefix, or switching sides: the screen
+  // reads itself again until the job is over, so the label's delete comes
+  // back without a reload.
+  useRevalidateWhile(view.switching)
 
   return (
     <Page>
@@ -123,12 +128,12 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
               {/* Drafts first, newest writing first; then the versions, newest
                   number first. **The first column shows which is which**, and
                   every other column belongs to one kind or the other: a draft
-                  has when it was last written and what its review shows, a
-                  version has a number and a day it went out. **The writing is
-                  told to the minute**: drafts have no name, so two made on
-                  the same day would otherwise be the same row twice. The
-                  table stays when empty: the column names say what would
-                  stand here. */}
+                  has a name, when it was last written and what its review
+                  shows, a version has a number and a day it went out. **The
+                  name shares the number's column**, whose heading names both.
+                  **The writing is told to the minute**: two drafts may be
+                  given the same name. The table stays when empty: the column
+                  names say what would stand here. */}
               <Table
                 actions
                 align="middle"
@@ -201,15 +206,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                           <Flag kind={label.isPrimary ? "pointed" : "secondary"}>
                             {label.isPrimary ? t.primary : t.secondary}
                           </Flag>
-                          <span className="flex items-center gap-2">
-                            {label.label}
-                            {/* The files leaving a retired label's prefix for the
-                                primary's: the job that moves them is queued or
-                                running, and the label cannot go until it ends. */}
-                            {unpinHold(label, view.switching) === "moving" && (
-                              <Flag kind="waiting">{t.movingFiles}</Flag>
-                            )}
-                          </span>
+                          <span>{label.label}</span>
                           <span className="flex items-center gap-1">
                             {/* Moving a label is not taking it away: the one
                                 that was primary stays, as secondary. */}
@@ -227,6 +224,14 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                               held={unpinHold(label, view.switching)}
                               locale={locale}
                             />
+                            {/* The files leaving a retired label's prefix for the
+                                primary's: the job that moves them is queued or
+                                running, and the label cannot go until it ends.
+                                **Shown right of the delete it holds back**, which
+                                is what it explains. */}
+                            {unpinHold(label, view.switching) === "moving" && (
+                              <Flag kind="waiting">{t.movingFiles}</Flag>
+                            )}
                           </span>
                         </li>
                       ))}
@@ -271,7 +276,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
           {/* The prefix is not a draft's and not a version's, so it is reached
               from here and not from either. The name does not show what is in
               it, which is why this one section has a line under its name. */}
-          <Section title={messages.admin.files.heading} note={t.filesNote}>
+          <Section title={t.files} note={t.filesNote}>
             {/* **The link is a control, and shows that it goes somewhere.** The one
                 thing this section has leads to another screen, so it is shown with the
                 style of the back link (`AdminBack`) with the indicator after the word —

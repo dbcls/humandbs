@@ -19,6 +19,7 @@
  */
 
 import { DEFAULT_LOCALE, isLocale, type Locale } from "~/i18n/locale"
+import type { ListingSize } from "~/search/page-size"
 
 /** Every locale except the default one is addressed under its own prefix. */
 export function localePrefix(locale: Locale): string {
@@ -168,7 +169,7 @@ export interface SearchParams {
    * file writes addresses and does not import the search, which runs on the
    * server. Omitting it is what keeps one listing to one address.
    */
-  size?: number | null
+  size?: ListingSize | null
 }
 
 /**

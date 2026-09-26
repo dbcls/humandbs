@@ -93,6 +93,11 @@
   --color-surface-light: #f4f6f9;
 
   --color-danger: #d51616;
+  /* The tints a large badge is shown on (`base.tsx` の `Badge` の `large`): the
+     office asking the reader of a preview for a value, and a place the
+     published version reads otherwise. Its own colour has to stay readable on it. */
+  --color-danger-surface: #fef2f2;
+  --color-accent-surface: #fdf2f8;
   /* Something that needs looking at but is not an error: an untranslated
      field, a label the upstream system disagrees about. */
   --color-warning: #a16207;

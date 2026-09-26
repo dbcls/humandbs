@@ -17,6 +17,7 @@ import {
 } from "~/public/view.server"
 
 import { ResearchBody, ResearchListTable, ResearchVersionPage, runsLong } from "./research"
+import { AnnotationLayer } from "./page"
 
 /**
  * The download section is the one part of this page that comes from outside the
@@ -208,7 +209,7 @@ describe("the state a links value passes to the page", () => {
   it("draws a not-applicable URL as the not-applicable notice on the public page", () => {
     const html = render(NOTHING, { state: "not-applicable" })
 
-    expect(html).toContain("該当なし")
+    expect(html).toContain("<abbr title=\"該当なし\" class=\"font-mono text-ink-muted\">N/A</abbr>")
   })
 
   it("draws an unsettled URL as the unsettled frame in a preview", () => {
@@ -352,7 +353,7 @@ describe("what a grant shows, in the order it shows it", () => {
         id: "g1",
         title: field("研究課題"),
         agency: field("科研費"),
-        grantIds: ["19H05656", "22K15385"],
+        grantIds: { state: "value", items: ["19H05656", "22K15385"] },
       }],
     })
 
@@ -366,13 +367,21 @@ describe("what a grant shows, in the order it shows it", () => {
         id: "g1",
         title: field("研究課題"),
         agency: field("科研費"),
-        grantIds: ["19H05656", "22K15385"],
+        grantIds: { state: "value", items: ["19H05656", "22K15385"] },
       }],
     })
 
     expect(html).not.toContain("19H05656, 22K15385")
     expect(html).toContain("19H05656")
     expect(html).toContain("22K15385")
+  })
+
+  it("marks a grant with no number as not applicable in place of the numbers", () => {
+    const html = renderWith({
+      grants: [{ id: "g1", title: field("研究課題"), agency: field("科研費"), grantIds: { state: "not-applicable" } }],
+    })
+
+    expect(html).toContain(messagesFor("ja").notApplicableShort)
   })
 })
 
@@ -417,6 +426,45 @@ describe("the row of the research listing", () => {
     expect(html).toContain("hum0001")
     expect(html).toContain("JGAD000001")
     expect(html).toContain("2021-01-01")
+  })
+
+  /*
+    Beside the form, the cells the form writes are its places: pressing one
+    goes to its field, and the caret in a field highlights its cell. The columns the
+    form does not write — the identifiers, platforms, access types and dates —
+    are not places.
+  */
+  it("makes the cells the form writes into places when drawn beside the form, and no other", () => {
+    const beside = (here: string | null): string => {
+      const Stub = createRoutesStub([{
+        path: "/*",
+        Component: () => (
+          <AnnotationLayer annotate={() => null} here={here} onGo={() => undefined} goLabel="この項目の編集">
+            <ResearchListTable rows={[row]} locale="ja" preview whenEmpty="なし" />
+          </AnnotationLayer>
+        ),
+      }])
+      return renderToStaticMarkup(<Stub initialEntries={["/admin"]} />)
+    }
+    const places = [...beside(null).matchAll(/data-field-path="([^"]+)"/g)].map((found) => found[1])
+    expect(places).toEqual([
+      "title",
+      "listingSummary.methods",
+      "listingSummary.typeOfData",
+      "listingSummary.targets",
+      "listingSummary.dataProviders",
+    ])
+    const highlighted = (html: string): string[] =>
+      [...html.matchAll(/data-field-path="([^"]+)" class="[^"]*\bbg-surface-hover/g)].map((found) => found[1] ?? "")
+    expect(highlighted(beside("listingSummary.targets"))).toEqual(["listingSummary.targets"])
+    // One of the listing's own names, or the panel writing it, is the provider column's caret too.
+    expect(highlighted(beside("listingSummary.dataProviders.p1"))).toEqual(["listingSummary.dataProviders"])
+    expect(highlighted(beside("listingSummary.dataProviders.p1.name"))).toEqual(["listingSummary.dataProviders"])
+    expect(highlighted(beside("dataProviders.p1.name"))).toEqual([])
+  })
+
+  it("draws no places on the public listing, which has no form beside it", () => {
+    expect(drawn(false)).not.toContain("data-field-path")
   })
 })
 
@@ -491,7 +539,7 @@ describe("a section with nothing in it", () => {
 
   it("gives way to the rows once there are any", () => {
     const html = renderWith({
-      grants: [{ id: "g1", title: field("研究課題"), agency: field("科研費"), grantIds: ["19H05656"] }],
+      grants: [{ id: "g1", title: field("研究課題"), agency: field("科研費"), grantIds: { state: "value", items: ["19H05656"] } }],
     })
     expect(html).not.toContain(t.noGrants)
     expect(html).toContain("19H05656")
@@ -506,7 +554,7 @@ describe("the datasets a publication names", () => {
       id: "p1",
       title: field("A paper"),
       doi: field("https://doi.org/10.1/x"),
-      datasetLabels: ["JGAD000001", "JGAD000022", "DRA000001"],
+      datasetLabels: { state: "value", items: ["JGAD000001", "JGAD000022", "DRA000001"] },
       datasets: [
         { label: "JGAD000001", known: true, humLabel: null },
         { label: "JGAD000022", known: true, humLabel: "hum0002" },
@@ -541,7 +589,7 @@ describe("an ID in a table", () => {
         id: "p1",
         title: field("A paper"),
         doi: field(""),
-        datasetLabels: ["JGAD000107"],
+        datasetLabels: { state: "value", items: ["JGAD000107"] },
         datasets: [{ label: "JGAD000107", known: true, humLabel: null }],
       }],
       datasets: CONTROLLED,

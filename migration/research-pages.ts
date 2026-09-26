@@ -43,6 +43,14 @@ const LISTING_TITLES: ReadonlyMap<string, Lang> = new Map([["利用可能な研�
 
 const ENTITIES: Record<string, string> = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: "\"" }
 
+/** The research version and language an article is the page of, or null for any other article. */
+export function researchPageOf(article: PageArticle): { humId: string, version: number, lang: Lang } | null {
+  const lang = CATEGORY_LANG.get(article.catid)
+  const titled = RESEARCH_PAGE_TITLE.exec(article.title)
+  if (lang === undefined || titled === null) return null
+  return { humId: titled[1] ?? "", version: Number(titled[2]), lang }
+}
+
 /**
  * The words of a text, without what v1 changed about how it is written. v1's
  * text holds some of the page's HTML as it was (`14名<br />&nbsp;ワクチン`), which

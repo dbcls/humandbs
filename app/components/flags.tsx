@@ -68,9 +68,16 @@ export const FLAG = {
 export type FlagKind = keyof typeof FLAG
 
 /** One indicator, in the colour and with the glyph its kind has everywhere. */
-export function Flag({ kind, children }: { kind: FlagKind, children: ReactNode }) {
+export function Flag({ kind, large = false, onClick, children }: {
+  kind: FlagKind
+  /** Drawn large, for what a preview asks its reader to look at (`Badge` の `large`). */
+  large?: boolean
+  /** Opens what the indicator is about. Large only (`Badge` の `onClick`). */
+  onClick?: () => void
+  children: ReactNode
+}) {
   const { tone, icon } = FLAG[kind]
-  return <Badge tone={tone} icon={<Icon name={icon} aria-hidden="true" />}>{children}</Badge>
+  return <Badge tone={tone} large={large} onClick={onClick} icon={<Icon name={icon} aria-hidden="true" />}>{children}</Badge>
 }
 
 /**

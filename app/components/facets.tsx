@@ -11,6 +11,7 @@ import { matches, rolledUpFind } from "~/public/facet-find"
 import type { FacetPanelView, FacetValueView, FacetView } from "~/public/facets.server"
 import { href, listPath } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
+import type { ListingSize } from "~/search/page-size"
 import type { SearchTarget } from "~/search/query.server"
 
 /**
@@ -54,7 +55,7 @@ import type { SearchTarget } from "~/search/query.server"
 export interface ListingPresentation {
   sort: string | null
   order: string | null
-  size: number | null
+  size: ListingSize | null
 }
 
 export function FacetPanel({ locale, target, query, presented, panel }: {

@@ -42,9 +42,10 @@ import {
   DEFAULT_SORT,
   isSortKey,
   isSortOrder,
-  isPageSize,
+  type ListingSize,
   PAGE_SIZE,
-  type PageSize,
+  readListingSize,
+  rowsPerPage,
   searchAllDocs,
   searchDocs,
   type SearchHit,
@@ -114,13 +115,13 @@ export interface ListShell {
   order: SortOrder
   /** What `?order=` held, kept for the same reason as `requestedSort`. */
   requestedOrder: string | null
-  size: PageSize
+  size: ListingSize
   /**
    * The size to write into the links this page builds, or `null` for the
    * default — kept for the same reason as `requestedSort`, and the reason
    * `app/public/urls.ts` does not know what the default is.
    */
-  requestedSize: number | null
+  requestedSize: ListingSize | null
   total: number
   page: number
   pageCount: number
@@ -198,13 +199,13 @@ export async function canonicalRedirect(
 
   const sort = url.searchParams.get("sort")
   const order = url.searchParams.get("order")
-  const size = Number(url.searchParams.get("size") ?? "")
+  const size = readListingSize(url.searchParams.get("size"))
   return redirect(href(locale, listPath(target) + searchQuery({
     q: serializeQuery(ast),
     sort: isSortKey(sort) ? sort : null,
     order: isSortOrder(order) ? order : null,
     page: 1,
-    size: isPageSize(size) && size !== PAGE_SIZE ? size : null,
+    size: size !== PAGE_SIZE ? size : null,
   })))
 }
 
@@ -340,8 +341,7 @@ async function listShell(
   // A size that is not one of the offered ones is ignored rather than refused,
   // for the same reason an unusable ordering is: it can only have come from a
   // hand-written address, and the listing it identifies still exists.
-  const askedSize = Number(request.url.searchParams.get("size") ?? "")
-  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  const size = readListingSize(request.url.searchParams.get("size"))
 
   const empty: ListShell = {
     locale,
@@ -423,7 +423,7 @@ async function listShell(
       total: result.total,
       page: result.page,
       pageCount: result.pageCount,
-      ...pageRange(result.page, size, result.total),
+      ...pageRange(result.page, rowsPerPage(size, result.total), result.total),
       otherCount,
     },
     hits: result.hits,

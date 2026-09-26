@@ -126,18 +126,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-/** A slot (`TextInput` or `LinksInput`) that is a value and holds nothing. */
+/** A slot (`TextInput`, `LinksInput` or `IdsInput`) that is a value and holds nothing. */
 function blankSlot(value: unknown): boolean {
   if (!isRecord(value) || value.state !== "value") return false
   if (typeof value.text === "string") return value.text.trim() === ""
   if (Array.isArray(value.links)) return value.links.length === 0
+  if (Array.isArray(value.ids)) return value.ids.length === 0
   return false
 }
 
 /**
  * The source's reading, with whatever it leaves blank filled from the draft's.
- * A pair is decided a language at a time; a plain list of strings (grant
- * numbers, cited datasets) is blank when it is empty.
+ * A pair is decided a language at a time; a list of IDs (grant numbers, cited
+ * datasets) is blank when it is a value and empty.
  */
 export function sourceOrDraft(mine: unknown, theirs: unknown): unknown {
   if (Array.isArray(theirs)) {

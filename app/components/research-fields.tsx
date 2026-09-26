@@ -8,7 +8,7 @@
  * uses. A second copy would be a second place for the two to drift apart.
  */
 
-import type { LinkInput, LinksPairInput } from "~/admin/form"
+import type { IdsInput, LinkInput, LinksPairInput, SlotState } from "~/admin/form"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
 import type { SeededField } from "~/admin/templates.server"
 import type { DatasetRowView } from "~/public/view.server"
@@ -16,7 +16,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
 import { Button, IconButton, Stack } from "./base"
-import { FieldHead, LanguageLabel, type FieldAnnotations, newId, StateSwitch } from "./fields"
+import { FieldHead, LanguageLabel, type FieldAnnotations, newId, StatedControls, StateSwitch } from "./fields"
 import { CONTROL } from "./form"
 import { Icon } from "./icons"
 import { Empty, Table, Td } from "./page"
@@ -188,15 +188,16 @@ export function LinksField({ label, value, annotations, locale, onChange }: {
  * The numbers a grant is known by.
  *
  * They are plain strings with no identity of their own, so a row is addressed by
- * its position — which is also why the whole list is one path to the diff and
- * has one indicator rather than one per number.
+ * its position — which is also why the whole list is one path to the diff, has
+ * one indicator rather than one per number, and one state: a grant with no
+ * number is not applicable, one asked for is unsettled.
  */
 export function GrantIds({ label, locale, value, annotations, onChange }: {
   label?: string
   locale: Locale
-  value: string[]
+  value: IdsInput
   annotations: FieldAnnotations
-  onChange: (next: string[]) => void
+  onChange: (next: IdsInput) => void
 }) {
   const t = messagesFor(locale).admin.editor
   return (
@@ -205,9 +206,11 @@ export function GrantIds({ label, locale, value, annotations, onChange }: {
       itemLabel={t.grantIds}
       addLabel={t.addGrantId}
       locale={locale}
-      value={value}
+      value={value.ids}
+      state={value.state}
       annotations={annotations}
-      onChange={onChange}
+      onChange={(ids) => { onChange({ ...value, ids }) }}
+      onState={(state) => { onChange({ ...value, state }) }}
     />
   )
 }
@@ -220,7 +223,7 @@ export function GrantIds({ label, locale, value, annotations, onChange }: {
  * one at a time, and a box holding one shows where it ends without a separator
  * to get wrong.
  */
-export function IdList({ label, itemLabel, addLabel, hint, placeholder, locale, value, annotations, onChange }: {
+export function IdList({ label, itemLabel, addLabel, hint, placeholder, locale, value, state, annotations, onChange, onState }: {
   label?: string
   /** What each box is called for whoever reaches it by keyboard. */
   itemLabel: string
@@ -231,47 +234,56 @@ export function IdList({ label, itemLabel, addLabel, hint, placeholder, locale, 
   placeholder?: string
   locale: Locale
   value: string[]
+  /** The list's state, with the toggle beside it; absent for a list that is part of another field's value. */
+  state?: SlotState
   annotations: FieldAnnotations
   onChange: (next: string[]) => void
+  onState?: (next: SlotState) => void
 }) {
   const t = messagesFor(locale).admin.editor
+
+  const list = (
+    <Stack gap="tight">
+      {value.map((id, at) => (
+        <div key={at} className="flex items-center gap-1">
+          <input
+            type="text"
+            aria-label={itemLabel}
+            placeholder={placeholder}
+            className={`${CONTROL} flex-1 text-sm`}
+            value={id}
+            onChange={(event) => {
+              onChange(value.map((row, index) => index === at ? event.target.value : row))
+            }}
+          />
+          <IconButton
+            name="trash"
+            label={t.remove}
+            onClick={() => { onChange(value.filter((_, index) => index !== at)) }}
+          />
+        </div>
+      ))}
+      <div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="xs"
+          icon={<Icon name="plus" aria-hidden="true" />}
+          onClick={() => { onChange([...value, ""]) }}
+        >
+          {addLabel}
+        </Button>
+      </div>
+    </Stack>
+  )
 
   return (
     <Stack gap="tight" at={annotations.at}>
       <FieldHead label={label} annotations={annotations} locale={locale} />
       <div className="md:max-w-md">
-        <Stack gap="tight">
-          {value.map((id, at) => (
-            <div key={at} className="flex items-center gap-1">
-              <input
-                type="text"
-                aria-label={itemLabel}
-                placeholder={placeholder}
-                className={`${CONTROL} flex-1 text-sm`}
-                value={id}
-                onChange={(event) => {
-                  onChange(value.map((row, index) => index === at ? event.target.value : row))
-                }}
-              />
-              <IconButton
-                name="trash"
-                label={t.remove}
-                onClick={() => { onChange(value.filter((_, index) => index !== at)) }}
-              />
-            </div>
-          ))}
-          <div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="xs"
-              icon={<Icon name="plus" aria-hidden="true" />}
-              onClick={() => { onChange([...value, ""]) }}
-            >
-              {addLabel}
-            </Button>
-          </div>
-        </Stack>
+        {state === undefined || onState === undefined
+          ? list
+          : <StatedControls state={state} onState={onState} locale={locale}>{list}</StatedControls>}
       </div>
       {hint !== undefined && <span className="text-ink-muted text-xs">{hint}</span>}
     </Stack>

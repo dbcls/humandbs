@@ -33,6 +33,8 @@ const ja = {
   notFoundTitle: "ページが見つかりません",
   notFoundBody: "お探しのページは存在しないか、公開されていません。",
   notApplicable: "該当なし",
+  /** How a value settled as not applicable is shown: short, with `notApplicable` on pointing at it. */
+  notApplicableShort: "N/A",
   // Said for anyone not looking at the indicator beside an outward link.
   newTab: " (新しいタブで開きます)",
   /**
@@ -115,6 +117,8 @@ const ja = {
     searchHint: "キーワード検索",
     submit: "検索",
     pageSize: "表示件数",
+    /** The page size that puts every row on one page (`ALL_ROWS`). */
+    allRows: "すべて",
     examples: "よく検索されるキーワード",
     // Hand-written guidance, the same three v1 offers. Nothing in the data
     // shows what a first-time reader should try typing.
@@ -459,11 +463,9 @@ const ja = {
     tasks: {
       research: {
         title: "研究",
-        find: "研究一覧",
         create: "研究の作成",
-        fromUpstream: "データ提供申請",
       },
-      contents: { title: "サイトコンテンツ", news: "お知らせ" },
+      contents: { title: "サイトコンテンツ" },
       fields: {
         title: "ファセット",
         note: "絞り込みに使う key と、その値の候補を決める。",
@@ -622,7 +624,7 @@ const ja = {
       checklistStatuses: { ok: "OK", warning: "警告", alert: "アラート" },
     },
     research: {
-      heading: "研究",
+      heading: "研究一覧",
       keyword: "研究 ID・データセット ID・研究題目・提供者名",
       status: "状態",
       statuses: { published: "公開中", unpublished: "未公開" },
@@ -630,7 +632,7 @@ const ja = {
         humLabel: "研究 ID",
         title: "研究題目",
         status: "状態",
-        versions: "公開バージョン",
+        versions: "公開",
         drafts: "下書き",
         files: "ファイル",
         datasets: "データセット",
@@ -638,13 +640,15 @@ const ja = {
         updated: "更新日",
       },
       filesUnavailable: "取得できず",
+      filePresence: { with: "あり", without: "なし" },
+      filesUnknown: "ファイルストアが応答しないため、ファイルの有無では絞り込めません。",
       untitled: "題目未入力",
       unpinned: "未発行",
       none: "条件に合う研究はありません。",
     },
     detail: {
       heading: "研究の編集",
-      backToList: "研究へ",
+      backToList: "研究一覧へ",
       labels: "研究 ID",
       labelsNote: "primary ID が公開ページのアドレスになる。primary を変更した古い ID は secondary として"
         + "残るため、外部からのリンクは切れない。",
@@ -661,7 +665,7 @@ const ja = {
       ],
       noRows: "バージョンと下書きはありません。",
       kind: "状態",
-      version: "バージョン",
+      version: "バージョン・下書き名",
       updatedAt: "更新日時",
       releaseDate: "公開日",
       datasets: "データセット",
@@ -672,7 +676,7 @@ const ja = {
       review: "レビュー",
       draft: "下書き",
       /** A draft with no name, which only a row the release before wrote can be. */
-      unnamedDraft: "名前未入力",
+      unnamedDraft: "下書き名未入力",
       published: "公開中",
       createEmptyDraft: "空の下書きの作成",
       copyToDraft: "下書きの作成",
@@ -689,6 +693,8 @@ const ja = {
         "下書きの段階からアップロードでき、共有リンクのプレビューには名前だけが表示される。",
         "公開・公開停止はファイルごとに行い、研究を公開しても自動では公開されない。データセットに紐づけたファイルに未公開のものがあれば、公開前の確認の画面にも表示され、そこからまとめて公開できる。",
       ],
+      /** The section on the research's screen that leads to the file listing (`openFiles`). */
+      files: "ファイル",
       openFiles: "ファイル一覧",
       updating: "更新中",
       stopUpdating: "更新の中止",
@@ -736,13 +742,10 @@ const ja = {
     draft: {
       /** The research editor's own h1 — the hub above it is named "研究の編集". */
       heading: "研究の内容",
-      rename: "名前の編集",
-      renameTitle: "名前の編集",
-      name: "名前",
-      nameHint: "研究の編集の表と下書きの画面で、この下書きを見分けるための名前。公開するときのバージョン番号とは関係しない。",
+      name: "下書き名",
       renameConfirm: "保存",
-      unnamed: "名前が未入力のため保存できません。名前を入力してください。",
-      datasets: "データセット",
+      unnamed: "下書き名が未入力のため保存できません。下書き名を入力してください。",
+      datasets: "データセット一覧",
       noDatasets: "この研究のデータセットはありません。",
       createDataset: "データセットの作成",
       state: "状態",
@@ -758,7 +761,7 @@ const ja = {
     },
     datasetEditor: {
       heading: "データセットの編集",
-      backToList: "データセットへ",
+      backToList: "データセット一覧へ",
       idHeading: "データセット ID",
       idNote: "外部アーカイブに登録しないデータセットには NHA ID を発行する。ID の割り当て・発行・解除は、保存を待たずに反映される。",
       releaseDate: "公開日",
@@ -996,10 +999,10 @@ const ja = {
       apply: "取り込み",
     },
     templates: {
-      heading: "データ提供申請",
+      heading: "データ提供申請一覧",
       branchHeading: "データ提供申請の内容",
       branchLoading: "申請の内容を読み込んでいます。",
-      backToList: "データ提供申請へ",
+      backToList: "データ提供申請一覧へ",
       backToDraft: "研究の内容へ",
       apply: "取り込み",
       unsaved: "書きかけの下書きがあります。先に保存してから取り込んでください。",
@@ -1030,6 +1033,12 @@ const ja = {
         held: "作成済み",
         absent: "未作成",
         unlabelled: "研究 ID 未発行",
+      },
+      // 申請管理システムの申請の種別。「更新」だけだと公開中のバージョンの更新と紛れる。
+      applicationType: "申請の種類",
+      applicationTypes: {
+        new: "新規",
+        update: "データ更新",
       },
       // 枝番は更新も公開もされないので、公開側の並び替えの語は当てはまらない。
       sort: {
@@ -1229,8 +1238,8 @@ const ja = {
       },
     },
     contents: {
-      heading: "記事",
-      backToList: "記事へ",
+      heading: "記事一覧",
+      backToList: "記事一覧へ",
       backToSeries: "記事のバージョンへ",
       /** Why a language's public page cannot be opened: the reader side answers 404 there. */
       publicPageUnpublished: "この言語は公開されていないため、公開ページがありません。",
@@ -1317,7 +1326,6 @@ const ja = {
         /** Switched on, but its period is over. */
         ended: "表示終了",
         hidden: "非表示",
-        shownOn: "表示日",
         displayFrom: "表示開始日時 (JST)",
         displayUntil: "表示終了日時 (JST)",
         periodNote: "開始・終了とも空にでき、空にした側は制限しない。表示中でも、この期間の外では公開ページに表示しない。",
@@ -1331,7 +1339,7 @@ const ja = {
         removeConfirm: "削除",
       },
       news: {
-        heading: "お知らせ",
+        heading: "お知らせ一覧",
         itemHeading: "お知らせの編集",
         none: "お知らせはありません。",
         find: "お知らせを探す",
@@ -1352,7 +1360,7 @@ const ja = {
         removeTitle: "お知らせの削除",
         removeWarning: "このお知らせと両方の言語の本文が削除されます。元に戻せません。",
         removeConfirm: "削除",
-        backToList: "お知らせへ",
+        backToList: "お知らせ一覧へ",
       },
       files: {
         heading: "静的ファイル",
@@ -1403,7 +1411,7 @@ const ja = {
       },
     },
     files: {
-      heading: "ファイル",
+      heading: "ファイル一覧",
       note: "研究に直接紐づくファイルのアップロード先。公開ページの「非制限公開ファイル」に表示される。アップロードした時点では未公開で、公開はファイルごとに行う。",
       backToResearch: "研究の編集へ",
       open: "ファイル",
@@ -1464,6 +1472,7 @@ const en: Messages = {
   notFoundTitle: "Page not found",
   notFoundBody: "This page does not exist, or it is not published.",
   notApplicable: "Not applicable",
+  notApplicableShort: "N/A",
   newTab: " (opens in a new tab)",
   copied: "Copied!",
   copyByHand: "Could not copy to the clipboard. Copy the selected text instead.",
@@ -1519,6 +1528,7 @@ const en: Messages = {
     searchHint: "Search by keyword",
     submit: "Search",
     pageSize: "Per page",
+    allRows: "All",
     examples: "Frequent searches",
     exampleQueries: ["Amyotrophic lateral sclerosis", "Liver disease", "NGS(Exome)"],
     researchList: "Research list",

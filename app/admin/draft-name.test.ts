@@ -33,7 +33,7 @@ describe("draftAside", () => {
   })
 
   it("shows that a draft has no name rather than showing nothing", () => {
-    expect(draftNameShown("", "ja")).toBe("名前未入力")
-    expect(draftAside("hum0006", "", "ja")).toBe("hum0006 / 名前未入力")
+    expect(draftNameShown("", "ja")).toBe("下書き名未入力")
+    expect(draftAside("hum0006", "", "ja")).toBe("hum0006 / 下書き名未入力")
   })
 })

@@ -50,11 +50,13 @@ describe("the palette", () => {
       "accent",
       "accent-light",
       "accent-lighter",
+      "accent-surface",
       "brand",
       "brand-dark",
       "brand-light",
       "brand-lighter",
       "danger",
+      "danger-surface",
       "deep",
       "diff-del",
       "diff-del-word",
@@ -108,6 +110,11 @@ describe("the palette", () => {
     ])("%s", (name, least) => {
       expect(contrast(colours[name] ?? "", WHITE)).toBeGreaterThanOrEqual(least)
     })
+  })
+
+  it("keeps a large badge's words readable on its own tint", () => {
+    expect(contrast(colours.danger ?? "", colours["danger-surface"] ?? "")).toBeGreaterThanOrEqual(TEXT)
+    expect(contrast(colours.accent ?? "", colours["accent-surface"] ?? "")).toBeGreaterThanOrEqual(TEXT)
   })
 
   it("keeps an input's edge visible against the field's own fill", () => {

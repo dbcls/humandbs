@@ -77,8 +77,9 @@ import {
   PairField,
   Section,
   SingleField,
+  StatedControls,
 } from "./fields"
-import { focusField } from "./form"
+import { focusField, LIST_PLACE } from "./form"
 import { Icon } from "./icons"
 
 /**
@@ -354,20 +355,22 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 id: newId(),
                 title: emptyPair(),
                 agency: { name: emptyPair() },
-                grantIds: [],
+                grantIds: { state: "value" as const, ids: [] },
               })}
               columns={[
                 { header: words.grantAgency, cell: (item) => pairCell(item.agency.name, t.stateChoice) },
                 { header: words.grantTitle, cell: (item) => pairCell(item.title, t.stateChoice) },
                 // A line each, as the page draws them: several numbers on one
                 // line run into one long code.
-                { header: words.grantId, cell: (item) => (
-                  <ul className="flex flex-col items-start gap-1">
-                    {item.grantIds.filter((grantId) => grantId !== "").map((grantId) => (
-                      <li key={grantId}><Badge pill>{grantId}</Badge></li>
-                    ))}
-                  </ul>
-                ) },
+                { header: words.grantId, cell: (item) => item.grantIds.state === "value"
+                  ? (
+                      <ul className="flex flex-col items-start gap-1">
+                        {item.grantIds.ids.filter((grantId) => grantId !== "").map((grantId) => (
+                          <li key={grantId}><Badge pill>{grantId}</Badge></li>
+                        ))}
+                      </ul>
+                    )
+                  : t.stateChoice[item.grantIds.state] },
               ]}
             >
               {(item, path, set) => (
@@ -407,23 +410,25 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 id: newId(),
                 title: emptySlot(),
                 doi: emptySlot(),
-                datasetIds: [],
+                datasetIds: { state: "value" as const, ids: [] },
                 externalIds: [],
               })}
               wide
               columns={[
                 { header: words.publicationTitle, cell: (item) => slotCell(item.title, t.stateChoice) },
                 { header: t.doi, cell: (item) => <span className="break-all">{slotCell(item.doi, t.stateChoice)}</span> },
-                { header: messages.dataset.datasetId, cell: (item) => (
-                  <ul className="flex flex-col gap-1">
-                    {view.datasets
-                      .filter((row) => item.datasetIds.includes(row.id))
-                      .map((row) => <li key={row.id}>{datasetName(row, locale)}</li>)}
-                    {item.externalIds
-                      .filter((id) => id.trim() !== "")
-                      .map((id) => <li key={`external-${id}`}>{id}</li>)}
-                  </ul>
-                ) },
+                { header: messages.dataset.datasetId, cell: (item) => item.datasetIds.state !== "value"
+                  ? t.stateChoice[item.datasetIds.state]
+                  : (
+                      <ul className="flex flex-col gap-1">
+                        {view.datasets
+                          .filter((row) => item.datasetIds.ids.includes(row.id))
+                          .map((row) => <li key={row.id}>{datasetName(row, locale)}</li>)}
+                        {item.externalIds
+                          .filter((id) => id.trim() !== "")
+                          .map((id) => <li key={`external-${id}`}>{id}</li>)}
+                      </ul>
+                    ) },
               ]}
             >
               {(item, path, set) => (
@@ -451,27 +456,35 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                       annotations={annotationsFor(`${path}.datasetIds`)}
                       locale={locale}
                     />
-                    <CitableTable
+                    {/* The column on the page is one place for both lists, so
+                        they share one state and one path; the indicators are
+                        shown once, with the table. */}
+                    <StatedControls
+                      state={item.datasetIds.state}
+                      onState={(state) => { set({ ...item, datasetIds: { ...item.datasetIds, state } }) }}
                       locale={locale}
-                      datasets={view.citable}
-                      selected={item.datasetIds}
-                      onChange={(datasetIds) => { set({ ...item, datasetIds }) }}
-                    />
+                    >
+                      <Stack gap="normal">
+                        <CitableTable
+                          locale={locale}
+                          datasets={view.citable}
+                          selected={item.datasetIds.ids}
+                          onChange={(ids) => { set({ ...item, datasetIds: { ...item.datasetIds, ids } }) }}
+                        />
+                        <IdList
+                          label={t.externalIds}
+                          itemLabel={t.externalIds}
+                          addLabel={t.addExternalId}
+                          hint={t.externalIdsHint}
+                          placeholder={t.externalIdPlaceholder}
+                          locale={locale}
+                          value={item.externalIds}
+                          annotations={{ at: `${path}.datasetIds`, changed: false, onImport: null }}
+                          onChange={(externalIds) => { set({ ...item, externalIds }) }}
+                        />
+                      </Stack>
+                    </StatedControls>
                   </Stack>
-                  {/* The column on the page is one place for both, so this
-                      list is addressed by the same path; the indicators are shown once,
-                      with the table above. */}
-                  <IdList
-                    label={t.externalIds}
-                    itemLabel={t.externalIds}
-                    addLabel={t.addExternalId}
-                    hint={t.externalIdsHint}
-                    placeholder={t.externalIdPlaceholder}
-                    locale={locale}
-                    value={item.externalIds}
-                    annotations={{ at: `${path}.datasetIds`, changed: false, onImport: null }}
-                    onChange={(externalIds) => { set({ ...item, externalIds }) }}
-                  />
                 </>
               )}
             </RepeatingSection>
@@ -480,7 +493,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 after everything that is, under the name of the pane that shows
                 them. */}
             <Section id="listingSummary" title={t.paneRow}>
-              {(["methods", "targets", "typeOfData"] as const).map((field) => (
+              {(["methods", "typeOfData", "targets"] as const).map((field) => (
                 <PairField
                   key={field}
                   label={words.listingSummary[field]}
@@ -496,40 +509,45 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                   }}
                 />
               ))}
-              <FieldHead
-                label={words.listingSummary.dataProviders}
-                annotations={annotationsFor("listingSummary.dataProviders")}
-                locale={locale}
-              />
-              <p className="text-ink-muted text-xs">
-                {content.listingSummary.dataProviders.length === 0
-                  ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
-                  : t.listingProvidersOwn}
-              </p>
-              <ItemList
-                path="listingSummary.dataProviders"
-                locale={locale}
-                items={content.listingSummary.dataProviders}
-                title={words.principalInvestigator}
-                columns={[{ header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) }]}
-                makeEmpty={() => ({ id: newId(), name: emptyPair() })}
-                onChange={(next) => {
-                  editContent((c) => ({
-                    ...c,
-                    listingSummary: { ...c.listingSummary, dataProviders: next },
-                  }))
-                }}
-              >
-                {(item, path, set) => (
-                  <PairField
-                    label={words.principalInvestigator}
-                    value={item.name}
-                    annotations={annotationsFor(`${path}.name`)}
-                    locale={locale}
-                    onChange={(name) => { set({ ...item, name }) }}
-                  />
-                )}
-              </ItemList>
+              {/* **The list is one place** (`form.tsx` の `LIST_PLACE`): the
+                  provider column of the listing's row comes here, whether it
+                  shows these names or the research's providers in their place. */}
+              <div data-at="listingSummary.dataProviders" data-list className={LIST_PLACE}>
+                <FieldHead
+                  label={words.listingSummary.dataProviders}
+                  annotations={annotationsFor("listingSummary.dataProviders")}
+                  locale={locale}
+                />
+                <p className="text-ink-muted text-xs">
+                  {content.listingSummary.dataProviders.length === 0
+                    ? t.listingProvidersFrom(writtenNames(content.dataProviders, locale))
+                    : t.listingProvidersOwn}
+                </p>
+                <ItemList
+                  path="listingSummary.dataProviders"
+                  locale={locale}
+                  items={content.listingSummary.dataProviders}
+                  title={words.principalInvestigator}
+                  columns={[{ header: words.principalInvestigator, cell: (item) => pairCell(item.name, t.stateChoice) }]}
+                  makeEmpty={() => ({ id: newId(), name: emptyPair() })}
+                  onChange={(next) => {
+                    editContent((c) => ({
+                      ...c,
+                      listingSummary: { ...c.listingSummary, dataProviders: next },
+                    }))
+                  }}
+                >
+                  {(item, path, set) => (
+                    <PairField
+                      label={words.principalInvestigator}
+                      value={item.name}
+                      annotations={annotationsFor(`${path}.name`)}
+                      locale={locale}
+                      onChange={(name) => { set({ ...item, name }) }}
+                    />
+                  )}
+                </ItemList>
+              </div>
             </Section>
           </Stack>
         </Stack>
@@ -590,28 +608,33 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       // **The listing's row is a place of its own**: the short summaries are
       // read there and nowhere on the research's page. Both languages are shown in
       // the one tab, each under its own column names, because the row is short
-      // and the two are checked against each other.
+      // and the two are checked against each other. **Its cells and the form
+      // point at each other as the page's values do** (`ResearchListTable`);
+      // what the review has to show about them is shown on the form, beside the
+      // fields, so the row hangs nothing beside them.
       {
         id: "row",
         label: t.paneRow,
         body: (
-          <Card>
-            <Stack gap="block">
-              {([["ja", pageJa], ["en", pageEn]] as const).map(([language, drawn]) => (
-                <Stack key={language} gap="tight">
-                  <LanguageLabel language={language} />
-                  {drawn !== null && (
-                    <ResearchListTable
-                      rows={[drawn.row]}
-                      locale={language}
-                      preview
-                      whenEmpty={messagesFor(language).search.none}
-                    />
-                  )}
-                </Stack>
-              ))}
-            </Stack>
-          </Card>
+          <AnnotationLayer annotate={() => null} here={at} onGo={goTo} goLabel={t.goToField}>
+            <Card>
+              <Stack gap="block">
+                {([["ja", pageJa], ["en", pageEn]] as const).map(([language, drawn]) => (
+                  <Stack key={language} gap="tight">
+                    <LanguageLabel language={language} />
+                    {drawn !== null && (
+                      <ResearchListTable
+                        rows={[drawn.row]}
+                        locale={language}
+                        preview
+                        whenEmpty={messagesFor(language).search.none}
+                      />
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            </Card>
+          </AnnotationLayer>
         ),
       },
     ],
@@ -623,8 +646,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         {/*
           **The header is left for the research this draft belongs to, and collapses
           to its toolbar while typing.** Its second line reaches this draft's
-          other screens, its memo and the way to import a data-providing
-          application in.
+          other screens and the way to import a data-providing application in;
+          the line under it holds the draft's name.
         */}
         <DraftHead
           locale={locale}
@@ -636,15 +659,17 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
             label: t.backToResearch,
             icon: "chevron-left",
           }}
-          headExtra={view.draftName !== null && (
-            <DraftNameEditor locale={locale} researchId={view.researchId} draftId={view.draftId} name={view.draftName} />
-          )}
           overview={(
-            <DraftOverview
-              locale={locale}
-              researchId={view.researchId}
-              draftId={view.draftId}
-            />
+            <>
+              <DraftOverview
+                locale={locale}
+                researchId={view.researchId}
+                draftId={view.draftId}
+              />
+              {view.draftName !== null && (
+                <DraftNameEditor locale={locale} researchId={view.researchId} draftId={view.draftId} name={view.draftName} />
+              )}
+            </>
           )}
           tools={(
             <DraftTools

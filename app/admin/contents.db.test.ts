@@ -25,7 +25,6 @@ import {
   seriesAction,
   seriesPage,
 } from "./contents.server"
-import { today } from "~/dates"
 import {
   adminAlertPath,
   adminDocumentsPath,
@@ -842,44 +841,6 @@ describe("アラート", () => {
     const after = only(await db.select().from(s.alert))
     expect(after.content.body.ja).toBe("直した")
     expect(after.active).toBe(true)
-  })
-
-  it("表示日は最後に表示にした日で、表示中のあいだだけ持ち、本文の保存では動かない", async () => {
-    const token = await signIn(CURATOR, true)
-    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
-    const alert = only(await db.select().from(s.alert))
-    const shownAt = async (): Promise<string | null> =>
-      only((await alertsPage(get(token, adminAlertPath()))).alerts).shownAt
-
-    // 作ったばかりで、まだ一度も表示にしていない
-    expect(await shownAt()).toBeNull()
-
-    // 以前に表示にした跡があっても、いま表示中でなければ持たない
-    await db.insert(s.event).values({
-      occurredAt: new Date("2020-01-01T00:00:00Z"),
-      actorSub: CURATOR.sub,
-      actorName: CURATOR.name,
-      action: "publish-site-content",
-      subjectType: "alert",
-      subjectId: alert.id,
-    })
-    expect(await shownAt()).toBeNull()
-
-    // 表示にした日 — 以前の跡ではなく、最後に表示にした日
-    await alertAction(post(token, adminAlertPath(), {
-      intent: "show-alert", alertId: alert.id, ja: "お知らせ", en: "notice",
-    }))
-    expect(await shownAt()).toBe(today())
-
-    await alertAction(post(token, adminAlertPath(), {
-      intent: "update-alert", alertId: alert.id, ja: "直した", en: "fixed",
-    }))
-    expect(await shownAt()).toBe(today())
-
-    await alertAction(post(token, adminAlertPath(), {
-      intent: "hide-alert", alertId: alert.id, ja: "直した", en: "fixed",
-    }))
-    expect(await shownAt()).toBeNull()
   })
 
   it("非表示にしたアラートは、本文を保存しても非表示のまま", async () => {

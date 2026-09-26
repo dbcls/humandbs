@@ -183,13 +183,13 @@ export const researchSchema = z.object({
   grants: z.array(z.object({
     title: textSchema.optional(),
     agency: textSchema.optional(),
-    grantIds: z.array(z.string()),
+    grantIds: z.array(z.string()).nullable().optional(),
   })),
   relatedPublications: z.array(z.object({
     title: z.string().nullable().optional(),
     doi: z.string().nullable().optional(),
-    datasets: z.array(z.string()).meta({
-      description: "Dataset ids the publication names: this research's that are published, then any other written by hand — another research's, or an accession the portal does not hold — as written.",
+    datasets: z.array(z.string()).nullable().optional().meta({
+      description: "Dataset ids the publication names: this research's that are published, then any other written by hand — another research's, or an accession the portal does not hold — as written. Null where the research states that the publication names no dataset.",
     }),
   })),
   datasets: z.array(z.string()).meta({

@@ -1,16 +1,14 @@
 import { Form } from "react-router"
 
-import { ADMIN_STATUSES, type AdminStatus } from "~/admin/listing"
+import { ADMIN_STATUSES, type AdminStatus, FILE_PRESENCES, type FilePresence } from "~/admin/listing"
 import { createResearchAction, researchListPage } from "~/admin/pages.server"
 import {
   adminResearchListPath,
   adminResearchPath,
-  adminUpstreamResearchPath,
   listingQuery,
   type ListingQuery,
 } from "~/admin/urls"
 import {
-  ButtonLink,
   Excerpt,
   Heading,
   Stack,
@@ -21,13 +19,14 @@ import { Icon } from "~/components/icons"
 import { Card, DatasetIds, IdWithIcon, Page, Paging, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/prefix"
 import { listingSummariesOf } from "~/files/listing.server"
-import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { DateRange, type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
 import { adminWindowTitle } from "~/i18n/title"
 import { datasetPath, href, readLocale } from "~/public/urls"
 import { useAsk } from "~/search-as-typed"
+import { dateWindows } from "~/search/date-window"
 import { DEFAULT_SORT, defaultOrder, SORT_KEYS, type SortKey } from "~/search/sort"
 
 import type { Route } from "./+types/admin-research-list"
@@ -86,6 +85,9 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.statuses.length
+    + (view.published.from === null && view.published.to === null ? 0 : 1)
+    + (view.updated.from === null && view.updated.to === null ? 0 : 1)
+    + view.files.length
 
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
@@ -105,15 +107,9 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
       <Card under={false}>
         <Stack gap="normal">
           <Heading title={t.heading}>
-            {/* The two ways a research begins, in the words and the order the
-                area's front page gives them (`admin/navigation.ts`): a curator
-                arriving from there should not have to match a name up. */}
-            <ButtonLink
-              to={href(locale, adminUpstreamResearchPath())}
-              icon={<Icon name="inbox" />}
-            >
-              {messages.admin.tasks.research.fromUpstream}
-            </ButtonLink>
+            {/* **Only the empty research is begun here.** One begun from a data
+                submission application is begun from that application's own
+                screen, which the header's menu reaches. */}
             <Form method="post">
               <Submit icon={<Icon name="plus" />}>{messages.admin.tasks.research.create}</Submit>
             </Form>
@@ -203,8 +199,11 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                           nothing for a box to hold together. */}
                       <Stated kind={STATUS_FLAG[row.status]}>{t.statuses[row.status]}</Stated>
                     </Td>
-                    <Td>{row.publishedVersions}</Td>
-                    <Td>{row.draftCount}</Td>
+                    {/* **The two counts take only their own width**: a number of
+                        one or two digits under a short heading, where the
+                        default floor left each as wide as a column of words. */}
+                    <Td floor="min-w-0">{row.publishedVersions}</Td>
+                    <Td floor="min-w-0">{row.draftCount}</Td>
                     <Td nowrap>
                       {/* The two numbers the research's own screen gives for
                           its prefix, in the same words. A store that did not
@@ -238,19 +237,30 @@ interface ViewProps {
  * conditions that are set (`search-as-typed.ts` の `conditions`).
  *
  * **Nothing here waits to be confirmed.** The field sends the query once the typing has
- * stopped and a tick sends it as it is made, which is how the public pane responds.
+ * stopped, a tick or a window sends it as it is made, and a day sends it the
+ * moment it is whole, which is how the public pane responds.
  * A pane that only took effect on a press leaves the rows disagreeing with the
  * conditions above them, and the reader has to press to find out which is true.
  *
- * **The box and the ticks are two forms, and each has what the other
- * holds.** The box is one control with a submission of its own, and a form
- * cannot be nested inside another.
+ * **The box, the two ranges of days and the ticks are four forms, and each has
+ * what the others hold.** The box is one control with a submission of its own,
+ * and a form cannot be nested inside another.
  */
 function Filters({ view, locale }: ViewProps) {
   const messages = messagesFor(locale)
   const t = messages.admin.research
   const to = href(locale, adminResearchListPath())
   const { form, ask } = useAsk(to)
+  // The same four windows the public dates offer, opening from today and
+  // lifting only the range they are over.
+  const windows = (range: "published" | "updated") => dateWindows({
+    today: view.today,
+    from: view[range].from,
+    to: view[range].to,
+    labels: { all: messages.search.refine.presetAll, years: messages.search.refine.presetYears },
+    lifted: listingAt(view, locale, { [`${range}From`]: null, [`${range}To`]: null }),
+    opening: (from) => listingAt(view, locale, { [`${range}From`]: from, [`${range}To`]: null }),
+  })
 
   return (
     <Stack gap="normal">
@@ -264,14 +274,12 @@ function Filters({ view, locale }: ViewProps) {
         size="compact"
         searchAsTyped
       >
-        {view.statuses.map((status) => (
-          <input key={status} type="hidden" name="status" value={status} />
-        ))}
+        <Held view={view} except="keyword" />
         <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
       <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
-        <input type="hidden" name="q" value={view.keyword} />
+        <Held view={view} except="ticks" />
         <ListingPresented presented={presentation(view, locale)} />
         <Stack gap="normal">
           <RefineAxis label={t.status}>
@@ -287,9 +295,68 @@ function Filters({ view, locale }: ViewProps) {
               />
             ))}
           </RefineAxis>
+          {/* **The store is asked which researches have a file at all**, and
+              when it does not respond the ticks cannot be answered: they are
+              shown unpressable with the reason, and a condition already in the
+              address is left unapplied (`listing.ts` の `filterResearchRows`). */}
+          <RefineAxis label={t.columns.files}>
+            {view.counts.files === null
+              ? <p className="text-ink-muted text-xs">{t.filesUnknown}</p>
+              : FILE_PRESENCES.map((presence: FilePresence) => (
+                  <Checkbox
+                    key={presence}
+                    label={t.filePresence[presence]}
+                    name="files"
+                    value={presence}
+                    checked={view.files.includes(presence)}
+                    count={view.counts.files?.[presence]}
+                  />
+                ))}
+          </RefineAxis>
         </Stack>
       </Form>
+
+      {/* **The days are the ones the columns show**: the release date of the
+          latest version that is out, and the JST day of the latest change. A
+          research never out is outside any range of release days. */}
+      {(["published", "updated"] as const).map((range) => (
+        <RefineAxis key={range} label={t.columns[range]}>
+          <DateRange
+            locale={locale}
+            action={to}
+            windows={windows(range)}
+            from={view[range].from ?? ""}
+            to={view[range].to ?? ""}
+            names={{ from: `${range}From`, to: `${range}To` }}
+          >
+            <Held view={view} except={range} />
+            <ListingPresented presented={presentation(view, locale)} />
+          </DateRange>
+        </RefineAxis>
+      ))}
     </Stack>
+  )
+}
+
+/**
+ * The conditions in force, as hidden fields for a form that sends only one of
+ * them — every GET form replaces the whole query, so each carries the rest.
+ */
+function Held({ view, except }: { view: ViewProps["view"], except: "keyword" | "ticks" | "published" | "updated" }) {
+  return (
+    <>
+      {except !== "keyword" && <input type="hidden" name="q" value={view.keyword} />}
+      {except !== "ticks" && view.statuses.map((status) => (
+        <input key={status} type="hidden" name="status" value={status} />
+      ))}
+      {except !== "ticks" && view.files.map((presence) => (
+        <input key={presence} type="hidden" name="files" value={presence} />
+      ))}
+      {(["published", "updated"] as const).filter((range) => range !== except).flatMap((range) => [
+        view[range].from === null ? null : <input key={`${range}From`} type="hidden" name={`${range}From`} value={view[range].from} />,
+        view[range].to === null ? null : <input key={`${range}To`} type="hidden" name={`${range}To`} value={view[range].to} />,
+      ])}
+    </>
   )
 }
 
@@ -307,6 +374,11 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Listin
   return href(locale, adminResearchListPath() + listingQuery({
     keyword: view.keyword,
     statuses: view.statuses,
+    publishedFrom: view.published.from,
+    publishedTo: view.published.to,
+    updatedFrom: view.updated.from,
+    updatedTo: view.updated.to,
+    files: view.files,
     page: 1,
     ...presentedQuery(presentation(view, locale)),
     ...over,

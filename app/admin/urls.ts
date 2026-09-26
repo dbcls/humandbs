@@ -9,6 +9,8 @@
  * ordinary case.
  */
 
+import type { ListingSize } from "~/search/page-size"
+
 export function adminPath(): string {
   return "/admin"
 }
@@ -192,16 +194,24 @@ interface ListingPresentation {
   /** The direction to keep, or `null` when it is the one the key runs by. */
   order: string | null
   /** The page size to keep, or `null` for the default. */
-  size: number | null
+  size: ListingSize | null
 }
 
 export interface ListingQuery extends ListingPresentation {
   statuses: readonly string[]
+  /** The two ends of the day of the latest release, each `null` when it is open. */
+  publishedFrom: string | null
+  publishedTo: string | null
+  /** The two ends of the day of the latest change. */
+  updatedFrom: string | null
+  updatedTo: string | null
+  files: readonly string[]
 }
 
 /** The listing of approval branches narrows by one axis of its own. */
 export interface BranchListingQuery extends ListingPresentation {
   branchStatuses: readonly string[]
+  applicationTypes: readonly string[]
 }
 
 /**
@@ -231,12 +241,21 @@ function listingAddress(
 }
 
 export function listingQuery(query: ListingQuery): string {
-  return listingAddress(query, { status: query.statuses })
+  const day = (value: string | null): string[] => (value === null ? [] : [value])
+  return listingAddress(query, {
+    status: query.statuses,
+    publishedFrom: day(query.publishedFrom),
+    publishedTo: day(query.publishedTo),
+    updatedFrom: day(query.updatedFrom),
+    updatedTo: day(query.updatedTo),
+    files: query.files,
+  })
 }
 
 export function branchListingQuery(query: BranchListingQuery): string {
   return listingAddress(query, {
     status: query.branchStatuses,
+    type: query.applicationTypes,
   })
 }
 

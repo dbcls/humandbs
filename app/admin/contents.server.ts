@@ -27,13 +27,13 @@ import { recordEvent } from "~/auth/events.server"
 import { checkArticleBody, type ArticleSyntax } from "~/content/article.server"
 import type { ArticleContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
-import { alert, document, documentContent, documentSeries, event, news, newsContent } from "~/db/schema"
+import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { isLocale } from "~/i18n/locale"
 import { renderMarkdown } from "~/public/markdown.server"
 import type { ArticleView } from "~/public/site.server"
 import { href, readLocale } from "~/public/urls"
-import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { type ListingSize, readListingSize } from "~/search/page-size"
 
 import { stampFromLocalInput, today } from "~/dates"
 import { axisCounts, pageOf, type ListingPage } from "./listing"
@@ -145,18 +145,6 @@ export type ContentsResult
 export interface AlertRow {
   id: string
   active: boolean
-  /**
-   * The JST day it was put up, while it is up.
-   *
-   * **Read from the trail rather than kept on the row.** Putting an alert up
-   * is recorded there in the same transaction, so the day is true without a
-   * second thing being written — and it is the day of the *latest* raising,
-   * because what a reader of the screen wants to know is how long the sentence
-   * has been standing, not when it first went up. An alert that comes across
-   * from v1 standing is put up in the trail by the load, at the instant v1
-   * holds for it, so it has a day as well.
-   */
-  shownAt: string | null
   /** The period it is seen in, as JST wall clocks (`news.publishedAt`); null is no end on that side. */
   displayFrom: string | null
   displayUntil: string | null
@@ -184,7 +172,7 @@ export interface ContentsView extends ListingPage<TreeEntry> {
     ja: Record<PublishState, number>
     en: Record<PublishState, number>
   }
-  size: PageSize
+  size: ListingSize
   /**
    * Version-less slugs whose current revision does not respond in some language.
    *
@@ -247,7 +235,7 @@ export interface NewsListView extends ListingPage<NewsRow> {
     ja: Record<NewsState, number>
     en: Record<NewsState, number>
   }
-  size: PageSize
+  size: ListingSize
   sort: NewsSortKey
   order: "asc" | "desc"
 }
@@ -379,8 +367,7 @@ export async function contentsPage(request: Request): Promise<ContentsView> {
   // A size that is not one of the offered ones is read as none asked for, the
   // way the other listings read theirs: an address arriving from somewhere else
   // should respond rather than refuse.
-  const askedSize = Number(url.searchParams.get("size") ?? "")
-  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  const size = readListingSize(url.searchParams.get("size"))
 
   const documents = await documentRows(db)
   const series = await seriesRows(db, documents)
@@ -449,31 +436,17 @@ export async function seriesPage(request: Request, seriesId: string): Promise<Se
 
 export async function alertsPage(request: Request): Promise<AlertsView> {
   await requireCapability(request, "manage-site-content")
-  // The last time each alert was put up, as the JST day (`AlertRow`). The
-  // trail is the one place that knows: the row only records whether it is up now.
-  const lastShown = getDb()
-    .select({
-      subjectId: event.subjectId,
-      day: sql<string>`to_char(max(${event.occurredAt}) at time zone 'Asia/Tokyo', 'YYYY-MM-DD')`.as("day"),
-    })
-    .from(event)
-    .where(and(eq(event.action, "publish-site-content"), eq(event.subjectType, "alert")))
-    .groupBy(event.subjectId)
-    .as("last_shown")
   const alerts = await getDb()
     .select({
       id: alert.id,
       active: alert.active,
       content: alert.content,
-      shownDay: lastShown.day,
       displayFrom: alert.displayFrom,
       displayUntil: alert.displayUntil,
       ahead: sql<boolean>`coalesce(${alert.displayFrom} > (now() at time zone 'Asia/Tokyo'), false)`,
       over: sql<boolean>`coalesce(${alert.displayUntil} <= (now() at time zone 'Asia/Tokyo'), false)`,
     })
     .from(alert)
-    // The trail names its subject as text, whatever the subject's own key is.
-    .leftJoin(lastShown, sql`${lastShown.subjectId} = ${alert.id}::text`)
     // **Two alerts made in the same moment still have an order.** Rows written
     // in one statement share a timestamp, and ordering by the time alone hands
     // them back in whatever order they happen to lie in — which moves as soon as
@@ -486,7 +459,6 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
     alerts: alerts.map((row) => ({
       id: row.id,
       active: row.active,
-      shownAt: row.active ? row.shownDay : null,
       displayFrom: row.displayFrom,
       displayUntil: row.displayUntil,
       period: row.ahead ? "ahead" : row.over ? "over" : "within",
@@ -646,8 +618,7 @@ export async function newsListPage(request: Request): Promise<NewsListView> {
   }
   // A size that is not one of the offered ones is read as none asked for, the
   // way the other listings read theirs.
-  const askedSize = Number(url.searchParams.get("size") ?? "")
-  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  const size = readListingSize(url.searchParams.get("size"))
   // Unreadable is the default rather than a refusal, the way the other
   // listings read their own address.
   const asked = url.searchParams.get("sort")

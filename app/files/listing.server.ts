@@ -30,7 +30,7 @@ import {
   type StoredNode,
 } from "./prefix"
 import { pendingSwitches } from "./jobs.server"
-import { listPrefix } from "./store.server"
+import { listPrefix, listTopPrefixes } from "./store.server"
 
 async function tolerantly<T>(read: () => Promise<T>): Promise<T | null> {
   try {
@@ -124,6 +124,30 @@ export async function adminListing(
 export interface ListingSummary {
   count: number
   bytes: number
+}
+
+/**
+ * Which researches have a file in either bucket, for narrowing the admin
+ * listing by it — the same two prefixes the listing's column counts
+ * (`listingSummariesOf`): the private one by the research's identity and the
+ * public one by its primary label.
+ *
+ * **Every research at once, by which prefixes hold anything** rather than a
+ * listing per research: the narrowing reads every research, not a page of
+ * them. `null` when either bucket did not respond, since a research whose
+ * files could not be read is neither with nor without them.
+ */
+export async function researchesWithFiles(
+  rows: readonly { researchId: string, humLabel: string | null }[],
+): Promise<Set<string> | null> {
+  const [publicPrefixes, privatePrefixes] = await Promise.all([
+    tolerantly(() => listTopPrefixes(PUBLIC_BUCKET)),
+    tolerantly(() => listTopPrefixes(PRIVATE_BUCKET)),
+  ])
+  if (publicPrefixes === null || privatePrefixes === null) return null
+  return new Set(rows
+    .filter((row) => privatePrefixes.has(row.researchId) || (row.humLabel !== null && publicPrefixes.has(row.humLabel)))
+    .map((row) => row.researchId))
 }
 
 /**

@@ -363,29 +363,31 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
   }
 
   return (
-    <Section title={t.languages[editor.locale]} fill>
-      {/*
-        The state and the publish date name the language section but are not
-        part of its heading — `Section`'s title is text only, with no slot
-        for a right-hand side, so what would sit beside the h2 sits on the
-        first line under it instead.
-
-        **A screen about one article draws the state as a badge**, the way
-        the alert screen does. What keeps the badge out of a listing is the
-        count: fifty rows that all say the same thing in an outlined box
-        leave the eye nothing to catch, whereas here there is one per
-        language and it is the first thing the section shows.
-      */}
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Flag kind={STATE_FLAG[shown]}>{stateWord(locale, shown)}</Flag>
-        {editor.publishedAt !== null && (
-          <span className="text-ink-muted text-xs">
-            {t.publishedOn}
-            {" "}
-            {editor.publishedAt}
-          </span>
-        )}
-      </div>
+    <Section
+      title={t.languages[editor.locale]}
+      fill
+      // **The state and the publish date stand right of the language's name**:
+      // they say whether this language is out and since when, and on a line of
+      // their own under the name they read as the first thing in the form.
+      //
+      // **A screen about one article draws the state as a badge**, the way
+      // the alert screen does. What keeps the badge out of a listing is the
+      // count: fifty rows that all say the same thing in an outlined box
+      // leave the eye nothing to catch, whereas here there is one per
+      // language.
+      aside={(
+        <>
+          <Flag kind={STATE_FLAG[shown]}>{stateWord(locale, shown)}</Flag>
+          {editor.publishedAt !== null && (
+            <span className="font-normal text-ink-muted text-xs">
+              {t.publishedOn}
+              {" "}
+              {editor.publishedAt}
+            </span>
+          )}
+        </>
+      )}
+    >
 
       {/*
         **Two things can be done to a language, and they are shown in one row.**

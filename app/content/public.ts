@@ -194,15 +194,19 @@ export function publicResearchContent(
       id: grant.id,
       title: text(grant.title, options),
       agency: { name: text(grant.agency.name, options) },
-      grantIds: [...grant.grantIds],
+      grantIds: settle(grant.grantIds, [], options),
     })),
-    relatedPublications: content.relatedPublications.map((publication) => ({
-      id: publication.id,
-      title: single(publication.title, options),
-      doi: single(publication.doi, options),
-      datasetIds: [...publication.datasetIds],
-      externalIds: [...(publication.externalIds ?? [])],
-    })),
+    relatedPublications: content.relatedPublications.map((publication) => {
+      const datasetIds = settle(publication.datasetIds, [], options)
+      return {
+        id: publication.id,
+        title: single(publication.title, options),
+        doi: single(publication.doi, options),
+        datasetIds,
+        // The IDs typed beside the column's datasets are read only while it holds a value.
+        externalIds: datasetIds.state === "value" ? [...(publication.externalIds ?? [])] : [],
+      }
+    }),
     datasetIds: [...content.datasetIds],
   }
 }

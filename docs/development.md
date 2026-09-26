@@ -145,7 +145,7 @@ docker compose exec app npm run upstream:refresh -- --source=archive-date  # DDB
 
 ### 申請管理システムの代わりの schema
 
-申請から下書きを作る画面を手元で見るには、開発用の DB に申請管理システムの代わりの schema (`jgasys`) を作る。この schema は production の複製ではない。DDL は production の列定義から機械的に作ったもので、元データは repo の外にある (場所は script の冒頭)。手元で通った SQL が production で通るとは限らない。
+データ提供申請一覧と、申請から下書きを作る画面を手元で見るには、開発用の DB に申請管理システムの代わりの schema (`jgasys`) を作る。この schema は production の複製ではない。DDL は production の列定義から機械的に作ったもので、元データは repo の外にある (場所は script の冒頭)。手元で通った SQL が production で通るとは限らない。
 
 1. `scripts/seed-jga-dev.sh` をホストで実行する。`db` が起動している必要がある。
 2. `.env` の `HUMANDBS_JGA_DATABASE_URL` を `HUMANDBS_DATABASE_URL` と同じ値にし、`HUMANDBS_JGA_DB_SCHEMA` を `jgasys` にする。

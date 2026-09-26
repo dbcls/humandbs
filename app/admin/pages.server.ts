@@ -37,7 +37,7 @@ import type { DatasetContent, TranslatedText } from "~/content/types"
 import type { EventActor } from "~/auth/events.server"
 import { getDb, type Executor } from "~/db/client.server"
 import { isUploadableName, type ListedFile } from "~/files/prefix"
-import { adminListing, publicListing } from "~/files/listing.server"
+import { adminListing, publicListing, researchesWithFiles } from "~/files/listing.server"
 import { pendingSwitches, privateNames, switchFiles } from "~/files/jobs.server"
 import { wakeFileRunner } from "~/files/runner.server"
 import { resolveText, type Locale } from "~/i18n/locale"
@@ -45,7 +45,7 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { loadCatalog, publishedDatasets } from "~/public/queries.server"
 import { datasetRowOf, type DatasetRowView } from "~/public/view.server"
-import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { type ListingSize, readListingSize } from "~/search/page-size"
 import {
   DEFAULT_SORT,
   defaultOrder,
@@ -62,7 +62,7 @@ import {
   describedResearch,
   type ShownLine,
 } from "./changes"
-import { today } from "~/dates"
+import { dayFromInput, dayInJst, today } from "~/dates"
 import { datasetContentInput, type DatasetContentInput } from "./dataset-form"
 import { datasetContentOf, saveDatasetSchema, widthsOrdered } from "./dataset-form.server"
 import {
@@ -117,12 +117,18 @@ import {
 import {
   ADMIN_STATUSES,
   axisCounts,
+  FILE_PRESENCES,
   filterResearchRows,
   isAdminStatus,
+  isFilePresence,
   pageOf,
   sortResearchRows,
   type AdminDatasetRef,
+  type AdminResearchRow,
   type AdminStatus,
+  type DayRange,
+  type FilePresence,
+  type ListingFilter,
 } from "./listing"
 import { deleteResearch } from "./research.server"
 import {
@@ -183,7 +189,7 @@ export interface AdminListRowView {
   status: AdminStatus
   publishedVersions: number
   draftCount: number
-  /** The day of the most recent change; the hour is noise in a listing. */
+  /** The JST day of the most recent change; the hour is noise in a listing. */
   updatedOn: string
   /** The day the latest version that is out was released, or `null`. */
   publishedOn: string | null
@@ -195,16 +201,23 @@ export interface AdminListRowView {
  */
 export interface AdminListCounts {
   statuses: Record<AdminStatus, number>
+  /** `null` when the store did not respond, so neither can be counted. */
+  files: Record<FilePresence, number> | null
 }
 
 export interface AdminListView {
   locale: Locale
   keyword: string
   statuses: AdminStatus[]
+  published: DayRange
+  updated: DayRange
+  files: FilePresence[]
   counts: AdminListCounts
+  /** The JST day the date windows open back from (`search/date-window.ts`). */
+  today: string
   sort: SortKey
   order: SortOrder
-  size: PageSize
+  size: ListingSize
   rows: AdminListRowView[]
   total: number
   page: number
@@ -212,6 +225,17 @@ export interface AdminListView {
   /** 1-based positions of the shown rows within the whole result. */
   rangeFrom: number
   rangeTo: number
+}
+
+/**
+ * A range of days the address names as `<name>From` and `<name>To`. An end
+ * that is not a day is an open end, the way the date fields read one.
+ */
+function dayRangeOf(params: URLSearchParams, name: string): DayRange {
+  return {
+    from: dayFromInput(params.get(`${name}From`) ?? ""),
+    to: dayFromInput(params.get(`${name}To`) ?? ""),
+  }
 }
 
 /** The page asked for, or the first one when the address has nothing sensible. */
@@ -227,9 +251,12 @@ export async function researchListPage(
   await requireCapability(request, "view-unpublished")
 
   const url = new URL(request.url)
-  const filter = {
+  const filter: ListingFilter = {
     keyword: url.searchParams.get("q") ?? "",
     statuses: url.searchParams.getAll("status").filter(isAdminStatus),
+    published: dayRangeOf(url.searchParams, "published"),
+    updated: dayRangeOf(url.searchParams, "updated"),
+    files: url.searchParams.getAll("files").filter(isFilePresence),
   }
 
   // An ordering or a size that is not one of the offered ones is read as none
@@ -239,31 +266,43 @@ export async function researchListPage(
   const sort = isSortKey(askedSort) ? askedSort : DEFAULT_SORT
   const askedOrder = url.searchParams.get("order")
   const order = isSortOrder(askedOrder) ? askedOrder : defaultOrder(sort)
-  const askedSize = Number(url.searchParams.get("size") ?? "")
-  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  const size = readListingSize(url.searchParams.get("size"))
 
   const all = await adminResearchIndex(getDb())
+  const holding = await researchesWithFiles(all)
+  const hasFiles = (row: AdminResearchRow): boolean | null => holding === null ? null : holding.has(row.researchId)
   const page = pageOf(
-    sortResearchRows(filterResearchRows(all, filter), sort, order),
+    sortResearchRows(filterResearchRows(all, filter, hasFiles), sort, order),
     readPage(url.searchParams.get("page")),
     size,
   )
 
   // Each axis is counted over the rows the *other* conditions leave, so that a
-  // second status is still reachable after the first has been ticked.
+  // second value is still reachable after the first has been ticked.
   const counts: AdminListCounts = {
     statuses: axisCounts(
-      filterResearchRows(all, { ...filter, statuses: [] }),
+      filterResearchRows(all, { ...filter, statuses: [] }, hasFiles),
       ADMIN_STATUSES,
       (row, status) => row.status === status,
     ),
+    files: holding === null
+      ? null
+      : axisCounts(
+          filterResearchRows(all, { ...filter, files: [] }, hasFiles),
+          FILE_PRESENCES,
+          (row, presence) => (holding.has(row.researchId) ? "with" : "without") === presence,
+        ),
   }
 
   return {
     locale,
     keyword: filter.keyword,
-    statuses: filter.statuses,
+    statuses: [...filter.statuses],
+    published: filter.published,
+    updated: filter.updated,
+    files: [...filter.files],
     counts,
+    today: today(),
     sort,
     order,
     size,
@@ -280,7 +319,7 @@ export async function researchListPage(
       status: row.status,
       publishedVersions: row.publishedVersions,
       draftCount: row.draftCount,
-      updatedOn: row.updatedAt.slice(0, 10),
+      updatedOn: dayInJst(row.updatedAt),
       publishedOn: row.publishedOn,
     })),
   }
@@ -1614,7 +1653,7 @@ export async function saveDraftAction(
   const known = new Set(datasets.map((row) => row.id))
   const listed = [
     ...payload.data.content.datasetIds,
-    ...payload.data.content.relatedPublications.flatMap((row) => row.datasetIds),
+    ...payload.data.content.relatedPublications.flatMap((row) => row.datasetIds.ids),
   ]
   if (listed.some((id) => !known.has(id))) badRequest()
 

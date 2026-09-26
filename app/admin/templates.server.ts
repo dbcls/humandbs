@@ -29,7 +29,7 @@ import { getDb, type Executor } from "~/db/client.server"
 import { dataset, labelPin } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { href } from "~/public/urls"
-import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { type ListingSize, readListingSize } from "~/search/page-size"
 import { isSortOrder, type SortOrder } from "~/search/sort"
 import {
   fetchAccessionBranchId,
@@ -50,16 +50,19 @@ import {
   type SeededDataset,
 } from "./drafts.server"
 import {
+  APPLICATION_TYPES,
   axisCounts,
   BRANCH_SORT,
   BRANCH_STATUSES,
   branchOrder,
   branchStatusOf,
   filterBranchRows,
+  isApplicationType,
   isBranchSortKey,
   isBranchStatus,
   pageOf,
   sortBranchRows,
+  type ApplicationType,
   type BranchSortKey,
   type BranchStatus,
 } from "./listing"
@@ -86,6 +89,7 @@ const DRA = /^DRA\d+$/
 export interface UpstreamBranchView {
   applicationId: string
   humLabel: string | null
+  applicationType: ApplicationType
   approvedOn: string | null
   titleJa: string
   titleEn: string
@@ -145,16 +149,18 @@ export interface UpstreamResearchView {
   connected: boolean
   keyword: string
   branchStatuses: BranchStatus[]
+  applicationTypes: ApplicationType[]
   /**
    * How many branches each choice of the pane would leave, counted the way the
    * public panel counts (`app/admin/listing.ts` の `axisCounts`).
    */
   counts: {
     branchStatuses: Record<BranchStatus, number>
+    applicationTypes: Record<ApplicationType, number>
   }
   sort: BranchSortKey
   order: SortOrder
-  size: PageSize
+  size: ListingSize
   rows: UpstreamBranchView[]
   total: number
   page: number
@@ -270,6 +276,7 @@ async function branchViews(
   return rows.map((row) => ({
     applicationId: row.applicationId,
     humLabel: row.humLabel,
+    applicationType: row.applicationType,
     approvedOn: row.approvedOn,
     titleJa: row.titleJa,
     titleEn: row.titleEn,
@@ -369,13 +376,13 @@ export async function upstreamResearchPage(
   const keyword = url.searchParams.get("q") ?? ""
   const filter = {
     branchStatuses: url.searchParams.getAll("status").filter(isBranchStatus),
+    applicationTypes: url.searchParams.getAll("type").filter(isApplicationType),
   }
   const askedSort = url.searchParams.get("sort")
   const sort = isBranchSortKey(askedSort) ? askedSort : BRANCH_SORT
   const askedOrder = url.searchParams.get("order")
   const order = isSortOrder(askedOrder) ? askedOrder : branchOrder(sort)
-  const askedSize = Number(url.searchParams.get("size") ?? "")
-  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  const size = readListingSize(url.searchParams.get("size"))
   const presented = { ...filter, keyword, sort, order, size }
 
   const rows = await withApplicationDb((at) =>
@@ -387,6 +394,7 @@ export async function upstreamResearchPage(
       ...presented,
       counts: {
         branchStatuses: axisCounts([], BRANCH_STATUSES, () => false),
+        applicationTypes: axisCounts([], APPLICATION_TYPES, () => false),
       },
       rows: [],
       total: 0,
@@ -403,13 +411,18 @@ export async function upstreamResearchPage(
     readPage(url.searchParams.get("page")),
     size,
   )
-  // The axis is counted with its own condition lifted, so that a second
-  // status is still reachable after the first has been ticked.
+  // Each axis is counted with its own condition lifted, so that a second
+  // value is still reachable after the first has been ticked.
   const counts = {
     branchStatuses: axisCounts(
       filterBranchRows(found, { ...filter, branchStatuses: [] }),
       BRANCH_STATUSES,
       (row, branchStatus) => branchStatusOf(row) === branchStatus,
+    ),
+    applicationTypes: axisCounts(
+      filterBranchRows(found, { ...filter, applicationTypes: [] }),
+      APPLICATION_TYPES,
+      (row, applicationType) => row.applicationType === applicationType,
     ),
   }
   return {

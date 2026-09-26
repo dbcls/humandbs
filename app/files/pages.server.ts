@@ -22,7 +22,7 @@ import { getDb } from "~/db/client.server"
 import { loadConfig, publicOrigin } from "~/config.server"
 import { dayFromInput, today } from "~/dates"
 import type { Locale } from "~/i18n/locale"
-import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { type ListingSize, readListingSize, rowsPerPage } from "~/search/page-size"
 import { href } from "~/public/urls"
 
 import { adminFilesPath, adminResearchFilesPath } from "~/admin/urls"
@@ -146,14 +146,18 @@ export interface FilesPageView {
   counts: Record<FileState, number>
   sort: FileSortKey
   order: "asc" | "desc"
-  size: PageSize
+  size: ListingSize
   total: number
   page: number
   pageCount: number
   /** 1-based positions of the shown rows within the whole prefix. */
   rangeFrom: number
   rangeTo: number
-  /** How many switches have not finished, over the whole prefix rather than the page. */
+  /**
+   * Whether a switch is still under way anywhere in the prefix rather than on
+   * the page: the screen reads itself again until none is (`useRevalidateWhile`).
+   */
+  switching: boolean
   /** Above this an upload is split into parts, and each part is this many bytes. */
   multipartThreshold: number
   partSize: number
@@ -189,8 +193,7 @@ export async function filesPage(
   const states = asked.getAll("state").filter(isFileState)
   const sort = isFileSortKey(asked.get("sort")) ? asked.get("sort") as FileSortKey : FILE_SORT
   const order = asked.get("order") === "desc" ? "desc" : "asc"
-  const chosen = Number(asked.get("size") ?? "")
-  const size = isPageSize(chosen) ? chosen : PAGE_SIZE
+  const size = readListingSize(asked.get("size"))
   const wanted = Number(asked.get("page") ?? "1")
 
   // The side is counted with its own condition off, so that a reader who
@@ -199,7 +202,7 @@ export async function filesPage(
   const narrowed = states.length === 0
     ? bySide
     : bySide.filter((entry) => states.includes(stateOf(entry)))
-  const page = pageOfFiles(sortedFiles(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, size)
+  const page = pageOfFiles(sortedFiles(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, rowsPerPage(size, narrowed.length))
   const selections = await publishedFileSelections(db, id)
 
   return {
@@ -229,6 +232,7 @@ export async function filesPage(
     pageCount: page.pageCount,
     rangeFrom: page.rangeFrom,
     rangeTo: page.rangeTo,
+    switching: (listing ?? []).some((entry) => entry.pending !== null && !entry.pending.failed),
     multipartThreshold: MULTIPART_THRESHOLD,
     partSize: MULTIPART_PART_SIZE,
   }
@@ -628,7 +632,7 @@ export interface CommonFilesView {
   today: string
   sort: FileSortKey
   order: "asc" | "desc"
-  size: PageSize
+  size: ListingSize
   total: number
   page: number
   pageCount: number
@@ -662,11 +666,10 @@ export async function commonFilesPage(
   const to = dayFromInput(asked.get("to") ?? "")
   const sort = isFileSortKey(asked.get("sort")) ? asked.get("sort") as FileSortKey : FILE_SORT
   const order = asked.get("order") === "desc" ? "desc" : "asc"
-  const chosen = Number(asked.get("size") ?? "")
-  const size = isPageSize(chosen) ? chosen : PAGE_SIZE
+  const size = readListingSize(asked.get("size"))
   const wanted = Number(asked.get("page") ?? "1")
   const narrowed = narrowedFiles(listing ?? [], { keyword, from, to })
-  const page = pageOfFiles(sortedFiles(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, size)
+  const page = pageOfFiles(sortedFiles(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, rowsPerPage(size, narrowed.length))
 
   return {
     locale,

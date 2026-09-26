@@ -103,6 +103,14 @@ describe("the editing form", () => {
     ])
   })
 
+  it("runs the listing's fields in the order of the row's columns", () => {
+    const html = render(view())
+    const listing = html.slice(html.indexOf("<div id=\"listingSummary\""))
+    const names = [...listing.matchAll(/<span class="font-semibold text-ink-muted text-xs">([^<]*)<\/span>/g)]
+      .map((found) => found[1])
+    expect(names.slice(0, 4)).toEqual(["解析手法", "データの種類", "参加者 (対象集団)", "提供者"])
+  })
+
   it("does not name the one field of a section a second time under its heading", () => {
     const html = render(view())
     const names = [...html.matchAll(/<span class="font-semibold text-ink-muted text-xs">([^<]*)<\/span>/g)]
@@ -159,7 +167,7 @@ describe("the rows of a list", () => {
       return made
     }
     const html = render(view((input) => {
-      input.content.grants = [{ id: "g1", title: pair("ロングリード技術による肺がんゲノムの研究開発"), agency: { name: pair("AMED") }, grantIds: ["JP24ama221522"] }]
+      input.content.grants = [{ id: "g1", title: pair("ロングリード技術による肺がんゲノムの研究開発"), agency: { name: pair("AMED") }, grantIds: { state: "value", ids: ["JP24ama221522"] } }]
     }))
     const grants = html.slice(html.indexOf("id=\"grants\""), html.indexOf("id=\"relatedPublications\""))
     expect(grants).toContain("<table")
@@ -178,7 +186,7 @@ describe("the rows of a list", () => {
     }
     const html = render(view((input) => {
       input.content.grants = [
-        { id: "g1", title: marked("not-applicable"), agency: { name: marked("unknown") }, grantIds: [] },
+        { id: "g1", title: marked("not-applicable"), agency: { name: marked("unknown") }, grantIds: { state: "value", ids: [] } },
       ]
     }))
     const grants = html.slice(html.indexOf("id=\"grants\""), html.indexOf("id=\"relatedPublications\""))
@@ -258,6 +266,26 @@ describe("the header", () => {
     expect(head).not.toContain("確認 2")
     // None of the four is numbered: a set of ways, not a stepper.
     expect(head).not.toMatch(/rounded-full[^>]*>\s*1\s*</)
+  })
+
+  /*
+    The draft's name is read, changed and saved on one row under the links,
+    with a save of its own: the name is not part of the form's save.
+  */
+  it("shows the draft's name in an input under the four links, with a save of its own not yet pressable", () => {
+    const html = render(view())
+    const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
+    const row = head.slice(head.indexOf(`action="${DRAFT_BASE}/name"`))
+    expect(head.indexOf(`action="${DRAFT_BASE}/name"`)).toBeGreaterThan(head.indexOf(`href="${DRAFT_BASE}/publish"`))
+    expect(row).toMatch(/<label[^>]*>下書き名<\/label><input[^>]*name="name"[^>]*value="v2 予定"/)
+    expect(row).toMatch(/<button type="submit"[^>]*disabled=""[^>]*>[\s\S]*?保存/)
+    expect(head).not.toContain("名前の編集")
+  })
+
+  it("has no name row for the draft of an update, which is called by its version", () => {
+    const html = render({ ...view(), draftName: null, updating: 3 })
+    expect(html).not.toContain(`action="${DRAFT_BASE}/name"`)
+    expect(html).not.toContain("下書き名")
   })
 
   it("marks each of the four as a link to another screen — the chevron after the word, which moves when pointed at", () => {

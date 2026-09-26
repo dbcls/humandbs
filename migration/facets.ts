@@ -261,7 +261,13 @@ export const DISEASE_SET = "icd10"
 export const DISEASE_KEY = "disease"
 
 /** The v1 field whose free text names the diseases, in both languages. */
-const DISEASE_SOURCE = "Materials and Participants"
+export const DISEASE_SOURCE = "Materials and Participants"
+
+/** The text the diseases are read from, one string per language, lines apart. */
+export interface DiseaseText {
+  ja: string
+  en: string
+}
 
 /**
  * The diseases one experiment's article names.
@@ -271,8 +277,13 @@ const DISEASE_SOURCE = "Materials and Participants"
  * once by translating the Japanese away, once by replacing the English with the
  * classification's own heading. The article still has both
  * (`migration/diseases.ts`).
+ *
+ * **The text is the article's own where the load has it** (`written`): v1
+ * made its line breaks spaces, which ran the count ending one line into the
+ * name starting the next (`6症例 IM`), and made its brackets half-width.
  */
-function diseasesOf(experiment: EsExperiment): ReturnType<typeof diseasesIn> {
+function diseasesOf(experiment: EsExperiment, written?: DiseaseText): ReturnType<typeof diseasesIn> {
+  if (written !== undefined) return diseasesIn(written.ja, written.en)
   const node = experiment.data?.[DISEASE_SOURCE]
   if (node === undefined) return []
   return diseasesIn(node.ja?.text ?? "", node.en?.text ?? "")
@@ -904,6 +915,7 @@ export function facetValueSlots(
      */
     termIdsOf?: (setCode: string, code: string) => string[]
   },
+  diseaseText?: DiseaseText,
 ): ValueSlot[] {
   const searchable = experiment.searchable ?? {}
   const slots: ValueSlot[] = []
@@ -918,7 +930,7 @@ export function facetValueSlots(
     if (termIds.length === 0) continue
     slots.push({ keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } })
   }
-  slots.push(...diseaseSlots(experiment, identity))
+  slots.push(...diseaseSlots(experiment, identity, diseaseText))
   for (const facet of NUMBER_FACETS) {
     const keyId = identity.keyIdByCode.get(facet.code)
     const held = facet.read(searchable)
@@ -949,10 +961,11 @@ export function diseaseSlots(
     termIdBySetAndCode: Map<string, string>
     knownCode: (code: string) => boolean
   },
+  text?: DiseaseText,
 ): ValueSlot[] {
   const keyId = identity.keyIdByCode.get(DISEASE_KEY)
   if (keyId === undefined) return []
-  const diseases: DiseaseValue[] = diseasesOf(experiment).map((seed) => ({
+  const diseases: DiseaseValue[] = diseasesOf(experiment, text).map((seed) => ({
     termIds: [...new Set(seed.codes.flatMap((written) => {
       const code = icd10Resolve(written, identity.knownCode)
       if (code === null) return []

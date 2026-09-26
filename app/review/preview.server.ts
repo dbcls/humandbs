@@ -25,7 +25,7 @@ import { redirect } from "react-router"
 import { changedDatasetFromPublished, changedFromPublished } from "~/admin/changes"
 import { humLabelOf } from "~/admin/queries.server"
 import { readActor } from "~/auth/actor.server"
-import { emptyDatasetContent } from "~/content/empty"
+import { emptyDatasetContent, valueOr } from "~/content/empty"
 import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
 import { adminListing, listingRows, fileListOf, readFilePage, readFileRows } from "~/files/listing.server"
 import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/content/types"
@@ -317,8 +317,8 @@ export async function drawDraft(
   const own = new Set(datasets.map((row) => row.id))
   const cited = await citedDatasets(
     db,
-    projected.content.relatedPublications.flatMap((row) => row.datasetIds).filter((id) => !own.has(id)),
-    projected.content.relatedPublications.flatMap((row) => row.externalIds ?? []),
+    projected.content.relatedPublications.flatMap((row) => valueOr(row.datasetIds, [])).filter((id) => !own.has(id)),
+    projected.content.relatedPublications.flatMap((row) => row.datasetIds.state === "value" ? row.externalIds ?? [] : []),
   )
 
   const anchored = anchoredResearchView({

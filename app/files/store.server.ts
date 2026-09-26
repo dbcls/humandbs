@@ -151,6 +151,36 @@ export async function listPrefix(bucket: Bucket, prefix: string): Promise<Stored
   return nodes
 }
 
+/**
+ * The first segments of the keys a bucket holds — which prefixes have
+ * anything in them — without listing what is in them.
+ *
+ * **The store groups the keys itself** (`Delimiter`), so a bucket of tens of
+ * thousands of files is read in one request per thousand prefixes rather than
+ * one per thousand files. A directory placeholder counts as something in its
+ * prefix: the store groups it with the files, and nothing the portal writes
+ * leaves one.
+ */
+export async function listTopPrefixes(bucket: Bucket): Promise<Set<string>> {
+  const prefixes = new Set<string>()
+  let token: string | undefined
+
+  do {
+    const page = await getStore().send(new ListObjectsV2Command({
+      Bucket: bucket,
+      Delimiter: "/",
+      ContinuationToken: token,
+    }))
+    for (const common of page.CommonPrefixes ?? []) {
+      const prefix = common.Prefix
+      if (prefix?.endsWith("/") === true) prefixes.add(prefix.slice(0, -1))
+    }
+    token = page.IsTruncated === true ? page.NextContinuationToken : undefined
+  } while (token !== undefined)
+
+  return prefixes
+}
+
 export async function objectExists(ref: ObjectRef): Promise<boolean> {
   try {
     await getStore().send(new HeadObjectCommand({ Bucket: ref.bucket, Key: ref.key }))

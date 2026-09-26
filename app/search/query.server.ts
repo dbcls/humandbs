@@ -22,7 +22,7 @@ import type { Executor } from "~/db/client.server"
 import { OPEN_BOUND, type FieldNode, type QueryNode } from "./dsl"
 import type { FacetField, QueryFields } from "./fields"
 
-import { PAGE_SIZE, type PageSize } from "./page-size"
+import { type ListingSize, PAGE_SIZE, rowsPerPage } from "./page-size"
 import type { SearchTarget } from "./target"
 import type { SortKey, SortOrder } from "./sort"
 
@@ -30,9 +30,12 @@ export type { SearchTarget } from "./target"
 
 export {
   isPageSize,
+  type ListingSize,
   PAGE_SIZE,
   PAGE_SIZES,
   type PageSize,
+  readListingSize,
+  rowsPerPage,
 } from "./page-size"
 
 export {
@@ -71,7 +74,7 @@ export interface SearchRequest extends SearchQuery {
    * the JSON API leaves it as — a caller that never requests a size cannot be
    * given a different one by a change here.
    */
-  size?: PageSize
+  size?: ListingSize
 }
 
 export interface SearchResult {
@@ -258,7 +261,7 @@ export async function countMatches(db: Executor, query: SearchQuery): Promise<nu
  */
 export async function searchDocs(db: Executor, request: SearchRequest): Promise<SearchResult> {
   const total = await countMatches(db, request)
-  const size = request.size ?? PAGE_SIZE
+  const size = rowsPerPage(request.size ?? PAGE_SIZE, total)
   const pageCount = Math.max(1, Math.ceil(total / size))
   const page = Math.max(1, request.page)
   if (page > pageCount) return { total, page, pageCount, hits: [] }

@@ -99,6 +99,7 @@ const wording = fc.oneof(fc.constant(""), fc.string({ maxLength: 40 }))
 export const dsBranchArb: fc.Arbitrary<DsBranchDetail> = fc.record({
   applicationId: fc.constant("J-DS000001-001"),
   humLabel: fc.oneof(fc.constant(null), fc.constant("hum0001")),
+  applicationType: fc.constantFrom("new" as const, "update" as const),
   approvedOn: fc.constant("2024-05-18"),
   titleJa: wording,
   titleEn: wording,

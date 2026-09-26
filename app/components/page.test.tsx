@@ -43,8 +43,17 @@ describe("a rendered value", () => {
     expect(render({ state: "plain", text: "", untranslated: false })).toBe("")
   })
 
-  it("shows a settled 'no such value' rather than an empty space", () => {
-    expect(render({ state: "not-applicable" })).toContain("該当なし")
+  it("shows a settled 'no such value' rather than an empty space, as N/A with the words in full on pointing at it", () => {
+    expect(render({ state: "not-applicable" })).toBe("<abbr title=\"該当なし\" class=\"font-mono text-ink-muted\">N/A</abbr>")
+    expect(renderToStaticMarkup(<Value field={{ state: "not-applicable" }} locale="en" />))
+      .toBe("<abbr title=\"Not applicable\" class=\"font-mono text-ink-muted\">N/A</abbr>")
+  })
+
+  it("asks for an unsettled value with a large red badge: dashed, tinted, a question glyph", () => {
+    const html = render({ state: "unsettled" })
+    expect(html).toContain("ご教示ください")
+    expect(html).toMatch(/class="[^"]*\bborder-dashed\b[^"]*\btext-sm\b[^"]*\bborder-danger text-danger bg-danger-surface\b/)
+    expect(html).toContain("<svg")
   })
 })
 

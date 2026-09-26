@@ -305,7 +305,8 @@ describe("the listing", () => {
     const view = await researchListPage(get(token, "/admin/research?flag=noHumLabel&flag=noDatasetLabel"), "ja")
 
     expect(view.rows.map((row) => row.researchId)).toEqual([researchId])
-    expect(Object.keys(view.counts)).toEqual(["statuses"])
+    // The axes the pane counts: none of them is a shortcoming.
+    expect(Object.keys(view.counts)).toEqual(["statuses", "files"])
   })
 })
 

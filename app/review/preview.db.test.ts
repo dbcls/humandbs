@@ -190,7 +190,7 @@ describe("what a preview marks", () => {
       id,
       title: { ja: filled(title), en: filled("") },
       agency: { name: { ja: filled("科研費"), en: filled("") } },
-      grantIds,
+      grantIds: filled(grantIds),
     })
     const { researchId, token } = await sharedDraft({ ...titled("題目"), grants: [grant("g2", "新しい課題", ["B-2"])] })
     await publish(researchId, 1, { ...titled("題目"), grants: [grant("g1", "前の課題", ["A-1", "A-2"])] })

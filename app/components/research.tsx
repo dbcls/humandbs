@@ -39,6 +39,7 @@ import {
   TermLabel,
   UntranslatedNotice,
   Value,
+  ValueAtPath,
 } from "./page"
 
 const SHOWN_PLATFORMS = 3
@@ -343,11 +344,15 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                       {/* A line each, because a grant with several numbers runs
                       them into one long code on a single line. */}
                       <AnnotatedCell at={`grants.${grant.id}.grantIds`} name={t.grantId}>
-                        <ul className="flex flex-col items-start gap-1">
-                          {grant.grantIds.map((grantId) => (
-                            <li key={grantId}><Badge pill>{grantId}</Badge></li>
-                          ))}
-                        </ul>
+                        {grant.grantIds.state === "value"
+                          ? (
+                              <ul className="flex flex-col items-start gap-1">
+                                {grant.grantIds.items.map((grantId) => (
+                                  <li key={grantId}><Badge pill>{grantId}</Badge></li>
+                                ))}
+                              </ul>
+                            )
+                          : <Value field={grant.grantIds} locale={locale} />}
                       </AnnotatedCell>
                     </Td>
                   </tr>
@@ -385,16 +390,20 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                             after it**: the ID alone reads as one of this
                             research's. **An ID the portal publishes nothing under
                             is written as it was typed**, with nothing to press. */}
-                        <DatasetIds
-                          locale={locale}
-                          items={publication.datasets.map((one) => ({
-                            label: one.label,
-                            to: one.known ? linkTo({ id: null, label: one.label }) : null,
-                            research: one.humLabel === null
-                              ? null
-                              : { label: one.humLabel, to: href(locale, researchPath(one.humLabel)) },
-                          }))}
-                        />
+                        {publication.datasetLabels.state === "value"
+                          ? (
+                              <DatasetIds
+                                locale={locale}
+                                items={publication.datasets.map((one) => ({
+                                  label: one.label,
+                                  to: one.known ? linkTo({ id: null, label: one.label }) : null,
+                                  research: one.humLabel === null
+                                    ? null
+                                    : { label: one.humLabel, to: href(locale, researchPath(one.humLabel)) },
+                                }))}
+                              />
+                            )
+                          : <Value field={publication.datasetLabels} locale={locale} />}
                       </AnnotatedCell>
                     </Td>
                   </tr>
@@ -528,10 +537,16 @@ export function runsLong(field: FieldView): boolean {
  * methods, the platforms and who took part — which is why they are named for
  * the values and not for the sections of the research's own page.
  *
- * **A preview draws the same row with nothing to press.** The draft beside the
- * form has no page of its own to send anyone to and no datasets in the cart,
- * so the identifiers stay as text and the cart's column is not drawn — the
- * cells a curator is checking stand exactly where a reader will find them.
+ * **A preview draws the same row with no link and no cart.** The draft beside
+ * the form has no page of its own to send anyone to and no datasets in the
+ * cart, so the identifiers stay as text and the cart's column is not drawn —
+ * the cells a curator is checking stand exactly where a reader will find them.
+ * **The cells the form writes are places** (`page.tsx` の `ValueAtPath`): beside
+ * the form, pressing one goes to its field and the caret in a field
+ * highlights its cell. The provider column is one place whether it shows the listing's own
+ * names or the research's providers in their place — the listing's list is
+ * where either is changed. A public listing has no layer, and draws the
+ * values alone.
  */
 export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: {
   rows: readonly ResearchListRowView[]
@@ -574,19 +589,27 @@ export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: 
             />
           </Td>
           <Td floor="min-w-72">
-            <Prose messages={messages}><Value field={row.title} locale={locale} /></Prose>
+            <ValueAtPath at="title">
+              <Prose messages={messages}><Value field={row.title} locale={locale} /></Prose>
+            </ValueAtPath>
           </Td>
           <Td floor="min-w-40">
-            <Prose messages={messages}><Value field={row.methods} locale={locale} /></Prose>
+            <ValueAtPath at="listingSummary.methods">
+              <Prose messages={messages}><Value field={row.methods} locale={locale} /></Prose>
+            </ValueAtPath>
           </Td>
           <Td floor="min-w-56">
-            <Prose messages={messages}><Value field={row.typeOfData} locale={locale} /></Prose>
+            <ValueAtPath at="listingSummary.typeOfData">
+              <Prose messages={messages}><Value field={row.typeOfData} locale={locale} /></Prose>
+            </ValueAtPath>
           </Td>
           <Td floor="min-w-40">
             <Platforms terms={row.platforms} locale={locale} />
           </Td>
           <Td floor="min-w-56">
-            <Prose messages={messages}><Value field={row.targets} locale={locale} /></Prose>
+            <ValueAtPath at="listingSummary.targets">
+              <Prose messages={messages}><Value field={row.targets} locale={locale} /></Prose>
+            </ValueAtPath>
           </Td>
           <Td>
             <ul>
@@ -596,11 +619,13 @@ export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: 
             </ul>
           </Td>
           <Td>
-            <ul>
-              {row.dataProviders.map((provider, at) => (
-                <li key={at}><Value field={provider} locale={locale} /></li>
-              ))}
-            </ul>
+            <ValueAtPath at="listingSummary.dataProviders" within>
+              <ul>
+                {row.dataProviders.map((provider, at) => (
+                  <li key={at}><Value field={provider} locale={locale} /></li>
+                ))}
+              </ul>
+            </ValueAtPath>
           </Td>
           <Td nowrap floor="min-w-24">{row.datePublished}</Td>
           <Td nowrap floor="min-w-24">{row.dateModified}</Td>

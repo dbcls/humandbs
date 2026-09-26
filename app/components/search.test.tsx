@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
+import type { ListingSize } from "~/search/page-size"
+
 import { AppliedConditions, DateRange, ListingPresented, ListingTools, PageSizeChooser, Pagination, type Presentation, presentedQuery, RefinableList, SearchForm, SortChooser } from "./search"
 
 /** Rendered at a given address, since the links are built relative to none. */
@@ -565,7 +567,7 @@ describe("the collapse control of the refinement pane", () => {
 */
 type NewsKey = "published" | "title"
 
-function news(current: NewsKey, order: "asc" | "desc", size = 20): Presentation<NewsKey> {
+function news(current: NewsKey, order: "asc" | "desc", size: ListingSize = 20): Presentation<NewsKey> {
   return {
     sort: {
       keys: ["published", "title"],

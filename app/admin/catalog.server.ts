@@ -36,7 +36,7 @@ import { versionWithTermMerged } from "~/content/terms"
 import { pageRange } from "~/paging"
 import type { Locale } from "~/i18n/locale"
 import { readLocale } from "~/public/urls"
-import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { type ListingSize, readListingSize, rowsPerPage } from "~/search/page-size"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
@@ -152,7 +152,7 @@ export interface VocabularyView {
   locale: Locale
   sort: TermSortKey
   order: "asc" | "desc"
-  size: PageSize
+  size: ListingSize
   /** The field the terms belong to. **Its label is what the screen is called.** */
   field: { code: string, labelJa: string, labelEn: string }
   set: VocabularyRow
@@ -338,8 +338,7 @@ export async function fieldTermsPage(
   const asked = url.searchParams.get("sort")
   const sort = TERM_SORT_KEYS.find((one) => one === asked) ?? TERM_SORT
   const order = url.searchParams.get("order") === "desc" ? "desc" : "asc"
-  const askedSize = Number(url.searchParams.get("size") ?? "")
-  const size: PageSize = isPageSize(askedSize) ? askedSize : PAGE_SIZE
+  const size = readListingSize(url.searchParams.get("size"))
 
   const [found] = await db
     .select({
@@ -376,7 +375,8 @@ export async function fieldTermsPage(
     .select({ count: sql<number>`count(*)::int` })
     .from(vocabularyTerm)
     .where(and(eq(vocabularyTerm.setId, set.id), matching))
-  const pageCount = Math.max(1, Math.ceil((total?.count ?? 0) / size))
+  const perPage = rowsPerPage(size, total?.count ?? 0)
+  const pageCount = Math.max(1, Math.ceil((total?.count ?? 0) / perPage))
   const at = Math.min(page, pageCount)
 
   const rows = await db
@@ -390,8 +390,8 @@ export async function fieldTermsPage(
     .from(vocabularyTerm)
     .where(and(eq(vocabularyTerm.setId, set.id), matching))
     .orderBy(...termOrder(sort, order))
-    .limit(size)
-    .offset((at - 1) * size)
+    .limit(perPage)
+    .offset((at - 1) * perPage)
 
   const used = await usageOfTerms(db, rows.map((row) => row.id))
   const held = await usedTermIds(db)
@@ -433,7 +433,7 @@ export async function fieldTermsPage(
     terms: rows.map((row) => ({ ...row, used: used.get(row.id) ?? 0, inUse: held.has(row.id) })),
     page: at,
     pageCount,
-    ...pageRange(at, size, total?.count ?? 0),
+    ...pageRange(at, perPage, total?.count ?? 0),
     find,
     editable,
     mergeFrom: aimed === undefined

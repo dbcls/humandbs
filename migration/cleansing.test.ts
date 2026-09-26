@@ -242,14 +242,15 @@ describe("cleanseContent", () => {
   })
 
   it("cleans the strings of lists that are not prose, such as grant numbers", () => {
-    expect(cleanseContent({ grantIds: ["ＪＰ１９ｄｍ", "16H06279"] }).content).toEqual({ grantIds: ["JP19dm", "16H06279"] })
+    expect(cleanseContent({ grantIds: { state: "value", value: ["ＪＰ１９ｄｍ", "16H06279"] } }).content)
+      .toEqual({ grantIds: { state: "value", value: ["JP19dm", "16H06279"] } })
   })
 
   it("makes quote marks and dashes ASCII on both sides of a pair and in prose, but not in addresses", () => {
     const input = {
       title: { ja: { state: "value", value: "“Clinical Sequencing”の有用性" }, en: { state: "value", value: "Parkinson’s disease" } },
       text: { ja: prose("血小板減少－：196症例"), en: prose("Hardy–Weinberg") },
-      grantIds: ["H22－難治-一般-058"],
+      grantIds: { state: "value", value: ["H22－難治-一般-058"] },
       doi: { state: "value", value: "https://doi.org/10.1/a–b" },
     }
     const { content, counts } = cleanseContent(input)
@@ -257,7 +258,7 @@ describe("cleanseContent", () => {
     expect(content).toEqual({
       title: { ja: { state: "value", value: "\"Clinical Sequencing\"の有用性" }, en: { state: "value", value: "Parkinson's disease" } },
       text: { ja: prose("血小板減少-：196症例"), en: prose("Hardy-Weinberg") },
-      grantIds: ["H22-難治-一般-058"],
+      grantIds: { state: "value", value: ["H22-難治-一般-058"] },
       doi: input.doi,
     })
     expect(counts.punctuation).toBe(5)
@@ -314,6 +315,7 @@ describe("splitGrantIds", () => {
   })
 
   it("is applied to the grants of the content", () => {
-    expect(cleanseContent({ grants: [{ id: "g", grantIds: ["ＪＰ1, JP2"] }] }).content.grants[0]?.grantIds).toEqual(["JP1", "JP2"])
+    expect(cleanseContent({ grants: [{ id: "g", grantIds: { state: "value", value: ["ＪＰ1, JP2"] } }] }).content.grants[0]?.grantIds)
+      .toEqual({ state: "value", value: ["JP1", "JP2"] })
   })
 })

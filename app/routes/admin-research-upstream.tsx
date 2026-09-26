@@ -1,6 +1,8 @@
 import { Form, Link } from "react-router"
 
 import {
+  APPLICATION_TYPES,
+  type ApplicationType,
   BRANCH_SORT,
   BRANCH_SORT_KEYS,
   BRANCH_STATUSES,
@@ -78,6 +80,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
   // conditions themselves are in the pane that is no longer on screen.
   const inForce = (view.keyword === "" ? 0 : 1)
     + view.branchStatuses.length
+    + view.applicationTypes.length
 
   // The whole row over the rows, and only the count with the way through the
   // pages under them: a reader who reaches the end of a page is looking for the
@@ -124,6 +127,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                       stuck={1}
                       headers={[
                         t.application,
+                        t.applicationType,
                         t.humLabel,
                         t.branchStatus,
                         t.approvedOn,
@@ -140,6 +144,7 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                               {row.applicationId}
                             </Link>
                           </Td>
+                          <Td nowrap floor="min-w-0">{t.applicationTypes[row.applicationType]}</Td>
                           <Td nowrap>
                             {/* **The label, and a link into the research when
                                 the portal holds one.** Whether it does is said
@@ -206,6 +211,9 @@ function Filters({ view, locale }: ViewProps) {
         {view.branchStatuses.map((branchStatus) => (
           <input key={branchStatus} type="hidden" name="status" value={branchStatus} />
         ))}
+        {view.applicationTypes.map((applicationType) => (
+          <input key={applicationType} type="hidden" name="type" value={applicationType} />
+        ))}
         <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
@@ -226,6 +234,18 @@ function Filters({ view, locale }: ViewProps) {
               />
             ))}
           </RefineAxis>
+          <RefineAxis label={t.applicationType}>
+            {APPLICATION_TYPES.map((applicationType: ApplicationType) => (
+              <Checkbox
+                key={applicationType}
+                label={t.applicationTypes[applicationType]}
+                name="type"
+                value={applicationType}
+                checked={view.applicationTypes.includes(applicationType)}
+                count={view.counts.applicationTypes[applicationType]}
+              />
+            ))}
+          </RefineAxis>
         </Stack>
       </Form>
     </Stack>
@@ -240,6 +260,7 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Branch
   return href(locale, adminUpstreamResearchPath() + branchListingQuery({
     keyword: view.keyword,
     branchStatuses: view.branchStatuses,
+    applicationTypes: view.applicationTypes,
     page: 1,
     ...presentedQuery(presentation(view, locale)),
     ...over,

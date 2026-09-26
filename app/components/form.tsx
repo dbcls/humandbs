@@ -89,6 +89,16 @@ export const CONTROL = `${CONTROL_EDGE} rounded px-2 py-1.5 focus-visible:-outli
 export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs focus-visible:-outline-offset-1`
 
 /**
+ * A list's place on the form as a whole, with `data-list` beside its
+ * `data-at` — for a value drawn elsewhere that shows the whole list at once,
+ * whose elements have no place of their own there (the provider column of the
+ * listing's row). Going to it highlights it the way a list's row is
+ * (`focusElement`). **The negative margin cancels the padding**, so the
+ * background reaches past the words without moving them.
+ */
+export const LIST_PLACE = "-m-2 flex flex-col gap-4 rounded p-2 transition-colors data-highlighted:bg-warning-surface"
+
+/**
  * Focusing a field from somewhere else on the screen — the page pane, a banner
  * naming a conflict, the published version's differences.
  *
@@ -122,8 +132,9 @@ export function focusElement(target: HTMLElement, block: "start" | "center"): vo
   // **A row of a list has no box to type in**: what is in it is written in a
   // panel (`fields.tsx` の `ItemList`). The row takes the background instead, and
   // the caret goes to its first control — the trigger of that panel — so the
-  // eye and the keyboard land on the same row.
-  if (target.tagName !== "TR") return
+  // eye and the keyboard land on the same row. **Nor has a whole list**
+  // (`LIST_PLACE`), which is found the same way.
+  if (target.tagName !== "TR" && target.dataset.list === undefined) return
   target.querySelector<HTMLElement>("button:not(:disabled)")?.focus({ preventScroll: true })
   target.dataset.highlighted = ""
   const leave = (event: FocusEvent): void => {

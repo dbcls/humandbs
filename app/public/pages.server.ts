@@ -13,6 +13,7 @@
 
 import { redirect } from "react-router"
 
+import { valueOr } from "~/content/empty"
 import { publicDatasetContent, publicResearch, PUBLISHED } from "~/content/public"
 import { fileListOf, publicListing, publicRows } from "~/files/listing.server"
 import { getDb } from "~/db/client.server"
@@ -94,8 +95,9 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
   const projected = publicResearch(version.content, { cau, files: listing ?? [] }, PUBLISHED)
   const content = projected.content
 
-  const citedIds = content.relatedPublications.flatMap((publication) => publication.datasetIds)
-  const typedIds = content.relatedPublications.flatMap((publication) => publication.externalIds ?? [])
+  const citedIds = content.relatedPublications.flatMap((publication) => valueOr(publication.datasetIds, []))
+  const typedIds = content.relatedPublications.flatMap((publication) =>
+    publication.datasetIds.state === "value" ? publication.externalIds ?? [] : [])
   const [listed, cited] = await Promise.all([
     publishedDatasets(db, content.datasetIds),
     citedDatasets(db, citedIds, typedIds),

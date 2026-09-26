@@ -90,6 +90,7 @@ describe("申請から作るものの一覧", () => {
 const BRANCH: UpstreamBranchView = {
   applicationId: "J-DS000137-010",
   humLabel: "hum0127",
+  applicationType: "new",
   approvedOn: "2025-05-08",
   titleJa: "がん患者評価の研究",
   titleEn: "A study",

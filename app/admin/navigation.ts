@@ -86,66 +86,28 @@ type AdminWords = ReturnType<typeof messagesFor>["admin"]
  * answer has to see all of them at once rather than one at a time (`isHere`).
  * The words come from a locale; the shape of the area does not.
  *
- * **`heading` is what the destination's screen calls itself**, which is not
- * always the bar's word: the bar shows 「研究一覧」 where the screen, a listing,
- * shows 「研究」. A window names its area by the screen's word (`adminArea`).
+ * **Each is called by its screen's own h1** — 「研究一覧」 on the bar, in the
+ * screen's heading, on the way back to it and in the window's title — so that
+ * a curator reads one name for one screen wherever it is shown.
  */
 const BAR: {
   path: string
   label: (words: AdminWords) => string
-  heading: (words: AdminWords) => string
 }[] = [
-  { path: adminPath(), label: (words) => words.overview, heading: (words) => words.overview },
-  {
-    path: adminResearchListPath(),
-    label: (words) => words.tasks.research.find,
-    heading: (words) => words.research.heading,
-  },
-  {
-    path: adminUpstreamResearchPath(),
-    label: (words) => words.tasks.research.fromUpstream,
-    heading: (words) => words.templates.heading,
-  },
-  {
-    path: adminDocumentsPath(),
-    label: (words) => words.contents.heading,
-    heading: (words) => words.contents.heading,
-  },
-  {
-    path: adminAlertPath(),
-    label: (words) => words.contents.alert.heading,
-    heading: (words) => words.contents.alert.heading,
-  },
-  {
-    path: adminNewsListPath(),
-    label: (words) => words.tasks.contents.news,
-    heading: (words) => words.contents.news.heading,
-  },
-  {
-    path: adminFilesPath(),
-    label: (words) => words.contents.files.heading,
-    heading: (words) => words.contents.files.heading,
-  },
-  {
-    path: adminExperimentFieldsPath(),
-    label: (words) => words.catalog.heading,
-    heading: (words) => words.catalog.heading,
-  },
-  {
-    path: adminAssistantPath(),
-    label: (words) => words.assistant.heading,
-    heading: (words) => words.assistant.heading,
-  },
+  { path: adminPath(), label: (words) => words.overview },
+  { path: adminResearchListPath(), label: (words) => words.research.heading },
+  { path: adminUpstreamResearchPath(), label: (words) => words.templates.heading },
+  { path: adminDocumentsPath(), label: (words) => words.contents.heading },
+  { path: adminAlertPath(), label: (words) => words.contents.alert.heading },
+  { path: adminNewsListPath(), label: (words) => words.contents.news.heading },
+  { path: adminFilesPath(), label: (words) => words.contents.files.heading },
+  { path: adminExperimentFieldsPath(), label: (words) => words.catalog.heading },
+  { path: adminAssistantPath(), label: (words) => words.assistant.heading },
 ]
 
-/**
- * The name of the bar's area a management address sits in, as that area's own
- * screen spells it — the same entry the bar lights (`isHere`). An address
- * outside the area has none.
- */
 export function adminArea(words: AdminWords, path: string): string | null {
   const entry = BAR.find((one) => isHere(one, path))
-  return entry === undefined ? null : entry.heading(words)
+  return entry === undefined ? null : entry.label(words)
 }
 
 /**
@@ -224,8 +186,8 @@ export function adminTasks(locale: Locale): AdminTask[] {
     {
       title: tasks.research.title,
       links: [
-        { path: adminResearchListPath(), label: tasks.research.find, icon: SUBJECT_ICON.research },
-        { path: adminUpstreamResearchPath(), label: tasks.research.fromUpstream, icon: SUBJECT_ICON.application },
+        { path: adminResearchListPath(), label: words.research.heading, icon: SUBJECT_ICON.research },
+        { path: adminUpstreamResearchPath(), label: words.templates.heading, icon: SUBJECT_ICON.application },
       ],
       action: { to: adminResearchListPath(), label: tasks.research.create, icon: ACTION_ICON.create },
     },
@@ -234,7 +196,7 @@ export function adminTasks(locale: Locale): AdminTask[] {
       links: [
         { path: adminDocumentsPath(), label: words.contents.heading, icon: SUBJECT_ICON.article },
         { path: adminAlertPath(), label: words.contents.alert.heading, icon: SUBJECT_ICON.alert },
-        { path: adminNewsListPath(), label: tasks.contents.news, icon: SUBJECT_ICON.news },
+        { path: adminNewsListPath(), label: words.contents.news.heading, icon: SUBJECT_ICON.news },
         { path: adminFilesPath(), label: words.contents.files.heading, icon: SUBJECT_ICON.staticFile },
       ],
     },

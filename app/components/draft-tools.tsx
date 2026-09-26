@@ -6,7 +6,7 @@
  * differ in what a field is, not in what saving one means.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { useFetcher, type SubmitTarget } from "react-router"
 
 import { draftNamePath } from "~/admin/urls"
@@ -16,10 +16,10 @@ import { messagesFor } from "~/i18n/messages"
 import { useHoldsUnsaved } from "~/components/unsaved"
 
 import { AdminBack } from "./admin"
-import { Button, Dialog, Heading, Stack } from "./base"
+import { Button, Heading, Stack } from "./base"
 import { Icon, type IconName } from "./icons"
 import type { FieldAnnotations } from "./fields"
-import { Field, SaveNews, Submit } from "./form"
+import { CONTROL, SaveNews, Submit } from "./form"
 import { Flag } from "./flags"
 
 /**
@@ -70,7 +70,7 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
    * its own call leaves this out.
    */
   headExtra?: ReactNode
-  /** This draft's other screens and its memo — the research editor's own. */
+  /** This draft's other screens and its name — the research editor's own. */
   overview?: ReactNode
   /**
    * What stays in reach while typing — the pane switch and the way to save
@@ -456,13 +456,16 @@ export function useDraftEditing<T>({
 }
 
 /**
- * The way a draft's name is changed, beside the name that shows it.
+ * The draft's name in an input, with its own save, on the row under the links to
+ * the draft's other screens: reading it, changing it and saving it are done in
+ * one place.
  *
  * **Sent on its own, without leaving the screen** (`routes/admin-draft-name.ts`):
  * the form below holds work that has not been saved, and the name is not part
- * of it — it takes no revision, and saving it does not save the form. The panel
- * shuts once the name is taken, and stays open over a name with nothing in it,
- * with the reason under the box.
+ * of it — it has no revision, and saving it does not save the form. Its save
+ * can be pressed only while the input differs from the saved name, and leaving
+ * with it unsaved is guarded like the form. A name with nothing in it is
+ * refused, with the reason under the input until something is typed.
  */
 export function DraftNameEditor({ locale, researchId, draftId, name }: {
   locale: Locale
@@ -472,37 +475,40 @@ export function DraftNameEditor({ locale, researchId, draftId, name }: {
 }) {
   const t = messagesFor(locale).admin.draft
   const fetcher = useFetcher<RenameResult>()
-  const refused = fetcher.state === "idle" && fetcher.data?.status === "unnamed"
+  const id = useId()
+  const [typed, setTyped] = useState(name)
+  // **The input follows the saved name** once the screen has read it again
+  // after a save, which also returns the save to its plain look.
+  const [shown, setShown] = useState(name)
+  if (shown !== name) {
+    setShown(name)
+    setTyped(name)
+  }
+  const dirty = typed.trim() !== name
+  useHoldsUnsaved(dirty)
+  const refused = fetcher.state === "idle" && fetcher.data?.status === "unnamed" && typed.trim() === ""
   return (
-    <fetcher.Form method="post" action={draftNamePath(researchId, draftId)}>
-      <Dialog
-        label={t.rename}
-        title={t.renameTitle}
-        icon={<Icon name="edit" />}
-        action={(close) => (
-          <>
-            <ShutWhenRenamed state={fetcher.state} result={fetcher.data} close={close} />
-            <Submit icon={<Icon name="save" />}>{t.renameConfirm}</Submit>
-          </>
-        )}
-      >
-        <Field label={t.name} name="name" value={name} width="w-full" hint={t.nameHint} error={refused ? t.unnamed : undefined} />
-      </Dialog>
+    <fetcher.Form method="post" action={draftNamePath(researchId, draftId)} className="flex flex-col gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={id} className="text-ink">{t.name}</label>
+        <input
+          id={id}
+          type="text"
+          name="name"
+          value={typed}
+          onChange={(event) => { setTyped(event.currentTarget.value) }}
+          className={`${CONTROL} w-80 ${refused ? "border-danger" : ""}`}
+          aria-invalid={refused || undefined}
+          aria-describedby={refused ? `${id}-error` : undefined}
+        />
+        <Submit saves dirty={dirty} icon={<Icon name="save" />}>{t.renameConfirm}</Submit>
+      </div>
+      {refused && (
+        <span id={`${id}-error`} className="flex items-center gap-1 text-danger text-xs">
+          <Icon name="alert" />
+          {t.unnamed}
+        </span>
+      )}
     </fetcher.Form>
   )
-}
-
-/** Shuts the panel when a send it made comes back renamed. */
-function ShutWhenRenamed({ state, result, close }: {
-  state: "idle" | "loading" | "submitting"
-  result: RenameResult | undefined
-  close: () => void
-}) {
-  const was = useRef(false)
-  const pending = state !== "idle"
-  useEffect(() => {
-    if (was.current && !pending && result?.status === "renamed") close()
-    was.current = pending
-  }, [pending, result, close])
-  return null
 }

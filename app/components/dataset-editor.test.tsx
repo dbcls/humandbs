@@ -614,7 +614,7 @@ describe("the header", () => {
     expect(html).toContain("データセットの編集")
     expect(html).toContain("NHA000001")
     expect(html).toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}/dataset"`)
-    expect(html).toContain("データセットへ")
+    expect(html).toContain("データセット一覧へ")
   })
 
   it("names the identifier \"ID 未発行\" while the dataset has none yet", () => {

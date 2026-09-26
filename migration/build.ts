@@ -55,19 +55,35 @@ import type {
   EsSummaryShort,
   PublishedDataset,
 } from "./es"
+import { DASH } from "./dashes"
 import {
+  DISEASE_SOURCE,
+  type DiseaseText,
   facetValueSlots,
   MERGED_READERS,
+  NUMBER_FACETS,
   NUMBER_SPLITS,
   RETYPED_CODES,
   TEXT_NUMBERS,
   type TextNumberKey,
+  VOCABULARY_FACETS,
 } from "./facets"
 import { readCell, storedNumber, withHandReadings, type LabelTranslations, type ReadNumber } from "./numbers"
 import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
 function held<T>(value: T): Slot<T> {
   return { state: "value", value }
+}
+
+/**
+ * A cell the article filled with a dash: the row did not apply to the
+ * experiment (`dashes.ts`). A dash in one language is that language's; a
+ * number or a term has no language, so a dash in either language is enough.
+ */
+function isDashCell(value: EsBilingualRich | null | undefined): boolean {
+  const ja = value?.ja?.text ?? ""
+  const en = value?.en?.text ?? ""
+  return (DASH.test(ja) || DASH.test(en)) && [ja, en].every((text) => text.trim() === "" || DASH.test(text))
 }
 
 /**
@@ -160,7 +176,7 @@ function publicationDatasets(
   labels: string[],
   datasetIdByLabel: Map<string, string>,
   own: (label: string) => boolean,
-): { datasetIds: string[], externalIds: string[] } {
+): { datasetIds: Slot<string[]>, externalIds: string[] } {
   const datasetIds: string[] = []
   const externalIds: string[] = []
   for (const written of labels) {
@@ -172,7 +188,7 @@ function publicationDatasets(
       externalIds.push(label)
     }
   }
-  return { datasetIds, externalIds }
+  return { datasetIds: held(datasetIds), externalIds }
 }
 
 export interface ResearchContentInput {
@@ -223,7 +239,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
     id: `grant-${i + 1}`,
     title: plainText(g.title, readText),
     agency: { name: plainText(g.agency?.name, readText) },
-    grantIds: g.id ?? [],
+    grantIds: held(g.id ?? []),
   }))
 
   const relatedPublications: RelatedPublication[] = (rv.relatedPublication ?? []).map((p, i) => ({
@@ -467,6 +483,41 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
   }
 
   /**
+   * The text an experiment's diseases are read from: the cell as the article
+   * wrote it, where the load's reader finds it. It is the whole cell, lines
+   * about other datasets included — the caption narrows the diseases afterwards
+   * (`narrowedToCaption`).
+   */
+  const diseaseTextOf = (e: EsExperiment): DiseaseText | undefined => {
+    const cell = e.data?.[DISEASE_SOURCE]
+    if (input.readProse === undefined || cell === undefined) return undefined
+    const plain = (rich: RichText) => rich.map((line) => line.map((span) => span.text).join("")).join("\n")
+    return { ja: plain(input.readProse(cell.ja, "ja")), en: plain(input.readProse(cell.en, "en")) }
+  }
+
+  /**
+   * The facets whose row the article filled with a dash (`dashes.ts`) and
+   * which read no value out of anything else. **A facet is read from v1's
+   * extracted layer**, not from the cell, so the cell's dash is the only record
+   * that the key does not apply.
+   */
+  const dashedFacets = (e: EsExperiment, held: readonly ValueSlot[]): ValueSlot[] => {
+    const slots: ValueSlot[] = []
+    for (const [sourceKey, value] of Object.entries(e.data ?? {})) {
+      const code = codeBySourceKey.get(sourceKey)
+      if (code === undefined || !RETYPED_CODES.has(code) || !isDashCell(value)) continue
+      const keyId = keyIdByCode.get(code)
+      if (keyId === undefined || held.some((one) => one.keyId === keyId) || slots.some((one) => one.keyId === keyId)) continue
+      if (VOCABULARY_FACETS.some((facet) => facet.code === code && facet.valueType === "vocabulary")) {
+        slots.push({ keyId, value: { kind: "vocabulary", termIds: { state: "not-applicable" } } })
+      } else if (NUMBER_FACETS.some((facet) => facet.code === code)) {
+        slots.push({ keyId, value: { kind: "number", values: { state: "not-applicable" } } })
+      }
+    }
+    return slots
+  }
+
+  /**
    * The number key (or keys, `facets.ts` の `NUMBER_SPLITS`) a v1 source cell
    * reads into, or none when it is not a numeric key at all. A merged source
    * (`SNV Number` and friends) keeps the target key's identity and canonical
@@ -520,10 +571,16 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
     // slot becomes `unknown` rather than disappearing, because the cell said
     // something.
     const unresolved = new Set<string>()
+    // A number key whose row the article filled with a dash (`dashes.ts`).
+    const notApplicable = new Set<string>()
     for (const [sourceKey, value] of Object.entries(e.data ?? {})) {
       const text = kept(sourceKey, "ja", value.ja?.text ?? "")
       const keys = NUMBER_SPLITS.get(sourceKey) ?? singleTextNumberKey(sourceKey)
       if (keys.length === 0) continue
+      if (isDashCell(value)) {
+        for (const key of keys) notApplicable.add(key.code)
+        continue
+      }
       const results = keys.map((key) => {
         const reader = withHandReadings(sourceKey, key.read, input.byHand)
         return { key, ...readCell(text, reader) }
@@ -575,6 +632,10 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
       }
     }
 
+    const facetSlots = narrowedToCaption(
+      facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode, termIdsOf: input.termIdsOf }, diseaseTextOf(e)),
+      captionOf(e, dataset.label),
+    )
     return {
       id: `experiment-${i + 1}`,
       label: single(e.header?.ja?.text, e.header?.en?.text),
@@ -587,10 +648,24 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           // A key that is a facet now holds the typed value instead of the prose
           // it was read out of; one key cannot have both.
           if (RETYPED_CODES.has(code) || numbers.has(code)) return []
+          if (notApplicable.has(code)) return []
+          // The row one language's table had a dash in and the other's had not
+          // at all does not apply in either. The dash is looked for in the
+          // cell as stored: read as markdown, it is an empty list item.
+          if (isDashCell(value)) {
+            return [{ keyId, value: { kind: "text" as const, text: { ja: { state: "not-applicable" as const }, en: { state: "not-applicable" as const } } } }]
+          }
           const ja = keptProse(sourceKey, "ja", value.ja)
           const en = keptProse(sourceKey, "en", value.en)
-          if (isEmptyRichText(ja) && isEmptyRichText(en)) return []
-          return [{ keyId, value: { kind: "text" as const, text: { ja: held(ja), en: held(en) } } }]
+          const dashed = { ja: DASH.test(value.ja?.text ?? ""), en: DASH.test(value.en?.text ?? "") }
+          if (isEmptyRichText(ja) && isEmptyRichText(en) && !dashed.ja && !dashed.en) return []
+          const side = (lang: Language, rich: RichText): Slot<RichText> => (dashed[lang] ? { state: "not-applicable" } : held(rich))
+          return [{ keyId, value: { kind: "text" as const, text: { ja: side("ja", ja), en: side("en", en) } } }]
+        }),
+        ...[...notApplicable].flatMap((code): ValueSlot[] => {
+          const keyId = keyIdByCode.get(code)
+          if (keyId === undefined || (numbers.get(code)?.length ?? 0) > 0) return []
+          return [{ keyId, value: { kind: "number", values: { state: "not-applicable" } } }]
         }),
         ...[...numbers].flatMap(([code, nums]): ValueSlot[] => {
           const keyId = keyIdByCode.get(code)
@@ -606,7 +681,8 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
             ? [{ keyId, value: { kind: "number", values: { state: "unknown" } } }]
             : []
         }),
-        ...narrowedToCaption(facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode, termIdsOf: input.termIdsOf }), captionOf(e, dataset.label)),
+        ...facetSlots,
+        ...dashedFacets(e, facetSlots),
       ],
     }
   })

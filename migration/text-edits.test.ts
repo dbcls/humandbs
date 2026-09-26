@@ -43,10 +43,10 @@ describe("editText", () => {
   })
 
   it("takes an entry an edit leaves empty out of a list of strings, and keeps the rest", () => {
-    const grants = { grants: [{ id: "grant-1", grantIds: ["16H06279", "SCLS課題4", ""] }] }
+    const grants = { grants: [{ id: "grant-1", grantIds: { state: "value", value: ["16H06279", "SCLS課題4", ""] } }] }
     const edited = editText(grants, { hum: "hum0066", dataset: false }, [edit({ hum: "hum0066", field: "grants", before: "SCLS課題4", after: "" })], new Set())
 
-    expect(edited.grants[0]?.grantIds).toEqual(["16H06279", ""])
+    expect(edited.grants[0]?.grantIds).toEqual({ state: "value", value: ["16H06279", ""] })
   })
 
   it("does not touch identifiers", () => {
@@ -70,7 +70,7 @@ describe("assertEditsApplied", () => {
 })
 
 describe("editPublications", () => {
-  const paper = (title: string, doi: string) => ({ id: title, title: slot(title), doi: slot(doi), datasetIds: [] as string[], externalIds: [] as string[] })
+  const paper = (title: string, doi: string) => ({ id: title, title: slot(title), doi: slot(doi), datasetIds: { state: "value", value: [] as string[] }, externalIds: [] as string[] })
   const content = { relatedPublications: [paper("A study", ""), paper("B study", "https://doi.org/10.1/b"), paper("A study", "")] }
 
   it("fills in the DOI of every entry with the title", () => {
@@ -84,13 +84,13 @@ describe("editPublications", () => {
 
   it("keeps the first entry of a repeated paper, with the datasets the later ones cite, and drops the later ones", () => {
     const repeated = { relatedPublications: [
-      { ...paper("A study", ""), datasetIds: ["d-1"] },
+      { ...paper("A study", ""), datasetIds: { state: "value", value: ["d-1"] } },
       paper("B study", "https://doi.org/10.1/b"),
-      { ...paper("A study", ""), datasetIds: ["d-2", "d-1"], externalIds: ["JGAD000001"] },
+      { ...paper("A study", ""), datasetIds: { state: "value", value: ["d-2", "d-1"] }, externalIds: ["JGAD000001"] },
     ] }
     const edited = editPublications(repeated, "hum0018", [{ hum: "hum0018", title: "A study", repeated: true }], new Set())
 
-    expect(edited.relatedPublications.map((p) => [p.title.value, p.datasetIds])).toEqual([["A study", ["d-1", "d-2"]], ["B study", []]])
+    expect(edited.relatedPublications.map((p) => [p.title.value, p.datasetIds.value])).toEqual([["A study", ["d-1", "d-2"]], ["B study", []]])
     expect(edited.relatedPublications[0]?.externalIds).toEqual(["JGAD000001"])
   })
 
@@ -102,13 +102,13 @@ describe("editPublications", () => {
   })
 
   it("corrects a title and then lists the paper once when the edits come in that order", () => {
-    const typo = { relatedPublications: [{ ...paper("A stuudy", "https://doi.org/10.1/a"), datasetIds: ["d-1"] }, { ...paper("A study", "https://doi.org/10.1/a"), datasetIds: ["d-2"] }] }
+    const typo = { relatedPublications: [{ ...paper("A stuudy", "https://doi.org/10.1/a"), datasetIds: { state: "value", value: ["d-1"] } }, { ...paper("A study", "https://doi.org/10.1/a"), datasetIds: { state: "value", value: ["d-2"] } }] }
     const edited = editPublications(typo, "hum0014", [
       { hum: "hum0014", title: "A stuudy", retitle: "A study" },
       { hum: "hum0014", title: "A study", repeated: true },
     ], new Set())
 
-    expect(edited.relatedPublications.map((p) => [p.title.value, p.datasetIds])).toEqual([["A study", ["d-1", "d-2"]]])
+    expect(edited.relatedPublications.map((p) => [p.title.value, p.datasetIds.value])).toEqual([["A study", ["d-1", "d-2"]]])
   })
 
   it("leaves another research, and content without publications, as they were", () => {

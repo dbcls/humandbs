@@ -18,8 +18,9 @@
  */
 
 import type { TranslatedText } from "~/content/types"
+import { dayInJst } from "~/dates"
 import { pageRange } from "~/paging"
-import { PAGE_SIZE, type PageSize } from "~/search/page-size"
+import { type ListingSize, PAGE_SIZE, rowsPerPage } from "~/search/page-size"
 import { DEFAULT_SORT, defaultOrder, type SortKey, type SortOrder } from "~/search/sort"
 
 /**
@@ -64,10 +65,43 @@ export interface AdminResearchRow {
   publishedOn: string | null
 }
 
+/** Whether a research's prefixes hold a file (`files/listing.server.ts` の `researchesWithFiles`). */
+export type FilePresence = "with" | "without"
+
+export const FILE_PRESENCES: readonly FilePresence[] = ["with", "without"]
+
+export function isFilePresence(value: string): value is FilePresence {
+  return (FILE_PRESENCES as readonly string[]).includes(value)
+}
+
+/** A range of days, `YYYY-MM-DD`, each end `null` when it is open. */
+export interface DayRange {
+  from: string | null
+  to: string | null
+}
+
+export const OPEN_RANGE: DayRange = { from: null, to: null }
+
 export interface ListingFilter {
   keyword: string
   /** Which states to keep. Empty is every state. */
   statuses: readonly AdminStatus[]
+  /**
+   * The day the latest version went out (`publishedOn`). **A research that has
+   * never been out is outside any range** that has an end set, the way the public
+   * listing leaves a dataset with no date out of a range of dates.
+   */
+  published: DayRange
+  /** The JST day of the latest change (`updatedAt`), the day the column shows. */
+  updated: DayRange
+  /** Which of the two to keep. Empty is either. */
+  files: readonly FilePresence[]
+}
+
+function within(day: string | null, range: DayRange): boolean {
+  if (range.from === null && range.to === null) return true
+  if (day === null) return false
+  return (range.from === null || day >= range.from) && (range.to === null || day <= range.to)
 }
 
 /**
@@ -98,10 +132,22 @@ function matchesKeyword(row: AdminResearchRow, keyword: string): boolean {
 export function filterResearchRows(
   rows: readonly AdminResearchRow[],
   filter: ListingFilter,
+  /**
+   * Whether the research has a file, or `null` when the store could not say.
+   * **Unknown narrows nothing**: the screen shows the axis as unusable, and a
+   * condition in the address nobody can see the answer to is left unapplied
+   * rather than emptying the listing.
+   */
+  hasFiles: (row: AdminResearchRow) => boolean | null = () => null,
 ): AdminResearchRow[] {
-  return rows.filter((row) =>
-    matchesKeyword(row, filter.keyword)
-    && (filter.statuses.length === 0 || filter.statuses.includes(row.status)))
+  return rows.filter((row) => {
+    if (!matchesKeyword(row, filter.keyword)) return false
+    if (filter.statuses.length > 0 && !filter.statuses.includes(row.status)) return false
+    if (!within(row.publishedOn, filter.published)) return false
+    if (!within(dayInJst(row.updatedAt), filter.updated)) return false
+    const held = filter.files.length === 0 ? null : hasFiles(row)
+    return held === null || filter.files.includes(held ? "with" : "without")
+  })
 }
 
 /**
@@ -158,8 +204,9 @@ export interface ListingPage<Row> {
 export function pageOf<Row>(
   rows: readonly Row[],
   page: number,
-  size: PageSize = PAGE_SIZE,
+  chosen: ListingSize = PAGE_SIZE,
 ): ListingPage<Row> {
+  const size = rowsPerPage(chosen, rows.length)
   const pageCount = Math.max(1, Math.ceil(rows.length / size))
   const wanted = Math.min(Math.max(page, 1), pageCount)
   const from = (wanted - 1) * size
@@ -245,10 +292,24 @@ export function isBranchSortKey(value: string | null): value is BranchSortKey {
   return value !== null && (BRANCH_SORT_KEYS as readonly string[]).includes(value)
 }
 
+/**
+ * The kind of a data submission application's branch: `new`, the application a
+ * project begins with, or `update`, one adding to or changing its data later.
+ * The application system has the two as `application_type` 10 and 20.
+ */
+export type ApplicationType = "new" | "update"
+
+export const APPLICATION_TYPES: readonly ApplicationType[] = ["new", "update"]
+
+export function isApplicationType(value: string): value is ApplicationType {
+  return (APPLICATION_TYPES as readonly string[]).includes(value)
+}
+
 /** What narrowing and ordering read of a branch. The row shows more. */
 export interface BranchRow {
   applicationId: string
   humLabel: string | null
+  applicationType: ApplicationType
   approvedOn: string | null
   /** The datasets the branch has registered, which is what it can seed. */
   datasets: readonly string[]
@@ -263,6 +324,7 @@ export function branchStatusOf(row: BranchRow): BranchStatus {
 
 export interface BranchFilter {
   branchStatuses: readonly BranchStatus[]
+  applicationTypes: readonly ApplicationType[]
 }
 
 /**
@@ -283,7 +345,8 @@ export function filterBranchRows<Row extends BranchRow>(
   filter: BranchFilter,
 ): Row[] {
   return rows.filter((row) =>
-    filter.branchStatuses.length === 0 || filter.branchStatuses.includes(branchStatusOf(row)))
+    (filter.branchStatuses.length === 0 || filter.branchStatuses.includes(branchStatusOf(row)))
+    && (filter.applicationTypes.length === 0 || filter.applicationTypes.includes(row.applicationType)))
 }
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { emptyDatasetContent, emptyResearchContent } from "~/content/empty"
+import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
+import type { Slot } from "~/content/types"
 import type { CatalogView } from "~/public/view.server"
 
 import { apiDataset, apiResearch, type ApiContext } from "./view"
@@ -222,6 +223,34 @@ describe("a value under a catalog key", () => {
       type: "vocabulary",
       terms: null,
     }])
+  })
+})
+
+describe("a list of IDs in an answer", () => {
+  const grant = (grantIds: Slot<string[]>) => ({
+    id: "g1",
+    title: { ja: filled("課題"), en: filled("Project") },
+    agency: { name: { ja: filled("JSPS"), en: filled("JSPS") } },
+    grantIds,
+  })
+  const publication = (datasetIds: Slot<string[]>, externalIds: string[] = []) => ({
+    id: "p1", title: filled("A paper"), doi: filled(""), datasetIds, externalIds,
+  })
+
+  it("gives the IDs, null where the list does not apply, and nothing where it is empty or unsettled", () => {
+    const answer = research({
+      ...emptyResearchContent(),
+      grants: [grant(filled(["JP1"])), grant({ state: "not-applicable" }), grant(filled([])), grant({ state: "unknown" })],
+    })
+    expect(answer.grants.map((one) => one.grantIds)).toEqual([["JP1"], null, undefined, undefined])
+  })
+
+  it("names a publication's datasets by label and typed ID only while the column holds a value", () => {
+    const answer = research({
+      ...emptyResearchContent(),
+      relatedPublications: [publication(filled(["d-1"]), ["DRA000001"]), publication({ state: "not-applicable" }, ["DRA000001"])],
+    })
+    expect(answer.relatedPublications.map((one) => one.datasets)).toEqual([["JGAD000001", "DRA000001"], null])
   })
 })
 

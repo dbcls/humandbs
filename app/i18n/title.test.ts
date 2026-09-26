@@ -69,30 +69,29 @@ describe("windowTitle", () => {
 describe("adminWindowTitle", () => {
   it.each([
     ["/admin", "トップ", null, `トップ | Admin | ${site}`],
-    ["/admin/research", "研究", null, `研究 | Admin | ${site}`],
-    ["/admin/research/r1", "研究の編集", "hum0006", `研究の編集 | hum0006 | 研究 | Admin | ${site}`],
+    ["/admin/research", "研究一覧", null, `研究一覧 | Admin | ${site}`],
+    ["/admin/research/r1", "研究の編集", "hum0006", `研究の編集 | hum0006 | 研究一覧 | Admin | ${site}`],
     [
       "/admin/research/r1/draft/d1/dataset/x1",
       "データセットの編集",
       "JGAD000001",
-      `データセットの編集 | JGAD000001 | 研究 | Admin | ${site}`,
+      `データセットの編集 | JGAD000001 | 研究一覧 | Admin | ${site}`,
     ],
     [
       "/admin/research/upstream/J-DS000136-010",
       "データ提供申請の内容",
       "J-DS000136-010",
-      `データ提供申請の内容 | J-DS000136-010 | データ提供申請 | Admin | ${site}`,
+      `データ提供申請の内容 | J-DS000136-010 | データ提供申請一覧 | Admin | ${site}`,
     ],
-    ["/admin/documents/d1", "記事の編集", "guidelines", `記事の編集 | guidelines | 記事 | Admin | ${site}`],
+    ["/admin/documents/d1", "記事の編集", "guidelines", `記事の編集 | guidelines | 記事一覧 | Admin | ${site}`],
   ])("%s は %s のウィンドウのタイトルになる", (at, name, subject, expected) => {
     expect(adminWindowTitle(messages, at, name, subject)).toBe(expected)
   })
 })
 
 describe("adminArea", () => {
-  it("バーの項目は、メニューの語ではなくその項目の画面の見出しで表示する", () => {
+  it("バーの項目は、その項目の画面の見出しで表示する", () => {
     expect(adminArea(messages.admin, "/admin/research/r1")).toBe(messages.admin.research.heading)
-    expect(adminArea(messages.admin, "/admin/research/r1")).not.toBe(messages.admin.tasks.research.find)
   })
 
   it("別の項目の下にあるアドレスは、深いほうの項目の見出しになる", () => {

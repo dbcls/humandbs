@@ -50,6 +50,16 @@ export interface LinksInput {
 }
 
 /**
+ * A list of IDs edited as one field — a grant's numbers, the datasets a
+ * publication names. The state is the list's, and the IDs survive a change of
+ * state the way a slot's text does.
+ */
+export interface IdsInput {
+  state: SlotState
+  ids: string[]
+}
+
+/**
  * Both languages of a field, each with its own state — a title can be settled
  * in Japanese while the English side is still a question put to the provider.
  */
@@ -85,16 +95,16 @@ export interface GrantInput {
   id: string
   title: TextPairInput
   agency: { name: TextPairInput }
-  grantIds: string[]
+  grantIds: IdsInput
 }
 
 export interface RelatedPublicationInput {
   id: string
   title: TextInput
   doi: TextInput
-  /** This research's datasets, chosen from its table. */
-  datasetIds: string[]
-  /** Any other dataset ID, typed; blank rows are dropped at the save. */
+  /** This research's datasets, chosen from its table; the state is the whole column's. */
+  datasetIds: IdsInput
+  /** Any other dataset ID, typed; blank rows are dropped at the save, and all of them once the column has no value. */
   externalIds: string[]
 }
 
@@ -139,6 +149,10 @@ function linksInput(slot: Slot<Link[]>): LinksInput {
   return slot.state === "value"
     ? { state: "value", links: slot.value.map((link) => ({ ...link })) }
     : { state: slot.state, links: [] }
+}
+
+function idsInput(slot: Slot<string[]>): IdsInput {
+  return slot.state === "value" ? { state: "value", ids: [...slot.value] } : { state: slot.state, ids: [] }
 }
 
 function textPair(pair: TranslatedText): TextPairInput {
@@ -189,13 +203,13 @@ export function researchContentInput(content: ResearchContent): ResearchContentI
       id: grant.id,
       title: textPair(grant.title),
       agency: { name: textPair(grant.agency.name) },
-      grantIds: [...grant.grantIds],
+      grantIds: idsInput(grant.grantIds),
     })),
     relatedPublications: content.relatedPublications.map((publication) => ({
       id: publication.id,
       title: textInput(publication.title),
       doi: textInput(publication.doi),
-      datasetIds: [...publication.datasetIds],
+      datasetIds: idsInput(publication.datasetIds),
       externalIds: [...(publication.externalIds ?? [])],
     })),
     datasetIds: [...content.datasetIds],

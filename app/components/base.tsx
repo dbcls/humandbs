@@ -353,7 +353,8 @@ export function PaneHeading({ title, level = "h2", rule = "edge", children }: {
  * **An outline and a colour, never a fill.** A filled badge competes with the
  * header bars for the eye, and a listing of forty datasets would be forty blocks of
  * colour. The colour never has the meaning on its own — the words do, and
- * the badge is unreadable to nobody who cannot tell the colours apart.
+ * the badge is unreadable to nobody who cannot tell the colours apart. **A large
+ * badge is the one exception** (`large`).
  */
 export type Tone = "brand" | "accent" | "muted" | "warning" | "danger"
 
@@ -365,11 +366,22 @@ const BADGE_TONE: Record<Tone, string> = {
   danger: "border-danger text-danger",
 }
 
+/** The tint a large badge is shown on: a pale shade of its own colour. */
+const BADGE_TINT: Record<Tone, string> = {
+  brand: "bg-surface-hover",
+  accent: "bg-accent-surface",
+  muted: "bg-surface-light",
+  warning: "bg-warning-surface",
+  danger: "bg-danger-surface",
+}
+
 export function Badge({
   tone = "muted",
   onHeaderBar = false,
   pill = false,
   dashed = false,
+  large = false,
+  onClick,
   icon,
   children,
 }: {
@@ -384,9 +396,41 @@ export function Badge({
    * without a word.
    */
   dashed?: boolean
+  /**
+   * What a preview asks its reader to look at — the office's request for a
+   * value, a place the published version reads otherwise. **A size larger, on a
+   * tint of its colour, with a broken edge**: a page holds a handful of them,
+   * and each is what the reader came to the page to find, where the small
+   * outline read as one more label among the values. The two share one shape
+   * and differ in colour and glyph. Its height is its own rather than a line's.
+   */
+  large?: boolean
+  /**
+   * Makes it a button that opens something — the comparison behind "変更あり".
+   * Large only: a small badge that could be pressed would read as a label.
+   */
+  onClick?: () => void
   icon?: ReactNode
   children: ReactNode
 }) {
+  if (large) {
+    const look = `inline-flex items-center gap-1.5 text-nowrap rounded border border-dashed px-2.5 py-0.5 align-middle text-sm leading-5 ${
+      BADGE_TONE[tone]
+    } ${BADGE_TINT[tone]}`
+    return onClick === undefined
+      ? (
+          <span className={look}>
+            {icon}
+            {children}
+          </span>
+        )
+      : (
+          <button type="button" onClick={onClick} className={`${look} transition-colors hover:bg-white`}>
+            {icon}
+            {children}
+          </button>
+        )
+  }
   return (
     /*
       **It takes one line's height and sits in the middle of it** — the same box

@@ -10,7 +10,7 @@ import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import type { FieldView, LinksView, TermView } from "~/public/view.server"
 
-import { scrollPaneTo } from "./scroll"
+import { scrollPaneTo, scrollTableTo } from "./scroll"
 
 /**
  * What a preview hangs beside a place the page draws — a comment button, a note
@@ -103,7 +103,7 @@ export function AnnotatedCell({ at, name, children }: {
  *
  * **A public page has no layer**, and this draws the value and nothing else.
  */
-export function ValueAtPath({ at, onHeaderBar = false, children }: {
+export function ValueAtPath({ at, onHeaderBar = false, within = false, children }: {
   at: string
   /**
    * Standing on a coloured header bar — an experiment's name. **The background that
@@ -112,15 +112,26 @@ export function ValueAtPath({ at, onHeaderBar = false, children }: {
    * they are being pointed at.
    */
   onHeaderBar?: boolean
+  /**
+   * Also highlighted while the caret is in any of this place's own places — for a
+   * value that draws a whole list, whose elements have no place of their own
+   * where it is drawn (the provider column of the listing's row).
+   */
+  within?: boolean
   children: ReactNode
 }) {
   const layer = useContext(AnnotateContext)
   const box = useRef<HTMLDivElement>(null)
-  const here = layer !== null && layer.here === at
+  const here = layer !== null && layer.here !== null
+    && (layer.here === at || (within && layer.here.startsWith(`${at}.`)))
   useEffect(() => {
     // Only the pane moves (`scroll.ts`): the caret is in the form beside this
-    // pane, and the window it is shown in is where the reader left it.
-    if (here && box.current !== null) scrollPaneTo(box.current, "center")
+    // pane, and the window it is shown in is where the reader left it. A value
+    // in a table wider than the pane is brought in sideways as well.
+    if (here && box.current !== null) {
+      scrollPaneTo(box.current, "center")
+      scrollTableTo(box.current)
+    }
   }, [here])
   if (layer === null) return <>{children}</>
   const go = layer.onGo
@@ -852,6 +863,7 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
       <div className="relative">
         <div
           ref={box}
+          data-table-scroller
           className="overflow-x-auto"
           onScroll={() => {
             measure()
@@ -1319,6 +1331,20 @@ function Prose({ text }: { text: RichText }) {
 }
 
 /**
+ * A value settled as not applicable, as every page shows it: `N/A`, with the
+ * words in full on pointing at it.
+ *
+ * **Short, and set apart from the values by its typeface.** Tables of
+ * experiments hold it in cell after cell, where the words in full crowded the
+ * values out; in the muted monospace it cannot be read as a value somebody
+ * typed as "N/A".
+ */
+export function NotApplicable({ locale }: { locale: Locale }) {
+  const messages = messagesFor(locale)
+  return <abbr title={messages.notApplicable} className="font-mono text-ink-muted">{messages.notApplicableShort}</abbr>
+}
+
+/**
  * One resolved value. `not-applicable` is settled information, so it is shown
  * as a value rather than hidden — an empty value and "there is no such value"
  * are different answers, and only one of them means somebody still has to act.
@@ -1327,14 +1353,17 @@ function Prose({ text }: { text: RichText }) {
  * frame it is: the question is what the reader is being shown, and a blank
  * would look like a value nobody thought worth filling in. **The frame poses the question
  * rather than naming a state** — the reader is a provider, and what the office
- * wants from them at this slot is the value.
+ * wants from them at this slot is the value. It is a large badge (`Badge` の
+ * `large`): it is what the reader has to act on.
  */
 export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
-  if (field.state === "not-applicable") {
-    return <span className="text-ink-muted italic">{messagesFor(locale).notApplicable}</span>
-  }
+  if (field.state === "not-applicable") return <NotApplicable locale={locale} />
   if (field.state === "unsettled") {
-    return <Badge tone="danger" dashed>{messagesFor(locale).preview.unsettledBadge}</Badge>
+    return (
+      <Badge tone="danger" large icon={<Icon name="help-circle" aria-hidden="true" />}>
+        {messagesFor(locale).preview.unsettledBadge}
+      </Badge>
+    )
   }
   if (field.state === "rich") {
     return field.text.length === 0 ? null : <Prose text={field.text} />

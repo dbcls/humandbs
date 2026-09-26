@@ -21,7 +21,7 @@ function draft(datasetIds: string[], externalIds: string[]): DraftInput {
         id: "p1",
         title: { state: "value", text: "肺がんの論文" },
         doi: { state: "value", text: "" },
-        datasetIds,
+        datasetIds: { state: "value", ids: datasetIds },
         externalIds,
       }],
     },
@@ -94,7 +94,7 @@ describe("取り込み元の表", () => {
   it("下書きの行はバージョンの列にその名前を示し、名前の無い下書きはそう示す", () => {
     const html = table()
     expect(rowOf(html, "2026-09-24 14:42")).toContain("v3 予定")
-    expect(rowOf(html, "2026-09-24 13:25")).toContain("名前未入力")
+    expect(rowOf(html, "2026-09-24 13:25")).toContain("下書き名未入力")
   })
 
   it("取り込み先のこの下書きは表に載り、「この下書き」と表示され、押せない見た目で理由を示す", () => {
@@ -184,6 +184,6 @@ describe("取り込み元の名前", () => {
 
   it("名前の無い下書きは、名前が無いことを示す", () => {
     expect(sourceName({ kind: "draft", id: "d", name: "", updatedAt: "2026-09-24T04:25", updating: null }, "ja"))
-      .toBe("下書き「名前未入力」")
+      .toBe("下書き「下書き名未入力」")
   })
 })

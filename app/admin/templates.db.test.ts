@@ -338,6 +338,7 @@ describe("the screen that starts a research from an application", () => {
   const branch: DsBranchDetail = {
     applicationId: BRANCH,
     humLabel: "hum0522",
+    applicationType: "new",
     approvedOn: "2024-05-18",
     titleJa: "ゲノム解析",
     titleEn: "A genome study",
@@ -502,6 +503,7 @@ describe("the screen that starts a research from an application", () => {
     return {
       applicationId: branch.applicationId,
       humLabel: branch.humLabel,
+      applicationType: branch.applicationType,
       approvedOn: branch.approvedOn,
       titleJa: branch.titleJa,
       titleEn: branch.titleEn,

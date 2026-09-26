@@ -54,6 +54,11 @@ export function filled<T>(value: T): Slot<T> {
   return { state: "value", value }
 }
 
+/** What a slot holds, or `otherwise` for a slot that holds no value. */
+export function valueOr<T>(slot: Slot<T>, otherwise: T): T {
+  return slot.state === "value" ? slot.value : otherwise
+}
+
 function emptyTranslated(): TranslatedText {
   return { ja: filled(""), en: filled("") }
 }

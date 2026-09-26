@@ -90,7 +90,7 @@ describe("a publication's datasets in the form", () => {
     id: "p1",
     title: { state: "value" as const, text: "論文" },
     doi: { state: "value" as const, text: "" },
-    datasetIds,
+    datasetIds: { state: "value" as const, ids: datasetIds },
     externalIds,
   })
 
@@ -100,7 +100,7 @@ describe("a publication's datasets in the form", () => {
 
     expect(importFieldPaths(RESEARCH_IMPORT, mine, theirs)).toEqual(["relatedPublications.p1.datasetIds"])
     const written = initialImport(RESEARCH_IMPORT, mine, theirs).content.relatedPublications[0]
-    expect(written?.datasetIds).toEqual([])
+    expect(written?.datasetIds).toEqual({ state: "value", ids: [] })
     expect(written?.externalIds).toEqual(["JGAD000001"])
   })
 
@@ -109,7 +109,7 @@ describe("a publication's datasets in the form", () => {
     const theirs = draft((c) => ({ ...c, relatedPublications: [publication([], [])] }))
 
     const written = initialImport(RESEARCH_IMPORT, mine, theirs).content.relatedPublications[0]
-    expect(written?.datasetIds).toEqual(["d1"])
+    expect(written?.datasetIds).toEqual({ state: "value", ids: ["d1"] })
     expect(written?.externalIds).toEqual(["JGAD000002"])
   })
 })

@@ -32,9 +32,11 @@ const KEY_IDS = new Map([
   ["read-length", "key-read-length"],
   ["coverage-depth", "key-coverage-depth"],
   ["coverage-breadth", "key-coverage-breadth"],
+  ["experimental-method", "key-method"],
 ])
 const CODE_BY_SOURCE = new Map([
   ["Materials and Participants", "materials-and-participants"],
+  ["Experimental Method", "experimental-method"],
   ["Total Data Volume", "total-data-volume"],
   ["Read Length", "read-length"],
   // The split's first key stands for the source cell (`catalog.ts`).
@@ -141,7 +143,7 @@ describe("buildResearchContent", () => {
     expect(value(first(content.researchProjects).name.ja)).toBe("計画（A）")
     expect(value(first(content.grants).title.ja)).toBe("課題（B）")
     expect(value(first(content.grants).agency.name.ja)).toBe("機関（C）")
-    expect(first(content.grants).grantIds).toEqual(["16H06279"])
+    expect(first(content.grants).grantIds).toEqual({ state: "value", value: ["16H06279"] })
     expect(value(first(content.relatedPublications).title)).toBe("PARKINSON'S")
   })
 
@@ -182,7 +184,7 @@ describe("buildResearchContent", () => {
       new Map([["JGAD1", "identity-1"]]),
     )
     expect(content.datasetIds).toEqual(["identity-1"])
-    expect(first(content.relatedPublications).datasetIds).toEqual(["identity-1"])
+    expect(first(content.relatedPublications).datasetIds).toEqual({ state: "value", value: ["identity-1"] })
     // Not in the `label_pin` table, but shaped as an accession: kept as the ID.
     expect(first(content.relatedPublications).externalIds).toEqual(["JGAD2"])
   })
@@ -197,7 +199,7 @@ describe("buildResearchContent", () => {
       datasetIdByLabel: new Map([["JGAD000001", "identity-1"], ["JGAD000009", "identity-9"]]),
       humOfLabel: new Map([["JGAD000001", "hum0001"], ["JGAD000009", "hum0009"]]),
     })
-    expect(first(content.relatedPublications).datasetIds).toEqual(["identity-1"])
+    expect(first(content.relatedPublications).datasetIds).toEqual({ state: "value", value: ["identity-1"] })
     expect(first(content.relatedPublications).externalIds).toEqual(["JGAD000009"])
   })
 
@@ -214,7 +216,7 @@ describe("buildResearchContent", () => {
       datasetIdByLabel: new Map([["JGAD000012", "identity-12"]]),
       humOfLabel: new Map([["JGAD000012", "hum0012"]]),
     })
-    expect(first(content.relatedPublications).datasetIds).toEqual(["identity-12"])
+    expect(first(content.relatedPublications).datasetIds).toEqual({ state: "value", value: ["identity-12"] })
     expect(first(content.relatedPublications).externalIds).toEqual(["JGAD000227", "DRA007067"])
   })
 
@@ -409,6 +411,33 @@ describe("buildDatasetContent", () => {
       experiments: [{ data: { "Total Data Volume": { ja: { text: "" } } } }],
     })
     expect(first(content.experiments).values).toEqual([])
+  })
+
+  it("makes a cell the article filled with a dash not-applicable, in each language that has it", () => {
+    const both = dataset({ experiments: [{ data: { "Materials and Participants": { ja: { text: "-" }, en: { text: "-" } } } }] })
+    const one = dataset({ experiments: [{ data: { "Materials and Participants": { ja: { text: "－" }, en: { text: "12 cases" } } } }] })
+    const alone = dataset({ experiments: [{ data: { "Materials and Participants": { ja: { text: "-" } } } }] })
+
+    const na = { state: "not-applicable" }
+    expect(first(both.experiments).values).toEqual([{ keyId: "key-materials", value: { kind: "text", text: { ja: na, en: na } } }])
+    expect(first(one.experiments).values).toEqual([{
+      keyId: "key-materials",
+      value: { kind: "text", text: { ja: na, en: { state: "value", value: [[{ text: "12 cases" }]] } } },
+    }])
+    expect(first(alone.experiments).values).toEqual([{ keyId: "key-materials", value: { kind: "text", text: { ja: na, en: na } } }])
+  })
+
+  it("makes a number cell with a dash not-applicable rather than a question", () => {
+    const unread: UnreadLine[] = []
+    const content = datasetOf([dumpRow({ experiments: [{ data: { "Total Data Volume": { ja: { text: "-" }, en: { text: "-" } } } }] }, "JGAD000001", null)], "JGAD000001", undefined, unread)
+
+    expect(first(content.experiments).values).toEqual([{ keyId: "key-volume", value: { kind: "number", values: { state: "not-applicable" } } }])
+    expect(unread).toEqual([])
+  })
+
+  it("makes a facet whose cell has a dash not-applicable when nothing else gave it a value", () => {
+    const dashed = dataset({ experiments: [{ data: { "Experimental Method": { ja: { text: "-" }, en: { text: "-" } } } }] })
+    expect(first(dashed.experiments).values).toEqual([{ keyId: "key-method", value: { kind: "vocabulary", termIds: { state: "not-applicable" } } }])
   })
 
   it("keeps what a cell's readable lines say when its other lines are residue", () => {

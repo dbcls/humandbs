@@ -22,7 +22,7 @@ import { useId, useMemo, useState, type ReactNode } from "react"
 import { Form } from "react-router"
 
 import { describeInput, type ShownLine } from "~/admin/changes"
-import type { DraftInput, LinksPairInput, TextInput, TextPairInput } from "~/admin/form"
+import type { DraftInput, IdsInput, LinksPairInput, TextInput, TextPairInput } from "~/admin/form"
 import { draftNameShown } from "~/admin/draft-name"
 import { readAt, writeAt } from "~/admin/paths"
 import type { ResearchDatasetRow } from "~/admin/queries.server"
@@ -48,7 +48,7 @@ import { href, researchPath } from "~/public/urls"
 import { ScreenLink } from "./admin"
 import { Button, ButtonLink, Note, PANE_LABEL, Stack } from "./base"
 import { Flag, Stated } from "./flags"
-import { type FieldAnnotations, PairField, SingleField } from "./fields"
+import { type FieldAnnotations, PairField, SingleField, StatedControls } from "./fields"
 import { Submit } from "./form"
 import { Icon } from "./icons"
 import { CompareTable, lineRows } from "./previous"
@@ -88,6 +88,12 @@ function isTextInput(value: unknown): value is TextInput {
 
 function isPair(value: unknown): value is { ja: unknown, en: unknown } {
   return typeof value === "object" && value !== null && "ja" in value && "en" in value
+}
+
+/** A list of IDs with its state: a grant's numbers, the datasets a publication names. */
+function isIds(value: unknown): value is IdsInput {
+  return typeof value === "object" && value !== null && "state" in value && "ids" in value
+    && Array.isArray(value.ids) && value.ids.every((one) => typeof one === "string")
 }
 
 function isLinksPair(value: unknown): value is LinksPairInput {
@@ -318,19 +324,21 @@ export function researchParts(
     reading: (side, path) => {
       if (!path.endsWith(".datasetIds")) return null
       const chosen = readAt(side, RESEARCH_IMPORT.keysOf(path))
+      if (!isIds(chosen.value)) return []
+      // A column in another state reads as that state, whatever its lists hold.
+      if (chosen.value.state !== "value") return [{ label: "", state: chosen.value.state, text: "" }]
       const typed = readAt(side, RESEARCH_IMPORT.keysOf(path.replace(/datasetIds$/, "externalIds")))
       const ids = [
-        ...(Array.isArray(chosen.value) ? chosen.value : []).map((id) => labelOf.get(String(id)) ?? String(id)),
+        ...chosen.value.ids.map((id) => labelOf.get(id) ?? id),
         ...(Array.isArray(typed.value) ? typed.value.map(String) : []),
       ]
       return ids.map((text) => ({ label: "", state: "value", text }))
     },
     written: (path, value, onChange, along) => {
       const annotations = annotationsAt(path)
-      if (Array.isArray(value)) {
-        const strings = value.filter((one): one is string => typeof one === "string")
+      if (isIds(value)) {
         if (!path.endsWith("datasetIds")) {
-          return <GrantIds label={t.written} locale={locale} value={strings} annotations={annotations} onChange={onChange} />
+          return <GrantIds label={t.written} locale={locale} value={value} annotations={annotations} onChange={onChange} />
         }
         // The same two controls the form writes the place with, the typed
         // list moving with the chosen one (`RESEARCH_IMPORT` の `along`).
@@ -339,17 +347,21 @@ export function researchParts(
         return (
           <Stack gap="tight">
             <span className={PANE_LABEL}>{t.written}</span>
-            <CitableTable locale={locale} datasets={citable} selected={strings} onChange={onChange} />
-            <IdList
-              label={editor.externalIds}
-              itemLabel={editor.externalIds}
-              addLabel={editor.addExternalId}
-              hint={editor.externalIdsHint}
-              locale={locale}
-              value={Array.isArray(typed) ? typed.filter((one): one is string => typeof one === "string") : []}
-              annotations={annotations}
-              onChange={(next) => { along.write(typedPath, next) }}
-            />
+            <StatedControls state={value.state} onState={(state) => { onChange({ ...value, state }) }} locale={locale}>
+              <Stack gap="normal">
+                <CitableTable locale={locale} datasets={citable} selected={value.ids} onChange={(ids) => { onChange({ ...value, ids }) }} />
+                <IdList
+                  label={editor.externalIds}
+                  itemLabel={editor.externalIds}
+                  addLabel={editor.addExternalId}
+                  hint={editor.externalIdsHint}
+                  locale={locale}
+                  value={Array.isArray(typed) ? typed.filter((one): one is string => typeof one === "string") : []}
+                  annotations={annotations}
+                  onChange={(next) => { along.write(typedPath, next) }}
+                />
+              </Stack>
+            </StatedControls>
           </Stack>
         )
       }

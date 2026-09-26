@@ -398,7 +398,7 @@ describe("the datasets a publication names", () => {
           id: "p1",
           title: filled("A paper"),
           doi: filled("https://doi.org/10.1/x"),
-          datasetIds: [mine],
+          datasetIds: filled([mine]),
           externalIds: ["JGAD000022", "JGAD000003", "DRA000001"],
         }],
       },

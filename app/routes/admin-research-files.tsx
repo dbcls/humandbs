@@ -27,6 +27,7 @@ import { adminWindowTitle } from "~/i18n/title"
 import { href, readLocale } from "~/public/urls"
 import { dateWindows } from "~/search/date-window"
 import { useAsk } from "~/search-as-typed"
+import { useRevalidateWhile } from "~/components/revalidate"
 
 import type { Route } from "./+types/admin-research-files"
 
@@ -69,6 +70,8 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
   const t = messages.admin.files
   const [paneOpen, togglePane] = usePaneOpen()
   const busy = useBusyHere()
+  // A file switching sides: the rows show it under way until the job is over.
+  useRevalidateWhile(view.switching)
   // Collapsed, the button that reopens the pane shows how much is in force. **The two
   // ends of the range are one condition**, and so are the sides picked.
   const inForce = (view.keyword === "" ? 0 : 1)

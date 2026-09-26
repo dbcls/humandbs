@@ -79,7 +79,7 @@ describe("what a research is still missing", () => {
         id: "g1",
         title: { ja: filled("課題名"), en: filled("") },
         agency: { name: { ja: filled(""), en: filled("") } },
-        grantIds: [],
+        grantIds: filled([]),
       }],
     }
 

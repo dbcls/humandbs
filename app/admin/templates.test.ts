@@ -26,6 +26,7 @@ import {
 const branch: DsBranchDetail = {
   applicationId: "J-DS000136-010",
   humLabel: "hum0522",
+  applicationType: "new",
   approvedOn: "2024-05-18",
   titleJa: "ゲノム解析による疾患研究",
   titleEn: "A genome study",
@@ -339,7 +340,7 @@ describe("an application laid over a draft", () => {
         id: "g1",
         title: pairOf("助成金"),
         agency: { name: pairOf("機関") },
-        grantIds: ["JP00000001"],
+        grantIds: { state: "value", value: ["JP00000001"] },
       }],
       datasetIds: ["kept-1", "kept-2"],
     }),

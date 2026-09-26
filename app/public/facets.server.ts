@@ -25,6 +25,7 @@ import type { Locale } from "~/i18n/locale"
 import { makerOf } from "~/public/view.server"
 import type { FacetDefinition } from "~/search/catalog.server"
 import { resolveTerms } from "~/search/catalog.server"
+import type { ListingSize } from "~/search/page-size"
 import {
   countTerms,
   dateBounds,
@@ -110,7 +111,7 @@ export interface FacetPanelRequest {
   /** `?order=`, kept for the same reason. */
   order: string | null
   /** `?size=`, kept for the same reason. `null` is the default size. */
-  size: number | null
+  size: ListingSize | null
   /**
    * The calendar day the relative windows are measured back from, `YYYY-MM-DD`.
    * Passed in rather than read from the clock so that the panel a request gets

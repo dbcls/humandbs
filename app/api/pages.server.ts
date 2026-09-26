@@ -18,6 +18,7 @@
  */
 
 import { loadConfig, publicOrigin } from "~/config.server"
+import { valueOr } from "~/content/empty"
 import {
   publicDatasetContent,
   publicResearch,
@@ -102,7 +103,7 @@ async function contextOf(): Promise<ApiContext> {
 function citedDatasetIds(content: ResearchBundle["content"]): string[] {
   return [...new Set([
     ...content.datasetIds,
-    ...content.relatedPublications.flatMap((publication) => publication.datasetIds),
+    ...content.relatedPublications.flatMap((publication) => valueOr(publication.datasetIds, [])),
   ])]
 }
 

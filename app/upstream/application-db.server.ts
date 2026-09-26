@@ -38,6 +38,8 @@
 import { Pool } from "pg"
 
 import type { ApplicationDbConfig } from "~/config.server"
+import type { ApplicationType } from "~/admin/listing"
+import { affiliationOf, joinAffiliation, type StatedAffiliation } from "~/upstream/affiliation"
 import { countryName } from "~/upstream/country"
 
 /**
@@ -278,13 +280,15 @@ export async function fetchJgadDates(
  * later branches genuinely change — the period and the datasets — are read from
  * where the system keeps them summed per project.
  *
- * **The country is the one exception.** Early initial applications often left
- * the investigator's address out, and a later branch of the same project, or
- * the initial one's submitter where that is the investigator, is where it was
- * written. Where the initial application has no country, the newest submission
- * that has one is used — approved branches before the rest — and its state
- * line comes from the same submission, so the two never describe different
- * addresses.
+ * **The country and the affiliation are the exceptions.** Early initial
+ * applications often left the investigator's address out, and a later branch
+ * of the same project, or the initial one's submitter where that is the
+ * investigator, is where it was written. Where the initial application has no
+ * country, the newest submission that has one is used — approved branches
+ * before the rest — and its state line comes from the same submission, so the
+ * two never describe different addresses. An affiliation the initial
+ * application left empty in a language is filled from the approved branches
+ * only, and only where they are about the same person (`affiliation.ts`).
  *
  * The end of the period follows the same care. Reaching the expiry is not the
  * same as ending: a project can expire and be extended back into use, so the
@@ -390,18 +394,30 @@ export async function fetchCauEntries(
 
   const unplaced = rows.filter((row) => (row.country ?? "").trim() === "").map((row) => row.ds_du_id)
   const located = await fetchLaterAddresses(pool, schema, unplaced)
+  const initial = (row: typeof rows[number]): StatedAffiliation => ({
+    piLastEn: row.pi_last_en ?? "",
+    divisionJa: row.division_ja ?? "",
+    institutionJa: row.institution_ja ?? "",
+    divisionEn: row.division_en ?? "",
+    institutionEn: row.institution_en ?? "",
+  })
+  const untranslated = rows
+    .filter((row) => joinAffiliation(row.division_en ?? "", row.institution_en ?? "") === "")
+    .map((row) => row.ds_du_id)
+  const others = await fetchOtherAffiliations(pool, schema, [...new Set(untranslated)])
 
   return rows.map((row) => {
     const own = (row.country ?? "").trim() !== ""
     const address = own ? { country: row.country ?? "", region: row.region ?? "" } : located.get(row.ds_du_id)
     const country = countryName(address?.country ?? "", address?.region ?? "")
+    const affiliation = affiliationOf(initial(row), others.get(row.ds_du_id) ?? [])
     return {
       humLabel: row.hum_label,
       applicationId: row.ds_du_id,
       piNameJa: joinName(row.pi_last_ja, row.pi_first_ja),
       piNameEn: joinName(row.pi_first_en, row.pi_last_en),
-      affiliationJa: joinAffiliation(row.division_ja, row.institution_ja),
-      affiliationEn: joinAffiliation(row.division_en, row.institution_en),
+      affiliationJa: affiliation.ja,
+      affiliationEn: affiliation.en,
       countryJa: country.ja,
       countryEn: country.en,
       researchTitleJa: row.title_ja ?? "",
@@ -411,6 +427,58 @@ export async function fetchCauEntries(
       datasetAccessions: row.accessions,
     }
   })
+}
+
+/**
+ * The investigator and affiliation of every submission of the approved branches
+ * of `projects`, newest first — what `affiliationOf` fills a language the
+ * initial application left empty from. **Approved branches only**: a branch that
+ * was not approved holds what nobody has checked, and a row shown from it
+ * would publish it.
+ */
+async function fetchOtherAffiliations(
+  pool: Pool,
+  schema: string,
+  projects: string[],
+): Promise<Map<string, StatedAffiliation[]>> {
+  if (projects.length === 0) return new Map()
+  const { rows } = await pool.query<{
+    ds_du_id: string
+    pi_last_en: string | null
+    division_ja: string | null
+    institution_ja: string | null
+    division_en: string | null
+    institution_en: string | null
+  }>(`
+    SELECT a.ds_du_id,
+      max(c.value) FILTER (WHERE c.key = 'pi_last_name_en')   AS pi_last_en,
+      max(c.value) FILTER (WHERE c.key = 'pi_division')       AS division_ja,
+      max(c.value) FILTER (WHERE c.key = 'pi_institution')    AS institution_ja,
+      max(c.value) FILTER (WHERE c.key = 'pi_division_en')    AS division_en,
+      max(c.value) FILTER (WHERE c.key = 'pi_institution_en') AS institution_en
+    FROM ${schema}.nbdc_application a
+    JOIN ${schema}.current_nbdc_application_status st
+      ON st.appl_id = a.appl_id AND st.appl_status_type = 60
+    JOIN ${schema}.nbdc_application_submit s ON s.appl_id = a.appl_id
+    JOIN ${schema}.nbdc_application_component c ON c.appl_submit_id = s.appl_submit_id
+    WHERE a.ds_du_id = ANY($1) AND c.t_order = -1 AND c.key IN (
+      'pi_last_name_en', 'pi_division', 'pi_institution', 'pi_division_en', 'pi_institution_en')
+    GROUP BY a.ds_du_id, s.appl_submit_id, s.submit_date
+    ORDER BY a.ds_du_id, s.submit_date DESC NULLS LAST, s.appl_submit_id DESC`,
+  [projects])
+  const byProject = new Map<string, StatedAffiliation[]>()
+  for (const row of rows) {
+    const stated = byProject.get(row.ds_du_id) ?? []
+    stated.push({
+      piLastEn: row.pi_last_en ?? "",
+      divisionJa: row.division_ja ?? "",
+      institutionJa: row.institution_ja ?? "",
+      divisionEn: row.division_en ?? "",
+      institutionEn: row.institution_en ?? "",
+    })
+    byProject.set(row.ds_du_id, stated)
+  }
+  return byProject
 }
 
 /**
@@ -471,6 +539,8 @@ export interface DsBranchRow {
   /** `J-DS000136-010`. Assembled from two columns; the system holds no such column. */
   applicationId: string
   humLabel: string | null
+  /** The kind of application the branch is: the first of a project, or one updating its data. */
+  applicationType: ApplicationType
   approvedOn: string | null
   titleJa: string
   titleEn: string
@@ -507,6 +577,12 @@ export interface JgadRegistration {
 
 /** Status 60. The branches a draft may be seeded from are the approved ones. */
 const APPROVED = 60
+
+/**
+ * `application_type` 20, the data update. A J-DS branch is either this or 10,
+ * the new application every project begins with.
+ */
+const DATA_UPDATE = 20
 
 /**
  * The values a row of a listing is read from: what a branch is recognised by,
@@ -563,6 +639,7 @@ function branchCte(schema: string): string {
       SELECT a.appl_id,
              a.ds_du_id || '-' || lpad(a.appl_version::text, 3, '0') AS application_id,
              nullif(btrim(a.hum_id), '') AS hum_label,
+             a.application_type,
              a.data_access
       FROM ${schema}.nbdc_application a
       JOIN ${schema}.current_nbdc_application_status st ON st.appl_id = a.appl_id
@@ -598,7 +675,7 @@ function branchCte(schema: string): string {
 
 /** What a listing selects of a branch, which is what its rows show. */
 const ROW_COLUMNS = `
-  b.application_id, b.hum_label,
+  b.application_id, b.hum_label, b.application_type,
   (ap.approved_at AT TIME ZONE 'Asia/Tokyo')::date::text AS approved_on,
   ${ROW_KEYS.map((key) => `v."${key}"`).join(", ")},
   coalesce(r.accessions, ARRAY[]::text[]) AS accessions`
@@ -617,6 +694,7 @@ const BRANCH_FROM = `
 interface BranchRowQuery extends Record<(typeof ROW_KEYS)[number], string | null> {
   application_id: string
   hum_label: string | null
+  application_type: number
   approved_on: string | null
   accessions: string[]
 }
@@ -634,6 +712,7 @@ function branchRow(row: BranchRowQuery): DsBranchRow {
   return {
     applicationId: row.application_id,
     humLabel: row.hum_label,
+    applicationType: row.application_type === DATA_UPDATE ? "update" : "new",
     approvedOn: row.approved_on,
     titleJa: text(row.submission_study_title),
     titleEn: text(row.submission_study_title_en),
@@ -705,8 +784,8 @@ export async function fetchDsBranch(
     methodsEn: text(row.method_en),
     targetsJa: text(row.participant),
     targetsEn: text(row.participant_en),
-    affiliationJa: joinAffiliation(row.pi_division, row.pi_institution),
-    affiliationEn: joinAffiliation(row.pi_division_en, row.pi_institution_en),
+    affiliationJa: joinAffiliation(row.pi_division ?? "", row.pi_institution ?? ""),
+    affiliationEn: joinAffiliation(row.pi_division_en ?? "", row.pi_institution_en ?? ""),
     country: text(row.pi_country_en),
     dataAccess: row.data_access,
     icd10: text(row.icd10),
@@ -779,16 +858,4 @@ export async function fetchJgadRegistrations(
 /** Family name first in Japanese, given name first in English. */
 function joinName(first: string | null, second: string | null): string {
   return [first, second].map((part) => part?.trim() ?? "").filter((part) => part !== "").join(" ")
-}
-
-/**
- * The division before the institution. The institution alone matches what the
- * old portal published for only 8% of rows; with the division in front it is
- * 65%, which is what shows the two belong together.
- */
-function joinAffiliation(division: string | null, institution: string | null): string {
-  return [division, institution]
-    .map((part) => part?.trim() ?? "")
-    .filter((part) => part !== "")
-    .join(", ")
 }

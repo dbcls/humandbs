@@ -134,22 +134,12 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           state of a control at the foot of them — and at the other end of that
           line, the way to take the whole alert away. It acts on the alert
           rather than on what is typed into it, so it is shown with what identifies
-          the alert rather than among the controls that write it.
-
-          **The day it went up is shown beside the state**, the way an article's
-          publish day stands beside its language's (`components/contents.tsx`
-          の `LocaleEditors`): the state says that the site is saying this, and
-          the day says since when. */}
+          the alert rather than among the controls that write it. **When it is
+          shown is the period's to say**, under the words, not a day beside the
+          state. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex flex-wrap items-center gap-3 text-sm">
           <AlertState row={row} locale={locale} />
-          {row.shownAt !== null && (
-            <span className="text-ink-muted text-xs">
-              {t.alert.shownOn}
-              {" "}
-              {row.shownAt}
-            </span>
-          )}
         </p>
         <Confirm
           label={t.alert.remove}
@@ -167,7 +157,7 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           value={row.ja}
           required={messages.admin.required}
           accepts={messages.admin.accepts.markdown}
-          rows={2}
+          rows={4}
         />
         <TextArea
           label={t.languages.en}
@@ -175,7 +165,7 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
           value={row.en}
           required={messages.admin.required}
           accepts={messages.admin.accepts.markdown}
-          rows={2}
+          rows={4}
         />
       </LanguagePair>
       {/* **The period is part of the alert rather than of showing it**, so it is

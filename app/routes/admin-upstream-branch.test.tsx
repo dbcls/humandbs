@@ -55,6 +55,7 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
   const branch: UpstreamBranchView = {
     applicationId: "J-DS000597-001",
     humLabel: "hum0597",
+    applicationType: "new",
     approvedOn: "2026-08-03",
     titleJa: "下垂体癌の研究",
     titleEn: "",

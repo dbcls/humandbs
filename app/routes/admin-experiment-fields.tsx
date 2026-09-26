@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useId, useState } from "react"
-import { Form, Link, useNavigation, useSubmit } from "react-router"
+import { Form, useNavigation, useSubmit } from "react-router"
 
 import {
   KEY_VALUE_TYPES,
@@ -52,6 +52,7 @@ import {
   Submit,
   Unsaved,
 } from "~/components/form"
+import { ScreenLink } from "~/components/admin"
 import { Icon, type IconName } from "~/components/icons"
 import { Card, Counted, Page, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
@@ -363,9 +364,10 @@ function Row({ entry, ordered, at, of, locale }: {
       </Td>
       {/* What the field draws from, when it draws from anything.
 
-          **How many, and the way to them, in one** — the count is a link the
-          way the research screen's dataset count is, a cell's value that is
-          also where it leads.
+          **How many, and the way to them, in one** — the count is the link to
+          another screen the research screen's dataset count is (`ScreenLink`,
+          the glyph of the field's type, the chevron after the word): a bare
+          link in a column of counts read as one more count.
 
           **Both kinds of vocabulary have the screen; only one may be changed
           there.** What a settled vocabulary holds is fixed by what the portal
@@ -376,9 +378,9 @@ function Row({ entry, ordered, at, of, locale }: {
         {entry.terms === null
           ? null
           : (
-              <Link to={href(locale, adminExperimentFieldPath(entry.code))}>
+              <ScreenLink to={href(locale, adminExperimentFieldPath(entry.code))} icon={TYPE_ICON[entry.valueType]} size="row">
                 {settled ? t.termCountRead(entry.terms) : t.termCount(entry.terms)}
-              </Link>
+              </ScreenLink>
             )}
       </Td>
       {/* **How many published datasets say something under this key.** The

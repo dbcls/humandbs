@@ -150,13 +150,13 @@ function populated(): ResearchContent {
       id: "g1",
       title: pair("研究費"),
       agency: { name: pair("機関") },
-      grantIds: ["JP1"],
+      grantIds: filled(["JP1"]),
     }],
     relatedPublications: [{
       id: "b1",
       title: filled("論文"),
       doi: filled("https://doi.org/10.1000/1"),
-      datasetIds: ["d1"],
+      datasetIds: filled(["d1"]),
     }],
     datasetIds: ["d1"],
   }

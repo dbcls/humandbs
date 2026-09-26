@@ -193,7 +193,7 @@ describe("what a research page has", () => {
         id: "pub1",
         title: filled("A paper"),
         doi: filled("https://doi.org/10"),
-        datasetIds: ["known", "gone"],
+        datasetIds: filled(["known", "gone"]),
       }],
     })
     const view = researchView({
@@ -207,7 +207,7 @@ describe("what a research page has", () => {
       cau: [],
       files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
     }, "ja", catalog)
-    expect(view.relatedPublications[0]?.datasetLabels).toEqual(["JGAD000001"])
+    expect(view.relatedPublications[0]?.datasetLabels).toEqual({ state: "value", items: ["JGAD000001"] })
   })
 
   describe("the datasets that select a file of the download list", () => {
@@ -269,7 +269,7 @@ describe("what a research page has", () => {
   describe("the datasets a publication names", () => {
     function cited(humByLabel: ReadonlyMap<string, string>, datasetIds: string[], externalIds: string[]) {
       const content = research({
-        relatedPublications: [{ id: "pub1", title: filled("A paper"), doi: filled(""), datasetIds, externalIds }],
+        relatedPublications: [{ id: "pub1", title: filled("A paper"), doi: filled(""), datasetIds: filled(datasetIds), externalIds }],
       })
       return researchView({
         humLabel: "hum0001",
@@ -287,7 +287,7 @@ describe("what a research page has", () => {
 
     it("lists the chosen before the typed, and compares the place by both", () => {
       const row = cited(new Map(), ["mine"], ["DRA000001"])
-      expect(row?.datasetLabels).toEqual(["JGAD000001", "DRA000001"])
+      expect(row?.datasetLabels).toEqual({ state: "value", items: ["JGAD000001", "DRA000001"] })
       expect(row?.datasets.map((one) => one.label)).toEqual(["JGAD000001", "DRA000001"])
     })
 
@@ -306,9 +306,30 @@ describe("what a research page has", () => {
       expect(row?.datasets).toEqual([{ label: "JGAD999999", known: false, humLabel: null }])
     })
 
+    it("gives the column's state in place of its IDs, and draws none", () => {
+      for (const [state, shown] of [["not-applicable", "not-applicable"], ["unknown", "unsettled"]] as const) {
+        const content = research({
+          relatedPublications: [{ id: "pub1", title: filled("A paper"), doi: filled(""), datasetIds: { state }, externalIds: ["DRA000001"] }],
+        })
+        const row = researchView({
+          humLabel: "hum0001",
+          versionNumber: 1,
+          releaseDate: "2020-01-01",
+          latestVersionNumber: 1,
+          content,
+          datasets: [],
+          datasetLabelById: new Map(),
+          cau: [],
+          files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
+        }, "ja", catalog).relatedPublications[0]
+        expect(row?.datasetLabels).toEqual({ state: shown })
+        expect(row?.datasets).toEqual([])
+      }
+    })
+
     it("reads a publication written without typed IDs as having none", () => {
       const content = research({
-        relatedPublications: [{ id: "pub1", title: filled("A paper"), doi: filled(""), datasetIds: ["mine"] }],
+        relatedPublications: [{ id: "pub1", title: filled("A paper"), doi: filled(""), datasetIds: filled(["mine"]) }],
       })
       const view = researchView({
         humLabel: "hum0001",

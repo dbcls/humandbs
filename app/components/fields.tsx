@@ -413,6 +413,30 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
 }
 
 /**
+ * A value written with several controls and holding one state between them —
+ * a grant's numbers, the datasets a publication names. Laid out as a slot is:
+ * the controls, or in their place the state they are set to, with the toggle
+ * at the side. What was entered stays in the caller's state while the toggle
+ * is pressed, as a slot's text does.
+ */
+export function StatedControls({ state, onState, locale, children }: {
+  state: SlotState
+  onState: (next: SlotState) => void
+  locale: Locale
+  children: React.ReactNode
+}) {
+  const t = messagesFor(locale).admin.editor
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-start gap-x-2">
+      {state === "value" ? <div className="min-w-0">{children}</div> : <div className={COLLAPSED_SLOT}>{t.stateChoice[state]}</div>}
+      <span className="flex h-9 items-center">
+        <StateSwitch state={state} onChange={onState} locale={locale} />
+      </span>
+    </div>
+  )
+}
+
+/**
  * Both languages of one field.
  *
  * **Not `form.tsx`'s `LanguagePair`**, which stacks a plain form's two fields
