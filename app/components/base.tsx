@@ -250,9 +250,11 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
    */
   aside?: string
   /**
-   * An indicator beside the identifier that identifies the screen's own state rather
-   * than what it is — an updating draft's "v3 を更新中". Not part of the
-   * name, so it is shown beside `aside` rather than inside `title`.
+   * An indicator beside the identifier: the screen's own state — an updating
+   * draft's "v3 を更新中" — or the kind of thing the identifier names, where
+   * the listing it comes from has a column for it (an application's 新規 /
+   * データ更新). Not part of the name, so it is shown beside `aside` rather than
+   * inside `title`.
    */
   badge?: ReactNode
   /**

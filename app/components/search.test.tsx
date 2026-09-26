@@ -547,16 +547,11 @@ describe("the collapse control of the refinement pane", () => {
   }
   const toggle = (html: string): string => /<button[^>]*aria-expanded="true"[^>]*>/.exec(html)?.[0] ?? ""
 
-  it("uses the bordered style in the management area, where no bare word is pressed", () => {
-    expect(toggle(at("/admin/research"))).toMatch(/\bborder\b/)
-    expect(toggle(at("/admin"))).toMatch(/\bborder\b/)
-  })
-
-  it("keeps the bare word on a public listing", () => {
-    expect(toggle(at("/research"))).not.toMatch(/\bborder\b/)
-    expect(toggle(at("/en/research"))).not.toMatch(/\bborder\b/)
-    // An address that only begins with the same letters is not the management area.
-    expect(toggle(at("/administration"))).not.toMatch(/\bborder\b/)
+  it("is the same bare word in the management area as on a public listing", () => {
+    for (const address of ["/admin/research", "/admin", "/research", "/en/research"]) {
+      expect(toggle(at(address))).not.toMatch(/\bborder\b/)
+      expect(toggle(at(address))).toBe(toggle(at("/research")))
+    }
   })
 })
 

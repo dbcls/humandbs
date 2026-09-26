@@ -278,6 +278,29 @@ function Filters({ view, locale }: ViewProps) {
         <ListingPresented presented={presentation(view, locale)} />
       </SearchBox>
 
+      {/* **The days are the ones the columns show**: the release date of the
+          latest version that is out, and the JST day of the latest change. A
+          research never out is outside any range of release days.
+
+          **The ranges of days come first, and the ticks after them in the
+          order of the columns** — the order every listing's pane keeps, the
+          public ones included. */}
+      {(["published", "updated"] as const).map((range) => (
+        <RefineAxis key={range} label={t.columns[range]}>
+          <DateRange
+            locale={locale}
+            action={to}
+            windows={windows(range)}
+            from={view[range].from ?? ""}
+            to={view[range].to ?? ""}
+            names={{ from: `${range}From`, to: `${range}To` }}
+          >
+            <Held view={view} except={range} />
+            <ListingPresented presented={presentation(view, locale)} />
+          </DateRange>
+        </RefineAxis>
+      ))}
+
       <Form ref={form} method="get" action={to} onChange={ask} preventScrollReset>
         <Held view={view} except="ticks" />
         <ListingPresented presented={presentation(view, locale)} />
@@ -315,25 +338,6 @@ function Filters({ view, locale }: ViewProps) {
           </RefineAxis>
         </Stack>
       </Form>
-
-      {/* **The days are the ones the columns show**: the release date of the
-          latest version that is out, and the JST day of the latest change. A
-          research never out is outside any range of release days. */}
-      {(["published", "updated"] as const).map((range) => (
-        <RefineAxis key={range} label={t.columns[range]}>
-          <DateRange
-            locale={locale}
-            action={to}
-            windows={windows(range)}
-            from={view[range].from ?? ""}
-            to={view[range].to ?? ""}
-            names={{ from: `${range}From`, to: `${range}To` }}
-          >
-            <Held view={view} except={range} />
-            <ListingPresented presented={presentation(view, locale)} />
-          </DateRange>
-        </RefineAxis>
-      ))}
     </Stack>
   )
 }

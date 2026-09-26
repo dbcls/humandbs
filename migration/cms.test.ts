@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import { navigationPaths } from "~/public/navigation"
 import { SCREEN_PATHS } from "~/public/urls"
 
-import { buildAlerts, buildDocuments, buildNews, FILE_LIST_SLUGS, loadCms, SCREEN_SLUGS, type CmsDocument } from "./cms"
+import { buildAlerts, buildDocuments, buildNews, FILE_LIST_SLUGS, loadCms, SCREEN_SLUGS, UNPUBLISHED_SLUGS, type CmsDocument } from "./cms"
 
 function document(slug: string, versions: CmsDocument["versions"]): CmsDocument {
   return { slug, versions }
@@ -39,6 +39,11 @@ describe("document の組み立て", () => {
     const lists = FILE_LIST_SLUGS.map((slug) => document(slug, [version("ja", 1), version("en", 1)]))
     const { documents } = buildDocuments([...lists, document("hum0185-v1-st1", [version("en", 1)])])
     expect(documents.map((one) => one.slug)).toEqual(["hum0185-v1-st1"])
+  })
+
+  it("未公開で持ち込む slug は、内容を残して未公開になり、ほかは公開のまま", () => {
+    const { documents } = buildDocuments([...UNPUBLISHED_SLUGS, "aim"].map((slug) => document(slug, [version("ja", 1)])))
+    expect(documents.map((one) => [one.slug, one.contents[0]?.published])).toEqual([...UNPUBLISHED_SLUGS.map((slug) => [slug, false]), ["aim", true]])
   })
 
   it("draft しか無い document は除かれる", () => {

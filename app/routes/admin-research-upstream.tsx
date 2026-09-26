@@ -223,19 +223,7 @@ function Filters({ view, locale }: ViewProps) {
         <input type="hidden" name="q" value={view.keyword} />
         <ListingPresented presented={presentation(view, locale)} />
         <Stack gap="normal">
-          <RefineAxis label={t.branchStatus}>
-            {BRANCH_STATUSES.map((branchStatus: BranchStatus) => (
-              <Checkbox
-                key={branchStatus}
-                label={t.branchStatuses[branchStatus]}
-                icon={<KindIcon kind={BRANCH_STATUS_FLAG[branchStatus]} />}
-                name="status"
-                value={branchStatus}
-                checked={view.branchStatuses.includes(branchStatus)}
-                count={view.counts.branchStatuses[branchStatus]}
-              />
-            ))}
-          </RefineAxis>
+          {/* In the order of the columns, as every listing's ticks are. */}
           <RefineAxis label={t.applicationType}>
             {APPLICATION_TYPES.map((applicationType: ApplicationType) => (
               <Checkbox
@@ -246,6 +234,19 @@ function Filters({ view, locale }: ViewProps) {
                 value={applicationType}
                 checked={view.applicationTypes.includes(applicationType)}
                 count={view.counts.applicationTypes[applicationType]}
+              />
+            ))}
+          </RefineAxis>
+          <RefineAxis label={t.branchStatus}>
+            {BRANCH_STATUSES.map((branchStatus: BranchStatus) => (
+              <Checkbox
+                key={branchStatus}
+                label={t.branchStatuses[branchStatus]}
+                icon={<KindIcon kind={BRANCH_STATUS_FLAG[branchStatus]} />}
+                name="status"
+                value={branchStatus}
+                checked={view.branchStatuses.includes(branchStatus)}
+                count={view.counts.branchStatuses[branchStatus]}
               />
             ))}
           </RefineAxis>

@@ -77,7 +77,7 @@ export const SCREEN_SLUGS = ["home", "data-submission", "data-use", "contact-us"
 /**
  * Documents that were only a dataset's list of files, a row per file with what it holds. The files
  * carry those words as their labels, and the dataset's page lists them, so the list has no row of
- * its own either. hum0185's list also holds the research's own tables, and stays.
+ * its own either.
  */
 export const FILE_LIST_SLUGS = [
   "hum0181-v1-st1",
@@ -90,6 +90,13 @@ export const FILE_LIST_SLUGS = [
   "hum0197-v18-microbiome",
   "hum0311-v5-gwas-v1",
 ]
+
+/**
+ * Documents that come across unpublished. hum0185's table of slides was public on the old site
+ * although its research never was, and its files are private; it also names the research's grants,
+ * which nothing else holds, so it is kept for whoever publishes the research.
+ */
+export const UNPUBLISHED_SLUGS = ["hum0185-v1-st1"]
 
 const INPUT = join(process.cwd(), "migration", "input")
 
@@ -108,6 +115,7 @@ function isLocale(value: string): value is Locale {
 export interface BuiltDocumentContent {
   locale: Locale
   content: ArticleContent
+  published: boolean
   publishedAt: string | null
 }
 
@@ -191,6 +199,7 @@ export function buildDocuments(documents: CmsDocument[]): BuiltSiteDocuments {
             title: version.title ?? source.slug,
             body: body(version),
           },
+          published: !UNPUBLISHED_SLUGS.includes(source.slug),
           publishedAt: publishedOn(version),
         })),
       })

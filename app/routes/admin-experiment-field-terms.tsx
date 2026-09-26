@@ -400,7 +400,7 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, doc
         <Td floor="min-w-32">
           {linked === null
             ? <span className="text-ink-muted">{t.documentNone}</span>
-            : <Link to={href(locale, adminDocumentPath(linked.id))}>{documentLabel(linked)}</Link>}
+            : <DocumentName doc={linked} to={href(locale, adminDocumentPath(linked.id))} />}
         </Td>
       )}
       {/* **How many published objects name it**, which is the one thing that
@@ -509,9 +509,29 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, doc
   )
 }
 
-/** A document named by its title, or by its slug where it has none yet. */
-function documentLabel(doc: TermDocumentOption): string {
-  return doc.title === "" ? doc.slug : `${doc.title} (${doc.slug})`
+/** A document named by its title, or by its slug where it has none yet: the words a box can hold. */
+function documentText(doc: TermDocumentOption): string {
+  return doc.title === "" ? doc.slug : doc.title
+}
+
+/**
+ * A document by its title, with its slug after it set as a code — the slug is
+ * an address, and every screen shows one in that typeface (`Code`). Where it
+ * has no title yet the slug is the whole name. `to` makes the name a link; the
+ * slug after a title stays out of it, beside the name rather than part of it.
+ */
+function DocumentName({ doc, to }: { doc: TermDocumentOption, to?: string }) {
+  if (doc.title === "") {
+    const slug = <Code>{doc.slug}</Code>
+    return to === undefined ? slug : <Link to={to}>{slug}</Link>
+  }
+  return (
+    <>
+      {to === undefined ? doc.title : <Link to={to}>{doc.title}</Link>}
+      {" "}
+      <Code muted>{doc.slug}</Code>
+    </>
+  )
 }
 
 /**
@@ -540,12 +560,16 @@ function DocumentPicker({ documents, value, locale }: {
   const words = messagesFor(locale).admin.datasetEditor
   const sent = useRef<HTMLInputElement>(null)
   const [find, setFind] = useState("")
-  const choices = [
-    { value: "", label: t.documentNone },
-    ...documents.map((doc) => ({ value: doc.id, label: documentLabel(doc) })),
+  // **What is typed is looked for in the title and the slug alike**, since a
+  // curator knows an article by either; the box shows the title alone, being
+  // text, and the list shows the slug beside it.
+  const choices: { value: string, text: string, doc: TermDocumentOption | null }[] = [
+    { value: "", text: t.documentNone, doc: null },
+    ...documents.map((doc) => ({ value: doc.id, text: documentText(doc), doc })),
   ]
   const needle = find.trim().toLowerCase()
-  const offered = choices.filter((choice) => choice.label.toLowerCase().includes(needle))
+  const offered = choices.filter((choice) =>
+    [choice.text, choice.doc?.slug ?? ""].some((words) => words.toLowerCase().includes(needle)))
   return (
     <div className="flex flex-col gap-2 text-sm">
       <span className={PANE_LABEL}>{t.document}</span>
@@ -555,7 +579,7 @@ function DocumentPicker({ documents, value, locale }: {
         placeholder={t.documentFind}
         options={offered}
         keyOf={(choice) => choice.value}
-        render={(choice) => <span>{choice.label}</span>}
+        render={(choice) => <span>{choice.doc === null ? choice.text : <DocumentName doc={choice.doc} />}</span>}
         empty={t.documentNoMatch}
         words={{ searching: words.searching, count: words.candidateCount }}
         // Entering the box shows every article; only what is typed narrows.
@@ -568,8 +592,8 @@ function DocumentPicker({ documents, value, locale }: {
           }
           setFind("")
         }}
-        kept={(choice) => choice.label}
-        initial={choices.find((choice) => choice.value === (value ?? ""))?.label ?? ""}
+        kept={(choice) => choice.text}
+        initial={choices.find((choice) => choice.value === (value ?? ""))?.text ?? ""}
       />
     </div>
   )

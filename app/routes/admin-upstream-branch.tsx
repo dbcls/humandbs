@@ -8,7 +8,8 @@ import { Heading, Note, Stack } from "~/components/base"
 import { Answer, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
-import { BranchDatasets, BranchPairs, DroppedNote, UpstreamNotConnected } from "~/components/upstream"
+import { Flag } from "~/components/flags"
+import { APPLICATION_TYPE_FLAG, BranchDatasets, BranchPairs, DroppedNote, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
@@ -63,8 +64,19 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
       <Card under={false}>
         <Stack gap="block">
           {/* The name shows what is done here and the branch is shown beside it —
-              an application ID on its own would not say which screen this is. */}
-          <Heading title={t.branchHeading} aside={view.applicationId}>
+              an application ID on its own would not say which screen this is.
+              **Whether it is a new application or an update is a badge beside
+              the ID**, as the listing's column shows it: the two are read
+              differently from the first line on. */}
+          <Heading
+            title={t.branchHeading}
+            aside={view.applicationId}
+            badge={view.branch !== null && (
+              <Flag kind={APPLICATION_TYPE_FLAG[view.branch.applicationType]}>
+                {t.applicationTypes[view.branch.applicationType]}
+              </Flag>
+            )}
+          >
             <AdminBack
               to={href(locale, adminUpstreamResearchPath())}
               label={t.backToList}

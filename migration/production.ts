@@ -544,8 +544,8 @@ function withoutComments(content: string | null): string | null {
 
 /**
  * The site content with what v1 left behind — the minutes of the old data
- * access committee, and the English side of one revision notice — and the
- * hand-written corrections to it (`site-edits.ts`).
+ * access committee, the English side of one revision notice, and the links it
+ * took off the old pages — and the hand-written corrections to it (`site-edits.ts`).
  */
 function siteContent(): CmsDump {
   const cms = loadCms(INPUT)
@@ -593,8 +593,11 @@ function siteContent(): CmsDump {
   })
 
   const edited = { ...cms, documents: [...documents, ...added] }
-  const edits = join(INPUT, "hand", "site-edits.json")
-  return cleansedSite(existsSync(edits) ? applySiteEdits(edited, readJson("hand", "site-edits.json") as SiteEdit[]) : edited)
+  // The corrections, then the links v1 took off when it read the old site's pages (`site-links.json`,
+  // made from the old pages' links in the same form as the corrections).
+  const corrected = existsSync(join(INPUT, "hand", "site-edits.json")) ? applySiteEdits(edited, readJson("hand", "site-edits.json") as SiteEdit[]) : edited
+  const linked = existsSync(join(INPUT, "hand", "site-links.json")) ? applySiteEdits(corrected, readJson("hand", "site-links.json") as SiteEdit[]) : corrected
+  return cleansedSite(linked)
 }
 
 /**

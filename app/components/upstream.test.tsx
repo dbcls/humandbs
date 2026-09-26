@@ -134,13 +134,26 @@ describe("枝番の表の行", () => {
 describe("ダイアログの中の申請の内容", () => {
   it("ダイアログでは提供申請 ID を最初の値として表示し、枝番の画面では表示しない (隣にあるため)", () => {
     const inPanel = renderToStaticMarkup(
-      <BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08" }} fields={[]} applicationId="J-DS000137-010" />,
+      <BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08", heldBy: null }} fields={[]} applicationId="J-DS000137-010" />,
     )
     const names = [...inPanel.matchAll(/<dt[^>]*>([^<]*)</g)].map((match) => match[1])
     expect(names[0]).toBe(t.application)
     expect(inPanel).toContain("J-DS000137-010")
-    const onScreen = renderToStaticMarkup(<BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08" }} fields={[]} />)
+    const onScreen = renderToStaticMarkup(<BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08", heldBy: null }} fields={[]} />)
     expect(onScreen).not.toContain(t.application)
+  })
+
+  it("研究 ID に研究のアイコンを付け、ポータルに研究があればその研究の編集へのリンクにする", () => {
+    const held = routed(<BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08", heldBy: "r-127" }} fields={[]} />)
+    const researchId = held.slice(held.indexOf(">研究 ID<"), held.indexOf(t.approvedOn))
+    expect(researchId).toContain("<svg")
+    expect(researchId).toMatch(/<a[^>]*href="\/admin\/research\/r-127"[^>]*>hum0127<\/a>/)
+
+    const free = routed(<BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08", heldBy: null }} fields={[]} />)
+    const text = free.slice(free.indexOf(">研究 ID<"), free.indexOf(t.approvedOn))
+    expect(text).toContain("<svg")
+    expect(text).toContain("hum0127")
+    expect(text).not.toContain("<a")
   })
 })
 

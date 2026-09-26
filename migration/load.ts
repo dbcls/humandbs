@@ -293,7 +293,7 @@ export async function loadSiteContent(
       documentId: identityOf(idBySlug, d.slug, "document"),
       locale: c.locale,
       content: c.content,
-      published: true,
+      published: c.published,
       publishedAt: c.publishedAt,
     }))),
     (chunk) => tx.insert(documentContent).values(chunk),

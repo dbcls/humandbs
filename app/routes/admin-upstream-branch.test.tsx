@@ -19,7 +19,7 @@ const FIELDS: SeededFieldView[] = [
 
 function draw(humLabel: string | null = "hum0455"): string {
   return renderToStaticMarkup(
-    <BranchPairs locale="ja" branch={{ humLabel, approvedOn: "2026-07-28" }} fields={FIELDS} />,
+    <BranchPairs locale="ja" branch={{ humLabel, approvedOn: "2026-07-28", heldBy: null }} fields={FIELDS} />,
   )
 }
 
@@ -96,6 +96,19 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     expect(html).toContain("DNBSEQ-T7")
     for (const line of t.createNote) expect(html).toContain(line)
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*>[\s\S]*hum0597 の作成を開始/)
+  })
+
+  it("見出しの提供申請 ID の隣に、新規かデータ更新かをバッジで示す", () => {
+    const heading = (html: string): string => html.slice(html.indexOf("<h1"), html.indexOf(`>${t.branchSummary}</h2>`))
+    expect(heading(screen({}))).toMatch(/J-DS000597-001[\s\S]*新規/)
+    expect(heading(screen({ branch: { ...branch, applicationType: "update" } }))).toMatch(/J-DS000597-001[\s\S]*データ更新/)
+    expect(heading(screen({ branch: { ...branch, applicationType: "update" } }))).not.toContain(">新規<")
+  })
+
+  it("申請管理 DB に接続できないときは、申請の種類のバッジを出さない", () => {
+    const html = screen({ connected: false, branch: null, chosen: null })
+    expect(html).not.toContain("新規")
+    expect(html).not.toContain("データ更新")
   })
 
   it("研究 ID が未発行なら、指定せずに作成を始める", () => {

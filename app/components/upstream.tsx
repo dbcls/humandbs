@@ -4,7 +4,7 @@ import { useFetcher } from "react-router"
 import type { ApplicationType, BranchStatus } from "~/admin/listing"
 import type { DroppedValue } from "~/admin/templates"
 import type { DatasetChoiceView, SeededFieldView, UpstreamBranchView, UpstreamChoiceView } from "~/admin/templates.server"
-import { adminUpstreamBranchPath } from "~/admin/urls"
+import { adminResearchPath, adminUpstreamBranchPath } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href, jgaEntryUrl } from "~/public/urls"
@@ -173,7 +173,7 @@ export function DroppedNote({ locale, dropped }: { locale: Locale, dropped: read
  */
 export function BranchPairs({ locale, branch, fields, applicationId }: {
   locale: Locale
-  branch: Pick<UpstreamBranchView, "humLabel" | "approvedOn">
+  branch: Pick<UpstreamBranchView, "humLabel" | "approvedOn" | "heldBy">
   fields: SeededFieldView[]
   /** Said first where nothing around the list names the branch — a panel, not the branch's own screen. */
   applicationId?: string
@@ -184,8 +184,16 @@ export function BranchPairs({ locale, branch, fields, applicationId }: {
       {applicationId !== undefined && (
         <KeyValue title={t.application}><Code>{applicationId}</Code></KeyValue>
       )}
+      {/* The label as the listing's cell shows it: the glyph every listing
+          gives a research, and a link into it when the portal holds one. */}
       <KeyValue title={messagesFor(locale).research.researchId}>
-        {branch.humLabel ?? <Flag kind="short">{t.noHumLabel}</Flag>}
+        {branch.humLabel === null
+          ? <Flag kind="short">{t.noHumLabel}</Flag>
+          : (
+              <IdWithIcon kind="research" to={branch.heldBy === null ? null : href(locale, adminResearchPath(branch.heldBy))}>
+                {branch.humLabel}
+              </IdWithIcon>
+            )}
       </KeyValue>
       <KeyValue title={t.approvedOn}>{branch.approvedOn ?? ""}</KeyValue>
       {fields.map((field) => (
