@@ -137,15 +137,24 @@ export const valueSchema = z.discriminatedUnion("type", [
     + "code `/api/fields` lists it under.",
 })
 
+/**
+ * A file of a research's prefix. `label` is what the file holds where its name
+ * does not say it ("Dictionary file"), in each language an administrator wrote
+ * — absent when there is none, like every other value that is not there.
+ */
 export const fileSchema = z.object({
   name: z.string(),
   size: z.number().int(),
   url: z.string(),
+  label: textSchema.optional(),
 }).meta({
   id: "File",
   description:
     "A file as the store lists it. **The address is not promised**: its form is kept, but a file "
-    + "has a published state of its own that an administrator can turn off.",
+    + "has a published state of its own that an administrator can turn off. `label` describes what "
+    + "the file holds where its name does not; it is absent when the file has none, and a "
+    + "language an administrator did not write is absent from it. It can change at any time, "
+    + "without a new version of the research.",
 })
 
 export const researchSchema = z.object({
@@ -362,6 +371,7 @@ export const problemSchema = z.object({
 })
 
 export type ApiText = z.infer<typeof textSchema>
+export type ApiFile = z.infer<typeof fileSchema>
 export type ApiLink = z.infer<typeof linkSchema>
 export type ApiLinks = z.infer<typeof linksSchema>
 export type ApiTerm = z.infer<typeof termSchema>

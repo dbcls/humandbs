@@ -369,6 +369,43 @@ function readLine(line: string, labels: ReadonlySet<string>, studies: Studies = 
   return { said: line.slice(at + 1).trim(), about: found.about, headed: found.byStudy && !found.byLabel }
 }
 
+/** One heading alone on its line and the lines under it, up to the next heading (`to` is exclusive). */
+interface HeadingGroup {
+  about: string[]
+  from: number
+  to: number
+}
+
+/**
+ * The groups of a cell whose headings stand alone on their lines
+ * (`【JGAS000618】` over that study's lines, up to the next heading), as the
+ * article indents the lines under each. Null where the cell is not made that
+ * way: no heading alone on its line names a dataset, or a heading has words
+ * after it (`【JGAS000583】 寒冷凝集素症…：1症例`) — there a line without a
+ * heading may go with the heading above it or caption the one below, and
+ * nothing tells which.
+ */
+function headingGroups(lines: readonly string[], labels: ReadonlySet<string>, studies: Studies): HeadingGroup[] | null {
+  const heads: { at: number, about: string[] }[] = []
+  for (const [at, line] of lines.entries()) {
+    const headed = HEADED.exec(line)
+    if (headed === null) continue
+    const { about } = namedIn(headed[1] ?? headed[2] ?? "", labels, studies)
+    if (about.length === 0) continue
+    if ((headed[3] ?? "").trim() !== "") return null
+    heads.push({ at, about })
+  }
+  if (heads.length === 0) return null
+  return heads.map((head, i) => ({ about: head.about, from: head.at, to: heads[i + 1]?.at ?? lines.length }))
+}
+
+const GROUP_PART = "\u0001"
+
+/** A group's lines as two copies of one group compare, under the dataset it is about (`lineKey`). */
+function groupKey(label: string, sourceKey: string, lang: Language, lines: readonly string[], group: HeadingGroup): string {
+  return lineKey(label, sourceKey, lang, GROUP_PART + lines.slice(group.from + 1, group.to).join("\n"))
+}
+
 /** The datasets a label or heading names, directly or by the study they are registered under. */
 function namedIn(text: string, labels: ReadonlySet<string>, studies: Studies): { about: string[], byStudy: boolean, byLabel: boolean } {
   const about: string[] = []
@@ -411,7 +448,8 @@ function plainLines(value: EsRichText | null | undefined, lang: Language, read: 
 }
 
 /**
- * Every line each dataset states about itself, which is what makes a copy a copy.
+ * Every line each dataset states about itself, which is what makes a copy a copy,
+ * and every group under a heading alone on its line that is about it (`headingGroups`).
  * Given the reader the load builds prose with, the lines are the ones it reads;
  * `readFor` gives a dataset a reader of its own, as the load does.
  */
@@ -428,9 +466,13 @@ export function ownLines(
     for (const experiment of one.doc.experiments ?? []) {
       for (const [sourceKey, value] of Object.entries(experiment.data ?? {})) {
         for (const lang of LANGUAGES) {
-          for (const line of plainLines(value[lang], lang, reader)) {
+          const lines = plainLines(value[lang], lang, reader)
+          for (const line of lines) {
             const { said, about } = readLine(line, labels, studies)
             if (about.includes(one.label)) keys.add(lineKey(one.label, sourceKey, lang, said))
+          }
+          for (const group of headingGroups(lines, labels, studies ?? NO_STUDIES) ?? []) {
+            if (group.about.includes(one.label)) keys.add(groupKey(one.label, sourceKey, lang, lines, group))
           }
         }
       }
@@ -527,19 +569,28 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
    *
    * **A heading divides a cell only where the cell is a list of headed lines**:
    * every line after the first heading is one, and one of them is this
-   * dataset's own. A heading with lines under it, a caption over a later group,
-   * a note after a heading — each would be left behind without the line it
-   * belongs to, so such a cell keeps its headed lines whole.
+   * dataset's own. A caption over a later group or a note after a heading
+   * would be left behind without the line it belongs to, so such a cell keeps
+   * its headed lines whole.
+   *
+   * Where every heading stands alone on its line, the lines under it up to the
+   * next heading are its group (`headingGroups`), and the group goes the same
+   * way a line does: where every dataset its heading names has the same group
+   * itself, and this dataset has a group of its own in the cell.
    */
   const staying = (sourceKey: string, lang: Language, lines: readonly string[]): boolean[] => {
     const read = lines.map((line) => readLine(line, input.datasetLabels, input.studies))
     const stays = read.map(({ said, about }) => about.length === 0 || about.includes(dataset.label)
       || !about.every((label) => input.ownLines.has(lineKey(label, sourceKey, lang, said))))
     const first = read.findIndex((one) => one.headed)
-    if (first === -1) return stays
     const listed = lines.every((line, at) => at < first || line.trim() === "" || read[at]?.headed === true)
     const own = read.some((one) => one.headed && one.about.includes(dataset.label))
-    return listed && own ? stays : stays.map((stay, at) => stay || read[at]?.headed === true)
+    const divided = first === -1 || (listed && own) ? stays : stays.map((stay, at) => stay || read[at]?.headed === true)
+    const groups = headingGroups(lines, input.datasetLabels, input.studies ?? NO_STUDIES) ?? []
+    if (!groups.some((group) => group.about.includes(dataset.label))) return divided
+    const elsewhere = groups.filter((group) => !group.about.includes(dataset.label)
+      && group.about.every((label) => input.ownLines.has(groupKey(label, sourceKey, lang, lines, group))))
+    return divided.map((stay, at) => stay && !elsewhere.some((group) => at >= group.from && at < group.to))
   }
 
   /** A cell with the lines about other datasets taken out. */

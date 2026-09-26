@@ -28,6 +28,8 @@ import {
 } from "~/content/public"
 import { getDb } from "~/db/client.server"
 import { everyPublicListing, publicListingsOf } from "~/files/listing.server"
+import type { FileLabel } from "~/files/labels"
+import { fileLabelsByHumLabel } from "~/files/labels.server"
 import { parsePageNumber } from "~/paging"
 import {
   loadCatalog,
@@ -114,6 +116,7 @@ function researchObject(
     labels: ReadonlyMap<string, string>
     cau: ReadonlyMap<string, CauUsage[]>
     files: readonly StoredFile[]
+    fileLabels: ReadonlyMap<string, FileLabel>
   },
 ): ApiResearch {
   const projected = publicResearch(
@@ -130,6 +133,7 @@ function researchObject(
     datasetLabelById: input.labels,
     cau: projected.cau,
     files: projected.files,
+    fileLabels: input.fileLabels,
   }, input.context)
 }
 
@@ -148,11 +152,12 @@ export async function researchEntry(
   const version = wanted === "latest" ? latest : findVersion(versions, wanted)
   if (version === null) return problemResponse(notFound(request, "research-version"))
 
-  const [context, cau, listings, labels] = await Promise.all([
+  const [context, cau, listings, labels, fileLabels] = await Promise.all([
     contextOf(),
     cauByHumLabel(db, [resolved.primaryLabel]),
     publicListingsOf([resolved.primaryLabel]),
     publishedDatasetLabels(db, citedDatasetIds(version.content)),
+    fileLabelsByHumLabel(db, [resolved.primaryLabel]),
   ])
 
   const bundle: ResearchBundle = {
@@ -168,6 +173,7 @@ export async function researchEntry(
     labels,
     cau,
     files: listings.get(resolved.primaryLabel) ?? [],
+    fileLabels: fileLabels.get(resolved.primaryLabel) ?? new Map(),
   }))
 }
 
@@ -190,6 +196,7 @@ async function researchObjects(
   bundles: readonly ResearchBundle[],
   context: ApiContext,
   listings: ReadonlyMap<string, StoredFile[]>,
+  fileLabels: FileLabelsByHum,
 ): Promise<ApiResearch[]> {
   if (bundles.length === 0) return []
   const db = getDb()
@@ -202,14 +209,19 @@ async function researchObjects(
     labels,
     cau,
     files: listings.get(bundle.humLabel) ?? [],
+    fileLabels: fileLabels.get(bundle.humLabel) ?? new Map(),
   }))
 }
 
 // --- dataset --------------------------------------------------------------
 
+/** The labels of the files of each research, by its primary hum label and then the file's name. */
+type FileLabelsByHum = ReadonlyMap<string, ReadonlyMap<string, FileLabel>>
+
 function datasetObject(
   bundle: DatasetBundle,
   listing: readonly StoredFile[],
+  fileLabels: FileLabelsByHum,
   context: ApiContext,
 ): ApiDataset {
   return apiDataset({
@@ -223,6 +235,7 @@ function datasetObject(
       PUBLISHED,
     ),
     files: listing,
+    fileLabels: fileLabels.get(bundle.humLabel) ?? new Map(),
   }, context)
 }
 
@@ -234,17 +247,22 @@ export async function datasetEntry(request: Request, datasetId: string): Promise
   const [bundle] = await datasetBundles(db, [resolved.id])
   if (bundle === undefined) return problemResponse(notFound(request, "dataset"))
 
-  const [context, listings] = await Promise.all([contextOf(), publicListingsOf([bundle.humLabel])])
-  return jsonResponse(datasetObject(bundle, listings.get(bundle.humLabel) ?? [], context))
+  const [context, listings, fileLabels] = await Promise.all([
+    contextOf(),
+    publicListingsOf([bundle.humLabel]),
+    fileLabelsByHumLabel(db, [bundle.humLabel]),
+  ])
+  return jsonResponse(datasetObject(bundle, listings.get(bundle.humLabel) ?? [], fileLabels, context))
 }
 
 function datasetObjects(
   bundles: readonly DatasetBundle[],
   context: ApiContext,
   listings: ReadonlyMap<string, StoredFile[]>,
+  fileLabels: FileLabelsByHum,
 ): ApiDataset[] {
   return bundles.map((bundle) =>
-    datasetObject(bundle, listings.get(bundle.humLabel) ?? [], context))
+    datasetObject(bundle, listings.get(bundle.humLabel) ?? [], fileLabels, context))
 }
 
 // --- search ---------------------------------------------------------------
@@ -295,11 +313,12 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   const context = await contextOf()
   const ranking = result.hits.map((hit) =>
     target === "research" ? hit.humLabel : hit.datasetLabel ?? "")
-  const listings = await publicListingsOf(result.hits.map((hit) => hit.humLabel))
+  const humLabels = result.hits.map((hit) => hit.humLabel)
+  const [listings, fileLabels] = await Promise.all([publicListingsOf(humLabels), fileLabelsByHumLabel(db, humLabels)])
   const ids = result.hits.map((hit) => hit.targetId)
   const hits: (ApiResearch | ApiDataset)[] = target === "research"
-    ? await researchObjects(await researchBundles(db, ids), context, listings)
-    : datasetObjects(await datasetBundles(db, ids), context, listings)
+    ? await researchObjects(await researchBundles(db, ids), context, listings, fileLabels)
+    : datasetObjects(await datasetBundles(db, ids), context, listings, fileLabels)
 
   return jsonResponse({
     total: result.total,
@@ -375,10 +394,10 @@ export async function searchFields(): Promise<Response> {
 
 export async function apiBulk(target: SearchTarget): Promise<Response> {
   const db = getDb()
-  const [context, listings] = await Promise.all([contextOf(), everyPublicListing()])
+  const [context, listings, fileLabels] = await Promise.all([contextOf(), everyPublicListing(), fileLabelsByHumLabel(db, null)])
   const objects: (ApiResearch | ApiDataset)[] = target === "research"
-    ? await researchObjects(await researchBundles(db, null), context, listings)
-    : datasetObjects(await datasetBundles(db, null), context, listings)
+    ? await researchObjects(await researchBundles(db, null), context, listings, fileLabels)
+    : datasetObjects(await datasetBundles(db, null), context, listings, fileLabels)
 
   return ndjsonResponse([...objects].sort((a, b) => a.id.localeCompare(b.id)))
 }

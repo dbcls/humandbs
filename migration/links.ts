@@ -72,7 +72,8 @@ export function relink<T>(content: T, map: ReadonlyMap<string, Relink>): { conte
 /**
  * The hand-made table, one address per line: `url`, `action`, `new_url`,
  * `evidence`, tab-separated under a header. An address found alive is `keep`
- * and needs no rule.
+ * and needs no rule. A new address is another site's (`https://…`) or a path
+ * on this one (`/files/hum0197/…`, a file of the research's prefix).
  */
 export function readRelinks(tsv: string): Map<string, Relink> {
   const map = new Map<string, Relink>()
@@ -83,7 +84,7 @@ export function readRelinks(tsv: string): Map<string, Relink> {
     if (map.has(url)) throw new Error(`${url} is in the relink table twice`)
     if (action === "keep") continue
     if (action === "unlink") map.set(url, { action })
-    else if (action === "replace" && /^https?:\/\//.test(to)) map.set(url, { action, to })
+    else if (action === "replace" && /^(?:https?:\/\/|\/(?!\/))/.test(to)) map.set(url, { action, to })
     else throw new Error(`${url}: cannot read action ${JSON.stringify(action)} to ${JSON.stringify(to)}`)
   }
   return map

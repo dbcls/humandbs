@@ -24,6 +24,7 @@ function view(fileCount: number, secondaryLabels: string[] = []): DatasetView {
       name: `f${String(at + 1).padStart(3, "0")}.txt`,
       size: 1,
       isPublic: true,
+      label: "",
     })),
   }
 }

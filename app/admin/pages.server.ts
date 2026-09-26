@@ -38,6 +38,8 @@ import type { EventActor } from "~/auth/events.server"
 import { getDb, type Executor } from "~/db/client.server"
 import { isUploadableName, type ListedFile } from "~/files/prefix"
 import { adminListing, publicListing, researchesWithFiles } from "~/files/listing.server"
+import type { FileLabel } from "~/files/labels"
+import { fileLabelsOf } from "~/files/labels.server"
 import { pendingSwitches, privateNames, switchFiles } from "~/files/jobs.server"
 import { wakeFileRunner } from "~/files/runner.server"
 import { resolveText, type Locale } from "~/i18n/locale"
@@ -789,6 +791,8 @@ export interface DatasetEditorView {
    * rather than pretending the prefix is empty.
    */
   listing: ListedFile[] | null
+  /** The labels of the prefix's files, by name. A file with none is not a key. */
+  fileLabels: Record<string, FileLabel>
   /**
    * Whether this dataset may have a file selection at all, read off its id.
    * An archive's dataset is distributed by the archive, so the screen does
@@ -828,7 +832,7 @@ export async function datasetEditorPage(
     readComments(db, draftId),
     placeSources(db, researchId, draftId, draft.content, locale),
   ])
-  const listing = await adminListing(db, researchId, humLabel)
+  const [listing, fileLabels] = await Promise.all([adminListing(db, researchId, humLabel), fileLabelsOf(db, researchId)])
 
   const content = entry?.content ?? published?.content ?? emptyDatasetContent()
   const input = datasetContentInput(content)
@@ -873,6 +877,7 @@ export async function datasetEditorPage(
       signedInName: actor.name,
     },
     listing,
+    fileLabels: Object.fromEntries(fileLabels),
     portalIssued: row.portalIssued,
   }
 }

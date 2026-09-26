@@ -307,10 +307,43 @@ describe("the download list", () => {
     const view = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
 
     expect(view.files.rows).toEqual([
-      { name: "a.zip", size: 1, isPublic: true, datasets: [] },
-      { name: "b.zip", size: 2, isPublic: true, datasets: [] },
+      { name: "a.zip", size: 1, isPublic: true, label: "", datasets: [] },
+      { name: "b.zip", size: 2, isPublic: true, label: "", datasets: [] },
     ])
     await clearPrefix(PUBLIC_BUCKET, publicPrefix("hum7999"))
+  })
+
+  it("has each file's label in the page's language, and the other language where the page's is empty", async () => {
+    const researchId = await createResearch(HUM)
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    for (const name of ["a.xlsx", "b.pdf", "c.pdf", "d.zip"]) await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${name}`)
+    await db.insert(s.fileLabel).values([
+      { researchId, fileName: "a.xlsx", labelJa: "辞書ファイル", labelEn: "Dictionary file" },
+      { researchId, fileName: "b.pdf", labelJa: "論文", labelEn: "" },
+      { researchId, fileName: "c.pdf", labelJa: "", labelEn: "Paper" },
+    ])
+
+    const inJa = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
+    const inEn = await researchPage({ ...ja, locale: "en", humId: HUM, wanted: "latest" })
+
+    expect(inJa.files.rows.map((row) => [row.name, row.label]))
+      .toEqual([["a.xlsx", "辞書ファイル"], ["b.pdf", "論文"], ["c.pdf", "Paper"], ["d.zip", ""]])
+    expect(inEn.files.rows.map((row) => [row.name, row.label]))
+      .toEqual([["a.xlsx", "Dictionary file"], ["b.pdf", "論文"], ["c.pdf", "Paper"], ["d.zip", ""]])
+  })
+
+  it("has no label a different research gave a file of the same name", async () => {
+    const researchId = await createResearch(HUM)
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`)
+    const other = await createResearch("hum7998")
+    await db.insert(s.fileLabel).values({ researchId: other, fileName: "a.zip", labelJa: "他", labelEn: "other" })
+
+    const view = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
+
+    expect(view.files.rows.map((row) => row.label)).toEqual([""])
   })
 
   it("cuts at twenty names and reports how many pages there are", async () => {
@@ -355,7 +388,22 @@ describe("the download list", () => {
 
     const view = await datasetPage({ locale: "ja", datasetId: "JGAD000001" })
 
-    expect(view.files).toEqual([{ name: "a.zip", size: 1, isPublic: true }])
+    expect(view.files).toEqual([{ name: "a.zip", size: 1, isPublic: true, label: "" }])
+  })
+
+  it("has the label of each file the dataset selects, which the research gave it", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    descriptions.set(datasetId, { ...emptyDatasetContent(), fileSelection: ["a.xlsx", "b.zip"] })
+    await publish(researchId, 1, [datasetId])
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.xlsx`)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.zip`)
+    await db.insert(s.fileLabel).values({ researchId, fileName: "a.xlsx", labelJa: "", labelEn: "Dictionary file" })
+
+    const view = await datasetPage({ locale: "ja", datasetId: "JGAD000001" })
+
+    expect(view.files.map((row) => [row.name, row.label])).toEqual([["a.xlsx", "Dictionary file"], ["b.zip", ""]])
   })
 })
 

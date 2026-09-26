@@ -78,4 +78,12 @@ describe("readRelinks", () => {
     expect(() => readRelinks(`${header}\n${GONE}\tunlink\t\ta\n${GONE}\tkeep\t\tb`)).toThrow(/twice/)
     expect(() => readRelinks(`${DEAD}\tunlink\t\tx`)).toThrow(/header/)
   })
+
+  it("reads a path on this site as the new address, but not one that names another host", () => {
+    const moved = "/files/hum0197.org/Dictfile_BBJ.html"
+    expect(readRelinks(`${header}\n${moved}\treplace\t/files/hum0197/Dictfile_BBJ.html\tx`))
+      .toEqual(new Map([[moved, { action: "replace", to: "/files/hum0197/Dictfile_BBJ.html" }]]))
+    expect(() => readRelinks(`${header}\n${moved}\treplace\t//example.org/a\tx`)).toThrow(moved)
+    expect(() => readRelinks(`${header}\n${moved}\treplace\tfiles/hum0197/a\tx`)).toThrow(moved)
+  })
 })

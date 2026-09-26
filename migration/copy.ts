@@ -141,3 +141,23 @@ function destinationOf(source: string, entry: CensusEntry, researchIdOf: (humLab
 export function planAssets(paths: readonly string[], sizeOf: (path: string) => number): PlannedCopy[] {
   return paths.map((path) => ({ source: path, size: sizeOf(path), bucket: PUBLIC_BUCKET, key: `${commonPrefix()}${path}` }))
 }
+
+/**
+ * The files a draft links that only the old staging site held (`input/l12/draft-files/{hum}/{name}`):
+ * a draft's page named the file it was to publish, and the file was put on the staging site, not
+ * among the served ones. **They go to the private prefix** — nothing a draft names is public until
+ * somebody publishes it.
+ */
+export function planDraftFiles(
+  paths: readonly string[],
+  sizeOf: (path: string) => number,
+  researchIdOf: (humLabel: string) => string | undefined,
+): PlannedCopy[] {
+  return paths.map((path) => {
+    const [hum = "", name = "", ...deeper] = path.split("/")
+    if (name === "" || deeper.length > 0) throw new Error(`${path} is not {hum}/{name}`)
+    const researchId = researchIdOf(hum)
+    if (researchId === undefined) throw new Error(`${path} belongs to ${hum}, which is not a research`)
+    return { source: path, size: sizeOf(path), bucket: PRIVATE_BUCKET, key: `${privatePrefix(researchId)}${name}` }
+  })
+}

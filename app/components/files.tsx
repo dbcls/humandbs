@@ -9,6 +9,7 @@ import {
   MULTIPART_CONCURRENCY,
   type ListedFile,
 } from "~/files/prefix"
+import type { FileLabel } from "~/files/labels"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { fileDownloadHref } from "~/admin/urls"
@@ -19,13 +20,14 @@ import {
   Button,
   ButtonLink,
   Confirm,
+  Dialog,
   Note,
   Progress,
   Stack,
   CopyButton,
 } from "./base"
 import { SlugEditor } from "./contents"
-import { Submit } from "./form"
+import { Editing, Field, LanguagePair, Submit, Unsaved } from "./form"
 import { Icon } from "./icons"
 import { DatasetIds, Paging, Table, Td } from "./page"
 import { FileListTools } from "./search"
@@ -44,6 +46,8 @@ export interface DownloadRow {
   name: string
   size: number
   isPublic: boolean
+  /** The file's label in the page's language, or in the other where it has none. Empty for none. */
+  label: string
 }
 
 /**
@@ -133,9 +137,13 @@ export function Downloads<Row extends DownloadRow>({
       )}
       {/* `whenEmpty` は要らない — 配布するものが無い研究では、この節ごと描かれない
           (`research.tsx` / `dataset.tsx`)。 */}
+      {/* **The label's column is there on every list**, labelled or not: the
+          columns of a research's list and of any other are then the same ones
+          in the same places. */}
       <Table
         headers={[
           t.downloadName,
+          t.downloadLabel,
           t.downloadSize,
           ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
         ]}
@@ -157,6 +165,7 @@ export function Downloads<Row extends DownloadRow>({
                   )
                 : <NotPublicYet locale={locale} humLabel={humLabel} name={row.name} />}
             </Td>
+            <Td floor="min-w-40">{row.label}</Td>
             <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
             {selectedBy !== undefined && <Td nowrap>{selectedBy(row)}</Td>}
             {origin !== undefined && (
@@ -232,7 +241,7 @@ function NotPublicYet({ locale, humLabel, name }: {
  * download is shown beside the name as an act of its own, and a file nobody
  * outside can reach offers neither it nor its address.
  */
-export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpty, selectedBy }: {
+export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpty, selectedBy, labels }: {
   locale: Locale
   /** The research whose prefix this is: a private file is fetched through it. */
   researchId: string
@@ -247,6 +256,8 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
    * research's public download list has. Left out, the table has no such column.
    */
   selectedBy?: Readonly<Record<string, readonly string[]>>
+  /** The files' labels, by name. A file with none is not a key. */
+  labels: Readonly<Record<string, FileLabel>>
 }) {
   const messages = messagesFor(locale)
   const t = messages.admin.files
@@ -259,6 +270,8 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
       align="middle"
       headers={[
         t.name,
+        t.labelJa,
+        t.labelEn,
         t.size,
         ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
         t.updatedAt,
@@ -270,6 +283,7 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
         <FileRow
           key={row.name}
           row={row}
+          label={labels[row.name]}
           researchId={researchId}
           humLabel={humLabel}
           origin={origin}
@@ -282,8 +296,8 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
 }
 
 /**
- * One file, and the five things done to it: fetched, its address copied,
- * switched to the other side, renamed, deleted.
+ * One file, and the six things done to it: fetched, its address copied,
+ * switched to the other side, renamed, labelled, deleted.
  *
  * **The switch is one control that offers the other side.** Which side the
  * file is on, the row already shows; the control shows where a press would
@@ -295,9 +309,13 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
  * **Renaming a public file moves its address**, which is the break deleting it
  * makes, so the trigger uses the same style and the same panel every slug is
  * changed in (`SlugEditor`).
+ *
+ * **A label is edited at any time, switch or not**: it is kept by the file's
+ * name, which a switch does not change.
  */
-function FileRow({ row, researchId, humLabel, origin, locale, selectedBy }: {
+function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy }: {
   row: ListedFile
+  label: FileLabel | undefined
   researchId: string
   humLabel: string | null
   origin: string
@@ -320,6 +338,8 @@ function FileRow({ row, researchId, humLabel, origin, locale, selectedBy }: {
   return (
     <tr>
       <Td floor="min-w-56"><FileName name={row.name} /></Td>
+      <Td floor="min-w-40">{label?.ja}</Td>
+      <Td floor="min-w-40">{label?.en}</Td>
       <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
       {selectedBy !== undefined && (
         <Td nowrap>
@@ -376,6 +396,27 @@ function FileRow({ row, researchId, humLabel, origin, locale, selectedBy }: {
               disabled={running ? t.renameSwitching : undefined}
             />
           </Form>
+          <Editing method="post">
+            <input type="hidden" name="name" value={row.name} />
+            <Dialog
+              label={t.editLabel}
+              title={t.editLabelTitle(row.name)}
+              note={t.labelNote}
+              size="row"
+              icon={<Icon name="edit" />}
+              action={() => (
+                <Submit intent="label" icon={<Icon name="save" />} saves>
+                  {t.saveLabel}
+                </Submit>
+              )}
+              status={<Unsaved locale={locale} />}
+            >
+              <LanguagePair>
+                <Field label={t.labelJa} name="labelJa" value={label?.ja ?? ""} width="w-full" />
+                <Field label={t.labelEn} name="labelEn" value={label?.en ?? ""} width="w-full" />
+              </LanguagePair>
+            </Dialog>
+          </Editing>
           <Form method="post">
             <input type="hidden" name="name" value={row.name} />
             <Confirm

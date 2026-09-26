@@ -60,7 +60,7 @@ function entry(over: Partial<ListedFile> = {}): ListedFile {
 
 describe("the download list", () => {
   it("draws neither a count nor page steps while every file fits on one page", () => {
-    const html = downloads([{ name: "a.zip", size: 1, isPublic: true }, { name: "b.zip", size: 2, isPublic: true }])
+    const html = downloads([{ name: "a.zip", size: 1, isPublic: true, label: "" }, { name: "b.zip", size: 2, isPublic: true, label: "" }])
 
     expect(html).not.toContain("1–2 / 2")
     expect(html).not.toContain("?files=")
@@ -72,7 +72,7 @@ describe("the download list", () => {
       <Downloads
         locale="ja"
         humLabel="hum0009"
-        rows={[{ name: "a.zip", size: 1, isPublic: true }]}
+        rows={[{ name: "a.zip", size: 1, isPublic: true, label: "" }]}
         total={total}
         rangeFrom={(page - 1) * size + 1}
         rangeTo={Math.min(page * size, total)}
@@ -123,7 +123,7 @@ describe("the download list", () => {
 
   it("ends each row in a copy of the file's whole URL on the given origin", () => {
     const html = downloads(
-      [{ name: "a.zip", size: 1, isPublic: true }, { name: "dac/DAC summary (1).pdf", size: 1, isPublic: true }],
+      [{ name: "a.zip", size: 1, isPublic: true, label: "" }, { name: "dac/DAC summary (1).pdf", size: 1, isPublic: true, label: "" }],
       "hum0009",
       "https://humandbs.example",
     )
@@ -134,21 +134,21 @@ describe("the download list", () => {
   })
 
   it("names the copy column for a reader hearing the row, and not on the screen", () => {
-    const html = downloads([{ name: "a.zip", size: 1, isPublic: true }], "hum0009", "https://humandbs.example")
+    const html = downloads([{ name: "a.zip", size: 1, isPublic: true, label: "" }], "hum0009", "https://humandbs.example")
 
     expect(html).toContain("<span class=\"sr-only\">URL のコピー</span>")
   })
 
   it("offers no copy and no column for it where no origin is given, as in a preview", () => {
-    const html = downloads([{ name: "a.zip", size: 1, isPublic: true }])
+    const html = downloads([{ name: "a.zip", size: 1, isPublic: true, label: "" }])
 
     expect(html).not.toContain("URL のコピー")
-    expect(heads(html)).toEqual(["ファイル名", "サイズ"])
+    expect(heads(html)).toEqual(["ファイル名", "ラベル", "サイズ"])
   })
 
   it("offers no copy for a row that is not public, even where an origin is given", () => {
     const html = downloads(
-      [{ name: "open.zip", size: 1, isPublic: true }, { name: "closed.zip", size: 1, isPublic: false }],
+      [{ name: "open.zip", size: 1, isPublic: true, label: "" }, { name: "closed.zip", size: 1, isPublic: false, label: "" }],
       "hum0009",
       "https://humandbs.example",
     )
@@ -158,21 +158,21 @@ describe("the download list", () => {
   })
 
   it("links a public file at the address the proxy serves it from", () => {
-    const html = downloads([{ name: "hum0009.v1.CpG.v1.zip", size: 1000, isPublic: true }])
+    const html = downloads([{ name: "hum0009.v1.CpG.v1.zip", size: 1000, isPublic: true, label: "" }])
 
     expect(html).toContain("href=\"/files/hum0009/hum0009.v1.CpG.v1.zip\"")
   })
 
   it("escapes each segment of a name, and keeps a separator as part of the address", () => {
-    const html = downloads([{ name: "dac/DAC summary (1).pdf", size: 1, isPublic: true }])
+    const html = downloads([{ name: "dac/DAC summary (1).pdf", size: 1, isPublic: true, label: "" }])
 
     expect(html).toContain("href=\"/files/hum0009/dac/DAC%20summary%20(1).pdf\"")
   })
 
   it("marks a name that downloads with the download icon, and a name not public yet with none", () => {
     const html = downloads([
-      { name: "open.zip", size: 1, isPublic: true },
-      { name: "closed.zip", size: 1, isPublic: false },
+      { name: "open.zip", size: 1, isPublic: true, label: "" },
+      { name: "closed.zip", size: 1, isPublic: false, label: "" },
     ])
 
     const icon = /<a href="\/files\/hum0009\/open\.zip" class="visitable">(<svg[^>]*aria-hidden="true"[\s\S]*?<\/svg>)/.exec(html)?.[1] ?? ""
@@ -182,7 +182,7 @@ describe("the download list", () => {
   })
 
   it("names a file that is not public yet without linking to it", () => {
-    const html = downloads([{ name: "closed.zip", size: 1, isPublic: false }])
+    const html = downloads([{ name: "closed.zip", size: 1, isPublic: false, label: "" }])
 
     expect(html).toContain("closed.zip")
     expect(html).not.toContain("href=\"/files/hum0009/closed.zip\"")
@@ -191,33 +191,33 @@ describe("the download list", () => {
   })
 
   it("shows the address a file that is not public yet will have", () => {
-    const html = downloads([{ name: "closed.zip", size: 1, isPublic: false }])
+    const html = downloads([{ name: "closed.zip", size: 1, isPublic: false, label: "" }])
 
     expect(html.replaceAll("<wbr/>", "")).toContain("/files/hum0009/closed.zip")
   })
 
   it("links nothing at all before a hum label has been pinned", () => {
-    const html = downloads([{ name: "closed.zip", size: 1, isPublic: false }], null)
+    const html = downloads([{ name: "closed.zip", size: 1, isPublic: false, label: "" }], null)
 
     expect(html).not.toContain("/files/")
   })
 
   it("shows sizes the way a browser reports them", () => {
-    expect(downloads([{ name: "a.zip", size: 78_895_250, isPublic: true }])).toContain("78.9 MB")
+    expect(downloads([{ name: "a.zip", size: 78_895_250, isPublic: true, label: "" }])).toContain("78.9 MB")
   })
 
   it("sets the size and its heading to the left, as every column is", () => {
-    const html = downloads([{ name: "a.zip", size: 1000, isPublic: true }])
+    const html = downloads([{ name: "a.zip", size: 1000, isPublic: true, label: "" }])
 
     expect(html).not.toContain("text-right")
   })
 
-  it("puts the size after the name and the datasets last", () => {
+  it("puts the label and the size after the name, and the datasets last", () => {
     const html = render(
       <Downloads
         locale="ja"
         humLabel="hum0009"
-        rows={[{ name: "a.zip", size: 1000, isPublic: true }]}
+        rows={[{ name: "a.zip", size: 1000, isPublic: true, label: "" }]}
         total={1}
         rangeFrom={1}
         rangeTo={1}
@@ -229,12 +229,45 @@ describe("the download list", () => {
       />,
     )
 
-    expect(heads(html)).toEqual(["ファイル名", "サイズ", "データセット ID"])
+    expect(heads(html)).toEqual(["ファイル名", "ラベル", "サイズ", "データセット ID"])
     expect(html).toMatch(/1\.0 KB<\/td><td[^>]*>NHA000001<\/td><\/tr>/)
   })
 
+  it("shows each file's label beside its name, and an empty cell for a file with none", () => {
+    const html = downloads([
+      { name: "a.xlsx", size: 1, isPublic: true, label: "Dictionary file" },
+      { name: "b.zip", size: 1, isPublic: true, label: "" },
+    ])
+
+    expect(html).toMatch(/a\.xlsx[\s\S]*?<\/td><td[^>]*>Dictionary file<\/td>/)
+    expect(html).toMatch(/b\.zip[\s\S]*?<\/td><td[^>]*><\/td><td[^>]*>1 B<\/td>/)
+  })
+
+  it("keeps the label's column where no file of the list has a label", () => {
+    expect(heads(downloads([{ name: "a.zip", size: 1, isPublic: true, label: "" }]))).toContain("ラベル")
+  })
+
+  it("heads the label's column in the page's language", () => {
+    const html = render(
+      <Downloads
+        locale="en"
+        humLabel="hum0009"
+        rows={[{ name: "a.zip", size: 1, isPublic: true, label: "" }]}
+        total={1}
+        rangeFrom={1}
+        rangeTo={1}
+        page={1}
+        pageCount={1}
+        size={20}
+        at={fileListQuery}
+      />,
+    )
+
+    expect(heads(html)).toEqual(["File", "Label", "Size"])
+  })
+
   it("sets the sizes in figures of one width, so that the digits line up down the column", () => {
-    const html = downloads([{ name: "a.zip", size: 1000, isPublic: true }])
+    const html = downloads([{ name: "a.zip", size: 1000, isPublic: true, label: "" }])
     const cell = /<td[^>]*class="([^"]*)"[^>]*>1\.0 KB<\/td>/.exec(html)
 
     expect(cell?.[1]).toContain("tabular-nums")
@@ -246,6 +279,7 @@ describe("the research's file table", () => {
     function table(selectedBy?: Record<string, string[]>): string {
       return render(
         <FileTable
+          labels={{}}
           locale="ja"
           origin="https://humandbs.example"
           researchId={RESEARCH}
@@ -263,12 +297,12 @@ describe("the research's file table", () => {
         [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
     }
 
-    it("follows the name and the size, as in the public list, under the name the public list gives it", () => {
-      expect(heads(table({})).slice(0, 3)).toEqual(["ファイル名", "サイズ", "データセット ID"])
+    it("follows the name, the labels and the size, as in the public list, under the name the public list gives it", () => {
+      expect(heads(table({})).slice(0, 5)).toEqual(["ファイル名", "ラベル (日本語)", "ラベル (英語)", "サイズ", "データセット ID"])
     })
 
     it("leads to each dataset's public page in a new tab", () => {
-      const cell = cells(table({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[2] ?? ""
+      const cell = cells(table({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[4] ?? ""
 
       expect(cell).toContain("href=\"/dataset/NHA000001\"")
       expect(cell).toContain("href=\"/dataset/NHA000002\"")
@@ -276,7 +310,7 @@ describe("the research's file table", () => {
     })
 
     it("leaves the cell empty for a file no dataset selects", () => {
-      expect(cells(table({ "a.zip": ["NHA000001"] }))[1]?.[2]).toBe("")
+      expect(cells(table({ "a.zip": ["NHA000001"] }))[1]?.[4]).toBe("")
     })
 
     it("is not there at all when nothing was said about selections", () => {
@@ -287,6 +321,7 @@ describe("the research's file table", () => {
   it("offers to copy the whole URL of a public file, on the site's public origin, and of no other", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -301,7 +336,7 @@ describe("the research's file table", () => {
   })
 
   it("names nothing to copy while the research has no label, since no address responds", () => {
-    const html = render(<FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "open.zip" })]} />)
+    const html = render(<FileTable labels={{}} locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "open.zip" })]} />)
 
     expect(html).not.toContain("URL のコピー")
   })
@@ -309,6 +344,7 @@ describe("the research's file table", () => {
   it("shows which side of the store each file is on", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -324,6 +360,7 @@ describe("the research's file table", () => {
   it("fetches a public file from its public address", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -342,6 +379,7 @@ describe("the research's file table", () => {
   it("fetches a private file through the screen's own download address, which signs it", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -359,7 +397,7 @@ describe("the research's file table", () => {
 
   it("offers a download for a private file while the research has no label", () => {
     const html = render(
-      <FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "a.zip", isPublic: false })]} />,
+      <FileTable labels={{}} locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel={null} rows={[entry({ name: "a.zip", isPublic: false })]} />,
     )
 
     expect(html).toContain(`/admin/research/${RESEARCH}/files/download?name=a.zip`)
@@ -368,6 +406,7 @@ describe("the research's file table", () => {
   it("offers the other side on the one switch control", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -384,6 +423,7 @@ describe("the research's file table", () => {
   it("shows on the control that a switch is running, and will not take a second press", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -401,6 +441,7 @@ describe("the research's file table", () => {
   it("shows a switch failed, beside the side the file is on, and leaves the control pressable", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -419,6 +460,7 @@ describe("the research's file table", () => {
   it("names the file in every form of its row, so a press names what it acts on", () => {
     const html = render(
       <FileTable
+        labels={{}}
         locale="ja"
         origin="https://humandbs.example"
         researchId={RESEARCH}
@@ -432,14 +474,66 @@ describe("the research's file table", () => {
     expect(html).toContain("name=\"from\" value=\"b.zip\"")
   })
 
+  describe("the labels", () => {
+    function table(labels: Record<string, { ja: string, en: string }>): string {
+      return render(
+        <FileTable
+          labels={labels}
+          locale="ja"
+          origin="https://humandbs.example"
+          researchId={RESEARCH}
+          humLabel="hum0009"
+          rows={[entry({ name: "a.zip" }), entry({ name: "b.zip", isPublic: false })]}
+        />,
+      )
+    }
+
+    /** The two label cells of each row, as text. */
+    function labelCells(html: string): string[][] {
+      const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? ""
+      return [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((tr) =>
+        [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].slice(1, 3).map((td) => td[1] ?? ""))
+    }
+
+    it("shows each language in its own column, and an empty cell for a language not written", () => {
+      expect(labelCells(table({ "a.zip": { ja: "", en: "Dictionary file" } }))).toEqual([["", "Dictionary file"], ["", ""]])
+    })
+
+    /** How many rows offer the label's editing, counted by its trigger. */
+    const triggers = (html: string): number => [...html.matchAll(/>ラベルの編集</g)].length
+
+    it("offers the label's editing on every row, public or not, naming the file it saves for", () => {
+      const html = table({ "a.zip": { ja: "辞書", en: "Dictionary" } })
+
+      expect(triggers(html)).toBe(2)
+      expect(html).toMatch(/<form[^>]*method="post"[^>]*>(?:(?!<\/form>)[\s\S])*name="name" value="b\.zip"(?:(?!<\/form>)[\s\S])*>ラベルの編集</)
+    })
+
+    it("offers the label's editing while a switch runs, since a switch keeps the name", () => {
+      const html = render(
+        <FileTable
+          labels={{}}
+          locale="ja"
+          origin="https://humandbs.example"
+          researchId={RESEARCH}
+          humLabel="hum0009"
+          rows={[entry({ isPublic: false, pending: { action: "publish", failed: false, lastError: null } })]}
+        />,
+      )
+
+      expect(triggers(html)).toBe(1)
+      expect(html).not.toMatch(/disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*ラベルの編集/)
+    })
+  })
+
   it("changes the name on the one panel every slug is changed in", () => {
-    const html = render(<FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
+    const html = render(<FileTable labels={{}} locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
 
     expect(html).toContain("slug の編集")
   })
 
   it("does not offer deletion until it has been asked for twice", () => {
-    const html = render(<FileTable locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel="hum0009" rows={[entry()]} />)
+    const html = render(<FileTable labels={{}} locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel="hum0009" rows={[entry()]} />)
 
     expect(html).not.toContain("value=\"delete\"")
   })

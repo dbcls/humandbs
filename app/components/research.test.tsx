@@ -83,7 +83,7 @@ describe("the research page", () => {
 
   it("draws the section, with the range within the whole prefix rather than the page", () => {
     const html = render({
-      rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
+      rows: [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [] }],
       total: 101,
       rangeFrom: 1,
       rangeTo: 100,
@@ -98,7 +98,7 @@ describe("the research page", () => {
 
   it("offers the next page as an address rather than as a script", () => {
     const html = render({
-      rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
+      rows: [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [] }],
       total: 101,
       rangeFrom: 1,
       rangeTo: 100,
@@ -112,7 +112,7 @@ describe("the research page", () => {
 
   it("offers the list of every public file's address on the published page, and none in a preview", () => {
     const files: ResearchFileListView = {
-      rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
+      rows: [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [] }],
       total: 1,
       rangeFrom: 1,
       rangeTo: 1,
@@ -153,20 +153,20 @@ describe("the dataset column of the download list", () => {
       [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
   }
 
-  it("heads the column after the name and the size", () => {
-    const html = withDatasets([], [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }])
+  it("heads the column after the name, the label and the size", () => {
+    const html = withDatasets([], [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [] }])
     const heads = [...html.slice(html.indexOf(">非制限公開ファイル<")).matchAll(/<th[^>]*>([^<]*)<\/th>/g)]
-      .slice(0, 3).map((th) => th[1])
+      .slice(0, 4).map((th) => th[1])
 
-    expect(heads).toEqual(["ファイル名", "サイズ", "データセット ID"])
+    expect(heads).toEqual(["ファイル名", "ラベル", "サイズ", "データセット ID"])
   })
 
   it("links each dataset that selects the file to its page", () => {
     const html = withDatasets(
       [{ ...ROW, id: "d1", label: "NHA000001" }, { ...ROW, id: "d2", label: "NHA000002" }],
-      [{ name: "a.zip", size: 1, isPublic: true, datasets: [0, 1] }],
+      [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [0, 1] }],
     )
-    const [cell] = downloadCells(html)[0]?.slice(2, 3) ?? []
+    const [cell] = downloadCells(html)[0]?.slice(3, 4) ?? []
 
     expect(cell).toContain("href=\"/dataset/NHA000001\"")
     expect(cell).toContain("href=\"/dataset/NHA000002\"")
@@ -175,19 +175,19 @@ describe("the dataset column of the download list", () => {
   it("leaves the cell empty for a file no dataset selects", () => {
     const html = withDatasets(
       [{ ...ROW, id: "d1", label: "NHA000001" }],
-      [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
+      [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [] }],
     )
 
-    expect(downloadCells(html)[0]?.[2]).toBe("")
+    expect(downloadCells(html)[0]?.[3]).toBe("")
   })
 
   it("names a dataset without a label the way the dataset table does, and leads where the preview shows", () => {
     const html = withDatasets(
       [{ ...ROW, id: "d1", label: "NHA000001" }, { ...ROW, id: "d2", label: "" }],
-      [{ name: "a.zip", size: 1, isPublic: false, datasets: [1] }],
+      [{ name: "a.zip", size: 1, isPublic: false, label: "", datasets: [1] }],
       (ref) => `/preview/x/dataset/${ref.id ?? ""}`,
     )
-    const cell = downloadCells(html)[0]?.[2] ?? ""
+    const cell = downloadCells(html)[0]?.[3] ?? ""
 
     expect(cell).toContain("データセット ID 2")
     expect(cell).toContain("href=\"/preview/x/dataset/d2\"")
@@ -195,9 +195,9 @@ describe("the dataset column of the download list", () => {
 
   it("truncates a long run of datasets, the way every dataset cell does", () => {
     const datasets = Array.from({ length: 5 }, (_, at) => ({ ...ROW, id: `d${at}`, label: `NHA00000${at + 1}` }))
-    const html = withDatasets(datasets, [{ name: "a.zip", size: 1, isPublic: true, datasets: [0, 1, 2, 3, 4] }])
+    const html = withDatasets(datasets, [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [0, 1, 2, 3, 4] }])
 
-    expect(downloadCells(html)[0]?.[2]).toContain("他 2 件")
+    expect(downloadCells(html)[0]?.[3]).toContain("他 2 件")
   })
 })
 
@@ -475,7 +475,7 @@ describe("the row of the research listing", () => {
  */
 describe("the body beside the form", () => {
   const FILES: ResearchFileListView = {
-    rows: [{ name: "a.zip", size: 1, isPublic: true, datasets: [] }],
+    rows: [{ name: "a.zip", size: 1, isPublic: true, label: "", datasets: [] }],
     total: 1,
     rangeFrom: 1,
     rangeTo: 1,

@@ -13,6 +13,7 @@
  */
 
 import type { Executor } from "~/db/client.server"
+import type { Locale } from "~/i18n/locale"
 import type { FileListView, FileRowView } from "~/public/view.server"
 import type { PageSize } from "~/search/page-size"
 
@@ -30,6 +31,7 @@ import {
   type StoredNode,
 } from "./prefix"
 import { pendingSwitches } from "./jobs.server"
+import { fileLabelIn, type FileLabel } from "./labels"
 import { listPrefix, listTopPrefixes } from "./store.server"
 
 async function tolerantly<T>(read: () => Promise<T>): Promise<T | null> {
@@ -182,17 +184,32 @@ export async function listingSummariesOf(
 /**
  * A listed bucket as download rows. Everything in the public bucket is by
  * definition fetchable, so the flag is settled by which listing this came from.
+ * Each row has its file's label in the page's language.
  */
-export function publicRows(nodes: readonly StoredNode[] | null): FileRowView[] {
-  return (nodes ?? []).map((node) => ({ name: node.name, size: node.size, isPublic: true }))
+export function publicRows(
+  nodes: readonly StoredNode[] | null,
+  labels: ReadonlyMap<string, FileLabel>,
+  locale: Locale,
+): FileRowView[] {
+  return (nodes ?? []).map((node) => ({
+    name: node.name,
+    size: node.size,
+    isPublic: true,
+    label: fileLabelIn(labels.get(node.name), locale),
+  }))
 }
 
 /** The merged listing as download rows, keeping which side each name came from. */
-export function listingRows(entries: readonly ListedFile[] | null): FileRowView[] {
+export function listingRows(
+  entries: readonly ListedFile[] | null,
+  labels: ReadonlyMap<string, FileLabel>,
+  locale: Locale,
+): FileRowView[] {
   return (entries ?? []).map((entry) => ({
     name: entry.name,
     size: entry.size,
     isPublic: entry.isPublic,
+    label: fileLabelIn(labels.get(entry.name), locale),
   }))
 }
 

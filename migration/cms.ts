@@ -74,6 +74,23 @@ export interface CmsDump {
 /** Documents that are screens in v2 and therefore have no row of their own. */
 export const SCREEN_SLUGS = ["home", "data-submission", "data-use", "contact-us"]
 
+/**
+ * Documents that were only a dataset's list of files, a row per file with what it holds. The files
+ * carry those words as their labels, and the dataset's page lists them, so the list has no row of
+ * its own either. hum0185's list also holds the research's own tables, and stays.
+ */
+export const FILE_LIST_SLUGS = [
+  "hum0181-v1-st1",
+  "hum0197-v3-220",
+  "hum0197-v5-79",
+  "hum0197-v10-9",
+  "hum0197-v16-15",
+  "hum0197-v18-kegg",
+  "hum0197-v18-metabolites",
+  "hum0197-v18-microbiome",
+  "hum0311-v5-gwas-v1",
+]
+
 const INPUT = join(process.cwd(), "migration", "input")
 
 /** Reads `cms.json` from `dir`, which defaults to the development input. */
@@ -148,7 +165,7 @@ export function buildDocuments(documents: CmsDocument[]): BuiltSiteDocuments {
   const series: BuiltSeries[] = []
 
   for (const source of documents) {
-    if (SCREEN_SLUGS.includes(source.slug)) continue
+    if (SCREEN_SLUGS.includes(source.slug) || FILE_LIST_SLUGS.includes(source.slug)) continue
 
     const published = source.versions.filter((v) => v.status === "published" && isLocale(v.locale))
     if (published.length === 0) continue

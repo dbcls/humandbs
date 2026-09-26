@@ -33,6 +33,7 @@
  */
 
 import type { CauUsage, StoredFile } from "~/content/public"
+import type { FileLabel } from "~/files/labels"
 import { toPlainText } from "~/content/richtext"
 import { inListingOrder } from "~/files/selection"
 import type {
@@ -52,6 +53,7 @@ import type { CatalogView } from "~/public/view.server"
 import type {
   ApiDataset,
   ApiDisease,
+  ApiFile,
   ApiLink,
   ApiLinks,
   ApiNumber,
@@ -140,6 +142,19 @@ function plainPair(ja: string, en: string): ApiText {
   if (ja !== "") text.ja = ja
   if (en !== "") text.en = en
   return text
+}
+
+/** A file of the prefix at its public address, with its label where it has one. */
+function fileOf(
+  humLabel: string,
+  file: StoredFile,
+  labels: ReadonlyMap<string, FileLabel>,
+  context: ApiContext,
+): ApiFile {
+  const answer: ApiFile = { name: file.name, size: file.size, url: `${context.origin}${filePath(humLabel, file.name)}` }
+  const label = labels.get(file.name)
+  if (label !== undefined) answer.label = plainPair(label.ja, label.en)
+  return answer
 }
 
 function termsOf(slot: Slot<string[]>, catalog: CatalogView): ApiTerm[] | null | undefined {
@@ -264,6 +279,8 @@ export interface ResearchInput {
   datasetLabelById: ReadonlyMap<string, string>
   cau: readonly CauUsage[]
   files: readonly StoredFile[]
+  /** The labels of the prefix's files, by name. */
+  fileLabels: ReadonlyMap<string, FileLabel>
 }
 
 export function apiResearch(input: ResearchInput, context: ApiContext): ApiResearch {
@@ -326,11 +343,7 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
       periodEnd: usage.periodEnd,
       datasets: [...usage.datasetAccessions],
     })),
-    files: input.files.map((file) => ({
-      name: file.name,
-      size: file.size,
-      url: `${context.origin}${filePath(input.humLabel, file.name)}`,
-    })),
+    files: input.files.map((file) => fileOf(input.humLabel, file, input.fileLabels, context)),
   }
 }
 
@@ -341,6 +354,8 @@ export interface DatasetInput {
   dateModified: string | null
   content: DatasetContent
   files: readonly StoredFile[]
+  /** The labels of the research's files, by name. */
+  fileLabels: ReadonlyMap<string, FileLabel>
 }
 
 export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset {
@@ -358,9 +373,7 @@ export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset
     })),
     files: inListingOrder(input.content.fileSelection).flatMap((name) => {
       const size = sizeOf.get(name)
-      return size === undefined
-        ? []
-        : [{ name, size, url: `${context.origin}${filePath(input.humLabel, name)}` }]
+      return size === undefined ? [] : [fileOf(input.humLabel, { name, size }, input.fileLabels, context)]
     }),
   }
 }

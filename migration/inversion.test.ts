@@ -315,6 +315,53 @@ describe("a cell the splitting rules cannot settle", () => {
   })
 })
 
+describe("a cell of groups under headings alone on their lines", () => {
+  const studies = jgadsByStudy([["JGAD000001", "JGAS000001"], ["JGAD000002", "JGAS000002"]])
+  const key = "Materials and Participants"
+
+  it("gives each dataset the lines under its own heading, and the lines above the first heading to all", () => {
+    const text = "急性骨髄芽球性白血病\n【JGAS000001】\nAML：4症例\n正常細胞：4検体\n【JGAS000002】\nAML：4症例\n正常細胞：2検体"
+    const result = splitSharedBlock(block(key, text), ["JGAD000001", "JGAD000002"], studies)
+    expect(ownText(result, "JGAD000001", key)).toBe("急性骨髄芽球性白血病\n【JGAS000001】\nAML：4症例\n正常細胞：4検体")
+    expect(ownText(result, "JGAD000002", key)).toBe("急性骨髄芽球性白血病\n【JGAS000002】\nAML：4症例\n正常細胞：2検体")
+    expect(result.stats.split).toBe(2)
+  })
+
+  it("keeps a line under a heading with the heading's dataset though it names a dataset outside the block", () => {
+    const text = "【JGAD000001】\nJGAD000220 の WGS の vcf\n【JGAD000002】\nJGAD000495 の WGS の vcf"
+    const result = splitSharedBlock(block(key, text), ["JGAD000001", "JGAD000002"], NO_STUDIES)
+    expect(ownText(result, "JGAD000001", key)).toBe("【JGAD000001】\nJGAD000220 の WGS の vcf")
+    expect(ownText(result, "JGAD000002", key)).toBe("【JGAD000002】\nJGAD000495 の WGS の vcf")
+  })
+
+  it("reads the English page's square brackets alone on a line, but not a link, as a heading", () => {
+    const text = "[JGAS000001]\nAML: 4 cases\n[JGAS000002]\n[JGAD000009](https://example.org) cited"
+    const result = splitSharedBlock(block(key, text), ["JGAD000001", "JGAD000002"], studies)
+    expect(ownText(result, "JGAD000001", key)).toBe("[JGAS000001]\nAML: 4 cases")
+    expect(ownText(result, "JGAD000002", key)).toBe("[JGAS000002]\n[JGAD000009](https://example.org) cited")
+  })
+
+  it("leaves the cell whole for review where a heading names only a dataset outside the block", () => {
+    const text = "【JGAS000001】\nAML：4症例\n【JGAD000009】\nAML：2症例\n【JGAS000002】\nMDS：30症例"
+    const result = splitSharedBlock(block(key, text), ["JGAD000001", "JGAD000002"], studies)
+    expect(ownText(result, "JGAD000001", key)).toBe(text)
+    expect(result.stats.review).toBe(2)
+  })
+
+  it("reads lines as before where a heading naming a dataset has words after it", () => {
+    const text = "【JGAS000001】\nAML：4症例\n【JGAS000002】MDS：30症例"
+    const result = splitSharedBlock(block(key, text), ["JGAD000001", "JGAD000002"], studies)
+    expect(ownText(result, "JGAD000001", key)).toBe("【JGAS000001】\nAML：4症例")
+    expect(ownText(result, "JGAD000002", key)).toBe("AML：4症例\n【JGAS000002】MDS：30症例")
+  })
+
+  it("does not read a heading alone on its line that names nothing as a group", () => {
+    const text = "【WGS】\nJGAD000001：1,026名\n【reference panel】\nJGAD000002：2,504名"
+    const result = splitSharedBlock(block(key, text), ["JGAD000001", "JGAD000002"], NO_STUDIES)
+    expect(ownText(result, "JGAD000001", key)).toBe("【WGS】\nJGAD000001：1,026名\n【reference panel】")
+  })
+})
+
 describe("ja and en are decided independently", () => {
   it("splits one language while the other is left for review", () => {
     const data: BlockData = {

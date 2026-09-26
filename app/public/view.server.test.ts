@@ -227,7 +227,7 @@ describe("what a research page has", () => {
         datasetLabelById: new Map(),
         cau: [],
         files: {
-          rows: names.map((name) => ({ name, size: 1, isPublic: true })),
+          rows: names.map((name) => ({ name, size: 1, isPublic: true, label: "" })),
           total: names.length,
           page: 1,
           pageCount: 1,

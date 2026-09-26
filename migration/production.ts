@@ -48,7 +48,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import { join, relative } from "node:path"
 
 import { sql } from "drizzle-orm"
 
@@ -73,12 +73,14 @@ import {
   comment,
   dataset,
   draftDatasetEntry,
+  fileLabel,
   humAccession,
   labelPin,
   research,
   researchDraft,
   researchVersion,
 } from "~/db/schema"
+import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
 import { renderMarkdown } from "~/public/markdown.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
@@ -117,6 +119,8 @@ import {
   type PlannedKey,
 } from "./catalog-plan"
 import { loadCms, type CmsDump } from "./cms"
+import { planCopy, planDraftFiles, type Census } from "./copy"
+import { fileLabelRows, type FileLabelEntry } from "./file-labels"
 import { selectDrafts, withdrawnDrafts, type WithdrawnData } from "./drafts"
 import {
   loadDump,
@@ -702,6 +706,27 @@ function fileSeed(): Map<string, string[]> {
   ]))
 }
 
+/**
+ * Whether the store holds a research's file once `copy-files.ts` has run: the old portal's
+ * served files as the copy plans them, and the files drafts link that only the old staging
+ * site held (`copy.ts` の `planDraftFiles`).
+ */
+function storedFiles(researchIdOf: (hum: string) => string | undefined): (hum: string, name: string) => boolean {
+  const plan = planCopy(readJson("file-census.json") as Census, researchIdOf)
+  const draftFiles = join(INPUT, "draft-files")
+  const draftPaths = existsSync(draftFiles)
+    ? readdirSync(draftFiles, { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => relative(draftFiles, join(entry.parentPath, entry.name)))
+    : []
+  const keys = new Set([...plan.copy, ...planDraftFiles(draftPaths, () => 0, researchIdOf)].map((one) => `${one.bucket}/${one.key}`))
+  return (hum, name) => {
+    const researchId = researchIdOf(hum)
+    return keys.has(`${PUBLIC_BUCKET}/${publicPrefix(hum)}${name}`)
+      || (researchId !== undefined && keys.has(`${PRIVATE_BUCKET}/${privatePrefix(researchId)}${name}`))
+  }
+}
+
 /** The hand-made table of dead links, when it has been made. */
 function relinks(): Map<string, Relink> {
   const path = join(INPUT, "hand", "urls.tsv")
@@ -863,6 +888,13 @@ async function load() {
       researchId: identityOf(researchIdByHum, hum, "research"),
       isPrimary: true,
     }))))
+
+    // The words the old pages linked each file with, as the file's label (`file-labels.ts`).
+    const labelEntries = existsSync(join(INPUT, "hand", "file-labels.json")) ? readJson("hand", "file-labels.json") as FileLabelEntry[] : []
+    const fileLabels = await insertChunked(
+      fileLabelRows(labelEntries, (hum) => researchIdByHum.get(hum), storedFiles((hum) => researchIdByHum.get(hum))),
+      (chunk) => tx.insert(fileLabel).values(chunk),
+    )
 
     // Every dataset a published version or a draft lists, under the research
     // that lists it. A label two research claim is reported, not guessed at.
@@ -1096,6 +1128,7 @@ async function load() {
 
     return {
       research: humIds.length,
+      fileLabels,
       versions: versions.length,
       datasets: labels.length,
       nhaIds: nha.size,
@@ -1126,6 +1159,7 @@ const written = (name: string, value: unknown) => {
 }
 
 console.log("research           ", counts.research)
+console.log("file labels        ", counts.fileLabels)
 console.log("published versions ", counts.versions)
 console.log("datasets           ", counts.datasets, "of which", counts.nhaIds, "given NHA ids,", counts.selectedFiles, "files selected")
 console.log("drafts             ", counts.drafts, "with", counts.draftEntries, "dataset entries")

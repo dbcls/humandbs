@@ -548,8 +548,9 @@ describe("a cell holding a table about several datasets", () => {
 describe("a line headed by the study or dataset it is about", () => {
   const studies = new Map([["JGAS000001", ["JGAD000001"]], ["JGAS000002", ["JGAD000002"]], ["JGAS000009", ["JGAD000001", "JGAD000002"]]])
   const materials = (text: string) => ({ experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }] })
-  const linesOf = (text: string, label: string) => {
-    const all = [dumpRow(materials(text), "JGAD000001", null), dumpRow(materials(text), "JGAD000002", null)]
+  const linesOf = (text: string, label: string) => linesFrom({ JGAD000001: text, JGAD000002: text }, label)
+  const linesFrom = (texts: Record<string, string>, label: string) => {
+    const all = Object.entries(texts).map(([one, text]) => dumpRow(materials(text), one, null))
     const one = all.find((row) => row.label === label)
     if (one === undefined) throw new Error(`no dataset ${label}`)
     const content = buildDatasetContent({
@@ -597,9 +598,50 @@ describe("a line headed by the study or dataset it is about", () => {
     expect(linesOf(text, "JGAD000002")).toEqual(["【JGAD000002】腫瘍組織：4検体"])
   })
 
-  it("leaves a heading with nothing after it, and the lines under it, where they are", () => {
-    const text = "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：2検体"
-    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001】", "腫瘍組織：1検体", "【JGAS000002】", "正常組織：2検体"])
+  it("keeps the group under the dataset's own heading when every heading stands alone on its line", () => {
+    const text = "【JGAS000001】\n悪性骨巨細胞腫：1症例\n腫瘍組織：1検体\n【JGAS000002】\n軟骨肉腫：2症例\n腫瘍組織：1検体\n合計：4検体"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001】", "悪性骨巨細胞腫：1症例", "腫瘍組織：1検体"])
+    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAS000002】", "軟骨肉腫：2症例", "腫瘍組織：1検体", "合計：4検体"])
+  })
+
+  it("reads the English page's square brackets alone on a line as a group's heading", () => {
+    const text = "[JGAS000001]\nAML: 4 cases\n[JGAS000002]\nAML: 4 cases\nhealthy control: 2 samples"
+    expect(linesOf(text, "JGAD000002")).toEqual(["[JGAS000002]", "AML: 4 cases", "healthy control: 2 samples"])
+  })
+
+  it("keeps the lines above the first heading alone on its line for every dataset", () => {
+    const text = "子宮頸がん\n【JGAS000001】\n腫瘍組織：8検体\n【JGAS000002】\n正常組織：2検体"
+    expect(linesOf(text, "JGAD000002")).toEqual(["子宮頸がん", "【JGAS000002】", "正常組織：2検体"])
+  })
+
+  it("keeps a group the dataset its heading names does not have itself", () => {
+    const texts = {
+      JGAD000001: "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：2検体",
+      JGAD000002: "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：3検体",
+    }
+    expect(linesFrom(texts, "JGAD000001")).toEqual(texts.JGAD000001.split("\n"))
+    expect(linesFrom(texts, "JGAD000002")).toEqual(["【JGAS000002】", "正常組織：3検体"])
+  })
+
+  it("keeps a group whose heading names the dataset beside another", () => {
+    const text = "【JGAS000001/JGAD000002】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：2検体"
+    expect(linesOf(text, "JGAD000002")).toEqual(text.split("\n"))
+    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001/JGAD000002】", "腫瘍組織：1検体"])
+  })
+
+  it("leaves groups under headings alone on their lines whole where none is the dataset's own", () => {
+    const text = "【JGAD000002】\nJGAD000001 の vcf\n【JGAS000002】\n正常組織：2検体"
+    expect(linesFrom({ JGAD000001: text, JGAD000002: text }, "JGAD000001")).toEqual(text.split("\n"))
+  })
+
+  it("leaves a cell whole where one heading stands alone and another has words after it", () => {
+    const text = "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】正常組織：2検体"
+    expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
+  })
+
+  it("does not read a heading alone on its line that names no dataset as a group", () => {
+    const text = "【WGS】\n1,026名\n【reference panel】\n2,504名"
+    expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
   })
 
   it("leaves a cell whole where a heading has lines under it that are not headed", () => {

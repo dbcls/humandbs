@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { Slot } from "~/content/types"
+import type { FileLabel } from "~/files/labels"
 import type { CatalogView } from "~/public/view.server"
 
 import { apiDataset, apiResearch, type ApiContext } from "./view"
@@ -28,7 +29,7 @@ function catalogOf(): CatalogView {
 
 const context: ApiContext = { origin: ORIGIN, catalog: catalogOf() }
 
-function dataset(content = emptyDatasetContent()) {
+function dataset(content = emptyDatasetContent(), fileLabels: ReadonlyMap<string, FileLabel> = new Map()) {
   return apiDataset({
     label: "JGAD000001",
     humLabel: "hum0001",
@@ -36,10 +37,11 @@ function dataset(content = emptyDatasetContent()) {
     dateModified: null,
     content,
     files: [{ name: "a.zip", size: 12 }],
+    fileLabels,
   }, context)
 }
 
-function research(content = emptyResearchContent()) {
+function research(content = emptyResearchContent(), fileLabels: ReadonlyMap<string, FileLabel> = new Map()) {
   return apiResearch({
     humLabel: "hum0001",
     versionNumber: 3,
@@ -49,6 +51,7 @@ function research(content = emptyResearchContent()) {
     datasetLabelById: new Map([["d-1", "JGAD000001"]]),
     cau: [],
     files: [{ name: "a.zip", size: 12 }],
+    fileLabels,
   }, context)
 }
 
@@ -281,5 +284,26 @@ describe("what an answer names", () => {
     expect(answer.files).toEqual([
       { name: "a.zip", size: 12, url: `${ORIGIN}/files/hum0001/a.zip` },
     ])
+  })
+})
+
+describe("a file's label", () => {
+  const selected = { ...emptyDatasetContent(), fileSelection: ["a.zip"] }
+
+  it("gives both languages as they were written, on a research's files and a dataset's", () => {
+    const labels = new Map([["a.zip", { ja: "辞書ファイル", en: "Dictionary file" }]])
+    expect(research(emptyResearchContent(), labels).files[0]?.label).toEqual({ ja: "辞書ファイル", en: "Dictionary file" })
+    expect(dataset(selected, labels).files[0]?.label).toEqual({ ja: "辞書ファイル", en: "Dictionary file" })
+  })
+
+  it("leaves out a language that was not written rather than giving it the other's words", () => {
+    const labels = new Map([["a.zip", { ja: "", en: "Paper" }]])
+    expect(research(emptyResearchContent(), labels).files[0]?.label).toEqual({ en: "Paper" })
+    expect(dataset(selected, new Map([["a.zip", { ja: "論文", en: "" }]])).files[0]?.label).toEqual({ ja: "論文" })
+  })
+
+  it("is not a key of a file that has none", () => {
+    expect(research().files[0]).not.toHaveProperty("label")
+    expect(dataset(selected, new Map([["other.zip", { ja: "他", en: "other" }]])).files[0]).not.toHaveProperty("label")
   })
 })

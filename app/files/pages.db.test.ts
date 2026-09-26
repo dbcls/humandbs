@@ -1,5 +1,6 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
+import { eq } from "drizzle-orm"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { fileDownloadPath } from "~/admin/urls"
@@ -502,6 +503,205 @@ describe("the files screen", () => {
 
     expect(await rename(token, "a.zip", "b.zip")).toEqual({ status: "switching" })
     expect(await keysUnder(PRIVATE_BUCKET, privatePrefix(researchId))).toEqual([`${privatePrefix(researchId)}a.zip`])
+  })
+
+  describe("a file's label", () => {
+    const label = (token: string, name: string, ja: string, en: string, search = "") =>
+      filesAction(postForm(token, [["intent", "label"], ["name", name], ["labelJa", ja], ["labelEn", en]], search), JA, researchId)
+
+    async function labels(): Promise<[string, string, string][]> {
+      const rows = await db.select().from(s.fileLabel)
+      return rows.map((row) => [row.fileName, row.labelJa, row.labelEn] as [string, string, string]).toSorted()
+    }
+
+    async function labelEvents(): Promise<{ subjectId: string, detail: Record<string, unknown> }[]> {
+      return (await db.select().from(s.event))
+        .filter((row) => row.action === "edit-file-label")
+        .map((row) => ({ subjectId: row.subjectId, detail: row.detail }))
+    }
+
+    it("saves both languages without the whitespace around them, and returns to the listing it was sent from", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      const answer = await label(token, "a.zip", "  辞書ファイル ", "\tDictionary file\n", READ_AT)
+
+      expect(sentTo(answer)).toEqual([`/admin/research/${researchId}/files`, KEPT])
+      expect(await labels()).toEqual([["a.zip", "辞書ファイル", "Dictionary file"]])
+    })
+
+    it("keeps a label written in one language only", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.pdf`)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.pdf`)
+
+      await label(token, "a.pdf", "論文", "")
+      await label(token, "b.pdf", "", "Paper")
+
+      expect(await labels()).toEqual([["a.pdf", "論文", ""], ["b.pdf", "", "Paper"]])
+    })
+
+    it("replaces the label a file has, and deletes it when both languages are sent empty", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      await label(token, "a.zip", "旧", "old")
+      await label(token, "a.zip", "新", "new")
+      expect(await labels()).toEqual([["a.zip", "新", "new"]])
+
+      await label(token, "a.zip", " ", "")
+      expect(await labels()).toEqual([])
+    })
+
+    it("saves nothing for a name the prefix does not hold on either side", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      await label(token, "gone.zip", "消えた", "gone")
+
+      expect(await labels()).toEqual([])
+    })
+
+    it("refuses a name that is not one file of the prefix, and a label longer than any the screen sends", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      expect((await thrown(() => label(token, "dir/a.zip", "x", "x"))).status).toBe(400)
+      expect((await thrown(() => label(token, "a.zip", "x".repeat(1001), ""))).status).toBe(400)
+      expect(await labels()).toEqual([])
+    })
+
+    it("is refused to somebody signed in without the capability to manage files", async () => {
+      await research()
+      const token = await signIn(READER, false)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      expect((await thrown(() => label(token, "a.zip", "x", "x"))).status).toBe(403)
+      expect(await labels()).toEqual([])
+    })
+
+    it("writes nothing down for a private file: nobody outside can see its label yet", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      await label(token, "a.zip", "辞書", "Dictionary")
+
+      expect(await labelEvents()).toEqual([])
+    })
+
+    it("writes down each change on a public file with what it was and what it became, and nothing for a save that changes nothing", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}a.zip`)
+
+      await label(token, "a.zip", "辞書", "")
+      await label(token, "a.zip", "辞書", "Dictionary")
+      await label(token, "a.zip", "辞書", "Dictionary")
+      await label(token, "a.zip", "", "")
+
+      expect(await labelEvents()).toEqual([
+        { subjectId: "a.zip", detail: { research: researchId, before: null, after: { ja: "辞書", en: "" } } },
+        { subjectId: "a.zip", detail: { research: researchId, before: { ja: "辞書", en: "" }, after: { ja: "辞書", en: "Dictionary" } } },
+        { subjectId: "a.zip", detail: { research: researchId, before: { ja: "辞書", en: "Dictionary" }, after: null } },
+      ])
+    })
+
+    it("stays with a file through a switch, since the switch keeps the name", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      await label(token, "a.zip", "辞書", "Dictionary")
+
+      await filesAction(postForm(token, [["intent", "publish"], ["name", "a.zip"]]), JA, researchId)
+      const job = await claimJob(db)
+      if (job === null) throw new Error("expected the switch to be queued")
+      await reconcile(db, job)
+      await settleJob(db, job)
+
+      expect(await keysUnder(PUBLIC_BUCKET, publicPrefix(humLabel))).toEqual([`${publicPrefix(humLabel)}a.zip`])
+      expect(await labels()).toEqual([["a.zip", "辞書", "Dictionary"]])
+    })
+
+    it("goes to the new name when the file is renamed, replacing a label nothing was left under", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      await label(token, "a.zip", "辞書", "Dictionary")
+      await db.insert(s.fileLabel).values({ researchId, fileName: "b.zip", labelJa: "残り", labelEn: "" })
+
+      await rename(token, "a.zip", "b.zip")
+
+      expect(await labels()).toEqual([["b.zip", "辞書", "Dictionary"]])
+    })
+
+    it("stays under its name when the rename is refused", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+      await label(token, "a.zip", "辞書", "Dictionary")
+
+      expect(await rename(token, "a.zip", "b.zip")).toEqual({ status: "name-taken" })
+      expect(await labels()).toEqual([["a.zip", "辞書", "Dictionary"]])
+    })
+
+    it("goes with the file when it is deleted, and only with that file", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+      await label(token, "a.zip", "辞書", "Dictionary")
+      await label(token, "b.zip", "本体", "Data")
+
+      await filesAction(postForm(token, [["intent", "delete"], ["name", "a.zip"]]), JA, researchId)
+
+      expect(await labels()).toEqual([["b.zip", "本体", "Data"]])
+    })
+
+    it("stays when the delete is refused because the file's switch is running", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      await label(token, "a.zip", "辞書", "Dictionary")
+      await db.insert(s.filePublishJob).values({ researchId, fileName: "a.zip", action: "publish", state: "running" })
+
+      expect(await filesAction(postForm(token, [["intent", "delete"], ["name", "a.zip"]]), JA, researchId))
+        .toEqual({ status: "delete-switching" })
+      expect(await labels()).toEqual([["a.zip", "辞書", "Dictionary"]])
+    })
+
+    it("is shown for the files on the page and no others, and none of another research's", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      for (const name of ["a.zip", "b.zip", "c.zip"]) {
+        await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}${name}`)
+      }
+      await label(token, "a.zip", "一", "one")
+      await label(token, "c.zip", "三", "three")
+      const other = only(await db.insert(s.research).values({}).returning({ id: s.research.id })).id
+      await db.insert(s.fileLabel).values({ researchId: other, fileName: "b.zip", labelJa: "他", labelEn: "other" })
+
+      const view = await filesPage(get(token, "?sort=slug&size=20"), JA, researchId)
+      expect(view.labels).toEqual({ "a.zip": { ja: "一", en: "one" }, "c.zip": { ja: "三", en: "three" } })
+
+      const narrowed = await filesPage(get(token, "?q=c.zip"), JA, researchId)
+      expect(narrowed.labels).toEqual({ "c.zip": { ja: "三", en: "three" } })
+    })
+
+    it("is deleted with its research", async () => {
+      await research()
+      await db.insert(s.fileLabel).values({ researchId, fileName: "a.zip", labelJa: "辞書", labelEn: "" })
+
+      await db.delete(s.research).where(eq(s.research.id, researchId))
+
+      expect(await labels()).toEqual([])
+    })
   })
 })
 

@@ -16,6 +16,7 @@ import { redirect } from "react-router"
 import { valueOr } from "~/content/empty"
 import { publicDatasetContent, publicResearch, PUBLISHED } from "~/content/public"
 import { fileListOf, publicListing, publicRows } from "~/files/listing.server"
+import { fileLabelsByHumLabel, fileLabelsOf } from "~/files/labels.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import type { PageSize } from "~/search/page-size"
@@ -84,9 +85,10 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
   const version = request.wanted === "latest" ? latest : findVersion(versions, request.wanted)
   if (version === null) notFound()
 
-  const [catalog, cau] = await Promise.all([
+  const [catalog, cau, labels] = await Promise.all([
     loadCatalog(db),
     controlledAccessUsers(db, resolved.primaryLabel),
+    fileLabelsOf(db, resolved.id),
   ])
 
   // The download list is the public bucket, listed. A store that does not
@@ -131,7 +133,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     datasetLabelById,
     humByLabel: cited.humByLabel,
     cau: projected.cau,
-    files: fileListOf(publicRows(listing), request.filePage, request.fileRows),
+    files: fileListOf(publicRows(listing, labels, request.locale), request.filePage, request.fileRows),
   }, request.locale, catalog)
 }
 
@@ -184,10 +186,11 @@ export async function datasetPage(
 
   const row = await publishedDataset(db, resolved.id)
   if (row === null) notFound()
-  const [catalog, listing, secondary] = await Promise.all([
+  const [catalog, listing, secondary, labels] = await Promise.all([
     loadCatalog(db),
     publicListing(row.humLabel),
     secondaryLabels(db, "dataset", resolved.id),
+    fileLabelsByHumLabel(db, [row.humLabel]),
   ])
 
   return datasetView({
@@ -202,6 +205,6 @@ export async function datasetPage(
     ),
     datePublished: row.datePublished,
     dateModified: row.dateModified,
-    files: publicRows(listing),
+    files: publicRows(listing, labels.get(row.humLabel) ?? new Map(), request.locale),
   }, request.locale, catalog)
 }

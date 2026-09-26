@@ -1,8 +1,8 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { buildResearchContent, citedLabel, isAccessionShaped } from "./build"
-import type { EsResearchVersion } from "./es"
+import { buildDatasetContent, buildResearchContent, citedLabel, isAccessionShaped, ownLines } from "./build"
+import type { EsResearchVersion, PublishedDataset } from "./es"
 
 function build(overrides: Partial<EsResearchVersion>) {
   return buildResearchContent({
@@ -79,5 +79,71 @@ describe("a cited ID", () => {
     for (const junk of ["", "JGAD", "000123", "jgad000001", "JGAD 000001", "JGAD000001x"]) {
       expect(isAccessionShaped(junk)).toBe(false)
     }
+  })
+})
+
+describe("a cell of groups under headings alone on their lines", () => {
+  const word = fc.stringMatching(/^[a-z]{1,8}$/)
+  const cell = fc.integer({ min: 2, max: 4 }).chain((count) => fc.record({
+    count: fc.constant(count),
+    prefix: fc.array(word, { maxLength: 2 }),
+    groups: fc.array(fc.record({ study: fc.integer({ min: 1, max: count }), lines: fc.array(word, { minLength: 1, maxLength: 3 }) }), { minLength: 1, maxLength: 5 }),
+  }))
+  const labelOf = (n: number) => `JGAD00000${String(n)}`
+  const studyOf = (n: number) => `JGAS00000${String(n)}`
+
+  const divide = ({ count, prefix, groups }: { count: number, prefix: string[], groups: { study: number, lines: string[] }[] }) => {
+    const text = [...prefix, ...groups.flatMap((group) => [`【${studyOf(group.study)}】`, ...group.lines])].join("\n")
+    const labels = Array.from({ length: count }, (_, i) => labelOf(i + 1))
+    const studies = new Map(labels.map((label, i) => [studyOf(i + 1), [label]]))
+    const all: PublishedDataset[] = labels.map((label) => ({
+      label,
+      humId: "hum0001",
+      firstListedOn: null,
+      doc: { datasetId: label, version: "v1", humId: "hum0001", experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }] },
+    }))
+    const owned = ownLines(all, undefined, undefined, studies)
+    return new Map(all.map((one) => {
+      const content = buildDatasetContent({
+        dataset: one,
+        keyIdByCode: new Map([["materials-and-participants", "key-materials"]]),
+        codeBySourceKey: new Map([["Materials and Participants", "materials-and-participants"]]),
+        termIdBySetAndCode: new Map(),
+        knownCode: () => false,
+        accessCriteriaKeyCode: "access-criteria",
+        typeOfDataKeyCode: "type-of-data",
+        datasetLabels: new Set(labels),
+        ownLines: owned,
+        studies,
+        unread: [],
+        byHand: new Map(),
+      })
+      const held = content.experiments[0]?.values[0]?.value
+      const lines = held?.kind === "text" && held.text.ja.state === "value" ? held.text.ja.value.map((line) => line.map((span) => span.text).join("")) : []
+      return [one.label, lines] as const
+    }))
+  }
+
+  it("gives each dataset the lines above the first heading and every group under its own heading, in order", () => {
+    fc.assert(fc.property(cell, (input) => {
+      const divided = divide(input)
+      for (const [label, lines] of divided) {
+        const own = input.groups.filter((group) => labelOf(group.study) === label)
+        const expected = own.length === 0
+          ? [...input.prefix, ...input.groups.flatMap((group) => [`【${studyOf(group.study)}】`, ...group.lines])]
+          : [...input.prefix, ...input.groups.flatMap((group) => (labelOf(group.study) === label ? [`【${studyOf(group.study)}】`, ...group.lines] : []))]
+        expect(lines).toEqual(expected)
+      }
+    }))
+  })
+
+  it("loses no group: each stays with the dataset its heading names", () => {
+    fc.assert(fc.property(cell, (input) => {
+      const divided = divide(input)
+      for (const group of input.groups) {
+        const block = [`【${studyOf(group.study)}】`, ...group.lines].join("\n")
+        expect(divided.get(labelOf(group.study))?.join("\n")).toContain(block)
+      }
+    }))
   })
 })

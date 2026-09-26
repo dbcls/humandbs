@@ -27,6 +27,8 @@ export const eventAction = pgEnum("event_action", [
   "publish-file",
   "unpublish-file",
   "delete-file",
+  /** A label changed on a file readers can fetch: what the public file table shows beside it. */
+  "edit-file-label",
   "publish-site-content",
   "unpublish-site-content",
   "grant-admin",

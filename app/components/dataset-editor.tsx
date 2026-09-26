@@ -303,6 +303,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
               <FileSelection
                 locale={locale}
                 listing={view.listing}
+                labels={view.fileLabels}
                 selected={input.fileSelection}
                 filesAt={href(locale, adminResearchFilesPath(researchId))}
                 onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}

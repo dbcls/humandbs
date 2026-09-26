@@ -660,9 +660,28 @@ describe("the download list a share link shows", () => {
     const view = await previewResearchPage(get(), "ja", shared.token)
 
     expect(view.view.files.rows).toEqual([
-      { name: "closed.zip", size: 1, isPublic: false, datasets: [] },
-      { name: "open.zip", size: 2, isPublic: true, datasets: [] },
+      { name: "closed.zip", size: 1, isPublic: false, label: "", datasets: [] },
+      { name: "open.zip", size: 2, isPublic: true, label: "", datasets: [] },
     ])
+  })
+
+  it("has the label of a file on either side, in the page's language", async () => {
+    const shared = await sharedDraft()
+    opened = shared.researchId
+    await db.insert(s.labelPin)
+      .values({ kind: "hum", label: HUM, researchId: shared.researchId, isPrimary: true })
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(shared.researchId)}closed.zip`, "1")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}open.zip`, "12")
+    await db.insert(s.fileLabel).values([
+      { researchId: shared.researchId, fileName: "closed.zip", labelJa: "非公開", labelEn: "Private" },
+      { researchId: shared.researchId, fileName: "open.zip", labelJa: "公開", labelEn: "" },
+    ])
+
+    const inJa = await previewResearchPage(get(), "ja", shared.token)
+    const inEn = await previewResearchPage(get(), "en", shared.token)
+
+    expect(inJa.view.files.rows.map((row) => row.label)).toEqual(["非公開", "公開"])
+    expect(inEn.view.files.rows.map((row) => row.label)).toEqual(["Private", "公開"])
   })
 
   it("keeps a dataset's selection of a file nobody has made public yet", async () => {
@@ -681,6 +700,6 @@ describe("the download list a share link shows", () => {
 
     const view = await previewDatasetPage(get(), "ja", shared.token, created.datasetId)
 
-    expect(view.view.files).toEqual([{ name: "closed.zip", size: 1, isPublic: false }])
+    expect(view.view.files).toEqual([{ name: "closed.zip", size: 1, isPublic: false, label: "" }])
   })
 })

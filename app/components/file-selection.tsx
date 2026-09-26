@@ -1,6 +1,7 @@
 import { useState } from "react"
 
 import { dayInJst } from "~/dates"
+import type { FileLabel } from "~/files/labels"
 import { formatSize, type ListedFile } from "~/files/prefix"
 import { inListingOrder } from "~/files/selection"
 import type { Locale } from "~/i18n/locale"
@@ -27,10 +28,12 @@ import { Empty, Table, Td } from "./page"
  * **The link to the files screen is shown beside it, in a new tab** — a file not
  * yet uploaded is added there, and the form here is not left unsaved.
  */
-export function FileSelection({ locale, listing, selected, filesAt, onChange }: {
+export function FileSelection({ locale, listing, labels, selected, filesAt, onChange }: {
   locale: Locale
   /** Null when the store did not respond, which offers nothing rather than nothing existing. */
   listing: readonly ListedFile[] | null
+  /** The files' labels, by name. A file with none is not a key. */
+  labels: Readonly<Record<string, FileLabel>>
   selected: readonly string[]
   /** The research's files screen. */
   filesAt: string
@@ -106,6 +109,7 @@ export function FileSelection({ locale, listing, selected, filesAt, onChange }: 
         <FilePicker
           locale={locale}
           listing={listing}
+          labels={labels}
           ticked={ticked}
           filter={filter}
           onFilter={setFilter}
@@ -117,16 +121,17 @@ export function FileSelection({ locale, listing, selected, filesAt, onChange }: 
 }
 
 /**
- * The prefix as its own screen draws it — name, size, date, side — with a checkbox
+ * The prefix as its own screen draws it — name, labels, size, date, side — with a checkbox
  * at the front of each row and a window over them that narrows by name.
  *
  * **The checkbox in the table header takes every row the window shows, or none**, and shows
  * when only some are: a dataset often has every file of a small prefix, and the
  * rows the window hides are not what the reader is looking at.
  */
-export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }: {
+export function FilePicker({ locale, listing, labels, ticked, filter, onFilter, onTick }: {
   locale: Locale
   listing: readonly ListedFile[]
+  labels: Readonly<Record<string, FileLabel>>
   ticked: readonly string[]
   filter: string
   onFilter: (filter: string) => void
@@ -170,6 +175,8 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
             onChange={(event) => { onTick(event.target.checked ? [...others, ...names] : others) }}
           />,
           files.name,
+          files.labelJa,
+          files.labelEn,
           files.size,
           files.updatedAt,
           files.state,
@@ -191,6 +198,8 @@ export function FilePicker({ locale, listing, ticked, filter, onFilter, onTick }
               />
             </Td>
             <Td floor="min-w-56"><FileName name={entry.name} /></Td>
+            <Td floor="min-w-40">{labels[entry.name]?.ja}</Td>
+            <Td floor="min-w-40">{labels[entry.name]?.en}</Td>
             <Td nowrap className="tabular-nums">{formatSize(entry.size)}</Td>
             <Td nowrap>{dayInJst(entry.updatedAt)}</Td>
             <Td nowrap>

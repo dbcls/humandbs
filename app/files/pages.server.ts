@@ -52,6 +52,8 @@ import {
   type StoredNode,
 } from "./prefix"
 import { listingsOf, forgetSwitches, pendingSwitches, switchFiles, type SwitchRequest } from "./jobs.server"
+import { FILE_LABEL_MAX_LENGTH, type FileLabel, sameFileLabel, typedFileLabel } from "./labels"
+import { fileLabelsOf, forgetFileLabels, moveFileLabel, writeFileLabel } from "./labels.server"
 import { adminListing, commonListing } from "./listing.server"
 import { wakeFileRunner } from "./runner.server"
 import {
@@ -130,6 +132,8 @@ export interface FilesPageView {
    * dataset selects is not a key.
    */
   selectedBy: Record<string, string[]>
+  /** The labels of the files on the page, by the file's name. A file with none is not a key. */
+  labels: Record<string, FileLabel>
   /** The words looked for in the name, as typed. Empty when none were. */
   keyword: string
   /** The first and the last day kept, each `null` when that end is open. */
@@ -203,7 +207,7 @@ export async function filesPage(
     ? bySide
     : bySide.filter((entry) => states.includes(stateOf(entry)))
   const page = pageOfFiles(sortedFiles(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, rowsPerPage(size, narrowed.length))
-  const selections = await publishedFileSelections(db, id)
+  const [selections, fileLabels] = await Promise.all([publishedFileSelections(db, id), fileLabelsOf(db, id)])
 
   return {
     locale,
@@ -214,6 +218,10 @@ export async function filesPage(
     selectedBy: Object.fromEntries(page.rows.flatMap((row) => {
       const labels = selections.get(row.name)
       return labels === undefined ? [] : [[row.name, labels]]
+    })),
+    labels: Object.fromEntries(page.rows.flatMap((row) => {
+      const label = fileLabels.get(row.name)
+      return label === undefined ? [] : [[row.name, label]]
     })),
     keyword,
     from,
@@ -275,6 +283,7 @@ export async function filesAction(
   const intent = form.get("intent")
   const back = backToListing(request, locale, adminResearchFilesPath(id), RESEARCH_FILES_SETTINGS)
   if (intent === "rename") return renameResearchFile(db, id, form, actorOf(actor), back)
+  if (intent === "label") return labelResearchFile(db, id, humLabel, form, actorOf(actor), back)
 
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
   if (names.length === 0) return { status: "nothing-selected" }
@@ -319,6 +328,8 @@ function actorOf(actor: { sub: string, name: string }): EventActor {
  * and for them one address starts responding and another stops — the same two
  * things deleting and publishing write. Moving the private copy changes
  * nothing anybody can fetch.
+ *
+ * The file's label goes to the new name with it (`moveFileLabel`).
  */
 async function renameResearchFile(
   db: ReturnType<typeof getDb>,
@@ -352,17 +363,20 @@ async function renameResearchFile(
   }
 
   const shown: { from: ObjectRef, to: ObjectRef }[] = []
+  let found = false
   for (const side of sides) {
     const source: ObjectRef = { bucket: side.bucket, key: side.prefix + from }
     if (!(await objectExists(source))) continue
     const target: ObjectRef = { bucket: side.bucket, key: side.prefix + name }
     await copyObject(source, target)
     await deleteObject(source)
+    found = true
     if (side.shown) shown.push({ from: source, to: target })
   }
 
-  if (shown.length > 0) {
+  if (found) {
     await db.transaction(async (tx) => {
+      await moveFileLabel(tx, researchId, from, name)
       for (const moved of shown) {
         await recordEvent(tx, {
           actor,
@@ -385,6 +399,54 @@ async function renameResearchFile(
 }
 
 /**
+ * Setting a file's label, or clearing it when both languages are sent empty.
+ *
+ * **A label is only kept for a file the prefix holds**: a name that is on
+ * neither side — deleted in another tab since the row was drawn — saves
+ * nothing, and the listing it goes back to no longer has the row.
+ *
+ * **A change on a file readers can fetch is written down**, with what it was
+ * and what it became: the public file table shows the label from the moment it
+ * is saved, and the research's publish, which records everything else a reader
+ * sees change, does not pass through here.
+ */
+async function labelResearchFile(
+  db: ReturnType<typeof getDb>,
+  researchId: string,
+  humLabel: string | null,
+  form: FormData,
+  actor: EventActor,
+  back: Response,
+): Promise<Response> {
+  const name = form.get("name")
+  const ja = form.get("labelJa")
+  const en = form.get("labelEn")
+  if (typeof name !== "string" || typeof ja !== "string" || typeof en !== "string") badRequest()
+  if (!isUploadableName(name)) badRequest()
+  if (ja.length > FILE_LABEL_MAX_LENGTH || en.length > FILE_LABEL_MAX_LENGTH) badRequest()
+  const label = typedFileLabel(ja, en)
+
+  const isPublic = humLabel !== null
+    && await objectExists({ bucket: PUBLIC_BUCKET, key: publicPrefix(humLabel) + name })
+  if (!isPublic && !(await objectExists({ bucket: PRIVATE_BUCKET, key: privatePrefix(researchId) + name }))) {
+    return back
+  }
+
+  await db.transaction(async (tx) => {
+    const before = await writeFileLabel(tx, researchId, name, label)
+    if (!isPublic || sameFileLabel(before, label)) return
+    await recordEvent(tx, {
+      actor,
+      action: "edit-file-label",
+      subjectType: "file",
+      subjectId: name,
+      detail: { research: researchId, before, after: label },
+    })
+  })
+  return back
+}
+
+/**
  * Take the file away, wherever it is. Every prefix the research has ever held is
  * cleared, because a copy left in a retired one would still answer at its old
  * address.
@@ -394,7 +456,8 @@ async function renameResearchFile(
  * after this delete and the file would stay public with the trail indicating it
  * was deleted. The switch's row is held while this is decided, so the runner
  * cannot take it up in between; a switch that gave up moves nothing and is
- * forgotten with the file. False means nothing was deleted.
+ * forgotten with the file, and so is its label. False means nothing was
+ * deleted.
  */
 async function deleteFiles(
   researchId: string,
@@ -425,6 +488,7 @@ async function deleteFiles(
   }
 
   await db.transaction(async (tx) => {
+    await forgetFileLabels(tx, researchId, names)
     for (const name of names) {
       await recordEvent(tx, {
         actor,

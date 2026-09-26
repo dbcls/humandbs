@@ -1,10 +1,13 @@
 import { eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
+import { emptyDatasetContent } from "~/content/empty"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { seedDataset, seedVersion } from "~/db/seed"
+import { clearPrefix, putTestObject } from "~/files/_store"
+import { PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 import { SORT_KEYS } from "~/search/sort"
 
@@ -169,6 +172,45 @@ describe("the three ways of reaching one object", () => {
     const answer = await researchEntry(get("/x"), "hum0999", "latest")
     expect(answer.status).toBe(200)
     expect(await body(answer)).toEqual(await body(await researchEntry(get("/x"), "hum0001", "latest")))
+  })
+})
+
+describe("a file's label", () => {
+  const HUM = "hum7001"
+
+  afterAll(async () => {
+    await clearPrefix(PUBLIC_BUCKET, publicPrefix(HUM))
+  })
+
+  it("is in every answer that lists the file, the research's and the dataset's, the same way", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await seedVersion(db, {
+      researchId,
+      number: 1,
+      datasets: [{ datasetId, content: { ...emptyDatasetContent(), fileSelection: ["a.xlsx", "b.zip"] } }],
+    })
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.xlsx`)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.zip`)
+    await db.insert(s.fileLabel).values({ researchId, fileName: "a.xlsx", labelJa: "", labelEn: "Dictionary file" })
+    // The addresses are compared by their path: the origin is the site's configured one.
+    const files = (answer: unknown): unknown =>
+      (answer as { files: { url: string }[] }).files.map((file) => ({ ...file, url: new URL(file.url).pathname }))
+    const expected = [
+      { name: "a.xlsx", size: 1, url: `/files/${HUM}/a.xlsx`, label: { en: "Dictionary file" } },
+      { name: "b.zip", size: 1, url: `/files/${HUM}/b.zip` },
+    ]
+
+    const research = await body(await researchEntry(get("/x"), HUM, "latest"))
+    const dataset = await body(await datasetEntry(get("/x"), "JGAD000001"))
+    const searched = await body(await apiSearch(get("/api/dataset"), "dataset")) as { hits: unknown[] }
+    const [bulk] = await lines(await apiBulk("research"))
+
+    expect(files(research)).toEqual(expected)
+    expect(files(dataset)).toEqual(expected)
+    expect(files(searched.hits[0])).toEqual(expected)
+    expect(files(bulk)).toEqual(expected)
   })
 })
 

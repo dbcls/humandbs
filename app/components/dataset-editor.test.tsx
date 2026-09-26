@@ -192,6 +192,7 @@ function view(
     terms: TERMS,
     page: drawn(content),
     listing: [],
+    fileLabels: {},
     revision: 2,
     input: datasetContentInput(content),
     catalog,

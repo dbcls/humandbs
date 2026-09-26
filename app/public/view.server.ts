@@ -614,6 +614,8 @@ export interface FileRowView {
   name: string
   size: number
   isPublic: boolean
+  /** The file's label in the page's language, or in the other where it has none (`fileLabelIn`). Empty for none. */
+  label: string
 }
 
 /**

@@ -10,6 +10,9 @@
  * - `HUMANDBS_COPY_CENSUS` — the census of the first (default
  *   `input/l12/file-census.json`)
  *
+ * The files drafts link that only the old staging site held are read from
+ * `input/l12/draft-files/` (`copy.ts` の `planDraftFiles`).
+ *
  * **It can be stopped and run again.** A file already in the store at the same
  * size is left as it is, so a second run copies only what the first did not
  * finish. A file larger than one part goes up in parts, as the upload screen
@@ -43,11 +46,12 @@ import { closePools, getDb } from "~/db/client.server"
 import { MULTIPART_CONCURRENCY, MULTIPART_PART_SIZE, MULTIPART_THRESHOLD, PRIVATE_BUCKET } from "~/files/prefix"
 import { contentTypeOf } from "~/files/content-types"
 
-import { planAssets, planCopy, type PlannedCopy, type Census } from "./copy"
+import { planAssets, planCopy, planDraftFiles, type PlannedCopy, type Census } from "./copy"
 
 const INPUT = join(import.meta.dirname, "input", "l12")
 const SOURCE = process.env.HUMANDBS_COPY_SOURCE ?? "/source/files"
 const ASSETS = process.env.HUMANDBS_COPY_ASSETS ?? "/source/public-files"
+const DRAFT_FILES = join(INPUT, "draft-files")
 const DRY_RUN = process.argv.includes("--dry-run")
 /** Files in flight at once; each large one also sends its parts in parallel. */
 const FILES_IN_FLIGHT = 4
@@ -150,14 +154,18 @@ const census = JSON.parse(readFileSync(process.env.HUMANDBS_COPY_CENSUS ?? join(
 const ids = await researchIds()
 const plan = planCopy(census, (hum) => ids.get(hum))
 const assets = existsSync(ASSETS) ? planAssets(filesUnder(ASSETS), (path) => statSync(join(ASSETS, path)).size) : []
+const drafts = existsSync(DRAFT_FILES)
+  ? planDraftFiles(filesUnder(DRAFT_FILES), (path) => statSync(join(DRAFT_FILES, path)).size, (hum) => ids.get(hum))
+  : []
 const items = [
   ...assets.map((one) => ({ one, path: join(ASSETS, one.source) })),
   ...plan.copy.map((one) => ({ one, path: join(SOURCE, one.source) })),
+  ...drafts.map((one) => ({ one, path: join(DRAFT_FILES, one.source) })),
 ]
 
 const total = items.reduce((sum, { one }) => sum + one.size, 0)
 const droppedBytes = plan.dropped.reduce((sum, one) => sum + one.size, 0)
-console.log(`copy ${items.length} files, ${total} B (assets ${assets.length}); leave ${plan.dropped.length} files, ${droppedBytes} B`)
+console.log(`copy ${items.length} files, ${total} B (assets ${assets.length}, draft files ${drafts.length}); leave ${plan.dropped.length} files, ${droppedBytes} B`)
 for (const bucket of ["files", "private"]) {
   const into = items.filter(({ one }) => one.bucket === bucket)
   console.log(`  ${bucket}: ${into.length} files, ${into.reduce((sum, { one }) => sum + one.size, 0)} B`)

@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { dropReason, planAssets, planCopy, type Census } from "./copy"
+import { dropReason, planAssets, planCopy, planDraftFiles, type Census } from "./copy"
 
 const RESEARCH = { hum0185: "0193-r185", hum0197: "0193-r197" } as Record<string, string>
 const researchIdOf = (hum: string) => RESEARCH[hum]
@@ -108,5 +108,18 @@ describe("planAssets", () => {
       bucket: "files",
       key: "common/guidelines/data-sharing-guidelines/dataClassification_6.png",
     }])
+  })
+})
+
+describe("planDraftFiles", () => {
+  it("puts a file a draft links into its research's private prefix", () => {
+    expect(planDraftFiles(["hum0185/78_genes.xlsx"], () => 9383, researchIdOf))
+      .toEqual([{ source: "hum0185/78_genes.xlsx", size: 9383, bucket: "private", key: "0193-r185/78_genes.xlsx" }])
+  })
+
+  it("refuses a file of no research, or one not directly under a research's directory", () => {
+    expect(() => planDraftFiles(["hum9999/a.txt"], () => 1, researchIdOf)).toThrow(/hum9999/)
+    expect(() => planDraftFiles(["hum0185/sub/a.txt"], () => 1, researchIdOf)).toThrow(/hum0185\/sub/)
+    expect(() => planDraftFiles(["hum0185"], () => 1, researchIdOf)).toThrow(/hum0185/)
   })
 })

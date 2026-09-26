@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import { navigationPaths } from "~/public/navigation"
 import { SCREEN_PATHS } from "~/public/urls"
 
-import { buildAlerts, buildDocuments, buildNews, loadCms, SCREEN_SLUGS, type CmsDocument } from "./cms"
+import { buildAlerts, buildDocuments, buildNews, FILE_LIST_SLUGS, loadCms, SCREEN_SLUGS, type CmsDocument } from "./cms"
 
 function document(slug: string, versions: CmsDocument["versions"]): CmsDocument {
   return { slug, versions }
@@ -33,6 +33,12 @@ describe("document の組み立て", () => {
   it("画面になった slug は document にならない", () => {
     const screens = SCREEN_SLUGS.map((slug) => document(slug, [version("ja", 1)]))
     expect(buildDocuments(screens).documents).toEqual([])
+  })
+
+  it("ファイルの一覧だった slug は document にならず、ほかの研究の記事は残る", () => {
+    const lists = FILE_LIST_SLUGS.map((slug) => document(slug, [version("ja", 1), version("en", 1)]))
+    const { documents } = buildDocuments([...lists, document("hum0185-v1-st1", [version("en", 1)])])
+    expect(documents.map((one) => one.slug)).toEqual(["hum0185-v1-st1"])
   })
 
   it("draft しか無い document は除かれる", () => {

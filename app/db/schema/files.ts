@@ -1,4 +1,5 @@
-import { index, integer, pgEnum, pgTable, text, unique, uuid } from "drizzle-orm/pg-core"
+import { sql } from "drizzle-orm"
+import { check, index, integer, pgEnum, pgTable, text, unique, uuid } from "drizzle-orm/pg-core"
 
 import { createdAt, primaryId, updatedAt } from "./common"
 import { research } from "./research"
@@ -12,9 +13,9 @@ export const filePublishJobState = pgEnum("file_publish_job_state", [
 ])
 
 /**
- * Work queued against the file store. **This is the only thing Postgres knows
- * about files** — whether a file is public is which bucket it sits in, and S3
- * is the authority for that.
+ * Work queued against the file store. Besides the labels (`fileLabel`), **this
+ * is the only thing Postgres knows about files** — whether a file is public is
+ * which bucket it sits in, and S3 is the authority for that.
  *
  * Switching buckets is a copy of the actual bytes (seconds per gigabyte, and
  * the largest file is 146 GiB), so it cannot run inside the publish operation.
@@ -50,4 +51,34 @@ export const filePublishJob = pgTable("file_publish_job", {
 }, (t) => [
   unique("file_publish_job_file_unique").on(t.researchId, t.fileName),
   index().on(t.state, t.createdAt),
+])
+
+/**
+ * The words a reader is shown beside a file of a research's prefix, in each
+ * language: what the file holds, where its name does not say it.
+ *
+ * **Keyed by the research identity and the name**, the pair the prefix itself
+ * is addressed by on the private side. Switching the file between buckets and
+ * re-pinning the hum label leave both alone, so the label stays; renaming the
+ * file moves the row and deleting it deletes the row, both in the same
+ * operation that changes the store.
+ *
+ * **Here rather than in the store's metadata.** A listing does not return
+ * metadata, so every row of a page would be one more request to the store, and
+ * changing metadata rewrites the object — a copy of the actual bytes for a
+ * change of a few words.
+ *
+ * A row with neither language is not kept: clearing both is deleting the label.
+ */
+export const fileLabel = pgTable("file_label", {
+  id: primaryId(),
+  researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
+  fileName: text().notNull(),
+  labelJa: text().notNull().default(""),
+  labelEn: text().notNull().default(""),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [
+  unique("file_label_file_unique").on(t.researchId, t.fileName),
+  check("file_label_has_text", sql`${t.labelJa} <> '' OR ${t.labelEn} <> ''`),
 ])

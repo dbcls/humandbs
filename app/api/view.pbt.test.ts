@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { datasetContentArb, filesArb, researchContentArb } from "~/content/arbitraries/content"
 import { publicDatasetContent, publicResearchContent } from "~/content/public"
 import type { DatasetContent, ResearchContent, Slot } from "~/content/types"
+import type { FileLabel } from "~/files/labels"
 
 import { catalogViewArb, termIdsIn } from "./arbitraries/catalog"
 import { apiDataset, apiResearch, type ApiContext } from "./view"
@@ -28,12 +29,24 @@ function walk(value: unknown, visit: (key: string, held: unknown) => void): void
   }
 }
 
+/** A label on some of the files, in either language or both, never neither — what `file_label` holds. */
+function fileLabelsArb(names: readonly string[]): fc.Arbitrary<Map<string, FileLabel>> {
+  const text = fc.oneof(fc.constant(""), fc.string({ minLength: 1, maxLength: 8 }))
+  const label = fc.record({ ja: text, en: text }).filter((one) => one.ja !== "" || one.en !== "")
+  return fc.array(fc.tuple(fc.constantFrom(...names, "unlisted.zip"), label), { maxLength: 4 })
+    .map((pairs) => new Map(pairs))
+}
+
 const datasetCaseArb = datasetContentArb.chain((content) =>
-  fc.record({
+  filesArb.chain((files) => fc.record({
     content: fc.constant(content),
     catalog: catalogViewArb(termIdsIn(content)),
-    files: filesArb,
-  }))
+    // Some of the selection is in the prefix and some is not, so that labels
+    // reach the answer and a selection the prefix lacks is still dropped.
+    files: fc.subarray(content.fileSelection)
+      .map((listed) => [...files, ...listed.map((name) => ({ name, size: 1 }))]),
+    fileLabels: fileLabelsArb([...files.map((file) => file.name), ...content.fileSelection]),
+  })))
 
 /**
  * The dataset as an endpoint returns it. **The catalog the public projection
@@ -45,6 +58,7 @@ function datasetAnswer(input: {
   content: DatasetContent
   catalog: ApiContext["catalog"]
   files: { name: string, size: number }[]
+  fileLabels?: ReadonlyMap<string, FileLabel>
 }): unknown {
   return answered(apiDataset({
     label: "JGAD000001",
@@ -57,6 +71,7 @@ function datasetAnswer(input: {
       PUBLISHED,
     ),
     files: input.files,
+    fileLabels: input.fileLabels ?? new Map(),
   }, { origin: ORIGIN, catalog: input.catalog }))
 }
 
@@ -70,6 +85,7 @@ function researchAnswer(content: ResearchContent): unknown {
     datasetLabelById: new Map(),
     cau: [],
     files: [],
+    fileLabels: new Map(),
   }, { origin: ORIGIN, catalog: { keyById: new Map(), keyByCode: new Map(), termById: new Map() } }))
 }
 

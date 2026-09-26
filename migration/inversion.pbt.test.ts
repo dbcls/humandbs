@@ -94,3 +94,26 @@ describe("splitting a block with one line per dataset plus shared lines", () => 
     }))
   })
 })
+
+describe("a cell of groups under headings alone on their lines", () => {
+  /** Lines under a heading, which may name anything outside the block, as `JGAD000220 の vcf` does. */
+  const under = fc.array(fc.oneof(safeValue, fc.constantFrom("JGAD000220 の vcf", "[JGAD000495](https://example.org)")), { minLength: 1, maxLength: 3 })
+  const groupedArb = fc.uniqueArray(fc.constantFrom(...LABELS), { minLength: 2, maxLength: LABELS.length })
+    .chain((datasets) => fc.record({
+      datasets: fc.constant(datasets),
+      prefix: fc.array(sharedLine, { maxLength: 2 }),
+      groups: fc.array(fc.record({ owner: fc.constantFrom(...datasets), lines: under }), { minLength: 1, maxLength: 5 }),
+    }))
+
+  it("gives each dataset the lines above the first heading and every group under its own heading, whatever those lines name", () => {
+    fc.assert(fc.property(groupedArb, ({ datasets, prefix, groups }) => {
+      fc.pre(datasets.every((label) => groups.some((group) => group.owner === label)))
+      const text = [...prefix, ...groups.flatMap((group) => [`【${group.owner}】`, ...group.lines])].join("\n")
+      const result = splitSharedBlock({ "Materials and Participants": { ja: text, en: text } }, datasets, new Map())
+      for (const label of datasets) {
+        const own = [...prefix, ...groups.flatMap((group) => (group.owner === label ? [`【${group.owner}】`, ...group.lines] : []))]
+        expect(result.perDataset.get(label)?.["Materials and Participants"]?.ja).toBe(own.join("\n"))
+      }
+    }))
+  })
+})

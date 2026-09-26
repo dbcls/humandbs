@@ -28,6 +28,7 @@ import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent, valueOr } from "~/content/empty"
 import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
 import { adminListing, listingRows, fileListOf, readFilePage, readFileRows } from "~/files/listing.server"
+import { fileLabelsOf } from "~/files/labels.server"
 import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -294,7 +295,8 @@ export async function drawDraft(
   const cau = humLabel === null ? [] : await controlledAccessUsers(db, humLabel)
   // Both buckets: at draft time nothing is public yet, and showing only the
   // public side would empty the download list exactly when it is being checked.
-  const listing = listingRows(await adminListing(db, draft.researchId, humLabel))
+  const [stored, labels] = await Promise.all([adminListing(db, draft.researchId, humLabel), fileLabelsOf(db, draft.researchId)])
+  const listing = listingRows(stored, labels, locale)
 
   const projected = publicResearch(draft.content, { cau, files: listing }, PREVIEW)
   const rows: DatasetRowInput[] = datasets.map((row) => {
@@ -464,7 +466,8 @@ export async function drawDatasetDraft(
   if (row === undefined) notFound()
   // What is being written, which is not what is filed while a form is open.
   const writing = content ?? row.content
-  const listing = listingRows(await adminListing(db, draft.researchId, humLabel))
+  const [stored, labels] = await Promise.all([adminListing(db, draft.researchId, humLabel), fileLabelsOf(db, draft.researchId)])
+  const listing = listingRows(stored, labels, locale)
 
   const dataset = publicDataset(
     writing,

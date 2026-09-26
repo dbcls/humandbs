@@ -154,6 +154,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                     humLabel={view.humLabel}
                     origin={view.origin}
                     selectedBy={view.selectedBy}
+                    labels={view.labels}
                     whenEmpty={inForce === 0 ? t.empty : t.noMatch}
                   />
                 </RefinableList>

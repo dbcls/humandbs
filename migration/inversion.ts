@@ -258,6 +258,38 @@ function withCaptions(lines: readonly string[], owners: readonly LineOwner[], ke
   return out
 }
 
+/** A heading alone on its line, in lenticular brackets or the square ones the English page writes (not a link). */
+const HEADING_ALONE = /^\s*(?:【[^】]*】|\[[^\]]*\](?!\())\s*$/
+
+/** A heading with words after it on the same line. */
+const HEADING_WITH_WORDS = /^\s*(?:【[^】]*】|\[[^\]]*\](?!\())\s*\S/
+
+/**
+ * Who owns each line where the cell's headings stand alone on their lines
+ * (`【JGAS000603】` over that study's lines, up to the next heading): a line
+ * under a heading goes with the heading's dataset, whatever it names itself —
+ * `JGAD000867`'s line is the vcf made from `JGAD000220`'s WGS, and is still
+ * `JGAD000867`'s (`build.ts` の `headingGroups`). A heading naming only
+ * datasets outside the block leaves its lines to nobody here, so the cell
+ * goes to review whole. Null where the cell is not made that way: no heading
+ * alone on its line names anything, or a heading naming something has words
+ * after it.
+ */
+function groupedOwners(lines: readonly string[], owners: readonly LineOwner[]): LineOwner[] | null {
+  const names = (i: number) => owners[i]?.kind !== "shared"
+  const alone = lines.map((line, i) => HEADING_ALONE.test(line) && names(i))
+  if (!alone.includes(true)) return null
+  if (lines.some((line, i) => !alone[i] && HEADING_WITH_WORDS.test(line) && names(i))) return null
+  let heading: LineOwner | undefined
+  return owners.map((owner, i) => {
+    if (alone[i]) {
+      heading = owner.kind === "foreign" ? { kind: "unsettled", reason: "見出しがブロックの外のデータセットを指している" } : owner
+      return heading
+    }
+    return heading ?? owner
+  })
+}
+
 type CellOutcome
   = | { kind: "shared" | "split" | "hand", perDataset: ReadonlyMap<string, string> }
     | { kind: "review", perDataset: ReadonlyMap<string, string>, reason: string }
@@ -269,7 +301,8 @@ type CellOutcome
  * A line stays for every dataset unless it identifies one — `readLine` in
  * `build.ts` calls this "about" — in which case it stays only for the
  * dataset(s) it identifies among the block's own (and, in a cell that captions
- * each dataset's line, the caption above it: `CAPTIONED_KEYS`). **A line naming an accession
+ * each dataset's line, the caption above it: `CAPTIONED_KEYS`; under a heading
+ * alone on its line, the heading's: `groupedOwners`). **A line naming an accession
  * that is not one of the block's own datasets is dropped for all of them**:
  * whatever it is about is not any of this block's datasets, so it is not this
  * block's line to keep, and keeping it on a sibling would attribute someone
@@ -287,7 +320,8 @@ function splitCellText(
   captioned = false,
 ): CellOutcome {
   const lines = text.split("\n")
-  const owners = lines.map((line) => lineOwner(line, datasets, jgasToJgad))
+  const byLine = lines.map((line) => lineOwner(line, datasets, jgasToJgad))
+  const owners = groupedOwners(lines, byLine) ?? byLine
 
   const unsettled = owners.find((o) => o.kind === "unsettled")
   if (unsettled?.kind === "unsettled") {

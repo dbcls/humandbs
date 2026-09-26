@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
+import type { FileLabel } from "~/files/labels"
 import type { ListedFile } from "~/files/prefix"
 
 import { FilePicker, FileSelection } from "./file-selection"
@@ -17,6 +18,7 @@ function entry(name: string, isPublic = false): ListedFile {
 }
 
 const LISTING = [entry("a.txt", true), entry("b.tsv"), entry("c.vcf.gz")]
+const LABELS: Record<string, FileLabel> = { "a.txt": { ja: "辞書ファイル", en: "Dictionary file" }, "c.vcf.gz": { ja: "", en: "Variants" } }
 const FILES_AT = "/admin/research/r1/files"
 
 function selection(listing: ListedFile[] | null, selected: string[]): string {
@@ -24,6 +26,7 @@ function selection(listing: ListedFile[] | null, selected: string[]): string {
     <FileSelection
       locale="ja"
       listing={listing}
+      labels={LABELS}
       selected={selected}
       filesAt={FILES_AT}
       onChange={() => { /* nothing changes here */ }}
@@ -36,6 +39,7 @@ function picker(ticked: string[], filter = ""): string {
     <FilePicker
       locale="ja"
       listing={LISTING}
+      labels={LABELS}
       ticked={ticked}
       filter={filter}
       onFilter={() => { /* nothing changes here */ }}
@@ -91,7 +95,31 @@ describe("the files a dataset's page lists, on the form", () => {
   })
 })
 
+/** The names over the columns, in order, after the checkbox's. */
+function heads(html: string): string[] {
+  return [...html.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((th) => th[1] ?? "").filter((name) => name !== "")
+}
+
+/** The cells of each row after the checkbox, as text. */
+function cells(html: string): string[][] {
+  const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? ""
+  return [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((tr) =>
+    [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].slice(1).map((td) => (td[1] ?? "").replace(/<[^>]*>/g, "")))
+}
+
 describe("the table in the panel", () => {
+  it("draws the files screen's columns in the files screen's order", () => {
+    expect(heads(picker([]))).toEqual(["ファイル名", "ラベル (日本語)", "ラベル (英語)", "サイズ", "更新日", "状態"])
+  })
+
+  it("shows each language of a label in its own column, and an empty cell for a language not written", () => {
+    expect(cells(picker([])).map((row) => row.slice(1, 3))).toEqual([
+      ["辞書ファイル", "Dictionary file"],
+      ["", ""],
+      ["", "Variants"],
+    ])
+  })
+
   it("draws the files screen's columns without its row actions", () => {
     const html = picker([])
     for (const column of ["ファイル名", "サイズ", "更新日", "状態"]) expect(html).toContain(column)

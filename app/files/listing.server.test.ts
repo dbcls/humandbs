@@ -43,7 +43,7 @@ describe("what a public page renders from publicListing", () => {
 
     const listing = await publicListing("hum0001")
 
-    expect(fileListOf(publicRows(listing), 1, 20))
+    expect(fileListOf(publicRows(listing, new Map(), "ja"), 1, 20))
       .toEqual({ rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 })
   })
 })
