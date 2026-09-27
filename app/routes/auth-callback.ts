@@ -1,6 +1,6 @@
 import { redirect } from "react-router"
 
-import { refreshAdminName } from "~/auth/admins.server"
+import { recordAdminSeen } from "~/auth/admins.server"
 import { beginLogin, clearedFlowCookie, completeLogin } from "~/auth/oidc.server"
 import { createSession, sessionCookie } from "~/auth/session.server"
 import { getDb } from "~/db/client.server"
@@ -35,7 +35,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const token = await createSession(db, login)
   // Nothing depends on the stored name, so a rename shows up here rather than in
   // a separate step.
-  await refreshAdminName(db, login.sub, login.name)
+  await recordAdminSeen(db, login.sub, login.name)
 
   const headers = new Headers()
   headers.append("Set-Cookie", clearedFlowCookie())

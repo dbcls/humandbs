@@ -15,6 +15,33 @@ export const adminUser = pgTable("admin_user", {
   keycloakSub: text().notNull().unique(),
   displayName: text().notNull(),
   createdAt: createdAt(),
+  /**
+   * When they last used the management screens, so that an account nobody uses
+   * any more can be found. Kept here rather than read from the sessions, which
+   * are deleted when they end. Null until they first sign in after the grant.
+   */
+  lastSeenAt: timestamp({ withTimezone: true }),
+})
+
+/**
+ * A link that makes whoever signs in through it an administrator
+ * (`auth/invitations.server.ts`).
+ *
+ * **The link's value is stored as a hash**, as a session's is: being able to
+ * read this table is not the same as being able to use an invitation in it.
+ * Who made it is kept because the grant it leads to is recorded under their
+ * name — they decided it, not the person who followed the link.
+ */
+export const adminInvitation = pgTable("admin_invitation", {
+  id: primaryId(),
+  tokenHash: text().notNull().unique(),
+  createdBySub: text().notNull(),
+  createdByName: text().notNull(),
+  createdAt: createdAt(),
+  expiresAt: timestamp({ withTimezone: true }).notNull(),
+  /** Set once, when somebody became an administrator through it. */
+  usedAt: timestamp({ withTimezone: true }),
+  usedBySub: text(),
 })
 
 /**

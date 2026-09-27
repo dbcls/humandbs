@@ -1501,12 +1501,14 @@ export function LanguagePills({ label, options }: {
  * `filled` is for the one that starts something rather than showing something,
  * which in the header is signing in.
  */
-export function RoundLink({ to, label, filled = false, external = false, ...drawn }: {
+export function RoundLink({ to, label, filled = false, external = false, newTab = false, ...drawn }: {
   to: string
   label: string
   filled?: boolean
   /** For an address no client-side navigation can answer, such as `/auth/login`. */
   external?: boolean
+  /** Opens in a tab of its own, for a page that is not one of the site's. Implies `external`. */
+  newTab?: boolean
 } & ({ name: IconName } | { text: string })) {
   const className = `inline-flex size-tap items-center justify-center rounded-full border no-underline ${
     filled
@@ -1518,6 +1520,9 @@ export function RoundLink({ to, label, filled = false, external = false, ...draw
     // Hidden like a glyph: the control is named by `label`, and the word read
     // out after it would say the same thing twice.
     : <span aria-hidden="true" className="font-semibold text-xs">{drawn.text}</span>
+  if (newTab) {
+    return <a href={to} target="_blank" rel="noopener" aria-label={label} title={label} className={className}>{inside}</a>
+  }
   return external
     ? <a href={to} aria-label={label} title={label} className={className}>{inside}</a>
     : <Link to={to} aria-label={label} title={label} className={className}>{inside}</Link>

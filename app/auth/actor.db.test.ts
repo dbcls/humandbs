@@ -1,10 +1,11 @@
+import { sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 
 import { readActor, requireActor, requireCapability } from "./actor.server"
-import { grantAdmin, revokeAdmin } from "./admins.server"
+import { grantAdmin, listAdmins, revokeAdmin } from "./admins.server"
 import { CAPABILITIES } from "./capabilities"
 import { BOOTSTRAP_ACTOR } from "./events.server"
 import { createSession, sessionCookie } from "./session.server"
@@ -89,6 +90,43 @@ describe("要求ごとの主体の導出", () => {
     const after = await readActor(requestFor(token))
     expect(after?.isAdmin).toBe(false)
     expect(after?.capabilities.size).toBe(0)
+  })
+})
+
+describe("管理者の最後に使った日時", () => {
+  /** A session last seen longer ago than the touch interval, so that the next read moves it. */
+  async function sessionFromYesterday(): Promise<string> {
+    const token = await createSession(db, PERSON)
+    await getOwnerDb().execute(sql`UPDATE session SET last_seen_at = now() - interval '1 day'`)
+    return token
+  }
+
+  it("セッションを使った admin は、最後に使った日時と今の名前が一覧に残る", async () => {
+    const token = await sessionFromYesterday()
+    await grantAdmin(db, BOOTSTRAP_ACTOR, { sub: PERSON.sub, name: PERSON.sub })
+
+    await readActor(requestFor(token))
+
+    const [admin] = await listAdmins(db)
+    expect(admin?.name).toBe(PERSON.name)
+    expect(admin?.lastSeen).not.toBeNull()
+  })
+
+  it("直前に使ったばかりのセッションでは書き込まない", async () => {
+    const token = await createSession(db, PERSON)
+    await grantAdmin(db, BOOTSTRAP_ACTOR, { sub: PERSON.sub, name: PERSON.sub })
+
+    await readActor(requestFor(token))
+
+    expect((await listAdmins(db))[0]?.lastSeen).toBeNull()
+  })
+
+  it("admin でない人のセッションは、一覧に何も足さない", async () => {
+    const token = await sessionFromYesterday()
+
+    await readActor(requestFor(token))
+
+    expect(await listAdmins(db)).toEqual([])
   })
 })
 

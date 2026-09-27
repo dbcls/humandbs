@@ -37,6 +37,8 @@ export interface SessionRecord {
   id: string
   sub: string
   name: string
+  /** Whether this read moved the last access forward, which it does at most once in `TOUCH_MINUTES`. */
+  touched: boolean
 }
 
 /** 32 bytes from the CSPRNG. base64url so it needs no cookie escaping. */
@@ -90,7 +92,7 @@ export async function readSession(db: Executor, token: string): Promise<SessionR
   if (row.stale) {
     await db.update(session).set({ lastSeenAt: sql`now()` }).where(eq(session.id, row.id))
   }
-  return { id: row.id, sub: row.sub, name: row.name }
+  return { id: row.id, sub: row.sub, name: row.name, touched: row.stale }
 }
 
 /** Deletes the session and hands back the ID token, which logout needs as a hint. */

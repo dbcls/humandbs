@@ -100,7 +100,7 @@ describe("サイトのヘッダ", () => {
     expect(marked(header("en", "/en/faq"))).toEqual(["/en/faq", "/en/faq"])
   })
 
-  it("カートの右に API の丸があり、言語の無い /api/docs をページの読み込みで開く", () => {
+  it("カートの右に API の丸があり、言語の無い /api/docs を別のタブで開く", () => {
     for (const html of [header("ja", "/faq"), header("en", "/en/faq")]) {
       expect(html).toMatch(/aria-label="(カート|Cart)[^"]*"[\s\S]*<a href="\/api\/docs"[^>]*>(?:(?!<\/a>)[\s\S])*>API<\/span><\/a>/)
     }
@@ -108,6 +108,8 @@ describe("サイトのヘッダ", () => {
     const anchor = /<a[^>]*href="\/api\/docs"[^>]*>/.exec(header("ja", "/faq"))?.[0]
     expect(anchor).toBeDefined()
     expect(anchor).not.toContain("data-discover")
+    expect(anchor).toContain("target=\"_blank\"")
+    expect(anchor).toContain("rel=\"noopener\"")
     expect(header("ja", "/faq")).toContain("aria-label=\"公開 API\"")
     expect(header("en", "/en/faq")).toContain("aria-label=\"Public API\"")
   })

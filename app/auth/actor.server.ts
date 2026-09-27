@@ -15,7 +15,7 @@ import { redirect } from "react-router"
 import { getDb } from "~/db/client.server"
 import { askedPath } from "~/public/urls"
 
-import { isAdmin } from "./admins.server"
+import { isAdmin, recordAdminSeen } from "./admins.server"
 import { type Actor, type Capability, can, capabilitiesFor } from "./capabilities"
 import { readSession, tokenFromRequest } from "./session.server"
 
@@ -28,6 +28,9 @@ export async function readActor(request: Request): Promise<Actor | null> {
   if (record === null) return null
 
   const admin = await isAdmin(db, record.sub)
+  // As often as the session's own last access moves, and no more: the list of
+  // administrators shows when each was last here, and who they are called now.
+  if (admin && record.touched) await recordAdminSeen(db, record.sub, record.name)
   return {
     sessionId: record.id,
     sub: record.sub,

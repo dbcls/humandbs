@@ -39,14 +39,14 @@ NBDC ヒトデータベースのポータルは、研究とそれに属するデ
 draft (editing) --publish--> research version + search rows --> public pages / search / JSON API
       ^                                   ^
       |                                   |
- upstream (JGA DB, DDBJ Search)      external cache (daily)
+ upstream (JGA DB, DDBJ Search, FTP) external cache (daily)
 ```
 
 1. admin が研究の下書きを書く。値はフォームに入力するか、公開済みのバージョン・他の下書き・データ提供申請の枝番から取り込む ([editing.md](editing.md))。
 2. 共有リンクで提供者にプレビューを見せ、コメントを受け取る。
 3. 公開すると下書きがバージョンになり、同じトランザクションでその研究の検索用の行を作り直す ([publishing.md](publishing.md))。
 4. 公開ページ・一覧・JSON API は、公開中のものを検索用の行からだけ読む ([data-model.md](data-model.md))。
-5. 申請管理システムと DDBJ Search の値 (利用者の一覧、accession の日付など) は、1 日 1 回取得して DB にコピーし、公開ページはそのコピーを読む。外部システムが止まっていても公開ページを表示し続けるためである。
+5. 申請管理システム・DDBJ Search・DDBJ の公開 FTP の値 (利用者の一覧、accession の日付、データセットのファイルの大きさと形式など) は、1 日 1 回取得して DB にコピーし、公開ページはそのコピーを読む。外部システムが止まっていても公開ページを表示し続けるためである。
 
 記事・お知らせ・アラートは研究の下書きとバージョンを使わない別の流れで、本文と公開の状態だけを管理する ([site-content.md](site-content.md))。
 
@@ -75,7 +75,7 @@ repo の主なディレクトリと、そこに置くものを挙げる。
 | `app/public/` `app/search/` | 公開ページの読み取り、検索式、絞り込みの集計、検索用の行の作り直し |
 | `app/review/` | 共有リンク、プレビュー、コメント |
 | `app/files/` | ファイルストアの読み書き、bucket を切り替えるジョブ、データセットのファイル選択 |
-| `app/upstream/` | 申請管理システムの DB と DDBJ Search の読み取りと、そのコピーの更新 |
+| `app/upstream/` | 申請管理システムの DB・DDBJ Search・DDBJ の公開 FTP の読み取りと、そのコピーの更新 |
 | `app/api/` | JSON API の応答の組み立て、schema、OpenAPI |
 | `app/auth/` | ログイン、セッション、権限 |
 | `app/cart/` `app/icd10/` `app/assistant/` | カート、ICD10 の分類、申請支援アシスタントへの中継 |

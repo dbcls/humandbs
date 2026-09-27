@@ -103,6 +103,7 @@ scripts/deploy.sh            # tag を省くと、checkout している commit �
 4. `proxy`、`app` の順に止め、DB とファイルストアを今の定義に合わせてから、`app` と `proxy` を起動する。`/healthz` が 200 を返すまで待つ。
 
 - 止まるのは、手順 4 の `app` と `proxy` の入れ替えの数秒である。DB とファイルストアは、`compose*.yml` か `.env` が変わったときだけ、この入れ替えの間に作り直す。podman-compose は定義の hash が合わない container を消してから起動するためである。データは volume にあるので消えない。
+- tag は `app` の image に書き込み、管理画面のトップと `/healthz` の応答 (`version`) に表示する。どの commit が動いているかを、配置先に入らずに確かめられるようにするためである。
 - proxy も毎回作り直す。新しいバージョンの静的ファイルは新しい proxy の image にあり、nginx は `app` のアドレスを起動時に 1 度しか引かないためである。
 - `/healthz` の URL は、`.env` の `HUMANDBS_PUBLIC_BIND_HOST` と `HUMANDBS_PUBLIC_PORT` から作る。
 - project に `db`・`s3`・`app`・`proxy`・`assistant-api` 以外の container があると、script は何も変えずにエラーで止まる。1 回だけ実行する container (`run`) は DB とファイルストアに依存しているので、動いている間に作り直すと途中で失敗する。古い定義の container が残っていると、以後の `up` のたびに DB とファイルストアが作り直される。`run` が終わるのを待ち、残った container を消してから実行し直す。

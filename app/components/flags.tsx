@@ -67,6 +67,8 @@ export const FLAG = {
   newApplication: { tone: "muted", icon: "file-plus" },
   /** A J-DS application updating data already registered. */
   updateApplication: { tone: "muted", icon: "file-pen" },
+  /** The row that is the reader's own account. */
+  you: { tone: "brand", icon: "user" },
 } as const satisfies Record<string, { tone: Tone, icon: IconName }>
 
 export type FlagKind = keyof typeof FLAG

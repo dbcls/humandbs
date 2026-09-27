@@ -495,10 +495,11 @@ export function SiteHeader({ locale, account, managing = false }: {
           {/*
             **With the controls rather than in the navigation.** The API's page
             is Swagger UI, not one of the site's: it has no bar and no language,
-            and the navigation lists the site's own pages. A plain anchor, since
-            the address responds with a document rather than a route's data.
+            and the navigation lists the site's own pages. **It opens in a tab
+            of its own** for the same reason — a reader who went there has no
+            way back into the site from it but the browser's back button.
           */}
-          {!managing && <RoundLink to={apiDocsPath()} text="API" label={messages.publicApi} external />}
+          {!managing && <RoundLink to={apiDocsPath()} text="API" label={messages.publicApi} newTab />}
           <AccountControl account={account} locale={locale} managing={managing} />
         </div>
       </div>

@@ -725,7 +725,7 @@ describe("お知らせ", () => {
     expect(await db.select().from(s.event).where(eq(s.event.subjectType, "news"))).toEqual([])
   })
 
-  it("お知らせを消すと本文ごと消えて、公開されていた言語だけが証跡に残る", async () => {
+  it("お知らせを消すと本文ごと消えて、公開されていた言語と題名 (日本語が先) が証跡に残る", async () => {
     const token = await signIn(CURATOR, true)
     const id = only(await db.insert(s.news).values({ publishedAt: "2026-01-01 09:00:00" })
       .returning({ id: s.news.id })).id
@@ -745,7 +745,7 @@ describe("お知らせ", () => {
     expect(removals).toHaveLength(1)
     expect(removals[0]?.subjectType).toBe("news")
     expect(removals[0]?.subjectId).toBe(id)
-    expect(removals[0]?.detail).toEqual({ deleted: true, locales: ["ja"] })
+    expect(removals[0]?.detail).toEqual({ title: "題", deleted: true, locales: ["ja"] })
   })
 
   it("1 件の画面は公開日時と 2 つの言語を返す", async () => {

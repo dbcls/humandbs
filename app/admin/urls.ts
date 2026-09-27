@@ -17,6 +17,14 @@ export function adminPath(): string {
 }
 
 /**
+ * Where an invitation to administer is opened (`auth/invitations.server.ts`).
+ * Under the area, so that opening it asks for a session like every screen here.
+ */
+export function adminInvitationPath(token: string): string {
+  return `${adminPath()}/invite/${encodeURIComponent(token)}`
+}
+
+/**
  * Whether an address belongs to the management area. **Read from the path
  * rather than from what the screen knows about itself**, because the shell is
  * chosen in the document's layout, which sits above the route tree and is drawn

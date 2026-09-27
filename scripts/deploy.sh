@@ -177,8 +177,12 @@ case "${1:-}" in
     podman container exists "${project}_db_1" || die "${project}_db_1 does not exist; this updates a running deployment"
 
     step "build ($tag)"
+    # The tag goes into the image as a build argument rather than through the
+    # compose files: a value interpolated there is part of the definition's
+    # hash, and a hash that changed on every deploy would recreate the database
+    # and the store every time.
     # shellcheck disable=SC2086 # a list of service names
-    run podman-compose build $images
+    run podman-compose build --build-arg "HUMANDBS_VERSION=$tag" $images
     for image in $images; do
       run podman tag "${project}_${image}:latest" "${project}_${image}:${tag}"
     done

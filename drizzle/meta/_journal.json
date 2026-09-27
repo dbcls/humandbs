@@ -36,6 +36,13 @@
       "when": 1790408047151,
       "tag": "0004_file_label",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790502630159,
+      "tag": "0005_admin_activity_and_invitation",
+      "breakpoints": true
     }
   ]
 }

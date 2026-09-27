@@ -36,6 +36,7 @@ import { href, readLocale } from "~/public/urls"
 import { type ListingSize, readListingSize } from "~/search/page-size"
 
 import { stampFromLocalInput, today } from "~/dates"
+import { alertExcerpt } from "./events"
 import { axisCounts, pageOf, type ListingPage } from "./listing"
 import { readPage } from "./pages.server"
 import {
@@ -994,6 +995,7 @@ async function updateAlert(
       action: active ? "publish-site-content" : "unpublish-site-content",
       subjectType: "alert",
       subjectId: before.id,
+      detail: { text: alertExcerpt({ ja, en }) },
     })
   }
   if (showing === null || showing === before.active) return { status: "ok", done: "alert-saved" }
@@ -1003,7 +1005,7 @@ async function updateAlert(
 async function deleteAlert(tx: Executor, form: FormData, actor: Actor): Promise<ContentsResult> {
   const id = text(form, "alertId")
   const [row] = await tx
-    .select({ id: alert.id, active: alert.active })
+    .select({ id: alert.id, active: alert.active, content: alert.content })
     .from(alert)
     .where(idIs(alert.id, id))
     .limit(1)
@@ -1016,7 +1018,7 @@ async function deleteAlert(tx: Executor, form: FormData, actor: Actor): Promise<
       action: "unpublish-site-content",
       subjectType: "alert",
       subjectId: row.id,
-      detail: { deleted: true },
+      detail: { deleted: true, text: alertExcerpt(row.content.body) },
     })
   }
   return { status: "ok", done: "alert-deleted" }
@@ -1028,10 +1030,25 @@ type ContentTarget
   = | { kind: "document", id: string, slug: string }
     | { kind: "news", id: string }
 
-function subjectOf(target: ContentTarget): { type: "document" | "news", detail: Record<string, unknown> } {
-  return target.kind === "document"
-    ? { type: "document", detail: { slug: target.slug } }
-    : { type: "news", detail: {} }
+/**
+ * The subject of a record, with the name the log shows it by: a document's
+ * slug, an announcement's title (Japanese first). Read from the rows as they
+ * stand, before a delete takes them, so that a record of something since gone
+ * still names it.
+ */
+async function subjectOf(
+  tx: Executor,
+  target: ContentTarget,
+): Promise<{ type: "document" | "news", detail: Record<string, unknown> }> {
+  if (target.kind === "document") return { type: "document", detail: { slug: target.slug } }
+  const titles = await tx
+    .select({ locale: newsContent.locale, title: sql<string>`${newsContent.content}->>'title'` })
+    .from(newsContent)
+    .where(eq(newsContent.newsId, target.id))
+  const title = [...titles].sort((a, b) => (a.locale === "ja" ? 0 : 1) - (b.locale === "ja" ? 0 : 1))
+    .map((one) => one.title.trim())
+    .find((one) => one !== "")
+  return { type: "news", detail: title === undefined ? {} : { title } }
 }
 
 /**
@@ -1186,7 +1203,7 @@ async function publishLocale(
       })
   if (!changed) return { status: "stale" }
 
-  const subject = subjectOf(target)
+  const subject = await subjectOf(tx, target)
   await recordEvent(tx, {
     actor,
     action: "publish-site-content",
@@ -1210,7 +1227,7 @@ async function unpublishLocale(
   const changed = await updateLocale(tx, target, locale, revision, { published: false })
   if (!changed) return { status: "stale" }
 
-  const subject = subjectOf(target)
+  const subject = await subjectOf(tx, target)
   await recordEvent(tx, {
     actor,
     action: "unpublish-site-content",
@@ -1261,11 +1278,11 @@ async function deleteItem(tx: Executor, target: ContentTarget, actor: Actor): Pr
         .find((one) => versionNumberIn(one.slug, target.slug) !== null)
     : undefined
 
+  const subject = await subjectOf(tx, target)
   if (target.kind === "document") await tx.delete(document).where(eq(document.id, target.id))
   else await tx.delete(news).where(eq(news.id, target.id))
 
   if (published.length > 0) {
-    const subject = subjectOf(target)
     await recordEvent(tx, {
       actor,
       action: "unpublish-site-content",

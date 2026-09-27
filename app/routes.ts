@@ -70,6 +70,7 @@ function pages(scope: string) {
 const management = [
   layout("routes/admin-layout.tsx", { id: "admin-layout" }, [
     route("admin", "routes/admin.tsx", { id: "admin" }),
+    route("admin/invite/:token", "routes/admin-invite.tsx", { id: "admin-invite" }),
     route(
       "admin/experiment-fields",
       "routes/admin-experiment-fields.tsx",

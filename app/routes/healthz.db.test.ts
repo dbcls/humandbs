@@ -75,6 +75,21 @@ describe("the healthz loader", () => {
     expect(report.checks.find((check) => check.name === "storage")?.ok).toBe(false)
   })
 
+  it("tells which commit is being served, and null where the image was given none", async () => {
+    vi.stubEnv("HUMANDBS_VERSION", "2a6a2b76")
+    try {
+      expect(await loader().then((response) => response.json())).toMatchObject({ version: "2a6a2b76" })
+    } finally {
+      vi.unstubAllEnvs()
+    }
+    vi.stubEnv("HUMANDBS_VERSION", "")
+    try {
+      expect(await loader().then((response) => response.json())).toMatchObject({ version: null })
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it("responds with 200 when both the database and the store respond", async () => {
     const response = await loader()
 

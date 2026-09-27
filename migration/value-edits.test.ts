@@ -102,4 +102,53 @@ describe("assertValueEditsApplied", () => {
       assertValueEditsApplied(edits, new Set(edits))
     }).not.toThrow()
   })
+
+  describe("drop-numbers", () => {
+    const number = (ja: string | null, value: number) => ({ label: ja === null ? null : { ja, en: ja }, value, unit: "SNVs", inputValue: value, inputUnit: "SNVs", high: null, inputHigh: null, note: null })
+    const counted = (...numbers: ReturnType<typeof number>[]) => ({
+      datasetId: "d-1",
+      experiments: [{ id: "experiment-1", values: [{ keyId: "key-variants", value: { kind: "number" as const, values: { state: "value" as const, value: numbers } } }] }],
+    })
+    const keys = (code: string) => (code === "variants" ? "key-variants" : undefined)
+    const labelsOf = (content: ReturnType<typeof counted>) => {
+      const value = content.experiments[0]?.values[0]?.value
+      return value === undefined ? undefined : value.values.value.map((one) => one.label?.ja ?? null)
+    }
+
+    it("takes out the numbers under the labels named and keeps the rest in their order", () => {
+      const edit: ValueEdit = { op: "drop-numbers", hum: "hum0014", key: "variants", labels: ["男性X染色体(喫煙本数)", "女性X染色体(喫煙本数)"] }
+      const applied = new Set<ValueEdit>()
+      const out = editValues(counted(number("常染色体", 1), number("男性X染色体(喫煙本数)", 2), number(null, 3), number("女性X染色体(喫煙本数)", 4)), "hum0014", [edit], keys, applied)
+
+      expect(labelsOf(out)).toEqual(["常染色体", null])
+      expect(applied.has(edit)).toBe(true)
+    })
+
+    it("does not land where one of the labels is not there", () => {
+      const edit: ValueEdit = { op: "drop-numbers", hum: "hum0014", key: "variants", labels: ["男性X染色体(喫煙本数)", "Y染色体"] }
+      const applied = new Set<ValueEdit>()
+      const content = counted(number("常染色体", 1), number("男性X染色体(喫煙本数)", 2))
+
+      expect(editValues(content, "hum0014", [edit], keys, applied)).toBe(content)
+      expect(applied.size).toBe(0)
+      expect(() => {
+        assertValueEditsApplied([edit], applied)
+      }).toThrow("男性X染色体(喫煙本数), Y染色体")
+    })
+
+    it("takes the key out where no number is left", () => {
+      const edit: ValueEdit = { op: "drop-numbers", hum: "hum0014", key: "variants", labels: ["常染色体"] }
+      const out = editValues(counted(number("常染色体", 1)), "hum0014", [edit], keys, new Set())
+
+      expect(out.experiments[0]?.values).toEqual([])
+    })
+
+    it("lands only on the dataset named", () => {
+      const edit: ValueEdit = { op: "drop-numbers", hum: "hum0014", dataset: "hum0014.v14.asi.v1", key: "variants", labels: ["常染色体"] }
+      const content = counted(number("常染色体", 1))
+
+      expect(editValues(content, "hum0014", [edit], keys, new Set(), new Set(["hum0014.v14.cpd.v1"]))).toBe(content)
+      expect(labelsOf(editValues(content, "hum0014", [edit], keys, new Set(), new Set(["hum0014.v14.asi.v1"])))).toBeUndefined()
+    })
+  })
 })

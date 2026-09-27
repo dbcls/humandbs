@@ -134,7 +134,8 @@ describe("縦の間隔", () => {
    * 来るのはアップロード欄そのもの — アップロード欄には自前の余白があるので、32px を空けると
    * 字から字までは 48px になる。**アラートの画面も節を持たない**
    * (`routes/admin-alert.tsx`)。h1 の下に来るのは 1 件目のアラートで、
-   * それが開くのは名前ではなく自分の状態のチップ。
+   * それが開くのは名前ではなく自分の状態のチップ。**トップは絞り込む一覧を持つが `block`**
+   * (`routes/admin.tsx`)。操作の記録の一覧は節の 1 つで、h1 の下に来るのは作業の節の名前である。
    *
    * **編集画面の上部の欄は `Card` ではなく自前の要素** (`components/draft-tools.tsx` の
    * `DraftHead`) で、この規則の外にある — sticky で留まるとツールバー 1 行にまとまる欄で、行の
@@ -148,7 +149,10 @@ describe("縦の間隔", () => {
     for (const file of await managementFiles()) {
       const text = await readFile(path.join(ROOT, file), "utf8")
       const sectionless = file.endsWith("admin-alert.tsx")
-      const wanted = /<RefinableList\b/.test(text) || sectionless || text.includes("= useArticlePanes(")
+      // The front page's log is a list inside a section of its own, under the
+      // sections of work: what comes under its h1 is a section's name.
+      const listInSection = file.endsWith("routes/admin.tsx")
+      const wanted = (/<RefinableList\b/.test(text) && !listInSection) || sectionless || text.includes("= useArticlePanes(")
         ? "normal"
         : "block"
       for (const found of text.matchAll(/<Card\b[^>]*>\s*<Stack gap="(\w+)"/g)) {

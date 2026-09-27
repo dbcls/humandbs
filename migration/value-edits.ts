@@ -15,7 +15,12 @@
  * - `set` writes the value anew from markdown; an empty one takes the language
  *   away, and a value neither language holds anything of is taken out;
  * - `add` gives a key a value from markdown in each experiment where another
- *   key holds a given text, read before any edit of the experiment is made.
+ *   key holds a given text, read before any edit of the experiment is made;
+ * - `drop-numbers` takes out of a number key the numbers whose Japanese label is
+ *   one of those named, and lands only where it finds every one of them — a
+ *   block several datasets share lists each one's numbers under a label naming
+ *   it (`男性X染色体(喫煙本数)`), and the cell is divided here, after the block,
+ *   because rewriting it before would leave the datasets no longer sharing it.
  *
  * An edit that names a `dataset`, by an ID the dataset is known by (the one v1
  * gave it, `hum0014.v8.58qt.v1`), lands on that dataset only: a block pinned to
@@ -35,6 +40,7 @@ type Lang = "ja" | "en"
 export type ValueEdit
   = | { op: "set", hum: string, dataset?: string, key: string, lang: Lang, was: string, markdown: string }
     | { op: "add", hum: string, dataset?: string, key: string, lang: Lang, markdown: string, besideKey: string, besideWas: string }
+    | { op: "drop-numbers", hum: string, dataset?: string, key: string, labels: string[] }
 
 interface TextValue {
   kind: "text"
@@ -51,6 +57,21 @@ interface Described {
 }
 
 const isText = (value: { kind: string }): value is TextValue => value.kind === "text"
+
+interface NumbersValue {
+  kind: "number"
+  values: Slot<{ label: { ja: string, en: string } | null }[]>
+}
+
+const isNumbers = (value: { kind: string }): value is NumbersValue => value.kind === "number"
+
+/** The number slot without the numbers the edit names, or null where one of them is not there. */
+function withoutNumbers(value: NumbersValue, labels: readonly string[]): NumbersValue | null {
+  if (value.values.state !== "value") return null
+  const held = value.values.value
+  if (!labels.every((label) => held.some((one) => one.label?.ja === label))) return null
+  return { ...value, values: { state: "value", value: held.filter((one) => one.label === null || !labels.includes(one.label.ja)) } }
+}
 
 /** A language of a text value as its lines, or null where it holds no value. */
 function linesOf(value: TextValue, lang: Lang): string | null {
@@ -89,6 +110,18 @@ export function editValues<T extends Described>(
     const touched = new Set<string>()
     for (const edit of own) {
       const target = keyId(edit.key)
+      if (edit.op === "drop-numbers") {
+        const present = values.find((one) => one.keyId === target)
+        const kept = present !== undefined && isNumbers(present.value) ? withoutNumbers(present.value, edit.labels) : null
+        if (kept === null) continue
+        // A number key holding no number is a key with no slot (`ContentValue`).
+        values = kept.values.state === "value" && kept.values.value.length === 0
+          ? values.filter((one) => one !== present)
+          : values.map((one) => (one === present ? { ...one, value: kept } : one))
+        applied.add(edit)
+        touched.add(target)
+        continue
+      }
       const written: Slot<RichText> = { state: "value", value: richTextFromMarkdown(edit.markdown) }
       if (edit.op === "set") {
         if (heldBefore(edit.key, edit.lang) !== edit.was) continue
@@ -117,6 +150,6 @@ export function editValues<T extends Described>(
 export function assertValueEditsApplied(edits: readonly ValueEdit[], applied: ReadonlySet<ValueEdit>): void {
   const unlanded = edits.filter((edit) => !applied.has(edit))
   if (unlanded.length > 0) {
-    throw new Error(`value edits that found nothing:\n${unlanded.map((edit) => `${edit.hum} ${edit.key} ${edit.lang} ${edit.op === "set" ? edit.was : edit.besideWas}`).join("\n")}`)
+    throw new Error(`value edits that found nothing:\n${unlanded.map((edit) => `${edit.hum} ${edit.key} ${edit.op === "drop-numbers" ? edit.labels.join(", ") : `${edit.lang} ${edit.op === "set" ? edit.was : edit.besideWas}`}`).join("\n")}`)
   }
 }
