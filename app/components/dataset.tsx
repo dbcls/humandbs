@@ -7,8 +7,9 @@ import { filePageOf, fileRowsOf, pageOfFiles } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { datasetFileListPath, ddbjSearchEntryUrl, fileListQuery, href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
-import type { DatasetView } from "~/public/view.server"
+import type { DatasetView, ValueView } from "~/public/view.server"
 
+import { experimentRows, type ExperimentChip } from "./experiment-chips"
 import { Downloads, UrlListLink, type PublicFileUrls } from "./files"
 import {
   AccessTypeBadge,
@@ -77,7 +78,8 @@ export function DatasetPage({ view, locale, origin }: {
  * a preview. The access type and the type of data are placed rather than listed
  * — they are what a reader looks for first, and the access type decides whether
  * the data can be had at all. Everything an experiment has comes out in
- * catalog order, under catalog labels.
+ * catalog order, under catalog labels, the classifications read out of a
+ * paragraph as chips under it (`experiment-chips.ts`).
  *
  * The two keys placed here are still anchored under the value slots they come
  * from, so a comment about the access type is a comment about that slot however
@@ -205,11 +207,12 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
                     )}
                   >
                     <Pairs>
-                      {experiment.values.map((value) => (
+                      {experimentRows(experiment.values).map(({ value, chips }) => (
                         <KeyValue
                           key={value.keyId}
                           title={value.label}
-                          at={`experiments.${experiment.id}.values.${value.keyId}`}
+                          at={valueAnchor(experiment.id, value)}
+                          below={chips.length === 0 ? undefined : <Chips experimentId={experiment.id} chips={chips} locale={locale} />}
                         >
                           <Value field={value.field} locale={locale} />
                         </KeyValue>
@@ -221,5 +224,45 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
             )}
       </Section>
     </Stack>
+  )
+}
+
+function valueAnchor(experimentId: string, value: ValueView): string {
+  return `experiments.${experimentId}.values.${value.keyId}`
+}
+
+/**
+ * The classifications under a paragraph, each its name and its value in one
+ * box — the two parts the listing's conditions are drawn in, without the press.
+ * **Each value keeps its own place**, so a preview's comment and a pane's
+ * pointer land on the chip and not on the paragraph above it. The count and
+ * what it counts share a box and keep a place each.
+ */
+function Chips({ experimentId, chips, locale }: { experimentId: string, chips: ExperimentChip[], locale: Locale }) {
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {chips.map(({ value, countedAs }) => (
+        <li key={value.keyId} className="flex items-center gap-1">
+          <div className="flex items-stretch overflow-hidden rounded border border-line-strong bg-white text-ink text-sm">
+            <span className="shrink-0 border-line-strong border-r bg-surface px-2 py-1 text-ink-muted">{value.label}</span>
+            <div className="flex min-w-0 items-baseline gap-1 px-2 py-1">
+              <ValueAtPath at={valueAnchor(experimentId, value)}>
+                <Value field={value.field} locale={locale} />
+              </ValueAtPath>
+              {countedAs !== undefined && " "}
+              {countedAs !== undefined && (
+                <ValueAtPath at={valueAnchor(experimentId, countedAs)}>
+                  (
+                  <Value field={countedAs.field} locale={locale} />
+                  )
+                </ValueAtPath>
+              )}
+            </div>
+          </div>
+          <Annotation at={valueAnchor(experimentId, value)} name={value.label} />
+          {countedAs !== undefined && <Annotation at={valueAnchor(experimentId, countedAs)} name={countedAs.label} />}
+        </li>
+      ))}
+    </ul>
   )
 }

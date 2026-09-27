@@ -163,3 +163,45 @@ describe("a dataset's secondary IDs", () => {
     expect(page([])).not.toContain("Secondary ID")
   })
 })
+
+describe("an experiment's values", () => {
+  const plain = (text: string) => ({ state: "plain" as const, text, untranslated: false })
+  const value = (code: string, label: string, text: string) => ({ keyId: `k-${code}`, code, label, field: plain(text) })
+
+  function drawn(values: ReturnType<typeof value>[]): string {
+    const withExperiment: DatasetView = { ...view(0), experiments: [{ id: "e1", label: plain("SNP array"), values }] }
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => <DatasetBody view={withExperiment} locale="ja" researchHref="/research/hum0001" />,
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={["/dataset/NHA000001"]} />)
+  }
+
+  /** The names drawn as a row's label, in order. */
+  const rowNames = (html: string) => [...html.matchAll(/<dt[^>]*>([^<]*)/g)].map((match) => match[1])
+  /** Each chip's words, name first. */
+  const chips = (html: string) => [...html.matchAll(/<li[^>]*>(.*?)<\/li>/g)].map((match) => (match[1] ?? "").replace(/<\/span>/g, " ").replace(/<[^>]+>/g, ""))
+
+  it("draws the classifications under the paragraph they were read from, and the disease as a row", () => {
+    const html = drawn([
+      value("materials-and-participants", "材料と対象者", "特発性過眠症：96症例"),
+      value("disease", "疾患", "特発性過眠症 (G471)"),
+      value("health-status", "健康状態", "罹患"),
+      value("subject-count", "対象者数", "96"),
+      value("subject-count-type", "対象者数の数え方", "人数"),
+      value("sample-description", "試料説明", "末梢血から抽出したDNA"),
+      value("tissue", "組織", "末梢血"),
+      value("platform", "プラットフォーム", "Affymetrix Genome-Wide Human SNP Array 6.0"),
+    ])
+
+    expect(rowNames(html).slice(-4)).toEqual(["材料と対象者", "疾患", "試料説明", "プラットフォーム"])
+    expect(chips(html)).toEqual(["健康状態 罹患", "対象者数 96 (人数)", "組織 末梢血"])
+  })
+
+  it("draws a classification as a row where the paragraph is not there", () => {
+    const html = drawn([value("health-status", "健康状態", "罹患"), value("tissue", "組織", "末梢血")])
+
+    expect(rowNames(html).slice(-2)).toEqual(["健康状態", "組織"])
+    expect(chips(html)).toEqual([])
+  })
+})

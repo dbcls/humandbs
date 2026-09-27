@@ -120,7 +120,7 @@ import {
   type KeyFix,
   type PlannedKey,
 } from "./catalog-plan"
-import { loadCms, type CmsDump } from "./cms"
+import { buildDocuments, loadCms, type CmsDump } from "./cms"
 import { planCopy, planDraftFiles, type Census } from "./copy"
 import { fileLabelRows, type FileLabelEntry } from "./file-labels"
 import { alongsideDrafts, selectDrafts, withdrawnDrafts, type AlongsideDraft, type SelectedDraft, type WithdrawnData } from "./drafts"
@@ -852,15 +852,19 @@ async function load() {
   })
   assertExperimentEditsApplied(experimentEdits, experimentsEdited)
 
-  const aliases: RecoverContext = { articleAliases: articleAliases() }
+  const cms = siteContent()
+  const served = buildDocuments(cms.documents)
+  const aliases: RecoverContext = {
+    articleAliases: articleAliases(),
+    sitePages: new Set([...served.documents.map((doc) => doc.slug), ...served.series.map((one) => one.slug)]),
+  }
   const prose = recovery(
     aliases,
-    researchPages([{ site: "prod", articles: articles.prod }, { site: "staging", articles: articles.staging }], aliases),
+    researchPages([{ site: "prod", articles: articles.prod }, { site: "staging", articles: articles.staging }], { ...aliases, keepUnresolved: true }),
     lineDictionary([...articles.prod, ...articles.staging].map((article) => article.introtext)),
     new Set(typeOfDataFixes.map((fix) => fix.typeOfData)),
   )
   const listing = listingProviders((readJson("listing-providers.json") as ListingProviders))
-  const cms = siteContent()
   const moved = relinks()
   const followed = new Set<string>()
   const vocabulary = readVocabularyPlan(join(INPUT, "hand", "vocabulary"))

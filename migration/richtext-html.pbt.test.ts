@@ -1,7 +1,9 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { recoverRichText } from "./richtext-html"
+import type { Element } from "hast"
+
+import { parseFragment, recoverRichText, richTextFromCell } from "./richtext-html"
 import { richTextFromMarkdown } from "./richtext"
 
 /**
@@ -46,6 +48,52 @@ describe("recoverRichText", () => {
       const text = flattenedText(lines)
       const result = recoverRichText({ text, rawHtml: toRawHtml(lines), lang })
       expect(result.value.length).toBeGreaterThanOrEqual(richTextFromMarkdown(text).length)
+    }))
+  })
+})
+
+/** A part of a cell's line: words, or a link whose destination v2 may not have. */
+interface Part { words: string, link: "none" | "article" | "anchor" | "external" }
+
+const partArb: fc.Arbitrary<Part> = fc.record({
+  words: fc.constantFrom("こちら", "The way to Process", "JGAS000504", "形質数：220", "apple"),
+  link: fc.constantFrom<Part["link"]>("none", "article", "anchor", "external"),
+})
+const cellLinesArb = fc.array(fc.array(partArb, { minLength: 1, maxLength: 4 }), { minLength: 1, maxLength: 3 })
+/** Where v1's text pointed the words of a link: nowhere, v2's page, the old portal's page, or another site. */
+const v1AddressArb = fc.constantFrom(null, "/processed-data-wgs", "/en/processed-data-wgs", "/hum0197-v3-220", "https://ddbj.nig.ac.jp/")
+
+function cellHtml(lines: Part[][]): string {
+  const href = { article: "index.php?option=com_content&amp;id=2278", anchor: "#JGAS000504", external: "https://example.org/" }
+  return lines.map((parts) => `<p>${parts.map((part, at) =>
+    `${at > 0 ? " " : ""}${part.link === "none" ? part.words : `<a href="${href[part.link]}">${part.words}</a>`}`).join("")}</p>`).join("")
+}
+
+function v1Text(lines: Part[][], addresses: (string | null)[]): string {
+  let next = 0
+  return lines.map((parts) => parts.map((part) => {
+    const address = addresses[next++ % addresses.length] ?? null
+    return part.link === "none" || address === null ? part.words : `[${part.words}](${address})`
+  }).join(" ")).join("\n")
+}
+
+describe("a link of the page that names no v2 destination", () => {
+  it("keeps the cell's words as they are, whatever address v1's text gave them", () => {
+    fc.assert(fc.property(cellLinesArb, fc.array(v1AddressArb, { minLength: 1, maxLength: 6 }), fc.constantFrom<"ja" | "en">("ja", "en"), (lines, addresses, lang) => {
+      const cell = parseFragment(`<div>${cellHtml(lines)}</div>`).children[0] as Element
+      const result = recoverRichText({ text: v1Text(lines, addresses), rawHtml: null, lang }, { pageCell: () => cell, sitePages: new Set(["processed-data-wgs"]) })
+
+      expect(plain(result.value)).toBe(plain(richTextFromCell(cell).value))
+    }))
+  })
+
+  it("links only to an address the page resolved or one v2 has that v1's text gave", () => {
+    fc.assert(fc.property(cellLinesArb, fc.array(v1AddressArb, { minLength: 1, maxLength: 6 }), (lines, addresses) => {
+      const cell = parseFragment(`<div>${cellHtml(lines)}</div>`).children[0] as Element
+      const result = recoverRichText({ text: v1Text(lines, addresses), rawHtml: null, lang: "ja" }, { pageCell: () => cell, sitePages: new Set(["processed-data-wgs"]) })
+      const hrefs = result.value.flatMap((line) => line.flatMap((span) => span.href === undefined ? [] : [span.href]))
+
+      expect(hrefs.every((href) => ["https://example.org/", "/processed-data-wgs", "/en/processed-data-wgs", "https://ddbj.nig.ac.jp/"].includes(href))).toBe(true)
     }))
   })
 })

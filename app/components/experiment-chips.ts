@@ -1,0 +1,64 @@
+import type { ValueView } from "~/public/view.server"
+
+/**
+ * The keys an experiment's page draws as chips, under the key whose paragraph
+ * they were read out of.
+ *
+ * **Only short classifications already written in the paragraph.** Typing a
+ * value for the listing's filters wrote the same fact twice,
+ * "末梢血から抽出したDNA" and "末梢血", and two rows of it read as two facts.
+ * Under the paragraph, with its name, a chip reads as a word about it.
+ *
+ * **A key with what is not written in the paragraph, or running long, stays a
+ * row**: a disease with its ICD-10 codes, a cell line's own name, what was
+ * measured and on what, and the numbers with their labels. Those are what a
+ * reader comes looking for.
+ */
+export const CHIPS_UNDER: ReadonlyMap<string, readonly string[]> = new Map([
+  ["materials-and-participants", ["health-status", "subject-count", "subject-count-type", "cohort", "population", "sex", "age-group"]],
+  ["sample-description", ["tissue", "is-tumor"]],
+])
+
+/** The count, and the key saying what it counts, which is drawn after it in one chip (`96 (人数)`). */
+const COUNT = "subject-count"
+const COUNTED_AS = "subject-count-type"
+
+export interface ExperimentChip {
+  value: ValueView
+  /** What the count counts, drawn after it. */
+  countedAs?: ValueView
+}
+
+export interface ExperimentRow {
+  value: ValueView
+  /** The classifications drawn under this row's paragraph. */
+  chips: ExperimentChip[]
+}
+
+const underOf = new Map([...CHIPS_UNDER].flatMap(([under, codes]) => codes.map((code) => [code, under] as const)))
+
+/**
+ * An experiment's values as its page draws them, in the order they come: a row
+ * each, with the classifications gathered under their paragraph. **A
+ * classification whose paragraph is not there stays a row**, as every value
+ * was before — a chip is a word about a paragraph, and with none it would be a
+ * word about nothing.
+ */
+export function experimentRows(values: readonly ValueView[]): ExperimentRow[] {
+  const present = new Set(values.map((one) => one.code))
+  const byCode = new Map(values.map((one) => [one.code, one]))
+  const chipped = (one: ValueView) => {
+    const under = underOf.get(one.code)
+    return under !== undefined && present.has(under)
+  }
+  const chipsUnder = (code: string): ExperimentChip[] => values
+    .filter((one) => underOf.get(one.code) === code)
+    .flatMap((one): ExperimentChip[] => {
+      if (one.code === COUNTED_AS && present.has(COUNT)) return []
+      const countedAs = one.code === COUNT ? byCode.get(COUNTED_AS) : undefined
+      return [countedAs === undefined ? { value: one } : { value: one, countedAs }]
+    })
+  return values
+    .filter((one) => !chipped(one))
+    .map((one) => ({ value: one, chips: CHIPS_UNDER.has(one.code) ? chipsUnder(one.code) : [] }))
+}

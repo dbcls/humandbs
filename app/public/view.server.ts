@@ -418,6 +418,8 @@ function valueField(
 
 export interface ValueView {
   keyId: string
+  /** The catalog key's code, which the page reads to decide where to draw the value. */
+  code: string
   label: string
   field: FieldView
 }
@@ -435,13 +437,14 @@ function valueViews(
       if (key === undefined) return []
       return [{
         keyId: value.keyId,
+        code: key.code,
         label: catalogLabel(key, locale),
         field: valueField(value.value, locale, catalog, fallbacks),
         position: key.position,
       }]
     })
     .sort((a, b) => a.position - b.position)
-    .map(({ keyId, label, field }) => ({ keyId, label, field }))
+    .map(({ keyId, code, label, field }) => ({ keyId, code, label, field }))
 }
 
 function valueUnderCode(

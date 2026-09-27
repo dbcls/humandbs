@@ -46,6 +46,12 @@ const KEYS = [
   key("key-b", "key-b", 3),
   key("key-c", "key-c", 4),
   key("key-d", "key-d", 5),
+  key("k-materials", "materials-and-participants", 6),
+  key("k-health", "health-status", 7),
+  key("k-count", "subject-count", 8),
+  key("k-counted-as", "subject-count-type", 9),
+  key("k-sample", "sample-description", 10),
+  key("k-tissue", "tissue", 11),
 ]
 
 const catalog: CatalogView = {
@@ -192,6 +198,32 @@ describe("the anchors a dataset page draws", () => {
     }
     const { recorded, drawn } = datasetAnchors(content)
     expect(drawn).toEqual(recorded)
+  })
+
+  it("are exactly the ones the view recorded where values are drawn as chips under a paragraph", () => {
+    const term = { kind: "vocabulary" as const, termIds: filled(["t-open"]) }
+    const content: DatasetContent = {
+      ...emptyDatasetContent(),
+      values: [
+        { keyId: "k-access", value: term },
+        { keyId: "k-type", value: { kind: "text", text: prose("ゲノム") } },
+      ],
+      experiments: [{
+        id: "e1",
+        label: filled("WGS"),
+        values: [
+          { keyId: "k-materials", value: { kind: "text", text: prose("健常者：2名") } },
+          { keyId: "k-health", value: term },
+          { keyId: "k-count", value: { kind: "number", values: filled([{ value: 2, high: null, unit: null, inputValue: 2, inputHigh: null, inputUnit: null, label: null, note: null }]) } },
+          { keyId: "k-counted-as", value: term },
+          { keyId: "k-sample", value: { kind: "text", text: prose("末梢血") } },
+          { keyId: "k-tissue", value: term },
+        ],
+      }],
+    }
+    const { recorded, drawn } = datasetAnchors(content)
+    expect(drawn).toEqual(recorded)
+    expect(recorded).toContain("experiments.e1.values.k-counted-as")
   })
 
   it("are never anchors the view did not record, whatever the content holds", () => {

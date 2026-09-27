@@ -66,6 +66,20 @@ export interface RecoverContext {
    * (`research-pages.ts`). Looked up where no cell has them, the same way.
    */
   pagePassage?: (plain: string, lang: Lang) => RichText | null
+  /**
+   * The slugs of v2's site content (`processed-data-wgs`). A link of the old
+   * page that names no v2 destination takes the address v1's text gave the
+   * same words when the address is one of these pages or another site's
+   * (`recoverRichText`).
+   */
+  sitePages?: ReadonlySet<string>
+  /**
+   * Builds a link that names no v2 destination as a link to `UNRESOLVED`, for
+   * `recoverRichText` to give it v1's address or take it off, where it would
+   * otherwise be taken off here. Set for the pages `research-pages.ts` cuts
+   * passages from, since a passage is built before the value it is for.
+   */
+  keepUnresolved?: boolean
 }
 
 export type RecoverSource = "rawHtml" | "text" | "split" | "page"
@@ -456,6 +470,35 @@ function collector(): Collector {
   }
 }
 
+/**
+ * The address a link that names no v2 destination is built with under
+ * `keepUnresolved`, followed by the kind of `HrefResolution` it had. No value
+ * leaves `recoverRichText` with it.
+ */
+const UNRESOLVED = "\u0000unresolved:"
+
+/**
+ * The words a link's children add to its line, as `walkNode` adds them, or
+ * null where they break the line (a `<br>`, a block, a line break in the text)
+ * or hold another link.
+ */
+function wordsOnOneLine(node: Element): string | null {
+  let words = ""
+  const add = (child: ElementContent): boolean => {
+    if (child.type === "text") {
+      words += child.value
+      return !child.value.includes("\n")
+    }
+    if (child.type !== "element") return true
+    if (child.tagName === "br" || child.tagName === "a" || BLOCK_TAGS.has(child.tagName)) return false
+    if (child.tagName === "sup") words += normalizeSuperscript(flattenText(child))
+    else if (child.tagName === "sub") words += flattenText(child)
+    else return child.children.every(add)
+    return true
+  }
+  return node.children.every(add) && words !== "" ? words : null
+}
+
 function walkChildren(nodes: Flow[], into: Collector, ctx: RecoverContext): number {
   return nodes.reduce((dropped, child) => dropped + walkNode(child, into, ctx), 0)
 }
@@ -490,6 +533,11 @@ function walkNode(node: Flow, into: Collector, ctx: RecoverContext): number {
     if (resolution.kind === "keep") {
       const label = inlineLabel(node)
       into.link(label || resolution.href, resolution.href)
+      return 0
+    }
+    const words = ctx.keepUnresolved === true ? wordsOnOneLine(node) : null
+    if (words !== null) {
+      into.link(words, `${UNRESOLVED}${resolution.kind}`)
       return 0
     }
     const penalty = resolution.kind === "unresolved" ? 1 : 0
@@ -551,6 +599,89 @@ function linksOfMarkdown(markdown: string): string[] {
   return [...markdown.matchAll(MARKDOWN_LINK)].map((match) => match[2] ?? "")
 }
 
+/** The addresses v1's markdown `text` gave each link's words, in the order they come. */
+function addressesByWords(markdown: string, lang: Lang): Map<string, string[]> {
+  const found = new Map<string, string[]>()
+  for (const [, words = "", href = ""] of markdown.matchAll(MARKDOWN_LINK)) {
+    const key = normalizeForComparison(unescapeMarkdown(words), lang)
+    const address = documentRewrite(unescapeMarkdown(href).trim())
+    const held = found.get(key)
+    if (held === undefined) found.set(key, [address])
+    else held.push(address)
+  }
+  return found
+}
+
+/** Whether an address of v1's text is one of v2's own pages or another site's. */
+function isV2Destination(address: string, ctx: RecoverContext): boolean {
+  if (/^https?:\/\//i.test(address)) {
+    try {
+      return !isOldPortalHost(new URL(address).hostname)
+    } catch {
+      return false
+    }
+  }
+  const slug = /^(?:\/en)?\/([^?#]+)$/.exec(address)?.[1]
+  return slug !== undefined && (ctx.sitePages?.has(slug) ?? false)
+}
+
+/**
+ * A value built from the old page with each link that named no v2
+ * destination given the address v1's text gave the same words, where that
+ * address is one of v2's pages or another site's, and taken off otherwise, its
+ * words kept. The links with the same words are paired in the order they come
+ * where v1's text has as many of them as the value; otherwise a link takes the
+ * address only where v1 gave the words one address.
+ */
+function settled(value: RichText, markdown: string, lang: Lang, ctx: RecoverContext): Built {
+  const addresses = addressesByWords(markdown, lang)
+  const linked = new Map<string, number>()
+  for (const line of value) {
+    for (const span of line) {
+      if (span.href === undefined) continue
+      const key = normalizeForComparison(span.text, lang)
+      linked.set(key, (linked.get(key) ?? 0) + 1)
+    }
+  }
+  const seen = new Map<string, number>()
+  let dropped = 0
+  const lines = value.map((line) => {
+    const out: Span[] = []
+    const push = (span: Span) => {
+      const last = out.at(-1)
+      if (span.href === undefined && last !== undefined && last.href === undefined) out[out.length - 1] = { text: last.text + span.text }
+      else if (span.text !== "") out.push(span)
+    }
+    for (const span of line) {
+      if (span.href === undefined) {
+        push(span)
+        continue
+      }
+      const key = normalizeForComparison(span.text, lang)
+      const at = seen.get(key) ?? 0
+      seen.set(key, at + 1)
+      if (!span.href.startsWith(UNRESOLVED)) {
+        push(span)
+        continue
+      }
+      const held = addresses.get(key) ?? []
+      const address = held.length === linked.get(key) ? held[at] : new Set(held).size === 1 ? held[0] : undefined
+      const words = span.text.trim()
+      if (address !== undefined && words !== "" && isV2Destination(address, ctx)) {
+        const start = span.text.indexOf(words)
+        push({ text: span.text.slice(0, start) })
+        push({ text: words, href: address })
+        push({ text: span.text.slice(start + words.length) })
+      } else {
+        if (span.href === `${UNRESOLVED}unresolved`) dropped += 1
+        push({ text: span.text })
+      }
+    }
+    return out
+  })
+  return dropped === 0 ? { value: lines } : { value: lines, note: `dropped ${dropped} link(s) with no resolvable v2 destination` }
+}
+
 /* -------------------------------------------------------------------- */
 /* Entry point                                                           */
 /* -------------------------------------------------------------------- */
@@ -570,9 +701,9 @@ export function recoverRichText(input: RecoverInput, ctx: RecoverContext = {}): 
   const { text, rawHtml, lang } = input
   const targetPlain = plainOfMarkdown(text, lang)
   const cell = targetPlain === "" ? null : ctx.pageCell?.(targetPlain, lang, linksOfMarkdown(text)) ?? null
-  if (cell !== null) return withSource(richTextFromCell(cell, ctx), "page")
+  if (cell !== null) return withSource(settled(richTextFromCell(cell, { ...ctx, keepUnresolved: true }).value, text, lang, ctx), "page")
   const passage = targetPlain === "" ? null : ctx.pagePassage?.(targetPlain, lang) ?? null
-  if (passage !== null) return { value: passage, source: "page" }
+  if (passage !== null) return withSource(settled(passage, text, lang, ctx), "page")
 
   if (rawHtml === null || rawHtml.trim() === "") {
     return { value: richTextFromMarkdown(text), source: "text" }

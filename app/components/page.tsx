@@ -616,12 +616,18 @@ export function Fact({ name, children }: { name: ReactNode, children: ReactNode 
  * column cannot keep across a column break, so a split pair is laid out as
  * plain blocks, with the gap the stack would have given it.
  */
-export function KeyValue({ title, at, split = false, children }: {
+export function KeyValue({ title, at, split = false, below, children }: {
   title: string
   /** The anchor of the value below, when the page has one for it. */
   at?: string
   /** Let the value continue into the next column (`Pairs`). */
   split?: boolean
+  /**
+   * What is drawn under the value as part of the same pair, outside the value's
+   * own place — the classifications read out of a paragraph, each with a place
+   * of its own.
+   */
+  below?: ReactNode
   children: ReactNode
 }) {
   const label = (
@@ -631,11 +637,13 @@ export function KeyValue({ title, at, split = false, children }: {
     </dt>
   )
   const value = <dd>{at === undefined ? children : <ValueAtPath at={at}>{children}</ValueAtPath>}</dd>
+  const under = below === undefined ? null : <dd>{below}</dd>
   if (split) {
     return (
       <div className="py-2">
         {label}
         {value}
+        {under}
       </div>
     )
   }
@@ -644,6 +652,7 @@ export function KeyValue({ title, at, split = false, children }: {
       <Stack gap="tight">
         {label}
         {value}
+        {under}
       </Stack>
     </div>
   )

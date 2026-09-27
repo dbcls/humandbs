@@ -470,6 +470,104 @@ describe("recoverRichText", () => {
       expect(asked).toEqual([])
     })
   })
+
+  describe("a link of the page that names no v2 destination", () => {
+    const article = (id: number, words: string) =>
+      `<a href="index.php?option=com_content&amp;view=article&amp;id=${id}&amp;Itemid=2287&amp;lang=ja">${words}</a>`
+    const fromCell = (html: string, sitePages: readonly string[] = []): RecoverContext => ({
+      pageCell: () => cellOf(html),
+      sitePages: new Set(sitePages),
+    })
+
+    it("takes the address v1's text gave the same words, where that is one of v2's pages", () => {
+      const result = recoverRichText(
+        { text: "加工方法は[こちら](/processed-data-wgs)", rawHtml: null, lang: "ja" },
+        fromCell(`加工方法は${article(2278, "こちら")}`, ["processed-data-wgs"]),
+      )
+
+      expect(result).toEqual({ value: [[{ text: "加工方法は" }, { text: "こちら", href: "/processed-data-wgs" }]], source: "page" })
+    })
+
+    it("takes the English page v1's text named", () => {
+      const result = recoverRichText(
+        { text: "[The way to Process](/en/processed-data-imputation)", rawHtml: null, lang: "en" },
+        fromCell(article(2280, "The way to Process"), ["processed-data-imputation"]),
+      )
+
+      expect(result.value).toEqual([[{ text: "The way to Process", href: "/en/processed-data-imputation" }]])
+    })
+
+    it("takes another site's address v1's text gave the words of a link to a place on the same page", () => {
+      const result = recoverRichText(
+        { text: "リードカウントについては[JGAS000504](https://ddbj.nig.ac.jp/resource/jga-study/JGAS000504)を参照のこと", rawHtml: null, lang: "ja" },
+        fromCell("リードカウントについては<a href=\"#JGAS000504\">JGAS000504</a>を参照のこと"),
+      )
+
+      expect(result).toEqual({
+        value: [[
+          { text: "リードカウントについては" },
+          { text: "JGAS000504", href: "https://ddbj.nig.ac.jp/resource/jga-study/JGAS000504" },
+          { text: "を参照のこと" },
+        ]],
+        source: "page",
+      })
+    })
+
+    it("keeps only the words where v1's address is the old portal's page and not one of v2's", () => {
+      const result = recoverRichText(
+        { text: "[形質数：220](/hum0197-v3-220)", rawHtml: null, lang: "ja" },
+        fromCell(article(1994, "形質数：220"), ["processed-data-wgs"]),
+      )
+
+      expect(result.value).toEqual([[{ text: "形質数：220" }]])
+      expect(result.note).toContain("dropped 1 link")
+    })
+
+    it("keeps only the words where v1's text has no link with them, noting the Joomla link and not the anchor", () => {
+      const joomla = recoverRichText(
+        { text: "加工方法はこちら", rawHtml: null, lang: "ja" },
+        fromCell(`加工方法は${article(2278, "こちら")}`, ["processed-data-wgs"]),
+      )
+      const anchor = recoverRichText({ text: "JGAS000114", rawHtml: null, lang: "ja" }, fromCell("<a href=\"#JGAS000114\">JGAS000114</a>"))
+
+      expect(joomla.value).toEqual([[{ text: "加工方法はこちら" }]])
+      expect(joomla.note).toContain("dropped 1 link")
+      expect(anchor).toEqual({ value: [[{ text: "JGAS000114" }]], source: "page" })
+    })
+
+    it("pairs the links with the same words in the order they come", () => {
+      const result = recoverRichText(
+        { text: "WGS: [こちら](/processed-data-wgs)\nImputation: [こちら](/processed-data-imputation)", rawHtml: null, lang: "ja" },
+        fromCell(`<p>WGS: ${article(2278, "こちら")}</p><p>Imputation: ${article(2280, "こちら")}</p>`, ["processed-data-wgs", "processed-data-imputation"]),
+      )
+
+      expect(result.value).toEqual([
+        [{ text: "WGS: " }, { text: "こちら", href: "/processed-data-wgs" }],
+        [{ text: "Imputation: " }, { text: "こちら", href: "/processed-data-imputation" }],
+      ])
+    })
+
+    it("gives a passage of the page the address v1's text gave the same words", () => {
+      const page = richTextFromCell(cellOf(`<p>JGAD000235を${article(2277, "特定の解析パイプライン")}により加工</p>`), { keepUnresolved: true }).value
+      const result = recoverRichText(
+        { text: "JGAD000235を[特定の解析パイプライン](/whole-genome-sequencing)により加工", rawHtml: null, lang: "ja" },
+        { pagePassage: () => page, sitePages: new Set(["whole-genome-sequencing"]) },
+      )
+
+      expect(result).toEqual({
+        value: [[{ text: "JGAD000235を" }, { text: "特定の解析パイプライン", href: "/whole-genome-sequencing" }, { text: "により加工" }]],
+        source: "page",
+      })
+    })
+
+    it("gives a passage of the page only the words where v1's text has no link with them", () => {
+      const page = richTextFromCell(cellOf(`<p>JGAD000235を${article(2277, "特定の解析パイプライン")}により加工</p>`), { keepUnresolved: true }).value
+      const result = recoverRichText({ text: "JGAD000235を特定の解析パイプラインにより加工", rawHtml: null, lang: "ja" }, { pagePassage: () => page })
+
+      expect(result.value).toEqual([[{ text: "JGAD000235を特定の解析パイプラインにより加工" }]])
+      expect(result.note).toContain("dropped 1 link")
+    })
+  })
 })
 
 describe("richTextFromCell", () => {
