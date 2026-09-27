@@ -183,6 +183,15 @@ case "${1:-}" in
     # and the store every time.
     # shellcheck disable=SC2086 # a list of service names
     run podman-compose build --build-arg "HUMANDBS_VERSION=$tag" $images
+    # podman-compose 1.0.6 ends with 0 when a build fails, and the images left
+    # are the last ones that did build. The application's image carries the
+    # tag it was built for, and every other image that can fail with it is
+    # built from the same stages, so an application image with another tag is
+    # a build that did not happen.
+    if [ -z "$dry_run" ]; then
+      built=$(podman image inspect "${project}_app:latest" --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^HUMANDBS_VERSION=//p')
+      [ "$built" = "$tag" ] || die "the build of $tag failed (the application image is still ${built:-untagged}); see the build output above"
+    fi
     for image in $images; do
       run podman tag "${project}_${image}:latest" "${project}_${image}:${tag}"
     done

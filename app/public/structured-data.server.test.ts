@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { datasetSeo, researchSeo, seoMeta } from "./structured-data.server"
+import { seoMeta } from "./seo"
+import { datasetSeo, researchSeo } from "./structured-data.server"
 import type { DatasetView, FieldView, ResearchView } from "./view.server"
 
 const ORIGIN = "https://humandbs.example.org"

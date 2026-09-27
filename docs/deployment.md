@@ -30,6 +30,7 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 - `depends_on` は起動の順番にしか適用されないので、`migrate` は `up` の前に手で実行する。
 - healthcheck は `CMD-SHELL` で書く。`CMD` の配列は引用符を正しく扱わない。
 - あとの file で上書きする volume は、元の file で `{}` と書く。
+- `build` は失敗しても終了コード 0 で終わる。`scripts/deploy.sh` は、build した app の image の `HUMANDBS_VERSION` が今回の tag でなければ止まる。止まらないと、前の image に新しい tag を付けて入れ替えてしまうためである。
 
 ## .env
 

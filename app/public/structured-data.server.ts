@@ -8,22 +8,13 @@
  * empty string, since a crawler reads an empty value as the value.
  */
 
-import type { MetaDescriptor } from "react-router"
-
 import { formatSize } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
 import { datasetFileListPath, datasetPath, filePath, href, researchPath } from "./urls"
+import type { PageSeo } from "./seo"
 import { fieldText, type DatasetView, type FieldView, type ResearchView } from "./view.server"
-
-export interface PageSeo {
-  /** The page's own address, in its language. */
-  url: string
-  /** A sentence or two, for a search result and a link preview. */
-  description: string
-  jsonLd: Record<string, unknown>
-}
 
 /** A search result shows about this much, and a preview less. */
 const DESCRIPTION_LENGTH = 200
@@ -166,19 +157,4 @@ export function datasetSeo(view: DatasetView, input: { origin: string, locale: L
       "includedInDataCatalog": catalog(origin, locale),
     },
   }
-}
-
-/** The page's title, description, preview and JSON-LD, as a route's `meta` returns them. */
-export function seoMeta(seo: PageSeo, title: string, locale: Locale): MetaDescriptor[] {
-  return [
-    { title },
-    { name: "description", content: seo.description },
-    { property: "og:type", content: "website" },
-    { property: "og:site_name", content: messagesFor(locale).siteName },
-    { property: "og:title", content: title },
-    { property: "og:description", content: seo.description },
-    { property: "og:url", content: seo.url },
-    { property: "og:locale", content: locale === "ja" ? "ja_JP" : "en_US" },
-    { "script:ld+json": seo.jsonLd },
-  ]
 }
