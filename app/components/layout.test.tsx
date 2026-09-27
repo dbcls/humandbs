@@ -100,6 +100,22 @@ describe("サイトのヘッダ", () => {
     expect(marked(header("en", "/en/faq"))).toEqual(["/en/faq", "/en/faq"])
   })
 
+  it("カートの右に API の丸があり、言語の無い /api/docs をページの読み込みで開く", () => {
+    for (const html of [header("ja", "/faq"), header("en", "/en/faq")]) {
+      expect(html).toMatch(/aria-label="(カート|Cart)[^"]*"[\s\S]*<a href="\/api\/docs"[^>]*>(?:(?!<\/a>)[\s\S])*>API<\/span><\/a>/)
+    }
+    // A client-side link would ask the route for data; the page is a document.
+    const anchor = /<a[^>]*href="\/api\/docs"[^>]*>/.exec(header("ja", "/faq"))?.[0]
+    expect(anchor).toBeDefined()
+    expect(anchor).not.toContain("data-discover")
+    expect(header("ja", "/faq")).toContain("aria-label=\"公開 API\"")
+    expect(header("en", "/en/faq")).toContain("aria-label=\"Public API\"")
+  })
+
+  it("管理画面には API の丸を表示しない", () => {
+    expect(header("ja", "/admin", null, true)).not.toContain("/api/docs")
+  })
+
   it("フッタのサイトマップは現在地を表示しない", () => {
     expect(marked(render(<SiteFooter locale="ja" />, "/guidelines"))).toEqual([])
   })

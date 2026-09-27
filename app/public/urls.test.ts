@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
+import { DOCS_PATH } from "~/api/endpoints"
+
 import {
+  apiDocsPath,
   applicationUrl,
   askedPath,
   datasetPath,
@@ -119,6 +122,10 @@ describe("page paths", () => {
   it("escapes a dataset label so a slash in one cannot open another path", () => {
     expect(datasetPath("JGAD000009")).toBe("/dataset/JGAD000009")
     expect(datasetPath("a/b")).toBe("/dataset/a%2Fb")
+  })
+
+  it("points the header's API link at the address the API's own page is routed at", () => {
+    expect(apiDocsPath()).toBe(`/${DOCS_PATH}`)
   })
 })
 

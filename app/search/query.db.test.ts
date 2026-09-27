@@ -81,7 +81,7 @@ beforeAll(async () => {
         title: row.title,
         datePublished: row.datePublished,
         dateModified: row.dateModified,
-        textJa: `${row.humLabel} ${row.title} ${row.text}`,
+        textJa: `${row.humLabel} ${row.datasetLabel} ${row.title} ${row.text}`,
         textEn: "",
       })
     }
@@ -125,6 +125,16 @@ describe("running a query against the published set", () => {
 
   it("reads a label without minding its case, since a citation may not", async () => {
     expect(await labels("id:HUM0001")).toEqual(["hum0001"])
+  })
+
+  it("finds a JGA accession by the eleven-digit spelling JGA and DDBJ Search also use", async () => {
+    expect(await labels("JGAD00000000001")).toEqual(["hum0001"])
+    expect(await labels("jgad00000000002", "dataset")).toEqual(["JGAD000002"])
+    expect(await labels("id:JGAD00000000003", "dataset")).toEqual(["JGAD000003"])
+  })
+
+  it("keeps a JGA accession typed part of the way as a word to match inside", async () => {
+    expect(await labels("JGAD00000")).toEqual(["hum0001", "hum0002", "hum0003"])
   })
 
   it("takes a wildcard as a prefix and nothing more", async () => {

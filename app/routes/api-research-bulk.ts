@@ -1,5 +1,7 @@
 import { apiBulk } from "~/api/pages.server"
 
-export function loader() {
-  return apiBulk("research")
+import type { Route } from "./+types/api-research-bulk"
+
+export function loader({ request }: Route.LoaderArgs) {
+  return apiBulk(request, "research")
 }

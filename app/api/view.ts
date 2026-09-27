@@ -278,7 +278,8 @@ export interface ResearchInput {
   /** Only published datasets are in here, which is what makes a listing honest. */
   datasetLabelById: ReadonlyMap<string, string>
   cau: readonly CauUsage[]
-  files: readonly StoredFile[]
+  /** Null when the caller did not ask for the files, which leaves the key out. */
+  files: readonly StoredFile[] | null
   /** The labels of the prefix's files, by name. */
   fileLabels: ReadonlyMap<string, FileLabel>
 }
@@ -343,7 +344,9 @@ export function apiResearch(input: ResearchInput, context: ApiContext): ApiResea
       periodEnd: usage.periodEnd,
       datasets: [...usage.datasetAccessions],
     })),
-    files: input.files.map((file) => fileOf(input.humLabel, file, input.fileLabels, context)),
+    ...input.files === null
+      ? {}
+      : { files: input.files.map((file) => fileOf(input.humLabel, file, input.fileLabels, context)) },
   }
 }
 
@@ -353,13 +356,14 @@ export interface DatasetInput {
   datePublished: string | null
   dateModified: string | null
   content: DatasetContent
-  files: readonly StoredFile[]
+  /** Null when the caller did not ask for the files, which leaves the key out. */
+  files: readonly StoredFile[] | null
   /** The labels of the research's files, by name. */
   fileLabels: ReadonlyMap<string, FileLabel>
 }
 
 export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset {
-  const sizeOf = new Map(input.files.map((file) => [file.name, file.size]))
+  const files = input.files
   return {
     id: input.label,
     research: input.humLabel,
@@ -371,9 +375,14 @@ export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset
       label: held(experiment.label),
       values: valuesOf(experiment.values, context.catalog),
     })),
-    files: inListingOrder(input.content.fileSelection).flatMap((name) => {
-      const size = sizeOf.get(name)
-      return size === undefined ? [] : [fileOf(input.humLabel, { name, size }, input.fileLabels, context)]
-    }),
+    ...files === null ? {} : { files: selectedFiles(input, files, context) },
   }
+}
+
+function selectedFiles(input: DatasetInput, files: readonly StoredFile[], context: ApiContext): ApiFile[] {
+  const sizeOf = new Map(files.map((file) => [file.name, file.size]))
+  return inListingOrder(input.content.fileSelection).flatMap((name) => {
+    const size = sizeOf.get(name)
+    return size === undefined ? [] : [fileOf(input.humLabel, { name, size }, input.fileLabels, context)]
+  })
 }

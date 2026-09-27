@@ -160,7 +160,11 @@ export const fileSchema = z.object({
 export const researchSchema = z.object({
   id: z.string().meta({ description: "The hum label." }),
   version: z.number().int(),
-  url: z.string(),
+  url: z.string().meta({
+    description:
+      "The public page of this version, which is HTML. This API's own address for it is "
+      + "`/api/research/{id}/v{version}`.",
+  }),
   datePublished: dateString.meta({ description: "When this version was released." }),
   versions: z.array(z.object({
     version: z.number().int(),
@@ -196,7 +200,9 @@ export const researchSchema = z.object({
   })),
   relatedPublications: z.array(z.object({
     title: z.string().nullable().optional(),
-    doi: z.string().nullable().optional(),
+    doi: z.string().nullable().optional().meta({
+      description: "As the research wrote it, which is usually a `https://doi.org/` URL.",
+    }),
     datasets: z.array(z.string()).nullable().optional().meta({
       description: "Dataset ids the publication names: this research's that are published, then any other written by hand — another research's, or an accession the portal does not hold — as written. Null where the research states that the publication names no dataset.",
     }),
@@ -213,8 +219,11 @@ export const researchSchema = z.object({
     periodEnd: dateString.nullable(),
     datasets: z.array(z.string()),
   })),
-  files: z.array(fileSchema).meta({
-    description: "The files under the research's prefix in the public bucket, as the store lists them.",
+  files: z.array(fileSchema).optional().meta({
+    description:
+      "The files under the research's prefix in the public bucket, as the store lists them. "
+      + "Present only when `includeFiles=true` was asked for: a research can hold over ten "
+      + "thousand files. The list is the prefix as it is now, whichever version was asked for.",
   }),
 }).meta({
   id: "Research",
@@ -237,13 +246,17 @@ export const experimentSchema = z.object({
 export const datasetSchema = z.object({
   id: z.string().meta({ description: "The dataset id." }),
   research: z.string().meta({ description: "The hum label of the research it belongs to." }),
-  url: z.string(),
+  url: z.string().meta({
+    description: "The public page of the dataset, which is HTML. This API's own address for it is `/api/dataset/{id}`.",
+  }),
   datePublished: dateString.nullable(),
   dateModified: dateString.nullable(),
   values: z.array(valueSchema),
   experiments: z.array(experimentSchema),
-  files: z.array(fileSchema).meta({
-    description: "The files this dataset selects, limited to those the research's public prefix lists.",
+  files: z.array(fileSchema).optional().meta({
+    description:
+      "The files this dataset selects, limited to those the research's public prefix lists. "
+      + "Present only when `includeFiles=true` was asked for.",
   }),
 }).meta({
   id: "Dataset",
@@ -305,8 +318,9 @@ export const searchFieldSchema = z.object({
   id: "SearchField",
   description:
     "A field a query may name. **`type` is what the query language makes of it**, which decides "
-    + "the forms a value may take: `identifier` and `text` accept a wildcard, `date` and "
-    + "`number` a range, `term` neither — its values are codes out of a closed set.",
+    + "the forms a value may take: `identifier` a prefix pattern, `text` a value contained "
+    + "anywhere, `date` and `number` a range, `term` one of `values` — codes out of a closed "
+    + "set. The `?q=` parameter of the search endpoints says what each means.",
 })
 
 export const searchFieldsSchema = z.object({
@@ -321,13 +335,19 @@ export const searchFieldsSchema = z.object({
 export const accessionTypeSchema = z.enum(["humandbs", "jga-dataset", "jga-study"])
   .meta({
     id: "AccessionType",
-    description: "Which side of the correspondence an identifier is from.",
+    description:
+      "Which side of the correspondence an identifier is from: `humandbs` a hum label, "
+      + "`jga-dataset` a JGAD accession, `jga-study` a JGAS accession.",
   })
 
 export const xrefSchema = z.object({
   identifier: z.string(),
   type: accessionTypeSchema,
-  url: z.string(),
+  url: z.string().meta({
+    description:
+      "Where the entry can be read, as HTML: a research's public page (`/hum0001`, which redirects "
+      + "to its latest version), or a JGA entry's page on DDBJ Search.",
+  }),
 }).meta({
   id: "Xref",
   description: "An entry on the other side of a correspondence, and where it can be read.",
@@ -357,11 +377,28 @@ export const dbLinkTypesSchema = z.object({
 // --- errors ---------------------------------------------------------------
 
 export const problemSchema = z.object({
-  type: z.string(),
+  type: z.string().meta({
+    description:
+      "`https://humandbs.dbcls.jp/problems/` and one of `not-found`, `invalid-query`, "
+      + "`invalid-parameter`, `invalid-sort`, `invalid-order`, `unknown-accession-type`. It names "
+      + "the kind of failure and is not a page to open.",
+  }),
   title: z.string(),
   status: z.number().int(),
   detail: z.string(),
   instance: z.string(),
+  code: z.string().optional().meta({
+    description:
+      "On `invalid-query` only: the rule the query broke — `unexpected-token`, `unknown-field`, "
+      + "`invalid-operator-for-field`, `invalid-date-format`, `invalid-number-format`, "
+      + "`missing-value` or `too-complex`.",
+  }),
+  column: z.number().int().optional().meta({
+    description: "On `invalid-query` only: the 1-based position in `q` the failure is at.",
+  }),
+  token: z.string().optional().meta({
+    description: "On `invalid-query`, where there is one: the part of `q` the failure is about.",
+  }),
 }).meta({
   id: "Problem",
   description:

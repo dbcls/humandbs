@@ -25,10 +25,10 @@ const fieldClause = fc.oneof(
   fc.record({ field: fc.constantFrom("id", "title"), value }).map(({ field, value: v }): QueryNode => ({
     op: "field", field, valueKind: "term", value: v,
   })),
-  fc.record({ field: fc.constantFrom("id", "title"), value: fc.constantFrom("hum0*", "JGAD00?", "ab.c-1*") })
-    .map(({ field, value: v }): QueryNode => ({
-      op: "field", field, valueKind: "wildcard", value: v,
-    })),
+  // Only an identifier takes a pattern; a text field drops the star (`truncatedWord`).
+  fc.constantFrom("hum0*", "JGAD00?", "ab.c-1*").map((v): QueryNode => ({
+    op: "field", field: "id", valueKind: "wildcard", value: v,
+  })),
   fc.record({ field: fc.constantFrom("date_published", "date_modified"), value: date })
     .map(({ field, value: v }): QueryNode => ({ op: "field", field, valueKind: "date", value: v })),
   // Either end of a date range may be open, the same as a number's.

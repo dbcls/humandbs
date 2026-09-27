@@ -26,7 +26,7 @@
  * condition and starting again.
  */
 
-import { group, type QueryNode } from "./dsl"
+import { group, type QueryNode, truncatedWord } from "./dsl"
 
 /** Splits on a separator that is not inside quotes, keeping the quotes. */
 function splitOutsideQuotes(input: string, isSeparator: (char: string) => boolean): string[] {
@@ -55,13 +55,17 @@ function splitOutsideQuotes(input: string, isSeparator: (char: string) => boolea
   return parts
 }
 
-/** A term written in quotes is one value; the quotes are not part of it. */
+/**
+ * A term written in quotes is one value; the quotes are not part of it. A star
+ * after an unquoted term is dropped, the way the query language drops it
+ * (`truncatedWord`), so the box and the address find the same rows.
+ */
 function termValue(term: string): string {
   const first = term[0]
   if (term.length >= 2 && (first === "\"" || first === "'") && term.endsWith(first)) {
     return term.slice(1, -1)
   }
-  return term
+  return truncatedWord(term) ?? term
 }
 
 function termsOf(arm: string): QueryNode[] {

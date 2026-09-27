@@ -227,6 +227,14 @@ export function cartPath(): string {
 }
 
 /**
+ * Where the JSON API is described for a person to read (`api/endpoints.ts`).
+ * It has no language: the page is Swagger UI rather than one of the site's.
+ */
+export function apiDocsPath(): string {
+  return "/api/docs"
+}
+
+/**
  * Where a listing hands over its results as a table.
  *
  * Under the listing rather than beside it, so the two addresses cannot drift

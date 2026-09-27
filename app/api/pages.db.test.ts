@@ -131,7 +131,7 @@ describe("what the JSON API is allowed to respond with", () => {
     }
     expect(search.total).toBe(1)
     expect(search.hits.map((hit) => hit.id)).toEqual(["hum0001"])
-    expect((await lines(await apiBulk("research"))).map((row) => row.id)).toEqual(["hum0001"])
+    expect((await lines(await apiBulk(get("/api/research.jsonl"), "research"))).map((row) => row.id)).toEqual(["hum0001"])
   })
 
   it("does not list a dataset whose research has no published version", async () => {
@@ -142,7 +142,7 @@ describe("what the JSON API is allowed to respond with", () => {
     await rebuildSearchDocs(db)
 
     expect((await datasetEntry(get("/x"), "JGAD000001")).status).toBe(404)
-    expect(await lines(await apiBulk("dataset"))).toEqual([])
+    expect(await lines(await apiBulk(get("/api/dataset.jsonl"), "dataset"))).toEqual([])
   })
 })
 
@@ -157,7 +157,7 @@ describe("the three ways of reaching one object", () => {
     const search = await body(await apiSearch(get("/api/research"), "research")) as {
       hits: unknown[]
     }
-    const [bulk] = await lines(await apiBulk("research"))
+    const [bulk] = await lines(await apiBulk(get("/api/research.jsonl"), "research"))
     expect(search.hits[0]).toEqual(entry)
     expect(bulk).toEqual(entry)
   })
@@ -202,15 +202,53 @@ describe("a file's label", () => {
       { name: "b.zip", size: 1, url: `/files/${HUM}/b.zip` },
     ]
 
-    const research = await body(await researchEntry(get("/x"), HUM, "latest"))
-    const dataset = await body(await datasetEntry(get("/x"), "JGAD000001"))
-    const searched = await body(await apiSearch(get("/api/dataset"), "dataset")) as { hits: unknown[] }
-    const [bulk] = await lines(await apiBulk("research"))
+    const research = await body(await researchEntry(get("/x?includeFiles=true"), HUM, "latest"))
+    const dataset = await body(await datasetEntry(get("/x?includeFiles=true"), "JGAD000001"))
+    const searched = await body(await apiSearch(get("/api/dataset?includeFiles=true"), "dataset")) as { hits: unknown[] }
+    const [bulk] = await lines(await apiBulk(get("/api/research.jsonl?includeFiles=true"), "research"))
 
     expect(files(research)).toEqual(expected)
     expect(files(dataset)).toEqual(expected)
     expect(files(searched.hits[0])).toEqual(expected)
     expect(files(bulk)).toEqual(expected)
+  })
+
+  it("is left out, key and all, unless the files are asked for", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await seedVersion(db, {
+      researchId,
+      number: 1,
+      datasets: [{ datasetId, content: { ...emptyDatasetContent(), fileSelection: ["a.xlsx"] } }],
+    })
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.xlsx`)
+
+    for (const suffix of ["", "?includeFiles=false"]) {
+      const answers = [
+        await body(await researchEntry(get(`/x${suffix}`), HUM, "latest")),
+        await body(await datasetEntry(get(`/x${suffix}`), "JGAD000001")),
+        ...(await body(await apiSearch(get(`/api/research${suffix}`), "research")) as { hits: unknown[] }).hits,
+        ...await lines(await apiBulk(get(`/api/dataset.jsonl${suffix}`), "dataset")),
+      ]
+      expect(answers).toHaveLength(4)
+      for (const answer of answers) expect(answer, suffix).not.toHaveProperty("files")
+    }
+  })
+
+  it("refuses an includeFiles that is neither true nor false, rather than reading it as off", async () => {
+    for (const spelled of ["1", "yes", "TRUE", ""]) {
+      const answers = [
+        await researchEntry(get(`/x?includeFiles=${spelled}`), "hum0001", "latest"),
+        await datasetEntry(get(`/x?includeFiles=${spelled}`), "JGAD000001"),
+        await apiSearch(get(`/api/research?includeFiles=${spelled}`), "research"),
+        await apiBulk(get(`/api/research.jsonl?includeFiles=${spelled}`), "research"),
+      ]
+      for (const answer of answers) {
+        expect(answer.status, spelled).toBe(422)
+        expect(await body(answer), spelled).toMatchObject({ type: "https://humandbs.dbcls.jp/problems/invalid-parameter" })
+      }
+    }
   })
 })
 
@@ -251,7 +289,7 @@ describe("every answer", () => {
       await researchEntry(get("/x"), "hum0001", "latest"),
       await researchEntry(get("/x"), "hum9999", "latest"),
       await apiSearch(get("/api/research"), "research"),
-      await apiBulk("research"),
+      await apiBulk(get("/api/research.jsonl"), "research"),
       await dblinkListing(get("/x"), "humandbs"),
     ]
     for (const answer of answers) {
@@ -260,7 +298,7 @@ describe("every answer", () => {
   })
 
   it("reports which of the two formats it is", async () => {
-    expect((await apiBulk("research")).headers.get("content-type"))
+    expect((await apiBulk(get("/api/research.jsonl"), "research")).headers.get("content-type"))
       .toBe("application/x-ndjson; charset=utf-8")
     expect((await researchEntry(get("/x"), "hum9999", "latest")).headers.get("content-type"))
       .toBe("application/problem+json; charset=utf-8")

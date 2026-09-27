@@ -1494,23 +1494,30 @@ export function LanguagePills({ label, options }: {
  * A round control in the top bar: one glyph, a name it announces itself by, and
  * — where it stands for a collection — how many things are in it.
  *
+ * **A destination whose own name is as short as a glyph is drawn by that name**
+ * (`text`), the way the language pills beside it are: the word `API` names where
+ * it goes more plainly than any outline could.
+ *
  * `filled` is for the one that starts something rather than showing something,
  * which in the header is signing in.
  */
-export function RoundLink({ to, name, label, filled = false, external = false }: {
+export function RoundLink({ to, label, filled = false, external = false, ...drawn }: {
   to: string
-  name: IconName
   label: string
   filled?: boolean
   /** For an address no client-side navigation can answer, such as `/auth/login`. */
   external?: boolean
-}) {
+} & ({ name: IconName } | { text: string })) {
   const className = `inline-flex size-tap items-center justify-center rounded-full border no-underline ${
     filled
       ? `border-transparent text-white hover:brightness-90 ${HEADER_BAR_FILL.brand}`
       : "border-line text-ink-muted hover:bg-surface-hover hover:text-ink"
   }`
-  const inside = <Icon name={name} className="text-base" />
+  const inside = "name" in drawn
+    ? <Icon name={drawn.name} className="text-base" />
+    // Hidden like a glyph: the control is named by `label`, and the word read
+    // out after it would say the same thing twice.
+    : <span aria-hidden="true" className="font-semibold text-xs">{drawn.text}</span>
   return external
     ? <a href={to} aria-label={label} title={label} className={className}>{inside}</a>
     : <Link to={to} aria-label={label} title={label} className={className}>{inside}</Link>

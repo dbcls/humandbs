@@ -186,19 +186,19 @@ export const NAVBAR: NavLink[] = [
  * pixels of room unused so that the numbers can be round.
  */
 export const NAVBAR_STEP: { bar: string, menu: string }[] = [
-  { bar: "hidden sm:block", menu: "sm:hidden" },
-  { bar: "hidden md:block", menu: "md:hidden" },
+  { bar: "hidden min-[672px]:block", menu: "min-[672px]:hidden" },
+  { bar: "hidden min-[776px]:block", menu: "min-[776px]:hidden" },
   { bar: "hidden lg:block", menu: "lg:hidden" },
   { bar: "hidden lg:block", menu: "lg:hidden" },
   { bar: "hidden xl:block", menu: "xl:hidden" },
   { bar: "hidden xl:block", menu: "xl:hidden" },
-  { bar: "hidden xl:block", menu: "xl:hidden" },
+  { bar: "hidden min-[1296px]:block", menu: "min-[1296px]:hidden" },
   { bar: "hidden 2xl:block", menu: "2xl:hidden" },
-  { bar: "hidden 2xl:block", menu: "2xl:hidden" },
-  { bar: "hidden min-[1584px]:block", menu: "min-[1584px]:hidden" },
-  { bar: "hidden min-[1680px]:block", menu: "min-[1680px]:hidden" },
+  { bar: "hidden min-[1560px]:block", menu: "min-[1560px]:hidden" },
+  { bar: "hidden min-[1608px]:block", menu: "min-[1608px]:hidden" },
+  { bar: "hidden min-[1696px]:block", menu: "min-[1696px]:hidden" },
   { bar: "hidden min-[1840px]:block", menu: "min-[1840px]:hidden" },
-  { bar: "hidden min-[1840px]:block", menu: "min-[1840px]:hidden" },
+  { bar: "hidden min-[1864px]:block", menu: "min-[1864px]:hidden" },
 ]
 
 /**

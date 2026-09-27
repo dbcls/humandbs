@@ -22,7 +22,7 @@ import {
   type NavLink as NavLinkItem,
 } from "~/public/navigation"
 import type { AlertView } from "~/public/site.server"
-import { href, normalizeQuery, readLocale } from "~/public/urls"
+import { apiDocsPath, href, normalizeQuery, readLocale } from "~/public/urls"
 
 /**
  * Whether an entry names the page being looked at.
@@ -309,10 +309,10 @@ export function Announcements({ alerts, locale }: { alerts: AlertView[], locale:
 /**
  * The bar across the top of every page.
  *
- * **One row**, the way v1 has it: the wordmark, the navigation, and the three
- * controls that are not navigation — the language, the cart, and the account.
- * What the row cannot fit goes behind the overflow control at the end of the
- * navigation rather than being dropped (`public/navigation.ts`).
+ * **One row**, the way v1 has it: the wordmark, the navigation, and the
+ * controls that are not navigation — the language, the cart, the API and the
+ * account. What the row cannot fit goes behind the overflow control at the end
+ * of the navigation rather than being dropped (`public/navigation.ts`).
  *
  * **There is no way to search from here.** A reader searches from the front
  * page or from a listing, and both of those have the box itself; a circle in
@@ -354,8 +354,8 @@ export function SiteHeader({ locale, account, managing = false }: {
       </a>
       {/*
         The bar runs the width of the window rather than stopping at the width
-        of a page: it holds nine destinations (eight plus the overflow) and four
-        controls, and v1's own header does the same. The page under it is
+        of a page: it holds the site's destinations and the controls beside
+        them, and v1's own header does the same. The page under it is
         centred and narrower, which is where the reading happens.
 
         It keeps the same room at its edges as everything else that reaches
@@ -492,6 +492,13 @@ export function SiteHeader({ locale, account, managing = false }: {
             doing; it would sit there holding nothing on all eighteen of them.
           */}
           {!managing && <CartMenu locale={locale} />}
+          {/*
+            **With the controls rather than in the navigation.** The API's page
+            is Swagger UI, not one of the site's: it has no bar and no language,
+            and the navigation lists the site's own pages. A plain anchor, since
+            the address responds with a document rather than a route's data.
+          */}
+          {!managing && <RoundLink to={apiDocsPath()} text="API" label={messages.publicApi} external />}
           <AccountControl account={account} locale={locale} managing={managing} />
         </div>
       </div>

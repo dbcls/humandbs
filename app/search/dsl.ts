@@ -8,11 +8,11 @@
  *
  * The written form is the Lucene subset the ddbj-search-api db-portal endpoint
  * defines, so a reader who knows one portal's queries knows this one's:
- * `field:value`, `"a phrase"`, `[a TO b]`, `value*`, `AND` / `OR` / `NOT` in
+ * `field:value`, `"a phrase"`, `[a TO b]`, `id:value*`, `AND` / `OR` / `NOT` in
  * capitals, and `(...)`. Boost, fuzzy and regular expressions are not part of
- * it, and a bare wildcard is refused rather than run.
+ * it, and a pattern on free text is refused rather than run.
  *
- * Two things differ from db-portal, both because the index underneath is an
+ * Three things differ from db-portal, all because the index underneath is an
  * n-gram rather than an analyser:
  *
  * - **there is no phrase flag.** A value is matched as the literal run of
@@ -22,6 +22,9 @@
  *   — which is why `NGS(Exome)` survives the round trip
  * - **free text may appear anywhere.** It compiles to an ordinary predicate, so
  *   there is nothing to keep it out of an `OR` or a `NOT`
+ * - **a trailing star on free text is dropped rather than refused.** The match
+ *   is already inside words, so `canc*` asks for what `canc` finds
+ *   (`truncatedWord`)
  *
  * Juxtaposition means `AND`, and an `AND` of plain words is written back
  * without the word `AND`, so the common query reads in the address exactly as
@@ -86,6 +89,7 @@ const MAX_NODES = 200
 /** A run of characters that ends a bare token. Mirrors the db-portal grammar. */
 const TOKEN_BREAK = /[\s:()[\]"'{}^~/\\]/
 const WILDCARD_TOKEN = /^[A-Za-z0-9_\-.]*[*?][A-Za-z0-9_\-.]*$/
+const TRUNCATED_TOKEN = /^([^*?]+)\*+$/
 const DATE_TOKEN = /^\d{4}-\d{2}-\d{2}$/
 const RANGE_TOKEN = /^\[([^\s\]]+)\s+TO\s+([^\s\]]+)\]/
 
@@ -101,6 +105,8 @@ function fail(code: QueryErrorCode, column: number, token?: string): never {
 
 type Token
   = | { kind: "word" | "phrase" | "wildcard", value: string, column: number }
+    /** A word with stars after it and nowhere else: `value` is the word, `raw` is as written. */
+    | { kind: "prefix", value: string, raw: string, column: number }
     | { kind: "range", value: DslRange, column: number }
     | { kind: "and" | "or" | "not" | "open" | "close" | "colon", column: number }
 
@@ -127,6 +133,20 @@ function readPhrase(input: string, start: number): { value: string, next: number
     i += 1
   }
   fail("unexpected-token", start + 1)
+}
+
+/**
+ * The word a trailing `*` was put after, or null when the stars are not only at
+ * the end.
+ *
+ * **Free text and a text field drop the star.** Both already match inside words
+ * (`canc` finds cancer), so `canc*` asks for nothing more than `canc` does — and
+ * refusing it, or reading it as a pattern over the whole value, would answer a
+ * reader's habit from other search boxes with an error or with nothing. Only an
+ * identifier, which is matched whole, reads the star as a prefix.
+ */
+export function truncatedWord(raw: string): string | null {
+  return TRUNCATED_TOKEN.exec(raw)?.[1] ?? null
 }
 
 function tokenize(input: string): Token[] {
@@ -180,6 +200,11 @@ function tokenize(input: string): Token[] {
     const operator = OPERATOR_WORDS.get(raw)
     if (operator !== undefined) {
       tokens.push({ kind: operator, column })
+      continue
+    }
+    const truncated = truncatedWord(raw)
+    if (truncated !== null) {
+      tokens.push({ kind: "prefix", value: truncated, raw, column })
       continue
     }
     if (raw.includes("*") || raw.includes("?")) {
@@ -254,13 +279,18 @@ function fieldClause(field: string, token: Token, column: number, fields: QueryF
     checkBound(bound, token.value.to, token.column)
     return { op: "field", field, valueKind: "range", value: token.value }
   }
-  if (token.kind !== "word" && token.kind !== "phrase" && token.kind !== "wildcard") {
+  if (token.kind !== "word" && token.kind !== "phrase" && token.kind !== "wildcard" && token.kind !== "prefix") {
     fail("missing-value", column, field)
   }
 
-  const value = token.value
+  // A text field matches inside its values, so the star is dropped as it is
+  // from free text (`truncatedWord`). Anywhere else it is a pattern, and a
+  // pattern keeps to the characters an identifier is spelled with.
+  const pattern = token.kind === "wildcard" || (token.kind === "prefix" && type !== "text")
+  const value = token.kind === "prefix" && pattern ? token.raw : token.value
   if (value === "") fail("missing-value", column, field)
-  const kind: ValueKind = token.kind === "wildcard"
+  if (pattern && !WILDCARD_TOKEN.test(value)) fail("unexpected-token", token.column, value)
+  const kind: ValueKind = pattern
     ? "wildcard"
     : DATE_TOKEN.test(value) ? "date" : "term"
   if (operatorFor(type, kind) === null) fail("invalid-operator-for-field", column, field)
@@ -306,7 +336,7 @@ export function group(op: "AND" | "OR", rules: readonly QueryNode[]): QueryNode 
 function startsAtom(token: Token | undefined): boolean {
   return token !== undefined
     && (token.kind === "word" || token.kind === "phrase" || token.kind === "open"
-      || token.kind === "not" || token.kind === "wildcard")
+      || token.kind === "not" || token.kind === "wildcard" || token.kind === "prefix")
 }
 
 class Parser {
@@ -395,6 +425,11 @@ class Parser {
       return inner
     }
     if (token.kind === "phrase") return { op: "free_text", value: token.value }
+    if (token.kind === "prefix") {
+      // A field is named by a plain word; `ti*:x` names none.
+      if (this.peek()?.kind === "colon") fail("unexpected-token", token.column, token.raw)
+      return { op: "free_text", value: token.value }
+    }
     if (token.kind === "word") {
       if (this.peek()?.kind === "colon") {
         this.at += 1

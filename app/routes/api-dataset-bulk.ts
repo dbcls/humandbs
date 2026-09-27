@@ -1,5 +1,7 @@
 import { apiBulk } from "~/api/pages.server"
 
-export function loader() {
-  return apiBulk("dataset")
+import type { Route } from "./+types/api-dataset-bulk"
+
+export function loader({ request }: Route.LoaderArgs) {
+  return apiBulk(request, "dataset")
 }

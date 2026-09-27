@@ -46,8 +46,10 @@ endpoint tells them apart.
 
 **Reading an answer.** Both languages are always included and neither falls back on the other:
 \`ja\` and \`en\` are what somebody wrote, not what the portal guessed. **A key that is
-absent is a value nobody filled in; \`null\` means the value is known not to exist.** An array
-is always there, empty if it holds nothing. Prose is plain text — a link written inside a sentence
+absent is a value nobody filled in; \`null\` means the value is known not to exist**, and that holds
+for a list too: a list with nothing in it is an empty array, and a list known not to apply is
+\`null\`. \`files\` is the one exception, left out unless \`includeFiles=true\` is asked for, because
+a research can hold over ten thousand of them. Prose is plain text — a link written inside a sentence
 keeps its words and loses its destination, while the references a machine needs (accessions,
 dataset ids, vocabulary, files) are typed fields of their own.
 
@@ -63,7 +65,10 @@ export function documentPath(path: string): string {
 
 const PROBLEM_DESCRIPTIONS: Record<number, string> = {
   404: "No published object has that label.",
-  422: "A parameter could not be read, or the ordering asked for is not available.",
+  422:
+    "A parameter could not be read: the query (`invalid-query`, with `code`, `column` and "
+    + "`token`), an ordering that is not available (`invalid-sort`, `invalid-order`), or the page "
+    + "or `includeFiles` (`invalid-parameter`).",
 }
 
 function responsesOf(endpoint: ApiEndpoint): Record<string, ResponseConfig> {
@@ -75,7 +80,7 @@ function responsesOf(endpoint: ApiEndpoint): Record<string, ResponseConfig> {
   }
   for (const status of endpoint.problems) {
     responses[status] = {
-      description: PROBLEM_DESCRIPTIONS[status] ?? "Error.",
+      description: endpoint.problemNotes?.[status] ?? PROBLEM_DESCRIPTIONS[status] ?? "Error.",
       content: { "application/problem+json": { schema: problemSchema } },
     }
   }
@@ -112,6 +117,7 @@ export function apiDocument(origin: string): object {
     tags: [
       { name: "research", description: "Research entries and their versions." },
       { name: "dataset", description: "Dataset entries." },
+      { name: "search", description: "What a search may be written against." },
       {
         name: "dblink",
         description: "The correspondence between hum labels and JGA accessions.",

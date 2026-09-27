@@ -279,6 +279,18 @@ describe("what an answer names", () => {
     ])
   })
 
+  it("leaves the files out, key and all, when they were not asked for", () => {
+    const content = { ...emptyDatasetContent(), fileSelection: ["a.zip"] }
+    const answers = [
+      apiDataset({ label: "JGAD000001", humLabel: "hum0001", datePublished: null, dateModified: null, content, files: null, fileLabels: new Map() }, context),
+      apiResearch({
+        humLabel: "hum0001", versionNumber: 1, releaseDate: "2020-01-01", versions: [{ number: 1, releaseDate: "2020-01-01" }],
+        content: emptyResearchContent(), datasetLabelById: new Map(), cau: [], files: null, fileLabels: new Map(),
+      }, context),
+    ]
+    for (const answer of answers) expect(answer).not.toHaveProperty("files")
+  })
+
   it("keeps only a file selection the prefix actually lists", () => {
     const answer = dataset({ ...emptyDatasetContent(), fileSelection: ["a.zip", "gone.zip"] })
     expect(answer.files).toEqual([
@@ -292,18 +304,18 @@ describe("a file's label", () => {
 
   it("gives both languages as they were written, on a research's files and a dataset's", () => {
     const labels = new Map([["a.zip", { ja: "辞書ファイル", en: "Dictionary file" }]])
-    expect(research(emptyResearchContent(), labels).files[0]?.label).toEqual({ ja: "辞書ファイル", en: "Dictionary file" })
-    expect(dataset(selected, labels).files[0]?.label).toEqual({ ja: "辞書ファイル", en: "Dictionary file" })
+    expect(research(emptyResearchContent(), labels).files?.[0]?.label).toEqual({ ja: "辞書ファイル", en: "Dictionary file" })
+    expect(dataset(selected, labels).files?.[0]?.label).toEqual({ ja: "辞書ファイル", en: "Dictionary file" })
   })
 
   it("leaves out a language that was not written rather than giving it the other's words", () => {
     const labels = new Map([["a.zip", { ja: "", en: "Paper" }]])
-    expect(research(emptyResearchContent(), labels).files[0]?.label).toEqual({ en: "Paper" })
-    expect(dataset(selected, new Map([["a.zip", { ja: "論文", en: "" }]])).files[0]?.label).toEqual({ ja: "論文" })
+    expect(research(emptyResearchContent(), labels).files?.[0]?.label).toEqual({ en: "Paper" })
+    expect(dataset(selected, new Map([["a.zip", { ja: "論文", en: "" }]])).files?.[0]?.label).toEqual({ ja: "論文" })
   })
 
   it("is not a key of a file that has none", () => {
-    expect(research().files[0]).not.toHaveProperty("label")
-    expect(dataset(selected, new Map([["other.zip", { ja: "他", en: "other" }]])).files[0]).not.toHaveProperty("label")
+    expect(research().files?.[0]).not.toHaveProperty("label")
+    expect(dataset(selected, new Map([["other.zip", { ja: "他", en: "other" }]])).files?.[0]).not.toHaveProperty("label")
   })
 })

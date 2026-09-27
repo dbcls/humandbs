@@ -21,6 +21,7 @@ import type { Executor } from "~/db/client.server"
 
 import { OPEN_BOUND, type FieldNode, type QueryNode } from "./dsl"
 import type { FacetField, QueryFields } from "./fields"
+import { canonicalJgaIds } from "./jga-ids"
 
 import { type ListingSize, PAGE_SIZE, rowsPerPage } from "./page-size"
 import type { SearchTarget } from "./target"
@@ -172,11 +173,9 @@ function compileField(node: FieldNode, query: SearchQuery): SQL {
     case "id":
       return node.valueKind === "wildcard"
         ? sql`${labelColumn(query.target)} ILIKE ${likePattern(value)}`
-        : sql`lower(${labelColumn(query.target)}) = lower(${value})`
+        : sql`lower(${labelColumn(query.target)}) = lower(${canonicalJgaIds(value)})`
     case "title":
-      return node.valueKind === "wildcard"
-        ? sql`s.title ILIKE ${likePattern(value)}`
-        : sql`s.title &@ ${value}`
+      return sql`s.title &@ ${value}`
     case "date_modified":
       return sql`s.date_modified = ${value}::date`
     default:
@@ -185,7 +184,9 @@ function compileField(node: FieldNode, query: SearchQuery): SQL {
 }
 
 function compile(node: QueryNode, query: SearchQuery): SQL {
-  if (node.op === "free_text") return sql`s.text_all &@ ${node.value}`
+  // A JGA accession copied from JGA or DDBJ Search may be spelled with eleven
+  // digits; the rows hold six (`jga-ids.ts`).
+  if (node.op === "free_text") return sql`s.text_all &@ ${canonicalJgaIds(node.value)}`
   if (node.op === "field") return compileField(node, query)
   if (node.op === "NOT") {
     const [only] = node.rules

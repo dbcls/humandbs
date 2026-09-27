@@ -98,8 +98,32 @@ describe("reading a query", () => {
     })
   })
 
-  it("refuses a bare wildcard, which would walk every term in the index", () => {
-    expect(errorOf("hum0*").code).toBe("unexpected-token")
+  it("drops a star after free text, which already matches inside words", () => {
+    expect(ast("canc*")).toEqual({ op: "free_text", value: "canc" })
+    expect(ast("ゲノム**")).toEqual({ op: "free_text", value: "ゲノム" })
+    expect(serializeQuery(ast("canc* lung"))).toBe("canc lung")
+  })
+
+  it("drops a star after a text field's value, and refuses any other pattern on it", () => {
+    expect(ast("title:genom*")).toEqual({ op: "field", field: "title", valueKind: "term", value: "genom" })
+    expect(ast("title:ゲノ*")).toEqual({ op: "field", field: "title", valueKind: "term", value: "ゲノ" })
+    expect(errorOf("title:gen?me").code).toBe("invalid-operator-for-field")
+    expect(errorOf("title:ge*ome").code).toBe("invalid-operator-for-field")
+  })
+
+  it("refuses a free-text pattern that is more than a trailing star, which would walk every term in the index", () => {
+    expect(errorOf("hum0?").code).toBe("unexpected-token")
+    expect(errorOf("ca*ncer").code).toBe("unexpected-token")
+    expect(errorOf("*cancer").code).toBe("unexpected-token")
+    expect(errorOf("*").code).toBe("unexpected-token")
+  })
+
+  it("keeps an identifier's pattern to the characters an identifier is spelled with", () => {
+    expect(errorOf("id:ゲノ*").code).toBe("unexpected-token")
+  })
+
+  it("does not read a starred word as a field name", () => {
+    expect(errorOf("ti*:genome").code).toBe("unexpected-token")
   })
 
   it("refuses an unbalanced group and an unterminated quote", () => {

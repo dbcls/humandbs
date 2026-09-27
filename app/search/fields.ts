@@ -112,7 +112,9 @@ export function queryFields(facets: readonly FacetField[]): QueryFields {
  *
  * A term takes neither a wildcard nor a range: its values are codes drawn from
  * a closed set, so there is nothing to walk towards and nothing between two of
- * them.
+ * them. **Neither does text**: it matches inside its values already, so the one
+ * star a reader puts on it is dropped before this is asked (`dsl.ts`), and any
+ * other pattern has no meaning a substring match does not already give.
  */
 export function operatorFor(type: FieldType, kind: ValueKind): Operator | null {
   switch (type) {
@@ -120,8 +122,7 @@ export function operatorFor(type: FieldType, kind: ValueKind): Operator | null {
       if (kind === "term" || kind === "date") return "eq"
       return kind === "wildcard" ? "wildcard" : null
     case "text":
-      if (kind === "term" || kind === "date") return "contains"
-      return kind === "wildcard" ? "wildcard" : null
+      return kind === "term" || kind === "date" ? "contains" : null
     case "date":
       if (kind === "date") return "eq"
       return kind === "range" ? "between" : null

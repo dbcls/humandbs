@@ -115,13 +115,14 @@ function researchObject(
     context: ApiContext
     labels: ReadonlyMap<string, string>
     cau: ReadonlyMap<string, CauUsage[]>
-    files: readonly StoredFile[]
+    /** Null when the caller did not ask for the files. */
+    files: readonly StoredFile[] | null
     fileLabels: ReadonlyMap<string, FileLabel>
   },
 ): ApiResearch {
   const projected = publicResearch(
     bundle.content,
-    { cau: input.cau.get(bundle.humLabel) ?? [], files: input.files },
+    { cau: input.cau.get(bundle.humLabel) ?? [], files: input.files ?? [] },
     PUBLISHED,
   )
   return apiResearch({
@@ -132,9 +133,25 @@ function researchObject(
     content: projected.content,
     datasetLabelById: input.labels,
     cau: projected.cau,
-    files: projected.files,
+    files: input.files === null ? null : projected.files,
     fileLabels: input.fileLabels,
   }, input.context)
+}
+
+/**
+ * Whether the answer carries the file listings.
+ *
+ * **Off unless asked for.** A research's prefix can hold over ten thousand
+ * files, so a caller after the content alone would otherwise wait for the store
+ * to be listed and then receive megabytes of it. Anything but `true` or `false`
+ * is refused rather than read as off, so that a caller who wrote `yes` hears
+ * that it was not understood.
+ */
+function includeFilesOf(request: Request): boolean | Response {
+  const asked = new URL(request.url).searchParams.get("includeFiles")
+  if (asked === null || asked === "false") return false
+  if (asked === "true") return true
+  return problemResponse(invalidParameter(request, "includeFiles", "includeFiles must be true or false."))
 }
 
 export async function researchEntry(
@@ -142,6 +159,8 @@ export async function researchEntry(
   humId: string,
   wanted: number | "latest",
 ): Promise<Response> {
+  const include = includeFilesOf(request)
+  if (typeof include !== "boolean") return include
   const db = getDb()
   const resolved = await resolveHumLabel(db, humId)
   if (resolved === null) return problemResponse(notFound(request, "research"))
@@ -155,9 +174,9 @@ export async function researchEntry(
   const [context, cau, listings, labels, fileLabels] = await Promise.all([
     contextOf(),
     cauByHumLabel(db, [resolved.primaryLabel]),
-    publicListingsOf([resolved.primaryLabel]),
+    include ? publicListingsOf([resolved.primaryLabel]) : null,
     publishedDatasetLabels(db, citedDatasetIds(version.content)),
-    fileLabelsByHumLabel(db, [resolved.primaryLabel]),
+    include ? fileLabelsByHumLabel(db, [resolved.primaryLabel]) : null,
   ])
 
   const bundle: ResearchBundle = {
@@ -172,8 +191,8 @@ export async function researchEntry(
     context,
     labels,
     cau,
-    files: listings.get(resolved.primaryLabel) ?? [],
-    fileLabels: fileLabels.get(resolved.primaryLabel) ?? new Map(),
+    files: listings === null ? null : listings.get(resolved.primaryLabel) ?? [],
+    fileLabels: fileLabels?.get(resolved.primaryLabel) ?? new Map(),
   }))
 }
 
@@ -195,8 +214,8 @@ export async function researchVersionEntry(
 async function researchObjects(
   bundles: readonly ResearchBundle[],
   context: ApiContext,
-  listings: ReadonlyMap<string, StoredFile[]>,
-  fileLabels: FileLabelsByHum,
+  listings: ReadonlyMap<string, StoredFile[]> | null,
+  fileLabels: FileLabelsByHum | null,
 ): Promise<ApiResearch[]> {
   if (bundles.length === 0) return []
   const db = getDb()
@@ -208,8 +227,8 @@ async function researchObjects(
     context,
     labels,
     cau,
-    files: listings.get(bundle.humLabel) ?? [],
-    fileLabels: fileLabels.get(bundle.humLabel) ?? new Map(),
+    files: listings === null ? null : listings.get(bundle.humLabel) ?? [],
+    fileLabels: fileLabels?.get(bundle.humLabel) ?? new Map(),
   }))
 }
 
@@ -220,8 +239,9 @@ type FileLabelsByHum = ReadonlyMap<string, ReadonlyMap<string, FileLabel>>
 
 function datasetObject(
   bundle: DatasetBundle,
-  listing: readonly StoredFile[],
-  fileLabels: FileLabelsByHum,
+  /** Null when the caller did not ask for the files. */
+  listing: readonly StoredFile[] | null,
+  fileLabels: FileLabelsByHum | null,
   context: ApiContext,
 ): ApiDataset {
   return apiDataset({
@@ -231,15 +251,17 @@ function datasetObject(
     dateModified: bundle.dateModified,
     content: publicDatasetContent(
       bundle.content,
-      { files: listing },
+      { files: listing ?? [] },
       PUBLISHED,
     ),
     files: listing,
-    fileLabels: fileLabels.get(bundle.humLabel) ?? new Map(),
+    fileLabels: fileLabels?.get(bundle.humLabel) ?? new Map(),
   }, context)
 }
 
 export async function datasetEntry(request: Request, datasetId: string): Promise<Response> {
+  const include = includeFilesOf(request)
+  if (typeof include !== "boolean") return include
   const db = getDb()
   const resolved = await resolveDatasetLabel(db, datasetId)
   if (resolved === null) return problemResponse(notFound(request, "dataset"))
@@ -249,20 +271,21 @@ export async function datasetEntry(request: Request, datasetId: string): Promise
 
   const [context, listings, fileLabels] = await Promise.all([
     contextOf(),
-    publicListingsOf([bundle.humLabel]),
-    fileLabelsByHumLabel(db, [bundle.humLabel]),
+    include ? publicListingsOf([bundle.humLabel]) : null,
+    include ? fileLabelsByHumLabel(db, [bundle.humLabel]) : null,
   ])
-  return jsonResponse(datasetObject(bundle, listings.get(bundle.humLabel) ?? [], fileLabels, context))
+  const listing = listings === null ? null : listings.get(bundle.humLabel) ?? []
+  return jsonResponse(datasetObject(bundle, listing, fileLabels, context))
 }
 
 function datasetObjects(
   bundles: readonly DatasetBundle[],
   context: ApiContext,
-  listings: ReadonlyMap<string, StoredFile[]>,
-  fileLabels: FileLabelsByHum,
+  listings: ReadonlyMap<string, StoredFile[]> | null,
+  fileLabels: FileLabelsByHum | null,
 ): ApiDataset[] {
   return bundles.map((bundle) =>
-    datasetObject(bundle, listings.get(bundle.humLabel) ?? [], fileLabels, context))
+    datasetObject(bundle, listings === null ? null : listings.get(bundle.humLabel) ?? [], fileLabels, context))
 }
 
 // --- search ---------------------------------------------------------------
@@ -308,13 +331,17 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   if (page === null) {
     return problemResponse(invalidParameter(request, "page", "page must be a positive integer."))
   }
+  const include = includeFilesOf(request)
+  if (typeof include !== "boolean") return include
 
   const result = await searchDocs(db, { target, ast, fields, sort, order, page })
   const context = await contextOf()
   const ranking = result.hits.map((hit) =>
     target === "research" ? hit.humLabel : hit.datasetLabel ?? "")
   const humLabels = result.hits.map((hit) => hit.humLabel)
-  const [listings, fileLabels] = await Promise.all([publicListingsOf(humLabels), fileLabelsByHumLabel(db, humLabels)])
+  const [listings, fileLabels] = include
+    ? await Promise.all([publicListingsOf(humLabels), fileLabelsByHumLabel(db, humLabels)])
+    : [null, null]
   const ids = result.hits.map((hit) => hit.targetId)
   const hits: (ApiResearch | ApiDataset)[] = target === "research"
     ? await researchObjects(await researchBundles(db, ids), context, listings, fileLabels)
@@ -392,9 +419,15 @@ export async function searchFields(): Promise<Response> {
 
 // --- bulk -----------------------------------------------------------------
 
-export async function apiBulk(target: SearchTarget): Promise<Response> {
+export async function apiBulk(request: Request, target: SearchTarget): Promise<Response> {
+  const include = includeFilesOf(request)
+  if (typeof include !== "boolean") return include
   const db = getDb()
-  const [context, listings, fileLabels] = await Promise.all([contextOf(), everyPublicListing(), fileLabelsByHumLabel(db, null)])
+  const [context, listings, fileLabels] = await Promise.all([
+    contextOf(),
+    include ? everyPublicListing() : null,
+    include ? fileLabelsByHumLabel(db, null) : null,
+  ])
   const objects: (ApiResearch | ApiDataset)[] = target === "research"
     ? await researchObjects(await researchBundles(db, null), context, listings, fileLabels)
     : datasetObjects(await datasetBundles(db, null), context, listings, fileLabels)
