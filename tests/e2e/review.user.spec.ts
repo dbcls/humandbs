@@ -273,12 +273,9 @@ async function saveDraft(page: Page): Promise<void> {
   expect((await saved).ok()).toBe(true)
 }
 
-/**
- * The comment panel a button opened, found by its heading: the panel is a
- * dialog without a name of its own.
- */
-function commentPanel(page: Page, heading: string) {
-  return page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: heading }) })
+/** The comment panel a button opened, found by its name. */
+function commentPanel(page: Page, name: string) {
+  return page.getByRole("dialog", { name })
 }
 
 /** The share link's path as the review screen shows it, shared or not. */

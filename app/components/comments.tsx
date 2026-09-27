@@ -32,7 +32,7 @@ import { CONTROL } from "~/components/form"
 import { Icon, type IconName, SUBJECT_ICON } from "~/components/icons"
 import { minuteInJst } from "~/dates"
 import type { CommentAnchor } from "~/content/types"
-import { isFieldAnchor, type AnchorSubject } from "~/review/anchors"
+import { commentSpotId, isFieldAnchor, type AnchorSubject } from "~/review/anchors"
 import { unresolvedCount, type CommentView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -182,7 +182,7 @@ export function CommentSpot({ context, at, comments, fieldLabel }: {
   const heading = fieldLabel === undefined ? t.heading : t.fieldHeading(fieldLabel)
 
   return (
-    <span id={encodeURIComponent(at)} className="inline-flex align-top">
+    <span id={commentSpotId(at)} className="inline-flex align-top">
       <PanelButton icon="comment" label={heading} onClick={() => { setHeld(true) }}>
         {shown.length > 0 && <span className={open > 0 ? "text-accent" : ""}>{t.count(shown.length)}</span>}
       </PanelButton>

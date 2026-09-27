@@ -271,7 +271,11 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
         <Stack>
           {editing.conflict !== null && (
             <div onClick={onHeaderBarJump}>
-              <ConflictBanner locale={locale} changed={editing.conflict.changed} />
+              <ConflictBanner
+                locale={locale}
+                changed={editing.conflict.changed}
+                nameOf={(path) => placeName({ kind: "dataset-field", datasetId: view.datasetId, path }, places, locale)}
+              />
             </div>
           )}
 
@@ -532,6 +536,7 @@ function Experiment({ locale, catalog, terms, experiment, annotationsFor, onChan
           </span>
         </PaneHeading>
         <SingleField
+          name={t.experiments}
           value={experiment.label}
           annotations={annotationsFor(`${path}.label`)}
           locale={locale}
@@ -773,6 +778,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
       {body.kind === "text" && (
         <PairField
           label={named ? label : undefined}
+          name={label}
           value={body.text}
           multiline
           annotations={annotations}

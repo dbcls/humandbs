@@ -47,6 +47,8 @@ test.describe("P-DRAFT 下書き", () => {
       await titleInput(page).fill(second)
       await saveDraft(page, 409)
       await expect(page.getByText("別の場所で保存されました")).toBeVisible()
+      // 変わった項目は、ほかの場所の一覧と同じ名前で並ぶ
+      await expect(page.getByRole("link", { name: / \/ 研究題目$/ })).toBeVisible()
       // 手元の入力は消えず、読み直しもしない
       await expect(titleInput(page)).toHaveValue(second)
 
@@ -100,7 +102,7 @@ test.describe("P-DRAFT 下書き", () => {
       const row = page.getByRole("row").filter({ hasText: "未確定の値" })
       await expect(row).toContainText("1")
       await row.getByRole("button", { name: "場所の一覧" }).click()
-      const spots = page.getByRole("dialog").filter({ has: page.getByRole("heading", { name: "未確定の値" }) })
+      const spots = page.getByRole("dialog", { name: "未確定の値" })
       await spots.getByRole("link", { name: /研究題目$/ }).click()
 
       await expect(page).toHaveURL(new RegExp(`${draft.path}#title`))
@@ -130,7 +132,7 @@ test.describe("P-DRAFT 下書き", () => {
 
 /** The input of the research title in Japanese, in the form pane. */
 function titleInput(page: Page) {
-  return page.locator("[data-at=\"title\"] input[lang=\"ja\"]").first()
+  return page.getByRole("textbox", { name: "研究題目 ja", exact: true })
 }
 
 /**

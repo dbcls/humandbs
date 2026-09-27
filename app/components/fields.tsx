@@ -373,7 +373,7 @@ function CollapsedState({ state, locale }: { state: Exclude<SlotState, "value">,
  * `value.text` does not: it is state held by the caller, untouched until the
  * toggle is pressed again or the field is saved.
  */
-export function SlotEditor({ language, named = true, value, multiline, onChange, locale }: {
+export function SlotEditor({ language, named = true, field, value, multiline, onChange, locale }: {
   language: Locale
   /**
    * Whether the box shows which language it is. **A field with one value does
@@ -381,12 +381,19 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
    * is written, and a reader who sees `ja` over a DOI looks for the other one.
    */
   named?: boolean
+  /**
+   * The field's name, which the box is read by: with the language after it
+   * where the box shows one (「研究題目 ja」, as a plain form's pair is read),
+   * alone where it does not.
+   */
+  field?: string
   value: TextInput
   multiline?: boolean
   onChange: (next: TextInput) => void
   locale: Locale
 }) {
   const classes = `${CONTROL} w-full text-sm`
+  const called = field === undefined ? undefined : named ? `${field} ${language}` : field
 
   /*
     **One language is one line: the box, with its state toggle at the side.** The
@@ -410,6 +417,7 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
                     className={`${classes} field-sizing-content min-h-[calc(2lh+0.75rem+2px)]`}
                     rows={4}
                     lang={language}
+                    aria-label={called}
                     value={value.text}
                     onChange={(event) => { onChange({ ...value, text: event.target.value }) }}
                   />
@@ -419,6 +427,7 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
                     type="text"
                     className={classes}
                     lang={language}
+                    aria-label={called}
                     value={value.text}
                     onChange={(event) => { onChange({ ...value, text: event.target.value }) }}
                   />
@@ -467,9 +476,11 @@ export function StatedControls({ state, onState, locale, children }: {
  * with no state beside them. A draft is held in React state so that a refused
  * save can be answered field by field, and half of these run to several lines.
  */
-export function PairField({ label, value, multiline, annotations, locale, onChange, remove }: {
+export function PairField({ label, name, value, multiline, annotations, locale, onChange, remove }: {
   /** Absent for the one field of a section, which the section's heading names. */
   label?: string
+  /** What the boxes are read by where `label` is absent: the heading of the section the field is the one field of. */
+  name?: string
   value: TextPairInput
   multiline?: boolean
   annotations: FieldAnnotations
@@ -503,6 +514,7 @@ export function PairField({ label, value, multiline, annotations, locale, onChan
           <SlotEditor
             key={language}
             language={language}
+            field={label ?? name}
             value={value[language]}
             multiline={multiline}
             locale={locale}
@@ -522,9 +534,11 @@ export function PairField({ label, value, multiline, annotations, locale, onChan
  * right for an ID and wrong for a paper's title or a URL, whose end the writer
  * could then not see.
  */
-export function SingleField({ label, value, annotations, locale, wide = false, hint, onChange }: {
+export function SingleField({ label, name, value, annotations, locale, wide = false, hint, onChange }: {
   /** Absent for the one field of a section, which the section's heading names. */
   label?: string
+  /** What the box is read by where `label` is absent: the heading naming the field. */
+  name?: string
   value: TextInput
   annotations: FieldAnnotations
   locale: Locale
@@ -541,6 +555,7 @@ export function SingleField({ label, value, annotations, locale, wide = false, h
         <SlotEditor
           language={locale}
           named={false}
+          field={label ?? name}
           value={value}
           locale={locale}
           onChange={onChange}
@@ -828,9 +843,15 @@ export function AddElement({ label, onClick }: { label: string, onClick: () => v
  * Nothing was lost and nothing has to be dealt with in any order, but the form
  * now holds a version of the draft that no longer exists — so it is a warning
  * rather than a failure, and it lists the places rather than only counting
- * them.
+ * them, **by the names the screen's other lists of places give them**
+ * (`places.ts` の `placeName`).
  */
-export function ConflictBanner({ locale, changed }: { locale: Locale, changed: string[] }) {
+export function ConflictBanner({ locale, changed, nameOf }: {
+  locale: Locale
+  changed: string[]
+  /** What the place a path names is called. */
+  nameOf: (path: string) => string
+}) {
   const t = messagesFor(locale).admin.editor
   return (
     <Note kind="warning" live>
@@ -842,7 +863,7 @@ export function ConflictBanner({ locale, changed }: { locale: Locale, changed: s
             {changed.map((path) => (
               <li key={path}>
                 <ButtonLink external size="row" to={`#${path.split(".")[0] ?? path}`} icon={<Chevron dir="right" />}>
-                  {path}
+                  {nameOf(path)}
                 </ButtonLink>
               </li>
             ))}

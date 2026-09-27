@@ -17,7 +17,7 @@
  */
 
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react"
-import { Link, useLocation } from "react-router"
+import { Link, useActionData, useLocation } from "react-router"
 
 import { Icon, Spinner, type IconName } from "~/components/icons"
 import { messagesFor } from "~/i18n/messages"
@@ -221,7 +221,7 @@ const HEADING_LOOK = {
  * wrap; the identifier breaks over lines instead. Below it, where the row does
  * wrap, the controls keep to the right edge of the line they land on.
  */
-export function Heading({ level = "h1", look = level, rule = "edge", title, aside, badge, from, note, children }: {
+export function Heading({ level = "h1", look = level, rule = "edge", id, title, aside, badge, from, note, children }: {
   level?: "h1" | "h2"
   /**
    * How large it is drawn, when that is not what its level would give.
@@ -238,6 +238,8 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
    * at the start of the line for a heading that opens no card.
    */
   rule?: keyof typeof PANE_RULE
+  /** The name's own id, for a panel whose name it is (`Dialog`). */
+  id?: string
   title: string
   /**
    * What is shown beside the name, smaller and quieter than it.
@@ -283,7 +285,7 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
             a Japanese title shrunk by even a pixel drops its last character to
             a line of its own. It wraps only when it is longer than the whole
             row, as an article's title can be. */}
-        <Tag className={`max-w-full shrink-0 font-bold text-brand ${HEADING_LOOK[look]}`}>
+        <Tag id={id} className={`max-w-full shrink-0 font-bold text-brand ${HEADING_LOOK[look]}`}>
           {title}
         </Tag>
         {/* **It is read rather than glanced at.** What is shown here is a number
@@ -2331,6 +2333,8 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
   wide?: boolean
 }) {
   const box = useRef<HTMLDialogElement>(null)
+  // The panel is named by its title, so it is announced and found by what it is.
+  const titleId = useId()
   const [ownOpen, setOwnOpen] = useState(false)
   const open = held?.open ?? ownOpen
   const close = held === undefined
@@ -2346,6 +2350,20 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
   */
   const submitting = useSubmitting()
   const holding = open && submitting
+
+  /*
+    **A panel that sends a form shuts once what it sent has gone through**, as
+    a confirmation does (`Confirm`). Left open, it showed the boxes just sent
+    as if they were still to be sent, and a panel that makes something made a
+    second one when pressed again. **A refused one stays open** with what was
+    typed in it, for the reason the screen shows to be dealt with.
+  */
+  const answer = useActionData<unknown>()
+  const wasHolding = useRef(false)
+  useEffect(() => {
+    if (wasHolding.current && !holding && open && action !== undefined && wentThrough(answer)) close()
+    wasHolding.current = holding
+  })
 
   /*
     **The close control that costs nothing to find.** A panel over the page is shut by
@@ -2407,6 +2425,7 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
           if (event.target === box.current && pressedOut.current && outside(event)) close()
         }}
         aria-busy={holding || undefined}
+        aria-labelledby={titleId}
         // Focusable only from the script, for a panel that starts at its top (`startAtTop`).
         tabIndex={-1}
         /* **The panel wraps its own words.** It is drawn in the top layer but
@@ -2424,7 +2443,7 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
                 title in here is half again as tall as it has anything to show.
                 The rule starts on the line rather than hanging out through a
                 card's padding, because there is no card around it. */}
-            <Heading level="h2" look="bar" rule="start" title={title} />
+            <Heading level="h2" look="bar" rule="start" id={titleId} title={title} />
             {subject !== undefined && (
               <div className="flex flex-col gap-1">
                 {(Array.isArray(subject) ? subject : [subject]).map((line: DialogSubject) => (
@@ -2454,6 +2473,16 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
       </dialog>
     </>
   )
+}
+
+/**
+ * Whether the action a panel sent went through: it answered by moving the
+ * screen, which leaves no answer behind, or with an answer whose `status` is
+ * `"ok"` (`form.tsx` の `Answer`).
+ */
+export function wentThrough(answer: unknown): boolean {
+  if (answer === undefined || answer === null || typeof answer !== "object") return true
+  return !("status" in answer) || answer.status === "ok"
 }
 
 /**
@@ -2514,7 +2543,8 @@ export function Confirm({
   title: string
   /** Which one it happens to (`Dialog` の `subject`). */
   subject?: DialogSubject | readonly DialogSubject[]
-  warning: string
+  /** What pressing does, one string per line (`Dialog` の `note`). */
+  warning: Lines
   /** Why the trigger cannot be pressed, when it cannot (`Dialog`). */
   disabled?: string
   /** Which edge of the trigger the reason hangs from (`Button` の `reasonAt`). */

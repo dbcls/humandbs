@@ -111,6 +111,29 @@ describe("the editing form", () => {
     expect(names.slice(0, 4)).toEqual(["解析手法", "データの種類", "参加者 (対象集団)", "提供者"])
   })
 
+  it("gives every box a name to be read by, the field's and the box's language", () => {
+    const html = render(view())
+    const boxes = [...html.matchAll(/<(?:input|textarea)\b(?![^>]*type="(?:hidden|checkbox|radio)")[^>]*>/g)].map((found) => found[0])
+    const labelled = new Set([...html.matchAll(/<label\b[^>]*for="([^"]+)"/g)].map((found) => found[1]))
+    expect(boxes.length).toBeGreaterThan(0)
+    for (const box of boxes) {
+      const id = /\sid="([^"]+)"/.exec(box)?.[1]
+      expect(/aria-label(?:ledby)?="[^"]+"/.test(box) || (id !== undefined && labelled.has(id)), box).toBe(true)
+    }
+    expect(html).toContain("aria-label=\"研究題目 ja\"")
+    expect(html).toContain("aria-label=\"リリースノート en\"")
+    expect(html).toContain("aria-label=\"目的 ja\"")
+  })
+
+  it("gives no two elements of the screen the same id, the form's sections and the page beside it included", () => {
+    const html = render(view((input) => {
+      input.content.title = { ja: { state: "value", text: "題目" }, en: { state: "value", text: "Title" } }
+    }))
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((found) => found[1])
+    const repeated = ids.filter((id, at) => ids.indexOf(id) !== at)
+    expect(repeated).toEqual([])
+  })
+
   it("does not name the one field of a section a second time under its heading", () => {
     const html = render(view())
     const names = [...html.matchAll(/<span class="font-semibold text-ink-muted text-xs">([^<]*)<\/span>/g)]

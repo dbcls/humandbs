@@ -48,7 +48,7 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
 }
 
 export default function AdminContentsSeries({ loaderData, actionData }: Route.ComponentProps) {
-  const { locale, series, unanswered } = loaderData
+  const { locale, series, unanswered, pointedBy } = loaderData
   const t = messagesFor(locale).admin.contents
 
   return (
@@ -71,7 +71,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
               <Confirm
                 label={t.removeSeries}
                 title={t.removeSeriesTitle}
-                warning={t.removeSeriesWarning(series.revisions.length)}
+                warning={t.removeSeriesWarning(series.revisions.length, ...pointedBy)}
                 confirm={t.removeSeriesConfirm}
                 intent="delete-series"
               />

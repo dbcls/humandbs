@@ -54,7 +54,7 @@ function numberIn(form: HTMLFormElement): string {
 }
 
 export default function AdminContentsDocument({ loaderData, actionData }: Route.ComponentProps) {
-  const { locale, id, slug, seriesOf, editors } = loaderData
+  const { locale, id, slug, seriesOf, editors, pointedBy } = loaderData
   const t = messagesFor(locale).admin.contents
   const [number, setNumber] = useState("1")
 
@@ -120,7 +120,7 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
                   <Confirm
                     label={t.removeDocument}
                     title={t.removeDocumentTitle}
-                    warning={t.removeDocumentWarning}
+                    warning={t.removeDocumentWarning(...pointedBy)}
                     confirm={t.removeDocumentConfirm}
                     intent="delete-document"
                   />

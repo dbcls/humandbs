@@ -62,7 +62,7 @@ import {
 } from "~/public/view.server"
 
 import { sharedDraftByToken, type SharedDraft } from "./access.server"
-import { isAnchorPath, type AnchorSubject } from "./anchors"
+import { commentSpotId, isAnchorPath, type AnchorSubject } from "./anchors"
 import {
   checkComment,
   checkName,
@@ -666,7 +666,7 @@ export async function previewAction(
 /** Back to the page that was posted from, at the place that was posted about. */
 function backTo(request: Request, at: string): string {
   const url = new URL(request.url)
-  const hash = at === "" ? "" : `#${encodeURIComponent(at)}`
+  const hash = at === "" ? "" : `#${commentSpotId(at)}`
   return `${askedPath(url.pathname)}${url.search}${hash}`
 }
 

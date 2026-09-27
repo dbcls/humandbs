@@ -33,15 +33,14 @@ test.describe("P-FILES ファイル", () => {
     // ラベル
     const row = page.getByRole("row").filter({ hasText: small })
     await row.getByRole("button", { name: "ラベルの編集" }).click()
-    const labelling = page.getByRole("dialog")
+    const labelling = page.getByRole("dialog", { name: "ラベルの編集" })
     await labelling.getByLabel("ラベル ja").fill(`${E2E} ラベル`)
     await labelling.getByLabel("ラベル en").fill(`${E2E} label`)
     await labelling.getByRole("button", { name: "保存" }).click()
+    // 保存が通るとダイアログは閉じる
+    await expect(labelling).toHaveCount(0)
     await expect(row).toContainText(`${E2E} ラベル`)
     await expect(row).toContainText(`${E2E} label`)
-    // 保存してもダイアログは開いたまま
-    await labelling.getByRole("button", { name: "キャンセル" }).click()
-    await expect(labelling).toHaveCount(0)
 
     // 名前の変更
     const renamed = small.replace("small", "renamed")

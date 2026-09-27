@@ -257,7 +257,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         <Stack>
           {editing.conflict !== null && (
             <div onClick={onHeaderBarJump}>
-              <ConflictBanner locale={locale} changed={editing.conflict.changed} />
+              <ConflictBanner locale={locale} changed={editing.conflict.changed} nameOf={(path) => nameOf({ kind: "research-field", path })} />
             </div>
           )}
 
@@ -269,6 +269,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 flags={<FieldFlags annotations={annotationsFor("title")} locale={locale} untranslated={isUntranslated(content.title)} />}
               >
                 <PairField
+                  name={words.title}
                   value={content.title}
                   annotations={annotationsFor("title")}
                   locale={locale}
@@ -283,6 +284,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                 flags={<FieldFlags annotations={annotationsFor("releaseNote")} locale={locale} untranslated={isUntranslated(content.releaseNote)} />}
               >
                 <PairField
+                  name={words.releaseNote}
                   value={content.releaseNote}
                   multiline
                   annotations={annotationsFor("releaseNote")}

@@ -106,6 +106,14 @@ async function publishSide(documentId: string, locale: "ja" | "en", body = "本�
   })
 }
 
+/** Terms of the use-policy vocabulary, each pointing at an article. */
+async function pointPolicies(terms: { code: string, labelJa: string | null, labelEn: string, documentId: string }[]): Promise<void> {
+  const set = only(await db.insert(s.vocabularySet)
+    .values({ code: "policies", labelJa: "ポリシー", labelEn: "Policies" })
+    .returning({ id: s.vocabularySet.id }))
+  await db.insert(s.vocabularyTerm).values(terms.map((term) => ({ setId: set.id, ...term })))
+}
+
 async function slugOf(documentId: string): Promise<string> {
   return only(await db
     .select({ slug: s.document.slug })
@@ -1038,6 +1046,38 @@ describe("画面", () => {
 
     const view = await documentPage(get(token, adminDocumentPath(id)), id)
     expect(view?.seriesOf).toMatchObject({ slug: "x", number: 1, isCurrent: true })
+  })
+
+  it("記事の画面は、その記事を指している利用ポリシーの値を、削除の確認のために返す", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("nbdc-policy")
+    const other = await makeDocument("faq")
+    await pointPolicies([
+      { code: "nbdc", labelJa: "NBDC データ共有ポリシー", labelEn: "NBDC Data Sharing Policy", documentId: id },
+      { code: "familial", labelJa: null, labelEn: "Familial Policy", documentId: id },
+      { code: "cancer", labelJa: "がん研究に限定", labelEn: "Cancer research only", documentId: other },
+    ])
+
+    expect((await documentPage(get(token, adminDocumentPath(id)), id))?.pointedBy)
+      .toEqual(["Familial Policy", "NBDC データ共有ポリシー"])
+    const faq = await makeDocument("about")
+    expect((await documentPage(get(token, adminDocumentPath(faq)), faq))?.pointedBy).toEqual([])
+  })
+
+  it("系列の画面は、配下のバージョンのどれかを指している利用ポリシーの値を返す", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("guidelines")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
+    const series = only(await db.select().from(s.documentSeries))
+    const next = await makeDocument("guidelines/version/2")
+    await makeDocument("guidelines-other")
+    await pointPolicies([
+      { code: "v1", labelJa: "第 1 版のポリシー", labelEn: "Policy v1", documentId: id },
+      { code: "v2", labelJa: "第 2 版のポリシー", labelEn: "Policy v2", documentId: next },
+    ])
+
+    expect((await seriesPage(get(token, adminSeriesPath(series.id)), series.id))?.pointedBy)
+      .toEqual(["第 1 版のポリシー", "第 2 版のポリシー"])
   })
 
   it("uuid でない id は 404 ではなく null で返る", async () => {

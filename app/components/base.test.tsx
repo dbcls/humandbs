@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, startAtTop, ValueChip } from "./base"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, startAtTop, ValueChip, wentThrough } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -527,6 +527,48 @@ describe("where a panel starts once shown", () => {
   it("can take the caret, so that it can hold it at its top", () => {
     const html = render(<Dialog title="研究の変更点" held={{ open: true, close: () => undefined }}><p>x</p></Dialog>)
     expect(html).toMatch(/<dialog[^>]*tabindex="-1"/)
+  })
+})
+
+/**
+ * A panel that sends a form shuts once what it sent has gone through, and stays
+ * open over a refusal with what was typed in it.
+ */
+describe("whether what a panel sent went through", () => {
+  it("did when the action answered by moving the screen, which leaves no answer behind", () => {
+    expect(wentThrough(undefined)).toBe(true)
+    expect(wentThrough(null)).toBe(true)
+  })
+
+  it("did when the answer is ok", () => {
+    expect(wentThrough({ status: "ok", did: "create-term" })).toBe(true)
+  })
+
+  it("did not when the answer names anything else", () => {
+    fc.assert(fc.property(fc.string().filter((status) => status !== "ok"), fc.dictionary(fc.string(), fc.jsonValue()), (status, rest) => {
+      expect(wentThrough({ ...rest, status })).toBe(false)
+    }))
+  })
+})
+
+describe("the name of a panel", () => {
+  it("is its title, so the panel is announced and found by what it is", () => {
+    const html = render(<Dialog title="研究の変更点" held={{ open: true, close: () => undefined }}><p>x</p></Dialog>)
+    const labelledBy = /<dialog[^>]*aria-labelledby="([^"]+)"/.exec(html)?.[1]
+    expect(labelledBy).toBeDefined()
+    expect(html).toMatch(new RegExp(`<h2[^>]*id="${labelledBy ?? ""}"[^>]*>研究の変更点</h2>`))
+  })
+
+  it("is its own for each of several panels on one screen", () => {
+    const html = render(
+      <>
+        <Dialog title="値の編集" held={{ open: true, close: () => undefined }}><p>x</p></Dialog>
+        <Dialog title="値の作成" held={{ open: true, close: () => undefined }}><p>y</p></Dialog>
+      </>,
+    )
+    const ids = [...html.matchAll(/<dialog[^>]*aria-labelledby="([^"]+)"/g)].map((match) => match[1])
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
   })
 })
 

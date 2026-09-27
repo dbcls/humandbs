@@ -1,9 +1,12 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 
-import { RESEARCH, anchorKey, anchorOf, isAnchorPath, isSameSubject, pathExists, subjectOf } from "./anchors"
+import { fieldHash } from "~/admin/urls"
+
+import { RESEARCH, anchorKey, anchorOf, commentSpotId, isAnchorPath, isSameSubject, pathExists, subjectOf } from "./anchors"
 
 const DATASET = { kind: "dataset" as const, datasetId: "d1" }
 
@@ -83,5 +86,25 @@ describe("the place an anchor points at", () => {
   /** The memo is the administrator's own and is not part of what is reviewed. */
   it("is not the draft's memo, which never reaches a preview", () => {
     expect(pathExists(research(), "note")).toBe(false)
+  })
+})
+
+describe("the id of a place's comment control", () => {
+  const path = fc.array(fc.stringMatching(/^[A-Za-z0-9_-]{1,12}$/), { minLength: 1, maxLength: 4 }).map((names) => names.join("."))
+
+  it("is never the id the editing form gives the same place, which shares a document with the page beside it", () => {
+    fc.assert(fc.property(path, (at) => {
+      fc.pre(isAnchorPath(at))
+      expect(commentSpotId(at)).not.toBe(at)
+      expect(commentSpotId(at)).not.toBe(at.split(".")[0])
+      expect(`#${commentSpotId(at)}`).not.toBe(fieldHash(at, null))
+    }))
+  })
+
+  it("is one for each place", () => {
+    fc.assert(fc.property(path, path, (a, b) => {
+      fc.pre(a !== b)
+      expect(commentSpotId(a)).not.toBe(commentSpotId(b))
+    }))
   })
 })

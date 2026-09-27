@@ -60,6 +60,16 @@ export function subjectOf(anchor: FieldAnchor): AnchorSubject {
   return anchor.kind === "research-field" ? RESEARCH : { kind: "dataset", datasetId: anchor.datasetId }
 }
 
+/**
+ * The id of a place's comment control on a page, which a comment posted from
+ * the page comes back to. **Not the place's path alone**: the editing screen
+ * shows the page beside its form, and the form's sections are identified by
+ * the path's first name (`fieldHash`).
+ */
+export function commentSpotId(path: string): string {
+  return `comment-${encodeURIComponent(path)}`
+}
+
 /** One string for one place, for grouping and for looking a place up. */
 export function anchorKey(anchor: CommentAnchor): string {
   if (anchor.kind === "draft" || anchor.kind === "memo") return anchor.kind

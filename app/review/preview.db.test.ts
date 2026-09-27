@@ -620,7 +620,7 @@ describe("writing from a share link", () => {
     )
 
     expect(outcome).toBeInstanceOf(Response)
-    expect((outcome as Response).headers.get("location")).toBe(`/en/preview/${token}#summary.aims`)
+    expect((outcome as Response).headers.get("location")).toBe(`/en/preview/${token}#comment-summary.aims`)
   })
 
   /** An indicator is written by anyone holding the link, as often as they like, so its name is held to a comment's limit. */

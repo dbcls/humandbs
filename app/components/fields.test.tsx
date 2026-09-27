@@ -190,6 +190,44 @@ describe("the dialect badge on a field's name row", () => {
   })
 })
 
+describe("the name a box is read by", () => {
+  const annotations = (): FieldAnnotations => ({ at: "summary.aims", changed: false, onImport: null })
+  const pair = { ja: { state: "value" as const, text: "" }, en: { state: "value" as const, text: "" } }
+  const names = (html: string) => [...html.matchAll(/<(?:input|textarea)\b[^>]*aria-label="([^"]*)"/g)].map((found) => found[1])
+
+  it("is the field's name and the box's language, as the form's other pairs are read (「ラベル ja」)", () => {
+    const html = render(
+      <PairField label="目的" value={pair} multiline annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+    )
+    expect(names(html)).toEqual(["目的 ja", "目的 en"])
+  })
+
+  it("is the section's heading for the one field of a section, which shows no name of its own", () => {
+    const html = render(
+      <PairField name="研究題目" value={pair} annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+    )
+    expect(names(html)).toEqual(["研究題目 ja", "研究題目 en"])
+    expect(html).not.toContain(">研究題目<")
+  })
+
+  it("is the field's name alone for a field with one value, which shows no language", () => {
+    const html = render(
+      <SingleField label="DOI" value={{ state: "value", text: "" }} annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+    )
+    expect(names(html)).toEqual(["DOI"])
+  })
+
+  it("prefers the name shown over the field to the one given for its boxes", () => {
+    fc.assert(fc.property(fc.string({ minLength: 1 }), fc.string({ minLength: 1 }), (shown, given) => {
+      fc.pre(!/[<>&"']/.test(shown + given))
+      const html = render(
+        <SingleField label={shown} name={given} value={{ state: "value", text: "" }} annotations={annotations()} locale="ja" onChange={() => { /* nothing changes here */ }} />,
+      )
+      expect(names(html)).toEqual([shown])
+    }))
+  })
+})
+
 describe("the language label beside a field", () => {
   it("names the language as its code, at the size of the words beside it", () => {
     const html = render(<LanguageLabel language="en" />)
@@ -316,15 +354,25 @@ describe("what an element's row shows it is short of", () => {
 })
 
 describe("the conflict banner", () => {
+  const nameOf = (path: string) => `hum0001 / ${path.toUpperCase()}`
+
   it("draws each changed place as a bordered way to its section, not as a bare word", () => {
-    const html = render(<ConflictBanner locale="ja" changed={["summary.aims", "publications"]} />)
+    const html = render(<ConflictBanner locale="ja" changed={["summary.aims", "publications"]} nameOf={nameOf} />)
     const ways = [...html.matchAll(/<a\b[^>]*href="#([^"]*)"[^>]*class="([^"]*)"/g)]
     expect(ways.map((way) => way[1])).toEqual(["summary", "publications"])
     for (const way of ways) expect(way[2]).toMatch(/\bborder\b/)
   })
 
+  it("names each place as the screen's other lists of places do, not by its path", () => {
+    fc.assert(fc.property(fc.uniqueArray(fc.stringMatching(/^[a-z]{1,8}(\.[a-z]{1,8}){0,2}$/), { minLength: 1, maxLength: 5 }), (changed) => {
+      const html = render(<ConflictBanner locale="ja" changed={changed} nameOf={nameOf} />)
+      const words = [...html.matchAll(/<a\b[^>]*>(?:<[^>]*>)*([^<]*)/g)].map((way) => way[1]?.trim())
+      expect(words).toEqual(changed.map(nameOf))
+    }))
+  })
+
   it("draws no ways when nothing it can name has changed", () => {
-    const html = render(<ConflictBanner locale="ja" changed={[]} />)
+    const html = render(<ConflictBanner locale="ja" changed={[]} nameOf={nameOf} />)
     expect(html).not.toContain("<a")
   })
 })

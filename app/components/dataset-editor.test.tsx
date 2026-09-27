@@ -229,8 +229,10 @@ describe("the dataset editing form", () => {
 
     expect(html).toContain("データの種類")
     expect(html).toContain("全ゲノムシークエンス")
-    // The one it already has is not offered again as a candidate.
-    expect(html.split("データの種類").length - 1).toBe(1)
+    // The one it already has is not offered again as a candidate. Its boxes
+    // are read by its name, which is not an offer.
+    expect(html.replace(/aria-label="[^"]*"/g, "").split("データの種類").length - 1).toBe(1)
+    expect(html).toContain("aria-label=\"データの種類 ja\"")
     // The ones it does not have are candidates in a box that opens as it is
     // entered — not empty fields, not a `<select>`, not a collapsible to open first.
     expect(html).not.toContain("備考")
@@ -973,6 +975,24 @@ describe("the parts of an experiment's card", () => {
     expect(card).toContain("項目はありません。")
     // The heading 「解析手法」 names the one box under it; no second name over the box.
     expect(card).not.toContain("表示ラベル")
+  })
+
+  it("gives every box of the form a name to be read by, the one box under a heading the heading's", () => {
+    const html = render(view({ ...described(), experiments: [{ id: "e1", label: filled("RNA-seq"), values: [] }] }))
+    const labelled = new Set([...html.matchAll(/<label\b[^>]*for="([^"]+)"/g)].map((found) => found[1]))
+    const boxes = [...html.matchAll(/<(?:input|textarea)\b(?![^>]*type="(?:hidden|checkbox|radio)")[^>]*>/g)].map((found) => found[0])
+    expect(boxes.length).toBeGreaterThan(0)
+    for (const box of boxes) {
+      const id = /\sid="([^"]+)"/.exec(box)?.[1]
+      expect(/aria-label(?:ledby)?="[^"]+"/.test(box) || (id !== undefined && labelled.has(id)), box).toBe(true)
+    }
+    expect(html).toMatch(/<input[^>]*aria-label="解析手法"[^>]*value="RNA-seq"/)
+  })
+
+  it("gives no two elements of the screen the same id, the form and the page beside it included", () => {
+    const html = render(view({ ...described(), experiments: [{ id: "e1", label: filled("RNA-seq"), values: [] }] }))
+    const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((found) => found[1])
+    expect(ids.filter((id, at) => ids.indexOf(id) !== at)).toEqual([])
   })
 })
 

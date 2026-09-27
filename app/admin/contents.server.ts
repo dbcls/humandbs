@@ -27,7 +27,8 @@ import { recordEvent } from "~/auth/events.server"
 import { checkArticleBody, type ArticleSyntax } from "~/content/article.server"
 import type { ArticleContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
-import { alert, document, documentContent, documentSeries, news, newsContent } from "~/db/schema"
+import { alert, document, documentContent, documentSeries, news, newsContent, vocabularyTerm } from "~/db/schema"
+import { catalogLabel } from "~/i18n/catalog-label"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { isLocale } from "~/i18n/locale"
 import { renderMarkdown } from "~/public/markdown.server"
@@ -199,6 +200,8 @@ export interface SeriesView {
   current: DocumentRow | null
   /** Languages the version-less slug does not respond in. */
   unanswered: Locale[]
+  /** The use-policy terms pointing at any of the revisions (`policiesPointingAt`). */
+  pointedBy: string[]
 }
 
 export interface AlertsView {
@@ -226,6 +229,8 @@ export interface DocumentView {
   /** Set when this document is a revision: the series it belongs to. */
   seriesOf: { id: string, slug: string, number: number, isCurrent: boolean } | null
   editors: LocaleEditor[]
+  /** The use-policy terms pointing at this article (`policiesPointingAt`). */
+  pointedBy: string[]
 }
 
 export interface NewsListView extends ListingPage<NewsRow> {
@@ -435,12 +440,29 @@ export async function seriesPage(request: Request, seriesId: string): Promise<Se
   if (series === undefined) return null
 
   const current = series.revisions.find((one) => one.id === series.currentId) ?? null
+  const { locale } = readLocale(new URL(request.url).pathname)
   return {
-    locale: readLocale(new URL(request.url).pathname).locale,
+    locale,
     series,
     current,
     unanswered: unansweredLocales(current, LOCALES),
+    pointedBy: await policiesPointingAt(db, series.revisions.map((one) => one.id), locale),
   }
+}
+
+/**
+ * The use-policy terms whose label the public page links to one of these
+ * articles, by the label the screen is read in. **Removing the article takes
+ * the link away** (`vocabulary_term.document_id` is set to null), which nothing
+ * on the article's own screen would otherwise show — so its removal names them.
+ */
+async function policiesPointingAt(db: Executor, documentIds: readonly string[], locale: Locale): Promise<string[]> {
+  if (documentIds.length === 0) return []
+  const rows = await db
+    .select({ labelJa: vocabularyTerm.labelJa, labelEn: vocabularyTerm.labelEn })
+    .from(vocabularyTerm)
+    .where(inArray(vocabularyTerm.documentId, [...documentIds]))
+  return rows.map((row) => catalogLabel(row, locale)).sort((a, b) => a.localeCompare(b, "ja"))
 }
 
 export async function alertsPage(request: Request): Promise<AlertsView> {
@@ -529,9 +551,10 @@ export async function documentPage(
     .select({ id: documentSeries.id, slug: documentSeries.slug, currentId: documentSeries.currentId })
     .from(documentSeries)
   const owner = series.find((one) => versionNumberIn(one.slug, row.slug) !== null)
+  const { locale } = readLocale(new URL(request.url).pathname)
 
   return {
-    locale: readLocale(new URL(request.url).pathname).locale,
+    locale,
     id: row.id,
     slug: row.slug,
     seriesOf: owner === undefined
@@ -543,6 +566,7 @@ export async function documentPage(
           isCurrent: owner.currentId === row.id,
         },
     editors: editorsFrom(contents),
+    pointedBy: await policiesPointingAt(db, [row.id], locale),
   }
 }
 

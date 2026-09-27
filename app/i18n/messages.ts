@@ -1398,7 +1398,13 @@ const ja = {
       schedule: "予約公開",
       removeDocument: "記事の削除",
       removeDocumentTitle: "記事の削除",
-      removeDocumentWarning: "この記事と両方の言語の本文が削除され、slug も解放されます。元に戻せません。",
+      /** With the use-policy terms pointing at the article, whose link goes with it. */
+      removeDocumentWarning: (...policies: string[]): string[] => [
+        "この記事と両方の言語の本文が削除され、slug も解放されます。元に戻せません。",
+        ...policies.length === 0
+          ? []
+          : [`利用ポリシーの値${policies.map((label) => `「${label}」`).join("")}がこの記事を指しています。削除すると、公開ページでその値の表示名にリンクが付かなくなります。`],
+      ],
       removeDocumentConfirm: "削除",
       remove: "削除",
       noDocument: "記事はありません。",
@@ -1448,8 +1454,13 @@ const ja = {
       addVersion: "次のバージョンの作成",
       removeSeries: "系列の削除",
       removeSeriesTitle: "系列の削除",
-      removeSeriesWarning: (count: number) =>
+      /** With the use-policy terms pointing at any of its versions, whose link goes with them. */
+      removeSeriesWarning: (count: number, ...policies: string[]): string[] => [
         `代表アドレスと配下の ${count} バージョンが削除され、そのアドレスはすべて 404 になります。元に戻せません。`,
+        ...policies.length === 0
+          ? []
+          : [`利用ポリシーの値${policies.map((label) => `「${label}」`).join("")}がこの系列のバージョンを指しています。削除すると、公開ページでその値の表示名にリンクが付かなくなります。`],
+      ],
       removeSeriesConfirm: "削除",
       unanswered: (slug: string, languages: string) =>
         `代表アドレス ${slug} が指すバージョンは ${languages} で公開されていません。代表アドレスは応答し続ける必要があります。`,

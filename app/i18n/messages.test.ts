@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { messagesFor } from "./messages"
@@ -20,8 +21,9 @@ function warnings(node: unknown, path: string): [string, string][] {
 }
 
 describe("確認ダイアログの警告文", () => {
+  // A warning given as lines (`base.tsx` の `Lines`) holds each line to the rule.
   const all = warnings(messagesFor("ja").admin, "admin")
-    .filter(([path]) => path.endsWith("Warning"))
+    .filter(([path]) => /Warning(\.\d+)?$/.test(path))
 
   it("警告の文は句点で結ぶ", () => {
     expect(all.length).toBeGreaterThan(15)
@@ -44,6 +46,34 @@ describe("確認ダイアログの警告文", () => {
 
   it("「いま」で始まる文は無い — ダイアログを開いている時点のことしか書かないため", () => {
     expect(all.filter(([, text]) => text.startsWith("いま")).map(([path]) => path)).toStrictEqual([])
+  })
+})
+
+/**
+ * 利用ポリシーの値から指されている記事を削除すると、値の指定が外れて公開ページの
+ * リンクが無くなる。記事の画面にはそれを表示するところが無いので、削除の確認で表示する。
+ */
+describe("記事と系列の削除の確認", () => {
+  const t = messagesFor("ja").admin.contents
+
+  it("指している利用ポリシーの値が無ければ、削除されるものだけを 1 行で表示する", () => {
+    expect(t.removeDocumentWarning()).toEqual(["この記事と両方の言語の本文が削除され、slug も解放されます。元に戻せません。"])
+    expect(t.removeSeriesWarning(2)).toHaveLength(1)
+  })
+
+  it("指している利用ポリシーの値を、渡した順に 1 つずつ、2 行目に表示する", () => {
+    fc.assert(fc.property(fc.uniqueArray(fc.stringMatching(/^[^「」]{1,20}$/), { minLength: 1, maxLength: 4 }), (policies) => {
+      for (const lines of [t.removeDocumentWarning(...policies), t.removeSeriesWarning(3, ...policies)]) {
+        expect(lines).toHaveLength(2)
+        expect([...(lines[1] ?? "").matchAll(/「([^」]*)」/g)].map((found) => found[1])).toEqual(policies)
+        expect(lines[1]).toContain("公開ページでその値の表示名にリンクが付かなくなります。")
+      }
+    }))
+  })
+
+  it("指しているのが記事か系列のバージョンかを書き分ける", () => {
+    expect(t.removeDocumentWarning("NBDC データ共有ポリシー")[1]).toContain("この記事を指しています")
+    expect(t.removeSeriesWarning(2, "NBDC データ共有ポリシー")[1]).toContain("この系列のバージョンを指しています")
   })
 })
 
