@@ -17,7 +17,9 @@ import { diffDraftInput } from "./diff"
 import { researchContentInput, type SlotState } from "./form"
 import { readAt } from "./paths"
 
+import { toPlainText } from "~/content/richtext"
 import type { DatasetContent, ResearchContent } from "~/content/types"
+import type { AnchoredValue } from "~/public/view.server"
 
 /**
  * Whether the datasets both lists hold are shown in a different order. A dataset on
@@ -176,4 +178,76 @@ function lineOf(label: string, slot: Record<string, unknown>): ShownLine | null 
     return { label, state, text: state === "value" ? slot.ids.filter((id) => typeof id === "string").join(", ") : "" }
   }
   return null
+}
+
+/** One side of one line of a comparison: its text, or the state it shows instead. */
+export type Side
+  = | { state: "value", text: string }
+    | { state: "unknown" | "not-applicable" }
+
+/** A line of the comparison: a language, or a row of a list, with both sides. */
+export interface CompareRow {
+  /** `ja` / `en`, or empty for a value with no language. */
+  label: string
+  before: Side | null
+  after: Side | null
+}
+
+/**
+ * The two sides line by line. **Lines pair by position** — a value's lines are
+ * its languages in a fixed order, or the rows of a list, and a row only one
+ * side has is shown against nothing.
+ */
+export function lineRows(
+  before: readonly ShownLine[],
+  after: readonly ShownLine[],
+  termLabel?: (id: string) => string,
+): CompareRow[] {
+  const count = Math.max(before.length, after.length)
+  return Array.from({ length: count }, (_, at) => {
+    const one = before.at(at)
+    const other = after.at(at)
+    return {
+      label: one?.label ?? other?.label ?? "",
+      before: one === undefined ? null : lineSide(one, termLabel),
+      after: other === undefined ? null : lineSide(other, termLabel),
+    }
+  })
+}
+
+function lineSide(line: ShownLine, termLabel?: (id: string) => string): Side {
+  return line.state === "value" ? { state: "value", text: shownText(line, termLabel) } : { state: line.state }
+}
+
+/**
+ * What one line shows. A value made of identities reads as their labels; one
+ * that also has words of its own — a disease — reads as the words with the
+ * labels after them, which is how it reads on the page it came from.
+ */
+function shownText(line: ShownLine, termLabel?: (id: string) => string): string {
+  if (line.termIds === undefined) return line.text
+  const terms = line.termIds.map((id) => termLabel?.(id) ?? id).join(", ")
+  if (terms === "") return line.text
+  return line.text === "" ? terms : `${line.text} (${terms})`
+}
+
+/** A value the page draws, as the text it reads as. */
+export function anchoredSide(value: AnchoredValue): Side {
+  if (value.kind === "term") return { state: "value", text: value.term?.label ?? "" }
+  if (value.kind === "list") return { state: "value", text: value.items.join("\n") }
+  if (value.kind === "ids") {
+    if (value.ids.state === "unsettled") return { state: "unknown" }
+    if (value.ids.state === "not-applicable") return { state: "not-applicable" }
+    return { state: "value", text: value.ids.items.join("\n") }
+  }
+  if (value.kind === "rows") return { state: "value", text: value.rows.rows.map((row) => row.cells.join(" / ")).join("\n") }
+  const shown = value.kind === "field" ? value.field : value.links
+  if (shown.state === "unsettled") return { state: "unknown" }
+  if (shown.state === "not-applicable") return { state: "not-applicable" }
+  if (value.kind === "links") {
+    return { state: "value", text: value.links.state === "value" ? value.links.value.map((link) => link.url).join("\n") : "" }
+  }
+  const field = value.field
+  if (field.state === "rich") return { state: "value", text: toPlainText(field.text) }
+  return { state: "value", text: field.state === "plain" ? field.text : "" }
 }

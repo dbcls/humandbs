@@ -1536,7 +1536,7 @@ function DatasetFacts({ view, locale }: {
           {view.datasetLabel === null || view.datasetPinId === null
             ? (
                 <fetcher.Form method="post" className="flex flex-wrap items-center gap-3">
-                  <IdForm nextNhaId={view.nextNhaId} locale={locale} size="row" />
+                  <IdForm nextNhaId={view.nextNhaId} locale={locale} size="row" filled />
                 </fetcher.Form>
               )
             : (

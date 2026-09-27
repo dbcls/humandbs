@@ -66,6 +66,17 @@ describe("editDiseases", () => {
     expect(alone.experiments[0]?.values.map((slot) => slot.keyId)).toEqual(["k-text"])
   })
 
+  it("drops a value from the dataset the edit names only", () => {
+    const edit: DiseaseEdit = { hum: "hum0257", dataset: "JGAD000633", nameJa: "膵管内乳頭粘液性腫瘍", nameEn: "Intraductal papillary mucinous neoplasm", drop: true }
+    const both = () => datasetWith(disease("膵管がん", "Pancreatic ductal adenocarcinoma"), disease("膵管内乳頭粘液性腫瘍", "Intraductal papillary mucinous neoplasm"))
+    const applied = new Set<DiseaseEdit>()
+
+    expect(diseasesOf(editDiseases(both(), "hum0257", [edit], applied, undefined, "JGAD000366"))).toHaveLength(2)
+    expect(applied.size).toBe(0)
+    expect(diseasesOf(editDiseases(both(), "hum0257", [edit], applied, undefined, "JGAD000633"))?.map((one) => one.nameJa)).toEqual(["膵管がん"])
+    expect(applied.has(edit)).toBe(true)
+  })
+
   it("makes one value of two the edits make the same", () => {
     const edits: DiseaseEdit[] = [
       { hum: "hum0440", nameJa: "内2症例は重症筋無力症", nameEn: "cases", set: { nameJa: "重症筋無力症", nameEn: "myasthenia gravis" } },

@@ -1,6 +1,7 @@
 import { Outlet } from "react-router"
 
 import { requireActor } from "~/auth/actor.server"
+import { useKeepOpenedFrom } from "~/components/admin"
 import { PageWidthDefault } from "~/components/page"
 import { LeaveGuard } from "~/components/unsaved"
 
@@ -27,6 +28,10 @@ import type { Route } from "./+types/admin-layout"
  * **The guard against leaving unsent work behind is here**, once for the
  * area (`components/unsaved.tsx`): the forms that hold work are on every
  * screen, and the router takes one blocker.
+ *
+ * **Which screen each one was opened from is kept here**, for the back links
+ * that lead there (`components/admin.tsx` の `useOpenedFrom`): it is known
+ * only by watching every screen of the area.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   await requireActor(request)
@@ -34,6 +39,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function AdminLayout() {
+  useKeepOpenedFrom()
   // The management screens are tables and side-by-side editors, so they take
   // the window rather than the reading measure the portal's pages hold to.
   return (

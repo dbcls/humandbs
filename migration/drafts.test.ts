@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { selectDrafts, withdrawnDrafts, type WithdrawnData } from "./drafts"
+import { alongsideDrafts, selectDrafts, withdrawnDrafts, type WithdrawnData } from "./drafts"
 import { datasetKey, type Dump, type EsDataset, type EsResearch, type EsResearchVersion } from "./es"
 
 const research = (humId: string, latestVersion: string | null): EsResearch => ({ humId, latestVersion })
@@ -132,5 +132,43 @@ describe("withdrawnDrafts", () => {
   it("stops on a dataset the latest version does not list, and on a research with no published version", () => {
     expect(() => withdrawnDrafts(held, [{ ...withdrawn, datasets: ["JGAD000999"] }])).toThrow(/JGAD000999/)
     expect(() => withdrawnDrafts(held, [{ ...withdrawn, hum: "hum0484" }])).toThrow(/hum0484/)
+  })
+})
+
+describe("alongsideDrafts", () => {
+  const published = version("hum0169", 2, [{ datasetId: "JGAD000259", version: "v2" }])
+  const converted = version("hum0169", 3, [{ datasetId: "JGAD000259", version: "v3" }, { datasetId: "JGAD000306", version: "v1" }])
+  const beside = version("hum0169", 3, [{ datasetId: "JGAD000259", version: "v3-joomla" }, { datasetId: "JGAD000776", version: "v1-joomla" }])
+  const held: Dump = {
+    research: new Map([["hum0169", research("hum0169", "v2")]]),
+    publishedVersions: [published],
+    latestVersion: new Map([["hum0169", published]]),
+    datasetsByKey: index([
+      doc("JGAD000259", "v2", "hum0169"),
+      doc("JGAD000259", "v3", "hum0169"),
+      doc("JGAD000306", "v1", "hum0169"),
+      doc("JGAD000259", "v3-joomla", "hum0169"),
+      doc("JGAD000776", "v1-joomla", "hum0169"),
+    ]),
+    versions: [published, converted],
+  }
+  const alongside = { humVersionId: "hum0169-v3", name: "JGAD000776 (旧サイトの staging の v3)", memo: "2 つ目の下書き" }
+
+  it("gives the research a draft of the converted version beside the draft v1 converted, with its own documents", () => {
+    const [draft, ...rest] = alongsideDrafts(held, [beside], [alongside])
+
+    expect(rest).toEqual([])
+    expect(draft?.version).toBe(beside)
+    expect(draft?.datasets.map((one) => [one.label, one.doc.version])).toEqual([["JGAD000259", "v3-joomla"], ["JGAD000776", "v1-joomla"]])
+    expect(draft?.updatesPublished).toBe(true)
+    expect([draft?.name, draft?.memo]).toEqual([alongside.name, alongside.memo])
+    expect(selectDrafts(held.research, held.versions, held.datasetsByKey).drafts.map((one) => one.version)).toEqual([converted])
+  })
+
+  it("stops on a version, a research or a document that is not there", () => {
+    expect(() => alongsideDrafts(held, [beside], [{ ...alongside, humVersionId: "hum0169-v4" }])).toThrow(/hum0169-v4/)
+    expect(() => alongsideDrafts(held, [version("hum0170", 1)], [{ ...alongside, humVersionId: "hum0170-v1" }])).toThrow(/hum0170/)
+    const lost = version("hum0169", 3, [{ datasetId: "JGAD000777", version: "v1-joomla" }])
+    expect(() => alongsideDrafts(held, [lost], [alongside])).toThrow(/JGAD000777/)
   })
 })

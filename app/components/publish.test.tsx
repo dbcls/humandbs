@@ -3,11 +3,19 @@ import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
 import type { PublishPageView, PublishResult } from "~/admin/pages.server"
+import { orderCompare, type ChangeView } from "~/admin/publish-changes"
 
-import { PublishConfirmation } from "./publish"
+import { ChangedFields, PublishConfirmation } from "./publish"
 import type { PlaceSources } from "./places"
 
 const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
+
+/** Changes to as many fields, each named, with nothing to set side by side. */
+function changes(count: number): ChangeView[] {
+  return Array.from({ length: count }, (_, at) => ({ path: `f${at}`, name: `hum0001 / 項目 ${at + 1}`, compare: null }))
+}
+
+const REORDERED = orderCompare(["a", "b"], ["b", "a"], (id) => id, { position: "順番", datasetId: "データセット ID" })
 
 /**
  * The screen has one job the server cannot do for it: making the difference
@@ -31,9 +39,9 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     blocks: [],
     groups: [],
     findingCount: 0,
-    researchFields: 0,
+    researchChanges: [],
     datasetChanges: [],
-    reordered: false,
+    order: null,
     comparedWith: 1,
     updatingReleaseDate: null,
     datasetRows: {},
@@ -86,7 +94,7 @@ describe("the publish screen", () => {
       releaseDate: "2024-05-01",
       updatingReleaseDate: "2024-05-01",
       heldNumbers: [3, 1],
-      researchFields: 2,
+      researchChanges: changes(2),
     }))
 
     expect(html).toContain("更新前の確認")
@@ -148,8 +156,8 @@ describe("the publish screen", () => {
         { kind: "dataset-id-missing", datasetId: d2 },
       ],
       datasetRows: {
-        [d1]: { id: d1, label: "", typeOfData: { state: "plain", text: "WES", untranslated: false }, accessType: null, datePublished: null },
-        [d2]: { id: d2, label: "", typeOfData: { state: "plain", text: "RNA-seq", untranslated: false }, accessType: null, datePublished: null },
+        [d1]: { id: d1, label: "", typeOfData: { state: "plain", text: "WES", untranslated: false }, accessType: null, datePublished: null, dateModified: null, experimentLabels: [] },
+        [d2]: { id: d2, label: "", typeOfData: { state: "plain", text: "RNA-seq", untranslated: false }, accessType: null, datePublished: null, dateModified: null, experimentLabels: [] },
       },
     }))
 
@@ -173,13 +181,13 @@ describe("the publish screen", () => {
         {
           kind: "unsettled",
           count: 12,
-          fileNames: [],
+          fileNames: [], spots: [],
           places: [{ label: "研究の内容", href: "/admin/research/x/draft/y", count: 12, note: null }],
         },
         {
           kind: "empty-dataset",
           count: 1,
-          fileNames: [],
+          fileNames: [], spots: [],
           places: [{
             label: "JGAD000001",
             href: "/admin/research/x/draft/y/dataset/z",
@@ -209,8 +217,8 @@ describe("the publish screen", () => {
     const html = render(view({
       comparedWith: 4,
       datasetChanges: [
-        { datasetId: "d1", label: "JGAD000001", fields: 3, isNew: false, href: "/x" },
-        { datasetId: "d2", label: null, fields: 0, isNew: true, href: "/y" },
+        { datasetId: "d1", label: "JGAD000001", changes: changes(3), isNew: false, href: "/x" },
+        { datasetId: "d2", label: null, changes: [], isNew: true, href: "/y" },
       ],
     }))
 
@@ -221,6 +229,65 @@ describe("the publish screen", () => {
     // A dataset with no id is not named by its identity.
     expect(html).not.toContain(">d2<")
     expect(html).not.toContain("掲載")
+  })
+
+  it("counts the research's changes on the badge the editing screens mark a change with, as a button that opens them", () => {
+    const html = render(view({ researchChanges: changes(6) }))
+    const line = html.slice(html.indexOf(">研究の内容<"), html.indexOf("研究の編集"))
+    expect(line).toMatch(/<button type="button"[^>]*border-dashed[^>]*>[\s\S]*?6 項目の変更<\/button>/)
+    expect(html).not.toContain("研究の内容: ")
+    // The research's own screen is still where a change is written.
+    expect(html).toContain(`href="/admin/research/00000000-0000-0000-0000-000000000001/draft/00000000-0000-0000-0000-000000000002"`)
+  })
+
+  it("shows a new order of the datasets as the same badge, and a dataset's changes too", () => {
+    const html = render(view({
+      order: REORDERED,
+      datasetChanges: [{ datasetId: "d1", label: "JGAD000001", changes: changes(3), isNew: false, href: "/x" }],
+    }))
+    expect(html).toMatch(/<button type="button"[^>]*border-dashed[^>]*>[\s\S]*?データセットの並び順の変更<\/button>/)
+    expect(html).toMatch(/<button type="button"[^>]*border-dashed[^>]*>[\s\S]*?3 項目の変更<\/button>/)
+  })
+
+  it("draws the changed datasets and the ones without an id with the draft's dataset listing's columns", () => {
+    const html = render(view({
+      blocks: [{ kind: "dataset-id-missing", datasetId: "d2" }],
+      datasetChanges: [{ datasetId: "d1", label: "JGAD000001", changes: changes(1), isNew: false, href: "/x" }],
+    }))
+    const headers = [...html.matchAll(/<thead>([\s\S]*?)<\/thead>/g)].map((head) =>
+      [...(head[1] ?? "").matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((cell) => (cell[1] ?? "").replace(/<[^>]+>/g, "")))
+    expect(headers).toContainEqual(["データセット ID", "変更点", "データの種類", "解析手法", "アクセス制限", "公開日", "更新日"])
+    expect(headers).toContainEqual(["データセット ID", "データの種類", "解析手法", "アクセス制限", "公開日", "更新日", "割り当てる ID"])
+  })
+
+  it("opens the places of an unsettled value or a missing translation from one button, and leaves the other kinds' screens as they are", () => {
+    const html = render(view({
+      findingCount: 2,
+      groups: [
+        {
+          kind: "unsettled",
+          count: 1,
+          fileNames: [],
+          places: [{ label: "研究の内容", href: "/admin/research/x/draft/y", count: 1, note: null }],
+          spots: [{ name: "hum0001 / 研究題目", language: "en", href: "/admin/research/x/draft/y" }],
+        },
+        {
+          kind: "empty-dataset",
+          count: 1,
+          fileNames: [],
+          places: [{ label: "JGAD000001", href: "/admin/research/x/draft/y/dataset/z", count: 1, note: null }],
+          spots: [],
+        },
+      ],
+    }))
+    const row = (kind: string): string => {
+      const at = html.indexOf(`>${kind}</td>`)
+      return html.slice(html.lastIndexOf("<tr", at), html.indexOf("</tr>", at))
+    }
+    expect(row("未確定の値")).toMatch(/<button[^>]*>[\s\S]*?場所の一覧<\/button>/)
+    expect(row("未確定の値")).not.toContain(">研究の内容<")
+    expect(row("内容が空のデータセット")).toContain(">JGAD000001</a>")
+    expect(row("内容が空のデータセット")).not.toContain("場所の一覧")
   })
 
   it("shows the first version has nothing to be measured against", () => {
@@ -308,13 +375,13 @@ describe("the publish screen", () => {
     expect(same).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?v3 の更新<\/button>/)
     expect(same).toContain("公開中の v3 と変わるものが無いため、更新できません。")
 
-    const changed = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01", researchFields: 1 }))
+    const changed = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01", researchChanges: changes(1) }))
     expect(changed).not.toMatch(/disabled=""/)
   })
 
   /** The public page lists the datasets in the version's order, so moving them is a change. */
   it("updates a version whose only change is the order of its datasets, and shows it", () => {
-    const html = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01", reordered: true }))
+    const html = render(view({ updating: { number: 3 }, releaseDate: "2024-05-01", updatingReleaseDate: "2024-05-01", order: REORDERED }))
 
     expect(html).not.toMatch(/disabled=""/)
     expect(html).toContain("データセットの並び順の変更")
@@ -325,7 +392,7 @@ describe("the publish screen", () => {
     const html = render(view({
       blocks: [{ kind: "hum-label-missing", datasetId: null }],
       findingCount: 1,
-      groups: [{ kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の内容", href: "/x", count: 1, note: null }] }],
+      groups: [{ kind: "unsettled", count: 1, fileNames: [], spots: [], places: [{ label: "研究の内容", href: "/x", count: 1, note: null }] }],
     }))
     const order = ["変更点", "公開できない理由", "レビュー", "公開前に確かめるもの", "公開"].map((title) => html.indexOf(`>${title}</h2>`))
     expect(order.every((at) => at > -1)).toBe(true)
@@ -333,7 +400,7 @@ describe("the publish screen", () => {
   })
 
   it("names its sections with nouns, not questions", () => {
-    const html = render(view({ findingCount: 1, groups: [{ kind: "unsettled", count: 1, fileNames: [], places: [] }] }))
+    const html = render(view({ findingCount: 1, groups: [{ kind: "unsettled", count: 1, fileNames: [], spots: [], places: [] }] }))
     expect(html).not.toMatch(/<h2[^>]*>[^<]*か<\/h2>/)
   })
 
@@ -370,8 +437,8 @@ describe("the publish screen", () => {
     const html = render(view({
       findingCount: 2,
       groups: [
-        { kind: "unsettled", count: 1, fileNames: [], places: [{ label: "研究の内容", href: "/x", count: 1, note: null }] },
-        { kind: "private-file", count: 1, fileNames: ["a.zip"], places: [{ label: "JGAD000001", href: "/y", count: 1, note: null }] },
+        { kind: "unsettled", count: 1, fileNames: [], spots: [], places: [{ label: "研究の内容", href: "/x", count: 1, note: null }] },
+        { kind: "private-file", count: 1, fileNames: ["a.zip"], spots: [], places: [{ label: "JGAD000001", href: "/y", count: 1, note: null }] },
       ],
     }))
     const row = (kind: string): string => {
@@ -380,5 +447,35 @@ describe("the publish screen", () => {
     }
     expect(row("データセットに紐づけた未公開のファイル")).toMatch(/form="publish-files"[\s\S]*?まとめて公開 \(1\)/)
     expect(row("未確定の値")).not.toContain("まとめて公開")
+  })
+})
+
+describe("the fields a subject changes", () => {
+  it("names each place as a heading and sets its two sides under it, or names it alone", () => {
+    const html = renderToStaticMarkup(
+      <ChangedFields
+        locale="ja"
+        against="公開中の v1"
+        changes={[
+          {
+            path: "title",
+            name: "hum0001 / 研究題目",
+            compare: { kind: "lines", rows: [{ label: "ja", before: { state: "value", text: "古い" }, after: { state: "value", text: "新しい" } }] },
+          },
+          { path: "values.k", name: "JGAD000001 / 数値", compare: null },
+        ]}
+      />,
+    )
+    expect(html).toMatch(/<h3[^>]*>hum0001 \/ 研究題目<\/h3>/)
+    expect(html).toContain("公開中の v1")
+    expect(html).toContain("この下書き")
+    expect(html).toMatch(/<h3[^>]*>JGAD000001 \/ 数値<\/h3><\/div><\/section>/)
+  })
+
+  it("marks a dataset that moved with the version's position struck and the draft's added", () => {
+    const html = renderToStaticMarkup(<ChangedFields locale="ja" against="公開中の v1" changes={[{ path: "order", name: "順", compare: REORDERED }]} />)
+    expect(html).toContain(">順番<")
+    const moved = html.slice(html.indexOf("<tbody"))
+    expect(moved).toMatch(/<del[^>]*>2<\/del>[\s\S]*<ins[^>]*>1<\/ins>/)
   })
 })

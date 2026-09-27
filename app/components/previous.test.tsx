@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { CompareTable, lineRows, RowsCompare } from "./previous"
+import { lineRows } from "~/admin/changes"
+
+import { CompareTable, RowsCompare } from "./previous"
 
 const draw = (element: React.ReactNode) => renderToStaticMarkup(element)
 

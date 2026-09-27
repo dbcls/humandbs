@@ -31,10 +31,25 @@ describe("applyTypeOfDataFixes", () => {
     expect(docs[0]?.typeOfData).toEqual({ en: "HLA 6-loci sequencing" })
   })
 
+  it("writes a fix with no version into every version of the dataset and no other dataset's", () => {
+    const other: EsDataset = { datasetId: "JGAD000771", version: "v3", humId: "hum0358", typeOfData: { ja: "NGS", en: "NGS" } }
+    const docs = [doc("v3"), doc("v2"), other]
+    applyTypeOfDataFixes(docs, [{ datasetId: "JGAD000770", lang: "en", typeOfData: "NGS (RNA-seq, scRNA-seq)" }])
+
+    expect(docs.map((one) => one.typeOfData?.en)).toEqual(["NGS (RNA-seq, scRNA-seq)", "NGS (RNA-seq, scRNA-seq)", "NGS"])
+    expect(docs.map((one) => one.typeOfData?.ja)).toEqual(["NGS (Exome、RNA-seq)", "NGS (Exome、RNA-seq)", "NGS"])
+  })
+
   it("stops when a fix names a document that is not there", () => {
     expect(() => {
       applyTypeOfDataFixes([doc("v3")], [{ datasetId: "JGAD000770", version: "v9", lang: "ja", typeOfData: "x" }])
     }).toThrow(/found nothing/)
+  })
+
+  it("stops when a fix with no version names a dataset that is not there", () => {
+    expect(() => {
+      applyTypeOfDataFixes([doc("v3")], [{ datasetId: "JGAD000771", lang: "ja", typeOfData: "x" }])
+    }).toThrow(/JGAD000771 every version ja/)
   })
 })
 

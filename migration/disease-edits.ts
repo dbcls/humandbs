@@ -15,15 +15,20 @@
  *   arthritis`), and is dropped.
  *
  * An edit names the research and the value by its two names as the rules read
- * them, so it lands on every version and every draft that has the value. **An
- * edit that lands nowhere stops the load**, since it was written against the
- * input and not landing means one of the two has moved.
+ * them, so it lands on every version and every draft that has the value. An
+ * edit that also names a `dataset`, by the ID v1 gave it, lands on that
+ * dataset only: a value one dataset has from another's line in a shared cell
+ * is that one's to lose. **An edit that lands nowhere stops the load**, since
+ * it was written against the input and not landing means one of the two has
+ * moved.
  */
 
 import type { DatasetContent, DiseaseValue } from "~/content/types"
 
 export interface DiseaseEdit {
   hum: string
+  /** The dataset the edit is about, by the ID v1 gave it; without one, every dataset of the research. */
+  dataset?: string
   /** The value's names as the rules read them. */
   nameJa: string | null
   nameEn: string | null
@@ -51,8 +56,10 @@ export function editDiseases(
   applied: Set<DiseaseEdit>,
   /** The names each research's values have, for saying what an edit that found nothing could have meant. */
   seen?: Map<string, Set<string>>,
+  /** The ID v1 gave the dataset. */
+  label?: string,
 ): DatasetContent {
-  const own = edits.filter((edit) => edit.hum === hum)
+  const own = edits.filter((edit) => edit.hum === hum && (edit.dataset === undefined || edit.dataset === label))
   if (own.length === 0) return dataset
   const names = seen?.get(hum) ?? new Set<string>()
   seen?.set(hum, names)

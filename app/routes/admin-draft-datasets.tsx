@@ -5,9 +5,10 @@ import { draftDatasetListAction, draftDatasetListPage } from "~/admin/pages.serv
 import type { DraftDatasetListView } from "~/admin/pages.server"
 import {
   adminDraftDatasetPath,
+  adminDraftPath,
   adminResearchPath,
 } from "~/admin/urls"
-import { AdminBack } from "~/components/admin"
+import { AdminBack, useBackTo } from "~/components/admin"
 import { AccessionSection } from "~/components/accession"
 import { Confirm, Heading, ReorderButtons, Stack } from "~/components/base"
 import { Flag, Stated } from "~/components/flags"
@@ -64,6 +65,10 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.draft
+  const back = useBackTo(
+    { path: adminResearchPath(view.researchId), label: messages.admin.editor.backToResearch },
+    [{ path: adminDraftPath(view.researchId, view.draftId), label: messages.admin.templates.backToDraft }],
+  )
   return (
     <Page>
       {/* Only a refusal is answered: what worked comes back as the listing it
@@ -79,11 +84,9 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
               listing under it. */}
           <Stack gap="tight">
             <Heading title={t.datasets} aside={draftAside(view.humLabel ?? undefined, view.draftName, locale)}>
-              <AdminBack
-                to={href(locale, adminResearchPath(view.researchId))}
-                label={messages.admin.editor.backToResearch}
-                icon="chevron-left"
-              />
+              {/* **Back to the screen the list was opened from**: the
+                  research editor's button, or the research's dataset count. */}
+              <AdminBack to={href(locale, back.path)} label={back.label} icon="chevron-left" />
             </Heading>
           </Stack>
 
@@ -121,7 +124,7 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
                 entrance here would be a second link to the same screen. */}
             <Form method="post">
               <input type="hidden" name="revision" value={view.revision} />
-              <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
+              <Submit intent="create-dataset" variant="primary" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
             </Form>
           </Stack>
 

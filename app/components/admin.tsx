@@ -1,4 +1,5 @@
-import { useCallback, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react"
+import { useLocation } from "react-router"
 
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -10,9 +11,13 @@ import { Icon, type IconName } from "./icons"
  * The back link of a screen the bar does not open.
  *
  * **Only a screen whose parent is missing from the bar has one**
- * (`admin/navigation.ts` is what the bar holds): the box and the draft lead to
- * their research, the datasets and the review screen lead to their draft, a
- * dataset leads to the list it is in. A screen the bar already reaches would be
+ * (`admin/navigation.ts` is what the bar holds): the files, a version's
+ * datasets, a draft, its review and its publishing lead to their research,
+ * the import leads to its draft, a dataset leads to the list it is in. A
+ * draft's editor, its datasets and its review lead instead to the screen that
+ * opened them when it is one they know (`useOpenedFrom`): the draft's editor
+ * for the datasets, its publishing for the editor and the review. A screen the
+ * bar already reaches would be
  * indicating the same thing twice, and a management area that repeats its own shape
  * at the top of every screen is one where a curator reads the depth instead of
  * the work.
@@ -243,4 +248,130 @@ export function ScreenLink({ to, icon, size, children }: {
       {children}
     </ButtonLink>
   )
+}
+
+/** Where the tab keeps the screens on the way back from the one shown. */
+const OPENED_FROM_KEY = "humandbs.admin.openedFrom"
+
+/** The screens of the management area a tab has shown, as far as their back links need. */
+export interface OpenedFrom {
+  /** The path of the screen shown last. */
+  last: string | null
+  /** For each screen on the way back from the last one, the path of the screen it was opened from. */
+  from: Record<string, string>
+}
+
+const NOTHING_OPENED: OpenedFrom = { last: null, from: {} }
+
+/**
+ * What is kept once `path` is shown.
+ *
+ * **Going back does not overwrite where a screen was opened from**: arriving
+ * from a screen this one opened (a dataset's editor back to the dataset list,
+ * or the browser's back button) leaves the screen it was opened from before.
+ * Arriving from anywhere else records the last screen. **Only the screens on the way back from `path` are
+ * kept**, so what is kept is as long as that way and no longer.
+ */
+export function nextOpenedFrom(held: OpenedFrom, path: string): OpenedFrom {
+  if (held.last === path) return held
+  const returning = held.last !== null && held.from[held.last] === path
+  const from = returning || held.last === null ? held.from : { ...held.from, [path]: held.last }
+  const kept: Record<string, string> = {}
+  let at = path
+  for (;;) {
+    const opener = from[at]
+    if (opener === undefined || at in kept) break
+    kept[at] = opener
+    at = opener
+  }
+  return { last: path, from: kept }
+}
+
+/** What is kept, as it was written; anything else reads as nothing kept. */
+export function readOpenedFrom(raw: string | null): OpenedFrom {
+  if (raw === null) return NOTHING_OPENED
+  try {
+    const value: unknown = JSON.parse(raw)
+    if (typeof value !== "object" || value === null) return NOTHING_OPENED
+    const { last, from } = value as { last?: unknown, from?: unknown }
+    if (last !== null && typeof last !== "string") return NOTHING_OPENED
+    if (typeof from !== "object" || from === null) return NOTHING_OPENED
+    const entries = Object.entries(from).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+    return { last, from: Object.fromEntries(entries) }
+  } catch {
+    return NOTHING_OPENED
+  }
+}
+
+/**
+ * **Reaching the store can throw** (a browser set to block all storage), and
+ * this runs during render. Without it every back link leads where it does by
+ * default.
+ */
+function readStored(): string | null {
+  try {
+    return window.sessionStorage.getItem(OPENED_FROM_KEY)
+  } catch {
+    return null
+  }
+}
+
+/** What is kept changes only when the screen does, and a new screen is drawn anew. */
+function subscribeToNothing(): () => void {
+  return () => undefined
+}
+
+function nothingOnServer(): null {
+  return null
+}
+
+/**
+ * Keeps, for each admin screen shown, the screen it was opened from
+ * (`nextOpenedFrom`). Called once, in the area's layout.
+ */
+export function useKeepOpenedFrom(): void {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const next = nextOpenedFrom(readOpenedFrom(readStored()), pathname)
+    try {
+      window.sessionStorage.setItem(OPENED_FROM_KEY, JSON.stringify(next))
+    } catch {
+      return
+    }
+  }, [pathname])
+}
+
+/**
+ * The path of the screen this one was opened from, for a back link that leads
+ * there when it is one of the screens it knows.
+ *
+ * **Kept in `sessionStorage` rather than in the address**: a screen is reached
+ * again from the screens it opens and from the redirect after each save, and
+ * an address would have to be written into every one of them. What is kept
+ * is lost with the tab, and then the back link leads where it does by default.
+ * **Read as it will be once this screen is kept** — the layout keeps it after
+ * the screen is drawn.
+ */
+export function useOpenedFrom(): string | null {
+  const { pathname } = useLocation()
+  const raw = useSyncExternalStore(subscribeToNothing, readStored, nothingOnServer)
+  return useMemo(
+    () => raw === null ? null : nextOpenedFrom(readOpenedFrom(raw), pathname).from[pathname] ?? null,
+    [raw, pathname],
+  )
+}
+
+/** Where a back link leads, and its label. */
+export interface BackTo {
+  path: string
+  label: string
+}
+
+/**
+ * A back link that leads to the screen this one was opened from when that is
+ * one of `known`, and to `otherwise` when it is not (`useOpenedFrom`).
+ */
+export function useBackTo(otherwise: BackTo, known: readonly BackTo[]): BackTo {
+  const from = useOpenedFrom()
+  return known.find((one) => one.path === from) ?? otherwise
 }

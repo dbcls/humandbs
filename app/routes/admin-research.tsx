@@ -178,7 +178,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                   begin and where the other things to press on this screen
                   stand. */}
               <Form method="post" className="flex">
-                <Submit intent="create-draft" icon={<Icon name="plus" />}>{t.createEmptyDraft}</Submit>
+                <Submit intent="create-draft" variant="primary" icon={<Icon name="plus" />}>{t.createEmptyDraft}</Submit>
               </Form>
             </Stack>
           </Section>

@@ -97,7 +97,7 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                           rather than this one. */}
                       {task.action !== undefined && (
                         <Form method="post" action={href(locale, task.action.to)}>
-                          <Submit icon={<Icon name={task.action.icon} />}>
+                          <Submit variant="primary" icon={<Icon name={task.action.icon} />}>
                             {task.action.label}
                           </Submit>
                         </Form>

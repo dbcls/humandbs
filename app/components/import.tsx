@@ -21,7 +21,7 @@
 import { useId, useMemo, useState, type ReactNode } from "react"
 import { Form } from "react-router"
 
-import { describeInput, type ShownLine } from "~/admin/changes"
+import { describeInput, lineRows, type ShownLine } from "~/admin/changes"
 import type { DraftInput, IdsInput, LinksPairInput, TextInput, TextPairInput } from "~/admin/form"
 import { draftNameShown } from "~/admin/draft-name"
 import { readAt, writeAt } from "~/admin/paths"
@@ -51,7 +51,7 @@ import { Flag, Stated } from "./flags"
 import { type FieldAnnotations, PairField, SingleField, StatedControls } from "./fields"
 import { Submit } from "./form"
 import { Icon } from "./icons"
-import { CompareTable, lineRows } from "./previous"
+import { CompareTable } from "./previous"
 import { Empty, ExternalLink, Section, Table, Td } from "./page"
 import { CitableTable, GrantIds, IdList, LinksField, PROSE_PATHS, researchFieldLabel } from "./research-fields"
 

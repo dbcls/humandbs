@@ -485,21 +485,27 @@ export function Badge({
 export const LISTING_CONTROL = "border border-brand bg-white text-brand"
 
 /**
- * What a control looks like, and **what decides it is how much the screen wants
- * it pressed** — never how it would look nicest there.
+ * What a control looks like, and **what decides it is what pressing it does**
+ * — never how it would look nicest there.
  *
  * **Two styles, and a third that is a warning rather than a rank.** A reader
  * arriving at any screen should be able to read the row of controls without
- * reading the words: one filled thing is what they came to do, and an outlined
- * thing is a tool — the back link among them, told from the action by
- * standing to its left.
+ * reading the words: a filled thing makes, gives or sends something out, and
+ * an outlined thing is a tool — the back link among them, told from the action
+ * by standing to its left.
  *
  * | | 見た目 | いつ |
  * |---|---|---|
- * | `primary` | brand の塗り | **その画面で読者に押してほしい 1 つ。画面に 1 つまで** |
+ * | `primary` | brand の塗り | **フォームやダイアログを送って、作成・割り当て・紐づけ・取り込みの実行・公開をするボタン。**画面にいくつあってもよい |
  * | `accent` | accent の塗り | **未保存の変更があるときの保存ボタンだけ。**状態で決まるので、いくつ表示されるかは画面ではなく読者の操作で決まる |
- * | `secondary` | 白地に brand の枠線 | ツール・その場の操作・画面の外へのリンク。**既定** |
+ * | `secondary` | 白地に brand の枠線 | ツール・その場の操作・別の画面へのリンク・検索・状態の切り替え。**既定** |
  * | `danger` | 白地に danger の枠線 | **取り消せないもの** — 公開の取り下げ、削除、draft の破棄 |
+ *
+ * **作成や割り当てでも、塗りにしないものが 2 つある。** 表の行のボタン (`size="row"` で行の
+ * 中にあるもの) は、行の数だけ塗りが並び、表のどこを見ればよいか分からなくなる。ダイアログを
+ * 開くボタンは、ダイアログの中の実行が塗りなので、1 つの操作に塗りが 2 回出る。
+ * admin の状態の切り替え (公開 / 非公開、共有 / 共有停止、表示 / 非表示) も枠線のまま —
+ * 状態で色が変わると、選んだ状態を色で表すことになる。
  *
  * **枠線の無いボタンは無い。** 素の語は文の続きに読め、hover して初めて枠線が表示される —
  * 押せると分かるのが押したあとになる。「取り消し」も「保存」と同じ枠線で、

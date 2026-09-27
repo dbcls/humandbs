@@ -63,7 +63,7 @@ export default function AdminContentsAlert({ loaderData, actionData }: Route.Com
               further down the page with every alert added. */}
           <Heading title={t.alert.heading} note={t.alert.note}>
             <Form method="post">
-              <Submit intent="create-alert" icon={<Icon name="plus" />}>{t.alert.add}</Submit>
+              <Submit intent="create-alert" variant="primary" icon={<Icon name="plus" />}>{t.alert.add}</Submit>
             </Form>
           </Heading>
 

@@ -66,11 +66,11 @@ export function DraftHead({ locale, title, aside, updating, badge, back, headExt
   back: { to: string, label: string, icon: IconName }
   /**
    * What else is shown in the name row after the back link — a document's slug
-   * editor, the container's own delete. The research editor has neither, so
-   * its own call leaves this out.
+   * editor, the container's own delete, the research editor's links to the
+   * draft's import and datasets.
    */
   headExtra?: ReactNode
-  /** This draft's other screens and its name — the research editor's own. */
+  /** The draft's name — the research editor's own. */
   overview?: ReactNode
   /**
    * What stays in reach while typing — the pane switch and the way to save

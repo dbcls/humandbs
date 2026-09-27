@@ -4,6 +4,7 @@ import { Form, Link } from "react-router"
 import { draftAside } from "~/admin/draft-name"
 import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import type { PublishBlockView, PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
+import type { ChangeView } from "~/admin/publish-changes"
 import { adminDraftDatasetPath, adminDraftPath, adminDraftReviewPath, adminResearchPath, draftCommentsPath } from "~/admin/urls"
 import type { CommentAnchor } from "~/content/types"
 import { messagesFor } from "~/i18n/messages"
@@ -11,14 +12,15 @@ import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
 
 import { AdminBack, ScreenLink } from "./admin"
-import { Heading, Stack } from "./base"
+import { Dialog, Heading, Stack, type DialogSubject } from "./base"
 import { OpenComments, type CommentContext } from "./comments"
 import { IdForm, shownNhaId } from "./dataset-id"
 import { Flag, Stated } from "./flags"
 import { Answer, Checkbox, CONTROL, Field, Submit } from "./form"
 import { Icon } from "./icons"
 import { Card, Empty, Fact, Facts, Page, Section, Table, Td } from "./page"
-import { DatasetCells, datasetColumns } from "./research"
+import { ChangeComparison, ChangeIndicator } from "./previous"
+import { DatasetListCells, datasetListColumns, idOnlyCells } from "./research"
 import { placeName } from "./places"
 import { PressedBy, pressedTitle } from "./review"
 
@@ -113,19 +115,24 @@ const FILES_FORM = "publish-files"
 
 /** Whether anything this publish writes differs from the version it is measured against. */
 function changesNothing(view: PublishPageView): boolean {
-  return view.researchFields === 0 && view.datasetChanges.length === 0 && !view.reordered
+  return view.researchChanges?.length === 0 && view.datasetChanges.length === 0 && view.order === null
 }
 
 /**
  * What the version will show that the one it is measured against does not.
- * **The datasets are the rows of the research's own table**, so one with no id
- * yet is told apart by what kind of data it holds rather than by an identity.
+ * **The datasets are the rows of the draft's dataset listing**, so one with no
+ * id yet is told apart by what kind of data it holds rather than by an identity.
+ *
+ * **Each count is the badge the editing screens mark a change with, and opens
+ * what changed** (`previous.tsx` の `ChangeIndicator`): the places by the names
+ * every screen listing places uses, each with its two sides.
  */
 function Changes({ view }: { view: PublishPageView }) {
   const locale = view.locale
   const messages = messagesFor(locale)
   const t = messages.admin.publish
   const note = view.comparedWith === null ? t.changesNoteFirst : t.changesNote(`v${view.comparedWith}`)
+  const against = view.comparedWith === null ? "" : messages.preview.previousIn(view.comparedWith)
 
   return (
     <Section title={t.changes} note={note}>
@@ -133,31 +140,57 @@ function Changes({ view }: { view: PublishPageView }) {
         ? <Empty>{t.nothingChanges}</Empty>
         : (
             <Stack gap="normal">
-              {view.researchFields !== null && view.researchFields > 0 && (
-                <p className="flex flex-wrap items-center gap-3 text-sm">
-                  <span>{`${t.research}: ${t.researchChanged(view.researchFields)}`}</span>
+              {view.researchChanges !== null && view.researchChanges.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <span>{t.research}</span>
+                  <ChangeList
+                    locale={locale}
+                    label={t.researchChanged(view.researchChanges.length)}
+                    title={t.researchChangesTitle}
+                    subject={{ name: messages.research.researchId, value: view.humLabel ?? messages.admin.research.unpinned }}
+                    changes={view.researchChanges}
+                    against={against}
+                  />
                   {/* The research's own screen sets the form beside the page it
-                      writes, which is where a change is read. */}
+                      writes, which is where a change is written. */}
                   <ScreenLink to={href(locale, adminDraftPath(view.researchId, view.draftId))} icon="book">
                     {messages.admin.draft.heading}
                   </ScreenLink>
-                </p>
+                </div>
               )}
-              {view.reordered && <p className="text-sm">{t.reordered}</p>}
+              {view.order !== null && (
+                <div>
+                  <ChangeIndicator locale={locale} label={t.reordered} title={t.reordered}>
+                    <ChangeComparison locale={locale} compare={view.order} against={against} />
+                  </ChangeIndicator>
+                </div>
+              )}
               {view.datasetChanges.length > 0 && (
-                <Table align="middle" headers={datasetColumns(locale, t.changes)}>
-                  {view.datasetChanges.map((change) => (
-                    <tr key={change.datasetId}>
-                      <DatasetRowCells
-                        view={view}
-                        datasetId={change.datasetId}
-                        label={change.label}
-                        state={change.isNew
-                          ? <Flag kind="changed">{t.newDataset}</Flag>
-                          : t.datasetFields(change.fields)}
-                      />
-                    </tr>
-                  ))}
+                <Table align="middle" headers={datasetListColumns(locale, t.changes)}>
+                  {view.datasetChanges.map((change) => {
+                    const name = change.label ?? messages.admin.editor.unpinnedDataset
+                    return (
+                      <tr key={change.datasetId}>
+                        <DatasetRowCells
+                          view={view}
+                          datasetId={change.datasetId}
+                          label={change.label}
+                          state={change.isNew
+                            ? <Flag kind="changed">{t.newDataset}</Flag>
+                            : (
+                                <ChangeList
+                                  locale={locale}
+                                  label={t.datasetFields(change.changes.length)}
+                                  title={t.datasetChangesTitle}
+                                  subject={{ name: messages.dataset.datasetId, value: name }}
+                                  changes={change.changes}
+                                  against={against}
+                                />
+                              )}
+                        />
+                      </tr>
+                    )
+                  })}
                 </Table>
               )}
             </Stack>
@@ -166,21 +199,59 @@ function Changes({ view }: { view: PublishPageView }) {
   )
 }
 
-/** A dataset's cells as the research's table draws them, leading to its editing screen. */
+/** The badge a subject's changes are counted on, and the panel it opens. */
+function ChangeList({ locale, label, title, subject, changes, against }: {
+  locale: PublishPageView["locale"]
+  label: string
+  title: string
+  subject: DialogSubject
+  changes: readonly ChangeView[]
+  /** What the left column is (「公開中の v4」). */
+  against: string
+}) {
+  return (
+    <ChangeIndicator locale={locale} label={label} title={title} subject={subject}>
+      <ChangedFields locale={locale} changes={changes} against={against} />
+    </ChangeIndicator>
+  )
+}
+
+/**
+ * The places one subject changes, each named and set beside what the version
+ * has there. A place with nothing to set side by side is named alone.
+ */
+export function ChangedFields({ locale, changes, against }: {
+  locale: PublishPageView["locale"]
+  changes: readonly ChangeView[]
+  against: string
+}) {
+  return (
+    <Stack gap="normal">
+      {changes.map((change) => (
+        <section key={change.path}>
+          <Stack gap="tight">
+            <h3 className="font-semibold text-ink text-sm">{change.name}</h3>
+            {change.compare !== null && <ChangeComparison locale={locale} compare={change.compare} against={against} />}
+          </Stack>
+        </section>
+      ))}
+    </Stack>
+  )
+}
+
+/** A dataset's cells as the draft's dataset listing draws them, leading to its editing screen. */
 function DatasetRowCells({ view, datasetId, label, state }: {
   view: PublishPageView
   datasetId: string
   label: string | null
-  /** The state cell, after the id (`DatasetCells` の `state`). */
+  /** The state cell, after the id (`DatasetListCells` の `state`). */
   state?: ReactNode
 }) {
   const locale = view.locale
   const name = label ?? messagesFor(locale).admin.editor.unpinnedDataset
-  const row = view.datasetRows[datasetId]
-    ?? { id: datasetId, label: name, typeOfData: null, accessType: null, datePublished: null }
   return (
-    <DatasetCells
-      row={row}
+    <DatasetListCells
+      row={view.datasetRows[datasetId] ?? idOnlyCells(datasetId, name)}
       name={name}
       to={href(locale, adminDraftDatasetPath(view.researchId, view.draftId, datasetId))}
       state={state}
@@ -227,7 +298,7 @@ function Blocked({ view }: { view: PublishPageView }) {
           </Stack>
         ))}
         {datasets.length > 0 && (
-          <Table align="middle" headers={[...datasetColumns(locale), t.pinColumn]}>
+          <Table align="middle" headers={[...datasetListColumns(locale), t.pinColumn]}>
             {datasets.map((block) => (
               <tr key={block.datasetId}>
                 <DatasetRowCells view={view} datasetId={block.datasetId ?? ""} label={null} />
@@ -290,7 +361,7 @@ function PinForm({ block, locale, nextNhaId, onIssuing }: {
         pattern={HUM_LABEL_PATTERN}
         className={`${CONTROL} text-sm`}
       />
-      <Submit icon={<Icon name="link" />}>{t.pin}</Submit>
+      <Submit variant="primary" icon={<Icon name="link" />}>{t.pin}</Submit>
     </Form>
   )
 }
@@ -416,17 +487,9 @@ function FindingRow({ group, locale }: { group: PublishGroupView, locale: Publis
       <Td nowrap>{t.kinds[group.kind]}</Td>
       <Td nowrap>{t.findingTimes(group.count)}</Td>
       <Td>
-        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {group.places.map((place) => (
-            <span key={place.label} className="inline-flex items-center gap-1">
-              {place.href === null
-                ? <span>{place.label}</span>
-                : <Link to={place.href}>{place.label}</Link>}
-              {group.places.length > 1 && <span className="text-ink-muted text-xs">{`(${place.count})`}</span>}
-              {place.note !== null && <span className="text-ink-muted text-xs">{place.note}</span>}
-            </span>
-          ))}
-        </span>
+        {group.spots.length > 0
+          ? <Spots group={group} locale={locale} />
+          : <Screens group={group} />}
       </Td>
       <Td nowrap holds="control">
         {group.kind === "private-file" && group.fileNames.length > 0 && (
@@ -436,6 +499,53 @@ function FindingRow({ group, locale }: { group: PublishGroupView, locale: Publis
         )}
       </Td>
     </tr>
+  )
+}
+
+/**
+ * Every place a kind of finding is at, by the name every screen listing places
+ * uses (`places.ts`), each leading to the screen it is fixed on. **A panel
+ * rather than the cell**: a draft with a dozen unsettled values would push the
+ * table's other rows off the screen, and the names are long.
+ */
+function Spots({ group, locale }: { group: PublishGroupView, locale: PublishPageView["locale"] }) {
+  const messages = messagesFor(locale)
+  const t = messages.admin.publish
+  return (
+    <Dialog
+      label={t.spots}
+      size="row"
+      icon={<Icon name="list" aria-hidden="true" />}
+      title={t.kinds[group.kind]}
+      dismiss={messages.comment.close}
+      wide
+    >
+      <Table headers={[t.findingFields, t.spotLanguage]}>
+        {group.spots.map((spot, at) => (
+          <tr key={`${at}-${spot.name}`}>
+            <Td><Link to={spot.href}>{spot.name}</Link></Td>
+            <Td nowrap>{spot.language ?? ""}</Td>
+          </tr>
+        ))}
+      </Table>
+    </Dialog>
+  )
+}
+
+/** The screens a kind of finding is dealt with on, each with how many are there. */
+function Screens({ group }: { group: PublishGroupView }) {
+  return (
+    <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      {group.places.map((place) => (
+        <span key={place.label} className="inline-flex items-center gap-1">
+          {place.href === null
+            ? <span>{place.label}</span>
+            : <Link to={place.href}>{place.label}</Link>}
+          {group.places.length > 1 && <span className="text-ink-muted text-xs">{`(${place.count})`}</span>}
+          {place.note !== null && <span className="text-ink-muted text-xs">{place.note}</span>}
+        </span>
+      ))}
+    </span>
   )
 }
 

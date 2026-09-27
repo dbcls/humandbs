@@ -120,7 +120,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
                     label: revision.slug,
                   }))}
                 />
-                <Submit intent="repoint-series" icon={<Icon name="link" />}>{t.repoint}</Submit>
+                <Submit intent="repoint-series" variant="primary" icon={<Icon name="link" />}>{t.repoint}</Submit>
               </Form>
             )}
           </Section>
@@ -164,7 +164,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
                 width="w-24"
                 value={String(nextVersionNumber(series.slug, series.revisions.map((one) => one.slug)))}
               />
-              <Submit intent="add-version" icon={<Icon name="plus" />}>{t.addVersion}</Submit>
+              <Submit intent="add-version" variant="primary" icon={<Icon name="plus" />}>{t.addVersion}</Submit>
             </Form>
           </Section>
         </Stack>

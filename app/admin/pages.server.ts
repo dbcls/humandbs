@@ -46,7 +46,7 @@ import { resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { loadCatalog, publishedDatasets } from "~/public/queries.server"
-import { datasetListCellsOf, type DatasetListCellsView, type DatasetRowView } from "~/public/view.server"
+import { datasetListCellsOf, type CatalogView, type DatasetListCellsView, type DatasetRowView } from "~/public/view.server"
 import { type ListingSize, readListingSize } from "~/search/page-size"
 import {
   DEFAULT_SORT,
@@ -90,10 +90,13 @@ import {
   type PublishBlock,
   type PublishFinding,
   type PublishFindingKind,
+  type PublishSubject,
 } from "./publish-check"
 import { isHumLabel } from "./labels"
 import { issueNhaId, nextNhaId, pinLabel, promotePin, unpinLabel } from "./labels.server"
-import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
+import type { Language } from "./flags"
+import { changeViews, elementName, orderCompare, type ChangeCompare, type ChangeView } from "./publish-changes"
+import { publishDraft, publishPreview, withdrawVersion, type ComparedSide } from "./publish.server"
 import {
   adminResearch,
   adminResearchIndex,
@@ -148,6 +151,7 @@ import {
   drawDatasetDraft,
   drawDraft,
   draftDatasetRowViews,
+  researchAnchorsOf,
   type DrawnDataset,
   type DrawnDraft,
 } from "~/review/preview.server"
@@ -157,7 +161,8 @@ import {
   versionAgainst,
   type DraftReviewSummary,
 } from "~/review/queries.server"
-import type { PlaceSources } from "~/components/places"
+import { placeName, type PlaceSources } from "~/components/places"
+import { catalogLabel } from "~/i18n/catalog-label"
 import { unresolvedCount } from "~/review/comments"
 import { placeSources } from "~/review/places.server"
 import { isShareExpired, isShareOpen } from "~/review/share"
@@ -1234,10 +1239,22 @@ export interface PublishFieldView {
   note: string | null
 }
 
+/** One place a finding is at, for the kinds that are about a field. */
+export interface PublishSpotView {
+  /** What every screen listing the places of a draft calls it (`components/places.ts`). */
+  name: string
+  /** The language it is about: the one unsettled, or the one a translation is missing in. */
+  language: Language | null
+  /** The screen it is fixed on. */
+  href: string
+}
+
 export interface PublishGroupView {
   kind: PublishFindingKind
   count: number
   places: PublishFieldView[]
+  /** Each place by name, for the kinds that are about a field (unsettled, untranslated). Empty for the others. */
+  spots: PublishSpotView[]
   /**
    * The files this group is about, for the one group that offers to act:
    * listing the private ones is also the way to make them public. Empty for
@@ -1270,7 +1287,8 @@ export interface PublishReviewView {
 export interface PublishDatasetChangeView {
   datasetId: string
   label: string | null
-  fields: number
+  /** Each field of its description this publish rewrites. Empty for a dataset the version does not list. */
+  changes: ChangeView[]
   isNew: boolean
   href: string
 }
@@ -1299,16 +1317,17 @@ export interface PublishPageView {
   blocks: PublishBlockView[]
   groups: PublishGroupView[]
   findingCount: number
-  researchFields: number | null
+  /** Each field of the research this publish rewrites. Null before any version. */
+  researchChanges: ChangeView[] | null
   datasetChanges: PublishDatasetChangeView[]
-  /** The datasets are shown in another order than in the version compared with. */
-  reordered: boolean
+  /** The datasets in each side's order, when the draft shows them in another order than the version. */
+  order: ChangeCompare | null
   /** The version the changes are measured against: the one updated, or the newest. Null before any. */
   comparedWith: number | null
   /** The day the updated version went out, which an update may leave as it is. */
   updatingReleaseDate: string | null
-  /** The datasets the screen names — in the blocks and the changes — as their table rows draw them. */
-  datasetRows: Record<string, DatasetRowView>
+  /** The datasets the screen names — in the blocks and the changes — as the dataset listing's cells draw them. */
+  datasetRows: Record<string, DatasetListCellsView>
   review: PublishReviewView
 }
 
@@ -1339,13 +1358,16 @@ export async function publishPage(
     ...preview.publishCheck.blocks.flatMap((block) => block.kind === "dataset-id-missing" ? [block.datasetId] : []),
     ...preview.datasetChanges.map((change) => change.datasetId),
   ]
-  const [shown, acknowledgements, comments, share, places] = await Promise.all([
+  const [shown, acknowledgements, comments, share, places, catalog] = await Promise.all([
     draftDatasetRowViews(db, draftId, [...new Set(named)], locale),
     readAcknowledgements(db, draftId),
     readComments(db, draftId),
     readShare(db, draftId),
     placeSources(db, researchId, draftId, draft.content, locale),
+    loadCatalog(db),
   ])
+  const changes = publishChanges(preview, places, catalog, locale)
+  const researchHref = href(locale, adminDraftPath(researchId, draftId))
 
   return {
     locale,
@@ -1366,15 +1388,24 @@ export async function publishPage(
       datasetId: block.kind === "dataset-id-missing" ? block.datasetId : null,
     })),
     groups: groupFindings(preview.publishCheck.findings, locale, {
-      researchHref: href(locale, adminDraftPath(researchId, draftId)),
+      researchHref,
       datasetHref,
       naming,
+      spotName: (subject, path) => placeName(
+        subject.kind === "research"
+          ? { kind: "research-field", path }
+          : { kind: "dataset-field", datasetId: subject.datasetId, path },
+        places,
+        locale,
+      ),
     }),
     findingCount: preview.publishCheck.findings.length,
-    researchFields: preview.researchFields,
-    reordered: preview.reordered,
+    researchChanges: changes.research,
+    order: changes.order,
     datasetChanges: preview.datasetChanges.map((change) => ({
-      ...change,
+      datasetId: change.datasetId,
+      isNew: change.isNew,
+      changes: changes.datasets.get(change.datasetId) ?? [],
       label: labelOf.get(change.datasetId) ?? null,
       href: datasetHref(change.datasetId),
     })),
@@ -1394,6 +1425,79 @@ export async function publishPage(
 }
 
 /**
+ * Each change the publish makes, named as the places of comments are and set
+ * side by side with the version it is measured against (`publish-changes.ts`).
+ * **The research is compared as the page draws it where a table of elements
+ * is concerned**, so both sides are drawn once here; a dataset's changes are
+ * all fields, read off the form.
+ */
+function publishChanges(
+  preview: {
+    humLabel: string | null
+    researchPaths: string[] | null
+    datasetChanges: { datasetId: string, paths: string[], isNew: boolean }[]
+    reordered: boolean
+    datasetLabels: { datasetId: string, label: string | null }[]
+    against: ComparedSide | null
+    writing: ComparedSide
+  },
+  places: PlaceSources,
+  catalog: CatalogView,
+  locale: Locale,
+): { research: ChangeView[] | null, datasets: Map<string, ChangeView[]>, order: ChangeCompare | null } {
+  const against = preview.against
+  if (against === null) return { research: null, datasets: new Map(), order: null }
+  const messages = messagesFor(locale)
+  const writing = preview.writing
+  const labels = new Map(preview.datasetLabels.flatMap((row) => row.label === null ? [] : [[row.datasetId, row.label] as const]))
+  const termLabel = (id: string): string => {
+    const term = catalog.termById.get(id)
+    return term === undefined ? id : catalogLabel(term, locale)
+  }
+  const words = (nameOf: (path: string) => string) => ({
+    nameOf,
+    termLabel,
+    elementName: (element: unknown) => elementName(element, (keyId) => places.keyLabels[keyId] ?? keyId),
+  })
+
+  const research = changeViews(
+    preview.researchPaths ?? [],
+    {
+      input: researchContentInput(against.content),
+      drawn: researchAnchorsOf(against.content, { keepUnsettled: false }, labels, locale, catalog, preview.humLabel),
+    },
+    {
+      input: researchContentInput(writing.content),
+      drawn: researchAnchorsOf(writing.content, { keepUnsettled: true }, labels, locale, catalog, preview.humLabel),
+    },
+    words((path) => placeName({ kind: "research-field", path }, places, locale)),
+  )
+
+  const datasets = new Map(preview.datasetChanges.flatMap((change) => {
+    const was = against.datasets.get(change.datasetId)
+    const now = writing.datasets.get(change.datasetId)
+    if (change.isNew || was === undefined || now === undefined) return []
+    return [[change.datasetId, changeViews(
+      change.paths,
+      { input: datasetContentInput(was) },
+      { input: datasetContentInput(now) },
+      words((path) => placeName({ kind: "dataset-field", datasetId: change.datasetId, path }, places, locale)),
+    )] as const]
+  }))
+
+  const order = preview.reordered
+    ? orderCompare(
+        against.order,
+        writing.order,
+        (id) => labels.get(id) ?? messages.admin.editor.unpinnedDataset,
+        { position: messages.admin.publish.position, datasetId: messages.dataset.datasetId },
+      )
+    : null
+
+  return { research, datasets, order }
+}
+
+/**
  * The findings, gathered by kind and then by the screen that can deal with
  * them. A publish check that listed twelve unsettled values one line each would be a
  * list nobody reads; what is wanted is which screens to open.
@@ -1405,10 +1509,13 @@ function groupFindings(
     researchHref: string
     datasetHref: (datasetId: string) => string
     naming: (datasetId: string) => string
+    /** What a field a finding is at is called, on every screen listing places. */
+    spotName: (subject: PublishSubject, path: string) => string
   },
 ): PublishGroupView[] {
   const t = messagesFor(locale).admin.publish
   const groups = new Map<PublishFindingKind, Map<string, PublishFieldView>>()
+  const spots = new Map<PublishFindingKind, PublishSpotView[]>()
   // One file can be selected by several datasets, and it is switched once.
   const files = new Set<string>()
 
@@ -1424,12 +1531,18 @@ function groupFindings(
     if (finding.kind === "unsettled" || finding.kind === "untranslated") {
       const subject = finding.subject
       const key = subject.kind === "research" ? "research" : subject.datasetId
+      const screen = subject.kind === "research" ? into.researchHref : into.datasetHref(subject.datasetId)
       place(finding.kind, key, () => ({
         label: subject.kind === "research" ? t.research : into.naming(subject.datasetId),
-        href: subject.kind === "research" ? into.researchHref : into.datasetHref(subject.datasetId),
+        href: screen,
         count: 1,
         note: null,
       }))
+      spots.set(finding.kind, [...spots.get(finding.kind) ?? [], {
+        name: into.spotName(subject, finding.path),
+        language: finding.kind === "unsettled" ? finding.language : finding.missing,
+        href: screen,
+      }])
       continue
     }
     if (finding.kind === "pin-disagrees-upstream") {
@@ -1476,6 +1589,7 @@ function groupFindings(
       kind,
       count: places.reduce((total, row) => total + row.count, 0),
       places,
+      spots: spots.get(kind) ?? [],
       fileNames: kind === "private-file" ? [...files] : [],
     }]
   })
@@ -1576,7 +1690,7 @@ export async function publishAction(
   // for a form sent without it.
   const preview = await publishPreview(db, draftId, await privateNames(researchId))
   if (preview?.updating != null
-    && preview.researchFields === 0
+    && preview.researchPaths?.length === 0
     && preview.datasetChanges.length === 0
     && !preview.reordered
     && releaseDate === preview.updating.releaseDate) {

@@ -1108,6 +1108,8 @@ const ja = {
     publish: {
       heading: "公開前の確認",
       updateHeading: "更新前の確認",
+      backTo: "公開前の確認へ",
+      backToUpdate: "更新前の確認へ",
       open: "公開",
       update: (version: string) => `${version} の更新`,
       what: "公開",
@@ -1132,6 +1134,9 @@ const ja = {
       findingCount: "件数",
       findingFields: "場所",
       findingTimes: (count: number) => `${count} 件`,
+      /** Opens every place a kind of finding is at, by name. */
+      spots: "場所の一覧",
+      spotLanguage: "言語",
       noFindings: "公開前に確かめるものはありません。",
       findingsNote: "公開はできるが、不足や不一致があるもの。直すものは「場所」の列から各画面へ移って直し、残すものはそのままでよいことを確かめてから、下のチェックを入れる。",
       acknowledge: (count: number) => `上の ${count} 件を確認しました`,
@@ -1151,8 +1156,12 @@ const ja = {
       changesNote: (version: string) => `公開中の ${version} と比べて変わるもの。`,
       changesNoteFirst: "最初のバージョンのため、すべてが新しく公開される。",
       researchChanged: (count: number) => `${count} 項目の変更`,
+      researchChangesTitle: "研究の変更点",
+      datasetChangesTitle: "データセットの変更点",
       nothingChanges: "研究の内容の変更はありません。",
       reordered: "データセットの並び順の変更",
+      /** The column of the order's comparison: where a dataset stands on the page. */
+      position: "順番",
       datasetFields: (count: number) => `${count} 項目の変更`,
       review: "レビュー",
       reviewNote: "提供者とのやり取りの状態。公開の条件ではなく、公開してよいかの判断材料である。",

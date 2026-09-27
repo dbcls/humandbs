@@ -634,6 +634,35 @@ describe("a line headed by the study or dataset it is about", () => {
     expect(linesOf(text, "JGAD000002")).toEqual(["[JGAS000002]", "AML: 4 cases", "healthy control: 2 samples"])
   })
 
+  it("reads the diseases out of the dataset's own lines only", () => {
+    const text = "【JGAS000001】\n悪性骨巨細胞腫（ICD10：D48.0）：1症例\n【JGAS000002】\n軟骨肉腫（ICD10：C41.9）：2症例"
+    const all = ["JGAD000001", "JGAD000002"].map((label) => dumpRow(materials(text), label, null))
+    const diseasesOf = (label: string) => {
+      const one = all.find((row) => row.label === label)
+      if (one === undefined) throw new Error(`no dataset ${label}`)
+      const content = buildDatasetContent({
+        dataset: one,
+        keyIdByCode: new Map([...KEY_IDS, ["disease", "key-disease"]]),
+        codeBySourceKey: CODE_BY_SOURCE,
+        termIdBySetAndCode: TERM_IDS,
+        knownCode: () => false,
+        accessCriteriaKeyCode: "access-criteria",
+        typeOfDataKeyCode: "type-of-data",
+        datasetLabels: new Set(all.map((row) => row.label)),
+        ownLines: ownLines(all, undefined, undefined, studies),
+        studies,
+        unread: [],
+        byHand: new Map(),
+        readProse: (leaf) => (leaf?.text ?? "").split("\n").map((line) => [{ text: line }]),
+      })
+      return first(content.experiments).values.flatMap((slot) => slot.value.kind === "disease" && slot.value.diseases.state === "value"
+        ? slot.value.diseases.value.map((one) => one.nameJa)
+        : [])
+    }
+    expect(diseasesOf("JGAD000001")).toEqual(["悪性骨巨細胞腫"])
+    expect(diseasesOf("JGAD000002")).toEqual(["軟骨肉腫"])
+  })
+
   it("keeps the lines above the first heading alone on its line for every dataset", () => {
     const text = "子宮頸がん\n【JGAS000001】\n腫瘍組織：8検体\n【JGAS000002】\n正常組織：2検体"
     expect(linesOf(text, "JGAD000002")).toEqual(["子宮頸がん", "【JGAS000002】", "正常組織：2検体"])

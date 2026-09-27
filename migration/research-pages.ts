@@ -51,6 +51,13 @@ export function researchPageOf(article: PageArticle): { humId: string, version: 
   return { humId: titled[1] ?? "", version: Number(titled[2]), lang }
 }
 
+/** The research version an article is the page or the release note page of, in either language, or null for any other article. */
+export function versionArticleOf(article: PageArticle): { humId: string, version: number } | null {
+  if (!CATEGORY_LANG.has(article.catid)) return null
+  const titled = RESEARCH_PAGE_TITLE.exec(article.title) ?? RELEASE_NOTE_TITLE.exec(article.title)
+  return titled === null ? null : { humId: titled[1] ?? "", version: Number(titled[2]) }
+}
+
 /**
  * The words of a text, without what v1 changed about how it is written. v1's
  * text holds some of the page's HTML as it was (`14名<br />&nbsp;ワクチン`), which

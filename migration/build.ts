@@ -624,15 +624,16 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
 
   /**
    * The text an experiment's diseases are read from: the cell as the article
-   * wrote it, where the load's reader finds it. It is the whole cell, lines
-   * about other datasets included — the caption narrows the diseases afterwards
-   * (`narrowedToCaption`).
+   * wrote it, where the load's reader finds it, with the lines about other
+   * datasets taken out the same as the cell shown (`keptProse`). A disease
+   * only another dataset's group names is that dataset's. The caption narrows
+   * the diseases afterwards (`narrowedToCaption`).
    */
   const diseaseTextOf = (e: EsExperiment): DiseaseText | undefined => {
     const cell = e.data?.[DISEASE_SOURCE]
     if (input.readProse === undefined || cell === undefined) return undefined
     const plain = (rich: RichText) => rich.map((line) => line.map((span) => span.text).join("")).join("\n")
-    return { ja: plain(input.readProse(cell.ja, "ja")), en: plain(input.readProse(cell.en, "en")) }
+    return { ja: plain(keptProse(DISEASE_SOURCE, "ja", cell.ja)), en: plain(keptProse(DISEASE_SOURCE, "en", cell.en)) }
   }
 
   /**

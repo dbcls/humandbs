@@ -357,10 +357,17 @@ function datasetIdsOf(version: VersionRow): string[] {
 
 export interface DatasetChange {
   datasetId: string
-  /** How many fields of its description this publish would rewrite. */
-  fields: number
+  /** The fields of its description this publish would rewrite (`dataset-diff.ts`). */
+  paths: string[]
   /** The version this one stands in front of does not list it. */
   isNew: boolean
+}
+
+/** What one side of the comparison holds: the research, its datasets' descriptions, and their order. */
+export interface ComparedSide {
+  content: ResearchContent
+  datasets: ReadonlyMap<string, DatasetContent>
+  order: string[]
 }
 
 /**
@@ -385,8 +392,8 @@ export interface PublishPreview {
    */
   updating: { number: number, releaseDate: string } | null
   publishCheck: PublishCheck
-  /** Fields of the research that differ from what this publish stands in front of. */
-  researchFields: number | null
+  /** The fields of the research that differ from what this publish stands in front of (`diff.ts`). */
+  researchPaths: string[] | null
   datasetChanges: DatasetChange[]
   /**
    * The datasets both versions list are shown in another order. The public page
@@ -397,6 +404,10 @@ export interface PublishPreview {
   listingRemoved: string[]
   /** Every dataset of the research, so the screen can name what it lists. */
   datasetLabels: { datasetId: string, label: string | null }[]
+  /** The version the changes are measured against, in the draft's shape. Null before any. */
+  against: ComparedSide | null
+  /** What publishing would leave. */
+  writing: ComparedSide
 }
 
 export async function publishPreview(
@@ -426,9 +437,9 @@ export async function publishPreview(
         ? null
         : { number: snapshot.updating.number, releaseDate: snapshot.updating.releaseDate },
       publishCheck,
-      researchFields: previous === undefined
+      researchPaths: previous === undefined
         ? null
-        : researchFieldsChanged(previous.content, snapshot.draft.content),
+        : researchPathsChanged(previous.content, snapshot.draft.content),
       datasetChanges: changesOf(previous, datasets),
       reordered: previous !== undefined && orderChanged(datasetIdsOf(previous), listedIds),
       listingAdded: listedIds.filter((id) => !before.has(id)),
@@ -437,6 +448,18 @@ export async function publishPreview(
         datasetId: row.id,
         label: row.label,
       })),
+      against: previous === undefined
+        ? null
+        : {
+            content: draftContentOf(previous.content),
+            datasets: new Map([...describedBy(previous.content)].map(([id, row]) => [id, descriptionOf(row)])),
+            order: datasetIdsOf(previous),
+          },
+      writing: {
+        content: snapshot.draft.content,
+        datasets: new Map(datasets.map((row) => [row.datasetId, row.content ?? emptyDatasetContent()])),
+        order: listedIds,
+      },
     }
   })
 }
@@ -472,15 +495,15 @@ function publishCheckOf(snapshot: PublishSnapshot, privateFiles: ReadonlySet<str
 }
 
 /**
- * How much of the research itself this publish moves. The listing is left out
- * of the count because it is reported on its own line — what went on and what
- * came off is more use than "one field changed".
+ * What of the research itself this publish moves. The listing is left out
+ * because it is reported on its own line — what went on and what came off is
+ * more use than "one field changed".
  */
-function researchFieldsChanged(previous: VersionContent, mine: ResearchContent): number {
+function researchPathsChanged(previous: VersionContent, mine: ResearchContent): string[] {
   return diffDraftInput(
     { content: researchContentInput(draftContentOf(previous)) },
     { content: researchContentInput(mine) },
-  ).filter((path) => path !== "datasetIds").length
+  ).filter((path) => path !== "datasetIds")
 }
 
 function changesOf(
@@ -491,11 +514,11 @@ function changesOf(
   return datasets.flatMap((row) => {
     const published = before.get(row.datasetId)
     const next = row.content ?? emptyDatasetContent()
-    const fields = published === undefined
-      ? 0
-      : diffDatasetInput(datasetContentInput(published), datasetContentInput(next)).length
-    if (published !== undefined && fields === 0) return []
-    return [{ datasetId: row.datasetId, fields, isNew: published === undefined }]
+    const paths = published === undefined
+      ? []
+      : diffDatasetInput(datasetContentInput(published), datasetContentInput(next))
+    if (published !== undefined && paths.length === 0) return []
+    return [{ datasetId: row.datasetId, paths, isNew: published === undefined }]
   })
 }
 

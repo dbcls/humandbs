@@ -11,6 +11,7 @@
 import { Form } from "react-router"
 
 import {
+  adminDraftPublishPath,
   adminDraftReviewPath,
   adminResearchPath,
 } from "~/admin/urls"
@@ -24,7 +25,7 @@ import type { AcknowledgementView } from "~/review/comments.server"
 import type { ReviewPageView } from "~/review/review.server"
 import type { Locale } from "~/i18n/locale"
 
-import { AdminBack } from "./admin"
+import { AdminBack, useBackTo } from "./admin"
 import { Confirm, CopyButton, Heading, PANE_LABEL, Stack } from "./base"
 import { Author, groupedByAnchor, AnchorGroups, type CommentContext } from "./comments"
 import { SHOWING } from "./contents"
@@ -84,6 +85,15 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
     signedInName: view.signedInName,
   }
 
+  // Back to publishing when it was opened from there, as the editor is.
+  const back = useBackTo(
+    { path: adminResearchPath(view.researchId), label: editor.backToResearch },
+    [{
+      path: adminDraftPublishPath(view.researchId, view.draftId),
+      label: view.updating === null ? messages.admin.publish.backTo : messages.admin.publish.backToUpdate,
+    }],
+  )
+
   /** **The places are named as the open-comments panel names them** (`places.ts`). */
   const nameOf = (anchor: CommentAnchor): string => placeName(anchor, view.places, locale)
   const groups = groupedByAnchor(view.comments, nameOf)
@@ -93,11 +103,7 @@ export function ReviewScreen({ view }: { view: ReviewPageView }) {
       <Card under={false}>
         <Stack gap="block">
           <Heading title={t.heading} aside={draftAside(view.humLabel ?? undefined, view.draftName, locale)}>
-            <AdminBack
-              to={href(locale, adminResearchPath(view.researchId))}
-              label={editor.backToResearch}
-              icon="chevron-left"
-            />
+            <AdminBack to={href(locale, back.path)} label={back.label} icon="chevron-left" />
           </Heading>
 
           <Share view={view} />

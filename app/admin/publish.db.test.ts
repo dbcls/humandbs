@@ -616,7 +616,7 @@ describe("updating a version", () => {
     const preview = await publishPreview(db, draft.id, NO_PRIVATE_FILES)
 
     expect(preview?.updating).toEqual({ number: 1, releaseDate: RELEASE_DATE })
-    expect(preview?.researchFields).toBe(0)
+    expect(preview?.researchPaths).toEqual([])
     expect(preview?.listingAdded).toEqual([])
     expect(preview?.listingRemoved).toEqual([])
   })
@@ -672,7 +672,7 @@ describe("looking a publish over first", () => {
     expect(preview?.listingAdded).toEqual([fixture.datasetId])
     expect(preview?.datasetChanges).toEqual([{
       datasetId: fixture.datasetId,
-      fields: 0,
+      paths: [],
       isNew: true,
     }])
     expect(await counts()).toEqual(before)
@@ -696,7 +696,7 @@ describe("looking a publish over first", () => {
 
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
-    expect(preview?.researchFields).toBe(0)
+    expect(preview?.researchPaths).toEqual([])
     expect(preview?.listingAdded).toEqual([])
     expect(preview?.listingRemoved).toEqual([])
     expect(preview?.datasetChanges).toEqual([])
@@ -722,7 +722,7 @@ describe("looking a publish over first", () => {
     const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
 
     expect(preview?.reordered).toBe(true)
-    expect(preview?.researchFields).toBe(0)
+    expect(preview?.researchPaths).toEqual([])
     expect(preview?.datasetChanges).toEqual([])
   })
 

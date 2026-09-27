@@ -37,9 +37,8 @@ import type {
 import type { AdminDraftPageView } from "~/admin/pages.server"
 import {
   adminDraftDatasetsPath,
-  adminDraftPublishPath,
-  adminDraftReviewPath,
   adminDraftImportPath,
+  adminDraftPublishPath,
   adminResearchPath,
   draftCommentsPath,
   draftPagePath,
@@ -57,7 +56,7 @@ import {
   wholeComments,
 } from "~/review/comments"
 
-import { usePanes, ScreenLink } from "./admin"
+import { usePanes, ScreenLink, useBackTo } from "./admin"
 import { Badge, Stack } from "./base"
 import { DraftHead, DraftNameEditor, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote, OpenComments, WholeNote } from "./comments"
@@ -105,6 +104,15 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   const messages = messagesFor(locale)
   const t = messages.admin.editor
   const words = messages.research
+  // **Back to publishing when it was opened from there**, which is where the
+  // change being made was noticed.
+  const back = useBackTo(
+    { path: adminResearchPath(view.researchId), label: t.backToResearch },
+    [{
+      path: adminDraftPublishPath(view.researchId, view.draftId),
+      label: view.updating === null ? messages.admin.publish.backTo : messages.admin.publish.backToUpdate,
+    }],
+  )
 
   const review: FieldReviewData = {
     context: {
@@ -668,31 +676,25 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
       <Stack>
         {/*
           **The header is left for the research this draft belongs to, and collapses
-          to its toolbar while typing.** Its second line reaches this draft's
-          other screens and the way to import a data-providing application in;
-          the line under it holds the draft's name.
+          to its toolbar while typing.** The name row reaches the draft's import
+          and dataset screens beside the back link; the line under it holds the
+          draft's name.
         */}
         <DraftHead
           locale={locale}
           title={messages.admin.draft.heading}
           aside={draftAside(view.humLabel ?? t.unlabelled, view.draftName, locale)}
           updating={view.updating}
-          back={{
-            to: href(locale, adminResearchPath(view.researchId)),
-            label: t.backToResearch,
-            icon: "chevron-left",
-          }}
-          overview={(
-            <>
-              <DraftOverview
-                locale={locale}
-                researchId={view.researchId}
-                draftId={view.draftId}
-              />
-              {view.draftName !== null && (
-                <DraftNameEditor locale={locale} researchId={view.researchId} draftId={view.draftId} name={view.draftName} />
-              )}
-            </>
+          back={{ to: href(locale, back.path), label: back.label, icon: "chevron-left" }}
+          headExtra={(
+            <DraftScreens
+              locale={locale}
+              researchId={view.researchId}
+              draftId={view.draftId}
+            />
+          )}
+          overview={view.draftName !== null && (
+            <DraftNameEditor locale={locale} researchId={view.researchId} draftId={view.draftId} name={view.draftName} />
           )}
           tools={(
             <DraftTools
@@ -722,36 +724,28 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
 }
 
 /**
- * The draft's other screens, as the links to them: importing an application, the
- * datasets, review and sharing, publishing — in the order the work goes, but
- * named only, never numbered. **Each is styled as the back link, with the
- * chevron after the word** (`admin.tsx` の `ScreenLink`): all four lead to another
- * screen, and the row under them is where things are done in place. **The
- * facts are not here** — how many datasets, whether it is shared, what stops
- * publishing — each screen shows its own on arrival, and what is still open is
- * counted in the toolbar.
+ * The draft's screens that are part of writing it: importing an application,
+ * then the datasets — in the order the work goes. **Shown after the back link
+ * in the name row**: like it, both lead to another screen (`admin.tsx` の
+ * `ScreenLink`), and the rows under it are where things are done in place.
+ * **Review and publishing are not here**: they follow the writing, and the
+ * research's draft row opens both.
  */
-function DraftOverview({ locale, researchId, draftId }: {
+function DraftScreens({ locale, researchId, draftId }: {
   locale: Locale
   researchId: string
   draftId: string
 }) {
   const admin = messagesFor(locale).admin
   return (
-    <div className="flex flex-wrap items-center gap-4">
+    <>
       <ScreenLink to={href(locale, adminDraftImportPath(researchId, draftId))} icon="download">
         {admin.import.open}
       </ScreenLink>
       <ScreenLink to={href(locale, adminDraftDatasetsPath(researchId, draftId))} icon="database">
         {admin.draft.datasets}
       </ScreenLink>
-      <ScreenLink to={href(locale, adminDraftReviewPath(researchId, draftId))} icon="comment">
-        {admin.review.heading}
-      </ScreenLink>
-      <ScreenLink to={href(locale, adminDraftPublishPath(researchId, draftId))} icon="upload">
-        {admin.publish.heading}
-      </ScreenLink>
-    </div>
+    </>
   )
 }
 

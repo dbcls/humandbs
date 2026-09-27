@@ -11,30 +11,17 @@
 
 import { Fragment, useState, type ReactNode } from "react"
 
-import type { ShownLine } from "~/admin/changes"
-import { toPlainText } from "~/content/richtext"
+import { anchoredSide, lineRows, type CompareRow, type ShownLine, type Side } from "~/admin/changes"
+import type { ChangeCompare } from "~/admin/publish-changes"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { AnchoredValue, RowsView } from "~/public/view.server"
 import { compareRows, type ComparedRow } from "~/review/compare-rows"
 import { afterParts, beforeParts, diffSentences, type DiffPart } from "~/passage-diff"
 
-import { Dialog } from "./base"
+import { Dialog, type DialogSubject } from "./base"
 import { Flag } from "./flags"
 import { NotApplicable, Table, Td } from "./page"
-
-/** One side of one line: its text, or the state it shows instead. */
-type Side
-  = | { state: "value", text: string }
-    | { state: "unknown" | "not-applicable" }
-
-/** A line of the comparison: a language, or a row of a list, with both sides. */
-export interface CompareRow {
-  /** `ja` / `en`, or empty for a value with no language. */
-  label: string
-  before: Side | null
-  after: Side | null
-}
 
 /**
  * The indicator, and the comparison it opens.
@@ -47,24 +34,31 @@ export interface CompareRow {
  * **Where there is nothing to set side by side** — a list whose difference is
  * which elements it holds — it is the same badge, opening nothing.
  */
-function ChangeIndicator({ locale, fieldLabel, children }: {
+export function ChangeIndicator({ locale, fieldLabel, label, title, subject, children }: {
   locale: Locale
   fieldLabel?: string
+  /** The words on the indicator, where they say more than 「変更あり」 — how many fields changed. */
+  label?: string
+  /** The panel's title, where it is about more than one field (「研究の変更点」). */
+  title?: string
+  subject?: DialogSubject
   /** The comparison the indicator opens, or null where there is none to open. */
   children: ReactNode
 }) {
   const t = messagesFor(locale)
   const [open, setOpen] = useState(false)
+  const said = label ?? t.preview.differsHere
 
-  if (children === null) return <Flag kind="differs" large>{t.preview.differsHere}</Flag>
+  if (children === null) return <Flag kind="differs" large>{said}</Flag>
 
   return (
     <span className="inline-flex">
       <Flag kind="differs" large onClick={() => { setOpen(true) }}>
-        {t.preview.differsHere}
+        {said}
       </Flag>
       <Dialog
-        title={fieldLabel === undefined ? t.preview.changeHeading : t.preview.fieldChangeHeading(fieldLabel)}
+        title={title ?? (fieldLabel === undefined ? t.preview.changeHeading : t.preview.fieldChangeHeading(fieldLabel))}
+        subject={subject}
         held={{ open, close: () => { setOpen(false) } }}
         dismiss={t.comment.close}
         wide
@@ -347,65 +341,21 @@ export function PreviousLines({ locale, lines, current, heading, fieldLabel, ter
   )
 }
 
+/**
+ * One place's two sides as the loader set them (`admin/publish-changes.ts`): a
+ * table of elements as the page draws it, anything else a line each.
+ */
+export function ChangeComparison({ locale, compare, against }: {
+  locale: Locale
+  compare: ChangeCompare
+  /** What the left column is (「公開中の v4」). */
+  against: string
+}) {
+  return compare.kind === "rows"
+    ? <RowsCompare locale={locale} against={against} before={compare.before} after={compare.after} />
+    : <CompareTable locale={locale} against={against} rows={compare.rows} />
+}
+
 function againstOf(locale: Locale, heading: string): string {
   return heading === "" ? messagesFor(locale).preview.previousPublished : heading
-}
-
-/**
- * The two sides line by line. **Lines pair by position** — a value's lines are
- * its languages in a fixed order, or the rows of a list, and a row only one
- * side has is shown against nothing.
- */
-export function lineRows(
-  before: readonly ShownLine[],
-  after: readonly ShownLine[],
-  termLabel?: (id: string) => string,
-): CompareRow[] {
-  const count = Math.max(before.length, after.length)
-  return Array.from({ length: count }, (_, at) => {
-    const one = before.at(at)
-    const other = after.at(at)
-    return {
-      label: one?.label ?? other?.label ?? "",
-      before: one === undefined ? null : lineSide(one, termLabel),
-      after: other === undefined ? null : lineSide(other, termLabel),
-    }
-  })
-}
-
-function lineSide(line: ShownLine, termLabel?: (id: string) => string): Side {
-  return line.state === "value" ? { state: "value", text: shownText(line, termLabel) } : { state: line.state }
-}
-
-/**
- * What one line shows. A value made of identities reads as their labels; one
- * that also has words of its own — a disease — reads as the words with the
- * labels after them, which is how it reads on the page it came from.
- */
-function shownText(line: ShownLine, termLabel?: (id: string) => string): string {
-  if (line.termIds === undefined) return line.text
-  const terms = line.termIds.map((id) => termLabel?.(id) ?? id).join(", ")
-  if (terms === "") return line.text
-  return line.text === "" ? terms : `${line.text} (${terms})`
-}
-
-/** A value the page draws, as the text it reads as. */
-function anchoredSide(value: AnchoredValue): Side {
-  if (value.kind === "term") return { state: "value", text: value.term?.label ?? "" }
-  if (value.kind === "list") return { state: "value", text: value.items.join("\n") }
-  if (value.kind === "ids") {
-    if (value.ids.state === "unsettled") return { state: "unknown" }
-    if (value.ids.state === "not-applicable") return { state: "not-applicable" }
-    return { state: "value", text: value.ids.items.join("\n") }
-  }
-  if (value.kind === "rows") return { state: "value", text: value.rows.rows.map((row) => row.cells.join(" / ")).join("\n") }
-  const shown = value.kind === "field" ? value.field : value.links
-  if (shown.state === "unsettled") return { state: "unknown" }
-  if (shown.state === "not-applicable") return { state: "not-applicable" }
-  if (value.kind === "links") {
-    return { state: "value", text: value.links.state === "value" ? value.links.value.map((link) => link.url).join("\n") : "" }
-  }
-  const field = value.field
-  if (field.state === "rich") return { state: "value", text: toPlainText(field.text) }
-  return { state: "value", text: field.state === "plain" ? field.text : "" }
 }

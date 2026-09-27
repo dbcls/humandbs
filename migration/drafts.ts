@@ -127,3 +127,36 @@ export function withdrawnDrafts(held: Dump, withdrawn: readonly WithdrawnData[])
     return { version: { ...latest, datasets: refs }, updatesPublished: true, datasets, name: one.draftName, memo: one.memo }
   })
 }
+
+/**
+ * A draft the source held beside the one v1 converted (`es-drafts-alongside/`):
+ * the source's site had two pages of the research's next version, and v1
+ * converted only the other one. The name and the memo tell admins apart the
+ * two drafts of the research.
+ */
+export interface AlongsideDraft {
+  humVersionId: string
+  name: string
+  memo: string
+}
+
+/**
+ * The drafts the source held beside the ones v1 converted, each from its own
+ * converted version. **They are drafts beside the research's other draft, and
+ * replace nothing.** A version, a research or a dataset document the list names
+ * that is not there stops the load: the list was written against the input.
+ */
+export function alongsideDrafts(held: Dump, versions: readonly EsResearchVersion[], alongside: readonly AlongsideDraft[]): SelectedDraft[] {
+  return alongside.map((one) => {
+    const version = versions.find((rv) => rv.humVersionId === one.humVersionId)
+    if (version === undefined) throw new Error(`no converted version ${one.humVersionId} for a draft alongside`)
+    const research = held.research.get(version.humId)
+    if (research === undefined) throw new Error(`${one.humVersionId} is a draft of ${version.humId}, which the dump does not hold`)
+    const datasets = (version.datasets ?? []).map((ref) => {
+      const doc = held.datasetsByKey.get(datasetKey(ref.datasetId, ref.version))
+      if (doc === undefined) throw new Error(`${one.humVersionId} pins ${ref.datasetId} ${ref.version}, which the dump does not hold`)
+      return { label: ref.datasetId, doc }
+    })
+    return { version, updatesPublished: versionNumber(research.latestVersion) !== null, datasets, name: one.name, memo: one.memo }
+  })
+}

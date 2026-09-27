@@ -9,7 +9,8 @@ import { Answer, Field, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section, Table, Td } from "~/components/page"
 import { ApplicationDatasets, ApplicationWarning, researchParts, sourceName, SourceTable, ImportForm } from "~/components/import"
-import { BranchCells, BranchDialog, UpstreamNotConnected } from "~/components/upstream"
+import { Stated } from "~/components/flags"
+import { APPLICATION_TYPE_FLAG, BranchCells, BranchDialog, UpstreamNotConnected } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
@@ -173,7 +174,7 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                     />
                     {/* **The word is what the press leads to**: an ID found
                         opens the same form a row's 取り込み opens. */}
-                    <Submit variant="primary" icon={<Icon name="download" />}>{t.choose}</Submit>
+                    <Submit icon={<Icon name="download" />}>{t.choose}</Submit>
                   </Form>
                   {/* **The columns are the listing's**, less the two every row
                       here would say alike (its research ID and whether that
@@ -185,6 +186,7 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                     stuck={1}
                     headers={[
                       templates.application,
+                      templates.applicationType,
                       templates.title,
                       templates.pi,
                       templates.registered,
@@ -214,6 +216,9 @@ function BranchRow({ row, here, locale }: {
   return (
     <tr>
       <Td stuck={0} nowrap><BranchDialog applicationId={row.applicationId} locale={locale} /></Td>
+      <Td nowrap floor="min-w-0">
+        <Stated kind={APPLICATION_TYPE_FLAG[row.applicationType]}>{messages.admin.templates.applicationTypes[row.applicationType]}</Stated>
+      </Td>
       <BranchCells row={row} locale={locale} />
       <Td nowrap holds="control">
         <ButtonLink

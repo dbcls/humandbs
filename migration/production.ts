@@ -121,7 +121,8 @@ import {
 import { loadCms, type CmsDump } from "./cms"
 import { planCopy, planDraftFiles, type Census } from "./copy"
 import { fileLabelRows, type FileLabelEntry } from "./file-labels"
-import { selectDrafts, withdrawnDrafts, type WithdrawnData } from "./drafts"
+import { alongsideDrafts, selectDrafts, withdrawnDrafts, type AlongsideDraft, type SelectedDraft, type WithdrawnData } from "./drafts"
+import { oldDates, type DatedArticle } from "./old-dates"
 import {
   loadDump,
   selectPublishedDatasets,
@@ -163,7 +164,7 @@ import { settleNbdcCells, type DroppedCell, type NbdcCellContext } from "./nbdc-
 import { requestComments, settleRequests } from "./requests"
 import { assertValueEditsApplied, editValues, type ValueEdit } from "./value-edits"
 import { applySiteEdits, type SiteEdit } from "./site-edits"
-import { alike, researchPages, withoutInlineBullets, type PageArticle, type Preferred, type ResearchPages, type Site } from "./research-pages"
+import { alike, researchPages, withoutInlineBullets, type Preferred, type ResearchPages, type Site } from "./research-pages"
 import {
   assertEditsApplied,
   assertGrantEditsApplied,
@@ -218,6 +219,16 @@ function heldDump(): Dump {
       datasetsByKey: new Map([...held.datasetsByKey, ...drafts.datasetsByKey]),
       versions: [...held.versions.filter((v) => !replaced.has(v.humVersionId)), ...drafts.versions],
     }
+  }
+
+  // A draft the source held beside the one v1 converted has documents of its
+  // own. Its version stays out of the dump (`alongside()`): in it,
+  // `selectDrafts` would read the version as the research's one draft.
+  if (existsSync(join(INPUT, "es-drafts-alongside", "manifest.json"))) {
+    const beside = loadDump(join(INPUT, "es-drafts-alongside"))
+    const taken = [...beside.datasetsByKey.keys()].filter((key) => held.datasetsByKey.has(key))
+    if (taken.length > 0) throw new Error(`documents of drafts alongside already in the dump: ${taken.join(", ")}`)
+    held = { ...held, datasetsByKey: new Map([...held.datasetsByKey, ...beside.datasetsByKey]) }
   }
 
   if (existsSync(join(INPUT, "es-restored", "manifest.json"))) {
@@ -310,9 +321,9 @@ function articleAliases(): Map<string, string> {
 }
 
 /** The old portal's articles on one site, published and draft (`joomla/{prod,staging}.ndjson`). */
-function oldArticles(site: "prod" | "staging"): PageArticle[] {
+function oldArticles(site: "prod" | "staging"): DatedArticle[] {
   const raw = readFileSync(join(INPUT, "joomla", `${site}.ndjson`), "utf8")
-  return raw.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as PageArticle)
+  return raw.split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as DatedArticle)
 }
 
 interface Recovery {
@@ -735,6 +746,16 @@ function storedFiles(researchIdOf: (hum: string) => string | undefined): (hum: s
   }
 }
 
+/** The drafts the source held beside the ones v1 converted (`drafts.ts` の `alongsideDrafts`). */
+function alongside(held: Dump): SelectedDraft[] {
+  if (!existsSync(join(INPUT, "es-drafts-alongside", "manifest.json"))) return []
+  return alongsideDrafts(
+    held,
+    loadDump(join(INPUT, "es-drafts-alongside")).versions,
+    readJson("es-drafts-alongside", "manifest.json") as AlongsideDraft[],
+  )
+}
+
 /** The hand-made table of dead links, when it has been made. */
 function relinks(): Map<string, Relink> {
   const path = join(INPUT, "hand", "urls.tsv")
@@ -774,6 +795,8 @@ async function load() {
   }
   correctKeys(loaded.datasetsByKey.values(), rules, fixes)
   const articles = { prod: oldArticles("prod"), staging: oldArticles("staging") }
+  // A research and a draft from the old site are dated when its pages were written there, not when they were loaded.
+  const written = oldDates([...articles.prod, ...articles.staging])
   // The rows v1 dropped for a dash (`dashes.ts`), put back once the keys are the ones the catalog has.
   const dashes = restoreDashes(
     loaded.datasetsByKey.values(),
@@ -816,7 +839,8 @@ async function load() {
 
   // Drafts: each with its own copies of the datasets it lists.
   const selectedDrafts = selectDrafts(held.research, held.versions, held.datasetsByKey)
-  const drafts = { ...selectedDrafts, drafts: [...selectedDrafts.drafts, ...keptInDrafts] }
+  const drafts = { ...selectedDrafts, drafts: [...selectedDrafts.drafts, ...keptInDrafts, ...alongside(held)] }
+  const madeHere = new Set<SelectedDraft>(keptInDrafts)
   const draftDatasets = drafts.drafts.map((draft) => {
     const datasets = draft.datasets.map((one) => ({ label: one.label, doc: structuredClone(one.doc) }))
     split(datasets, true)
@@ -901,7 +925,7 @@ async function load() {
     const researchIdByHum = await insertReturning(
       humIds,
       (hum) => hum,
-      (chunk) => tx.insert(research).values(chunk.map((hum) => ({ id: researchIdentity(hum) }))).returning({ id: research.id }),
+      (chunk) => tx.insert(research).values(chunk.map((hum) => ({ id: researchIdentity(hum), createdAt: written.researchCreated(hum) ?? undefined }))).returning({ id: research.id }),
     )
     await insertChunked(humIds, (chunk) => tx.insert(labelPin).values(chunk.map((hum) => ({
       kind: "hum" as const,
@@ -1002,7 +1026,7 @@ async function load() {
         termIdOf: (setCode, code) => termIdBySetAndCode.get(`${setCode}/${code}`),
       })
       for (const fix of fixed.applied) fixesApplied.add(fix)
-      const named = editDiseases(fixed.dataset, one.humId, diseaseEdits, diseasesEdited, diseaseNames)
+      const named = editDiseases(fixed.dataset, one.humId, diseaseEdits, diseasesEdited, diseaseNames, one.label)
       const both = fillTranslations(named, { hum: one.humId, label: nha.get(one.label) ?? one.label }, translations, (code) => keyIdByCode.get(code), translated)
       return { ...both, fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [] }
     }
@@ -1116,6 +1140,8 @@ async function load() {
       const own = new Set(datasets.map((one) => identityOf(datasetIdByLabel, one.label, "dataset")))
       const asking = settleRequests(linked({ ...built, datasetIds: built.datasetIds.filter((id) => own.has(id)) }, { hum: humId, dataset: false, keyIdOf: (code) => keyIdByCode.get(code) }))
       const content = asking.content
+      // A draft kept for withdrawn datasets is made here, and dated now.
+      const dated = madeHere.has(draft) ? null : written.draftWritten(humId, versionNumber(held.latestVersion.get(humId)?.version) ?? 0)
       const [row] = await tx
         .insert(researchDraft)
         .values({
@@ -1123,6 +1149,7 @@ async function load() {
           name: draft.name ?? plannedDraftName(versionNumber(held.latestVersion.get(humId)?.version)),
           content,
           shareToken: newShareToken(),
+          ...(dated === null ? {} : { createdAt: dated.created, updatedAt: dated.updated }),
         })
         .returning({ id: researchDraft.id })
       if (row === undefined) throw new Error(`the draft of ${humId} was not inserted`)

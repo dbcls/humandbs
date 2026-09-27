@@ -454,12 +454,11 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
   )
 }
 
-/** The names over `DatasetCells`, in its order, with the state's name after the id where the screen has one. */
-export function datasetColumns(locale: Locale, state?: string): string[] {
+/** The names over `DatasetCells`, in its order. */
+export function datasetColumns(locale: Locale): string[] {
   const messages = messagesFor(locale)
   return [
     messages.dataset.datasetId,
-    ...(state === undefined ? [] : [state]),
     messages.dataset.typeOfData,
     messages.dataset.accessType,
     messages.dataset.datePublished,
@@ -470,11 +469,11 @@ export function datasetColumns(locale: Locale, state?: string): string[] {
  * One dataset's cells in a research's dataset table: its id, what kind of data
  * it is, how it is accessed, and when it was published.
  *
- * **The management screen that orders a draft's datasets draws the same cells**,
- * so the table a curator arranges reads as the table the page will show — the
- * one difference is where the id leads.
+ * **The dialog a publication's datasets are chosen in draws the same cells**
+ * (`research-fields.tsx`), so what a curator picks from reads as the table the
+ * page shows — the one difference is where the id leads.
  */
-export function DatasetCells({ row, name, to, newTab = false, state, locale }: {
+export function DatasetCells({ row, name, to, newTab = false, locale }: {
   row: DatasetRowView
   /** What the id cell shows: the label, or a stand-in where none is pinned. */
   name: string
@@ -482,8 +481,6 @@ export function DatasetCells({ row, name, to, newTab = false, state, locale }: {
   to: string | null
   /** Whether the id opens its page in a new tab, for a screen someone is working on. */
   newTab?: boolean
-  /** The state cell's contents, on a screen whose table has one (after the id, as every table keeps it). */
-  state?: ReactNode
   locale: Locale
 }) {
   return (
@@ -493,7 +490,6 @@ export function DatasetCells({ row, name, to, newTab = false, state, locale }: {
           ? <IdWithIcon kind="dataset"><ExternalLink to={to} locale={locale}>{name}</ExternalLink></IdWithIcon>
           : <IdWithIcon kind="dataset" to={to}>{name}</IdWithIcon>}
       </Td>
-      {state !== undefined && <Td nowrap>{state}</Td>}
       <Td>
         {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
       </Td>

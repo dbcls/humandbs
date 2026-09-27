@@ -559,6 +559,59 @@ async function everySource(): Promise<{ name: string, text: string }[]> {
   return found.flat()
 }
 
+/**
+ * Whether a tag's own style is filled, written out or chosen in an expression.
+ * **Its own attribute only**: a dialog's opening tag holds its action
+ * (`action={() => <Submit variant="primary" …>}`), which is not the trigger's style.
+ */
+function filled(body: string): boolean {
+  return (ownAttribute(body, "variant") ?? "").includes("\"primary\"")
+}
+
+/** The value of an attribute written on the tag itself, not on an element inside one of its attributes. */
+function ownAttribute(body: string, name: string): string | null {
+  let depth = 0
+  for (let at = 0; at < body.length; at += 1) {
+    const here = body.charAt(at)
+    if (here === "{") depth += 1
+    else if (here === "}") depth -= 1
+    else if (depth === 0 && /\s/.test(here) && body.startsWith(`${name}=`, at + 1)) {
+      const from = at + name.length + 2
+      if (body.charAt(from) === "\"") return body.slice(from, body.indexOf("\"", from + 1) + 1)
+      let inner = 0
+      for (let end = from; end < body.length; end += 1) {
+        if (body.charAt(end) === "{") inner += 1
+        else if (body.charAt(end) === "}") inner -= 1
+        if (inner === 0) return body.slice(from, end + 1)
+      }
+      return null
+    }
+  }
+  return null
+}
+
+/**
+ * Each opening tag of the named components, whole: read to the `>` that closes
+ * it rather than to the first one, since an attribute can hold an element of
+ * its own (`icon={<Icon … />}`).
+ */
+function openingTags(text: string, tags: readonly string[]): { tag: string, body: string }[] {
+  const found: { tag: string, body: string }[] = []
+  const start = new RegExp(`<(${tags.join("|")})\\b`, "g")
+  for (let match = start.exec(text); match !== null; match = start.exec(text)) {
+    let depth = 0
+    let at = match.index + match[0].length
+    for (; at < text.length; at += 1) {
+      const here = text.charAt(at)
+      if (here === "{") depth += 1
+      else if (here === "}") depth -= 1
+      else if (here === ">" && depth === 0) break
+    }
+    found.push({ tag: match[1] ?? "", body: text.slice(match.index, at + 1) })
+  }
+  return found
+}
+
 describe("ボタンの色と形", () => {
   /**
    * The round end is where a control is placed, not how it should look — the header bar
@@ -576,27 +629,28 @@ describe("ボタンの色と形", () => {
   })
 
   /**
-   * **The filled style is the one thing a screen is requesting**, so a file that
-   * draws two of them has stopped ranking anything. Counted per file rather than
-   * per screen because a part is drawn inside whichever screen imports it; the
-   * catalogue is exempt, being a page of samples rather than a screen with an
-   * errand.
+   * **A filled button makes, gives or sends something out** (`base.tsx` の
+   * `ButtonVariant`), but not from a table's row, where every row would draw one,
+   * nor as the trigger of a dialog, whose own action is the filled one.
    *
-   * **A style chosen in an expression counts the same as one written out.** Read
-   * for the literal alone, a switch handing `primary` to whichever option is
-   * current passed as a single filled button and drew one per field.
-   *
-   * **`accent` is a fill and is not counted here**, because it is not the
-   * screen ranking anything: it is shown by a save that is holding something
-   * unsent, so how many appear is decided by what has been typed. A screen with
-   * four things to edit can be waiting on all four.
+   * **A style chosen in an expression counts the same as one written out**, so a
+   * switch handing `primary` to one case is read as filled.
    */
-  it("塗りのボタンは 1 つのファイルに 1 つまで", async () => {
-    const filled = /variant=(?:"primary"|\{[^}]*"primary"[^}]*\})/g
-    const twice = (await everySource())
-      .map(({ name, text }) => ({ name, n: (text.match(filled) ?? []).length }))
-      .filter(({ n }) => n > 1)
-    expect(twice).toEqual([])
+  it("表の行のボタンとダイアログを開くボタンは塗りにしない", async () => {
+    const hits = (await everySource()).flatMap(({ name, text }) =>
+      openingTags(text, ["Button", "ButtonLink", "Submit", "Dialog"])
+        .filter(({ tag, body }) => filled(body) && (tag === "Dialog" || ownAttribute(body, "size") === "\"row\""))
+        .map(({ tag }) => `${name}: ${tag}`))
+    expect(hits).toEqual([])
+  })
+
+  it("作成・割り当ての送信は、表の行のものを除いて塗り", async () => {
+    const MAKES = /\bintent="(?:create-[a-z-]+|pin|add-version|repoint-series)"/
+    const hits = (await everySource()).flatMap(({ name, text }) =>
+      openingTags(text, ["Submit"])
+        .filter(({ body }) => MAKES.test(body) && ownAttribute(body, "size") !== "\"row\"" && !filled(body))
+        .map(({ body }) => `${name}: ${MAKES.exec(body)?.[0] ?? ""}`))
+    expect(hits).toEqual([])
   })
 
   /**
@@ -1745,13 +1799,13 @@ describe("下書きの画面上部の欄とツールバー", () => {
     expect(tools.match(/\bsticky\b/g)).toHaveLength(1)
   })
 
-  it("画面上部の欄の 2 行目のリンクは ScreenLink (outline のボタン + 語の後ろの chevron) で、番号は付かない", async () => {
+  it("見出しの行の取り込みとデータセット一覧のリンクは ScreenLink (outline のボタン + 語の後ろの chevron) で、番号は付かない", async () => {
     const text = await readFile(path.join(ROOT, "components/editor.tsx"), "utf8")
-    const start = text.indexOf("function DraftOverview")
+    const start = text.indexOf("function DraftScreens")
     expect(start).toBeGreaterThan(-1)
     const end = text.indexOf("\nfunction ", start + 1)
     const body = text.slice(start, end === -1 ? undefined : end)
-    expect([...body.matchAll(/<ScreenLink\b/g)]).toHaveLength(4)
+    expect([...body.matchAll(/<ScreenLink\b/g)]).toHaveLength(2)
     // The transition chevron is `ScreenLink`'s own; the row draws neither a chevron nor a step number itself.
     expect(body).not.toContain("chevron-right")
     expect(body).not.toMatch(/>\s*\{at \+ 1\}\s*</)

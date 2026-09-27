@@ -111,7 +111,7 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                 submission application is begun from that application's own
                 screen, which the header's menu reaches. */}
             <Form method="post">
-              <Submit icon={<Icon name="plus" />}>{messages.admin.tasks.research.create}</Submit>
+              <Submit variant="primary" icon={<Icon name="plus" />}>{messages.admin.tasks.research.create}</Submit>
             </Form>
           </Heading>
 

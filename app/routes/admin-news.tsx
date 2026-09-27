@@ -96,7 +96,7 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
           <Heading title={t.news.heading}>
             <Form method="post">
               <input type="hidden" name="intent" value="create-news" />
-              <Submit icon={<Icon name="plus" />}>{t.news.add}</Submit>
+              <Submit variant="primary" icon={<Icon name="plus" />}>{t.news.add}</Submit>
             </Form>
           </Heading>
 

@@ -22,12 +22,18 @@ import { Icon } from "./icons"
  * script had not yet taken the button over would pin on a press made before the
  * screen was ready — the one thing the button promises not to do.
  */
-export function IdForm({ nextNhaId, locale, onIssuing, size }: {
+export function IdForm({ nextNhaId, locale, onIssuing, size, filled = false }: {
   /** What the box shows while issuing. */
   nextNhaId: string | null
   locale: Locale
   /** `row` inside a table's row, where the box and the buttons take the row's height. */
   size?: "row"
+  /**
+   * 「割り当て」drawn filled, where the form stands alone rather than in one of
+   * a table's rows (`base.tsx` の `ButtonVariant`). 「NHA ID の発行」only fills
+   * the box and sends nothing, so it is never filled.
+   */
+  filled?: boolean
   /** Told when the box starts or stops showing an issue, for a screen that counts rows. */
   onIssuing?: (issuing: boolean) => void
 }) {
@@ -54,7 +60,7 @@ export function IdForm({ nextNhaId, locale, onIssuing, size }: {
         placeholder={detail.pinDatasetPlaceholder}
         className={`${size === "row" ? CONTROL_ROW : `${CONTROL} text-sm`} w-48 disabled:opacity-50`}
       />
-      <Submit intent={issuing ? "issue" : "pin"} size={size} icon={<Icon name="link" />}>{detail.pinSubmit}</Submit>
+      <Submit intent={issuing ? "issue" : "pin"} variant={filled ? "primary" : "secondary"} size={size} icon={<Icon name="link" />}>{detail.pinSubmit}</Submit>
       {issuing
         ? <Button type="button" size={size} onClick={() => { setIssuing(false) }}>{messagesFor(locale).admin.cancel}</Button>
         : (

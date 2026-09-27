@@ -406,9 +406,23 @@ async function publishedResearchAnchors(
   humLabel: string | null,
 ): Promise<Record<string, AnchoredValue>> {
   const labels = await publishedDatasetLabels(getDb(), content.datasetIds)
-  const labelOf = new Map(labels)
-  const projected = publicResearch(content, { cau: [], files: [] }, { keepUnsettled: false })
+  return researchAnchorsOf(content, { keepUnsettled: false }, new Map(labels), locale, catalog, humLabel)
+}
 
+/**
+ * What the page draws at each anchor, for a research drawn only to be
+ * compared: its datasets are resolved to labels only, and there are no files
+ * or users of controlled-access data, none of which a compared anchor reads.
+ */
+export function researchAnchorsOf(
+  content: ResearchContent,
+  projection: { keepUnsettled: boolean },
+  labelOf: ReadonlyMap<string, string>,
+  locale: Locale,
+  catalog: CatalogView,
+  humLabel: string | null,
+): Record<string, AnchoredValue> {
+  const projected = publicResearch(content, { cau: [], files: [] }, projection)
   return anchoredResearchView({
     humLabel: humLabel ?? "",
     versionNumber: 0,

@@ -1503,6 +1503,48 @@ describe("the publish screen", () => {
     expect(pin?.label).toBe("NHA000001")
   })
 
+  it("names each field an update changes, and each place a value is unsettled, as the places of comments are named", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+    await db.insert(s.labelPin).values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
+    const versionId = await seedVersion(db, {
+      researchId,
+      number: 1,
+      releaseDate: "2024-05-01",
+      body: { title: { ja: { state: "value", value: "古い題目" }, en: { state: "value", value: "Old title" } } },
+    })
+    await researchDetailAction(postForm(token, "/x", { intent: "edit-version", versionId }), "ja", researchId)
+    const [update] = await db
+      .select({ id: s.researchDraft.id, content: s.researchDraft.content, revision: s.researchDraft.revision })
+      .from(s.researchDraft)
+      .where(eq(s.researchDraft.replacesVersionId, versionId))
+    if (update === undefined) throw new Error("no update was opened")
+    const saved = await saveDraftContent(db, { draftId: update.id, revision: update.revision }, {
+      content: { ...update.content, title: { ja: { state: "value", value: "新しい題目" }, en: { state: "unknown" } } },
+    })
+    if (saved.status !== "saved") throw new Error(saved.status)
+
+    const view = await publishPage(get(token, "/x"), "ja", { researchId, draftId: update.id })
+
+    expect(view.researchChanges).toEqual([{
+      path: "title",
+      name: "hum0001 / 研究題目",
+      compare: {
+        kind: "lines",
+        rows: [
+          { label: "ja", before: { state: "value", text: "古い題目" }, after: { state: "value", text: "新しい題目" } },
+          { label: "en", before: { state: "value", text: "Old title" }, after: { state: "unknown" } },
+        ],
+      },
+    }])
+    const unsettled = view.groups.find((group) => group.kind === "unsettled")
+    expect(unsettled?.spots).toContainEqual({
+      name: "hum0001 / 研究題目",
+      language: "en",
+      href: `/admin/research/${researchId}/draft/${update.id}`,
+    })
+  })
+
   it("refuses an update that would change nothing, and lets a new release date through as a change", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId } = await createResearchWithDraft(db)
@@ -1561,7 +1603,13 @@ describe("the publish screen", () => {
     const at = { researchId, draftId: update.id }
 
     const view = await publishPage(get(token, "/x"), "ja", at)
-    expect(view.reordered).toBe(true)
+    // Each side numbered in its own order, the rows paired by dataset.
+    const [first = "", second = ""] = datasetIds
+    expect(view.order).toEqual({
+      kind: "rows",
+      before: { columns: ["順番", "データセット ID"], rows: [{ id: first, cells: ["1", "NHA000001"] }, { id: second, cells: ["2", "NHA000002"] }] },
+      after: { columns: ["順番", "データセット ID"], rows: [{ id: second, cells: ["1", "NHA000002"] }, { id: first, cells: ["2", "NHA000001"] }] },
+    })
 
     const answer = await publishAction(
       postForm(token, "/x", {

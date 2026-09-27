@@ -329,7 +329,7 @@ describe("the header", () => {
     expect(render(view())).not.toContain("を更新中")
   })
 
-  it("leads to this draft's other screens in one order — import, datasets, review, publish — by name only", () => {
+  it("leads from the name row to the draft's import and then its datasets, after the back link, by name only", () => {
     const html = render(view())
     const head = html.slice(html.indexOf("研究の編集"), html.indexOf("role=\"tablist\""))
     const at = (needle: string) => {
@@ -338,29 +338,37 @@ describe("the header", () => {
       return found
     }
     const order = [
+      at(`href="/admin/research/${RESEARCH_ID}"`),
       at(`href="${DRAFT_BASE}/import"`),
       at(`href="${DRAFT_BASE}/dataset"`),
-      at(`href="${DRAFT_BASE}/review"`),
-      at(`href="${DRAFT_BASE}/publish"`),
+      at(">下書き名<"),
     ]
     expect([...order].sort((a, b) => a - b)).toEqual(order)
     // Named, not measured: the facts are read on each screen, and what is open is counted in the toolbar.
     expect(head).not.toContain("3 件")
     expect(head).not.toContain("共有中")
     expect(head).not.toContain("確認 2")
-    // None of the four is numbered: a set of ways, not a stepper.
+    // Neither is numbered: a set of ways, not a stepper.
     expect(head).not.toMatch(/rounded-full[^>]*>\s*1\s*</)
   })
 
+  it("does not lead to review or publishing, which the research's draft row opens", () => {
+    const html = render(view())
+    expect(html).not.toContain(`href="${DRAFT_BASE}/review"`)
+    expect(html).not.toContain(`href="${DRAFT_BASE}/publish"`)
+    expect(html).not.toContain("レビューと共有")
+    expect(html).not.toContain("公開前の確認")
+  })
+
   /*
-    The draft's name is read, changed and saved on one row under the links,
+    The draft's name is read, changed and saved on one row under the name row,
     with a save of its own: the name is not part of the form's save.
   */
-  it("shows the draft's name in an input under the four links, with a save of its own not yet pressable", () => {
+  it("shows the draft's name in an input under the name row, with a save of its own not yet pressable", () => {
     const html = render(view())
     const head = html.slice(html.indexOf("研究の編集"), html.indexOf("role=\"tablist\""))
     const row = head.slice(head.indexOf(`action="${DRAFT_BASE}/name"`))
-    expect(head.indexOf(`action="${DRAFT_BASE}/name"`)).toBeGreaterThan(head.indexOf(`href="${DRAFT_BASE}/publish"`))
+    expect(head.indexOf(`action="${DRAFT_BASE}/name"`)).toBeGreaterThan(head.indexOf(`href="${DRAFT_BASE}/dataset"`))
     expect(row).toMatch(/<label[^>]*>下書き名<\/label><input[^>]*name="name"[^>]*value="v2 予定"/)
     expect(row).toMatch(/<button type="submit"[^>]*disabled=""[^>]*>[\s\S]*?保存/)
     expect(head).not.toContain("名前の編集")
@@ -380,10 +388,10 @@ describe("the header", () => {
     expect(html).not.toContain("下書き名")
   })
 
-  it("marks each of the four as a link to another screen — the chevron after the word, which moves when pointed at", () => {
+  it("marks both as a link to another screen — the chevron after the word, which moves when pointed at", () => {
     const html = render(view())
     const head = html.slice(html.indexOf("研究の編集"), html.indexOf("role=\"tablist\""))
-    expect(head.match(/group-hover\/link:translate-x-0\.5/g)).toHaveLength(4)
+    expect(head.match(/group-hover\/link:translate-x-0\.5/g)).toHaveLength(2)
     // The toolbar under them leads nowhere and has no such indicator.
     const tools = head.slice(head.indexOf(">保存<"))
     expect(tools).not.toContain("group-hover/link:translate-x-0.5")
