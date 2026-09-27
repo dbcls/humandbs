@@ -49,7 +49,7 @@ const catalog: EditableCatalog = {
       scope: "dataset",
       valueType: "vocabulary",
       labelJa: "アクセス制限",
-      labelEn: "Access type",
+      labelEn: "Access criteria",
       position: 1,
       vocabularySetId: SET,
       multiple: false,

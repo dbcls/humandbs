@@ -118,7 +118,7 @@ export function contentKeySeeds(
         code: ACCESS_CRITERIA_KEY,
         scope: "dataset",
         labelJa: "アクセス制限",
-        labelEn: "Access type",
+        labelEn: "Access criteria",
         position: 0,
       }),
       valueType: "vocabulary",

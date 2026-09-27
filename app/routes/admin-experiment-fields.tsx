@@ -75,7 +75,7 @@ import type { Route } from "./+types/admin-experiment-fields"
  * prose becomes terms — so typing one is a development change, while adding,
  * renaming, reordering and removing free-text fields is administration.
  *
- * **What a dataset is described under is not here.** Access type and type of
+ * **What a dataset is described under is not here.** Access criteria and type of
  * data hold what the portal is rather than what the data brings, and the
  * glossary already fixes their words.
  *

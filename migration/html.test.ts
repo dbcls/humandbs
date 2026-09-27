@@ -21,6 +21,14 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
     expect(htmlToMarkdown("<p>CD4<sup>+</sup> T cells</p>")).toBe("CD4⁺ T cells")
   })
 
+  it("リンクの上付き (参考文献の番号) は、リンクのまま文字が上付きになる", () => {
+    const markdown = htmlToMarkdown(
+      "ガイドライン<sup>[1](#1)</sup><sup>[2](#2)</sup>も\n\n## 参考文献\n\n"
+      + "<span id=\"1\">1</span> : NCBI\n\n<span id=\"2\">2</span> : MHLW",
+    )
+    expect(markdown).toContain("ガイドライン[¹](#参考文献)[²](#参考文献)も")
+  })
+
   it("Unicode に無い上付きは素の文字になる", () => {
     expect(htmlToMarkdown("<p>x<sup>#1</sup></p>")).toBe("x#1")
   })
@@ -67,6 +75,37 @@ describe("v1 のサイトコンテンツの markdown 化", () => {
     for (const row of rows) {
       expect(row.split("|").filter((cell) => cell.trim() === "A")).toHaveLength(2)
     }
+  })
+
+  it("表のセルの中の段落は、空白 1 つで区切られて 1 行になる", () => {
+    const markdown = htmlToMarkdown(
+      "<table><tr><th>a</th></tr><tr><td><p>17K16173</p>\n<p>18K09205</p></td></tr></table>",
+    )
+    expect(markdown).toContain("| 17K16173 18K09205 |")
+  })
+
+  it("表のセルの中の改行は、続いていても空白 1 つになり、文字参照を残さない", () => {
+    const markdown = htmlToMarkdown("| a | b |\n| --- | --- |\n| ・電話番号<br><br>**（受託者）**<br>・受託機関名 | y |")
+    expect(markdown).toContain("・電話番号 **（受託者）** ・受託機関名")
+    expect(markdown).not.toContain("&#x")
+  })
+
+  it("表のセルの頭と末尾の改行は、空白を残さない", () => {
+    const markdown = htmlToMarkdown("<table><tr><th>a</th></tr><tr><td><br><p>x</p><br></td></tr></table>")
+    expect(markdown).toContain("| x |")
+  })
+
+  it("表の外の段落と改行は今までどおり", () => {
+    expect(htmlToMarkdown("<p>a<br>b</p><p>c</p>")).toBe("a\\\nb\n\nc")
+  })
+
+  it("中身が丸ごと太字の見出しは、太字を外す", () => {
+    expect(htmlToMarkdown("<h3><strong> Introduction</strong></h3>")).toBe("### Introduction")
+    expect(htmlToMarkdown("### **1．運用原則**")).toBe("### 1．運用原則")
+  })
+
+  it("一部だけ太字の見出しは、そのまま", () => {
+    expect(htmlToMarkdown("<h3><strong>1.</strong> Principles</h3>")).toBe("### **1.** Principles")
   })
 
   it("callout は名前を持つ引用 (注記) になる", () => {
@@ -178,6 +217,17 @@ describe("v1 のページ内リンクの行き先", () => {
     )
     expect(markdown).toContain("[前](#通則編)")
     expect(markdown).toContain("[後](#通則編-2)")
+  })
+
+  it("v2 の見出しのアドレスを書いたリンクは、そのまま残る", () => {
+    const markdown = htmlToMarkdown("- 一部には[特記事項](#2特記事項)が付与\n\n## 2．特記事項\n\nx")
+    expect(markdown).toContain("[特記事項](#2特記事項)")
+  })
+
+  it("見出しにもアンカーにも無いアドレスは、今までどおりリンクを失う", () => {
+    const markdown = htmlToMarkdown("[そこ](#2とくきじこう)\n\n## 2．特記事項\n\nx")
+    expect(markdown).not.toContain("(#2とくきじこう)")
+    expect(markdown).toContain("そこ")
   })
 
   it("ページの外を指すリンクは触らない", () => {

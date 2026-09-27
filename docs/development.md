@@ -93,7 +93,7 @@ docker compose exec app npm run db:load-dev-data   # 開発用データを入れ
 
 ## 開発用データ
 
-画面を作るための実データを入れる手順である。値の正しさも網羅性も問わない。本番のデータは [deployment.md](deployment.md) の「データを入れる」の移行で作る。入力は `migration/input/` (git 管理外) に置く。
+画面を作るための実データを入れる手順である。値の正しさも網羅性も問わない。入力は `migration/input/` (git 管理外) に置く。
 
 | 入力 | 中身 |
 |---|---|

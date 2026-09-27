@@ -1805,7 +1805,7 @@ const en: Messages = {
     datePublished: "Date published",
     dateModified: "Date modified",
     typeOfData: "Type of data",
-    accessType: "Access type",
+    accessType: "Access criteria",
     dataVolume: "Total data volume",
     fileFormats: "File formats",
     awaited: "Filled in automatically after publication",

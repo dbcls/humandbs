@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest"
 import { navigationPaths } from "~/public/navigation"
 import { SCREEN_PATHS } from "~/public/urls"
 
-import { buildAlerts, buildDocuments, buildNews, FILE_LIST_SLUGS, loadCms, SCREEN_SLUGS, UNPUBLISHED_SLUGS, type CmsDocument } from "./cms"
+import { buildAlerts, buildDocuments, buildNews, DUPLICATE_SLUGS, FILE_LIST_SLUGS, JAPANESE_ONLY_SLUGS, loadCms, SCREEN_SLUGS, UNPUBLISHED_SLUGS, type CmsDocument } from "./cms"
 
 function document(slug: string, versions: CmsDocument["versions"]): CmsDocument {
   return { slug, versions }
@@ -39,6 +39,18 @@ describe("document の組み立て", () => {
     const lists = FILE_LIST_SLUGS.map((slug) => document(slug, [version("ja", 1), version("en", 1)]))
     const { documents } = buildDocuments([...lists, document("hum0185-v1-st1", [version("en", 1)])])
     expect(documents.map((one) => one.slug)).toEqual(["hum0185-v1-st1"])
+  })
+
+  it("ほかの slug と同じ本文の slug は document にならない", () => {
+    const copies = DUPLICATE_SLUGS.map((slug) => document(slug, [version("ja", 1)]))
+    const { documents } = buildDocuments([...copies, document("dac/committee-1", [version("ja", 1)])])
+    expect(documents.map((one) => one.slug)).toEqual(["dac/committee-1"])
+  })
+
+  it("日本語だけの slug は、英語の行を持ち込まない", () => {
+    const { documents } = buildDocuments([...JAPANESE_ONLY_SLUGS, "aim"].map((slug) => document(slug, [version("ja", 1), version("en", 1)])))
+    expect(documents.map((one) => [one.slug, one.contents.map((content) => content.locale)]))
+      .toEqual([...JAPANESE_ONLY_SLUGS.map((slug) => [slug, ["ja"]]), ["aim", ["ja", "en"]]])
   })
 
   it("未公開で持ち込む slug は、内容を残して未公開になり、ほかは公開のまま", () => {

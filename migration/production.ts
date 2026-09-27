@@ -146,6 +146,7 @@ import {
 } from "./load"
 import { byHand, labelTranslations, type ReadByHand } from "./numbers"
 import { type NoteChange, type NoteLookup, withoutRepeatedNotes } from "./number-notes"
+import { type OwnIdChange, withoutOwnIds } from "./own-ids"
 import {
   applyKeyRules,
   dropDatasets,
@@ -953,6 +954,16 @@ async function load() {
       },
     }
     const noteChanges: (NoteChange & { hum: string, dataset: string | undefined, draft: boolean })[] = []
+    // A dataset's own IDs are taken out of the places that only told it apart from the others (`own-ids.ts`).
+    const studiesOf = new Map<string, string[]>()
+    for (const [study, jgads] of jgasToJgad) for (const jgad of jgads) studiesOf.set(jgad, [...(studiesOf.get(jgad) ?? []), study])
+    const ownIdsOf = (datasetId: string | undefined): Set<string> => {
+      const own = new Set(labelsOfId.get(datasetId ?? "") ?? [])
+      for (const label of [...own]) for (const study of studiesOf.get(label) ?? []) own.add(study)
+      return own
+    }
+    const processedIdKeys = keyIdsOf(["processed-data-dataset-id"])
+    const ownIdChanges: (OwnIdChange & { hum: string, dataset: string | undefined, draft: boolean })[] = []
     const withoutDroppedKeys = <D extends DatasetContent & { datasetId?: string }>(content: D, hum: string, draft: boolean): D => {
       const out = withoutKeys(content, droppedKeyIds)
       archiveValues += out.dropped
@@ -960,7 +971,9 @@ async function load() {
       fileValues += files.dropped
       const settled = withoutRepeatedNotes(files.content, noteLookup)
       noteChanges.push(...settled.changes.map((one) => ({ ...one, hum, dataset: content.datasetId, draft })))
-      return settled.content
+      const unnamed = withoutOwnIds(settled.content, { own: ownIdsOf(content.datasetId), skippedKeys: processedIdKeys })
+      ownIdChanges.push(...unnamed.changes.map((one) => ({ ...one, hum, dataset: content.datasetId, draft })))
+      return unnamed.content
     }
 
     const humIds = [...held.research.keys()].sort()
@@ -1274,6 +1287,7 @@ async function load() {
       archiveValues,
       fileValues,
       noteChanges,
+      ownIdChanges,
     }
   })
 
@@ -1326,6 +1340,7 @@ console.log("NBDC cells          ", counts.nbdc.dropped.filter((one) => one.whol
 console.log("archive key values  ", counts.archiveValues, "taken out of", DROPPED_ARCHIVE_KEYS.length, "keys")
 console.log("file key values     ", counts.fileValues, "taken out of", DROPPED_FILE_KEYS.length, "keys")
 console.log("number notes settled ", counts.noteChanges.length, written("number-notes.json", counts.noteChanges))
+console.log("own IDs taken out   ", counts.ownIdChanges.length, written("own-ids.json", counts.ownIdChanges))
 if (counts.claimedTwice.length > 0) console.log("claimed twice:", written("claimed-twice.json", counts.claimedTwice))
 if (selection.missingDocuments.length > 0) console.log("pinned with no document:", selection.missingDocuments)
 if (drafts.missingDocuments.length > 0) console.log("draft pins with no document:", drafts.missingDocuments)

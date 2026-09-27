@@ -28,7 +28,7 @@ async function seedCatalog(): Promise<void> {
   const [set] = await db.insert(s.vocabularySet).values({
     code: "access-criteria",
     labelJa: "アクセス制限",
-    labelEn: "Access type",
+    labelEn: "Access criteria",
   }).returning({ id: s.vocabularySet.id })
   if (set === undefined) throw new Error("the vocabulary set insert returned no row")
   await db.insert(s.vocabularyTerm).values([
@@ -40,7 +40,7 @@ async function seedCatalog(): Promise<void> {
     scope: "dataset",
     valueType: "vocabulary",
     labelJa: "アクセス制限",
-    labelEn: "Access type",
+    labelEn: "Access criteria",
     vocabularySetId: set.id,
   })
 }

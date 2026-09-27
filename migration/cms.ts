@@ -92,6 +92,20 @@ export const FILE_LIST_SLUGS = [
 ]
 
 /**
+ * Documents whose body another slug holds word for word. The minutes of the data access committee's
+ * first meeting are at `dac/committee-1`, where the committee's page links; `committee-1` is the
+ * same page at an address nothing links to.
+ */
+export const DUPLICATE_SLUGS = ["committee-1"]
+
+/**
+ * Documents written in Japanese only, whose English row holds only a notice to that effect. The committee's
+ * minutes are in Japanese, and the other meetings have no English row at all; one with a title-less
+ * notice gives the page an English address with an empty heading.
+ */
+export const JAPANESE_ONLY_SLUGS = ["dac/committee-1"]
+
+/**
  * Documents that come across unpublished. hum0185's table of slides was public on the old site
  * although its research never was, and its files are private; it also names the research's grants,
  * which nothing else holds, so it is kept for whoever publishes the research.
@@ -173,9 +187,10 @@ export function buildDocuments(documents: CmsDocument[]): BuiltSiteDocuments {
   const series: BuiltSeries[] = []
 
   for (const source of documents) {
-    if (SCREEN_SLUGS.includes(source.slug) || FILE_LIST_SLUGS.includes(source.slug)) continue
+    if (SCREEN_SLUGS.includes(source.slug) || FILE_LIST_SLUGS.includes(source.slug) || DUPLICATE_SLUGS.includes(source.slug)) continue
 
-    const published = source.versions.filter((v) => v.status === "published" && isLocale(v.locale))
+    const published = source.versions.filter((v) => v.status === "published" && isLocale(v.locale)
+      && !(JAPANESE_ONLY_SLUGS.includes(source.slug) && v.locale === "en"))
     if (published.length === 0) continue
 
     const byNumber = new Map<number, CmsDocumentVersion[]>()

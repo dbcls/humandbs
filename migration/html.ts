@@ -49,17 +49,25 @@ function textOf(node: ElementContent): string {
   return node.children.map(textOf).join("")
 }
 
-/** A superscript becomes its Unicode form when every character has one. */
+/**
+ * A superscript becomes its Unicode form when every character has one. **A
+ * superscript that is a link stays a link** with its words raised: the guidelines
+ * number their references this way (`<sup><a href="#1">1</a></sup>`), and the
+ * number is how a reader gets to the reference.
+ */
 function normalizeSuperscripts() {
+  const raised = (text: string) => {
+    const folded = Array.from(text, (char) => SUPERSCRIPT[char] ?? "").join("")
+    return folded.length === text.length && text !== "" ? folded : text
+  }
   return (tree: Root) => {
     visit(tree, "element", (node: Element) => {
       node.children = node.children.map((child) => {
         if (!isElement(child) || child.tagName !== "sup") return child
-        const text = textOf(child)
-        const folded = Array.from(text, (char) => SUPERSCRIPT[char] ?? "").join("")
-        return folded.length === text.length && text !== ""
-          ? { type: "text" as const, value: folded }
-          : { type: "text" as const, value: text }
+        const held = child.children.filter((one) => !(one.type === "text" && one.value.trim() === ""))
+        const link = held.length === 1 && held[0] !== undefined && isElement(held[0]) && held[0].tagName === "a" ? held[0] : null
+        if (link !== null) return { ...link, children: [{ type: "text" as const, value: raised(textOf(link)) }] }
+        return { type: "text" as const, value: raised(textOf(child)) }
       })
     })
   }
@@ -127,6 +135,65 @@ function expandSpans() {
         }
         row.children = rebuilt
       }
+    })
+  }
+}
+
+const HEADING = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
+
+const isBlank = (node: ElementContent): boolean => node.type === "text" && node.value.trim() === ""
+
+/**
+ * A table cell as one line of words. A GFM cell holds no line break, and the
+ * serialiser, left to it, runs a cell's paragraphs together with nothing
+ * between (`17K16173` and `18K09205` read as `17K1617318K09205`) and turns a
+ * break before emphasis into a character reference that is not one
+ * (`&#xNAN;`). **Paragraphs and breaks become one space**, the way a single
+ * break already did, and none is left at either end of the cell.
+ */
+function flattenCells() {
+  const inline = (nodes: ElementContent[]): ElementContent[] => nodes.flatMap((node) => {
+    if (!isElement(node)) return [node]
+    if (node.tagName === "br") return [{ type: "text" as const, value: " " }]
+    if (node.tagName === "p" || node.tagName === "div") {
+      return [{ type: "text" as const, value: " " }, ...inline(node.children), { type: "text" as const, value: " " }]
+    }
+    return [node]
+  })
+  const merged = (nodes: ElementContent[]): ElementContent[] => {
+    const out: ElementContent[] = []
+    for (const node of nodes) {
+      const last = out.at(-1)
+      if (node.type === "text" && last?.type === "text") last.value = (last.value + node.value).replace(/\s{2,}/g, " ")
+      else out.push(node.type === "text" ? { ...node, value: node.value.replace(/\s{2,}/g, " ") } : node)
+    }
+    const first = out[0]
+    if (first?.type === "text") first.value = first.value.trimStart()
+    const end = out.at(-1)
+    if (end?.type === "text") end.value = end.value.trimEnd()
+    return out.filter((node) => node.type !== "text" || node.value !== "")
+  }
+  return (tree: Root) => {
+    visit(tree, "element", (cell: Element) => {
+      if (cell.tagName !== "td" && cell.tagName !== "th") return
+      cell.children = merged(inline(cell.children))
+    })
+  }
+}
+
+/**
+ * A heading whose words are all bold loses the bold. Joomla's editor wrapped
+ * most headings in `<strong>`, which a heading already is; kept, every heading
+ * of a guideline reads `### **…**` in the editor.
+ */
+function plainHeadings() {
+  return (tree: Root) => {
+    visit(tree, "element", (heading: Element) => {
+      if (!HEADING.has(heading.tagName)) return
+      const held = heading.children.filter((child) => !isBlank(child))
+      const only = held[0]
+      if (held.length !== 1 || only === undefined || !isElement(only) || (only.tagName !== "strong" && only.tagName !== "b")) return
+      heading.children = only.children
     })
   }
 }
@@ -285,8 +352,6 @@ function convertCallouts(source: string): string {
   return out.join("\n")
 }
 
-const HEADING = new Set(["h1", "h2", "h3", "h4", "h5", "h6"])
-
 /** Whatever this element can be pointed at by. Joomla wrote both spellings. */
 function anchorNames(node: Element): string[] {
   return ["id", "name"]
@@ -308,7 +373,8 @@ function anchorNames(node: Element): string[] {
  * heading names that heading; one written in the middle of a section names the
  * heading above it, which is as close as a reader can be put. The rewrite has
  * to happen here rather than at render time because the anchors are in the
- * source and are gone by the time the markdown is stored.
+ * source and are gone by the time the markdown is stored. A link that already
+ * names a heading by its v2 address (`[特記事項](#2特記事項)`) is kept as it is.
  *
  * **A link with no heading anywhere above it loses its link and keeps its
  * text.** One document is a table of file names pointing down at their own
@@ -339,7 +405,9 @@ function resolveAnchors() {
       // Anything addressed anywhere else is somebody else's problem.
       if (typeof href === "string" && href !== "" && !inPage) return
       if (inPage) {
-        const target = at.get(decodeURIComponent(href.slice(1)))
+        const name = decodeURIComponent(href.slice(1))
+        // One already written as the heading's v2 address is where it points.
+        const target = ids.includes(name) ? ids.indexOf(name) : at.get(name)
         const id = target === undefined || target < 0 ? undefined : ids[target]
         if (id !== undefined) {
           node.properties = { ...node.properties, href: `#${id}` }
@@ -366,6 +434,8 @@ const processor = unified()
   .use(normalizeSuperscripts)
   .use(dropBlankParagraphs)
   .use(expandSpans)
+  .use(flattenCells)
+  .use(plainHeadings)
   .use(resolveAnchors)
   .use(rehypeRemark)
   .use(remarkGfm)

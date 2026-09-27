@@ -25,7 +25,7 @@ NBDC ヒトデータベース (https://humandbs.dbcls.jp) のポータルであ�
 | [docs/assistant.md](docs/assistant.md) | 申請支援アシスタントとポータルの境界 |
 | [docs/development.md](docs/development.md) | 手元で動かす手順。初回、日常のコマンド、DB と schema の変更、開発用データ |
 | [docs/testing.md](docs/testing.md) | テストの書き方。種類、何をテストにするか、mock の境界、テスト同士の独立 |
-| [docs/deployment.md](docs/deployment.md) | 本番と staging を動かす手順。構成、`.env`、データの保存先、初回、更新、戻す、schema を変える、データを入れる |
+| [docs/deployment.md](docs/deployment.md) | 本番と staging を動かす手順。構成、`.env`、データの保存先、初回、更新、戻す、schema を変える |
 
 ## ライセンス
 

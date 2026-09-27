@@ -978,7 +978,7 @@ describe("the dataset screens of a draft", () => {
         scope: "dataset",
         valueType: "vocabulary",
         labelJa: "アクセス制限",
-        labelEn: "Access type",
+        labelEn: "Access criteria",
         vocabularySetId: set.id,
       },
       {

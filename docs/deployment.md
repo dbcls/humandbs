@@ -1,6 +1,6 @@
 # 本番と staging の運用
 
-staging と production にポータルを配置し、更新し、データを入れる手順をまとめる。手元の開発環境は [development.md](development.md)、部品の構成は [overview.md](overview.md) にある。
+staging と production にポータルを配置し、更新し、戻す手順をまとめる。手元の開発環境は [development.md](development.md)、部品の構成は [overview.md](overview.md) にある。
 
 staging と production は、この repo から作った image で動く。配置の定義は `compose.yml` で、source は mount しない。配置先は rootless podman と podman-compose 1.0.6 なので、コマンドは `podman-compose` で書き、配置先で要る設定は `compose.deploy.yml` が足す。配置先ごとに違う値は `.env` にだけ書く。開発環境は、同じ定義に `compose.dev.yml` を重ねたものである。
 
@@ -140,29 +140,6 @@ role は database の外にあるので dump に入らず、database への接�
 - `drizzle-kit push` は配置先でも使わない。理由は [development.md](development.md) の「DB と schema の変更」にある。
 - migration は、1 つ前のリリースのアプリが動き続ける形にする。更新では migration を当ててからアプリを入れ替えるので、その間は古いアプリが新しい schema で動く。戻すときも同じである。1 つのリリースでは列や表を足すだけにし (既存の行に要る値は default で与える)、消す・名前を変える・型を狭めるのは、それを使うコードが無くなった次のリリースで行う。
 - 更新では、`scripts/deploy.sh` が DB の backup を取ってから migration を当てる。
-
-## データを入れる
-
-本番で公開するデータを入れる手順である。データは本番用の移行が作る。入力は旧ポータル (検索基盤と CMS、その前の Joomla) を固定した snapshot で、DB を空にしてからすべてを入れ、そのあと配信ファイルをファイルストアにコピーする。画面を開発用データで確かめるだけなら、手元と同じ手順で入る ([development.md](development.md) の「開発用データ」)。
-
-- 入力は image にも repo にも入らないので、本番用の移行の入力の dir `migration/input/l12/` に手で置く。`tools` はこの dir を mount し、移行のコードは image から読む。移行のコードを直したら `podman-compose build tools` を実行する。
-
-```bash
-podman-compose run --rm -T tools npx tsx migration/production.ts     # DB を空にして移行する
-podman-compose run --rm -T \
-  -v <旧ポータルの files の dir>:/source/files:ro \
-  -v <旧ポータルの public-files の dir>:/source/public-files:ro \
-  tools npx tsx migration/copy-files.ts                              # 配信ファイルをファイルストアにコピーする
-```
-
-- 移行は実行するたびに DB を空にしてから入れる。規則で決められなかったものを人が直した結果は、DB ではなく `migration/input/l12/hand/` の表に書き、移行がそれを読む。DB を直接直すと、次に移行を実行したときに消える。
-- 操作の記録と admin は空にしない。移行が操作の記録に書くのは、旧ポータルで表示中だったアラートを公開した記録 (予約された操作者、本文の先頭を名前にする) だけで、実行し直すと前の移行が書いたその記録を消して書き直す。消えたアラートの記録が実行のたびにたまらないようにするためである。
-- 規則で決められずに残ったものは `migration/input/l12/out/` に書き出される。
-- 旧ポータルから入れた研究の作成日時は Joomla でその研究のページを初めて書いた日時、下書きの作成日時と更新日時は次のバージョンのページを初めて書いた日時と最後に編集した日時にする。移行した日時にすると、admin の研究の一覧の更新日がすべて移行した日になるためである。移行の中で作る下書き (JGA で取り下げられたデータセットを残すもの) は移行した日時になる。
-- 旧ポータルのファイルの dir は、上の 2 つの `-v` の mount 先 (`/source/files` と `/source/public-files`) で渡す。mount 先を変えるときは `HUMANDBS_COPY_SOURCE` と `HUMANDBS_COPY_ASSETS` で指定する。
-- ファイルのコピーは途中で止めて実行し直せる。ファイルストアに同じ大きさのファイルが既にあれば飛ばすので、2 回目は残りだけをコピーする。
-- 移行を実行し直しても、ファイルのコピーは実行し直さなくてよい。非公開のファイルは研究の実体の ID の prefix に置いており、移行は研究とデータセットの実体の ID を研究 ID とデータセット ID から毎回同じ値で作るので、prefix がずれない。どの研究にも属さない非公開の prefix に残ったファイルは `out/copy-report.json` の `stray` に並ぶ。
-- どのファイルをコピーしないか (同じデータの別の形式、新しいものに置き換えられた古いファイル、作業用のファイル、研究ごとの dir の外の資料) と、どれを非公開の bucket に入れるかは `migration/copy.ts` で決まる。旧ポータルの研究ごとの dir の中の階層はなくし、ファイル名だけを key にする ([files.md](files.md) の「2 つの bucket と研究ごとの prefix」)。
 
 ## やっていないこと
 
