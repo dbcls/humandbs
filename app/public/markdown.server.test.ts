@@ -84,7 +84,7 @@ describe("サイトコンテンツの markdown", () => {
     const html = renderMarkdown("## はじめに\n\n[上へ](#はじめに)\n", "ja", { headingLinks: false })
     expect(html).toContain("<h2 id=\"はじめに\">はじめに</h2>")
     expect(html).not.toContain("この見出しへのリンク")
-    expect(html).toContain("<a href=\"#%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB\">上へ</a>")
+    expect(html).toMatch(/<a href="#%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB"[^>]*>上へ<\/a>/)
     expect(headings(html)).toEqual(["h2:はじめに"])
   })
 
@@ -168,6 +168,51 @@ describe("サイトコンテンツの markdown", () => {
   it("空文字と空白だけの本文は空文字を返す", () => {
     expect(renderMarkdown("", "ja")).toBe("")
     expect(renderMarkdown("   \n\n  ", "ja")).toBe("")
+  })
+})
+
+/** The classes each link of the output carries, in the order they are written. */
+function linkClasses(html: string): string[] {
+  return [...html.matchAll(/<a\b([^>]*)>/g)]
+    .map((match) => /class="([^"]*)"/.exec(match[1] ?? "")?.[1] ?? "")
+}
+
+describe("記事の中のリンクの下線", () => {
+  it("文の中のリンクは下線のまま", () => {
+    expect(linkClasses(renderMarkdown("詳しくは[ガイドライン](/guidelines)を読む。", "ja"))).toEqual([""])
+  })
+
+  it("文の後ろに付いたリンクも、行にほかの語があれば下線のまま", () => {
+    expect(linkClasses(renderMarkdown("- 申請の手順: [データの提供](/submission)", "ja"))).toEqual([""])
+  })
+
+  it("表のセルのリンクは、セルにほかの語があっても下線を付けない", () => {
+    const html = renderMarkdown("| ID | 説明 |\n| - | - |\n| [JGAD000001](/dataset/JGAD000001) | [一覧](/research) の 1 件目 |", "ja")
+    expect(linkClasses(html)).toEqual(["no-underline", "no-underline"])
+  })
+
+  it("リンクだけの行 (箇条・段落) は下線を付けない", () => {
+    const html = renderMarkdown("- [質問 1](#q1)\n- [質問 2](#q2)\n\n[目次へ](#toc)", "ja")
+    expect(linkClasses(html)).toEqual(["no-underline", "no-underline", "no-underline"])
+  })
+
+  it("区切りの記号と空白を挟んでリンクが並ぶだけの行も下線を付けない", () => {
+    const html = renderMarkdown("[日本語](/a) / [English](/en/a)、[PDF](/files/common/a.pdf)", "ja")
+    expect(linkClasses(html)).toEqual(["no-underline", "no-underline", "no-underline"])
+  })
+
+  it("強調の中のリンクも、行がリンクだけなら下線を付けない", () => {
+    expect(linkClasses(renderMarkdown("**[申請の手順](/submission)**", "ja"))).toEqual(["no-underline"])
+  })
+
+  it("入れ子の箇条は行ごとに決まり、親の行の語で子のリンクの下線は変わらない", () => {
+    const html = renderMarkdown("- 手順の説明と [手順](/a)\n  - [子の手順](/b)", "ja")
+    expect(linkClasses(html)).toEqual(["", "no-underline"])
+  })
+
+  it("見出しの中のリンクは、見出しがリンクだけでも下線のまま", () => {
+    const html = renderMarkdown("## [ヒトデータ共有ガイドライン](/guidelines)", "ja", { headingLinks: false })
+    expect(linkClasses(html)).toEqual([""])
   })
 })
 

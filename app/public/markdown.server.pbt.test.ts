@@ -103,4 +103,27 @@ describe("サイトコンテンツの markdown の不変量", () => {
       expect(/<[a-z]+[^>]*\son[a-z]+=/i.test(renderMarkdown(source, "ja"))).toBe(false)
     }))
   })
+
+  /**
+   * What stands beside the links on a line: separators alone, or separators
+   * with one word among them. The words include a digit and a Latin letter so
+   * a line of IDs and a line of English prose are both tried.
+   */
+  const separator = fc.constantFrom(" ", "/", "、", "・", "|", "→", "(", ")", "-", ":", ",")
+  const word = fc.constantFrom("詳しくは", "and", "2", "版", "PDF")
+
+  it("段落のリンクは、行に区切りの記号と空白しか無ければ下線を付けず、語が 1 つでもあれば下線のまま", () => {
+    fc.assert(fc.property(
+      fc.array(fc.array(separator, { maxLength: 3 }), { minLength: 2, maxLength: 4 }),
+      fc.option(word, { nil: null }),
+      (gaps, inserted) => {
+        const texts = gaps.map((gap) => gap.join(""))
+        if (inserted !== null) texts[0] = `${inserted}${texts[0] ?? ""}`
+        const source = texts.map((text, at) => at === texts.length - 1 ? text : `${text}[リンク${at}](/a${at})`).join("")
+        const links = [...renderMarkdown(source, "ja").matchAll(/<a\b([^>]*)>/g)].map((match) => match[1] ?? "")
+        expect(links).toHaveLength(texts.length - 1)
+        for (const attributes of links) expect(attributes.includes("no-underline")).toBe(inserted === null)
+      },
+    ))
+  })
 })

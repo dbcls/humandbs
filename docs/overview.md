@@ -4,7 +4,7 @@ NBDC ヒトデータベースのポータルは、研究とそれに属するデ
 
 ## 構成要素
 
-ポータルは 1 つのアプリと、その前に置く proxy、DB、ファイルストアからなり、外部のシステムを 3 つ読み、Slack に通知を送る。
+ポータルは 1 つのアプリと、その前に置く proxy、DB、ファイルストアからなり、外部のシステムを 4 つ読み、Slack に通知を送る。
 
 ```
             browser
@@ -17,6 +17,7 @@ NBDC ヒトデータベースのポータルは、研究とそれに属するデ
                                            +----> assistant-api (optional)
                                            +----> JGA application DB (read-only)
                                            +----> DDBJ Search
+                                           +----> DDBJ public FTP
                                            +----> Keycloak (DDBJ)
                                            +----> Slack (optional)
 ```
@@ -29,7 +30,8 @@ NBDC ヒトデータベースのポータルは、研究とそれに属するデ
 | `s3` | ファイルストア (SeaweedFS の S3 互換の API)。データファイルと、記事の画像や PDF を保存する。公開かどうかは、2 つの bucket のどちらにあるかで決まる ([files.md](files.md)) |
 | `assistant-api` | 申請支援アシスタント。既定では起動しない別のサービスで、`app` だけが呼ぶ ([assistant.md](assistant.md)) |
 | JGA 申請管理システムの DB | 他のプロジェクトの所管。ポータルは読むだけで、書き込みも schema の変更もしない |
-| DDBJ Search | 外部 accession の日付と、DRA の登録内容を読む |
+| DDBJ Search | 外部 accession の日付と、DRA の登録内容を読む ([upstream.md](upstream.md)) |
+| DDBJ の公開 FTP | DRA・GEA・MetaboBank のデータセットのファイルの大きさと形式を読む ([upstream.md](upstream.md)) |
 | Keycloak | DDBJ 所管の認証。admin かどうかはポータル側で管理する ([auth.md](auth.md)) |
 | Slack | レビューのコメントと公開を Incoming Webhook で知らせる。送るだけで、何も読まない ([publishing.md](publishing.md)) |
 
@@ -48,41 +50,30 @@ draft (editing) --publish--> research version + search rows --> public pages / s
 2. 共有リンクで提供者にプレビューを見せ、コメントを受け取る。
 3. 公開すると下書きがバージョンになり、同じトランザクションでその研究の検索用の行を作り直す ([publishing.md](publishing.md))。
 4. 公開ページ・一覧・JSON API は、公開中のものを検索用の行からだけ読む ([data-model.md](data-model.md))。
-5. 申請管理システム・DDBJ Search・DDBJ の公開 FTP の値 (利用者の一覧、accession の日付、データセットのファイルの大きさと形式など) は、1 日 1 回取得して DB にコピーし、公開ページはそのコピーを読む。外部システムが止まっていても公開ページを表示し続けるためである。
+5. 申請管理システム・DDBJ Search・DDBJ の公開 FTP の値 (利用者の一覧、accession の日付、データセットのファイルの大きさと形式など) は、1 日 1 回取得して DB にコピーし、公開ページはそのコピーを読む。外部システムが止まっていても公開ページを表示し続けるためである ([upstream.md](upstream.md))。
 
 記事・お知らせ・アラートは研究の下書きとバージョンを使わない別の流れで、本文と公開の状態だけを管理する ([site-content.md](site-content.md))。
 
-## コードのどこに何があるか
-
-型と値の一覧はコードにあり、docs にはコピーしない。知りたいことごとに、読む場所を挙げる。
-
-| 知りたいこと | 読む場所 |
-|---|---|
-| テーブルと制約 | `app/db/schema/` |
-| 研究の内容とデータセットの内容の型 (バージョンと下書きで共通) | `app/content/types.ts` |
-| JSON API の応答の形 | `app/api/schema.ts` と、そこから作る `/api/openapi.json` |
-| 画面の文言 (日本語と英語) | `app/i18n/messages.ts` |
-| route と URL | `app/routes.ts` |
-| 画面の部品と見た目の規則 | `app/components/`、規則のテスト ([development.md](development.md)) |
-
 ## ディレクトリ
 
-repo の主なディレクトリと、そこに置くものを挙げる。
+repo の主なディレクトリと、そこに置くものを挙げる。型と値の一覧はコードにあり、docs にはコピーしない。知りたいことがどこにあるかも添える。
 
 | ディレクトリ | 置くもの |
 |---|---|
-| `app/routes/` | route module。loader と action は薄くし、処理は下のディレクトリに置く |
-| `app/content/` | 研究の内容の型と、そこから公開用の表示データ・書式付きテキスト・単位の換算を作る関数 |
+| `app/routes/` | route module。loader と action は薄くし、処理は下のディレクトリに置く。route と URL の一覧は `app/routes.ts` にある |
+| `app/db/` | DB への接続、テーブルと制約 (`schema/`)、アプリの role の権限 |
+| `app/content/` | 研究の内容とデータセットの内容の型 (`types.ts`、バージョンと下書きで共通) と、そこから公開用の表示データ・書式付きテキスト・単位の換算を作る関数 |
 | `app/admin/` | 管理画面のサーバー側。下書きへの書き込みはすべて `drafts.server.ts` を通す |
 | `app/public/` `app/search/` | 公開ページの読み取り、検索式、絞り込みの集計、検索用の行の作り直し |
 | `app/review/` | 共有リンク、プレビュー、コメント |
 | `app/files/` | ファイルストアの読み書き、bucket を切り替えるジョブ、データセットのファイル選択 |
 | `app/upstream/` | 申請管理システムの DB・DDBJ Search・DDBJ の公開 FTP の読み取りと、そのコピーの更新 |
-| `app/api/` | JSON API の応答の組み立て、schema、OpenAPI |
+| `app/api/` | JSON API の応答の組み立て。応答の形は `schema.ts` と、そこから作る `/api/openapi.json` にある |
 | `app/auth/` | ログイン、セッション、権限 |
+| `app/slack/` | Slack への通知の組み立てと送信 |
 | `app/cart/` `app/icd10/` `app/assistant/` | カート、ICD10 の分類、申請支援アシスタントへの中継 |
-| `app/components/` | 画面の部品 |
-| `app/i18n/` | 文言の辞書と、表示する言語の選び方 |
+| `app/components/` | 画面の部品。見た目の規則は source を読むテストにある ([development.md](development.md) の「画面の規則のテスト」) |
+| `app/i18n/` | 画面の文言の辞書 (`messages.ts`、日本語と英語) と、表示する言語の選び方 |
 | `migration/` | 旧ポータルのデータを変換して入れる処理 (開発用データと本番の移行) |
 | `scripts/` | `npm run` から呼ぶ CLI と、配置先の更新 (`deploy.sh`) |
 | `drizzle/` | 配置先に適用する schema の migration。`npm run db:generate` で作る ([deployment.md](deployment.md)) |

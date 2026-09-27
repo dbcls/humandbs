@@ -196,4 +196,3 @@ docker compose exec -T app npm run e2e:session -- clean                         
 - proxy 以外の port をホストに公開すること。ファイルストアと filer を直接読める経路を作らないためで、DB も同じである。
 - フォーマッタを別に入れること。整形は eslint (`@stylistic`) が検査する。
 - ホストで実行する前提の script。実行は container の中で行う。例外は、docker を操作する `scripts/seed-jga-dev.sh` だけである。
-- 外部から取ってきたデータを画面から取り直すこと。取り直すのはアプリのプロセスと CLI で、画面は結果を表示するだけである。

@@ -37,7 +37,7 @@ import remarkGfm from "remark-gfm"
 import remarkParse from "remark-parse"
 import remarkRehype from "remark-rehype"
 import { unified } from "unified"
-import { CONTINUE, EXIT, visit } from "unist-util-visit"
+import { CONTINUE, EXIT, SKIP, visit } from "unist-util-visit"
 
 import { REMARK_CLASSES, NOTE_KIND, type NoteKind } from "~/components/base"
 import { Icon } from "~/components/icons"
@@ -100,6 +100,57 @@ function safeDestinations() {
       node.properties = { ...node.properties, [attribute]: allowed ?? undefined }
     })
   }
+}
+
+/**
+ * **A link is underlined only where it sits in running text** (`app.css`), the
+ * one place where its colour alone does not tell it from the words around it.
+ * A link in a table's cell, or on a line that holds nothing but links, is a link
+ * by where it stands — the FAQ's contents, a guideline's list of versions, the
+ * IDs in a table of publications — and gets `no-underline`, which hovering
+ * still overrides. A heading keeps its underline whatever else it holds.
+ *
+ * A line is a paragraph, a list item's own words (not the list nested under
+ * it) or a term and its description. Spaces, punctuation and symbols between
+ * the links (`[日本語](…) / [English](…)`) do not make it running text.
+ */
+function linksAlone() {
+  return (tree: Root) => {
+    visit(tree, "element", (node: Element) => {
+      if (CELL.has(node.tagName)) {
+        visit(node, "element", (child: Element) => {
+          if (child.tagName === "a") withoutUnderline(child)
+        })
+        return SKIP
+      }
+      if (!LINE.has(node.tagName)) return CONTINUE
+      const links: Element[] = []
+      let words = ""
+      const read = (children: ElementContent[]) => {
+        for (const child of children) {
+          if (child.type === "text") words += child.value
+          else if (child.type === "element" && child.tagName === "a") links.push(child)
+          else if (child.type === "element" && !BLOCKS.has(child.tagName)) read(child.children)
+        }
+      }
+      read(node.children)
+      if (links.length > 0 && words.replace(SEPARATORS, "") === "") links.forEach(withoutUnderline)
+      return CONTINUE
+    })
+  }
+}
+
+const CELL = new Set(["td", "th"])
+const LINE = new Set(["p", "li", "dt", "dd"])
+const BLOCKS = new Set([
+  "p", "ul", "ol", "li", "dl", "blockquote", "table", "pre", "div", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
+])
+const SEPARATORS = /[\s\p{P}\p{S}]/gu
+
+function withoutUnderline(link: Element) {
+  const current = link.properties.className
+  const classes = Array.isArray(current) ? current.map(String) : []
+  link.properties = { ...link.properties, className: [...classes, "no-underline"] }
 }
 
 function textOf(node: Element): string {
@@ -307,6 +358,7 @@ function buildProcessor(headingLink: string | null) {
     .use(remarkRehype)
     .use(shiftHeadings)
     .use(safeDestinations)
+    .use(linksAlone)
     .use(headingAnchors, { label: headingLink })
     .use(alertsFromQuotes)
     .use(rehypeStringify, { allowDangerousHtml: true })

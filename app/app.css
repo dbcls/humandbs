@@ -243,7 +243,10 @@
    * from the words around it — which is a question only inside running text. A
    * title in a listing, an entry in the sitemap, a step in a trail: those are
    * links by their position, and underlining every one of them draws the page
-   * as a field of rules. An article shows it itself (`.markdown a` below).
+   * as a field of rules. An article shows it itself (`.markdown a` below),
+   * except on a link in a table's cell or on a line that holds nothing but
+   * links, which the renderer leaves without (`linksAlone` in
+   * `public/markdown.server.ts`).
    * **A research's values are not underlined either** (`components/page.tsx` の
    * `SpanText`): most links in them are a value of their own — a policy, an
    * accession — and the few inside a sentence are told apart by colour.
