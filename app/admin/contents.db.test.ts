@@ -959,9 +959,14 @@ describe("アラート", () => {
     const alert = only(await db.select().from(s.alert))
 
     const result = await alertAction(post(token, adminAlertPath(), {
-      intent: "update-alert", alertId: alert.id, ja: "<div>だめ</div>", en: "",
+      intent: "update-alert", alertId: alert.id, ja: "よい行\n<div>だめ</div>", en: "",
     }))
-    expect(result.status).toBe("body")
+    // どのアラートの何行目かを返す。1 つの画面にすべてのアラートの form がある
+    expect(result).toEqual({
+      status: "body",
+      alertId: alert.id,
+      problems: [{ locale: "ja", syntax: "html", line: 2 }],
+    })
     expect(only(await db.select().from(s.alert)).content.body.ja).toBe("")
   })
 

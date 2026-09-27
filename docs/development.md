@@ -167,7 +167,7 @@ curl -D - -o /dev/null http://localhost:8080/files/hum0009/example.zip   # 応�
 
 ## 画面の規則のテスト
 
-画面の規則は文章ではなく、source を読んで判定するテストに書いてある。間隔・角丸・幅は `app/app.spacing.test.ts`、色とコントラストは `app/app.contrast.test.ts`、リンクの行き先は `app/app.navigation.test.ts`、アイコンは `app/components/icons.test.ts`、状態のバッジ (下書きやバージョンの状態の表示) は `app/components/flags.test.tsx`、文言と文体は `app/i18n/messages.test.ts` にある。
+画面の規則は文章ではなく、source を読んで判定するテストに書いてある。間隔・角丸・幅は `app/app.spacing.test.ts`、色とコントラストは `app/app.contrast.test.ts`、書体 (サイトから配信する Noto Sans JP) は `app/app.font.test.ts`、リンクの行き先は `app/app.navigation.test.ts`、アイコンは `app/components/icons.test.ts`、状態のバッジ (下書きやバージョンの状態の表示) は `app/components/flags.test.tsx`、文言と文体は `app/i18n/messages.test.ts` にある。
 
 - 規則を変えるときはテストを変える。例外を足すなら、その理由もテストに書く。
 - 画面の文言は `app/i18n/messages.ts` に置く。ドメインの語の意味は [concepts.md](concepts.md) に従う。
@@ -175,20 +175,23 @@ curl -D - -o /dev/null http://localhost:8080/files/hum0009/example.zip   # 応�
 
 ## e2e
 
-e2e は配置した環境に対して回す ([testing.md](testing.md) の「e2e」)。手元の compose に向けることもできる。
+e2e は配置した環境に対して回す ([testing.md](testing.md) の「e2e」)。手元の compose に向けることもできる。e2e の container は proxy と同じ network を使い、`http://localhost:8080` が手元の proxy になる。アプリが返す presigned URL とファイルの URL は `HUMANDBS_AUTH_REDIRECT_URI` の origin を指し、署名がその host を含むためである。
 
 ```bash
 docker compose --profile e2e run --rm e2e                                                    # 手元の proxy に対して回す
 docker compose --profile e2e run --rm -e HUMANDBS_E2E_BASE_URL=https://example.invalid e2e   # 指定した URL に対して回す
 ```
 
-ログインが要るシナリオは、回す先で作ったセッションを渡して回す。このセッションの利用者は admin になるので、済んだら消す。
+ログインが要るシナリオは、回す先で作ったセッションを渡して回す。admin のセッションの利用者は admin になるので、済んだら消す。
 
 ```bash
-export HUMANDBS_E2E_SESSION=$(docker compose exec -T app npm run --silent e2e:session)   # セッションを作る
-docker compose --profile e2e run --rm -e HUMANDBS_E2E_SESSION e2e                         # セッションを渡して回す
-docker compose exec -T app npm run e2e:session -- clean                                   # セッションと admin を消す
+export HUMANDBS_E2E_SESSION=$(docker compose exec -T app npm run --silent e2e:session)                         # admin
+export HUMANDBS_E2E_NON_ADMIN_SESSION=$(docker compose exec -T app npm run --silent e2e:session -- non-admin)   # admin でない人
+docker compose --profile e2e run --rm -e HUMANDBS_E2E_SESSION -e HUMANDBS_E2E_NON_ADMIN_SESSION e2e             # セッションを渡して回す
+docker compose exec -T app npm run e2e:session -- clean                                                         # 2 つのセッションと admin を消す
 ```
+
+回す先の配置を確かめるシナリオは、回す先の `HUMANDBS_NOINDEX` と deploy した tag を渡して回す (`-e HUMANDBS_E2E_NOINDEX=true -e HUMANDBS_E2E_VERSION=<tag>`)。
 
 ## やっていないこと
 

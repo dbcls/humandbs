@@ -24,7 +24,8 @@ import type { Route } from "./+types/document"
  * never reached a client that does not run JavaScript.
  *
  * `/ja/…` lands here too, because Japanese has no prefix. It is the same page
- * as the unprefixed address and redirects to it, so one page keeps one address.
+ * as the unprefixed address and redirects to it, so one page keeps one address;
+ * the query goes with it, since a listing's search is written there.
  *
  * **The address comes from the match, not from the request.** A client-side
  * navigation requests `<path>.data`, and the suffix is taken off before the
@@ -32,9 +33,9 @@ import type { Route } from "./+types/document"
  * up a slug ending in `.data` and answer 404 for every document on the site,
  * while an address opened directly kept working.
  */
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ params, request }: Route.LoaderArgs) {
   const { locale, path, redundantPrefix } = readLocale(`/${params["*"]}`)
-  if (redundantPrefix) throw redirect(path)
+  if (redundantPrefix) throw redirect(`${path}${new URL(request.url).search}`)
 
   const target = legacyTarget(path)
   if (target !== null) throw redirect(href(locale, target))

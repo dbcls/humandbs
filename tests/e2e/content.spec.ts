@@ -26,7 +26,7 @@ test.describe("P-ANON 記事とお知らせ", () => {
 
   test("S-DOC-02: お知らせは一覧から個別へ辿れる", async ({ page }) => {
     await page.goto("/news")
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("ニュース")
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("お知らせ一覧")
 
     const item = page.locator("main a[href^=\"/news/\"]").first()
     const to = await item.getAttribute("href")
@@ -37,7 +37,7 @@ test.describe("P-ANON 記事とお知らせ", () => {
 
   test("S-DOC-03: お知らせを絞り込むと、条件がアドレスに載る", async ({ page }) => {
     await page.goto("/news")
-    const box = page.getByRole("searchbox", { name: "ニュースを検索" })
+    const box = page.getByRole("searchbox", { name: "お知らせを検索" })
     await box.fill("データ")
     await box.press("Enter")
 

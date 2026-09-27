@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fontsource-variable/noto-sans-jp";
 
 /*
  * The palette is the portal's own, copied over by value rather than by name:
@@ -159,6 +160,28 @@
    * listing costs a row 1.6px and nothing else.
    */
   --spacing-tap: 2.25rem;
+
+  /*
+   * The typeface every page is set in, served by the site itself.
+   *
+   * Left to the system, the same page is set in Hiragino on a Mac, in Yu Gothic
+   * on Windows, and on Linux in whatever CJK font is installed — sometimes a
+   * Chinese one, which draws kanji in their Chinese forms. Each has its own
+   * widths, so where a line wraps and how wide a column comes out differ by the
+   * reader's machine. One bundled font gives every reader the same glyphs.
+   *
+   * It comes from the site's own origin, because the Content-Security-Policy
+   * allows fonts from nowhere else. The package splits the font by
+   * unicode-range, so a page downloads only the ranges its text uses. It is the
+   * variable build, so one file per range covers every weight the parts set.
+   *
+   * The family name has to be the one the package declares; `app/app.font.test.ts`
+   * reads both. The system fonts after it are used while the file is on its way
+   * and for what it has no glyph for (emoji).
+   */
+  --font-sans:
+    "Noto Sans JP Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
 
   /*
    * How far apart two lines sit, by the size of the type.

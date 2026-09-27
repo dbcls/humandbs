@@ -1,9 +1,9 @@
-import { Fragment, useState } from "react"
+import { Fragment, useId, useState } from "react"
 import { Form } from "react-router"
 
-import { alertAction, alertsPage, type AlertRow } from "~/admin/contents.server"
+import { alertAction, alertsPage, type AlertRow, type BodyProblem } from "~/admin/contents.server"
 import { Confirm, Heading, Stack } from "~/components/base"
-import { contentsSaid, SHOWING } from "~/components/contents"
+import { BodyProblems, contentsSaid, goToLine, SHOWING } from "~/components/contents"
 import { Answer, Editing, Field, LanguagePair, Submit, TextArea, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Empty, Page } from "~/components/page"
@@ -77,7 +77,11 @@ export default function AdminContentsAlert({ loaderData, actionData }: Route.Com
                   {alerts.map((row, index) => (
                     <Fragment key={row.id}>
                       {index > 0 && <hr className="border-line" />}
-                      <AlertForm row={row} locale={locale} />
+                      <AlertForm
+                        row={row}
+                        locale={locale}
+                        refused={actionData?.status === "body" && actionData.alertId === row.id ? actionData.problems : []}
+                      />
                     </Fragment>
                   ))}
                 </Stack>
@@ -115,7 +119,12 @@ function bodyOf(form: HTMLFormElement, name: string): string {
  * **One form rather than three.** Every button names its own intent, so what
  * has been typed travels with whichever of them is pressed.
  */
-function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
+function AlertForm({ row, locale, refused }: {
+  row: AlertRow
+  locale: Locale
+  /** The lines of this alert's words its last save refused. */
+  refused: BodyProblem[]
+}) {
   const messages = messagesFor(locale)
   const t = messages.admin.contents
   const [ready, setReady] = useState(row.ja !== "" && row.en !== "")
@@ -151,22 +160,15 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
       </div>
       {/* **The two languages are one value.** */}
       <LanguagePair>
-        <TextArea
-          label={t.languages.ja}
-          name="ja"
-          value={row.ja}
-          required={messages.admin.required}
-          accepts={messages.admin.accepts.markdown}
-          rows={4}
-        />
-        <TextArea
-          label={t.languages.en}
-          name="en"
-          value={row.en}
-          required={messages.admin.required}
-          accepts={messages.admin.accepts.markdown}
-          rows={4}
-        />
+        {(["ja", "en"] as const).map((language) => (
+          <AlertBody
+            key={language}
+            language={language}
+            value={row[language]}
+            problems={refused.filter((one) => one.locale === language)}
+            locale={locale}
+          />
+        ))}
       </LanguagePair>
       {/* **The period is part of the alert rather than of showing it**, so it is
           written with the words and saved by either button: the state above
@@ -212,6 +214,42 @@ function AlertForm({ row, locale }: { row: AlertRow, locale: Locale }) {
         <Unsaved locale={locale} />
       </div>
     </Editing>
+  )
+}
+
+/**
+ * One language's words, and the lines a save refused under them — at an
+ * error's distance, and drawn as an article's are (`contents.tsx` の
+ * `BodyProblems`), since the message above points to them there.
+ */
+function AlertBody({ language, value, problems, locale }: {
+  language: Locale
+  value: string
+  problems: BodyProblem[]
+  locale: Locale
+}) {
+  const messages = messagesFor(locale)
+  const problemsId = useId()
+  return (
+    <div className="flex flex-col gap-2">
+      <TextArea
+        label={messages.admin.contents.languages[language]}
+        name={language}
+        value={value}
+        required={messages.admin.required}
+        accepts={messages.admin.accepts.markdown}
+        rows={4}
+        refused={problems.length === 0 ? undefined : { id: problemsId }}
+      />
+      {problems.length > 0 && (
+        <BodyProblems
+          id={problemsId}
+          problems={problems}
+          locale={locale}
+          goTo={(form, line) => { goToLine(form, line, language) }}
+        />
+      )}
+    </div>
   )
 }
 

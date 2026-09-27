@@ -523,8 +523,23 @@ describe("a dataset page's size and formats", () => {
 
     const view = await datasetPage({ locale: "ja", datasetId: "NHA000001" })
 
-    // The file not in the public bucket is neither counted nor read for a format here.
-    expect([view.dataVolume, view.fileFormats]).toEqual([5, ["VCF", "TXT"]])
+    // The file not in the public bucket is not counted, but its name still
+    // gives a format: the search row and the API read the same names.
+    expect(view.dataVolume).toBe(5)
+    expect(view.fileFormats.toSorted()).toEqual(["BAM", "TXT", "VCF"])
+    descriptions.delete(nha)
+  })
+
+  it("keep the portal's dataset's formats when the prefix holds none of its files", async () => {
+    const researchId = await createResearch(HUM)
+    const nha = await createDataset(researchId, "NHA000001")
+    descriptions.set(nha, { ...emptyDatasetContent(), fileSelection: ["a.vcf.gz"] })
+    await publish(researchId, 1, [nha])
+    await rebuildSearchDocs(db)
+
+    const view = await datasetPage({ locale: "ja", datasetId: "NHA000001" })
+
+    expect([view.dataVolume, view.fileFormats]).toEqual([null, ["VCF"]])
     descriptions.delete(nha)
   })
 

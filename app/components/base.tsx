@@ -279,7 +279,11 @@ export function Heading({ level = "h1", look = level, rule = "edge", title, asid
   const head = (
     <div className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 md:flex-nowrap ${rule === "edge" ? "-ml-6" : ""}`}>
       <div className={`flex min-w-0 items-center gap-3 border-brand border-l-4 ${rule === "edge" ? "pl-5" : "pl-2.5"}`}>
-        <Tag className={`shrink-0 font-bold text-brand ${HEADING_LOOK[look]}`}>
+        {/* The title never shrinks, so the identifier beside it wraps first:
+            a Japanese title shrunk by even a pixel drops its last character to
+            a line of its own. It wraps only when it is longer than the whole
+            row, as an article's title can be. */}
+        <Tag className={`max-w-full shrink-0 font-bold text-brand ${HEADING_LOOK[look]}`}>
           {title}
         </Tag>
         {/* **It is read rather than glanced at.** What is shown here is a number

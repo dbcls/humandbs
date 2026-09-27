@@ -126,22 +126,26 @@ export function adminArea(words: AdminWords, path: string): string | null {
  * entry merely fits puts it hard against the control beside it, and a step set
  * wider than that keeps an entry in the menu beside room it would fit in. **The
  * labels are the Japanese ones in every language** (the area's words are one
- * set, `messages.ts` の `admin`), so there is no wider row to cut for.
+ * set, `messages.ts` の `admin`), so there is no wider row to cut for. They are
+ * measured in the site's bundled font (`--font-sans`), so a change to a label
+ * or to the font means measuring again.
  *
- * The first two are Tailwind's own `sm` and `md`. Below `sm` the bar has
- * nothing and the menu has everything, which is where a window that narrow
- * has to end up whatever the labels say.
+ * The first two are Tailwind's own `sm` and `md`, wider than the labels need.
+ * Below `sm` the bar has nothing and the menu has everything, which is where a
+ * window that narrow has to end up whatever the labels say. The third fits
+ * below `md` and takes the next multiple of 8 above it, so that the entries
+ * still appear in their order.
  */
 export const ADMIN_NAVBAR_STEP: { bar: string, menu: string }[] = [
   { bar: "hidden sm:block", menu: "sm:hidden" },
   { bar: "hidden md:block", menu: "md:hidden" },
-  { bar: "hidden min-[816px]:block", menu: "min-[816px]:hidden" },
-  { bar: "hidden min-[880px]:block", menu: "min-[880px]:hidden" },
-  { bar: "hidden min-[960px]:block", menu: "min-[960px]:hidden" },
-  { bar: "hidden min-[1064px]:block", menu: "min-[1064px]:hidden" },
-  { bar: "hidden min-[1168px]:block", menu: "min-[1168px]:hidden" },
-  { bar: "hidden min-[1272px]:block", menu: "min-[1272px]:hidden" },
-  { bar: "hidden min-[1328px]:block", menu: "min-[1328px]:hidden" },
+  { bar: "hidden min-[776px]:block", menu: "min-[776px]:hidden" },
+  { bar: "hidden min-[832px]:block", menu: "min-[832px]:hidden" },
+  { bar: "hidden min-[904px]:block", menu: "min-[904px]:hidden" },
+  { bar: "hidden min-[1008px]:block", menu: "min-[1008px]:hidden" },
+  { bar: "hidden min-[1112px]:block", menu: "min-[1112px]:hidden" },
+  { bar: "hidden min-[1216px]:block", menu: "min-[1216px]:hidden" },
+  { bar: "hidden min-[1280px]:block", menu: "min-[1280px]:hidden" },
 ]
 
 /**

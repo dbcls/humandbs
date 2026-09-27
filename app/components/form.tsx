@@ -519,11 +519,17 @@ export function TextArea({
   disabled,
   look = "source",
   rows = 16,
+  refused,
 }: FieldLook & {
   value?: string
   accepts?: string
   look?: keyof typeof TEXTAREA_LOOK
   rows?: number
+  /**
+   * The list of lines a save refused, under the box, which describes it
+   * (`MarkdownEditor` の `refused`).
+   */
+  refused?: { id: string }
 }) {
   const id = useId()
   return (
@@ -535,8 +541,10 @@ export function TextArea({
         rows={rows}
         disabled={disabled}
         spellCheck={false}
-        className={`${CONTROL} w-full ${TEXTAREA_LOOK[look]} ${edge(error)} disabled:opacity-50`}
-        {...invalid(id, error)}
+        className={`${CONTROL} w-full ${TEXTAREA_LOOK[look]} ${refused === undefined ? edge(error) : "border-danger"} disabled:opacity-50`}
+        {...(refused === undefined
+          ? invalid(id, error)
+          : { "aria-invalid": true, "aria-describedby": refused.id })}
       />
     </Labelled>
   )

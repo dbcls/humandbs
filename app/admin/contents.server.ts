@@ -141,7 +141,15 @@ export type ContentsDone
 export type ContentsResult
   = | { status: "ok", done: ContentsDone }
     | { status: ContentsProblem }
-    | { status: "body", problems: BodyProblem[] }
+    | {
+      status: "body"
+      problems: BodyProblem[]
+      /**
+       * The alert whose body was refused. The alert screen holds every alert's
+       * form, and only the one that was saved shows the lines.
+       */
+      alertId?: string
+    }
 
 export interface AlertRow {
   id: string
@@ -962,7 +970,7 @@ async function updateAlert(
     ...checkArticleBody(ja).map((problem) => ({ locale: "ja" as const, ...problem })),
     ...checkArticleBody(en).map((problem) => ({ locale: "en" as const, ...problem })),
   ]
-  if (problems.length > 0) return { status: "body", problems }
+  if (problems.length > 0) return { status: "body", problems, alertId: id }
 
   // **An alert that is up has to be up in both languages.** It is shown on every
   // page of the site, so a reader on the language that is missing is handed a

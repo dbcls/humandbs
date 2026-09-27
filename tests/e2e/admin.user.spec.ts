@@ -1,14 +1,17 @@
-import { expect, test, type Page } from "@playwright/test"
+import { expect } from "@playwright/test"
 
-import { SIGNED_IN } from "../../playwright.config"
+import { EXPECTED, NON_ADMIN, SIGNED_IN, sessionState } from "../../playwright.config"
+import { discardLeftoverInvitations, e2eResearch, invitationRows, test } from "./_admin"
+import { openScreen } from "./_screen"
 
 /**
  * The management area as a curator moves through it.
  *
- * **These read; they do not publish.** The instance holds one set of rows and a
+ * **These do not publish.** The instance holds one set of rows and a
  * scenario that put a version out would change what every other scenario is
  * looking at — so what is checked here is that the nineteen screens can be
- * reached and that they say how much they are showing, which is what U8 settled.
+ * reached and that they show how much they are showing. The one thing written
+ * is a draft of their own (`sharedDraft`), which a reader cannot see.
  *
  * **The labels are taken from the instance rather than named.** These run
  * against the compose in this repo and against staging, and a research id
@@ -30,7 +33,7 @@ test.describe("P-ADMIN", () => {
   ]
 
   test("S-ADMIN-01: 管理トップから、識別子を要らない画面すべてに行ける", async ({ page }) => {
-    await page.goto("/admin")
+    await openScreen(page, "/admin")
     await expect(page.getByRole("heading", { level: 1, name: "トップ" })).toBeVisible()
 
     // ページ上部のバーではなく、ページの中身を見る。バーにも同じ 8 つがあるので、
@@ -50,32 +53,37 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 
-  test("S-ADMIN-02: 管理画面はパンくずが無く、1 階層ずつ親へ戻る", async ({ page }) => {
+  test("S-ADMIN-02: 管理画面はパンくずが無く、1 階層ずつ親へ戻る", async ({ page, sharedDraft }) => {
     // バーから開ける画面は、管理画面の中の位置を自分では示さない。
     for (const path of [...STANDALONE, "/admin"]) {
       await page.goto(path)
       await expect(page.getByRole("navigation", { name: "現在地" }), path).toHaveCount(0)
     }
 
-    // いちばん深いところからは、1 階層ずつ親へ。下書きのどの画面も研究の画面が親で、
-    // 研究の内容 → 研究の編集 → 研究一覧。データセットの一覧からも同じ 1 本。
-    const draft = await openADraft(page)
-    const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
-
-    await page.goto(`${draft}/dataset`)
-    await page.getByRole("link", { name: "研究の編集へ" }).click()
-    await expect(page).toHaveURL(research)
-
-    await page.goto(draft)
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究の内容/)
+    // いちばん深いところからは、1 階層ずつ親へ。データセット一覧 → 研究の編集 (下書き) → 研究 → 研究一覧。
     // 戻る経路の語は行き先の h1 に「へ」を付けたもの。語だけ直して h1 を直さない (または逆) と、ここで失敗する。
-    await page.getByRole("link", { name: "研究の編集へ" }).click()
-    await expect(page).toHaveURL(research)
+    const { path: draft, research } = sharedDraft
+
+    // 下書きの画面から開いたデータセット一覧は、その下書きへ戻る
+    await openScreen(page, draft)
+    await page.locator(`a[href="${draft}/dataset"]`).first().click()
+    await expect(page).toHaveURL(`${draft}/dataset`)
+    await page.getByRole("link", { name: "研究の編集へ", exact: true }).click()
+    await expect(page).toHaveURL(draft)
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究の編集/)
 
     await page.getByRole("link", { name: "研究へ", exact: true }).click()
-    await expect(page).toHaveURL("/admin/research")
+    await expect(page).toHaveURL(research)
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究$/)
+
+    await page.getByRole("link", { name: "研究一覧へ", exact: true }).click()
+    await expect(page).toHaveURL("/admin/research")
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^研究一覧$/)
+
+    // ほかの画面から直接開いたデータセット一覧は、研究へ戻る
+    await page.goto(`${draft}/dataset`)
+    await page.getByRole("link", { name: "研究へ", exact: true }).click()
+    await expect(page).toHaveURL(research)
   })
 
   test("S-ADMIN-03: 一覧の件数は「範囲 / 総数」の 1 形で、ページ送りと同じ要素の中にある", async ({ page }) => {
@@ -109,9 +117,8 @@ test.describe("P-ADMIN", () => {
    * データ提供申請の枝番は申請管理システムに繋がっていない環境では表が無いので、ここでは数えない
    * (同じ `RefinableList` を通る)。
    */
-  test("S-ADMIN-06: ページに切る一覧は、並び替えと表示件数を表の上に 1 つずつ、件数を上下に備える", async ({ page }) => {
-    const draft = await openADraft(page)
-    const research = draft.replace(/\/draft\/[0-9a-f-]{36}$/, "")
+  test("S-ADMIN-06: ページに切る一覧は、並び替えと表示件数を表の上に 1 つずつ、件数を上と下に表示する", async ({ page, sharedDraft }) => {
+    const { research } = sharedDraft
     const BOTH = ["並び替え", "表示件数"]
     const listings: [string, string[]][] = [
       ["/admin/research", BOTH],
@@ -137,7 +144,8 @@ test.describe("P-ADMIN", () => {
       }
 
       // 件数は 1 ページに収まる一覧でも表示されるので、ページ送りの番号ではなくこちらを数える。
-      const counted = main.getByText(/^(\d+–\d+ \/ \d+ 件|0 件)$/)
+      // 表のセルにも「0 件」があるので、表の外の段落だけを数える。
+      const counted = main.locator("p").filter({ hasText: /^(\d+–\d+ \/ \d+ 件|0 件)$/ })
       await expect(counted, path).toHaveCount(2)
       const under = await counted.last().boundingBox()
       expect(under?.y ?? 0, path).toBeGreaterThanOrEqual((table?.y ?? 0) + (table?.height ?? 0))
@@ -149,8 +157,8 @@ test.describe("P-ADMIN", () => {
    * 行ける」の後半になる。**アドレスを組み立てず、リンクを辿って着く** — 辿れることが確かめたい
    * ことで、アドレスの形は別の話。
    */
-  test("S-ADMIN-05: 一覧から 1 件選んだ先の画面すべてに、リンクを辿って着ける", async ({ page }) => {
-    const draft = await openADraft(page)
+  test("S-ADMIN-05: 一覧から 1 件選んだ先の画面すべてに、リンクを辿って着ける", async ({ page, sharedDraft }) => {
+    const { path: draft, research } = sharedDraft
     // 研究 → 下書き → データセット一覧 → データセット 1 件。上流の 2 つは
     // S-ADMIN-01 が管理トップから、公開とレビューはここで。
     for (const path of [draft, `${draft}/review`, `${draft}/publish`, `${draft}/dataset`]) {
@@ -171,7 +179,6 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
 
     // 研究、文書 1 件、お知らせ 1 件、key の値 1 つ。どれも一覧から辿る。
-    const research = draft.replace(/\/draft\/.*$/, "")
     await page.goto(research)
     await page.locator(`a[href="${research}/files"]`).first().click()
     await expect(page).toHaveURL(new RegExp(`${research}/files$`))
@@ -201,13 +208,14 @@ test.describe("P-ADMIN", () => {
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
   })
 
-  test("S-ADMIN-07: 公開ページの pane で一覧の cell を押すと、編集 pane のその要素の行に着き、行が pane の中に見える", async ({ page }) => {
-    await page.goto(await openADraft(page))
+  test("S-ADMIN-07: 公開ページの pane で一覧の cell を押すと、編集 pane のその要素の行に着き、行が pane の中に見える", async ({ page, sharedDraft }) => {
+    await openScreen(page, sharedDraft.path)
     // The last element of any list: the row the form has to move furthest for.
+    // A value with a link in it (a published dataset's ID) opens that page instead.
     const cells = page.locator(
       "[data-field-path^='grants.'], [data-field-path^='relatedPublications.'], [data-field-path^='researchProjects.'], [data-field-path^='dataProviders.']",
-    )
-    test.skip(await cells.count() === 0, "この下書きは繰り返しの要素を持たない")
+    ).filter({ hasNot: page.locator("a") })
+    test.skip(await cells.count() === 0, "この下書きには繰り返しの要素が無い")
     const cell = cells.last()
     const at = await cell.getAttribute("data-field-path") ?? ""
     const element = at.split(".").slice(0, 2).join(".")
@@ -228,40 +236,103 @@ test.describe("P-ADMIN", () => {
     await expect(row.getByRole("button").first()).toBeFocused()
   })
 
-  test("S-ADMIN-08: 両方の pane が公開ページのとき、値を押してもどちらの pane も動かない", async ({ page }) => {
-    await page.goto(await openADraft(page))
+  test("S-ADMIN-08: 両方の pane が公開ページのとき、値を押してもどちらの pane も動かない", async ({ page, sharedDraft }) => {
+    await openScreen(page, sharedDraft.path)
     // The form's pane takes a page instead, so no pane holds the form.
     await page.getByRole("tablist").first().getByRole("tab", { name: "公開ページ en" }).click()
     const panes = page.locator("[data-pane-body]")
     await expect(panes.first().locator("form, input, textarea")).toHaveCount(0)
     const cells = panes.nth(1).locator("[data-field-path]")
-    test.skip(await cells.count() < 2, "この下書きは押せる値をほとんど持たない")
+    test.skip(await cells.count() < 2, "この下書きには押せる値が 2 つ未満しか無い")
     const before = await panes.evaluateAll((all) => all.map((one) => one.scrollTop))
 
     await cells.nth(1).click({ position: { x: 4, y: 4 } })
 
     await expect.poll(() => panes.evaluateAll((all) => all.map((one) => one.scrollTop))).toEqual(before)
   })
+
+  test("S-ADMIN-09: admin でない人は /admin で自分の sub だけを見て、ほかの管理画面は 403 になる", async ({ browser, playwright }) => {
+    test.skip(NON_ADMIN === "", "HUMANDBS_E2E_NON_ADMIN_SESSION が無い (npm run e2e:session -- non-admin)")
+    const baseURL = test.info().project.use.baseURL
+    const context = await browser.newContext({ baseURL, storageState: sessionState(NON_ADMIN) })
+    const page = await context.newPage()
+    await page.goto("/admin")
+    await expect(page.getByText("この画面を操作する権限がありません。")).toBeVisible()
+    await expect(page.getByText("e2e-non-admin", { exact: true })).toBeVisible()
+    // 管理者の一覧・操作の記録・アプリのバージョンは表示しない
+    for (const heading of ["操作の記録", "招待リンク", "外部データの取り込み状況"]) {
+      await expect(page.getByRole("heading", { name: heading }), heading).toHaveCount(0)
+    }
+    await expect(page.getByText("アプリのバージョン")).toHaveCount(0)
+    await context.close()
+
+    const request = await playwright.request.newContext({ baseURL, storageState: sessionState(NON_ADMIN) })
+    for (const path of STANDALONE) {
+      expect((await request.get(path, { maxRedirects: 0 })).status(), path).toBe(403)
+    }
+    await request.dispose()
+  })
+
+  test("S-ADMIN-10: 操作の記録を操作・操作者・日付で絞り込め、上流の取得の状態とアプリのバージョンがトップにある", async ({ page }) => {
+    await page.goto("/admin")
+    await expect(page.getByRole("heading", { name: "外部データの取り込み状況" })).toBeVisible()
+    const version = page.getByText("アプリのバージョン").locator("xpath=following::code[1]")
+    if (EXPECTED.version !== "") await expect(version).toHaveText(EXPECTED.version)
+
+    const events = page.getByRole("heading", { name: "操作の記録" }).locator("xpath=ancestor::section[1]")
+    const rows = events.getByRole("table").getByRole("row")
+    // URL が変わってから表が入れ替わるまで待って、すべての行が条件に合うことを見る
+    const allRows = (word: string) => expect.poll(async () => (await rows.allInnerTexts()).slice(1)
+      .every((row) => row.includes(word) || row.includes("条件に合う記録はありません。")))
+    // 操作
+    await page.waitForLoadState("networkidle")
+    await events.getByRole("checkbox", { name: /^下書きの削除/ }).check()
+    await expect(page).toHaveURL(/[?&]action=discard-draft(&|$)/)
+    await allRows("下書きの削除").toBe(true)
+    // 操作者
+    await events.getByRole("checkbox", { name: /^e2e curator/ }).check()
+    await expect(page).toHaveURL(/[?&]actor=e2e-curator(&|$)/)
+    await allRows("e2e curator").toBe(true)
+    // 日付: 今日から
+    const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
+    await events.getByLabel("開始日").fill(today)
+    await expect(page).toHaveURL(new RegExp(`[?&]from=${today}(&|$)`))
+    expect(new URL(page.url()).searchParams.getAll("action")).toEqual(["discard-draft"])
+  })
+
+  test("S-INVITE-01: 招待リンクを作るとトップの一覧に表示され、開かずに削除できる", async ({ page }) => {
+    await page.goto("/admin")
+    const mine = invitationRows(page).filter({ hasText: "e2e curator" })
+    const before = await mine.count()
+
+    await page.getByRole("button", { name: "招待リンクの作成" }).click()
+    await expect(page.getByText("招待リンクを作成しました。リンクはこの画面を離れると表示できません。")).toBeVisible()
+    await expect(mine).toHaveCount(before + 1)
+
+    await discardLeftoverInvitations(page)
+    await expect(mine).toHaveCount(0)
+  })
+
+  /**
+   * **ページを表示する route の Origin の食い違いは、React Router 自身の検査が先に 400 を返す。**
+   * アプリの検査 (`app/auth/csrf.ts`) はそのほかを 403 にする。どちらも書き込みはしない。
+   */
+  test("S-CSRF-01: 別の origin からの書き込みの要求は拒否され、同じ origin からは拒否されない", async ({ page, request }) => {
+    const origin = new URL(test.info().project.use.baseURL ?? "").origin
+    const research = await e2eResearch(page)
+    // ページを表示する route と、データだけを返す route (アップロードの署名)
+    for (const [path, isPage] of [["/admin", true], [`${research}/files/upload`, false]] as const) {
+      for (const [who, headers, status] of [
+        ["別のホスト", { Origin: "https://elsewhere.example" }, isPage ? 400 : 403],
+        ["null", { Origin: "null" }, isPage ? 400 : 403],
+        ["別のサイトからの fetch", { "Sec-Fetch-Site": "cross-site" }, 403],
+        ["どちらのヘッダも無い", {}, 403],
+      ] as const) {
+        const answer = await request.post(path, { form: { intent: "no-such-intent" }, headers, maxRedirects: 0 })
+        expect.soft(answer.status(), `${path} ${who}`).toBe(status)
+      }
+      const same = await request.post(path, { form: { intent: "no-such-intent" }, headers: { Origin: origin }, maxRedirects: 0 })
+      expect(same.status(), path).not.toBe(403)
+    }
+  })
 })
-
-/**
- * The address of a draft on the instance, made if there is not one already.
- *
- * A draft is not published state, so making one changes nothing a reader can
- * see — and the development data arrives with none at all, which is why the
- * scenarios cannot simply look for one.
- */
-async function openADraft(page: Page): Promise<string> {
-  await page.goto("/admin/research")
-  await page.getByRole("table").getByRole("link").first().click()
-  await expect(page).toHaveURL(/\/admin\/research\/[0-9a-f-]{36}$/)
-  const research = new URL(page.url()).pathname
-
-  const existing = page.locator(`a[href^="${research}/draft/"]`).first()
-  if (await existing.count() === 0) {
-    await page.getByRole("button", { name: "空の下書き" }).click()
-    await expect(page.locator(`a[href^="${research}/draft/"]`).first()).toBeVisible()
-  }
-  const href = await page.locator(`a[href^="${research}/draft/"]`).first().getAttribute("href")
-  return (href ?? "").replace(/\/(publish|review|dataset)$/, "")
-}

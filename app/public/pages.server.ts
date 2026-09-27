@@ -210,6 +210,7 @@ export async function datasetPage(
       { files: listing ?? [] },
       PUBLISHED,
     ),
+    selection: row.content.fileSelection,
     datePublished: row.datePublished,
     dateModified: row.dateModified,
     files: publicRows(listing, labels.get(row.humLabel) ?? new Map(), request.locale),

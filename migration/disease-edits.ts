@@ -18,7 +18,10 @@
  * them, so it lands on every version and every draft that has the value. An
  * edit that also names a `dataset`, by the ID v1 gave it, lands on that
  * dataset only: a value one dataset has from another's line in a shared cell
- * is that one's to lose. **An edit that lands nowhere stops the load**, since
+ * is that one's to lose, and that edit is taken over one for the whole research
+ * that finds the same value. Where two values of the research have the same names
+ * under different codes (`肺腺がん` under C349 and under C34), the edit names the
+ * codes as well. **An edit that lands nowhere stops the load**, since
  * it was written against the input and not landing means one of the two has
  * moved.
  */
@@ -32,6 +35,8 @@ export interface DiseaseEdit {
   /** The value's names as the rules read them. */
   nameJa: string | null
   nameEn: string | null
+  /** The value's codes, where another value of the research has the same names; without them, any codes. */
+  codes?: string[]
   /** The names it gets; a name left out stays as it is. */
   set?: { nameJa?: string | null, nameEn?: string | null }
   /** Removes the value. */
@@ -43,6 +48,9 @@ export interface DiseaseEdit {
 const sameValue = (a: DiseaseValue, b: DiseaseValue) =>
   a.nameJa === b.nameJa && a.nameEn === b.nameEn
   && a.termIds.length === b.termIds.length && a.termIds.every((id) => b.termIds.includes(id))
+
+const sameCodes = (named: readonly string[], held: readonly (string | undefined)[]) =>
+  named.length === held.length && named.every((code) => held.includes(code))
 
 /**
  * A dataset of one research with its disease values edited, adding each edit
@@ -58,8 +66,12 @@ export function editDiseases(
   seen?: Map<string, Set<string>>,
   /** The ID v1 gave the dataset. */
   label?: string,
+  /** The code of a term, for the edits that name codes. */
+  codeOf: (termId: string) => string | undefined = () => undefined,
 ): DatasetContent {
-  const own = edits.filter((edit) => edit.hum === hum && (edit.dataset === undefined || edit.dataset === label))
+  const own = edits
+    .filter((edit) => edit.hum === hum && (edit.dataset === undefined || edit.dataset === label))
+    .toSorted((a, b) => Number(a.dataset === undefined) - Number(b.dataset === undefined))
   if (own.length === 0) return dataset
   const names = seen?.get(hum) ?? new Set<string>()
   seen?.set(hum, names)
@@ -73,7 +85,8 @@ export function editDiseases(
         const edited: DiseaseValue[] = []
         for (const one of value.diseases.value) {
           names.add(`${JSON.stringify(one.nameJa)} / ${JSON.stringify(one.nameEn)}`)
-          const edit = own.find((candidate) => candidate.nameJa === one.nameJa && candidate.nameEn === one.nameEn)
+          const edit = own.find((candidate) => candidate.nameJa === one.nameJa && candidate.nameEn === one.nameEn
+            && (candidate.codes === undefined || sameCodes(candidate.codes, one.termIds.map(codeOf))))
           if (edit !== undefined) applied.add(edit)
           if (edit?.drop === true) continue
           const made = edit?.set === undefined ? one : { ...one, ...edit.set }

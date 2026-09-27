@@ -181,24 +181,34 @@ export const NAVBAR: NavLink[] = [
  *
  * **The counts come from measuring the labels**, in both languages, against the
  * room left over once the wordmark, the menu and the controls have taken
- * theirs. Some of the steps are widths Tailwind has no name for, which is what
- * the labels happen to need — the alternative is a bar that leaves a hundred
- * pixels of room unused so that the numbers can be round.
+ * theirs. Each step is the width at which the labels up to that point still
+ * leave at least 64px of the row unfilled in the wider of the two languages,
+ * rounded up to a multiple of 8, the same rule as the management bar
+ * (`admin/navigation.ts`). The room is there because a window with a classic
+ * scrollbar lays the row out narrower than the width its media query reads,
+ * and an entry set where it merely fits is cut off there.
+ *
+ * The labels are measured in the site's bundled font (`--font-sans`), which
+ * every reader gets, so the steps hold on every machine; a change to a label
+ * or to the font means measuring again. Some of the steps are widths Tailwind
+ * has no name for, which is what the labels happen to need — the alternative
+ * is a bar that leaves a hundred pixels of room unused so that the numbers can
+ * be round.
  */
 export const NAVBAR_STEP: { bar: string, menu: string }[] = [
-  { bar: "hidden min-[672px]:block", menu: "min-[672px]:hidden" },
-  { bar: "hidden min-[776px]:block", menu: "min-[776px]:hidden" },
-  { bar: "hidden lg:block", menu: "lg:hidden" },
-  { bar: "hidden lg:block", menu: "lg:hidden" },
-  { bar: "hidden xl:block", menu: "xl:hidden" },
-  { bar: "hidden xl:block", menu: "xl:hidden" },
-  { bar: "hidden min-[1296px]:block", menu: "min-[1296px]:hidden" },
-  { bar: "hidden 2xl:block", menu: "2xl:hidden" },
-  { bar: "hidden min-[1560px]:block", menu: "min-[1560px]:hidden" },
-  { bar: "hidden min-[1608px]:block", menu: "min-[1608px]:hidden" },
-  { bar: "hidden min-[1696px]:block", menu: "min-[1696px]:hidden" },
-  { bar: "hidden min-[1840px]:block", menu: "min-[1840px]:hidden" },
-  { bar: "hidden min-[1864px]:block", menu: "min-[1864px]:hidden" },
+  { bar: "hidden min-[736px]:block", menu: "min-[736px]:hidden" },
+  { bar: "hidden min-[848px]:block", menu: "min-[848px]:hidden" },
+  { bar: "hidden min-[944px]:block", menu: "min-[944px]:hidden" },
+  { bar: "hidden min-[1032px]:block", menu: "min-[1032px]:hidden" },
+  { bar: "hidden min-[1152px]:block", menu: "min-[1152px]:hidden" },
+  { bar: "hidden min-[1256px]:block", menu: "min-[1256px]:hidden" },
+  { bar: "hidden min-[1408px]:block", menu: "min-[1408px]:hidden" },
+  { bar: "hidden min-[1584px]:block", menu: "min-[1584px]:hidden" },
+  { bar: "hidden min-[1688px]:block", menu: "min-[1688px]:hidden" },
+  { bar: "hidden min-[1736px]:block", menu: "min-[1736px]:hidden" },
+  { bar: "hidden min-[1832px]:block", menu: "min-[1832px]:hidden" },
+  { bar: "hidden min-[1976px]:block", menu: "min-[1976px]:hidden" },
+  { bar: "hidden min-[2008px]:block", menu: "min-[2008px]:hidden" },
 ]
 
 /**

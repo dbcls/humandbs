@@ -156,6 +156,7 @@ function drawn(content: DatasetContent): DrawnDataset {
     studyAccession: null,
     secondaryLabels: [],
     content,
+    selection: content.fileSelection,
     datePublished: null,
     dateModified: null,
     files: [],

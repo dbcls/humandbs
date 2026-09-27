@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
 
+import { firstDataset } from "./_instance"
+
 /**
  * Narrowing a listing, and getting back out of it.
  *
@@ -36,7 +38,7 @@ test.describe("P-ANON 絞り込み", () => {
     await expect(box).toHaveValue("")
   })
 
-  test("S-SEARCH-03: 結果が 0 件でも、表と絞り込みは残って理由を出す", async ({ page }) => {
+  test("S-SEARCH-03: 結果が 0 件でも、表と絞り込みは表示されたまま", async ({ page }) => {
     await page.goto("/research")
     const box = page.getByRole("searchbox", { name: "キーワードで研究を検索" })
     await box.fill("zzzzzzzznotarealword")
@@ -101,5 +103,33 @@ test.describe("P-ANON 絞り込み", () => {
     await expect(toDatasets).toHaveAttribute("href", /[?&]q=/)
     await toDatasets.click()
     await expect(page).toHaveURL(/\/dataset\?.*[?&]?q=/)
+  })
+
+  test("S-SEARCH-07: JGA の ID は数字 11 桁の表記でも、6 桁の表記と同じものが当たる", async ({ page, request }) => {
+    const dataset = await firstDataset(request, "JGAD")
+    test.skip(dataset === null, "JGAD のデータセットが無い")
+    if (dataset === null) return
+    const [, prefix = "", digits = ""] = /^(JGA[SDCP])(\d+)$/.exec(dataset.id) ?? []
+    const long = `${prefix}${digits.padStart(11, "0")}`
+
+    // 検索窓と、API の id: の両方
+    await page.goto("/dataset")
+    const box = page.getByRole("searchbox", { name: "キーワードでデータセットを検索" })
+    await box.fill(long)
+    await box.press("Enter")
+    await expect(page).toHaveURL(/[?&]q=/)
+    await expect(page.getByRole("link", { name: dataset.id, exact: true }).first()).toBeVisible()
+
+    const byId = await (await request.get(`/api/dataset?q=${encodeURIComponent(`id:${long}`)}`)).json() as {
+      hits: { id: string }[]
+    }
+    expect(byId.hits.map((one) => one.id)).toEqual([dataset.id])
+  })
+
+  test("S-SEARCH-08: 解釈できない検索式では、結果を表示せずに解釈できなかったことを表示する", async ({ page }) => {
+    // 実在しない日付は解釈できない
+    await page.goto(`/research?q=${encodeURIComponent("date_published:[2020-13-40 TO *]")}`)
+    await expect(page.getByText("検索条件を読み取れませんでした。")).toBeVisible()
+    await expect(page.getByRole("main").getByRole("link", { name: /^hum\d+$/ })).toHaveCount(0)
   })
 })

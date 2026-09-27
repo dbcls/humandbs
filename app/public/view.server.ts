@@ -929,6 +929,13 @@ export interface DatasetViewInput {
   studyAccession: string | null
   secondaryLabels: readonly string[]
   content: DatasetContent
+  /**
+   * The names the dataset selects, as written. The formats are read off these,
+   * so a selected file the prefix does not hold, or a store that did not
+   * answer, leaves them as they are; `content`'s selection may be narrowed to
+   * what `files` lists.
+   */
+  selection: readonly string[]
   datePublished: string | null
   dateModified: string | null
   /** The research's prefix, which the selection is read against. */
@@ -984,7 +991,7 @@ export function anchoredDatasetView(
 
   const summary = fileSummaryView(datasetFileSummary({
     label: input.label,
-    selection: input.content.fileSelection,
+    selection: input.selection,
     listing: input.files,
     archive: input.archiveFiles,
   }))

@@ -946,6 +946,10 @@ async function load() {
     let fileValues = 0
     // The notes that repeat a term of the experiment give way to the term (`number-notes.ts`).
     const setAndCodeOfTerm = new Map([...termIdBySetAndCode].map(([setAndCode, termId]) => [termId, setAndCode]))
+    const codeOfTerm = (termId: string): string | undefined => {
+      const setAndCode = setAndCodeOfTerm.get(termId)
+      return setAndCode?.slice(setAndCode.indexOf("/") + 1)
+    }
     const noteLookup: NoteLookup = {
       keyIdOf: (code) => keyIdByCode.get(code),
       termCodeOf: (setCode, termId) => {
@@ -1081,7 +1085,7 @@ async function load() {
         termIdOf: (setCode, code) => termIdBySetAndCode.get(`${setCode}/${code}`),
       })
       for (const fix of fixed.applied) fixesApplied.add(fix)
-      const named = editDiseases(fixed.dataset, one.humId, diseaseEdits, diseasesEdited, diseaseNames, one.label)
+      const named = editDiseases(fixed.dataset, one.humId, diseaseEdits, diseasesEdited, diseaseNames, one.label, codeOfTerm)
       const both = fillTranslations(named, { hum: one.humId, label: nha.get(one.label) ?? one.label }, translations, (code) => keyIdByCode.get(code), translated)
       return { ...both, fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [] }
     }

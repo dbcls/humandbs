@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test"
  * portal for the identity provider, which is not what is being tested.
  */
 test.describe("P-ANON 管理画面", () => {
-  test("S-ADMIN-00: 署名の無いブラウザは、どの管理画面もサインインに送られる", async ({ request }) => {
+  test("S-ADMIN-00: ログインしていないと、どの管理画面を開いてもサインインへリダイレクトされる", async ({ request }) => {
     for (const path of ["/admin", "/admin/research", "/admin/experiment-fields", "/admin/documents"]) {
       const answer = await request.get(path, { maxRedirects: 0 })
       expect(answer.status(), path).toBe(302)

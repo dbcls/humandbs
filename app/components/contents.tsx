@@ -240,8 +240,8 @@ function typedIn(form: HTMLFormElement): ArticleContent {
  * a textarea scrolls its own text, and the line's top is its number times the
  * height every line takes.
  */
-function goToLine(form: HTMLFormElement | null, line: number): void {
-  const box = form?.elements.namedItem("body")
+export function goToLine(form: HTMLFormElement | null, line: number, name = "body"): void {
+  const box = form?.elements.namedItem(name)
   if (!(box instanceof HTMLTextAreaElement)) return
   const lines = box.value.split("\n")
   const start = lines.slice(0, line - 1).reduce((sum, one) => sum + one.length + 1, 0)
@@ -268,7 +268,7 @@ function goToLine(form: HTMLFormElement | null, line: number): void {
  * **The way there is a control in a line of text**, so it takes the row size
  * and the outlined style every such control takes.
  */
-function BodyProblems({ id, problems, locale, goTo }: {
+export function BodyProblems({ id, problems, locale, goTo }: {
   id: string
   problems: BodyProblem[]
   locale: Locale
@@ -437,8 +437,11 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
             the list stands under the box at an error's distance (8px), not at
             the distance the form keeps between its parts. **The part does not
             grow**: what the pane has left over goes under the buttons, so the
-            buttons stand right under the box whatever the window's height. */}
-        <div className="flex min-h-0 flex-col gap-2">
+            buttons stand right under the box whatever the window's height.
+            **Nor does it shrink below the box's floor**: a part allowed to
+            shrink to nothing left the box at its floor over the buttons on a
+            short window, where the pane has to scroll instead. */}
+        <div className="flex flex-col gap-2">
           <MarkdownEditor
             label={t.body}
             name="body"

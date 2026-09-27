@@ -93,6 +93,35 @@ describe("editDiseases", () => {
 
     expect(diseasesOf(edited)).toEqual([disease("がん", "cancer", ["t-1"]), disease("がん", "cancer", ["t-2"])])
   })
+  it("takes the edit naming the dataset over one for the whole research", () => {
+    const rename: DiseaseEdit = { hum: "hum0094", nameJa: "肝転移を有さない大腸がん", nameEn: "CRC without liver metastasis", set: { nameJa: "大腸がん", nameEn: "CRC" } }
+    const drop: DiseaseEdit = { hum: "hum0094", dataset: "JGAD000095", nameJa: "肝転移を有さない大腸がん", nameEn: "CRC without liver metastasis", drop: true }
+    const held = () => datasetWith(disease("乳がん", "Breast cancer"), disease("肝転移を有さない大腸がん", "CRC without liver metastasis"))
+    const applied = new Set<DiseaseEdit>()
+
+    expect(diseasesOf(editDiseases(held(), "hum0094", [rename, drop], applied, undefined, "JGAD000095"))).toEqual([disease("乳がん", "Breast cancer")])
+    expect(diseasesOf(editDiseases(held(), "hum0094", [rename, drop], applied, undefined, "JGAD000139"))).toEqual([disease("乳がん", "Breast cancer"), disease("大腸がん", "CRC")])
+    expect(applied).toEqual(new Set([rename, drop]))
+  })
+
+  it("tells two values of the same names apart by the codes the edit names", () => {
+    const codeOf = (termId: string) => ({ "t-c349": "C349", "t-c34": "C34" })[termId]
+    const edit: DiseaseEdit = { hum: "hum0094", dataset: "JGAD000110", nameJa: "肺腺がん", nameEn: "Lung adenocarcinoma", codes: ["C34"], drop: true }
+    const both = () => datasetWith(disease("肺腺がん", "Lung adenocarcinoma", ["t-c349"]), disease("肺腺がん", "Lung adenocarcinoma", ["t-c34"]))
+    const applied = new Set<DiseaseEdit>()
+
+    expect(diseasesOf(editDiseases(both(), "hum0094", [edit], applied, undefined, "JGAD000110", codeOf))).toEqual([disease("肺腺がん", "Lung adenocarcinoma", ["t-c349"])])
+    expect(applied.has(edit)).toBe(true)
+  })
+
+  it("lands nowhere when it names codes and no code can be looked up", () => {
+    const edit: DiseaseEdit = { hum: "hum0094", nameJa: "肺腺がん", nameEn: "Lung adenocarcinoma", codes: ["C34"], drop: true }
+    const held = datasetWith(disease("肺腺がん", "Lung adenocarcinoma", ["t-c34"]))
+    const applied = new Set<DiseaseEdit>()
+
+    expect(diseasesOf(editDiseases(held, "hum0094", [edit], applied))).toHaveLength(1)
+    expect(applied.size).toBe(0)
+  })
 })
 
 describe("assertDiseaseEditsApplied", () => {

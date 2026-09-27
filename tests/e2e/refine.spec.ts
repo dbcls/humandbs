@@ -62,4 +62,50 @@ test.describe("P-ANON 絞り込みと書き出し", () => {
     // ページで区切られない。書き出しは画面に表示している 20 件だけではない
     expect(rows.length).toBeGreaterThan(listed.total / 2)
   })
+
+  test("S-FACET-02: 範囲の form を送ると、並び順と件数を保ったまま URL の検索式になる", async ({ page, request }) => {
+    // 日付: 項目を開いて開始日を入れると、その場で送られる
+    await page.goto("/research?sort=id&size=50")
+    const pane = page.getByLabel("絞り込み")
+    await pane.locator("summary", { hasText: /^公開日/ }).first().click()
+    await pane.getByLabel("開始日").first().fill("2020-01-01")
+    await expect(page).toHaveURL(/[?&]q=/)
+    const url = new URL(page.url())
+    expect(url.searchParams.get("q")).toBe("date_published:[2020-01-01 TO *]")
+    expect(url.searchParams.get("sort")).toBe("id")
+    expect(url.searchParams.get("size")).toBe("50")
+    expect(url.searchParams.get("rangeKey")).toBeNull()
+
+    // 直近 N 年は、絶対の日付の下限だけを URL に載せる
+    const recent = pane.locator("a[href*='date_published']").first()
+    const href = new URL(await recent.getAttribute("href") ?? "", "http://invalid.example")
+    expect(href.searchParams.get("q")).toMatch(/^date_published:\[\d{4}-\d{2}-\d{2} TO \*\]$/)
+
+    // 数値: script の無い form と同じ GET を送ると、検索式の URL へリダイレクトする
+    const answer = await request.get("/dataset?rangeKey=subject-count&rangeFrom=10&rangeTo=&sort=id", { maxRedirects: 0 })
+    expect(answer.status()).toBe(302)
+    const to = new URL(answer.headers().location ?? "", "http://invalid.example")
+    expect(to.pathname).toBe("/dataset")
+    expect(to.searchParams.get("q")).toBe("subject-count:[10 TO *]")
+    expect(to.searchParams.get("sort")).toBe("id")
+  })
+
+  test("S-EXPORT-03: 書き出しのファイルは BOM で始まるタブ区切りで、数式として読まれる文字で始まる値には ' が付く", async ({ request }) => {
+    for (const listing of ["/research", "/dataset"]) {
+      const file = await request.get(`${listing}/export?format=tsv`)
+      expect(file.status(), listing).toBe(200)
+      expect(file.headers()["content-type"], listing).toContain("text/tab-separated-values")
+      expect(file.headers()["content-disposition"], listing).toMatch(/^attachment/)
+      const bytes = await file.body()
+      expect([...bytes.subarray(0, 3)], listing).toEqual([0xEF, 0xBB, 0xBF])
+
+      const cells = bytes.subarray(3).toString("utf8").split("\n").filter((line) => line !== "")
+        .flatMap((line) => line.split("\t"))
+      expect(cells.filter((cell) => /^[=+\-@]/.test(cell)), listing).toEqual([])
+
+      // クリップボードへのコピーには BOM を付けない
+      const copied = await (await request.get(`${listing}/export?format=copy`)).body()
+      expect(copied[0], listing).not.toBe(0xEF)
+    }
+  })
 })

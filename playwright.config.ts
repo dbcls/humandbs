@@ -13,9 +13,10 @@ import { SESSION_COOKIE } from "./app/auth/cookie"
  * **The two projects are the two kinds of reader.** A file named `.user.spec.ts`
  * needs somebody signed in and has the stored session; everything else is
  * the anonymous reader, and runs with no session at all so that a page which
- * only works while signed in cannot pass by accident.
+ * only works while signed in cannot pass by accident. Before the signed-in ones,
+ * `leftovers.setup.ts` takes out what a failed run made and left behind.
  */
-const baseURL = process.env.HUMANDBS_E2E_BASE_URL ?? "http://proxy:8080"
+const baseURL = process.env.HUMANDBS_E2E_BASE_URL ?? "http://localhost:8080"
 
 /**
  * The session the signed-in scenarios have.
@@ -31,24 +32,52 @@ const baseURL = process.env.HUMANDBS_E2E_BASE_URL ?? "http://proxy:8080"
  */
 export const SIGNED_IN = process.env.HUMANDBS_E2E_SESSION ?? ""
 
-const address = new URL(baseURL)
-const storageState = {
-  cookies: SIGNED_IN === ""
-    ? []
-    : [{
-        name: SESSION_COOKIE,
-        value: SIGNED_IN,
-        domain: address.hostname,
-        path: "/",
-        // A session ends by its row rather than by its cookie, so the jar keeps
-        // this one for as long as the run lasts and the instance decides.
-        expires: -1,
-        httpOnly: true,
-        secure: address.protocol === "https:",
-        sameSite: "Lax" as const,
-      }],
-  origins: [],
+/**
+ * What the instance is meant to be, which the scenarios cannot read off it.
+ *
+ * **An instance that was deployed wrongly looks the same as one that was
+ * deployed as meant** — production kept out of search engines responds exactly
+ * as staging does — so the one running the scenarios passes in which it is,
+ * and the scenarios that need it skip when nobody did.
+ */
+export const EXPECTED = {
+  /** `true` or `false`: the instance's `HUMANDBS_NOINDEX`. */
+  noindex: process.env.HUMANDBS_E2E_NOINDEX ?? "",
+  /** The tag the instance was deployed at, as `/healthz` gives it. */
+  version: process.env.HUMANDBS_E2E_VERSION ?? "",
 }
+
+/**
+ * A session of somebody signed in who is not an administrator
+ * (`npm run e2e:session -- non-admin`), for what the management area shows
+ * them. The scenario that needs it skips without it.
+ */
+export const NON_ADMIN = process.env.HUMANDBS_E2E_NON_ADMIN_SESSION ?? ""
+
+const address = new URL(baseURL)
+
+/** A cookie jar holding the session `value`, or nothing when it is empty. */
+export function sessionState(value: string) {
+  return {
+    cookies: value === ""
+      ? []
+      : [{
+          name: SESSION_COOKIE,
+          value,
+          domain: address.hostname,
+          path: "/",
+          // A session ends by its row rather than by its cookie, so the jar keeps
+          // this one for as long as the run lasts and the instance decides.
+          expires: -1,
+          httpOnly: true,
+          secure: address.protocol === "https:",
+          sameSite: "Lax" as const,
+        }],
+    origins: [],
+  }
+}
+
+const storageState = sessionState(SIGNED_IN)
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -74,8 +103,14 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], locale: "ja-JP" },
     },
     {
+      name: "leftovers",
+      testMatch: /leftovers\.setup\.ts$/,
+      use: { ...devices["Desktop Chrome"], locale: "ja-JP", storageState },
+    },
+    {
       name: "user",
       testMatch: /\.user\.spec\.ts$/,
+      dependencies: ["leftovers"],
       use: { ...devices["Desktop Chrome"], locale: "ja-JP", storageState },
     },
   ],

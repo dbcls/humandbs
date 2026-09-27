@@ -26,9 +26,9 @@ afterAll(async () => {
 })
 
 /** What a splat route is handed for a client-side navigation to `path`. */
-function followed(path: string): Route.LoaderArgs {
+function followed(path: string, search = ""): Route.LoaderArgs {
   return {
-    request: new Request(`http://localhost${path}.data`),
+    request: new Request(`http://localhost${path}.data${search}`),
     params: { "*": path.replace(/^\/+/, "") },
   } as unknown as Route.LoaderArgs
 }
@@ -69,6 +69,11 @@ describe("リンクを辿って開いた document", () => {
   it("冗長な ja prefix が prefix 無しへ redirect する", async () => {
     const response = await thrownBy(loader(followed("/ja/faq")))
     expect(response.headers.get("location")).toBe("/faq")
+  })
+
+  it("ja prefix の redirect は query をそのまま付ける", async () => {
+    const response = await thrownBy(loader(followed("/ja/research", "?q=cancer&sort=id")))
+    expect(response.headers.get("location")).toBe("/research?q=cancer&sort=id")
   })
 
   it("公開されていない slug は 404 のまま", async () => {

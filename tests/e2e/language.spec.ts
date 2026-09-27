@@ -34,12 +34,30 @@ test.describe("P-ANON 言語", () => {
     await expect(page).toHaveURL(/\/en\/research\?.*q=/)
   })
 
-  test("S-LANG-03: 文書は両方の言語で応答し、lang を指定する", async ({ page }) => {
+  test("S-LANG-03: 記事は両方の言語で表示され、html の lang がその言語になる", async ({ page }) => {
     await page.goto("/aim")
     await expect(page.locator("html")).toHaveAttribute("lang", "ja")
 
     await page.goto("/en/aim")
     await expect(page.locator("html")).toHaveAttribute("lang", "en")
     await expect(page.getByRole("heading", { level: 1 })).not.toBeEmpty()
+  })
+
+  test("S-LANG-04: /ja の付いた URL は、同じページの prefix の無い URL へリダイレクトする", async ({ request }) => {
+    const { hits } = await (await request.get("/api/research")).json() as { hits: { id: string }[] }
+    const research = hits[0]?.id ?? ""
+    for (const [prefixed, target] of [
+      ["/ja", "/"],
+      ["/ja/research", "/research"],
+      [`/ja/research/${research}`, `/research/${research}`],
+      ["/ja/aim", "/aim"],
+      // 検索の条件も同じページの一部
+      ["/ja/research?q=cancer&sort=id", "/research?q=cancer&sort=id"],
+    ] as [string, string][]) {
+      const answer = await request.get(prefixed, { maxRedirects: 0 })
+      expect(answer.status(), prefixed).toBe(302)
+      const to = new URL(answer.headers().location ?? "", "http://invalid.example")
+      expect(`${to.pathname}${to.search}`, prefixed).toBe(target)
+    }
   })
 })

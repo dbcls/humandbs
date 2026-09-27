@@ -444,13 +444,18 @@ export function Section({ title, note, at, aside, end, fill = false, children }:
  *
  * **Neither end can be named in CSS**: `:first-child` and `:last-child` are the
  * ends of the source, not of a column, and which pair a column begins with is
- * decided after layout. So the rule is drawn over every pair and the two that
- * land at the top of a column are put out of the box instead: each pair is
- * shifted up by exactly the width of its own rule, which leaves the rules in
- * the middle where they were and takes the first one in each column to -1px,
- * outside what the list clips. **The shift is `top` rather than a margin** — a
- * margin at the head of a column is dropped by the fragmentation, which is
- * precisely the case that has to move.
+ * decided after layout. So the rule is drawn over every pair, and the list
+ * clips its own top 1px away: every column begins at the list's top, so the
+ * two rules that land there are the only ones in that row. The list is pulled
+ * up by the same 1px so that the first pair's words stay where they were.
+ *
+ * **Nothing is drawn outside a pair's own box.** Shifting each pair up by its
+ * rule's width (`top: -1px`) would take the rule at the head of the second
+ * column into the clip in Chromium, but Safari places a column's content by its
+ * position in the one long strip the columns are cut from, so 1px above the
+ * head of the second column is the foot of the first — and the rule is drawn
+ * there, under the last pair of the first column. A shadow above the pair
+ * lands in the same place.
  *
  * **The rule belongs here rather than to `KeyValue`.** A pair that is the only
  * one in its box has nothing to be separated from — the release list sets two
@@ -463,7 +468,7 @@ export function Section({ title, note, at, aside, end, fill = false, children }:
  */
 export function Pairs({ children }: { children: ReactNode }) {
   return (
-    <dl className="gap-x-8 overflow-clip sm:columns-2 [&>*]:-top-px [&>*]:relative [&>*]:border-line [&>*]:border-t">
+    <dl className="-mt-px gap-x-8 overflow-clip [clip-path:inset(1px_0_0_0)] sm:columns-2 [&>*]:border-line [&>*]:border-t">
       {children}
     </dl>
   )
