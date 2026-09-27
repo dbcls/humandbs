@@ -109,11 +109,11 @@ function cells(html: string): string[][] {
 
 describe("the table in the panel", () => {
   it("draws the files screen's columns in the files screen's order", () => {
-    expect(heads(picker([]))).toEqual(["ファイル名", "ラベル (日本語)", "ラベル (英語)", "サイズ", "更新日", "状態"])
+    expect(heads(picker([]))).toEqual(["ファイル名", "状態", "ラベル ja", "ラベル en", "サイズ", "更新日"])
   })
 
   it("shows each language of a label in its own column, and an empty cell for a language not written", () => {
-    expect(cells(picker([])).map((row) => row.slice(1, 3))).toEqual([
+    expect(cells(picker([])).map((row) => row.slice(2, 4))).toEqual([
       ["辞書ファイル", "Dictionary file"],
       ["", ""],
       ["", "Variants"],

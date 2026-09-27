@@ -747,7 +747,7 @@ describe("見出しの行の並び", () => {
    * the research's screen puts what it offers. Pushed to the right end it sits
    * under the row's buttons and reads as one more of them.
    */
-  it("研究の編集の「空の下書きの作成」は表の下の左端に置かれる", async () => {
+  it("研究の画面の「空の下書きの作成」は表の下の左端に置かれる", async () => {
     const text = await readFile(path.join(ROOT, "routes/admin-research.tsx"), "utf8")
     const submit = text.indexOf("intent=\"create-draft\"")
     expect(submit).toBeGreaterThan(-1)
@@ -763,7 +763,7 @@ describe("見出しの行の並び", () => {
    * is offered even though the review cell has nothing to press: it reports only
    * whether the draft is shared.
    */
-  describe("研究の編集の行の操作", () => {
+  describe("研究の画面の行の操作", () => {
     const source = async (): Promise<string> =>
       readFile(path.join(ROOT, "routes/admin-research.tsx"), "utf8")
     const bodyOf = (text: string, name: string): string => {

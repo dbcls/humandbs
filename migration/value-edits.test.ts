@@ -63,6 +63,29 @@ describe("editValues", () => {
     expect(editValues(held, "hum0035", [one], keyIdOf, new Set())).toBe(held)
   })
 
+  it("lands an edit that names a dataset on that dataset only", () => {
+    const was = "JGAD000036\nEGAD00001000822 / EGAS00001000662（PPB）"
+    const one: ValueEdit = { op: "set", hum: "hum0035", dataset: "hum0035.v1.gwas.v1", key: "jga", lang: "ja", was, markdown: "" }
+    const applied = new Set<ValueEdit>()
+
+    expect(editValues(held, "hum0035", [one], keyIdOf, applied)).toBe(held)
+    expect(editValues(held, "hum0035", [one], keyIdOf, applied, new Set(["NHA000001", "JGAD000036"]))).toBe(held)
+    expect(applied.size).toBe(0)
+    const edited = editValues(held, "hum0035", [one], keyIdOf, applied, new Set(["NHA000001", "hum0035.v1.gwas.v1"]))
+
+    expect(textOf(edited, "key-jga", "ja")).toEqual([])
+    expect(applied.has(one)).toBe(true)
+  })
+
+  it("takes out a value both languages of which are emptied", () => {
+    const edits: ValueEdit[] = [
+      { op: "set", hum: "hum0035", key: "jga", lang: "ja", was: "JGAD000036\nEGAD00001000822 / EGAS00001000662（PPB）", markdown: "" },
+      { op: "set", hum: "hum0035", key: "jga", lang: "en", was: "JGAD000036\nEGAD00001000822 / EGAS00001000662 (PPB)", markdown: "" },
+    ]
+
+    expect(textOf(editValues(held, "hum0035", edits, keyIdOf, new Set()), "key-jga", "ja")).toBeUndefined()
+  })
+
   it("stops on a key the catalog does not have", () => {
     expect(() => editValues(held, "hum0035", [{ op: "set", hum: "hum0035", key: "nope", lang: "ja", was: "x", markdown: "y" }], keyIdOf, new Set()))
       .toThrow(/nope/)

@@ -128,12 +128,12 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                       headers={[
                         t.application,
                         t.applicationType,
-                        t.humLabel,
                         t.branchStatus,
-                        t.approvedOn,
+                        t.humLabel,
                         t.title,
                         t.pi,
                         t.registered,
+                        t.approvedOn,
                       ]}
                       whenEmpty={t.none}
                     >
@@ -148,9 +148,12 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                             <Stated kind={APPLICATION_TYPE_FLAG[row.applicationType]}>{t.applicationTypes[row.applicationType]}</Stated>
                           </Td>
                           <Td nowrap>
+                            <BranchStatusBadge branchStatus={branchStatusOf(row)} locale={locale} />
+                          </Td>
+                          <Td nowrap>
                             {/* **The label, and a link into the research when
                                 the portal holds one.** Whether it does is said
-                                by the column beside, not by this one — a label
+                                by the column before, not by this one — a label
                                 that is or is not a link shows it only to a
                                 reader who tries to press it. The glyph is the
                                 one every listing gives a research. */}
@@ -161,9 +164,6 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
                                     {row.humLabel}
                                   </IdWithIcon>
                                 )}
-                          </Td>
-                          <Td nowrap>
-                            <BranchStatusBadge branchStatus={branchStatusOf(row)} locale={locale} />
                           </Td>
                           <BranchCells row={row} locale={locale} />
                         </tr>

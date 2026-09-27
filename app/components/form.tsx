@@ -101,6 +101,16 @@ export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs 
 export const LIST_PLACE = "-m-2 flex flex-col gap-4 rounded p-2 transition-colors data-highlighted:bg-warning-surface"
 
 /**
+ * The inputs of one place in the order a jump tries them: **the language's own
+ * first**, each group in the order of the markup. Without a language, the markup's
+ * order alone.
+ */
+export function languageFirst<Input extends { lang: string }>(inputs: readonly Input[], language?: Locale): Input[] {
+  if (language === undefined) return [...inputs]
+  return [...inputs.filter((input) => input.lang === language), ...inputs.filter((input) => input.lang !== language)]
+}
+
+/**
  * Focusing a field from somewhere else on the screen — the page pane, a banner
  * naming a conflict, the published version's differences.
  *
@@ -118,11 +128,16 @@ export const LIST_PLACE = "-m-2 flex flex-col gap-4 rounded p-2 transition-color
  * focused without anything on the form indicating where. The ring keeps its one
  * colour, and the background is what differs.
  *
+ * **A jump from one language's page lands on that language's box** (`language`,
+ * read off the box's `lang`), and on the first box of the place when that
+ * language has none to take the caret — a side set to a state, or a field with
+ * no languages.
+ *
  * Only the pane scrolls, and only up and down (`scroll.ts`).
  */
-export function focusElement(target: HTMLElement, block: "start" | "center"): void {
+export function focusElement(target: HTMLElement, block: "start" | "center", language?: Locale): void {
   scrollPaneTo(target, block)
-  for (const box of target.querySelectorAll<HTMLElement>("input, textarea")) {
+  for (const box of languageFirst([...target.querySelectorAll<HTMLElement>("input, textarea")], language)) {
     box.focus({ preventScroll: true })
     if (document.activeElement !== box) continue
     box.dataset.highlighted = ""
@@ -175,7 +190,7 @@ export function focusTargetPath(path: string, marked: (candidate: string) => boo
  * the form is not the one showing — and moves a pane the reader is reading.
  * With no form on screen there is nowhere to go, and nothing moves.
  */
-export function focusField(form: HTMLElement | null, path: string, section: string | undefined): void {
+export function focusField(form: HTMLElement | null, path: string, section: string | undefined, language?: Locale): void {
   if (form === null) return
   const find = (candidate: string): HTMLElement | null =>
     form.querySelector<HTMLElement>(`[data-at="${CSS.escape(candidate)}"]`)
@@ -189,7 +204,7 @@ export function focusField(form: HTMLElement | null, path: string, section: stri
   for (let around = target.parentElement; around !== null && around !== form; around = around.parentElement) {
     if (around instanceof HTMLDetailsElement && !around.open) around.open = true
   }
-  focusElement(target, field === null ? "start" : "center")
+  focusElement(target, field === null ? "start" : "center", language)
 }
 
 /**

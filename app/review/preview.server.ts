@@ -48,12 +48,12 @@ import {
   anchorUnderCode,
   anchoredDatasetView,
   anchoredResearchView,
-  datasetRowOf,
+  datasetListCellsOf,
   researchListRowView,
   type AnchoredValue,
   type CatalogView,
   type DatasetRowInput,
-  type DatasetRowView,
+  type DatasetListCellsView,
   type DatasetView,
   type ResearchListRowView,
   type ResearchView,
@@ -248,25 +248,26 @@ function termIdsUnder(
 }
 
 /**
- * The public dataset table's row for each dataset a draft lists, read the way
- * the preview reads them: the draft's own entry where it wrote one, what is
- * published otherwise, and the archive's date. Keyed by dataset id.
+ * The dataset listing's cells for each dataset a draft lists, read the way the
+ * preview reads them: the draft's own entry where it wrote one, what is
+ * published otherwise, and the archive's dates. Keyed by dataset id.
  */
 export async function draftDatasetRowViews(
   db: Executor,
   draftId: string,
   ids: readonly string[],
   locale: Locale,
-): Promise<Map<string, DatasetRowView>> {
+): Promise<Map<string, DatasetListCellsView>> {
   const [catalog, datasets] = await Promise.all([loadCatalog(db), previewDatasets(db, draftId, ids)])
   return new Map(datasets.map((row) => {
     // The table reads no files, so the projection is given none.
     const dataset = publicDataset(row.content, { files: [], archive: row.archive }, PREVIEW)
-    return [row.id, datasetRowOf({
+    return [row.id, datasetListCellsOf({
       id: row.id,
       label: row.label ?? "",
       content: dataset.content,
       datePublished: dataset.dates.datePublished,
+      dateModified: dataset.dates.dateModified,
     }, locale, catalog)] as const
   }))
 }

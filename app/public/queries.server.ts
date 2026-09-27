@@ -147,6 +147,7 @@ export interface PublishedDatasetRow {
   label: string
   content: DatasetContent
   datePublished: string | null
+  dateModified: string | null
 }
 
 /**
@@ -165,6 +166,7 @@ export async function publishedDatasets(
       datasetId: searchDoc.targetId,
       label: searchDoc.datasetLabel,
       datePublished: searchDoc.datePublished,
+      dateModified: searchDoc.dateModified,
       content: sql<DatasetContent>`${searchDoc.content}`,
     })
     .from(searchDoc)
@@ -181,7 +183,6 @@ export async function publishedDatasets(
 
 export interface PublishedDatasetPage extends PublishedDatasetRow {
   humLabel: string
-  dateModified: string | null
   /** The study this sits under, from the upstream cache (`hum_accession`). */
   studyAccession: string | null
 }

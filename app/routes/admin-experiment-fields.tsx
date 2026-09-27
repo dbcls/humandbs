@@ -257,7 +257,6 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
                   t.type,
                   t.terms,
                   t.usage,
-                  ...(ordered ? [t.order] : []),
                 ]}
                 whenEmpty={inForce === 0 ? t.noKey : t.noMatchingKey}
               >
@@ -393,42 +392,42 @@ function Row({ entry, ordered, at, of, locale }: {
           ? <span className="text-ink-muted">{t.unused}</span>
           : t.usedCount(entry.used)}
       </Td>
-      {ordered && (
-        <Td holds="icon">
-          <span className="flex gap-1">
-            {/* **The handle is the only place the row can be taken hold of**:
-                the row has other things to press, and a row that can be dragged
-                from anywhere is dragged by mistake. Not drawn on a narrow
-                screen, where the arrows beside it are the way. */}
-            <span className="hidden md:inline-flex">
-              <IconButton
-                ref={setActivatorNodeRef}
-                name="grip"
-                label={t.grab}
-                type="button"
-                {...attributes}
-                {...listeners}
-              />
-            </span>
-            <ReorderButtons
-              at={at}
-              of={of}
-              labels={{ up: messages.admin.moveUp, down: messages.admin.moveDown }}
-              render={(by, button) => (
-                // Each direction is a form of its own: `IconButton` spends its
-                // `name` on the glyph, so the intent goes in a hidden field.
-                <Form method="post">
-                  <input type="hidden" name="keyId" value={entry.id} />
-                  <input type="hidden" name="intent" value={by === -1 ? "move-key-up" : "move-key-down"} />
-                  {button}
-                </Form>
-              )}
-            />
-          </span>
-        </Td>
-      )}
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
+          {/* **Moving the row is one of its operations**, so the handle and
+              the arrows share the column with the edit and the delete. */}
+          {ordered && (
+            <span className="flex gap-1">
+              {/* **The handle is the only place the row can be taken hold of**:
+                  the row has other things to press, and a row that can be dragged
+                  from anywhere is dragged by mistake. Not drawn on a narrow
+                  screen, where the arrows beside it are the way. */}
+              <span className="hidden md:inline-flex">
+                <IconButton
+                  ref={setActivatorNodeRef}
+                  name="grip"
+                  label={t.grab}
+                  type="button"
+                  {...attributes}
+                  {...listeners}
+                />
+              </span>
+              <ReorderButtons
+                at={at}
+                of={of}
+                labels={{ up: messages.admin.moveUp, down: messages.admin.moveDown }}
+                render={(by, button) => (
+                  // Each direction is a form of its own: `IconButton` spends its
+                  // `name` on the glyph, so the intent goes in a hidden field.
+                  <Form method="post">
+                    <input type="hidden" name="keyId" value={entry.id} />
+                    <input type="hidden" name="intent" value={by === -1 ? "move-key-up" : "move-key-down"} />
+                    {button}
+                  </Form>
+                )}
+              />
+            </span>
+          )}
           {/* **The save determines what the panel holds**: a row is opened to read
               it as often as to change it, and a save that can always be pressed
               says nothing about whether there is anything to send. */}
@@ -468,7 +467,8 @@ function Row({ entry, ordered, at, of, locale }: {
               <input type="hidden" name="keyId" value={entry.id} />
               <Confirm
                 label={t.remove}
-                title={t.removeTitle(catalogLabel(entry, locale))}
+                title={t.removeKeyTitle}
+                subject={{ name: t.labelJa, value: entry.labelJa }}
                 warning={t.removeKeyWarning}
                 confirm={t.removeConfirm}
                 size="row"

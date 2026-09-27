@@ -147,7 +147,7 @@ export default function AdminContentsFiles({ loaderData, actionData }: Route.Com
                     actions
                     align="middle"
                     headers={[
-                      t.slug,
+                      t.name,
                       t.size,
                       t.updatedAt,
                     ]}
@@ -325,6 +325,7 @@ function Row({ row, origin, locale }: { row: StoredNode, origin: string, locale:
                 in, and only the rule under the box is this box's own. */}
             <SlugEditor
               locale={locale}
+              file
               intent="rename"
               name="to"
               value={row.name}
@@ -336,7 +337,8 @@ function Row({ row, origin, locale }: { row: StoredNode, origin: string, locale:
             <input type="hidden" name="name" value={row.name} />
             <Confirm
               label={t.removeFile}
-              title={t.removeFileTitle(row.name)}
+              title={t.removeFileTitle}
+              subject={{ name: t.name, value: row.name }}
               warning={t.removeFileWarning}
               confirm={t.removeFileConfirm}
               intent="delete"

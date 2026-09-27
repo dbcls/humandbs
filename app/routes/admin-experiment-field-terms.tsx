@@ -439,7 +439,11 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, doc
                         <input type="hidden" name="intoId" value={term.id} />
                         <Confirm
                           label={t.mergeInto}
-                          title={t.mergeTitle(catalogLabel(mergeFrom, locale), catalogLabel(term, locale))}
+                          title={t.mergeTitle}
+                          subject={[
+                            { name: t.merge, value: catalogLabel(mergeFrom, locale) },
+                            { name: t.mergeDestination, value: catalogLabel(term, locale) },
+                          ]}
                           warning={t.mergeWarning}
                           confirm={t.mergeConfirm}
                           // Not the bin: what is pressed here keeps this row.
@@ -494,7 +498,8 @@ function Row({ term, field, showsCode, editable, mergeFrom, mergeAt, locale, doc
                     <input type="hidden" name="termId" value={term.id} />
                     <Confirm
                       label={t.remove}
-                      title={t.removeTitle(catalogLabel(term, locale))}
+                      title={t.removeTermTitle}
+                      subject={{ name: t.labelJa, value: term.labelJa }}
                       warning={t.removeTermWarning}
                       confirm={t.removeConfirm}
                       size="row"

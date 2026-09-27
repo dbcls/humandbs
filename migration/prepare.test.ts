@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest"
 import { datasetKey, type Dump, type EsDataset, type EsExperiment } from "./es"
 import {
   applyKeyRules,
+  assertExperimentEditsApplied,
   dropDatasets,
   dropResearch,
+  keepExperiments,
   mergeDumps,
   restoreDatasets,
   splitArchiveAccessions,
   splitSharedExperiments,
+  type ExperimentEdit,
   type KeyRule,
 } from "./prepare"
 
@@ -224,6 +227,139 @@ describe("splitSharedExperiments", () => {
     splitSharedExperiments([{ label: "JGAD000001", doc: one }, { label: "JGAD000002", doc: two }], new Map())
 
     expect(one.experiments?.[0]?.data?.["Total Data Volume"]?.ja?.text).toBe(volume)
+  })
+})
+
+describe("splitSharedExperiments with a block pinned by a link's address", () => {
+  const FREQ = "hum0014.v1.freq.v1"
+  const T2DM = "hum0014.v3.T2DM-1.v1"
+  const accession = [
+    `[${T2DM}](/files/hum0014/${T2DM}.xlsx)`,
+    `[Dictionary file](/files/hum0014/${FREQ}_dictionary.xlsx)`,
+  ].join("\n")
+  const t2dm = () => experiment({ "NBDC Dataset Accession": cell(accession), "Platform": cell("Illumina HumanHap610") }, "Genotyping by array")
+  const freq = () => experiment({ "NBDC Dataset Accession": cell(`[${FREQ}](/files/hum0014/hum0014_freq.xlsx)`) }, "Genotyping by array")
+
+  it("takes the block from the dataset only the address names and leaves it whole on the one the words name", () => {
+    const one = dataset(FREQ, [freq(), t2dm()], "hum0014")
+    const two = dataset(T2DM, [t2dm()], "hum0014")
+    const result = splitSharedExperiments([{ label: FREQ, doc: one }, { label: T2DM, doc: two }], new Map())
+
+    expect(one.experiments).toEqual([freq()])
+    expect(two.experiments).toEqual([t2dm()])
+    expect(result.unpinned).toEqual([{ label: FREQ, heading: "Genotyping by array" }])
+    expect(result.review).toEqual([])
+  })
+
+  it("keeps the block on a dataset that has no other", () => {
+    const one = dataset(FREQ, [t2dm()], "hum0014")
+    const two = dataset(T2DM, [t2dm()], "hum0014")
+    const result = splitSharedExperiments([{ label: FREQ, doc: one }, { label: T2DM, doc: two }], new Map())
+
+    expect(one.experiments).toHaveLength(1)
+    expect(result.unpinned).toEqual([])
+  })
+
+  it("still divides the block among the datasets left", () => {
+    const text = `JGAD000001: 88 GB\nJGAD000002: 32 GB\n[README](/files/hum0001/JGAD000003_readme.txt)`
+    const shared = () => experiment({ "Total Data Volume": cell(text) })
+    const own = experiment({ "Total Data Volume": cell("JGAD000003: 1 GB") }, "JGAS000002 (WGS)")
+    const one = dataset("JGAD000001", [shared()])
+    const two = dataset("JGAD000002", [shared()])
+    const three = dataset("JGAD000003", [own, shared()])
+    const result = splitSharedExperiments([{ label: "JGAD000001", doc: one }, { label: "JGAD000002", doc: two }, { label: "JGAD000003", doc: three }], new Map())
+
+    expect(three.experiments).toEqual([own])
+    expect(one.experiments?.[0]?.data?.["Total Data Volume"]?.ja?.text).toBe("JGAD000001: 88 GB\n[README](/files/hum0001/JGAD000003_readme.txt)")
+    expect(two.experiments?.[0]?.data?.["Total Data Volume"]?.ja?.text).toBe("JGAD000002: 32 GB\n[README](/files/hum0001/JGAD000003_readme.txt)")
+    expect(result.unpinned).toEqual([{ label: "JGAD000003", heading: "JGAS000001 (WGS)" }])
+  })
+})
+
+describe("keepExperiments", () => {
+  const block = (header: string, text: string) => experiment({ "Japanese Genotype-phenotype Archive Dataset Accession": cell(text) }, header)
+  const bmi = () => block("Genotyping by array", "[hum0014.v6.158k.v1](/files/hum0014/hum0014.v6.158k.v1.zip)")
+  const wgs = () => block("WGS", "[JGAD000220](https://example.org/JGAD000220)")
+  const panel = () => block("WGS リファレンスパネル", "[JGAD000679](https://example.org/JGAD000679)")
+  const keep = (experiments: { header: string, names?: string }[]): ExperimentEdit => ({ op: "keep", hum: "hum0014", dataset: "JGAD000679", experiments })
+
+  it("leaves the dataset only the experiments named, and counts the others", () => {
+    const doc = dataset("JGAD000679", [bmi(), wgs(), panel()], "hum0014")
+    const edit = keep([{ header: "WGS リファレンスパネル" }])
+    const applied = new Set<ExperimentEdit>()
+
+    expect(keepExperiments([doc], [edit], applied)).toBe(2)
+    expect(doc.experiments).toEqual([panel()])
+    expect(applied.has(edit)).toBe(true)
+  })
+
+  it("tells two experiments of one heading apart by an ID the block writes", () => {
+    const own = block("Metagenomics", "[JGAD000679](https://example.org/JGAD000679)（日本人集団：95名）")
+    const other = block("Metagenomics", "DRA014186(JGAS000205)")
+    const doc = dataset("JGAD000679", [own, other], "hum0014")
+
+    keepExperiments([doc], [keep([{ header: "Metagenomics", names: "JGAD000679" }])], new Set())
+
+    expect(doc.experiments).toEqual([own])
+  })
+
+  it("stops where a heading names two experiments", () => {
+    const doc = dataset("JGAD000679", [wgs(), wgs()], "hum0014")
+
+    expect(() => keepExperiments([doc], [keep([{ header: "WGS" }])], new Set())).toThrow(/2 experiments/)
+  })
+
+  it("leaves a document without the experiments named, another research and another dataset as they were", () => {
+    const older = dataset("JGAD000679", [bmi()], "hum0014")
+    const elsewhere = dataset("JGAD000679", [bmi(), panel()], "hum0015")
+    const another = dataset("JGAD000690", [bmi(), panel()], "hum0014")
+    const applied = new Set<ExperimentEdit>()
+
+    expect(keepExperiments([older, elsewhere, another], [keep([{ header: "WGS リファレンスパネル" }])], applied)).toBe(0)
+    expect(older.experiments).toEqual([bmi()])
+    expect(elsewhere.experiments).toHaveLength(2)
+    expect(another.experiments).toHaveLength(2)
+    expect(applied.size).toBe(0)
+  })
+
+  it("stops the load on an edit that found nothing", () => {
+    const edit = keep([{ header: "WGS" }])
+
+    expect(() => {
+      assertExperimentEditsApplied([edit], new Set())
+    }).toThrow(/JGAD000679/)
+    expect(() => {
+      assertExperimentEditsApplied([edit], new Set([edit]))
+    }).not.toThrow()
+  })
+})
+
+describe("splitSharedExperiments with a dataset that keeps its blocks whole", () => {
+  const volume = "hum0197.v12.MAG.v1: 153 GB\nDRA014186: 11.5 GB\nDRA014188: 11.9 GB"
+  const shared = () => experiment({ "Total Data Volume": cell(volume) }, "Metagenomics")
+  const whole: ExperimentEdit = { op: "whole", hum: "hum0197", dataset: "hum0197.v12.MAG.v1" }
+
+  it("keeps the block whole for it, and the others get what the division gives them", () => {
+    const mag = dataset("hum0197.v12.MAG.v1", [shared()], "hum0197")
+    const one = dataset("DRA014186", [shared()], "hum0197")
+    const two = dataset("DRA014188", [shared()], "hum0197")
+    const applied = new Set<ExperimentEdit>()
+    const result = splitSharedExperiments([{ label: "hum0197.v12.MAG.v1", doc: mag }, { label: "DRA014186", doc: one }, { label: "DRA014188", doc: two }], new Map(), new Map(), { edits: [whole], applied })
+
+    expect(mag.experiments?.[0]?.data?.["Total Data Volume"]).toEqual(cell(volume))
+    expect(one.experiments?.[0]?.data?.["Total Data Volume"]?.ja?.text).toBe("DRA014186: 11.5 GB")
+    expect(two.experiments?.[0]?.data?.["Total Data Volume"]?.ja?.text).toBe("DRA014188: 11.9 GB")
+    expect(result.review.filter((one) => one.dataset === "hum0197.v12.MAG.v1")).toEqual([])
+    expect(applied.has(whole)).toBe(true)
+  })
+
+  it("does not act for the same label in another research", () => {
+    const mag = dataset("hum0197.v12.MAG.v1", [shared()], "hum0001")
+    const one = dataset("DRA014186", [shared()], "hum0001")
+    const applied = new Set<ExperimentEdit>()
+    splitSharedExperiments([{ label: "hum0197.v12.MAG.v1", doc: mag }, { label: "DRA014186", doc: one }], new Map(), new Map(), { edits: [whole], applied })
+
+    expect(applied.size).toBe(0)
   })
 })
 

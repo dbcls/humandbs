@@ -30,11 +30,12 @@ function row(overrides: Partial<AdminResearchRow> = {}): AdminResearchRow {
     humLabel: "hum0001",
     title: pair("糖尿病のゲノム解析", "Genome analysis of diabetes"),
     providerNames: [pair("田中 太郎", "Taro Tanaka")],
-    datasets: [{ label: "JGAD000001", published: false }],
+    datasets: [{ label: "JGAD000001", published: true }],
+    datasetLabels: ["JGAD000001", "JGAD000002"],
     status: "published",
     publishedVersions: 1,
     draftCount: 0,
-    updatedAt: "2026-01-01T00:00:00.000Z",
+    updatedOn: "2026-01-01",
     publishedOn: "2026-01-01",
     ...overrides,
   }
@@ -52,6 +53,8 @@ describe("the direct lookup", () => {
   it("matches a hum label, a dataset id, a title in either language, and a provider", () => {
     expect(matching("hum0001")).toBe(1)
     expect(matching("JGAD000001")).toBe(1)
+    // Only a draft lists it, so the row does not show it; it is still found.
+    expect(matching("JGAD000002")).toBe(1)
     expect(matching("糖尿病")).toBe(1)
     expect(matching("diabetes")).toBe(1)
     expect(matching("Tanaka")).toBe(1)
@@ -128,9 +131,9 @@ describe("the filters", () => {
 
 describe("the days and the files", () => {
   const rows = [
-    row({ researchId: "a", publishedOn: "2024-03-01", updatedAt: "2025-12-31T15:30:00.000Z" }),
-    row({ researchId: "b", publishedOn: "2025-06-30", updatedAt: "2026-06-30T00:00:00.000Z" }),
-    row({ researchId: "c", publishedOn: null, status: "unpublished", updatedAt: "2026-09-25T23:59:00.000Z" }),
+    row({ researchId: "a", publishedOn: "2024-03-01", updatedOn: "2026-01-01" }),
+    row({ researchId: "b", publishedOn: "2025-06-30", updatedOn: "2026-06-30" }),
+    row({ researchId: "c", publishedOn: null, status: "unpublished", updatedOn: "2026-09-26" }),
   ]
   const ids = (held: AdminResearchRow[]): string[] => held.map((one) => one.researchId)
 
@@ -141,8 +144,7 @@ describe("the days and the files", () => {
     expect(ids(filterResearchRows(rows, filter({ published: OPEN_RANGE })))).toEqual(["a", "b", "c"])
   })
 
-  it("reads the day of the latest change in JST, the day the column shows", () => {
-    // 2025-12-31T15:30Z is 2026-01-01 00:30 in JST; 2026-09-25T23:59Z is 09-26.
+  it("keeps the days modified inside the range, both ends included", () => {
     expect(ids(filterResearchRows(rows, filter({ updated: { from: "2026-01-01", to: "2026-01-01" } })))).toEqual(["a"])
     expect(ids(filterResearchRows(rows, filter({ updated: { from: "2026-09-26", to: null } })))).toEqual(["c"])
   })
@@ -158,10 +160,10 @@ describe("the days and the files", () => {
 })
 
 describe("the order and the page", () => {
-  it("puts the most recently touched first", () => {
+  it("puts the most recently modified first", () => {
     const rows = [
-      row({ researchId: "old", updatedAt: "2025-01-01T00:00:00.000Z" }),
-      row({ researchId: "new", updatedAt: "2026-06-01T00:00:00.000Z" }),
+      row({ researchId: "old", updatedOn: "2025-01-01" }),
+      row({ researchId: "new", updatedOn: "2026-06-01" }),
     ]
 
     expect(sortResearchRows(rows).map((held) => held.researchId)).toEqual(["new", "old"])
@@ -195,8 +197,8 @@ describe("the order and the page", () => {
 
   it("runs a key the way it reads when nobody specifies which way", () => {
     const rows = [
-      row({ researchId: "a", humLabel: "hum0001", updatedAt: "2025-01-01T00:00:00.000Z" }),
-      row({ researchId: "b", humLabel: "hum0002", updatedAt: "2026-01-01T00:00:00.000Z" }),
+      row({ researchId: "a", humLabel: "hum0001", updatedOn: "2025-01-01" }),
+      row({ researchId: "b", humLabel: "hum0002", updatedOn: "2026-01-01" }),
     ]
 
     // A date opens on the newest, an identifier on the smallest.

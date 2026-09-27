@@ -2170,6 +2170,12 @@ export function Toast({ label, announce, at = "headerBar", children }: {
 
 /* --------------------------------------------------------- requesting and busy */
 
+/** One line naming what a panel acts on: a table's column and the row's value there. */
+export interface DialogSubject {
+  name: string
+  value: ReactNode
+}
+
 /**
  * A panel drawn over the page, and the control that opens it.
  *
@@ -2214,7 +2220,7 @@ export function Toast({ label, announce, at = "headerBar", children }: {
  * halves the width it is given, and at 672px each side is a column of a few
  * words.
  */
-export function Dialog({ label, title, note, variant = "secondary", size = "sm", icon, held, dismiss, action, status, children, disabled, reasonAt, wide = false }: {
+export function Dialog({ label, title, subject, note, variant = "secondary", size = "sm", icon, held, dismiss, action, status, children, disabled, reasonAt, wide = false }: {
   /** The trigger, when the panel has one of its own. */
   label?: string
   /**
@@ -2229,14 +2235,24 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
   /** Which edge of the trigger the reason hangs from (`Button` の `reasonAt`). */
   reasonAt?: "left" | "right"
   /**
-   * What the panel is about, shown at the top of it.
+   * What the panel is about, shown at the top of it: **the kind of thing and
+   * what is done to it** (「ファイルの削除」), never a value.
    *
    * **The trigger and the panel do not show the same thing.** The control is a
    * word in a row of controls and reads as an instruction; the panel is a
-   * screen of its own, and a reader who has arrived at one needs to know which
-   * of the things on the page underneath it is about to be acted on.
+   * screen of its own, and a reader who has arrived at one needs to know what
+   * kind of act they are about to take. **Which one it is acted on is the
+   * `subject`**: a name, an ID or a number in the title makes every panel of
+   * one kind a different title, and a long one runs the title over lines.
    */
   title: string
+  /**
+   * Which one the panel acts on, as the first line under the title: the name
+   * of the table's column and the row's value there (「ファイル名 foo.txt」).
+   * The panel covers the row it was opened from, so this is where the reader
+   * checks it before pressing.
+   */
+  subject?: DialogSubject | readonly DialogSubject[]
   /**
    * What pressing does, said once under the name.
    *
@@ -2378,6 +2394,16 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
                 The rule starts on the line rather than hanging out through a
                 card's padding, because there is no card around it. */}
             <Heading level="h2" look="bar" rule="start" title={title} />
+            {subject !== undefined && (
+              <div className="flex flex-col gap-1">
+                {(Array.isArray(subject) ? subject : [subject]).map((line: DialogSubject) => (
+                  <p key={line.name} className="flex flex-wrap items-baseline gap-x-2 text-ink text-sm">
+                    <span className={PANE_LABEL}>{line.name}</span>
+                    <span className="break-all">{line.value}</span>
+                  </p>
+                ))}
+              </div>
+            )}
             {note !== undefined && <p className="text-ink text-sm"><LinesOf text={note} /></p>}
             {children}
             <span className="flex flex-wrap items-center justify-end gap-2">
@@ -2410,9 +2436,9 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
  * happens to sit, and the keyboard comes with it — `Esc` closes, and focus
  * starts on the cancel button rather than on the action.
  *
- * **What is being acted on is named in the title, not left to the warning.**
- * The warning shows what will happen, not which of the four things in the row it
- * will happen to.
+ * **What is being acted on is named under the title, not left to the warning**
+ * (`Dialog` の `subject`). The warning shows what will happen, not which of the
+ * things in the list it will happen to.
  *
  * **The warning is the panel's own sentence** (`Dialog` の `note`), and it is
  * not drawn in the danger colour. What is dangerous here is the action, and the
@@ -2423,6 +2449,7 @@ export function Dialog({ label, title, note, variant = "secondary", size = "sm",
 export function Confirm({
   label,
   title,
+  subject,
   warning,
   confirm,
   cancel,
@@ -2437,8 +2464,10 @@ export function Confirm({
 }: {
   /** The trigger. Absent when the panel is `held` open from outside, which draws none. */
   label?: string
-  /** What is about to happen and to which one, as a heading. */
+  /** What is about to happen, as a heading: the kind and the act (`Dialog` の `title`). */
   title: string
+  /** Which one it happens to (`Dialog` の `subject`). */
+  subject?: DialogSubject | readonly DialogSubject[]
   warning: string
   /** Why the trigger cannot be pressed, when it cannot (`Dialog`). */
   disabled?: string
@@ -2509,6 +2538,7 @@ export function Confirm({
     <Dialog
       label={label}
       title={title}
+      subject={subject}
       note={warning}
       variant="danger"
       size={size}

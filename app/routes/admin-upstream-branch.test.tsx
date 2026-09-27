@@ -127,7 +127,7 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     expect(html).not.toMatch(/type="submit"/)
     expect(html).toContain(`>${t.heldHeading}</h2>`)
     for (const line of t.heldNote) expect(html).toContain(line)
-    expect(html).toContain("hum0597 の研究の編集へ")
+    expect(html).toContain("hum0597 の研究へ")
     expect(html).toContain("href=\"/admin/research/r-597\"")
   })
 })

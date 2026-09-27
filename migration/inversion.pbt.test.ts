@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { splitSharedBlock } from "./inversion"
+import { pinnedByAddress, splitSharedBlock } from "./inversion"
 
 const LABELS = ["JGAD000001", "JGAD000002", "JGAD000003", "JGAD000004"]
 
@@ -114,6 +114,42 @@ describe("a cell of groups under headings alone on their lines", () => {
         const own = [...prefix, ...groups.flatMap((group) => (group.owner === label ? [`【${group.owner}】`, ...group.lines] : []))]
         expect(result.perDataset.get(label)?.["Materials and Participants"]?.ja).toBe(own.join("\n"))
       }
+    }))
+  })
+})
+
+describe("pinnedByAddress", () => {
+  /** A line naming a dataset in its words, in an address, in both, or not at all. */
+  const lineArb = fc.oneof(
+    fc.record({ label: fc.constantFrom(...LABELS), where: fc.constantFrom("words", "address", "both") }),
+    fc.record({ label: fc.constant(""), where: fc.constant("none") }),
+  ).map(({ label, where }) => {
+    const lines: Record<string, string> = {
+      words: `${label}: 88 GB`,
+      address: `[Dictionary file](/files/hum0001/${label}_dictionary.xlsx)`,
+      both: `[${label}](/files/hum0001/${label}.zip)`,
+      none: "(データのダウンロードは上記Dataset IDをクリックしてください)",
+    }
+    return { label, where, line: lines[where] ?? "" }
+  })
+  const blockArb = fc.record({
+    datasets: fc.uniqueArray(fc.constantFrom(...LABELS), { minLength: 1, maxLength: LABELS.length }),
+    ja: fc.array(lineArb, { maxLength: 6 }),
+    en: fc.array(lineArb, { maxLength: 6 }),
+  })
+
+  it("returns only datasets no words name and some address does, and only while the words name another", () => {
+    fc.assert(fc.property(blockArb, ({ datasets, ja, en }) => {
+      const lines = [...ja, ...en]
+      const inWords = new Set(lines.filter((one) => one.where === "words" || one.where === "both").map((one) => one.label))
+      const inAddress = new Set(lines.filter((one) => one.where === "address" || one.where === "both").map((one) => one.label))
+      const text = (side: typeof ja) => side.map((one) => one.line).join("\n")
+      const result = pinnedByAddress({ "NBDC Dataset Accession": { ja: text(ja), en: text(en) } }, datasets)
+
+      const expected = datasets.some((label) => inWords.has(label))
+        ? datasets.filter((label) => !inWords.has(label) && inAddress.has(label))
+        : []
+      expect(result).toEqual(expected)
     }))
   })
 })

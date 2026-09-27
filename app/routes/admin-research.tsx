@@ -114,7 +114,8 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             <Form method="post">
               <Confirm
                 label={t.deleteResearch}
-                title={t.deleteResearchTitle(view.humLabel ?? t.heading)}
+                title={t.deleteResearchTitle}
+                subject={{ name: messages.research.researchId, value: view.humLabel ?? messages.admin.research.unpinned }}
                 warning={t.deleteResearchWarning}
                 confirm={t.deleteResearchConfirm}
                 intent="delete-research"
@@ -126,24 +127,25 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
           <Section title={t.rows} note={t.rowsNote}>
             <Stack gap="normal">
               {/* Drafts first, newest writing first; then the versions, newest
-                  number first. **The first column shows which is which**, and
-                  every other column belongs to one kind or the other: a draft
-                  has a name, when it was last written and what its review
-                  shows, a version has a number and a day it went out. **The
-                  name shares the number's column**, whose heading names both.
-                  **The writing is told to the minute**: two drafts may be
-                  given the same name. The table stays when empty: the column
-                  names say what would stand here. */}
+                  number first. **The state, after the name, shows which is
+                  which**, and some columns belong to one kind or the other: a
+                  draft has a name and what its review shows, a version has a
+                  number and a day it went out. **The name shares the number's
+                  column**, whose heading names both. The columns go in the
+                  order every table keeps: the name, the states, the other
+                  values, the dates. **The writing is told to the minute**: two
+                  drafts may be given the same name. The table stays when
+                  empty: the column names say what would stand here. */}
               <Table
                 actions
                 align="middle"
                 headers={[
-                  t.kind,
                   t.version,
-                  t.updatedAt,
-                  t.releaseDate,
-                  t.datasets,
+                  t.kind,
                   t.review,
+                  t.datasets,
+                  t.releaseDate,
+                  t.updatedAt,
                 ]}
                 whenEmpty={t.noRows}
               >
@@ -326,12 +328,11 @@ function DraftRow({ draft, review, researchId, locale }: {
 
   return (
     <tr>
+      <Td>{draftNameShown(draft.name, locale)}</Td>
       <Td nowrap>
         <Stated kind="changed">{t.draft}</Stated>
       </Td>
-      <Td>{draftNameShown(draft.name, locale)}</Td>
-      <Td nowrap>{minuteInJst(draft.updatedAt)}</Td>
-      <Td />
+      <Td><Review review={review} locale={locale} /></Td>
       <Td>
         <Datasets
           count={review?.datasets ?? 0}
@@ -339,7 +340,8 @@ function DraftRow({ draft, review, researchId, locale }: {
           locale={locale}
         />
       </Td>
-      <Td><Review review={review} locale={locale} /></Td>
+      <Td />
+      <Td nowrap>{minuteInJst(draft.updatedAt)}</Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
           <ButtonLink
@@ -447,15 +449,6 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
   return (
     <tr>
       <Td nowrap>
-        <span className="flex items-center gap-2 text-nowrap">
-          {/* The same icon the listing gives a published research. */}
-          <Stated kind="live">{t.published}</Stated>
-          {updating !== null && (
-            <Flag kind="changed">{t.updating}</Flag>
-          )}
-        </span>
-      </Td>
-      <Td nowrap>
         {humLabel === null
           ? <span>{name}</span>
           : (
@@ -464,8 +457,18 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
               </ExternalLink>
             )}
       </Td>
-      <Td nowrap>{minuteInJst(updating === null ? version.updatedAt : updating.updatedAt)}</Td>
-      <Td nowrap>{version.releaseDate}</Td>
+      <Td nowrap>
+        <span className="flex items-center gap-2 text-nowrap">
+          {/* The same icon the listing gives a published research. */}
+          <Stated kind="live">{t.published}</Stated>
+          {updating !== null && (
+            <Flag kind="changed">{t.updating}</Flag>
+          )}
+        </span>
+      </Td>
+      <Td>
+        {updating !== null && <Review review={review} locale={locale} />}
+      </Td>
       <Td>
         {updating === null
           ? (
@@ -483,9 +486,8 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
               />
             )}
       </Td>
-      <Td>
-        {updating !== null && <Review review={review} locale={locale} />}
-      </Td>
+      <Td nowrap>{version.releaseDate}</Td>
+      <Td nowrap>{minuteInJst(updating === null ? version.updatedAt : updating.updatedAt)}</Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
           {/* The same order as the name row: what leaves nothing behind first,
@@ -521,7 +523,8 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
               <input type="hidden" name="revision" value={updating.revision} />
               <Confirm
                 label={t.stopUpdating}
-                title={t.stopUpdatingTitle(name)}
+                title={t.stopUpdatingTitle}
+                subject={{ name: t.versionName, value: name }}
                 warning={t.stopUpdatingWarning}
                 confirm={t.stopUpdatingConfirm}
                 intent="discard-draft"
@@ -536,7 +539,8 @@ function VersionRow({ version, review, humLabel, researchId, locale }: {
             <input type="hidden" name="versionId" value={version.id} />
             <Confirm
               label={t.withdraw}
-              title={t.withdrawTitle(name)}
+              title={t.withdrawTitle}
+              subject={{ name: t.versionName, value: name }}
               warning={t.withdrawWarning}
               confirm={t.withdrawConfirm}
               intent="withdraw-version"
@@ -568,7 +572,8 @@ function Unpin({ pinId, subject, held, locale }: {
       <input type="hidden" name="pinId" value={pinId} />
       <Confirm
         label={t.unpin}
-        title={t.unpinTitle(subject)}
+        title={t.unpinResearchTitle}
+        subject={{ name: messagesFor(locale).research.researchId, value: subject }}
         warning={t.unpinWarning}
         confirm={t.unpinConfirm}
         intent="unpin"

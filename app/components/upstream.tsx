@@ -234,15 +234,15 @@ function SeededValue({ field, locale }: { field: SeededFieldView, locale: Locale
 const SHOWN_DATASETS = 3
 
 /**
- * A branch's cells from its approval on, **drawn the same in every table of
- * branches** — the listing of applications and a draft's table of them to import
- * from — so that one branch never looks like two things.
+ * A branch's cells from its title to its approval, **drawn the same in every
+ * table of branches** — the listing of applications and a draft's table of them
+ * to import from — so that one branch never looks like two things. The day is
+ * last, as every table keeps its dates.
  */
 export function BranchCells({ row, locale }: { row: UpstreamBranchView, locale: Locale }) {
   const messages = messagesFor(locale)
   return (
     <>
-      <Td nowrap>{row.approvedOn ?? ""}</Td>
       <Td floor="min-w-64">
         <Excerpt more={messages.search.readMore} less={messages.search.showLess}>
           {row.titleJa === "" ? row.titleEn : row.titleJa}
@@ -261,6 +261,7 @@ export function BranchCells({ row, locale }: { row: UpstreamBranchView, locale: 
           items={row.datasets.map((accession) => ({ label: accession, to: jgaEntryUrl(accession) }))}
         />
       </Td>
+      <Td nowrap>{row.approvedOn ?? ""}</Td>
     </>
   )
 }

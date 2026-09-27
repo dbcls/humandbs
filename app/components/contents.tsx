@@ -164,41 +164,48 @@ export function PublicPageButtons({ locale, path, closed }: {
 }
 
 /**
- * The way a slug is changed, on every screen that lets one be.
+ * The way a slug or a file's name is changed, on every screen that lets one be.
  *
- * **One panel, whatever holds the slug.** An article and a file in `common/`
- * are renamed from different screens, and a reader who learned the form on one
- * — the sentence indicating what breaks under the name, the box with its rule
- * under it, the two buttons — finds the same on the other. A screen is not
- * handed the choice of leaving the box open on the page and requesting in the
- * panel: the box on the page is a second place to type on a screen whose
- * subject is the body, and it implies nothing about what pressing beside it does.
+ * **One panel, whatever holds the name.** An article, a file in `common/` and a
+ * research's file are renamed from different screens, and a reader who learned
+ * the form on one — the sentence indicating what breaks under the name, the box
+ * with its rule under it, the two buttons — finds the same on the others. A
+ * screen is not handed the choice of leaving the box open on the page and
+ * requesting in the panel: the box on the page is a second place to type on a
+ * screen whose subject is the body, and it implies nothing about what pressing
+ * beside it does.
+ *
+ * **Called what the screen's table calls it**: an article's is its slug, a
+ * file's is its file name (`file`).
  *
  * **The trigger uses the warning style** (`Confirm`): the address readers hold
  * stops responding, which is the break deleting it makes.
  *
- * **The panel does not name the slug in its title.** The box inside shows it,
+ * **The panel does not name the value in its title.** The box inside shows it,
  * and a title would disagree with the box the moment anything is typed.
  */
-export function SlugEditor({ locale, intent, name, value, hint, size, disabled }: {
+export function SlugEditor({ locale, intent, name, value, hint, size, disabled, file = false }: {
   locale: Locale
   /** What the form is asked to do, on the button that sends it. */
   intent: string
-  /** The field the new slug is sent as. */
+  /** The field the new name is sent as. */
   name: string
   value: string
-  /** The rule the slug has to follow, under the box. */
+  /** The rule the name has to follow, under the box. */
   hint: Lines
   /** How large the trigger is drawn among its neighbours (`Dialog`). */
   size?: ButtonSize
-  /** Why the slug cannot be changed now, when it cannot (`Dialog`). */
+  /** Why the name cannot be changed now, when it cannot (`Dialog`). */
   disabled?: string
+  /** A file's name rather than an article's slug. */
+  file?: boolean
 }) {
   const t = messagesFor(locale).admin.contents
+  const words = file ? t.fileRename : t
   return (
     <Dialog
-      label={t.rename}
-      title={t.renameTitle}
+      label={words.rename}
+      title={words.renameTitle}
       note={t.renameWarning}
       variant="danger"
       size={size}
@@ -208,7 +215,7 @@ export function SlugEditor({ locale, intent, name, value, hint, size, disabled }
         <Submit variant="danger" icon={<Icon name="edit" />} intent={intent}>{t.renameConfirm}</Submit>
       )}
     >
-      <Field label={t.slug} name={name} value={value} width="w-full" hint={hint} />
+      <Field label={words.slug} name={name} value={value} width="w-full" hint={hint} />
     </Dialog>
   )
 }

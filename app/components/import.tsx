@@ -477,10 +477,10 @@ export function SourceTable({ rows, here, current, humLabel, locale }: {
       actions
       align="middle"
       headers={[
-        detail.kind,
         detail.version,
-        detail.updatedAt,
+        detail.kind,
         detail.releaseDate,
+        detail.updatedAt,
       ]}
       whenEmpty={messages.admin.import.noRows}
     >
@@ -510,9 +510,9 @@ function queryOf(row: ImportSourceRow): string {
 }
 
 /**
- * A version or a draft, as the research's own screen draws it — what it is,
- * its number, when it was written and when it went out — with the one thing
- * done here, choosing it.
+ * A version or a draft, as the research's own screen draws it — its number or
+ * name, what it is, when it went out and when it was written — with the one
+ * thing done here, choosing it.
  */
 function SourceRow({ row, to, humLabel, self, locale }: {
   row: ImportSourceRow
@@ -533,6 +533,13 @@ function SourceRow({ row, to, humLabel, self, locale }: {
   const updatedAt = row.kind === "version" && row.update !== null ? row.update.updatedAt : row.updatedAt
   return (
     <tr>
+      <Td nowrap={row.kind === "version"}>
+        {row.kind === "draft"
+          ? draftNameShown(row.name, locale)
+          : name !== null && (humLabel === null
+            ? <span>{name}</span>
+            : <ExternalLink to={href(locale, `${researchPath(humLabel)}/${name}`)} locale={locale}>{name}</ExternalLink>)}
+      </Td>
       <Td nowrap>
         {row.kind === "draft"
           ? (
@@ -548,15 +555,8 @@ function SourceRow({ row, to, humLabel, self, locale }: {
               </span>
             )}
       </Td>
-      <Td nowrap={row.kind === "version"}>
-        {row.kind === "draft"
-          ? draftNameShown(row.name, locale)
-          : name !== null && (humLabel === null
-            ? <span>{name}</span>
-            : <ExternalLink to={href(locale, `${researchPath(humLabel)}/${name}`)} locale={locale}>{name}</ExternalLink>)}
-      </Td>
-      <Td nowrap>{minuteInJst(updatedAt)}</Td>
       <Td nowrap>{row.kind === "version" ? row.releaseDate : ""}</Td>
+      <Td nowrap>{minuteInJst(updatedAt)}</Td>
       <Td nowrap holds="control">
         {self
           ? (

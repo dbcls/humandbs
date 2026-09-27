@@ -177,7 +177,7 @@ export function PlanNotes({
   return (
     <Stack gap="tight">
       <PaneHeading title={words.researchPlanNotes} level="h3" rule="start" />
-      <Table headers={[words.content, words.present, words.content]}>
+      <Table headers={[words.noteItem, words.present, words.content]}>
         {notes.map(([label, content]) => (
           <tr key={label}>
             <Td>{label}</Td>

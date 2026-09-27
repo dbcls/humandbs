@@ -119,7 +119,8 @@ export default function AdminContentsDocument({ loaderData, actionData }: Route.
                 <Form method="post">
                   <Confirm
                     label={t.removeDocument}
-                    title={t.removeDocumentTitle(slug)}
+                    title={t.removeDocumentTitle}
+                    subject={{ name: t.slug, value: slug }}
                     warning={t.removeDocumentWarning}
                     confirm={t.removeDocumentConfirm}
                     intent="delete-document"

@@ -46,7 +46,7 @@ import { resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { loadCatalog, publishedDatasets } from "~/public/queries.server"
-import { datasetRowOf, type DatasetRowView } from "~/public/view.server"
+import { datasetListCellsOf, type DatasetListCellsView, type DatasetRowView } from "~/public/view.server"
 import { type ListingSize, readListingSize } from "~/search/page-size"
 import {
   DEFAULT_SORT,
@@ -64,7 +64,7 @@ import {
   describedResearch,
   type ShownLine,
 } from "./changes"
-import { dayFromInput, dayInJst, today } from "~/dates"
+import { dayFromInput, today } from "~/dates"
 import { datasetContentInput, type DatasetContentInput } from "./dataset-form"
 import { datasetContentOf, saveDatasetSchema, widthsOrdered } from "./dataset-form.server"
 import {
@@ -321,7 +321,7 @@ export async function researchListPage(
       status: row.status,
       publishedVersions: row.publishedVersions,
       draftCount: row.draftCount,
-      updatedOn: dayInJst(row.updatedAt),
+      updatedOn: row.updatedOn,
       publishedOn: row.publishedOn,
     })),
   }
@@ -460,9 +460,10 @@ export interface VersionDatasetListView {
   number: number
   /**
    * What the version lists, in its order, each with the id it is known by now
-   * and the public page's row for it — null for one that is no longer published.
+   * and the dataset listing's cells for it — null for one that is no longer
+   * published.
    */
-  rows: { id: string, label: string | null, shown: DatasetRowView | null }[]
+  rows: { id: string, label: string | null, shown: DatasetListCellsView | null }[]
 }
 
 /**
@@ -493,10 +494,10 @@ export async function versionDatasetListPage(
     loadCatalog(db),
   ])
   const labels = new Map(datasets.map((row) => [row.id, row.label]))
-  // The cells are the public page's, read from where the public page reads them.
-  const shownOf = (id: string): DatasetRowView | null => {
+  // The cells are the dataset listing's, read from where the listing reads them.
+  const shownOf = (id: string): DatasetListCellsView | null => {
     const row = published.get(id)
-    return row === undefined ? null : datasetRowOf({ id, ...row }, locale, catalog)
+    return row === undefined ? null : datasetListCellsOf({ id, ...row }, locale, catalog)
   }
   return {
     locale,
@@ -644,12 +645,12 @@ export interface DraftDatasetListView {
   revision: number
   /**
    * Everything this draft publishes, in the order it goes out in, each with the
-   * public page's row for it — the same columns, read from the draft.
+   * dataset listing's cells for it — the same columns, read from the draft.
    */
   rows: (DraftDatasetRow & {
     /** This draft has changed its description (`changedDatasets`). */
     edited: boolean
-    shown: DatasetRowView | null
+    shown: DatasetListCellsView | null
   })[]
   /** The number of the version the draft updates. */
   updating: number | null

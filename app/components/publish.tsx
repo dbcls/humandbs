@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { Form, Link } from "react-router"
 
 import { draftAside } from "~/admin/draft-name"
@@ -145,15 +145,17 @@ function Changes({ view }: { view: PublishPageView }) {
               )}
               {view.reordered && <p className="text-sm">{t.reordered}</p>}
               {view.datasetChanges.length > 0 && (
-                <Table align="middle" headers={[...datasetColumns(locale), t.changes]}>
+                <Table align="middle" headers={datasetColumns(locale, t.changes)}>
                   {view.datasetChanges.map((change) => (
                     <tr key={change.datasetId}>
-                      <DatasetRowCells view={view} datasetId={change.datasetId} label={change.label} />
-                      <Td nowrap>
-                        {change.isNew
+                      <DatasetRowCells
+                        view={view}
+                        datasetId={change.datasetId}
+                        label={change.label}
+                        state={change.isNew
                           ? <Flag kind="changed">{t.newDataset}</Flag>
                           : t.datasetFields(change.fields)}
-                      </Td>
+                      />
                     </tr>
                   ))}
                 </Table>
@@ -165,7 +167,13 @@ function Changes({ view }: { view: PublishPageView }) {
 }
 
 /** A dataset's cells as the research's table draws them, leading to its editing screen. */
-function DatasetRowCells({ view, datasetId, label }: { view: PublishPageView, datasetId: string, label: string | null }) {
+function DatasetRowCells({ view, datasetId, label, state }: {
+  view: PublishPageView
+  datasetId: string
+  label: string | null
+  /** The state cell, after the id (`DatasetCells` の `state`). */
+  state?: ReactNode
+}) {
   const locale = view.locale
   const name = label ?? messagesFor(locale).admin.editor.unpinnedDataset
   const row = view.datasetRows[datasetId]
@@ -175,6 +183,7 @@ function DatasetRowCells({ view, datasetId, label }: { view: PublishPageView, da
       row={row}
       name={name}
       to={href(locale, adminDraftDatasetPath(view.researchId, view.draftId, datasetId))}
+      state={state}
       locale={locale}
     />
   )

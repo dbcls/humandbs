@@ -629,7 +629,7 @@ export function ItemList<T extends { id: string }>({
   return (
     <>
       {items.length > 0 && (
-        <Table actions headers={columns.map((column) => column.header)}>
+        <Table actions align="middle" headers={columns.map((column) => column.header)}>
           {items.map((item, at) => (
             // The row is the element's place on the form: a cell of the same
             // list on the page focuses here (`form.tsx` の `focusField`), and the

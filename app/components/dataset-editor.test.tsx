@@ -642,7 +642,7 @@ describe("the header", () => {
 
   it("has no second line — a dataset is a part of the draft, not a screen of its own", () => {
     const html = render(view())
-    expect(html).not.toContain("研究の編集へ")
+    expect(html).not.toContain(">研究へ<")
     expect(html).not.toContain("レビューと共有")
     expect(html).not.toContain("公開前の確認")
   })

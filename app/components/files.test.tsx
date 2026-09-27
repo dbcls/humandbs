@@ -297,12 +297,12 @@ describe("the research's file table", () => {
         [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((td) => td[1] ?? ""))
     }
 
-    it("follows the name, the labels and the size, as in the public list, under the name the public list gives it", () => {
-      expect(heads(table({})).slice(0, 5)).toEqual(["ファイル名", "ラベル (日本語)", "ラベル (英語)", "サイズ", "データセット ID"])
+    it("follows the name, the state, the labels and the size, under the name the public list gives it", () => {
+      expect(heads(table({})).slice(0, 6)).toEqual(["ファイル名", "状態", "ラベル ja", "ラベル en", "サイズ", "データセット ID"])
     })
 
     it("leads to each dataset's public page in a new tab", () => {
-      const cell = cells(table({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[4] ?? ""
+      const cell = cells(table({ "a.zip": ["NHA000001", "NHA000002"] }))[0]?.[5] ?? ""
 
       expect(cell).toContain("href=\"/dataset/NHA000001\"")
       expect(cell).toContain("href=\"/dataset/NHA000002\"")
@@ -310,7 +310,7 @@ describe("the research's file table", () => {
     })
 
     it("leaves the cell empty for a file no dataset selects", () => {
-      expect(cells(table({ "a.zip": ["NHA000001"] }))[1]?.[4]).toBe("")
+      expect(cells(table({ "a.zip": ["NHA000001"] }))[1]?.[5]).toBe("")
     })
 
     it("is not there at all when nothing was said about selections", () => {
@@ -492,7 +492,7 @@ describe("the research's file table", () => {
     function labelCells(html: string): string[][] {
       const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? ""
       return [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((tr) =>
-        [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].slice(1, 3).map((td) => td[1] ?? ""))
+        [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].slice(2, 4).map((td) => td[1] ?? ""))
     }
 
     it("shows each language in its own column, and an empty cell for a language not written", () => {
@@ -526,10 +526,11 @@ describe("the research's file table", () => {
     })
   })
 
-  it("changes the name on the one panel every slug is changed in", () => {
+  it("changes the name on the one panel every name is changed in, calling it the file name", () => {
     const html = render(<FileTable labels={{}} locale="ja" origin="https://humandbs.example" researchId={RESEARCH} humLabel="hum0009" rows={[entry({ name: "a.zip" })]} />)
 
-    expect(html).toContain("slug の編集")
+    expect(html).toContain("ファイル名の編集")
+    expect(html).not.toContain("slug")
   })
 
   it("does not offer deletion until it has been asked for twice", () => {

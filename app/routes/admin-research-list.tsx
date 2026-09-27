@@ -137,9 +137,9 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                 stuck={1}
                 headers={[
                   t.columns.humLabel,
+                  t.columns.status,
                   t.columns.datasets,
                   t.columns.title,
-                  t.columns.status,
                   t.columns.versions,
                   t.columns.drafts,
                   t.columns.files,
@@ -157,6 +157,20 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                       <IdWithIcon kind="research" to={href(locale, adminResearchPath(row.researchId))}>
                         {row.humLabel ?? <Flag kind="short">{t.unpinned}</Flag>}
                       </IdWithIcon>
+                    </Td>
+                    <Td nowrap>
+                      {/* The glyph shows the one thing the status is about —
+                          whether a reader can see this — and the word stays
+                          beside it, because an eye and a lock are only obvious
+                          once you know that is the question.
+
+                          **The pair is not a box of its own.** A box that
+                          centres what it holds puts the glyph 0.8px below where
+                          the same glyph sits on a line of text, and this row
+                          draws that same glyph on the baseline in another
+                          column. The cell already refuses to wrap, so there is
+                          nothing for a box to hold together. */}
+                      <Stated kind={STATUS_FLAG[row.status]}>{t.statuses[row.status]}</Stated>
                     </Td>
                     <Td nowrap>
                       {/* **A published dataset opens its public page in a new
@@ -184,20 +198,6 @@ export default function AdminResearchList({ loaderData }: Route.ComponentProps) 
                               {row.title}
                             </Excerpt>
                           )}
-                    </Td>
-                    <Td nowrap>
-                      {/* The glyph shows the one thing the status is about —
-                          whether a reader can see this — and the word stays
-                          beside it, because an eye and a lock are only obvious
-                          once you know that is the question.
-
-                          **The pair is not a box of its own.** A box that
-                          centres what it holds puts the glyph 0.8px below where
-                          the same glyph sits on a line of text, and this row
-                          draws that same glyph on the baseline two columns
-                          over. The cell already refuses to wrap, so there is
-                          nothing for a box to hold together. */}
-                      <Stated kind={STATUS_FLAG[row.status]}>{t.statuses[row.status]}</Stated>
                     </Td>
                     {/* **The two counts take only their own width**: a number of
                         one or two digits under a short heading, where the

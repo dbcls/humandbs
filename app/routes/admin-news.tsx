@@ -116,7 +116,7 @@ export default function AdminContentsNews({ loaderData, actionData }: Route.Comp
           >
             <Stack gap="normal">
               <Table
-                headers={[t.title, t.news.publishedAt, t.languages.ja, t.languages.en]}
+                headers={[t.title, t.languages.ja, t.languages.en, t.news.publishedAt]}
                 whenEmpty={inForce === 0 ? t.news.none : t.news.noMatch}
               >
                 {view.rows.map((row) => <Row key={row.id} row={row} locale={locale} />)}
@@ -143,8 +143,9 @@ interface ViewProps {
  * the name it goes by.
  *
  * **An announcement with nothing written yet still has to be openable**, so the
- * word for that is shown in the link's place — the date is in the next column and
- * would be the same thing twice.
+ * word for that is shown in the link's place — the date is in its own column and
+ * would be the same thing twice. The columns go in the order every table keeps:
+ * the name, the states, the date.
  */
 function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
   const t = messagesFor(locale).admin.contents
@@ -159,13 +160,13 @@ function Row({ row, locale }: { row: NewsRow, locale: Locale }) {
           state 「公開予定」: what the date holds back is each published
           language, and the column that shows a language is up is the one
           that has to say it is not up yet. */}
+      <Td nowrap><StateCell state={row.states.ja} locale={locale} ahead={row.scheduled} /></Td>
+      <Td nowrap><StateCell state={row.states.en} locale={locale} ahead={row.scheduled} /></Td>
       <Td nowrap>
         {row.publishedAt === null
           ? <span className="text-ink-muted">{t.news.undated}</span>
           : minuteOf(row.publishedAt)}
       </Td>
-      <Td nowrap><StateCell state={row.states.ja} locale={locale} ahead={row.scheduled} /></Td>
-      <Td nowrap><StateCell state={row.states.en} locale={locale} ahead={row.scheduled} /></Td>
     </tr>
   )
 }

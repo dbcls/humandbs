@@ -149,8 +149,12 @@ import {
   restoreDatasets,
   type RestoredDataset,
   splitArchiveAccessions,
+  assertExperimentEditsApplied,
+  keepExperiments,
   splitSharedExperiments,
+  type ExperimentEdit,
   type KeyRule,
+  type SharedSplit,
 } from "./prepare"
 import { lineDictionary, restoreLineBreaks, type LineDictionary } from "./line-breaks"
 import { readRelinks, relink, type Relink } from "./links"
@@ -790,24 +794,35 @@ async function load() {
   const jgasToJgad = jgadsByStudy(loadDatasetStudies())
   const divided = handSplits(rules)
   const review: ReviewItem[] = []
+  const unpinned: (SharedSplit["unpinned"][number] & { draft: boolean })[] = []
+  // The experiments a dataset keeps, and the blocks it keeps whole, settled by hand (`prepare.ts` の `ExperimentEdit`).
+  const experimentEdits = existsSync(join(INPUT, "hand", "experiment-edits.json")) ? readJson("hand", "experiment-edits.json") as ExperimentEdit[] : []
+  const experimentsEdited = new Set<ExperimentEdit>()
+  let experimentsTaken = 0
+  // A block is divided among the datasets it was written for before one of them gives it up.
+  const split = (datasets: readonly { label: string, doc: EsDataset }[], draft: boolean) => {
+    const result = splitSharedExperiments(datasets, jgasToJgad, divided, { edits: experimentEdits, applied: experimentsEdited })
+    review.push(...result.review)
+    unpinned.push(...result.unpinned.map((one) => ({ ...one, draft })))
+    experimentsTaken += keepExperiments(datasets.map((one) => one.doc), experimentEdits, experimentsEdited)
+  }
 
   // Published: one description per dataset, the one the latest version pins.
   const selection = selectPublishedDatasets(held)
   const published = copied(selection.datasets)
   const byHum = new Map<string, PublishedDataset[]>()
   for (const one of published) byHum.set(one.humId, [...(byHum.get(one.humId) ?? []), one])
-  for (const datasets of byHum.values()) {
-    review.push(...splitSharedExperiments(datasets.map(({ label, doc }) => ({ label, doc })), jgasToJgad, divided).review)
-  }
+  for (const datasets of byHum.values()) split(datasets.map(({ label, doc }) => ({ label, doc })), false)
 
   // Drafts: each with its own copies of the datasets it lists.
   const selectedDrafts = selectDrafts(held.research, held.versions, held.datasetsByKey)
   const drafts = { ...selectedDrafts, drafts: [...selectedDrafts.drafts, ...keptInDrafts] }
   const draftDatasets = drafts.drafts.map((draft) => {
     const datasets = draft.datasets.map((one) => ({ label: one.label, doc: structuredClone(one.doc) }))
-    review.push(...splitSharedExperiments(datasets, jgasToJgad, divided).review)
+    split(datasets, true)
     return datasets
   })
+  assertExperimentEditsApplied(experimentEdits, experimentsEdited)
 
   const aliases: RecoverContext = { articleAliases: articleAliases() }
   const prose = recovery(
@@ -842,10 +857,12 @@ async function load() {
     ? readJson("hand", "research-translations.json") as ResearchTranslation[]
     : []
   const researchTranslated = new Set<ResearchTranslation>()
+  // Every ID each dataset is known by, filled once the IDs are pinned.
+  const labelsOfId = new Map<string, Set<string>>()
   // A dataset's values written anew by hand, by the key's code (`value-edits.ts`).
-  const valued = <D extends object>(dataset: D, where: { hum: string, keyIdOf: (code: string) => string | undefined }): D =>
-    editValues(dataset, where.hum, valueEdits, where.keyIdOf, valuesEdited)
-  const linked = <T extends object>(content: T, where: { hum: string, dataset: boolean, keyIdOf: (code: string) => string | undefined }): T => {
+  const valued = <D extends object>(dataset: D, where: { hum: string, keyIdOf: (code: string) => string | undefined }, datasetId: string | undefined): D =>
+    editValues(dataset, where.hum, valueEdits, where.keyIdOf, valuesEdited, labelsOfId.get(datasetId ?? ""))
+  const linked = <T extends object>(content: T, where: { hum: string, dataset: boolean, datasetId?: string, keyIdOf: (code: string) => string | undefined }): T => {
     const result = relink(content, moved)
     for (const url of result.used) followed.add(url)
     const marked = markNotApplicable(result.content)
@@ -853,9 +870,9 @@ async function load() {
     const cleansed = cleanseContent(marked.content)
     for (const rule of Object.keys(cleansing) as (keyof CleansingCounts)[]) cleansing[rule] += cleansed.counts[rule]
     const edited = editText(cleansed.content, where, textEdits, textEdited)
-    if (where.dataset) return valued(edited, where)
-    const { datasets } = edited as { datasets?: object[] }
-    const described = datasets === undefined ? edited : { ...edited, datasets: datasets.map((one) => valued(one, where)) }
+    if (where.dataset) return valued(edited, where, where.datasetId)
+    const { datasets } = edited as { datasets?: { datasetId?: string }[] }
+    const described = datasets === undefined ? edited : { ...edited, datasets: datasets.map((one) => valued(one, where, one.datasetId)) }
     const published = editPublications(described, where.hum, publicationEdits, publicationsEdited)
     const granted = editGrants(published, where.hum, grantEdits, grantsEdited)
     const translatedContent = fillResearchTranslations(granted, where.hum, researchTranslations, researchTranslated)
@@ -949,6 +966,7 @@ async function load() {
       }
     }
     await insertChunked(pins, (chunk) => tx.insert(labelPin).values(chunk.map((pin) => ({ kind: "dataset" as const, ...pin }))))
+    for (const pin of pins) labelsOfId.set(pin.datasetId, (labelsOfId.get(pin.datasetId) ?? new Set()).add(pin.label))
 
     // The files a portal dataset's NBDC cells link are selected, and a cell whose
     // every line its file table already shows is taken out (`nbdc-cells.ts`).
@@ -999,6 +1017,7 @@ async function load() {
       typeOfDataKeyCode: TYPE_OF_DATA_KEY,
       datasetLabels,
       ownLines: siblings,
+      whole: experimentEdits.some((edit) => edit.op === "whole" && edit.hum === one.humId && edit.dataset === one.label),
       studies: jgasToJgad,
       unread,
       byHand: hand,
@@ -1114,10 +1133,10 @@ async function load() {
         ...(draft.memo === undefined ? [] : [{ anchor: MEMO_ANCHOR, body: draft.memo }]),
         ...requestComments({ kind: "research" }, asking.asked),
       ]
-      const linkedDatasets = settledCells(humId, datasets.map((one) => ({
-        datasetId: identityOf(datasetIdByLabel, one.label, "dataset"),
-        ...linked(describe(one, lines, preferred), { hum: humId, dataset: true, keyIdOf: (code) => keyIdByCode.get(code) }),
-      })))
+      const linkedDatasets = settledCells(humId, datasets.map((one) => {
+        const datasetId = identityOf(datasetIdByLabel, one.label, "dataset")
+        return { datasetId, ...linked(describe(one, lines, preferred), { hum: humId, dataset: true, datasetId, keyIdOf: (code) => keyIdByCode.get(code) }) }
+      }))
       const entries = linkedDatasets.map(({ datasetId, ...content }) => {
         const described = settleRequests(content)
         said.push(...requestComments({ kind: "dataset", datasetId }, described.asked))
@@ -1185,10 +1204,10 @@ async function load() {
   })
 
   const unfollowed = [...moved.keys()].filter((url) => !followed.has(url))
-  return { counts, selection, drafts, review, prose, notApplicable, dashes, emptyCells, emptyRows, cleansing, relinked: { followed: followed.size, unfollowed } }
+  return { counts, selection, drafts, review, unpinned, experimentsTaken, prose, notApplicable, dashes, emptyCells, emptyRows, cleansing, relinked: { followed: followed.size, unfollowed } }
 }
 
-const { counts, selection, drafts, review, prose, notApplicable, dashes, emptyCells, emptyRows, cleansing, relinked } = await load()
+const { counts, selection, drafts, review, unpinned, experimentsTaken, prose, notApplicable, dashes, emptyCells, emptyRows, cleansing, relinked } = await load()
 
 mkdirSync(OUT, { recursive: true })
 const written = (name: string, value: unknown) => {
@@ -1212,6 +1231,8 @@ console.log("search docs        ", counts.search)
 console.log("prose read from    ", prose.counts)
 console.log("unread number lines", counts.unread.length, written("unread-numbers.json", counts.unread))
 console.log("cells to divide    ", review.length, written("inversion-review.json", review))
+console.log("blocks pinned by a link's address", unpinned.length, written("unpinned-blocks.json", unpinned))
+console.log("experiments taken off by hand", experimentsTaken)
 console.log("prose notes        ", prose.notes.length, written("prose-notes.json", prose.notes))
 console.log("type of data from   ", prose.typeOfData)
 console.log("line breaks from the articles", prose.lineBreaksRestored(), "paragraphs")

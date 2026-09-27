@@ -86,14 +86,19 @@ export function AccessionSection({ locale, researchId, draftId, revision }: {
         </look.Form>
 
         {view?.unknown != null && <Note kind="warning">{t.unknown(view.unknown)}</Note>}
-        <Answer
-          answer={refused}
-          locale={locale}
-          said={(answer) => answer.status === "taken" ? t.takenLabel : messages.admin.conflict}
-        />
 
         {view?.chosen != null && (
           <make.Form method="post" action={at}>
+            {/* **The refusal is said from inside the form it refuses**, which
+                is the only thing here that can be refused and is on the screen
+                whenever a refusal is. Among the section's lines the notice's
+                strip, which has no height, would take a gap of its own and
+                push what was found a gap further from the box. */}
+            <Answer
+              answer={refused}
+              locale={locale}
+              said={(answer) => answer.status === "taken" ? t.takenLabel : messages.admin.conflict}
+            />
             <input type="hidden" name="revision" value={revision} />
             {view.chosen.applicationId !== null && (
               <input type="hidden" name="application" value={view.chosen.applicationId} />

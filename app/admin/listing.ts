@@ -18,7 +18,6 @@
  */
 
 import type { TranslatedText } from "~/content/types"
-import { dayInJst } from "~/dates"
 import { pageRange } from "~/paging"
 import { type ListingSize, PAGE_SIZE, rowsPerPage } from "~/search/page-size"
 import { DEFAULT_SORT, defaultOrder, type SortKey, type SortOrder } from "~/search/sort"
@@ -54,14 +53,28 @@ export interface AdminResearchRow {
   title: TranslatedText
   /** From the same content as the title. Matched against, never shown: a listing of names would crowd out the titles. */
   providerNames: TranslatedText[]
-  /** Every pinned dataset of the research, in label order. */
+  /**
+   * The datasets the latest version that is out lists and a reader can open,
+   * in label order — the public listing's column. While none is out, every
+   * pinned dataset of the research, which is what its first version will have.
+   */
   datasets: AdminDatasetRef[]
+  /**
+   * Every pinned dataset's label, published or not. Matched against, never
+   * shown: a curator looking for a dataset only a draft has still finds the
+   * research it belongs to.
+   */
+  datasetLabels: string[]
   status: AdminStatus
   publishedVersions: number
   draftCount: number
-  /** The most recent change to the research, any of its versions or its drafts. */
-  updatedAt: string
-  /** The release date of the latest version that is out, or `null` while none is. */
+  /**
+   * The public listing's date modified: the release date of the latest version
+   * that is out (`YYYY-MM-DD`). While none is out, the day in Japan of the last
+   * change to the research or its drafts.
+   */
+  updatedOn: string
+  /** The public listing's date published: the earliest release date among the versions out, or `null` while none is. */
   publishedOn: string | null
 }
 
@@ -115,7 +128,7 @@ function sides(pair: TranslatedText): string[] {
 function haystack(row: AdminResearchRow): string {
   return [
     row.humLabel ?? "",
-    ...row.datasets.map((entry) => entry.label),
+    ...row.datasetLabels,
     ...sides(row.title),
     ...row.providerNames.flatMap(sides),
   ].join("\n").toLowerCase()
@@ -144,18 +157,18 @@ export function filterResearchRows(
     if (!matchesKeyword(row, filter.keyword)) return false
     if (filter.statuses.length > 0 && !filter.statuses.includes(row.status)) return false
     if (!within(row.publishedOn, filter.published)) return false
-    if (!within(dayInJst(row.updatedAt), filter.updated)) return false
+    if (!within(row.updatedOn, filter.updated)) return false
     const held = filter.files.length === 0 ? null : hasFiles(row)
     return held === null || filter.files.includes(held ? "with" : "without")
   })
 }
 
 /**
- * The rows in the order asked for, most recently touched first by default.
+ * The rows in the order asked for, most recently modified first by default.
  *
- * **The keys are the ones the public listings offer** (`search/sort.ts`), so a
- * curator moving between the two sides has one set of orderings to learn rather
- * than two.
+ * **The keys and the dates are the ones the public listings offer**
+ * (`search/sort.ts`), so a curator moving between the two sides has one set of
+ * orderings to learn rather than two, and a date means the same on both.
  *
  * **A row with nothing under the key sinks, whichever way the order runs.** An
  * unpinned label and a research that has never been out have no place on a
@@ -187,7 +200,7 @@ export function sortResearchRows(
 function keyOf(row: AdminResearchRow, sort: SortKey): string | null {
   if (sort === "id") return row.humLabel
   if (sort === "datePublished") return row.publishedOn
-  return row.updatedAt
+  return row.updatedOn
 }
 
 export interface ListingPage<Row> {

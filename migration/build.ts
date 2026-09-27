@@ -499,6 +499,11 @@ export interface DatasetContentInput {
   datasetLabels: ReadonlySet<string>
   /** What each dataset states about itself (`ownLines`). */
   ownLines: ReadonlySet<string>
+  /**
+   * Whether the dataset keeps its blocks whole (`prepare.ts` の `ExperimentEdit`):
+   * the lines naming the other datasets of a block are about it too, and stay.
+   */
+  whole?: boolean
   /** The studies a line may name its datasets by, the same as `ownLines` was given. */
   studies?: Studies
   /**
@@ -579,6 +584,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
    * itself, and this dataset has a group of its own in the cell.
    */
   const staying = (sourceKey: string, lang: Language, lines: readonly string[]): boolean[] => {
+    if (input.whole === true) return lines.map(() => true)
     const read = lines.map((line) => readLine(line, input.datasetLabels, input.studies))
     const stays = read.map(({ said, about }) => about.length === 0 || about.includes(dataset.label)
       || !about.every((label) => input.ownLines.has(lineKey(label, sourceKey, lang, said))))

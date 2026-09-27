@@ -8,7 +8,7 @@
  */
 
 import { datasetKey, type Dump, type EsDataset, type EsExperiment, type EsResearchVersion, type EsRichText } from "./es"
-import { blockDataFromEs, splitSharedBlock, type HandSplits, type ReviewItem, type SplitStats } from "./inversion"
+import { blockDataFromEs, blockNames, pinnedByAddress, splitSharedBlock, type HandSplits, type ReviewItem, type SplitStats } from "./inversion"
 
 type Cell = NonNullable<EsExperiment["data"]>[string]
 
@@ -243,9 +243,61 @@ function fingerprint(experiment: EsExperiment): string {
   ])
 }
 
+/**
+ * A dataset's experiments settled by hand (`hand/experiment-edits.json`):
+ *
+ * - `keep` leaves the dataset only the experiments named, each by its heading
+ *   and, where two share one, by an ID the block writes. v1 pinned a JGA
+ *   study's sections to every dataset of the study, and a section's JGAS to
+ *   every dataset of that study, so a dataset JGA processed out of another
+ *   (`Processed by JGA: JGAD000220`) has the research's other sections too.
+ *   It is made once the blocks are divided, so the others divide a block as
+ *   they were written with it. A document that has none of the experiments
+ *   named, one older than the dataset's own section, is left as it is;
+ * - `whole` keeps the dataset's blocks whole where several datasets share them:
+ *   the block is the dataset's section, and the lines naming the archives and
+ *   studies its data comes from are about it as well.
+ *
+ * An edit that lands nowhere stops the load.
+ */
+export type ExperimentEdit
+  = | { op: "keep", hum: string, dataset: string, experiments: { header: string, names?: string }[], note?: string }
+    | { op: "whole", hum: string, dataset: string, note?: string }
+
+/** Takes off each dataset the experiments a `keep` edit does not name; the number taken off. */
+export function keepExperiments(docs: Iterable<EsDataset>, edits: readonly ExperimentEdit[], applied: Set<ExperimentEdit>): number {
+  let taken = 0
+  for (const doc of docs) {
+    for (const edit of edits) {
+      if (edit.op !== "keep" || edit.hum !== doc.humId || edit.dataset !== doc.datasetId) continue
+      const experiments = doc.experiments ?? []
+      const kept = new Set<EsExperiment>()
+      for (const one of edit.experiments) {
+        const found = experiments.filter((experiment) => textOf(experiment.header?.ja) === one.header
+          && (one.names === undefined || blockNames(blockDataFromEs(experiment.data), one.names)))
+        if (found.length > 1) throw new Error(`${edit.dataset} ${doc.version} has ${found.length} experiments ${one.header} ${one.names ?? ""}`)
+        for (const experiment of found) kept.add(experiment)
+      }
+      if (kept.size === 0) continue
+      applied.add(edit)
+      taken += experiments.length - kept.size
+      doc.experiments = experiments.filter((experiment) => kept.has(experiment))
+    }
+  }
+  return taken
+}
+
+/** Stops the load if an edit found nothing to act on. */
+export function assertExperimentEditsApplied(edits: readonly ExperimentEdit[], applied: ReadonlySet<ExperimentEdit>): void {
+  const unlanded = edits.filter((edit) => !applied.has(edit))
+  if (unlanded.length > 0) throw new Error(`experiment edits that found nothing:\n${unlanded.map((edit) => `${edit.op} ${edit.hum} ${edit.dataset}`).join("\n")}`)
+}
+
 export interface SharedSplit {
   stats: SplitStats
   review: ReviewItem[]
+  /** The datasets a block was taken from, pinned to them by a link's address alone (`pinnedByAddress`). */
+  unpinned: { label: string, heading: string }[]
 }
 
 /**
@@ -253,35 +305,57 @@ export interface SharedSplit {
  * datasets share word for word (`inversion.ts`). The datasets are those one
  * research version lists; a cell the rules cannot settle stays whole on every
  * dataset and is listed for somebody to divide.
+ *
+ * A block pinned to a dataset by a link's address alone is taken from it
+ * first, unless it is the only block the dataset has: the dataset that block
+ * names has the same block word for word. A dataset a `whole` edit names keeps
+ * the block as it is, and the others get what the division gives them.
  */
 export function splitSharedExperiments(
   datasets: readonly { label: string, doc: EsDataset }[],
   jgasToJgad: ReadonlyMap<string, readonly string[]>,
   byHand: HandSplits = new Map(),
+  whole: { edits: readonly ExperimentEdit[], applied: Set<ExperimentEdit> } = { edits: [], applied: new Set() },
 ): SharedSplit {
-  const blocks = new Map<string, { label: string, experiment: EsExperiment }[]>()
+  const blocks = new Map<string, { label: string, doc: EsDataset, experiment: EsExperiment }[]>()
   for (const { label, doc } of datasets) {
     for (const experiment of doc.experiments ?? []) {
       const print = fingerprint(experiment)
-      blocks.set(print, [...(blocks.get(print) ?? []), { label, experiment }])
+      blocks.set(print, [...(blocks.get(print) ?? []), { label, doc, experiment }])
     }
   }
 
   const stats: SplitStats = { split: 0, shared: 0, review: 0, hand: 0 }
   const review: ReviewItem[] = []
-  for (const holders of blocks.values()) {
+  const unpinned: SharedSplit["unpinned"] = []
+  for (const pinned of blocks.values()) {
+    const [sample] = pinned
+    if (sample === undefined) continue
+    const data = blockDataFromEs(sample.experiment.data)
+    const byAddress = new Set(pinnedByAddress(data, [...new Set(pinned.map((one) => one.label))]))
+    const holders = pinned.filter(({ label, doc, experiment }) => {
+      const experiments = doc.experiments ?? []
+      if (!byAddress.has(label) || experiments.length < 2) return true
+      doc.experiments = experiments.filter((one) => one !== experiment)
+      unpinned.push({ label, heading: textOf(experiment.header?.ja) })
+      return false
+    })
     const labels = [...new Set(holders.map((one) => one.label))]
     if (labels.length < 2) continue
-    const [sample] = holders
-    if (sample === undefined) continue
-    const result = splitSharedBlock(blockDataFromEs(sample.experiment.data), labels, jgasToJgad, byHand)
+    const result = splitSharedBlock(data, labels, jgasToJgad, byHand)
+    const kept = new Set(whole.edits.filter((edit) => edit.op === "whole" && labels.includes(edit.dataset)
+      && holders.some((one) => one.label === edit.dataset && one.doc.humId === edit.hum)).map((edit) => {
+      whole.applied.add(edit)
+      return edit.dataset
+    }))
     stats.split += result.stats.split
     stats.shared += result.stats.shared
     stats.review += result.stats.review
     stats.hand += result.stats.hand
-    review.push(...result.review)
+    review.push(...result.review.filter((one) => !kept.has(one.dataset)))
 
     for (const { label, experiment } of holders) {
+      if (kept.has(label)) continue
       const own = result.perDataset.get(label)
       if (own === undefined || !experiment.data) continue
       for (const [key, value] of Object.entries(experiment.data)) {
@@ -292,7 +366,7 @@ export function splitSharedExperiments(
       }
     }
   }
-  return { stats, review }
+  return { stats, review, unpinned }
 }
 
 /**

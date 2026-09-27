@@ -17,6 +17,11 @@
  * - `add` gives a key a value from markdown in each experiment where another
  *   key holds a given text, read before any edit of the experiment is made.
  *
+ * An edit that names a `dataset`, by an ID the dataset is known by (the one v1
+ * gave it, `hum0014.v8.58qt.v1`), lands on that dataset only: a block pinned to
+ * several datasets leaves the same text on each, and a correction may be about
+ * one of them.
+ *
  * **An edit that lands nowhere stops the load**, since it was written against
  * the loaded values and not landing means one of the two has moved.
  */
@@ -28,8 +33,8 @@ import { richTextFromMarkdown } from "./richtext"
 type Lang = "ja" | "en"
 
 export type ValueEdit
-  = | { op: "set", hum: string, key: string, lang: Lang, was: string, markdown: string }
-    | { op: "add", hum: string, key: string, lang: Lang, markdown: string, besideKey: string, besideWas: string }
+  = | { op: "set", hum: string, dataset?: string, key: string, lang: Lang, was: string, markdown: string }
+    | { op: "add", hum: string, dataset?: string, key: string, lang: Lang, markdown: string, besideKey: string, besideWas: string }
 
 interface TextValue {
   kind: "text"
@@ -55,15 +60,19 @@ function linesOf(value: TextValue, lang: Lang): string | null {
 
 const holdsNothing = (slot: Slot<RichText>) => slot.state === "value" && slot.value.length === 0
 
-/** A dataset's description with its edits made, adding each edit that found its text to `applied`. */
+/**
+ * A dataset's description with its edits made, adding each edit that found its
+ * text to `applied`. `labels` are the IDs the dataset is known by.
+ */
 export function editValues<T extends Described>(
   content: T,
   hum: string,
   edits: readonly ValueEdit[],
   keyIdOf: (code: string) => string | undefined,
   applied: Set<ValueEdit>,
+  labels: ReadonlySet<string> = new Set(),
 ): T {
-  const own = edits.filter((edit) => edit.hum === hum)
+  const own = edits.filter((edit) => edit.hum === hum && (edit.dataset === undefined || labels.has(edit.dataset)))
   if (own.length === 0 || content.experiments === undefined) return content
   const keyId = (code: string) => {
     const found = keyIdOf(code)

@@ -522,10 +522,26 @@ describe("押せるものの語は名詞で終わる", () => {
   it("確認ダイアログの実行ボタンの語は、タイトルに書いた動作と同じ", () => {
     const detail = messagesFor("ja").admin.detail
     const catalog = messagesFor("ja").admin.catalog
-    expect(detail.stopUpdatingTitle("v1").endsWith(detail.stopUpdatingConfirm)).toBe(true)
+    expect(detail.stopUpdatingTitle.endsWith(detail.stopUpdatingConfirm)).toBe(true)
     expect(detail.stopUpdating).toBe(detail.stopUpdatingConfirm)
-    expect(catalog.mergeTitle("a", "b").endsWith(catalog.mergeConfirm)).toBe(true)
+    expect(catalog.mergeTitle.endsWith(catalog.mergeConfirm)).toBe(true)
     expect(catalog.mergeInto).toBe(catalog.mergeConfirm)
+  })
+
+  it("ダイアログのタイトルは値を受け取らない (何に対する操作かは本文の先頭に表示する)", () => {
+    // The list's name is a heading of the form, not a value somebody wrote.
+    const ELEMENT_TITLES = new Set(["admin.editor.addElementTitle", "admin.editor.editElementTitle"])
+    const takingValues: string[] = []
+    const walk = (node: unknown, path: string): void => {
+      if (typeof node === "function") {
+        if (path.endsWith("Title") && !ELEMENT_TITLES.has(path)) takingValues.push(path)
+        return
+      }
+      if (node === null || typeof node !== "object" || Array.isArray(node)) return
+      for (const [key, value] of Object.entries(node)) walk(value, `${path}.${key}`)
+    }
+    walk(messagesFor("ja").admin, "admin")
+    expect(takingValues).toStrictEqual([])
   })
 })
 
@@ -587,7 +603,7 @@ describe("全ページの上部に出る 1 文の語", () => {
  * is not there — so every word the note quotes has to be a word some button
  * on the way actually shows.
  */
-describe("研究の編集の「バージョンと下書き」の説明文", () => {
+describe("研究の画面の「バージョンと下書き」の説明文", () => {
   const admin = messagesFor("ja").admin
   const note = admin.detail.rowsNote.join("")
   const buttons = new Set([

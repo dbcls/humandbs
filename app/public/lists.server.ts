@@ -657,7 +657,7 @@ export async function researchExportTable(
   return {
     headers: [
       t.researchId,
-      t.datasets,
+      messages.dataset.datasetId,
       t.title,
       short.methods,
       short.typeOfData,

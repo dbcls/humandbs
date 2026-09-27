@@ -27,8 +27,10 @@ import { draftAside } from "~/admin/draft-name"
 import type {
   DataProviderInput,
   DraftInput,
+  IdsInput,
+  LinksInput,
   LinksPairInput,
-  SlotState,
+  RelatedPublicationInput,
   TextInput,
   ResearchContentInput,
 } from "~/admin/form"
@@ -42,11 +44,12 @@ import {
   draftCommentsPath,
   draftPagePath,
 } from "~/admin/urls"
-import type { CommentAnchor } from "~/content/types"
-import type { Locale } from "~/i18n/locale"
+import type { CommentAnchor, Link, Slot } from "~/content/types"
+import { resolveLinks, resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { AnnotationLayer, Card, NotApplicable, Page, PageHeader } from "~/components/page"
-import { href } from "~/public/urls"
+import { AnnotationLayer, Card, DatasetIds, LinksValue, NotApplicable, Page, PageHeader, Value } from "~/components/page"
+import { href, researchPath } from "~/public/urls"
+import type { FieldView } from "~/public/view.server"
 import { RESEARCH } from "~/review/anchors"
 import {
   commentsByPath,
@@ -60,7 +63,7 @@ import { DraftHead, DraftNameEditor, DraftTools, useDraftEditing, useDrawn } fro
 import { DraftNote, OpenComments, WholeNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { placeName, placeRows } from "./places"
-import { ResearchBody, ResearchListTable } from "./research"
+import { DoiValue, GrantIdsValue, ResearchBody, ResearchListTable } from "./research"
 import { CitableTable, datasetName, GrantIds, IdList, LinksField, researchFieldLabel } from "./research-fields"
 import {
   ConflictBanner,
@@ -154,6 +157,36 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     locale === "en" ? view.page : null)
 
   /**
+   * The datasets a publication names, in the form's table of publications, as
+   * the page draws them (`fieldCell`): this research's by their IDs in the order
+   * the publication names them, the ones typed in after, and **another
+   * research's with that research's ID after it** — which only the drawn page
+   * knows, so it is read from the Japanese drawing once there is one.
+   */
+  const researchOfCited = new Map((pageJa?.view.relatedPublications ?? []).flatMap((publication) =>
+    publication.datasets.flatMap((one) => one.humLabel === null ? [] : [[one.label, one.humLabel] as const])))
+  function citedCell(item: RelatedPublicationInput): ReactNode {
+    if (item.datasetIds.state === "unknown") return null
+    if (item.datasetIds.state === "not-applicable") return <NotApplicable locale={locale} />
+    const labels = [
+      ...item.datasetIds.ids.flatMap((id) => {
+        const row = view.datasets.find((one) => one.id === id)
+        return row === undefined ? [] : [datasetName(row, locale)]
+      }),
+      ...item.externalIds.filter((id) => id.trim() !== ""),
+    ]
+    return (
+      <DatasetIds
+        locale={locale}
+        items={labels.map((label) => {
+          const hum = researchOfCited.get(label)
+          return { label, to: null, research: hum === undefined ? null : { label: hum, to: href(locale, researchPath(hum)) } }
+        })}
+      />
+    )
+  }
+
+  /**
    * Where the caret is, as a place in the content rather than a box on screen.
    *
    * **The ja and en boxes of one field are the same place**, so tabbing between
@@ -175,10 +208,11 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   /**
    * Going to the place a banner or the page pane names (`form.tsx` の `focusField`):
    * the field when it is open on the form, the element's row when the field
-   * is written in a panel that is not open (`ItemList`), else the section.
+   * is written in a panel that is not open (`ItemList`), else the section — and
+   * from one language's page, that language's box.
    */
-  function goTo(path: string): void {
-    focusField(form.current, path, sectionOf(path))
+  function goTo(path: string, language?: Locale): void {
+    focusField(form.current, path, sectionOf(path), language)
   }
 
   /**
@@ -322,7 +356,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               makeEmpty={() => ({ id: newId(), name: emptyPair(), url: emptyLinksPair() })}
               columns={[
                 { header: words.researchProjectName, cell: (item) => pairCell(item.name, locale) },
-                { header: words.url, cell: (item) => <LinkLines links={item.url} /> },
+                { header: words.url, cell: (item) => <span className="break-all">{linksCell(item.url, locale)}</span> },
               ]}
             >
               {(item, path, set) => (
@@ -361,17 +395,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               columns={[
                 { header: words.grantAgency, cell: (item) => pairCell(item.agency.name, locale) },
                 { header: words.grantTitle, cell: (item) => pairCell(item.title, locale) },
-                // A line each, as the page draws them: several numbers on one
-                // line run into one long code.
-                { header: words.grantId, cell: (item) => item.grantIds.state === "value"
-                  ? (
-                      <ul className="flex flex-col items-start gap-1">
-                        {item.grantIds.ids.filter((grantId) => grantId !== "").map((grantId) => (
-                          <li key={grantId}><Badge pill>{grantId}</Badge></li>
-                        ))}
-                      </ul>
-                    )
-                  : stateCell(item.grantIds.state, locale) },
+                { header: words.grantId, cell: (item) => grantIdsCell(item.grantIds, locale) },
               ]}
             >
               {(item, path, set) => (
@@ -417,19 +441,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               wide
               columns={[
                 { header: words.publicationTitle, cell: (item) => slotCell(item.title, locale) },
-                { header: t.doi, cell: (item) => <span className="break-all">{slotCell(item.doi, locale)}</span> },
-                { header: messages.dataset.datasetId, cell: (item) => item.datasetIds.state !== "value"
-                  ? stateCell(item.datasetIds.state, locale)
-                  : (
-                      <ul className="flex flex-col gap-1">
-                        {view.datasets
-                          .filter((row) => item.datasetIds.ids.includes(row.id))
-                          .map((row) => <li key={row.id}>{datasetName(row, locale)}</li>)}
-                        {item.externalIds
-                          .filter((id) => id.trim() !== "")
-                          .map((id) => <li key={`external-${id}`}>{id}</li>)}
-                      </ul>
-                    ) },
+                { header: t.doi, cell: (item) => <span className="break-all">{doiCell(item.doi, locale)}</span> },
+                { header: messages.dataset.datasetId, cell: (item) => citedCell(item) },
               ]}
             >
               {(item, path, set) => (
@@ -581,6 +594,7 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
               annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} drawn={drawn} />}
               here={at}
               onGo={goTo}
+              language={language}
               goLabel={t.goToField}
             >
               <PageHeader
@@ -617,11 +631,19 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         id: "row",
         label: t.paneRow,
         body: (
-          <AnnotationLayer annotate={() => null} here={at} onGo={goTo} goLabel={t.goToField}>
-            <Card>
-              <Stack gap="block">
-                {([["ja", pageJa], ["en", pageEn]] as const).map(([language, drawn]) => (
-                  <Stack key={language} gap="tight">
+          <Card>
+            <Stack gap="block">
+              {/* A layer each, so a cell of the English row goes to the English box. */}
+              {([["ja", pageJa], ["en", pageEn]] as const).map(([language, drawn]) => (
+                <AnnotationLayer
+                  key={language}
+                  annotate={() => null}
+                  here={at}
+                  onGo={goTo}
+                  language={language}
+                  goLabel={t.goToField}
+                >
+                  <Stack gap="tight">
                     <LanguageLabel language={language} />
                     {drawn !== null && (
                       <ResearchListTable
@@ -632,10 +654,10 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
                       />
                     )}
                   </Stack>
-                ))}
-              </Stack>
-            </Card>
-          </AnnotationLayer>
+                </AnnotationLayer>
+              ))}
+            </Stack>
+          </Card>
         ),
       },
     ],
@@ -810,31 +832,71 @@ function RepeatingSection<T extends { id: string }>({
   )
 }
 
-/**
- * A value set to a state, as a table cell. **Not applicable is the page's
- * `N/A`.** **Unsettled is nothing**: the row's first cell has the 未確定 badge
- * for everything unsettled in the element (`fields.tsx` の `ItemList`), and the
- * word beside it again said the same thing twice in one row.
+/*
+ * **The form's tables draw the page's cells** (`research.tsx`): the same parts —
+ * `Value`, `LinksValue`, `DoiValue`, `GrantIdsValue`, `DatasetIds` — given the
+ * values the Japanese page resolves from what the form holds, so a table read
+ * beside the page is the page's table. **Unsettled is drawn as nothing**: the
+ * row's first cell has the 未確定 badge for everything unsettled in the element,
+ * and the page's badge beside it said the same thing twice in one row. **An empty
+ * value is `""`**, which the table reads as nothing written (`ItemColumn` の `cell`).
  */
-function stateCell(state: Exclude<SlotState, "value">, locale: Locale): ReactNode {
-  return state === "not-applicable" ? <NotApplicable locale={locale} /> : null
+
+/** The language the form's tables are drawn in: the page the form is written for first. */
+const TABLE_LANGUAGE: Locale = "ja"
+
+function slotOf(input: TextInput): Slot<string> {
+  return input.state === "value" ? { state: "value", value: input.text } : { state: input.state }
 }
 
-function slotCell(slot: TextInput, locale: Locale): ReactNode {
-  return slot.state === "value" ? slot.text : stateCell(slot.state, locale)
+function linksSlotOf(input: LinksInput): Slot<Link[]> {
+  return input.state === "value" ? { state: "value", value: input.links } : { state: input.state }
 }
 
-/** The Japanese side, or the English while the Japanese side is a value with nothing typed. */
+/** A value of the page in a cell of the form's table. */
+function fieldCell(field: FieldView, locale: Locale): ReactNode {
+  if (field.state === "unsettled") return null
+  if (field.state === "plain" && field.text === "") return ""
+  return <Value field={field} locale={locale} />
+}
+
+/** A single-language value (`view.server.ts` の `plainOf`). */
+function slotCell(input: TextInput, locale: Locale): ReactNode {
+  if (input.state === "unknown") return null
+  if (input.state === "not-applicable") return fieldCell({ state: "not-applicable" }, locale)
+  return fieldCell({ state: "plain", text: input.text, untranslated: false }, locale)
+}
+
+/** A translated pair, falling back to the other language as the page does (`resolveText`). */
 function pairCell(pair: { ja: TextInput, en: TextInput }, locale: Locale): ReactNode {
-  return pair.ja.state === "value" && pair.ja.text === "" ? slotCell(pair.en, locale) : slotCell(pair.ja, locale)
+  const resolved = resolveText({ ja: slotOf(pair.ja), en: slotOf(pair.en) }, TABLE_LANGUAGE)
+  return resolved.state === "value"
+    ? fieldCell({ state: "plain", text: resolved.value, untranslated: resolved.untranslated }, locale)
+    : fieldCell(resolved, locale)
 }
 
-/** A pair of link lists as lines, the way the page draws them: a link's text, or its address. */
-function LinkLines({ links }: { links: LinksPairInput }) {
-  const shown = links.ja.links.length > 0 ? links.ja.links : links.en.links
+/** A pair of link lists: the page's language only, since a link's languages are different addresses (`resolveLinks`). */
+function linksCell(links: LinksPairInput, locale: Locale): ReactNode {
+  const resolved = resolveLinks({ ja: linksSlotOf(links.ja), en: linksSlotOf(links.en) }, TABLE_LANGUAGE)
+  return resolved.state === "unsettled" ? null : <LinksValue links={resolved} locale={locale} />
+}
+
+function doiCell(doi: TextInput, locale: Locale): ReactNode {
+  if (doi.state === "unknown") return null
   return (
-    <ul className="flex flex-col gap-1 break-all">
-      {shown.map((link) => <li key={link.id}>{link.text !== "" ? link.text : link.url}</li>)}
-    </ul>
+    <DoiValue
+      doi={doi.state === "value" ? { state: "plain", text: doi.text, untranslated: false } : { state: "not-applicable" }}
+      locale={locale}
+    />
+  )
+}
+
+function grantIdsCell(ids: IdsInput, locale: Locale): ReactNode {
+  if (ids.state === "unknown") return null
+  return (
+    <GrantIdsValue
+      ids={ids.state === "value" ? { state: "value", items: ids.ids.filter((id) => id !== "") } : { state: "not-applicable" }}
+      locale={locale}
+    />
   )
 }

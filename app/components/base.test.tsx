@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -517,5 +517,45 @@ describe("the foot of a panel", () => {
   it("has nothing before the buttons where there is nothing to say", () => {
     const html = panel()
     expect(html).not.toContain("mr-auto")
+  })
+})
+
+/**
+ * A panel's title is the kind of thing and the act; which one it acts on is the
+ * line under the title, in the words of the table's column.
+ */
+describe("what a panel acts on", () => {
+  const confirm = (subject?: DialogSubject | readonly DialogSubject[]) => render(
+    <Confirm
+      held={{ open: true, close: () => undefined }}
+      title="ファイルの削除"
+      subject={subject}
+      warning="このファイルが削除されます。元に戻せません。"
+      confirm="削除"
+      onConfirm={() => undefined}
+    />,
+  )
+
+  it("names the one it acts on under the title and before the warning, with the column's name", () => {
+    const html = confirm({ name: "ファイル名", value: "hum0001.v1.freq.txt.gz" })
+    const title = html.indexOf("ファイルの削除")
+    const name = html.indexOf("ファイル名")
+    const value = html.indexOf("hum0001.v1.freq.txt.gz")
+    const warning = html.indexOf("このファイルが削除されます。")
+    expect(title).toBeGreaterThan(-1)
+    expect(name).toBeGreaterThan(title)
+    expect(value).toBeGreaterThan(name)
+    expect(warning).toBeGreaterThan(value)
+  })
+
+  it("names each of several, in the order given", () => {
+    const html = confirm([{ name: "統合元", value: "RNA-seq" }, { name: "統合先", value: "RNA sequencing" }])
+    expect(html.indexOf("統合元")).toBeLessThan(html.indexOf("RNA-seq"))
+    expect(html.indexOf("RNA-seq")).toBeLessThan(html.indexOf("統合先"))
+    expect(html.indexOf("統合先")).toBeLessThan(html.indexOf("RNA sequencing"))
+  })
+
+  it("draws no line when there is nothing to name", () => {
+    expect(confirm()).not.toContain("ファイル名")
   })
 })

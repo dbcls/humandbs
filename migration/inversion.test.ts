@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { blockDataFromEs, handKey, jgadsByStudy, splitSharedBlock, type BlockData } from "./inversion"
+import { blockDataFromEs, handKey, jgadsByStudy, pinnedByAddress, splitSharedBlock, type BlockData } from "./inversion"
 
 /** A one-key block, both languages holding the same text unless `en` is given. */
 function block(key: string, ja: string, en = ja): BlockData {
@@ -213,6 +213,56 @@ describe("a link's address", () => {
 
     expect(ownText(result, "JGAD000001", "Total Data Volume")).toContain("88 GB")
     expect(ownText(result, "JGAD000001", "Total Data Volume")).not.toContain("32 GB")
+  })
+})
+
+describe("pinnedByAddress", () => {
+  const FREQ = "hum0014.v1.freq.v1"
+  const T2DM = "hum0014.v3.T2DM-1.v1"
+  const t2dm = [
+    `[${T2DM}](/files/hum0014/${T2DM}.xlsx)`,
+    "(データのダウンロードは上記Dataset IDをクリックしてください)",
+    `[Dictionary file](/files/hum0014/${FREQ}_dictionary.xlsx)`,
+  ].join("\n")
+
+  it("returns the dataset only an address names when the words name another", () => {
+    expect(pinnedByAddress(block("NBDC Dataset Accession", t2dm), [FREQ, T2DM])).toEqual([FREQ])
+  })
+
+  it("returns nothing when the words name none of the datasets", () => {
+    const dictionary = `[Dictionary file](/files/hum0014/${FREQ}_dictionary.xlsx)`
+
+    expect(pinnedByAddress(block("NBDC Dataset Accession", dictionary), [FREQ, T2DM])).toEqual([])
+  })
+
+  it("keeps a dataset the words of another cell or the other language name", () => {
+    const other = { "NBDC Dataset Accession": { ja: t2dm, en: t2dm }, "Materials and Participants": { ja: `${FREQ} の対照群`, en: "controls" } }
+    const english = { "NBDC Dataset Accession": { ja: t2dm, en: `${t2dm}\n${FREQ}` } }
+
+    expect(pinnedByAddress(other, [FREQ, T2DM])).toEqual([])
+    expect(pinnedByAddress(english, [FREQ, T2DM])).toEqual([])
+  })
+
+  it("keeps a dataset the words name even where an address names it as well", () => {
+    // hum0331: the index is named after the frequencies, and each is linked by its own ID.
+    const text = [
+      "[hum0331.v1.freq.v1](/files/hum0331/NCBN-freeze2.sampleQC.GTfilter.freq.vcf.gz)",
+      "[hum0331.v1.freq-index.v1](/files/hum0331/hum0331.v1.freq.v1.vcf.gz.tbi)",
+    ].join("\n")
+
+    expect(pinnedByAddress(block("NBDC Dataset Accession", text), ["hum0331.v1.freq.v1", "hum0331.v1.freq-index.v1"])).toEqual([])
+  })
+
+  it("keeps a dataset no address names", () => {
+    const text = "JGAD000001: 88 GB\n[README](/files/hum0001/README.md)"
+
+    expect(pinnedByAddress(block("Total Data Volume", text), ["JGAD000001", "JGAD000002"])).toEqual([])
+  })
+
+  it("does not read a longer ID in an address as the dataset's", () => {
+    const text = `[${T2DM}](/files/hum0014/${FREQ}2_dictionary.xlsx)`
+
+    expect(pinnedByAddress(block("NBDC Dataset Accession", text), [FREQ, T2DM])).toEqual([])
   })
 })
 

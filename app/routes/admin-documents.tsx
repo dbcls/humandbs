@@ -151,7 +151,7 @@ export default function AdminContents({ loaderData, actionData }: Route.Componen
           >
             <Stack gap="normal">
               <Table
-                headers={[t.slug, t.title, t.versions, t.languages.ja, t.languages.en]}
+                headers={[t.slug, t.languages.ja, t.languages.en, t.title, t.versions]}
                 whenEmpty={inForce === 0 ? t.noDocument : t.noMatch}
               >
                 {view.rows.map((entry) => (
@@ -199,14 +199,14 @@ function Row({ entry, locale }: { entry: TreeEntry, locale: Locale }) {
           <Link to={href(locale, to)}><Code>{slug}</Code></Link>
         </div>
       </Td>
+      <Td nowrap><StateCell state={states.ja} locale={locale} /></Td>
+      <Td nowrap><StateCell state={states.en} locale={locale} /></Td>
       <Td floor="min-w-64">
         {entry.kind === "series" && entry.current === null
           ? <span className="text-ink-muted">{t.noCurrent}</span>
           : title}
       </Td>
       <Td nowrap>{entry.kind === "series" ? entry.series.revisions.length : ""}</Td>
-      <Td nowrap><StateCell state={states.ja} locale={locale} /></Td>
-      <Td nowrap><StateCell state={states.en} locale={locale} /></Td>
     </tr>
   )
 }

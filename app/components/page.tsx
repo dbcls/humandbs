@@ -39,24 +39,32 @@ interface AnnotationLayerValue {
   annotate: Annotate
   /** The place the caret is in, on the form this page is drawn beside. */
   here: string | null
-  /** The link into the field that writes a field path, when the page is shown beside its form. */
-  onGo: ((at: string) => void) | null
+  /**
+   * The link into the field that writes a field path, when the page is shown
+   * beside its form — handed the language the page is drawn in, so a value of
+   * the English page goes to the English box.
+   */
+  onGo: ((at: string, language?: Locale) => void) | null
   /** What that way is called, for whoever reaches it by keyboard. */
   goLabel: string
+  /** The language the page under the layer is drawn in, when there is one. */
+  language?: Locale
 }
 
 const AnnotateContext = createContext<AnnotationLayerValue | null>(null)
 
-export function AnnotationLayer({ annotate, here = null, onGo = null, goLabel = "", children }: {
+export function AnnotationLayer({ annotate, here = null, onGo = null, goLabel = "", language, children }: {
   annotate: Annotate
   here?: string | null
-  onGo?: ((at: string) => void) | null
+  onGo?: ((at: string, language?: Locale) => void) | null
   goLabel?: string
+  /** The language the page under the layer is drawn in (`AnnotationLayerValue` の `onGo`). */
+  language?: Locale
   children: ReactNode
 }) {
   const value = useMemo<AnnotationLayerValue>(
-    () => ({ annotate, here, onGo, goLabel }),
-    [annotate, here, onGo, goLabel],
+    () => ({ annotate, here, onGo, goLabel, language }),
+    [annotate, here, onGo, goLabel, language],
   )
   return <AnnotateContext.Provider value={value}>{children}</AnnotateContext.Provider>
 }
@@ -159,7 +167,7 @@ export function ValueAtPath({ at, onHeaderBar = false, within = false, children 
             // press left to rise would go on to the section's own field and
             // take the form away from the row it had just focused.
             event.stopPropagation()
-            go(at)
+            go(at, layer.language)
           }}
     >
       {children}
@@ -169,7 +177,7 @@ export function ValueAtPath({ at, onHeaderBar = false, within = false, children 
           className="sr-only focus:not-sr-only focus:mt-1 focus:inline-block focus:text-brand focus:text-xs"
           onClick={(event) => {
             event.stopPropagation()
-            go(at)
+            go(at, layer.language)
           }}
         >
           {layer.goLabel}
@@ -728,12 +736,14 @@ const FrozenEdgeAt = createContext(-1)
  * reading across its first line — a date centred against a four-line cell sits
  * beside nothing.
  *
- * **Middle where every row is one line.** Then the tallest thing in the row is
- * not text at all but a control (36px against 22.4px), and top alignment leaves
- * each cell lifted by a different amount: measured on the cart at 16.4px for a
- * label, 17.2px for a badge and 18.0px for a button, against a row whose middle
- * is 18.5px. Nothing is aligned to anything, which is what reads as "not quite
- * centred" rather than as a mistake anyone can point at.
+ * **Middle where every row is one line, or where the row ends in a column of
+ * controls.** Then the tallest thing in a one-line row is not text at all but a
+ * control (36px against 22.4px), and top alignment leaves each cell lifted by a
+ * different amount: measured on the cart at 16.4px for a label, 17.2px for a
+ * badge and 18.0px for a button, against a row whose middle is 18.5px. Nothing
+ * is aligned to anything, which is what reads as "not quite centred" rather
+ * than as a mistake anyone can point at — and a row of words set at the top
+ * beside a taller column of buttons looks pushed up against the line above.
  */
 const CellAlign = createContext<"top" | "middle">("top")
 
@@ -795,8 +805,12 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
   /**
    * Where the cells sit in a row taller than their content (`CellAlign`).
    *
-   * **`middle` only where a row cannot run to two lines.** The cart is the
-   * clearest case: three labels, a badge and a button, none of which wraps.
+   * **`middle` where a row cannot run to two lines**, the cart being the
+   * clearest case — three labels, a badge and a button, none of which wraps —
+   * **and on every management table whose rows end in their operations**
+   * (`actions`). A public list's one row-sized control sits on the first line
+   * of a top-set row instead (`CONTROL_ON_FIRST_LINE`): its labels run to
+   * several lines, and the name the control acts on is on the first.
    */
   align?: "top" | "middle"
 }) {

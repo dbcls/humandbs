@@ -70,7 +70,8 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
             <Form method="post">
               <Confirm
                 label={t.removeSeries}
-                title={t.removeSeriesTitle(series.slug)}
+                title={t.removeSeriesTitle}
+                subject={{ name: t.slug, value: series.slug }}
                 warning={t.removeSeriesWarning(series.revisions.length)}
                 confirm={t.removeSeriesConfirm}
                 intent="delete-series"
@@ -135,7 +136,7 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
           */}
           <Section title={t.revisionList}>
             <Table
-              headers={[t.slug, t.title, t.languages.ja, t.languages.en]}
+              headers={[t.slug, t.languages.ja, t.languages.en, t.title]}
               whenEmpty={t.noRevision}
             >
               {series.revisions.map((revision) => (
@@ -148,9 +149,9 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
                       {revision.id === series.currentId && <Flag kind="pointed">{t.isCurrent}</Flag>}
                     </span>
                   </Td>
-                  <Td floor="min-w-64">{revision.title}</Td>
                   <Td nowrap><StateCell state={revision.states.ja} locale={locale} /></Td>
                   <Td nowrap><StateCell state={revision.states.en} locale={locale} /></Td>
+                  <Td floor="min-w-64">{revision.title}</Td>
                 </tr>
               ))}
             </Table>

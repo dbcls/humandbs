@@ -65,10 +65,13 @@ export interface PublicFileUrls {
  * The list of every file's address, for the end of the files section's name
  * row (`page.tsx` の `Section` の `end`): it acts on the whole list rather than
  * on the page of rows under it.
+ *
+ * **The smaller size a toolbar's buttons take** (`xs`): at the default size the
+ * button stands taller than the heading it sits beside.
  */
 export function UrlListLink({ locale, to }: { locale: Locale, to: string }) {
   return (
-    <ButtonLink to={to} external download icon={<Icon name="download" />}>
+    <ButtonLink to={to} external download size="xs" icon={<Icon name="download" />}>
       {messagesFor(locale).research.downloadUrlList}
     </ButtonLink>
   )
@@ -270,12 +273,12 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
       align="middle"
       headers={[
         t.name,
+        t.state,
         t.labelJa,
         t.labelEn,
         t.size,
         ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
         t.updatedAt,
-        t.state,
       ]}
       whenEmpty={whenEmpty ?? t.empty}
     >
@@ -338,6 +341,9 @@ function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy 
   return (
     <tr>
       <Td floor="min-w-56"><FileName name={row.name} /></Td>
+      <Td nowrap>
+        <State locale={locale} entry={row} />
+      </Td>
       <Td floor="min-w-40">{label?.ja}</Td>
       <Td floor="min-w-40">{label?.en}</Td>
       <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
@@ -356,9 +362,6 @@ function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy 
         </Td>
       )}
       <Td nowrap>{dayInJst(row.updatedAt)}</Td>
-      <Td nowrap>
-        <State locale={locale} entry={row} />
-      </Td>
       <Td nowrap holds="control">
         <span className="flex items-center gap-1">
           {fetchedFrom !== null && (
@@ -388,6 +391,7 @@ function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy 
             <input type="hidden" name="from" value={row.name} />
             <SlugEditor
               locale={locale}
+              file
               intent="rename"
               name="to"
               value={row.name}
@@ -400,7 +404,8 @@ function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy 
             <input type="hidden" name="name" value={row.name} />
             <Dialog
               label={t.editLabel}
-              title={t.editLabelTitle(row.name)}
+              title={t.editLabelTitle}
+              subject={{ name: t.name, value: row.name }}
               note={t.labelNote}
               size="row"
               icon={<Icon name="edit" />}
@@ -421,7 +426,8 @@ function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy 
             <input type="hidden" name="name" value={row.name} />
             <Confirm
               label={t.delete}
-              title={t.deleteTitle(row.name)}
+              title={t.deleteTitle}
+              subject={{ name: t.name, value: row.name }}
               warning={t.deleteWarning}
               confirm={t.deleteConfirm}
               intent="delete"

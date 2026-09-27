@@ -121,16 +121,10 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
           {upstream !== null && (
             <Section title={words.heading}>
               <Stack gap="tight">
-                <Table headers={[words.source, words.lastSuccess, words.rows, words.state]}>
+                <Table headers={[words.source, words.state, words.rows, words.lastSuccess]}>
                   {upstream.map((row) => (
                     <tr key={row.source}>
                       <Td>{words.sources[row.source]}</Td>
-                      <Td nowrap>
-                        {row.succeededAt === null
-                          ? <span className="text-ink-muted">{words.never}</span>
-                          : minuteInJst(row.succeededAt)}
-                      </Td>
-                      <Td nowrap>{row.rowCount}</Td>
                       {/* **Every row has one of the three, so a fetch that
                           worked or has not run is an indicator and a word; only a
                           failure is a box.** The
@@ -147,6 +141,12 @@ export default function Admin({ loaderData }: Route.ComponentProps) {
                           : row.succeededAt === null
                             ? <Stated kind="waiting">{words.never}</Stated>
                             : <Stated kind="resolved">{words.ok}</Stated>}
+                      </Td>
+                      <Td nowrap>{row.rowCount}</Td>
+                      <Td nowrap>
+                        {row.succeededAt === null
+                          ? <span className="text-ink-muted">{words.never}</span>
+                          : minuteInJst(row.succeededAt)}
                       </Td>
                     </tr>
                   ))}

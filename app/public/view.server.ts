@@ -1086,8 +1086,11 @@ function termViews(termIds: readonly string[], locale: Locale, catalog: CatalogV
     .map((term) => termView(term, locale))
 }
 
-export interface DatasetListRowView extends DatasetRowView {
-  humLabel: string
+/**
+ * A row of the dataset listing apart from the research it sits under — what a
+ * research's own dataset screens draw, where every row has the same research.
+ */
+export interface DatasetListCellsView extends DatasetRowView {
   dateModified: string | null
   /**
    * What the dataset's experiments are called.
@@ -1105,9 +1108,32 @@ export interface DatasetListRowView extends DatasetRowView {
   experimentLabels: string[]
 }
 
-export interface DatasetListRowInput extends DatasetRowInput {
+export interface DatasetListRowView extends DatasetListCellsView {
   humLabel: string
+}
+
+export interface DatasetListCellsInput extends DatasetRowInput {
   dateModified: string | null
+}
+
+export interface DatasetListRowInput extends DatasetListCellsInput {
+  humLabel: string
+}
+
+export function datasetListCellsOf(
+  input: DatasetListCellsInput,
+  locale: Locale,
+  catalog: CatalogView,
+): DatasetListCellsView {
+  const row = datasetRowView(input, locale, catalog, fallbackTracker())
+  return {
+    ...row,
+    dateModified: input.dateModified,
+    experimentLabels: [...new Set(input.content.experiments.flatMap((experiment) =>
+      experiment.label.state === "value" && experiment.label.value !== ""
+        ? [experiment.label.value]
+        : []))],
+  }
 }
 
 export function datasetListRowView(
@@ -1115,14 +1141,5 @@ export function datasetListRowView(
   locale: Locale,
   catalog: CatalogView,
 ): DatasetListRowView {
-  const row = datasetRowView(input, locale, catalog, fallbackTracker())
-  return {
-    ...row,
-    humLabel: input.humLabel,
-    dateModified: input.dateModified,
-    experimentLabels: [...new Set(input.content.experiments.flatMap((experiment) =>
-      experiment.label.state === "value" && experiment.label.value !== ""
-        ? [experiment.label.value]
-        : []))],
-  }
+  return { ...datasetListCellsOf(input, locale, catalog), humLabel: input.humLabel }
 }

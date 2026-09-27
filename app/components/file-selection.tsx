@@ -175,11 +175,11 @@ export function FilePicker({ locale, listing, labels, ticked, filter, onFilter, 
             onChange={(event) => { onTick(event.target.checked ? [...others, ...names] : others) }}
           />,
           files.name,
+          files.state,
           files.labelJa,
           files.labelEn,
           files.size,
           files.updatedAt,
-          files.state,
         ]}
         whenEmpty={t.filesNoMatch}
       >
@@ -198,15 +198,15 @@ export function FilePicker({ locale, listing, labels, ticked, filter, onFilter, 
               />
             </Td>
             <Td floor="min-w-56"><FileName name={entry.name} /></Td>
-            <Td floor="min-w-40">{labels[entry.name]?.ja}</Td>
-            <Td floor="min-w-40">{labels[entry.name]?.en}</Td>
-            <Td nowrap className="tabular-nums">{formatSize(entry.size)}</Td>
-            <Td nowrap>{dayInJst(entry.updatedAt)}</Td>
             <Td nowrap>
               {entry.isPublic
                 ? <Stated kind="live">{files.isPublic}</Stated>
                 : <Stated kind="hidden">{files.isPrivate}</Stated>}
             </Td>
+            <Td floor="min-w-40">{labels[entry.name]?.ja}</Td>
+            <Td floor="min-w-40">{labels[entry.name]?.en}</Td>
+            <Td nowrap className="tabular-nums">{formatSize(entry.size)}</Td>
+            <Td nowrap>{dayInJst(entry.updatedAt)}</Td>
           </tr>
         ))}
       </Table>

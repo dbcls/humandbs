@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { Link } from "react-router"
 
 import { Badge, Clamped, Excerpt, Stack } from "~/components/base"
@@ -15,7 +16,7 @@ import {
   researchPath,
   researchVersionsPath,
 } from "~/public/urls"
-import type { DatasetRowView, FieldView, ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
+import type { DatasetListCellsView, DatasetRowView, FieldView, IdsView, ResearchListRowView, ResearchView, TermView } from "~/public/view.server"
 
 import { Downloads, UrlListLink, type PublicFileUrls } from "./files"
 import {
@@ -343,15 +344,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                       {/* A line each, because a grant with several numbers runs
                       them into one long code on a single line. */}
                       <AnnotatedCell at={`grants.${grant.id}.grantIds`} name={t.grantId}>
-                        {grant.grantIds.state === "value"
-                          ? (
-                              <ul className="flex flex-col items-start gap-1">
-                                {grant.grantIds.items.map((grantId) => (
-                                  <li key={grantId}><Badge pill>{grantId}</Badge></li>
-                                ))}
-                              </ul>
-                            )
-                          : <Value field={grant.grantIds} locale={locale} />}
+                        <GrantIdsValue ids={grant.grantIds} locale={locale} />
                       </AnnotatedCell>
                     </Td>
                   </tr>
@@ -374,13 +367,7 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                     </Td>
                     <Td className="break-all">
                       <AnnotatedCell at={`relatedPublications.${publication.id}.doi`} name="DOI">
-                        {publication.doi.state === "plain" && publication.doi.text !== ""
-                          ? (
-                              <ExternalLink to={publication.doi.text} locale={locale}>
-                                {publication.doi.text}
-                              </ExternalLink>
-                            )
-                          : <Value field={publication.doi} locale={locale} />}
+                        <DoiValue doi={publication.doi} locale={locale} />
                       </AnnotatedCell>
                     </Td>
                     <Td>
@@ -467,11 +454,12 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
   )
 }
 
-/** The names over `DatasetCells`, in its order. */
-export function datasetColumns(locale: Locale): string[] {
+/** The names over `DatasetCells`, in its order, with the state's name after the id where the screen has one. */
+export function datasetColumns(locale: Locale, state?: string): string[] {
   const messages = messagesFor(locale)
   return [
     messages.dataset.datasetId,
+    ...(state === undefined ? [] : [state]),
     messages.dataset.typeOfData,
     messages.dataset.accessType,
     messages.dataset.datePublished,
@@ -486,7 +474,7 @@ export function datasetColumns(locale: Locale): string[] {
  * so the table a curator arranges reads as the table the page will show — the
  * one difference is where the id leads.
  */
-export function DatasetCells({ row, name, to, newTab = false, locale }: {
+export function DatasetCells({ row, name, to, newTab = false, state, locale }: {
   row: DatasetRowView
   /** What the id cell shows: the label, or a stand-in where none is pinned. */
   name: string
@@ -494,6 +482,8 @@ export function DatasetCells({ row, name, to, newTab = false, locale }: {
   to: string | null
   /** Whether the id opens its page in a new tab, for a screen someone is working on. */
   newTab?: boolean
+  /** The state cell's contents, on a screen whose table has one (after the id, as every table keeps it). */
+  state?: ReactNode
   locale: Locale
 }) {
   return (
@@ -503,11 +493,121 @@ export function DatasetCells({ row, name, to, newTab = false, locale }: {
           ? <IdWithIcon kind="dataset"><ExternalLink to={to} locale={locale}>{name}</ExternalLink></IdWithIcon>
           : <IdWithIcon kind="dataset" to={to}>{name}</IdWithIcon>}
       </Td>
+      {state !== undefined && <Td nowrap>{state}</Td>}
       <Td>
         {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
       </Td>
       <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
       <Td>{row.datePublished}</Td>
+    </>
+  )
+}
+
+/**
+ * A grant's numbers as its cell draws them: a line each, because a grant with
+ * several numbers runs them into one long code on a single line. **The same part
+ * on the page and in the form's table of grants.**
+ */
+export function GrantIdsValue({ ids, locale }: { ids: IdsView, locale: Locale }) {
+  if (ids.state !== "value") return <Value field={ids} locale={locale} />
+  return (
+    <ul className="flex flex-col items-start gap-1">
+      {ids.items.map((grantId) => (
+        <li key={grantId}><Badge pill>{grantId}</Badge></li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * A publication's DOI as its cell draws it: the address, opened in a new tab.
+ * **The same part on the page and in the form's table of publications.**
+ */
+export function DoiValue({ doi, locale }: { doi: FieldView, locale: Locale }) {
+  if (doi.state === "plain" && doi.text !== "") {
+    return <ExternalLink to={doi.text} locale={locale}>{doi.text}</ExternalLink>
+  }
+  return <Value field={doi} locale={locale} />
+}
+
+const SHOWN_EXPERIMENTS = 3
+
+/**
+ * What a dataset's experiments are called. **The line above the table in the
+ * source article**, which is what a reader recognises the work by — the terms
+ * describing the same work are what the panel counts, and they are not these.
+ * A dataset holds a handful, so the cell counts the rest instead of opening
+ * with them.
+ */
+export function Experiments({ labels, locale }: { labels: string[], locale: Locale }) {
+  const messages = messagesFor(locale)
+  return (
+    <Clamped
+      shown={SHOWN_EXPERIMENTS}
+      more={(rest) => messages.search.andMore(rest)}
+      less={messages.search.showLess}
+      items={labels.map((label) => <span key={label}>{label}</span>)}
+    />
+  )
+}
+
+/**
+ * The names over `DatasetListCells`, in its order, with the state's name after
+ * the id where the screen has one.
+ */
+export function datasetListColumns(locale: Locale, state?: string): string[] {
+  const d = messagesFor(locale).dataset
+  return [
+    d.datasetId,
+    ...(state === undefined ? [] : [state]),
+    d.typeOfData,
+    d.experiments,
+    d.accessType,
+    d.datePublished,
+    d.dateModified,
+  ]
+}
+
+/** The cells of a dataset with nothing published or drafted to read: the id alone. */
+export function idOnlyCells(id: string, label: string): DatasetListCellsView {
+  return { id, label, typeOfData: null, accessType: null, datePublished: null, dateModified: null, experimentLabels: [] }
+}
+
+/**
+ * One dataset's cells as the dataset listing draws them, less the research
+ * they sit under: **a research's own dataset screens**, where every row has the
+ * same research and the listing is what a curator compares them with.
+ *
+ * The state is the screen's and comes after the id (the order every table
+ * keeps: id, state, the other values, the dates).
+ */
+export function DatasetListCells({ row, name, to, newTab = false, state, locale }: {
+  row: DatasetListCellsView
+  /** What the id cell shows: the label, or a stand-in where none is pinned. */
+  name: string
+  /** Where the id leads; null draws it as text. */
+  to: string | null
+  /** Whether the id opens its page in a new tab, for a screen someone is working on. */
+  newTab?: boolean
+  /** The state cell's contents, on a screen whose table has one. */
+  state?: ReactNode
+  locale: Locale
+}) {
+  return (
+    <>
+      <Td nowrap>
+        {newTab && to !== null
+          ? <IdWithIcon kind="dataset"><ExternalLink to={to} locale={locale}>{name}</ExternalLink></IdWithIcon>
+          : <IdWithIcon kind="dataset" to={to}>{name}</IdWithIcon>}
+      </Td>
+      {state !== undefined && <Td>{state}</Td>}
+      <Td floor="min-w-48">
+        {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
+      </Td>
+      <Td floor="min-w-48"><Experiments labels={row.experimentLabels} locale={locale} /></Td>
+      <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
+      <Td nowrap>{row.datePublished}</Td>
+      <Td nowrap>{row.dateModified}</Td>
     </>
   )
 }
@@ -559,7 +659,7 @@ export function ResearchListTable({ rows, locale, preview = false, whenEmpty }: 
   const headers = [
     ...(preview ? [] : [<CartColumnHead key="cart" locale={locale} />]),
     t.researchId,
-    t.datasets,
+    messages.dataset.datasetId,
     t.title,
     short.methods,
     short.typeOfData,

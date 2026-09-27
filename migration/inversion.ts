@@ -179,6 +179,27 @@ type LineOwner
  */
 const LINK_ADDRESS = /\]\([^)]*\)/g
 
+/** Whether any cell of the block names `label` in its words, the addresses of its links aside. */
+export function blockNames(data: BlockData, label: string): boolean {
+  return Object.values(data).some((cell) => [cell.ja, cell.en].some((text) => mentions(text.replace(LINK_ADDRESS, "]"), label)))
+}
+
+/**
+ * The datasets a block was pinned to by a link's address alone. v1 pinned a
+ * block to every dataset whose ID the block wrote anywhere, addresses included,
+ * so `hum0014.v3.T2DM-1.v1`'s block, whose Dictionary file is
+ * `hum0014.v1.freq.v1_dictionary.xlsx`, was pinned to `hum0014.v1.freq.v1` as
+ * well. Such a dataset is named in no cell's words and in some address, while
+ * another dataset the block is pinned to is named in the words.
+ */
+export function pinnedByAddress(data: BlockData, datasetLabels: readonly string[]): string[] {
+  const texts = Object.values(data).flatMap((cell) => [cell.ja, cell.en])
+  const addresses = texts.flatMap((text) => [...text.matchAll(LINK_ADDRESS)].map((m) => m[0]))
+  const named = (label: string) => blockNames(data, label)
+  if (!datasetLabels.some(named)) return []
+  return datasetLabels.filter((label) => !named(label) && addresses.some((address) => mentions(address, label)))
+}
+
 function lineOwner(
   written: string,
   datasets: ReadonlySet<string>,

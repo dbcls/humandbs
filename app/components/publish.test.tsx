@@ -360,7 +360,7 @@ describe("the publish screen", () => {
   it("shows the back link once, at the top — the link back to the research", () => {
     const html = render(view())
     expect(html).toContain("href=\"/admin/research/00000000-0000-0000-0000-000000000001\"")
-    expect(html).toContain("研究の編集へ")
+    expect(html).toContain(">研究へ<")
     // No second back link at the form's foot: publishing is the one thing to
     // press, and leaving is the header's own back link.
     expect(html).not.toContain("下書きへ戻る")

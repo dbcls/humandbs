@@ -213,6 +213,73 @@ describe("the rows of a list", () => {
     expect([...table.matchAll(/未確定/g)]).toHaveLength(1)
   })
 
+  /** The table of one list on the form, from its section. */
+  function tableOf(html: string, section: string, next: string): string {
+    const part = html.slice(html.indexOf(`id="${section}"`), html.indexOf(`id="${next}"`))
+    return part.slice(part.indexOf("<table"), part.indexOf("</table>"))
+  }
+
+  it("draws a link list the page's way: N/A when not applicable, and a link opened in a new tab", () => {
+    const html = render(view((input) => {
+      input.content.researchProjects = [
+        { id: "r1", name: { ...emptyPair(), ja: { state: "value", text: "プロジェクト A" } }, url: { ja: { state: "not-applicable", links: [] }, en: { state: "value", links: [] } } },
+        { id: "r2", name: { ...emptyPair(), ja: { state: "value", text: "プロジェクト B" } }, url: { ja: { state: "value", links: [{ id: "l1", url: "https://example.org/b", text: "B のサイト" }] }, en: { state: "value", links: [] } } },
+      ]
+    }))
+    const table = tableOf(html, "researchProjects", "grants")
+
+    expect([...table.matchAll(/<abbr title="該当なし"[^>]*>N\/A<\/abbr>/g)]).toHaveLength(1)
+    expect(table).toMatch(/<a[^>]*href="https:\/\/example\.org\/b"[^>]*target="_blank"[^>]*>[\s\S]*B のサイト/)
+  })
+
+  it("draws the Japanese page's links only, as the page does, even when only English ones are written", () => {
+    const html = render(view((input) => {
+      input.content.researchProjects = [
+        { id: "r1", name: { ...emptyPair(), ja: { state: "value", text: "プロジェクト A" } }, url: { ja: { state: "value", links: [] }, en: { state: "value", links: [{ id: "l1", url: "https://example.org/en", text: "English site" }] } } },
+      ]
+    }))
+
+    expect(tableOf(html, "researchProjects", "grants")).not.toContain("example.org/en")
+  })
+
+  it("draws a DOI as a link opened in a new tab, and one not applicable as N/A", () => {
+    const html = render(view((input) => {
+      input.content.relatedPublications = [
+        { id: "p1", title: { state: "value", text: "A paper" }, doi: { state: "value", text: "https://doi.org/10.1000/1" }, datasetIds: { state: "value", ids: [] }, externalIds: [] },
+        { id: "p2", title: { state: "value", text: "Another paper" }, doi: { state: "not-applicable", text: "" }, datasetIds: { state: "not-applicable", ids: [] }, externalIds: [] },
+      ]
+    }))
+    const table = tableOf(html, "relatedPublications", "listingSummary")
+
+    expect(table).toMatch(/<a[^>]*href="https:\/\/doi\.org\/10\.1000\/1"[^>]*target="_blank"/)
+    expect([...table.matchAll(/<abbr title="該当なし"[^>]*>N\/A<\/abbr>/g)]).toHaveLength(2)
+  })
+
+  it("draws the datasets a publication names with the dataset icon, this research's first and the typed ones after", () => {
+    const html = render({
+      ...view((input) => {
+        input.content.relatedPublications = [
+          { id: "p1", title: { state: "value", text: "A paper" }, doi: { state: "value", text: "" }, datasetIds: { state: "value", ids: ["d1"] }, externalIds: ["JGAD999999"] },
+        ]
+      }),
+      datasets: [{ id: "d1", label: "JGAD000001", pinId: null, published: true, portalIssued: false, originDraftId: null }],
+    })
+    const table = tableOf(html, "relatedPublications", "listingSummary")
+
+    expect(table.indexOf("JGAD000001")).toBeGreaterThan(-1)
+    expect(table.indexOf("JGAD999999")).toBeGreaterThan(table.indexOf("JGAD000001"))
+    // The page's icon for a dataset, once for each.
+    expect([...table.matchAll(/<svg/g)].length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("shows the English side of a name whose Japanese side is empty, as the Japanese page does", () => {
+    const html = render(view((input) => {
+      input.content.grants = [{ id: "g1", title: { ja: { state: "value", text: "" }, en: { state: "value", text: "English title" } }, agency: { name: { ...emptyPair(), ja: { state: "value", text: "AMED" } } }, grantIds: { state: "value", ids: [] } }]
+    }))
+
+    expect(tableOf(html, "grants", "relatedPublications")).toContain("English title")
+  })
+
   /**
    * **A row's controls have icons.** Taking a row away is a glyph with the
    * word as its label, the way the repeated elements' rows draw it, and adding
@@ -244,12 +311,12 @@ const DRAFT_ID = "00000000-0000-0000-0000-000000000002"
 const DRAFT_BASE = `/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}`
 
 describe("the header", () => {
-  it("names the screen \"研究の内容\", the identifier beside it, and the back link to the research", () => {
+  it("names the screen \"研究の編集\", the identifier beside it, and the back link to the research", () => {
     const html = render(view())
-    expect(html).toContain("研究の内容")
+    expect(html).toContain(">研究の編集<")
     expect(html).toContain("hum0001")
     expect(html).toContain(`href="/admin/research/${RESEARCH_ID}"`)
-    expect(html).toContain("研究の編集へ")
+    expect(html).toContain(">研究へ<")
   })
 
   it("names the identifier \"ID 未発行\" while the research has none yet", () => {
@@ -264,7 +331,7 @@ describe("the header", () => {
 
   it("leads to this draft's other screens in one order — import, datasets, review, publish — by name only", () => {
     const html = render(view())
-    const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
+    const head = html.slice(html.indexOf("研究の編集"), html.indexOf("role=\"tablist\""))
     const at = (needle: string) => {
       const found = head.indexOf(needle)
       expect(found, needle).toBeGreaterThan(-1)
@@ -291,7 +358,7 @@ describe("the header", () => {
   */
   it("shows the draft's name in an input under the four links, with a save of its own not yet pressable", () => {
     const html = render(view())
-    const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
+    const head = html.slice(html.indexOf("研究の編集"), html.indexOf("role=\"tablist\""))
     const row = head.slice(head.indexOf(`action="${DRAFT_BASE}/name"`))
     expect(head.indexOf(`action="${DRAFT_BASE}/name"`)).toBeGreaterThan(head.indexOf(`href="${DRAFT_BASE}/publish"`))
     expect(row).toMatch(/<label[^>]*>下書き名<\/label><input[^>]*name="name"[^>]*value="v2 予定"/)
@@ -301,7 +368,7 @@ describe("the header", () => {
 
   it("names the draft's name the way the form names its fields", () => {
     const html = render(view())
-    const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
+    const head = html.slice(html.indexOf("研究の編集"), html.indexOf("role=\"tablist\""))
     const fieldName = /<span class="([^"]*)">目的<\/span>/.exec(html)?.[1]
     expect(fieldName).toBeDefined()
     expect(head).toContain(`class="${fieldName ?? ""}">下書き名</label>`)
@@ -315,7 +382,7 @@ describe("the header", () => {
 
   it("marks each of the four as a link to another screen — the chevron after the word, which moves when pointed at", () => {
     const html = render(view())
-    const head = html.slice(html.indexOf("研究の内容"), html.indexOf("role=\"tablist\""))
+    const head = html.slice(html.indexOf("研究の編集"), html.indexOf("role=\"tablist\""))
     expect(head.match(/group-hover\/link:translate-x-0\.5/g)).toHaveLength(4)
     // The toolbar under them leads nowhere and has no such indicator.
     const tools = head.slice(head.indexOf(">保存<"))

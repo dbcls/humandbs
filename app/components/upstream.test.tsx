@@ -108,14 +108,14 @@ const BRANCH: UpstreamBranchView = {
 }
 
 describe("枝番の表の行", () => {
-  it("承認日から後ろの列は、一覧と取り込みの表で同じ部品が同じ順に描く", () => {
+  it("研究課題名から承認日までの列は、一覧と取り込みの表で同じ部品が同じ順に描き、日付は最後", () => {
     const html = routed(<table><tbody><tr><BranchCells row={BRANCH} locale="ja" /></tr></tbody></table>)
     const cells = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((match) => match[1] ?? "")
     expect(cells).toHaveLength(4)
-    expect(cells[0]).toContain("2025-05-08")
-    expect(cells[1]).toContain("がん患者評価の研究")
-    expect(cells[2]).toContain("山口 建")
-    expect(cells[3]).toContain("JGAD000958")
+    expect(cells[0]).toContain("がん患者評価の研究")
+    expect(cells[1]).toContain("山口 建")
+    expect(cells[2]).toContain("JGAD000958")
+    expect(cells[3]).toContain("2025-05-08")
   })
 
   it("題目が日本語で無ければ英語で出す", () => {
@@ -143,7 +143,7 @@ describe("ダイアログの中の申請の内容", () => {
     expect(onScreen).not.toContain(t.application)
   })
 
-  it("研究 ID に研究のアイコンを付け、ポータルに研究があればその研究の編集へのリンクにする", () => {
+  it("研究 ID に研究のアイコンを付け、ポータルに研究があればその研究の画面へのリンクにする", () => {
     const held = routed(<BranchPairs locale="ja" branch={{ humLabel: "hum0127", approvedOn: "2025-05-08", heldBy: "r-127" }} fields={[]} />)
     const researchId = held.slice(held.indexOf(">研究 ID<"), held.indexOf(t.approvedOn))
     expect(researchId).toContain("<svg")

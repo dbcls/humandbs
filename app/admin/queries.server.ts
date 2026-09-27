@@ -25,6 +25,7 @@ import type {
 } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import { likeEscaped } from "~/db/like"
+import { dayInJst } from "~/dates"
 import { descriptionOf, draftContentOf } from "~/content/version"
 import {
   contentKey,
@@ -47,6 +48,9 @@ import type { AdminDatasetRef, AdminResearchRow, AdminStatus } from "./listing"
 function latest(dates: readonly Date[]): string {
   return new Date(Math.max(...dates.map((date) => date.getTime()))).toISOString()
 }
+
+/** The public listing's order of labels (`public/view.server.ts` の `BY_LABEL`). */
+const BY_LABEL = new Intl.Collator("en", { numeric: true })
 
 function statusOf(published: number): AdminStatus {
   return published > 0 ? "published" : "unpublished"
@@ -77,7 +81,6 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
       .select({
         researchId: researchVersion.researchId,
         releaseDate: researchVersion.releaseDate,
-        updatedAt: researchVersion.updatedAt,
       })
       .from(researchVersion),
     db
@@ -110,30 +113,30 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
 
   const grouped = new Map(researches.map((row) => [row.id, {
     published: 0,
-    publishedOn: null as string | null,
+    firstOut: null as string | null,
+    lastOut: null as string | null,
     pinned: [] as AdminDatasetRef[],
     drafts: [] as ResearchContent[],
-    dates: [row.createdAt],
+    draftDates: [row.createdAt],
   }]))
   for (const row of versions) {
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
     held.published += 1
-    // The listing shows when this research was last out, which is the newest
-    // release date among the versions it still has — withdrawing one takes its
-    // row away, so a version that is here is a version that is out.
-    if (held.publishedOn === null || row.releaseDate > held.publishedOn) {
-      held.publishedOn = row.releaseDate
-    }
-    held.dates.push(row.updatedAt)
+    // The dates are the public listing's: the earliest and the newest release
+    // date among the versions it still has — withdrawing one takes its row
+    // away, so a version that is here is a version that is out.
+    if (held.firstOut === null || row.releaseDate < held.firstOut) held.firstOut = row.releaseDate
+    if (held.lastOut === null || row.releaseDate > held.lastOut) held.lastOut = row.releaseDate
   }
   for (const row of drafts) {
     const held = grouped.get(row.researchId)
     if (held === undefined) continue
     held.drafts.push(row.content)
-    held.dates.push(row.updatedAt)
+    held.draftDates.push(row.updatedAt)
   }
   const publishedIds = new Set(publishedDatasets.map((row) => row.datasetId))
+  const labelOf = new Map(datasetLabels.map((row) => [row.datasetId, row.label]))
   for (const row of datasetLabels) {
     grouped.get(row.researchId)?.pinned.push({
       label: row.label,
@@ -152,19 +155,29 @@ export async function adminResearchIndex(db: Executor): Promise<AdminResearchRow
     // Only a research that has never been out is named by its draft.
     const shown = publishedContent ?? draftContents[0] ?? null
     const humLabel = humLabelOf.get(row.id) ?? null
-    const pinned = (held?.pinned ?? []).toSorted((a, b) => a.label < b.label ? -1 : a.label > b.label ? 1 : 0)
+    const pinned = held?.pinned ?? []
+    // **The datasets are the public listing's too**: what the latest version
+    // lists and a reader can open. A research never out has only what its
+    // first version will list, which is every dataset pinned to it.
+    const datasets = publishedContent === null
+      ? pinned
+      : publishedContent.datasetIds.flatMap((id) => {
+          const label = labelOf.get(id)
+          return label === undefined || !publishedIds.has(id) ? [] : [{ label, published: true }]
+        })
 
     return {
       researchId: row.id,
       humLabel,
       title: shown?.title ?? EMPTY_TITLE,
       providerNames: (shown?.dataProviders ?? []).map((provider) => provider.name),
-      datasets: pinned,
+      datasets: datasets.toSorted((a, b) => BY_LABEL.compare(a.label, b.label)),
+      datasetLabels: pinned.map((entry) => entry.label),
       status: statusOf(publishedCount),
       publishedVersions: publishedCount,
       draftCount: draftContents.length,
-      updatedAt: latest(held?.dates ?? [row.createdAt]),
-      publishedOn: held?.publishedOn ?? null,
+      updatedOn: held?.lastOut ?? dayInJst(latest(held?.draftDates ?? [row.createdAt])),
+      publishedOn: held?.firstOut ?? null,
     }
   })
 }

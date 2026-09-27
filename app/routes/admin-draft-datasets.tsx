@@ -14,7 +14,7 @@ import { Flag, Stated } from "~/components/flags"
 import { Answer, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Table, Td } from "~/components/page"
-import { DatasetCells, datasetColumns } from "~/components/research"
+import { DatasetListCells, datasetListColumns, idOnlyCells } from "~/components/research"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
@@ -88,41 +88,42 @@ export default function AdminDraftDatasets({ loaderData, actionData }: Route.Com
           </Stack>
 
           {/* **The order is the public page's order**, so a row's arrows say
-              where it sits there, and the columns are the public table's.
-              **The table is shown under the name with no section of its own** —
-              the screen holds this one list, and the name already shows what
-              it is. The table stays when empty: the column names say what
-              would stand here. */}
-          <Table
-            actions
-            align="middle"
-            headers={[
-              ...datasetColumns(locale),
-              t.state,
-              <span key="order" className="sr-only">{t.order}</span>,
-            ]}
-            whenEmpty={t.noListed}
-          >
-            {view.rows.map((row, at) => (
-              <DatasetRow
-                key={row.id}
-                row={row}
-                at={{ index: at, of: view.rows.length }}
-                locale={locale}
-                researchId={view.researchId}
-                draftId={view.draftId}
-                revision={view.revision}
-              />
-            ))}
-          </Table>
+              where it sits there, and the columns are the dataset listing's
+              less the research, which every row here shares. **The table is
+              shown under the name with no section of its own** — the screen
+              holds this one list, and the name already shows what it is. The
+              table stays when empty: the column names say what would stand
+              here. **Making one belongs to the list**, so the button stands
+              as close under the table as the research screen's does under
+              its own. */}
+          <Stack gap="normal">
+            <Table
+              actions
+              align="middle"
+              headers={datasetListColumns(locale, t.state)}
+              whenEmpty={t.noListed}
+            >
+              {view.rows.map((row, at) => (
+                <DatasetRow
+                  key={row.id}
+                  row={row}
+                  at={{ index: at, of: view.rows.length }}
+                  locale={locale}
+                  researchId={view.researchId}
+                  draftId={view.draftId}
+                  revision={view.revision}
+                />
+              ))}
+            </Table>
 
-          {/* **No link to the import screen here.** Importing is done to the
-              research's contents, whose screen is where it starts; a second
-              entrance here would be a second link to the same screen. */}
-          <Form method="post">
-            <input type="hidden" name="revision" value={view.revision} />
-            <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
-          </Form>
+            {/* **No link to the import screen here.** Importing is done to the
+                research's contents, whose screen is where it starts; a second
+                entrance here would be a second link to the same screen. */}
+            <Form method="post">
+              <input type="hidden" name="revision" value={view.revision} />
+              <Submit intent="create-dataset" icon={<Icon name="plus" />}>{t.createDataset}</Submit>
+            </Form>
+          </Stack>
 
           <AccessionSection
             locale={locale}
@@ -153,28 +154,32 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
   const messages = messagesFor(locale)
   const t = messages.admin.draft
   const name = row.label ?? messages.admin.editor.unpinnedDataset
-  const shown = row.shown ?? { id: row.id, label: name, typeOfData: null, accessType: null, datePublished: null }
+  const shown = row.shown ?? idOnlyCells(row.id, name)
   return (
     <tr>
-      <DatasetCells
+      <DatasetListCells
         row={shown}
         name={name}
         to={href(locale, adminDraftDatasetPath(researchId, draftId, row.id))}
         locale={locale}
+        // **Every row is published or not, so that is an indicator and a word;
+        // only some rows are edited here, so that is the box**. A dataset
+        // this draft made is the one kind that is not published, so it needs
+        // no word beyond "not published".
+        state={(
+          <span className="flex flex-wrap items-center gap-2">
+            {row.published
+              ? <Stated kind="live">{t.publishedDataset}</Stated>
+              : <Stated kind="hidden">{messages.admin.detail.unpublishedDataset}</Stated>}
+            {row.edited && <Flag kind="changed">{t.edited}</Flag>}
+          </span>
+        )}
       />
-      {/* **Every row is published or not, so that is an indicator and a word; only
-          some rows are edited here, so that is the box**. A dataset this
-          draft made is the one kind that is not published, so "not
-          published" says it without a word of its own. */}
-      <Td>
-        <span className="flex flex-wrap items-center gap-2">
-          {row.published
-            ? <Stated kind="live">{t.publishedDataset}</Stated>
-            : <Stated kind="hidden">{messages.admin.detail.unpublishedDataset}</Stated>}
-          {row.edited && <Flag kind="changed">{t.edited}</Flag>}
-        </span>
-      </Td>
-      <Td holds="icon">
+      {/* **The arrows and the delete are the row's operations, in one
+          column.** Every row can go, published or not — a dataset belongs to
+          the research, so taking it out is the one operation there is and the
+          warning says what a published one loses. */}
+      <Td nowrap holds="control">
         <span className="flex items-center gap-1">
           <ReorderButtons
             at={at.index}
@@ -192,24 +197,20 @@ function DatasetRow({ row, at, locale, researchId, draftId, revision }: {
               </Form>
             )}
           />
+          <Form method="post">
+            <input type="hidden" name="datasetId" value={row.id} />
+            <input type="hidden" name="revision" value={revision} />
+            <Confirm
+              label={t.deleteDataset}
+              title={t.deleteDatasetTitle}
+              subject={{ name: messages.dataset.datasetId, value: name }}
+              warning={t.deleteWarning}
+              confirm={t.deleteConfirm}
+              intent="delete-dataset"
+              size="row"
+            />
+          </Form>
         </span>
-      </Td>
-      {/* **Every row can go, published or not** — a dataset belongs to the
-          research, so taking it out is the one operation there is and the
-          warning says what a published one loses. */}
-      <Td nowrap holds="control">
-        <Form method="post">
-          <input type="hidden" name="datasetId" value={row.id} />
-          <input type="hidden" name="revision" value={revision} />
-          <Confirm
-            label={t.deleteDataset}
-            title={t.deleteDatasetTitle(name)}
-            warning={t.deleteWarning}
-            confirm={t.deleteConfirm}
-            intent="delete-dataset"
-            size="row"
-          />
-        </Form>
       </Td>
     </tr>
   )

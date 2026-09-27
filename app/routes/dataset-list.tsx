@@ -1,36 +1,14 @@
-import { Clamped } from "~/components/base"
 import { CartColumnHead, CartToggle } from "~/components/cart"
 import { FacetPanel } from "~/components/facets"
 import { AccessTypeBadge, IdWithIcon, Table, Td, Value } from "~/components/page"
+import { Experiments } from "~/components/research"
 import { ListingScreen } from "~/components/search"
-import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { canonicalRedirect, datasetListPage } from "~/public/lists.server"
 import { datasetPath, href, readLocale, researchPath } from "~/public/urls"
 
 import type { Route } from "./+types/dataset-list"
-
-const SHOWN_EXPERIMENTS = 3
-
-/**
- * What a dataset's experiments are called. **The line above the table in the
- * source article**, which is what a reader recognises the work by — the terms
- * describing the same work are what the panel counts, and they are not these.
- * A dataset holds a handful, so the cell counts the rest instead of opening
- * with them.
- */
-function Experiments({ labels, locale }: { labels: string[], locale: Locale }) {
-  const messages = messagesFor(locale)
-  return (
-    <Clamped
-      shown={SHOWN_EXPERIMENTS}
-      more={(rest) => messages.search.andMore(rest)}
-      less={messages.search.showLess}
-      items={labels.map((label) => <span key={label}>{label}</span>)}
-    />
-  )
-}
 
 /**
  * The dataset listing: the public search over the dataset rows.

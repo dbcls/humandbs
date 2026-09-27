@@ -181,13 +181,14 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
                       as two things. */}
                   <Table
                     actions
+                    align="middle"
                     stuck={1}
                     headers={[
                       templates.application,
-                      templates.approvedOn,
                       templates.title,
                       templates.pi,
                       templates.registered,
+                      templates.approvedOn,
                     ]}
                     whenEmpty={templates.noBranches}
                   >

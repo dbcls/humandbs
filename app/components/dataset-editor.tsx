@@ -227,10 +227,11 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
 
   /**
    * Going to the place a banner or the page pane names (`form.tsx` の `focusField`):
-   * the field when it is open, the nearest element that is, else the section.
+   * the field when it is open, the nearest element that is, else the section —
+   * and from one language's page, that language's box.
    */
-  function goTo(path: string): void {
-    focusField(form.current, path, SECTION_OF[path.split(".")[0] ?? path])
+  function goTo(path: string, language?: Locale): void {
+    focusField(form.current, path, SECTION_OF[path.split(".")[0] ?? path], language)
   }
 
   /** The same move, for a banner that draws its own anchors. */
@@ -400,6 +401,7 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
               annotate={(anchor) => <FieldReview review={review} at={anchor} fieldLabel={fieldLabelFor(anchor)} />}
               here={at}
               onGo={goTo}
+              language={language}
               goLabel={editor.goToField}
             >
               <PageHeader
@@ -1544,7 +1546,8 @@ function DatasetFacts({ view, locale }: {
                     <input type="hidden" name="pinId" value={view.datasetPinId} />
                     <Confirm
                       label={detail.unpin}
-                      title={detail.unpinTitle(view.datasetLabel)}
+                      title={detail.unpinDatasetTitle}
+                      subject={{ name: messages.dataset.datasetId, value: view.datasetLabel }}
                       warning={detail.unpinDatasetWarning(isNhaId(view.datasetLabel))}
                       confirm={detail.unpinConfirm}
                       intent="unpin"

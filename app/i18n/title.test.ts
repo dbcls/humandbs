@@ -70,7 +70,7 @@ describe("adminWindowTitle", () => {
   it.each([
     ["/admin", "トップ", null, `トップ | Admin | ${site}`],
     ["/admin/research", "研究一覧", null, `研究一覧 | Admin | ${site}`],
-    ["/admin/research/r1", "研究の編集", "hum0006", `研究の編集 | hum0006 | 研究一覧 | Admin | ${site}`],
+    ["/admin/research/r1", "研究", "hum0006", `研究 | hum0006 | 研究一覧 | Admin | ${site}`],
     [
       "/admin/research/r1/draft/d1/dataset/x1",
       "データセットの編集",

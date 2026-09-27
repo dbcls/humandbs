@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 import { Icon } from "~/components/icons"
 
-import { Answer, Field, focusTargetPath, MarkdownEditor, SaveNews, Select, Submit, TextArea } from "./form"
+import { Answer, Field, focusTargetPath, languageFirst, MarkdownEditor, SaveNews, Select, Submit, TextArea } from "./form"
 
 /** Rendered under a router, since a panel off a control watches the address to close. */
 function render(element: React.ReactNode): string {
@@ -217,5 +217,34 @@ describe("the answer to what was sent (Answer)", () => {
   it("lets the screen say which answers went through", () => {
     const html = render(<Answer answer={{ status: "issued" }} locale="ja" said={() => "NHA000001 を発行しました。"} ok={(answer) => answer.status === "issued"} />)
     expect(html).not.toContain("border-danger")
+  })
+})
+
+describe("the box a jump from a page lands on", () => {
+  const box = fc.record({ id: fc.nat(), lang: fc.constantFrom("ja", "en", "") })
+
+  it("tries the page's language first, each group in the markup's order, and loses no box", () => {
+    fc.assert(fc.property(fc.array(box), fc.constantFrom("ja" as const, "en" as const), (boxes, language) => {
+      const ordered = languageFirst(boxes, language)
+      const own = boxes.filter((one) => one.lang === language)
+      const rest = boxes.filter((one) => one.lang !== language)
+
+      expect(ordered).toEqual([...own, ...rest])
+    }))
+  })
+
+  it("keeps the markup's order when no language is given", () => {
+    fc.assert(fc.property(fc.array(box), (boxes) => {
+      expect(languageFirst(boxes)).toEqual(boxes)
+    }))
+  })
+
+  it("lands on the English box of a pair from the English page, and on the first box of a field with no languages", () => {
+    const pair = [{ lang: "ja", id: 1 }, { lang: "en", id: 2 }]
+    const single = [{ lang: "", id: 3 }]
+
+    expect(languageFirst(pair, "en")[0]?.id).toBe(2)
+    expect(languageFirst(pair, "ja")[0]?.id).toBe(1)
+    expect(languageFirst(single, "en")[0]?.id).toBe(3)
   })
 })

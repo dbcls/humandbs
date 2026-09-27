@@ -37,7 +37,8 @@ function RemoveDataset({ datasetId, busy, onRemove, words }: {
   return (
     <Confirm
       label={words.removeDataset}
-      title={words.removeDatasetTitle(datasetId)}
+      title={words.removeDatasetTitle}
+      subject={{ name: words.datasetId, value: datasetId }}
       warning={words.removeDatasetWarning}
       confirm={words.removeDatasetConfirm}
       size="row"
@@ -140,6 +141,7 @@ export function Datasets({
         )}
         <Counted locale={locale} total={datasets.length} />
         <Table
+          align="middle"
           headers={[
             words.datasetId,
             words.humId,

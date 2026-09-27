@@ -44,7 +44,7 @@ describe("the header", () => {
     expect(html).toContain("レビューと共有")
     expect(html).toContain("hum0001")
     expect(html).toContain(`href="/admin/research/${RESEARCH_ID}"`)
-    expect(html).toContain("研究の編集へ")
+    expect(html).toContain(">研究へ<")
     // Not to the draft — this screen's parent is the research, the same as
     // every other screen of a draft.
     expect(html).not.toContain(`href="/admin/research/${RESEARCH_ID}/draft/${DRAFT_ID}"`)

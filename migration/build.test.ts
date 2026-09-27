@@ -593,6 +593,31 @@ describe("a line headed by the study or dataset it is about", () => {
     expect(linesOf(text, "JGAD000001")).toEqual(["JGAS000001：CD19+細胞のRNA"])
   })
 
+  it("keeps every line of a dataset that keeps its blocks whole", () => {
+    const text = "【JGAS000001】1症例：腫瘍組織\n【JGAS000002】2症例：正常組織"
+    const all = [dumpRow(materials(text), "JGAD000001", null), dumpRow(materials(text), "JGAD000002", null)]
+    const [one] = all
+    if (one === undefined) throw new Error("no dataset")
+    const content = buildDatasetContent({
+      dataset: one,
+      keyIdByCode: KEY_IDS,
+      codeBySourceKey: CODE_BY_SOURCE,
+      termIdBySetAndCode: TERM_IDS,
+      knownCode: () => false,
+      accessCriteriaKeyCode: "access-criteria",
+      typeOfDataKeyCode: "type-of-data",
+      datasetLabels: new Set(all.map((row) => row.label)),
+      ownLines: ownLines(all, undefined, undefined, studies),
+      whole: true,
+      studies,
+      unread: [],
+      byHand: new Map(),
+    })
+    const held = first(first(content.experiments).values).value
+    if (held.kind !== "text") throw new Error("expected text")
+    expect(value(held.text.ja).map((line) => line.map((span) => span.text).join(""))).toEqual(text.split("\n"))
+  })
+
   it("reads a dataset in lenticular brackets", () => {
     const text = "【JGAD000001】腫瘍組織：22検体\n【JGAD000002】腫瘍組織：4検体"
     expect(linesOf(text, "JGAD000002")).toEqual(["【JGAD000002】腫瘍組織：4検体"])

@@ -59,12 +59,12 @@ export function pressedTitle(kind: AcknowledgementView["kind"], locale: Locale):
 export function PressedBy({ rows, locale }: { rows: readonly AcknowledgementView[], locale: Locale }) {
   const t = messagesFor(locale).admin.review
   return (
-    <Table headers={[t.who, t.lastPressed, t.times]} whenEmpty={t.nobodyYet}>
+    <Table headers={[t.who, t.times, t.lastPressed]} whenEmpty={t.nobodyYet}>
       {rows.map((row) => (
         <tr key={`${row.bySignedIn ? "signed" : "typed"}-${row.name}`}>
           <Td nowrap><Author locale={locale} name={row.name} bySignedIn={row.bySignedIn} /></Td>
-          <Td nowrap>{minuteInJst(row.createdAt)}</Td>
           <Td nowrap>{t.timesCount(row.count)}</Td>
+          <Td nowrap>{minuteInJst(row.createdAt)}</Td>
         </tr>
       ))}
     </Table>
