@@ -42,9 +42,11 @@ import type {
   VersionContent,
 } from "~/content/types"
 import { descriptionOf, draftContentOf } from "~/content/version"
+import { datasetFileSummary, formatLabel, formatsOfAll } from "~/files/summary"
 import type { Executor } from "~/db/client.server"
 import {
   accessionDate,
+  accessionFileSummary,
   contentKey,
   humAccession,
   labelPin,
@@ -306,6 +308,20 @@ export async function rebuildSearchDocs(
       .map((row) => [row.accession, { datePublished: row.datePublished, dateModified: row.dateModified }]),
   )
 
+  // What the archive's files are, for a dataset the archive issued; a dataset
+  // the portal issued has its formats in the names it selects (`files/summary.ts`).
+  // The same cache as the dates, refreshed the same way.
+  const archiveFiles = new Map(
+    (await db
+      .select({
+        accession: accessionFileSummary.accession,
+        byteCount: accessionFileSummary.byteCount,
+        formats: accessionFileSummary.formats,
+      })
+      .from(accessionFileSummary))
+      .map((row) => [row.accession, row]),
+  )
+
   // The JGA study a dataset sits under, as its page shows it under "JGA Study"
   // (`queries.server.ts` の `publishedDataset`): text on the page, so text in
   // the index, and a reader who has the study's accession looks by it. It is
@@ -377,10 +393,13 @@ export async function rebuildSearchDocs(
     content: DatasetContent
     /** As the projection resolved them, which is the only place they are decided. */
     dates: { datePublished: string | null, dateModified: string | null }
+    /** `file-type` codes, read off the dataset's files. */
+    formats: string[]
     text: SearchText
   }
   const projectedDatasets: DatasetProjection[] = []
   const datasetTextByResearch = new Map<string, SearchText[]>()
+  const datasetFormatsByResearch = new Map<string, string[][]>()
   for (const row of datasets) {
     if (!listedDatasetIds.has(row.id)) continue
     const humLabel = humLabelOf.get(row.researchId)
@@ -392,12 +411,22 @@ export async function rebuildSearchDocs(
       PUBLISHED,
     )
     const study = studyOf.get(label)
+    // Read off the files without listing them: a name is all a format needs,
+    // and the size is not indexed.
+    const { formats } = datasetFileSummary({
+      label,
+      selection: row.content.fileSelection,
+      listing: null,
+      archive: archiveFiles.get(label) ?? null,
+    })
     const text = concatSearchText([
       searchTextOf(projected.content, [
         humLabel,
         label,
         ...secondaryOf.get(row.id) ?? [],
         ...study === undefined ? [] : [study],
+        // Shown on the page beside the type of data, so text in the index.
+        ...formats.map(formatLabel),
       ]),
       // The labels of what the projection kept. A shown vocabulary value is
       // text on the page, so it has to be text in the index.
@@ -412,11 +441,13 @@ export async function rebuildSearchDocs(
       label,
       content: row.content,
       dates: projected.dates,
+      formats,
       text,
     })
     const held = datasetTextByResearch.get(row.researchId) ?? []
     held.push(text)
     datasetTextByResearch.set(row.researchId, held)
+    datasetFormatsByResearch.set(row.researchId, [...datasetFormatsByResearch.get(row.researchId) ?? [], formats])
   }
   const datasetLabelsOfVersion = (content: VersionContent): string[] =>
     content.datasets.flatMap((row) => {
@@ -451,6 +482,8 @@ export async function rebuildSearchDocs(
       title,
       datePublished: earliest(dates),
       dateModified: latest(dates),
+      // A research is filtered by what the datasets below it hold, as its facets are.
+      fileFormats: formatsOfAll(datasetFormatsByResearch.get(row.id) ?? []),
       ...indexed(concatSearchText([
         searchTextOf(content, [humLabel, ...secondaryOf.get(row.id) ?? []]),
         ...(datasetTextByResearch.get(row.id) ?? []),
@@ -497,6 +530,7 @@ export async function rebuildSearchDocs(
       title: titleOfResearch.get(row.researchId) ?? "",
       datePublished: row.dates.datePublished,
       dateModified: row.dates.dateModified,
+      fileFormats: row.formats,
       ...indexed(row.text),
     })
   }

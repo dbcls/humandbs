@@ -5,6 +5,7 @@ import { datasetContentArb, filesArb, researchContentArb } from "~/content/arbit
 import { publicDatasetContent, publicResearchContent } from "~/content/public"
 import type { DatasetContent, ResearchContent, Slot } from "~/content/types"
 import type { FileLabel } from "~/files/labels"
+import { NO_FILES } from "~/files/summary"
 
 import { catalogViewArb, termIdsIn } from "./arbitraries/catalog"
 import { apiDataset, apiResearch, type ApiContext } from "./view"
@@ -65,6 +66,7 @@ function datasetAnswer(input: {
     humLabel: "hum0001",
     datePublished: "2020-01-01",
     dateModified: null,
+    fileSummary: NO_FILES,
     content: publicDatasetContent(
       input.content,
       { files: input.files },

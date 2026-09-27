@@ -18,6 +18,8 @@ function view(fileCount: number, secondaryLabels: string[] = []): DatasetView {
     dateModified: null,
     accessType: null,
     typeOfData: null,
+    dataVolume: null,
+    fileFormats: [],
     untranslated: false,
     experiments: [],
     files: Array.from({ length: fileCount }, (_, at) => ({

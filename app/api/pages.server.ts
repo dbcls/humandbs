@@ -30,6 +30,9 @@ import { getDb } from "~/db/client.server"
 import { everyPublicListing, publicListingsOf } from "~/files/listing.server"
 import type { FileLabel } from "~/files/labels"
 import { fileLabelsByHumLabel } from "~/files/labels.server"
+import { datasetFileSummary, formatLabel } from "~/files/summary"
+import type { Locale } from "~/i18n/locale"
+import { messagesFor } from "~/i18n/messages"
 import { parsePageNumber } from "~/paging"
 import {
   loadCatalog,
@@ -40,9 +43,9 @@ import {
 } from "~/public/queries.server"
 import { parseVersionSegment } from "~/public/urls"
 import { findVersion, latestOf } from "~/public/versions"
-import { loadFacetDefinitions, publishedFacetValues } from "~/search/catalog.server"
+import { loadFacetDefinitions, publishedFacetValues, publishedFormats } from "~/search/catalog.server"
 import { parseQuery, serializeQuery } from "~/search/dsl"
-import { BUILT_IN_FIELDS, queryFields } from "~/search/fields"
+import { BUILT_IN_FIELDS, FILE_TYPE_FIELD, queryFields } from "~/search/fields"
 import {
   defaultOrder,
   isSortKey,
@@ -82,7 +85,7 @@ import {
   type DatasetBundle,
   type ResearchBundle,
 } from "./queries.server"
-import type { ApiDataset, ApiResearch, ApiSearchField, ApiTerm } from "./schema"
+import type { ApiDataset, ApiResearch, ApiSearchField, ApiTerm, ApiText } from "./schema"
 import { apiDataset, apiResearch, labelOf, type ApiContext } from "./view"
 
 function originOf(): string {
@@ -256,6 +259,14 @@ function datasetObject(
     ),
     files: listing,
     fileLabels: fileLabels?.get(bundle.humLabel) ?? new Map(),
+    // The selection as published, not as projected: without the listing the
+    // projection has no files to keep, and the formats are read off the names.
+    fileSummary: datasetFileSummary({
+      label: bundle.label,
+      selection: bundle.content.fileSelection,
+      listing,
+      archive: bundle.archiveFiles,
+    }),
   }, context)
 }
 
@@ -350,7 +361,9 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   return jsonResponse({
     total: result.total,
     page: result.page,
-    pageCount: result.pageCount,
+    // The listing pages count an empty result as one page to draw; a client
+    // counting pages to fetch has none.
+    pageCount: result.total === 0 ? 0 : result.pageCount,
     query: serializeQuery(ast),
     hits: inOrder(hits, ranking),
   })
@@ -384,9 +397,10 @@ function inOrder<T extends { id: string }>(objects: readonly T[], order: readonl
  */
 export async function searchFields(): Promise<Response> {
   const db = getDb()
-  const [definitions, values] = await Promise.all([
+  const [definitions, values, formats] = await Promise.all([
     loadFacetDefinitions(db),
     publishedFacetValues(db),
+    publishedFormats(db),
   ])
   const fields = queryFields(definitions.map((one) => one.field))
 
@@ -406,8 +420,16 @@ export async function searchFields(): Promise<Response> {
 
   return jsonResponse({
     fields: [
-      // The four the search row is made of are the ones an answer opens with.
-      ...[...BUILT_IN_FIELDS.keys()].flatMap((code) => described(code, {})),
+      // The four the search row is made of are the ones an answer opens with,
+      // by the names the search screen gives them.
+      ...[...BUILT_IN_FIELDS.keys()].flatMap((code) => described(code, {
+        label: builtInLabel(code),
+        // A format is called by its own name in either language, and the
+        // vocabulary writes it in English alone (`files/formats.ts`).
+        ...code === FILE_TYPE_FIELD
+          ? { values: formats.map((format) => ({ code: format, label: labelOf({ labelJa: null, labelEn: formatLabel(format) }) })) }
+          : {},
+      })),
       ...definitions.flatMap((one) => described(one.field.code, {
         label: labelOf({ labelJa: one.labelJa, labelEn: one.labelEn }),
         ...one.canonicalUnit === null ? {} : { unit: one.canonicalUnit },
@@ -415,6 +437,11 @@ export async function searchFields(): Promise<Response> {
       })),
     ],
   })
+}
+
+function builtInLabel(code: string): ApiText {
+  const nameIn = (locale: Locale) => (messagesFor(locale).search.fields as Record<string, string | undefined>)[code] ?? ""
+  return labelOf({ labelJa: nameIn("ja"), labelEn: nameIn("en") })
 }
 
 // --- bulk -----------------------------------------------------------------

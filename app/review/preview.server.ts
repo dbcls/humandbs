@@ -33,6 +33,7 @@ import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/con
 import { getDb, type Executor } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import {
+  archiveFilesOf,
   citedDatasets,
   controlledAccessUsers,
   loadCatalog,
@@ -321,7 +322,10 @@ export async function drawDraft(
   const cited = await citedDatasets(
     db,
     projected.content.relatedPublications.flatMap((row) => valueOr(row.datasetIds, [])).filter((id) => !own.has(id)),
-    projected.content.relatedPublications.flatMap((row) => row.datasetIds.state === "value" ? row.externalIds ?? [] : []),
+    [
+      ...projected.content.relatedPublications.flatMap((row) => row.datasetIds.state === "value" ? row.externalIds ?? [] : []),
+      ...projected.cau.flatMap((usage) => usage.datasetAccessions),
+    ],
   )
 
   const anchored = anchoredResearchView({
@@ -481,7 +485,13 @@ export async function drawDatasetDraft(
   if (row === undefined) notFound()
   // What is being written, which is not what is filed while a form is open.
   const writing = content ?? row.content
-  const [stored, labels] = await Promise.all([adminListing(db, draft.researchId, humLabel), fileLabelsOf(db, draft.researchId)])
+  // The archive's files are read as its dates are: a draft's dataset the archive
+  // already publishes has them, and one it does not yet has none.
+  const [stored, labels, archiveFiles] = await Promise.all([
+    adminListing(db, draft.researchId, humLabel),
+    fileLabelsOf(db, draft.researchId),
+    row.label === null ? null : archiveFilesOf(db, row.label),
+  ])
   const listing = listingRows(stored, labels, locale)
 
   const dataset = publicDataset(
@@ -500,6 +510,7 @@ export async function drawDatasetDraft(
     datePublished: dataset.dates.datePublished,
     dateModified: dataset.dates.dateModified,
     files: listing,
+    archiveFiles,
   }, locale, catalog)
 
   const changed = row.published === null
@@ -524,6 +535,7 @@ export async function drawDatasetDraft(
         datePublished: null,
         dateModified: null,
         files: listing,
+        archiveFiles,
       }, locale, catalog).byAnchor)
 
   return {

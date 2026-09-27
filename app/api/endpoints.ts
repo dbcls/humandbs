@@ -302,10 +302,10 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       "Everything `?q=` can be written against, and nothing else is: a name not listed here "
       + "answers 422 `unknown-field`. A `term` field lists the values the published set has, so a "
       + "value taken from here always matches something; a `number` field gives the unit its "
-      + "values are stored in. The four without a label (`id`, `title`, `date_published`, "
-      + "`date_modified`) are the search row's own. **Not every key in an answer is a field**: "
-      + "a number the portal does not filter by (`total-data-volume`, `coverage-depth` and the "
-      + "like) and every free-text key are reached through free text only.",
+      + "values are stored in. The first five (`id`, `title`, `date_published`, `date_modified`, "
+      + "`file-type`) are the search row's own; `file-type` is the formats read off a dataset's "
+      + "files. **Not every key in an answer is a field**: a number the portal does not filter by "
+      + "(`coverage-depth` and the like) and every free-text key are reached through free text only.",
     response: {
       mediaType: JSON_MEDIA,
       schema: searchFieldsSchema,

@@ -463,3 +463,79 @@ describe("the datasets a publication names", () => {
     ])
   })
 })
+
+describe("the datasets a usage record names", () => {
+  it("marks as published only a dataset the portal publishes now, whichever research it is in", async () => {
+    const own = await createResearch("hum0001")
+    const other = await createResearch("hum0002")
+    const mine = await createDataset(own, "JGAD000001")
+    const theirs = await createDataset(other, "JGAD000002")
+    // Pinned in this research, but taken off the published version since the use was approved.
+    await createDataset(own, "JGAD000461")
+    await publish(other, 1, [theirs])
+    await publish(own, 1, [mine])
+    await db.insert(s.cauEntry).values({
+      humLabel: "hum0001",
+      applicationId: "J-DU000001-001",
+      datasetAccessions: ["JGAD000001", "JGAD000461", "JGAD000002", "JGAD999999"],
+    })
+    await rebuildSearchDocs(db)
+
+    const view = await researchPage({ ...ja, humId: "hum0001", wanted: "latest" })
+
+    expect(view.cau[0]?.datasets).toEqual([
+      { label: "JGAD000001", published: true },
+      { label: "JGAD000461", published: false },
+      { label: "JGAD000002", published: true },
+      { label: "JGAD999999", published: false },
+    ])
+  })
+})
+
+describe("a dataset page's size and formats", () => {
+  const HUM = "hum7002"
+
+  afterEach(async () => {
+    await clearPrefix(PUBLIC_BUCKET, publicPrefix(HUM))
+  })
+
+  it("are an archive's dataset's as the refresh read them, whatever the prefix holds", async () => {
+    const researchId = await createResearch(HUM)
+    const jgad = await createDataset(researchId, "JGAD000626")
+    await publish(researchId, 1, [jgad])
+    await db.insert(s.accessionFileSummary).values({ accession: "JGAD000626", byteCount: 6_627_294_298, formats: ["cel"], source: "jgad-file" })
+    await rebuildSearchDocs(db)
+
+    const view = await datasetPage({ locale: "ja", datasetId: "JGAD000626" })
+
+    expect([view.dataVolume, view.fileFormats]).toEqual([6_627_294_298, ["CEL"]])
+  })
+
+  it("are the portal's dataset's public files it selects, summed, and their formats", async () => {
+    const researchId = await createResearch(HUM)
+    const nha = await createDataset(researchId, "NHA000001")
+    descriptions.set(nha, { ...emptyDatasetContent(), fileSelection: ["a.vcf.gz", "b.txt", "private.bam"] })
+    await publish(researchId, 1, [nha])
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.vcf.gz`, "123")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.txt`, "45")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}unselected.txt`, "6789")
+
+    const view = await datasetPage({ locale: "ja", datasetId: "NHA000001" })
+
+    // The file not in the public bucket is neither counted nor read for a format here.
+    expect([view.dataVolume, view.fileFormats]).toEqual([5, ["VCF", "TXT"]])
+    descriptions.delete(nha)
+  })
+
+  it("are left out for an archive's dataset the refresh found no files for", async () => {
+    const researchId = await createResearch(HUM)
+    const dra = await createDataset(researchId, "DRA000001")
+    await publish(researchId, 1, [dra])
+    await rebuildSearchDocs(db)
+
+    const view = await datasetPage({ locale: "ja", datasetId: "DRA000001" })
+
+    expect([view.dataVolume, view.fileFormats]).toEqual([null, []])
+  })
+})

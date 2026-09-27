@@ -253,6 +253,16 @@ export const datasetSchema = z.object({
   dateModified: dateString.nullable(),
   values: z.array(valueSchema),
   experiments: z.array(experimentSchema),
+  dataVolume: z.number().int().optional().meta({
+    description:
+      "The total size of the dataset's files in bytes, as a reader downloads them: an archive's "
+      + "files as the archive distributes them, or the files the portal serves for a dataset whose "
+      + "id it issued (`NHA…`). Absent when it cannot be told, and for a dataset whose id the portal "
+      + "issued, absent unless `includeFiles=true` was asked for.",
+  }),
+  fileFormats: z.array(termSchema).meta({
+    description: "The formats of the dataset's files, read off their names, as the `file-type` field's values.",
+  }),
   files: z.array(fileSchema).optional().meta({
     description:
       "The files this dataset selects, limited to those the research's public prefix lists. "
@@ -282,7 +292,7 @@ function searchResultOf<T extends z.ZodType>(hit: T, id: string, description: st
 }
 
 const SEARCH_RESULT = "One page of a search. `total` counts the whole match, `pageCount` the "
-  + "pages it comes in; the whole published set is the bulk stream instead."
+  + "pages it comes in — 0 when nothing matches; the whole published set is the bulk stream instead."
 
 export const researchSearchSchema
   = searchResultOf(researchSchema, "ResearchSearchResult", SEARCH_RESULT)
@@ -303,13 +313,16 @@ export const datasetSearchSchema
  * `values` is present on a `term` field and lists what the published set
  * actually has. `unit` is present on a `number` field, whose values are a
  * span rather than a list. The fields belonging to the search row itself have
- * neither, and no label: they are named by the query language, not by the
- * catalog.
+ * neither; their label is the one the search screen gives them, since they are
+ * not in the catalog.
  */
 export const searchFieldSchema = z.object({
   code: z.string().meta({ description: "How a query names the field." }),
   type: z.enum(["identifier", "text", "date", "term", "number"]),
-  label: textSchema.optional().meta({ description: "The catalog's name for the key." }),
+  label: textSchema.optional().meta({
+    description: "The name the portal shows for the field: the catalog's, or the search screen's for the four "
+      + "built-in fields (`id`, `title`, `date_published`, `date_modified`).",
+  }),
   unit: z.string().optional().meta({ description: "The unit the stored values are in." }),
   values: z.array(termSchema).optional().meta({
     description: "Every value the published set has, at the level a query can name it.",

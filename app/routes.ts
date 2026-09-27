@@ -233,6 +233,9 @@ const api = [
   ...API_ENDPOINTS.map((endpoint) => route(endpoint.path, endpoint.file)),
   route(OPENAPI_PATH, OPENAPI_FILE),
   route(DOCS_PATH, DOCS_FILE),
+  // Whatever else is under `/api/`: a problem in JSON rather than the site's
+  // page, since what asked is a client. The addresses above rank before it.
+  route("api/*", "routes/api-not-found.ts"),
 ]
 
 /**

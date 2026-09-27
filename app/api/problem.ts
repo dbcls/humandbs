@@ -81,6 +81,20 @@ export function notFound(request: Request, kind: keyof typeof MISSING): Problem 
 }
 
 /**
+ * An address under `/api/` that no endpoint answers. It is a problem like the
+ * rest rather than the site's HTML page, since what asked was a client
+ * expecting JSON.
+ */
+export function noSuchEndpoint(request: Request): Problem {
+  return problemOf({
+    slug: "not-found",
+    status: 404,
+    detail: "No endpoint is at this address. The endpoints are listed in /api/openapi.json.",
+    instance: instanceOf(request),
+  })
+}
+
+/**
  * A query that could not be read. The rule it broke and where travel as RFC 7807
  * extension members rather than only inside the sentence, so that a client can
  * point at the character without parsing English.

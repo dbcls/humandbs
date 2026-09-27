@@ -455,10 +455,15 @@ export function Section({ title, note, at, aside, end, fill = false, children }:
  * **The rule belongs here rather than to `KeyValue`.** A pair that is the only
  * one in its box has nothing to be separated from — the release list sets two
  * of them side by side, where what divides them is the gap between the columns.
+ *
+ * **The list clips rather than hides.** A hidden overflow is still a box the
+ * browser can scroll, and a value the editing pane draws a little past the
+ * list's edge (`ValueAtPath`) is scrolled into view sideways when it is brought
+ * into view or focused, cutting off the start of every pair in the list.
  */
 export function Pairs({ children }: { children: ReactNode }) {
   return (
-    <dl className="gap-x-8 overflow-hidden sm:columns-2 [&>*]:-top-px [&>*]:relative [&>*]:border-line [&>*]:border-t">
+    <dl className="gap-x-8 overflow-clip sm:columns-2 [&>*]:-top-px [&>*]:relative [&>*]:border-line [&>*]:border-t">
       {children}
     </dl>
   )

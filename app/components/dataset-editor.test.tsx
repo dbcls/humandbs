@@ -150,6 +150,7 @@ const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), term
 /** The dataset drawn as its page, which the editor shows beside the form. */
 function drawn(content: DatasetContent): DrawnDataset {
   const anchored = anchoredDatasetView({
+    archiveFiles: null,
     label: "hum0001-NHA001",
     humLabel: "hum0001",
     studyAccession: null,

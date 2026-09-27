@@ -36,8 +36,12 @@ if (usageError) {
     requested.length > 0 ? requested : UPSTREAM_SOURCES,
   )
   for (const outcome of outcomes) {
-    if (outcome.status === "written") console.log(`${outcome.source}\t${outcome.rowCount} rows`)
-    else if (outcome.status === "failed") console.error(`${outcome.source}\tfailed: ${outcome.failure}`)
+    if (outcome.status === "written") {
+      console.log(`${outcome.source}\t${outcome.rowCount} rows`)
+      // What the list of formats is missing (`app/files/formats.ts`); `(none)` is a name with no extension.
+      const unknown = (outcome.unknownExtensions ?? []).map(([extension, files]) => `${extension || "(none)"} ${files}`)
+      if (unknown.length > 0) console.log(`${outcome.source}\textensions that made no format (files): ${unknown.join(", ")}`)
+    } else if (outcome.status === "failed") console.error(`${outcome.source}\tfailed: ${outcome.failure}`)
     else console.log(`${outcome.source}\tskipped: the application system is not configured`)
   }
   if (outcomes.some((outcome) => outcome.status === "failed")) process.exitCode = 1

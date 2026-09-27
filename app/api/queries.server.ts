@@ -16,7 +16,9 @@ import { and, eq, inArray, sql } from "drizzle-orm"
 import type { CauUsage } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
+import type { ArchiveFiles } from "~/files/summary"
 import {
+  accessionFileSummary,
   cauEntry,
   humAccession,
   labelPin,
@@ -44,6 +46,8 @@ export interface DatasetBundle {
   datePublished: string | null
   dateModified: string | null
   content: DatasetContent
+  /** What the archive's files are, for an archive's dataset (`files/summary.ts`). */
+  archiveFiles: ArchiveFiles | null
 }
 
 /** Every research identity on the public side, or the ones asked about. */
@@ -123,15 +127,22 @@ export async function datasetBundles(
       datePublished: searchDoc.datePublished,
       dateModified: searchDoc.dateModified,
       content: sql<DatasetContent>`${searchDoc.content}`,
+      archiveBytes: accessionFileSummary.byteCount,
+      archiveFormats: accessionFileSummary.formats,
     })
     .from(searchDoc)
+    .leftJoin(accessionFileSummary, eq(accessionFileSummary.accession, searchDoc.datasetLabel))
     .where(datasetIds === null
       ? eq(searchDoc.targetType, "dataset")
       : and(eq(searchDoc.targetType, "dataset"), inArray(searchDoc.targetId, [...datasetIds])))
 
-  return rows.flatMap((row) => row.label === null
+  return rows.flatMap(({ archiveBytes, archiveFormats, ...row }) => row.label === null
     ? []
-    : [{ ...row, label: row.label }])
+    : [{
+        ...row,
+        label: row.label,
+        archiveFiles: archiveBytes === null || archiveFormats === null ? null : { byteCount: archiveBytes, formats: archiveFormats },
+      }])
 }
 
 /** Dataset labels for the identities a research's content names. */

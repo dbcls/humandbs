@@ -1,0 +1,2 @@
+ALTER TABLE "search_doc" ADD COLUMN "file_formats" text[] DEFAULT '{}'::text[] NOT NULL;--> statement-breakpoint
+CREATE INDEX "search_doc_file_formats_index" ON "search_doc" USING gin ("file_formats");

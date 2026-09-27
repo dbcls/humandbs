@@ -25,6 +25,7 @@ import {
   controlledAccessUsers,
   loadCatalog,
   publishedDataset,
+  archiveFilesOf,
   citedDatasets,
   publishedDatasetLabels,
   publishedDatasets,
@@ -98,8 +99,13 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
   const content = projected.content
 
   const citedIds = content.relatedPublications.flatMap((publication) => valueOr(publication.datasetIds, []))
-  const typedIds = content.relatedPublications.flatMap((publication) =>
-    publication.datasetIds.state === "value" ? publication.externalIds ?? [] : [])
+  const typedIds = [
+    ...content.relatedPublications.flatMap((publication) =>
+      publication.datasetIds.state === "value" ? publication.externalIds ?? [] : []),
+    // The usage records name datasets as upstream wrote them, and upstream
+    // keeps a use of one taken off since.
+    ...projected.cau.flatMap((usage) => usage.datasetAccessions),
+  ]
   const [listed, cited] = await Promise.all([
     publishedDatasets(db, content.datasetIds),
     citedDatasets(db, citedIds, typedIds),
@@ -186,11 +192,12 @@ export async function datasetPage(
 
   const row = await publishedDataset(db, resolved.id)
   if (row === null) notFound()
-  const [catalog, listing, secondary, labels] = await Promise.all([
+  const [catalog, listing, secondary, labels, archiveFiles] = await Promise.all([
     loadCatalog(db),
     publicListing(row.humLabel),
     secondaryLabels(db, "dataset", resolved.id),
     fileLabelsByHumLabel(db, [row.humLabel]),
+    archiveFilesOf(db, row.label),
   ])
 
   return datasetView({
@@ -206,5 +213,6 @@ export async function datasetPage(
     datePublished: row.datePublished,
     dateModified: row.dateModified,
     files: publicRows(listing, labels.get(row.humLabel) ?? new Map(), request.locale),
+    archiveFiles,
   }, request.locale, catalog)
 }

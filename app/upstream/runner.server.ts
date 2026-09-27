@@ -42,7 +42,7 @@ const globalForRunner = globalThis as typeof globalThis & {
 
 /**
  * The sources this deployment can reach at all. Without a connection to the
- * application system its three are not claimed, so the loop leaves no daily
+ * application system its four are not claimed, so the loop leaves no daily
  * trail of attempts that were never going to happen.
  */
 function availableSources(): UpstreamSource[] {

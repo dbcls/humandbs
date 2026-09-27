@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router"
 import { Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
-import { filePageOf, fileRowsOf, pageOfFiles } from "~/files/prefix"
+import { filePageOf, fileRowsOf, formatSize, pageOfFiles } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { datasetFileListPath, ddbjSearchEntryUrl, fileListQuery, href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
@@ -128,6 +128,23 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         {view.accessType !== null && (
           <KeyValue title={t.accessType} at={accessAnchor ?? undefined}>
             <AccessTypeBadge term={view.accessType} />
+          </KeyValue>
+        )}
+        {/* Read off the files rather than written, so neither has a place in
+            the form. A dataset with no file, or whose files could not be
+            listed, leaves them out: a size of zero would read as known. */}
+        {view.dataVolume !== null && (
+          <KeyValue title={t.dataVolume}>{formatSize(view.dataVolume)}</KeyValue>
+        )}
+        {view.fileFormats.length > 0 && (
+          <KeyValue title={t.fileFormats}>
+            <ul className="flex flex-wrap gap-2">
+              {view.fileFormats.map((format) => (
+                <li key={format} className="rounded border border-line-strong bg-white px-2 py-1 text-ink text-sm">
+                  {format}
+                </li>
+              ))}
+            </ul>
           </KeyValue>
         )}
         <KeyValue title={t.research}>

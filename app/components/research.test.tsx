@@ -234,7 +234,7 @@ function renderWith(over: Partial<ResearchView>): string {
   return renderToStaticMarkup(<Stub initialEntries={["/"]} />)
 }
 
-function usage(datasetAccessions: string[]): CauView {
+function usage(datasetAccessions: string[], unpublished: readonly string[] = []): CauView {
   return {
     principalInvestigator: "研究 太郎",
     affiliation: "大学",
@@ -242,7 +242,7 @@ function usage(datasetAccessions: string[]): CauView {
     researchTitle: "題目",
     periodStart: null,
     periodEnd: null,
-    datasetAccessions,
+    datasets: datasetAccessions.map((label) => ({ label, published: !unpublished.includes(label) })),
   }
 }
 
@@ -290,6 +290,14 @@ describe("the record of who has used the controlled access data", () => {
 
     expect(html).toContain("制限公開データの利用者一覧")
     expect(html).toContain("制限公開データの利用実績はありません")
+  })
+
+  it("links a used dataset's ID to its page only while the portal publishes it", () => {
+    const html = renderWith({ datasets: CONTROLLED, cau: [usage(["JGAD000001", "JGAD000461"], ["JGAD000461"])] })
+
+    expect(html).toContain("href=\"/dataset/JGAD000001\"")
+    expect(html).toContain("JGAD000461")
+    expect(html).not.toContain("href=\"/dataset/JGAD000461\"")
   })
 
   it("leaves the section out of a version with no datasets", () => {

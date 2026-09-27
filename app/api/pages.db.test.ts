@@ -19,6 +19,7 @@ import {
   dblinkListing,
   researchEntry,
   researchVersionEntry,
+  searchFields,
 } from "./pages.server"
 
 /**
@@ -252,6 +253,54 @@ describe("a file's label", () => {
   })
 })
 
+describe("a dataset's size and formats", () => {
+  const HUM = "hum7003"
+
+  afterAll(async () => {
+    await clearPrefix(PUBLIC_BUCKET, publicPrefix(HUM))
+  })
+
+  it("are an archive's dataset's in every answer, files asked for or not", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "JGAD000626")
+    await publish(researchId, 1, [datasetId])
+    await db.insert(s.accessionFileSummary).values({ accession: "JGAD000626", byteCount: 6_627_294_298, formats: ["cel"], source: "jgad-file" })
+    await rebuildSearchDocs(db)
+
+    for (const suffix of ["", "?includeFiles=true"]) {
+      const answers = [
+        await body(await datasetEntry(get(`/x${suffix}`), "JGAD000626")),
+        ...(await body(await apiSearch(get(`/api/dataset${suffix}`), "dataset")) as { hits: unknown[] }).hits,
+        ...await lines(await apiBulk(get(`/api/dataset.jsonl${suffix}`), "dataset")),
+      ]
+      for (const answer of answers) {
+        expect(answer, suffix).toMatchObject({ dataVolume: 6_627_294_298, fileFormats: [{ code: "cel", label: { en: "CEL" } }] })
+      }
+    }
+  })
+
+  it("are the portal's dataset's formats always, read off the names it selects, and its size only with the files", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "NHA000001")
+    await seedVersion(db, {
+      researchId,
+      number: 1,
+      datasets: [{ datasetId, content: { ...emptyDatasetContent(), fileSelection: ["a.vcf.gz", "b.txt"] } }],
+    })
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.vcf.gz`, "123")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.txt`, "45")
+    const formats = [{ code: "vcf", label: { en: "VCF" } }, { code: "txt", label: { en: "TXT" } }]
+
+    const without = await body(await datasetEntry(get("/x"), "NHA000001"))
+    const withFiles = await body(await datasetEntry(get("/x?includeFiles=true"), "NHA000001"))
+
+    expect(without).toHaveProperty("fileFormats", formats)
+    expect(without).not.toHaveProperty("dataVolume")
+    expect(withFiles).toMatchObject({ fileFormats: formats, dataVolume: 5 })
+  })
+})
+
 describe("the spelling of an address", () => {
   it("responds to a label written in another case under the pinned spelling", async () => {
     const researchId = await createResearch("hum0001")
@@ -387,6 +436,17 @@ describe("what apiSearch returns about its own parameters", () => {
     }
   })
 
+  it("counts no pages when nothing matches, and one for a single match", async () => {
+    await rebuildSearchDocs(db)
+    const none = await body(await apiSearch(get("/api/research"), "research")) as { total: number, page: number, pageCount: number }
+    expect(none).toMatchObject({ total: 0, page: 1, pageCount: 0 })
+
+    await publish(await createResearch("hum0001"), 1, [])
+    await rebuildSearchDocs(db)
+    const one = await body(await apiSearch(get("/api/research"), "research")) as { total: number, pageCount: number }
+    expect(one).toMatchObject({ total: 1, pageCount: 1 })
+  })
+
   it("accepts a ?q= it can parse as a query with 200", async () => {
     await rebuildSearchDocs(db)
     const answer = await apiSearch(get("/api/research?q=title:cancer"), "research")
@@ -500,5 +560,17 @@ describe("the usage project a cached usage record came from", () => {
     expect(text).not.toContain("J-DU000131")
     // The rest of the record is what the page shows, and it is all there.
     expect(text).toContain("Taro Yamada")
+  })
+})
+
+describe("the fields a query can name", () => {
+  it("names the four built-in fields in both languages, as the search screen does", async () => {
+    const { fields } = await body(await searchFields()) as { fields: { code: string, label?: { ja?: string, en?: string } }[] }
+    expect(fields.slice(0, 4)).toEqual([
+      { code: "id", type: "identifier", label: { ja: "ID", en: "ID" } },
+      { code: "title", type: "text", label: { ja: "研究題目", en: "Title" } },
+      { code: "date_published", type: "date", label: { ja: "公開日", en: "Date published" } },
+      { code: "date_modified", type: "date", label: { ja: "更新日", en: "Date modified" } },
+    ])
   })
 })

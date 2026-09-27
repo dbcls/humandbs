@@ -30,6 +30,7 @@ import type {
   ValueSlot,
   NumberValue,
 } from "~/content/types"
+import { datasetFileSummary, formatLabel, type ArchiveFiles, type FileSummary } from "~/files/summary"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
 import {
@@ -556,11 +557,17 @@ export function datasetRowOf(
  * there is one shape for them and this is only what a page does to it.
  */
 export interface CauView
-  extends Omit<CauUsage, "principalInvestigator" | "affiliation" | "country" | "researchTitle"> {
+  extends Omit<CauUsage, "principalInvestigator" | "affiliation" | "country" | "researchTitle" | "datasetAccessions"> {
   principalInvestigator: string
   affiliation: string
   country: string
   researchTitle: string
+  /**
+   * The datasets as upstream names them, each marked with whether the portal
+   * publishes it now: a use was approved for a dataset that may have been
+   * taken off since, and its ID is then drawn as text, with nowhere to go.
+   */
+  datasets: { label: string, published: boolean }[]
 }
 
 /**
@@ -569,9 +576,11 @@ export interface CauView
  * name a defect nobody in the portal can fix. It has no state either, which
  * is why it resolves through its own function.
  */
-function cauView(entry: CauUsage, locale: Locale): CauView {
+function cauView(entry: CauUsage, locale: Locale, published: (label: string) => boolean): CauView {
+  const { datasetAccessions, ...rest } = entry
   return {
-    ...entry,
+    ...rest,
+    datasets: datasetAccessions.map((label) => ({ label, published: published(label) })),
     principalInvestigator: resolveBilingual(entry.principalInvestigator, locale),
     affiliation: resolveBilingual(entry.affiliation, locale),
     country: resolveBilingual(entry.country, locale),
@@ -781,7 +790,7 @@ export function anchoredResearchView(
           ]
         : [],
     })),
-    cau: input.cau.map((entry) => cauView(entry, locale)),
+    cau: input.cau.map((entry) => cauView(entry, locale, (label) => humByLabel.has(label))),
     files: {
       ...input.files,
       rows: input.files.rows.map((row) => ({
@@ -887,6 +896,12 @@ export interface DatasetView {
   dateModified: string | null
   accessType: TermView | null
   typeOfData: FieldView | null
+  /**
+   * Read off the dataset's files (`files/summary.ts`), not written by anybody:
+   * the bytes, null when they cannot be told, and the formats' names.
+   */
+  dataVolume: number | null
+  fileFormats: string[]
   untranslated: boolean
   experiments: { id: string, label: FieldView, values: ValueView[] }[]
   /**
@@ -907,6 +922,8 @@ export interface DatasetViewInput {
   dateModified: string | null
   /** The research's prefix, which the selection is read against. */
   files: FileRowView[]
+  /** What the archive's files are, for an archive's dataset (`accession_file_summary`). */
+  archiveFiles: ArchiveFiles | null
 }
 
 export function datasetView(
@@ -961,11 +978,21 @@ export function anchoredDatasetView(
     dateModified: input.dateModified,
     accessType: row.accessType,
     typeOfData: row.typeOfData,
+    ...fileSummaryView(datasetFileSummary({
+      label: input.label,
+      selection: input.content.fileSelection,
+      listing: input.files,
+      archive: input.archiveFiles,
+    })),
     experiments,
     files: selectedFiles(input.content.fileSelection, input.files),
     untranslated: fallbacks.seen(),
   }
   return { view, byAnchor: at.taken() }
+}
+
+function fileSummaryView(summary: FileSummary): Pick<DatasetView, "dataVolume" | "fileFormats"> {
+  return { dataVolume: summary.byteCount, fileFormats: summary.formats.map(formatLabel) }
 }
 
 /**

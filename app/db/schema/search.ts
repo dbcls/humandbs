@@ -72,6 +72,15 @@ export const searchDoc = pgTable("search_doc", {
    * thousand rows, and the match operator works without one.
    */
   title: text().notNull(),
+  /**
+   * The formats of the files the object holds, as `file-type` codes in the
+   * list's order (`files/formats.ts`): a dataset's are read off its files, and
+   * a research's are those of its datasets. A version's row has none.
+   *
+   * **A column rather than facet rows**, as the two dates are: a format is not
+   * a key anybody writes a value under, and a facet row is a key's.
+   */
+  fileFormats: text().array().notNull().default(sql`'{}'::text[]`),
   textJa: text().notNull(),
   textEn: text().notNull(),
   /**
@@ -83,6 +92,7 @@ export const searchDoc = pgTable("search_doc", {
   unique("search_doc_target_unique").on(t.targetType, t.targetId),
   index().on(t.researchId),
   index().on(t.targetType, t.datePublished),
+  index().using("gin", t.fileFormats),
   /**
    * N-gram rather than a morphological analyser. A morphological tokenizer
    * splits `JGAD000123` and `糖尿病`, which loses both substring matches across

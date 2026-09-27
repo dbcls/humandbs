@@ -2,7 +2,7 @@
  * The fields a query may name, and what may be asked of each.
  *
  * A field is not a column of the content: it is a facet of the published set
- * that the search rows already have. Four of them are built in and belong to
+ * that the search rows already have. Five of them are built in and belong to
  * the rows themselves; the rest come from the catalog, one per key typed as a
  * vocabulary or a disease, and one per number key that has been given a facet
  * category (`~/search/catalog.server` の `loadFacetDefinitions`) — most number
@@ -33,6 +33,15 @@ export type Operator = "eq" | "contains" | "wildcard" | "between"
  */
 export type ValueKind = "term" | "wildcard" | "date" | "range"
 
+/**
+ * The formats of the files a row holds (`files/summary.ts`), named by the
+ * `file-type` vocabulary's codes. **A column of the search row, as the dates
+ * are**: a format is read off the files rather than written under a key, so it
+ * has no key to be a facet of. Spelled here rather than taken from
+ * `files/formats.ts`, which reads the catalog module that reads this one.
+ */
+export const FILE_TYPE_FIELD = "file-type"
+
 export const BUILT_IN_FIELDS = new Map<string, FieldType>([
   /** The primary label of the row itself: a hum label, or a dataset id. */
   ["id", "identifier"],
@@ -40,6 +49,7 @@ export const BUILT_IN_FIELDS = new Map<string, FieldType>([
   ["title", "text"],
   ["date_published", "date"],
   ["date_modified", "date"],
+  [FILE_TYPE_FIELD, "term"],
 ])
 
 /**
@@ -92,7 +102,10 @@ export const BUILT_IN_ONLY: QueryFields = {
 }
 
 export function queryFields(facets: readonly FacetField[]): QueryFields {
-  const byCode = new Map(facets.map((facet) => [facet.code, facet]))
+  // **A built-in field is never a key's**, even where a catalog written before
+  // the name was taken still has a key spelled the same: the two would answer
+  // the same condition from two different places.
+  const byCode = new Map(facets.filter((facet) => !BUILT_IN_FIELDS.has(facet.code)).map((facet) => [facet.code, facet]))
   return {
     typeOf: (name) => {
       const built = BUILT_IN_FIELDS.get(name)

@@ -21,7 +21,9 @@ import { and, eq, inArray, sql } from "drizzle-orm"
 import type { CauUsage } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
+import type { ArchiveFiles } from "~/files/summary"
 import {
+  accessionFileSummary,
   cauEntry,
   contentKey,
   document,
@@ -308,6 +310,19 @@ export async function citedDatasets(
     if (row.label !== null) humByLabel.set(row.label, row.humLabel)
   }
   return { labelById, humByLabel }
+}
+
+/**
+ * What the archive's files are for one of its datasets, or null when the
+ * refresh found none (`files/summary.ts`). Keyed by the primary ID, which is
+ * the accession the archive knows it by.
+ */
+export async function archiveFilesOf(db: Executor, label: string): Promise<ArchiveFiles | null> {
+  const [row] = await db
+    .select({ byteCount: accessionFileSummary.byteCount, formats: accessionFileSummary.formats })
+    .from(accessionFileSummary)
+    .where(eq(accessionFileSummary.accession, label))
+  return row ?? null
 }
 
 /**

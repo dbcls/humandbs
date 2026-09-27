@@ -103,6 +103,7 @@ function researchAnchors(content: ResearchContent, datasets: { id: string, label
 
 function datasetAnchors(content: DatasetContent) {
   const anchored = anchoredDatasetView({
+    archiveFiles: null,
     label: "JGAD000001",
     humLabel: "hum0001",
     studyAccession: null,

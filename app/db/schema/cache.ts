@@ -1,4 +1,4 @@
-import { date, index, integer, pgEnum, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core"
+import { bigint, date, index, integer, pgEnum, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core"
 
 import { UPSTREAM_SOURCES } from "~/upstream/sources"
 
@@ -108,6 +108,26 @@ export const accessionDate = pgTable("accession_date", {
   accession: text().primaryKey(),
   datePublished: date(),
   dateModified: date(),
+  source: text().notNull(),
+})
+
+/**
+ * How much data an external archive's dataset holds and in what formats, read
+ * off the files the archive distributes for it: JGA's encrypted files, DRA's
+ * fastq, GEA's zips as they are, MetaboBank's data files. The size is what a
+ * reader downloads. The file names are not kept — only their sum and the
+ * formats read from them (`files/formats.ts`).
+ *
+ * Two upstreams share the table — the application system for JGA, the DDBJ
+ * public file server for the rest — so a refresh replaces only the rows of its
+ * `source`. A dataset the archive has no files for has no row, and its page
+ * shows neither value rather than a size of zero.
+ */
+export const accessionFileSummary = pgTable("accession_file_summary", {
+  accession: text().primaryKey(),
+  byteCount: bigint({ mode: "number" }).notNull(),
+  /** Codes of the `file-type` terms, in the order the formats are listed. */
+  formats: text().array().notNull(),
   source: text().notNull(),
 })
 

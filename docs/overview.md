@@ -4,7 +4,7 @@ NBDC ヒトデータベースのポータルは、研究とそれに属するデ
 
 ## 構成要素
 
-ポータルは 1 つのアプリと、その前に置く proxy、DB、ファイルストアからなり、外部のシステムを 3 つ読む。
+ポータルは 1 つのアプリと、その前に置く proxy、DB、ファイルストアからなり、外部のシステムを 3 つ読み、Slack に通知を送る。
 
 ```
             browser
@@ -18,18 +18,20 @@ NBDC ヒトデータベースのポータルは、研究とそれに属するデ
                                            +----> JGA application DB (read-only)
                                            +----> DDBJ Search
                                            +----> Keycloak (DDBJ)
+                                           +----> Slack (optional)
 ```
 
 | 構成要素 | 担当すること |
 |---|---|
 | `proxy` | 外部からのリクエストをすべて受ける。build した静的ファイルを返し、ファイルの配信 (`/files/`) と署名付きアップロード (`/private/`) を `s3` へ、それ以外を `app` へ送り、すべての応答にセキュリティ用のヘッダを付ける ([deployment.md](deployment.md)) |
-| `app` | 画面・JSON API・編集・公開のすべて。loader と action から Postgres を直接読み書きする 1 つの React Router アプリで、外部システムからの取得とファイルの切り替えのジョブもこのプロセスで実行する |
+| `app` | 画面・JSON API・編集・公開のすべて。loader と action から Postgres を直接読み書きする 1 つの React Router アプリで、外部システムからの取得、ファイルの切り替えのジョブ、Slack への通知もこのプロセスで実行する |
 | `db` | ファイル以外のデータはすべてここに保存する。下書きも公開中のバージョンも、全文検索と絞り込みの索引もここに置く |
 | `s3` | ファイルストア (SeaweedFS の S3 互換の API)。データファイルと、記事の画像や PDF を保存する。公開かどうかは、2 つの bucket のどちらにあるかで決まる ([files.md](files.md)) |
 | `assistant-api` | 申請支援アシスタント。既定では起動しない別のサービスで、`app` だけが呼ぶ ([assistant.md](assistant.md)) |
 | JGA 申請管理システムの DB | 他のプロジェクトの所管。ポータルは読むだけで、書き込みも schema の変更もしない |
 | DDBJ Search | 外部 accession の日付と、DRA の登録内容を読む |
 | Keycloak | DDBJ 所管の認証。admin かどうかはポータル側で管理する ([auth.md](auth.md)) |
+| Slack | レビューのコメントと公開を Incoming Webhook で知らせる。送るだけで、何も読まない ([publishing.md](publishing.md)) |
 
 ## データの流れ
 

@@ -1,17 +1,19 @@
 /**
- * The four things the portal caches from somewhere else.
+ * The six things the portal caches from somewhere else.
  *
  * **They are split by upstream system, not by table.** What fails is a system:
  * the application database being unreachable implies nothing about DDBJ Search, and
  * a refresh that treated the two as one unit would leave the JGA dates stale
- * whenever the other one was slow. Two of them share `accession_date` and are
- * told apart by its `source` column.
+ * whenever the other one was slow. The dates share `accession_date` and the
+ * files `accession_file_summary`, each told apart by its `source` column.
  */
 export const UPSTREAM_SOURCES = [
   "cau",
   "hum-accession",
   "jgad-date",
   "archive-date",
+  "jgad-file",
+  "archive-file",
 ] as const
 
 export type UpstreamSource = (typeof UPSTREAM_SOURCES)[number]
@@ -25,6 +27,7 @@ export const APPLICATION_DB_SOURCES = [
   "cau",
   "hum-accession",
   "jgad-date",
+  "jgad-file",
 ] as const satisfies readonly UpstreamSource[]
 
 export function isUpstreamSource(value: string): value is UpstreamSource {

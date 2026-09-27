@@ -99,10 +99,12 @@ export function freeKeyCode(wanted: string, held: Iterable<string>): string {
  * afterwards — the same as the access types, which are settled by the
  * structure and must not be reworded.
  *
- * **ICD10 is settled for a different reason**: it is an external standard put
- * in whole, and its headings are the standard's to word, not the portal's.
+ * **ICD10 and the file formats are settled for other reasons**: ICD10 is an
+ * external standard put in whole, and its headings are the standard's to word,
+ * not the portal's; a file's format follows from how its name ends, and its
+ * terms are made from the list in the code (`files/formats.ts`).
  *
- * **The other eleven grow with the data** — platform, library prep kit, tissue
+ * **The other ten grow with the data** — platform, library prep kit, tissue
  * and the rest — and those are the ones an administrator keeps.
  *
  * The label of the *field* one of these belongs to is not settled by this: what
@@ -121,6 +123,7 @@ export const DOCUMENT_LINKED_VOCABULARY = "policies"
 export const SETTLED_VOCABULARIES: ReadonlySet<string> = new Set([
   "access-criteria",
   "age-group",
+  "file-type",
   "has-phenotype-data",
   "health-status",
   "icd10",

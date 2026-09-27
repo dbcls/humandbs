@@ -21,6 +21,7 @@ import { messagesFor } from "~/i18n/messages"
 import { activeAlerts } from "~/public/site.server"
 import { readLocale } from "~/public/urls"
 import { isPreviewPath } from "~/review/urls"
+import { startSlackRunner } from "~/slack/runner.server"
 import { startUpstreamRunner } from "~/upstream/runner.server"
 
 import type { Route } from "./+types/root"
@@ -54,14 +55,16 @@ export const middleware: Route.MiddlewareFunction[] = [
  * Capabilities are derived per request where they are checked, and putting them
  * in a loader's answer would send an authorisation decision to the browser.
  *
- * The two background loops — the one that moves files between the buckets, and
- * the one that refreshes the upstream caches — are started from here because
+ * The background loops — the one that moves files between the buckets, the one
+ * that refreshes the upstream caches and the one that sends the Slack
+ * message — are started from here because
  * every request passes through: they belong to the process rather than to a
  * screen, and starting one again while it runs does nothing.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   startFileRunner()
   startUpstreamRunner()
+  startSlackRunner()
   const locale = readLocale(new URL(request.url).pathname).locale
   const actor = await readActor(request)
   return {

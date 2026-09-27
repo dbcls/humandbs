@@ -6,13 +6,13 @@
  * rather than trusting every query here to stay a `SELECT`, and the schema name
  * is configured because it differs between that system's deployments.
  *
- * The queries answer three of the four cached sources, and the reads that seed a
+ * The queries answer four of the six cached sources, and the reads that seed a
  * draft from an approved application.
- * The cached three are written as one statement each because the joins that
- * resolve a hum label are expensive enough — a full pass over the accession
- * history and the current entries' 24 million relations — that pulling the
- * pieces into the application and joining them there would mean paying for that
- * pass more than once.
+ * The cached four are written as one statement each because the joins that
+ * resolve a hum label or a dataset's files are expensive enough — a full pass
+ * over the accession history and the current entries' 24 million relations —
+ * that pulling the pieces into the application and joining them there would
+ * mean paying for that pass more than once.
  *
  * **Only what a public page shows is selected.** The application forms hold
  * addresses, telephone numbers, the head of institution and every collaborator;
@@ -82,12 +82,25 @@ export interface AccessionDateUpstreamRow {
   dateModified: string | null
 }
 
+/**
+ * The files of one public dataset whose names end the same way, counted and
+ * summed. The end is the name's last three extensions behind a placeholder
+ * stem (`x.fastq.gz.encrypt`) — as much as a format is read from
+ * (`files/formats.ts`) — so the names themselves never leave the query.
+ */
+export interface JgadFileGroupUpstreamRow {
+  accession: string
+  nameEnding: string
+  fileCount: number
+  byteCount: number
+}
+
 export function openApplicationDb(config: ApplicationDbConfig): Pool {
   return new Pool({
     connectionString: config.url,
     application_name: "humandbs-upstream-refresh",
     options: `-c default_transaction_read_only=on -c statement_timeout=${STATEMENT_TIMEOUT_MS}`,
-    // One query at a time; the refresh runs the three sources in sequence.
+    // One query at a time; the refresh runs the four sources in sequence.
     max: 1,
   })
 }
@@ -260,6 +273,61 @@ export async function fetchJgadDates(
     accession: row.accession,
     datePublished: row.date_published,
     dateModified: row.date_modified,
+  }))
+}
+
+/**
+ * The files each public dataset is distributed as.
+ *
+ * A dataset's files hang off the runs and analyses it names (JGAR, JGAZ), and
+ * what it names is read at its submission's **current entry only**: a dataset
+ * that had data added is listed with all of its runs by the entry that added
+ * them, and the later entries of a submission include the ones that only
+ * validated a registration still in progress. Every public dataset is in
+ * exactly one current entry.
+ *
+ * The size is `file_size`, the encrypted file a reader downloads.
+ */
+export async function fetchJgadFileGroups(
+  pool: Pool,
+  schema: string,
+): Promise<JgadFileGroupUpstreamRow[]> {
+  const { rows } = await pool.query<{
+    accession: string
+    name_ending: string
+    file_count: string
+    byte_count: string
+  }>(`
+    WITH jgad AS (
+      SELECT accession_id, accession FROM ${schema}.accession
+      WHERE accession LIKE 'JGAD%' AND accession ~ '^JGAD[0-9]'
+    ), live AS (
+      SELECT h.accession_id
+      FROM ${schema}.accession_history h
+      JOIN jgad t ON t.accession_id = h.accession_id
+      GROUP BY h.accession_id
+      HAVING (array_agg(h.accession_status ORDER BY h.status_date DESC))[1] = ${LIVE}
+    ), part AS (
+      SELECT DISTINCT r.self, r.parent
+      FROM ${schema}.relation r
+      JOIN live l ON l.accession_id = r.self
+      JOIN ${schema}.current_entry ce ON ce.entry_id = r.entry_id
+      WHERE r.parent IS NOT NULL
+    )
+    SELECT j.accession,
+           'x' || coalesce(lower(substring(regexp_replace(f.file_path, '^.*/', '') FROM '((?:[.][^.]*){1,3})$')), '') AS name_ending,
+           count(*)::text AS file_count,
+           coalesce(sum(f.file_size), 0)::text AS byte_count
+    FROM part p
+    JOIN jgad j ON j.accession_id = p.self
+    JOIN ${schema}.file f ON f.accession_id = p.parent
+    GROUP BY 1, 2
+    ORDER BY 1, 2`)
+  return rows.map((row) => ({
+    accession: row.accession,
+    nameEnding: row.name_ending,
+    fileCount: Number(row.file_count),
+    byteCount: Number(row.byte_count),
   }))
 }
 

@@ -63,6 +63,12 @@ export interface AppConfig {
   store: StoreConfig
   applicationDb: ApplicationDbConfig | null
   assistantOrigin: string | null
+  /**
+   * The Incoming Webhook the Slack notification posts to, or null when there
+   * is none. **The URL is the credential**: whoever has it can post to the
+   * channel.
+   */
+  slackWebhookUrl: string | null
 }
 
 export class ConfigError extends Error {
@@ -91,6 +97,7 @@ export function loadConfig(env: Env): AppConfig {
     },
     applicationDb: readApplicationDb(env),
     assistantOrigin: readAssistantOrigin(env),
+    slackWebhookUrl: readSlackWebhookUrl(env),
   }
 }
 
@@ -128,6 +135,12 @@ function readAssistantOrigin(env: Env): string | null {
     throw new ConfigError("HUMANDBS_ASSISTANT_ORIGIN must be an origin, with no path")
   }
   return parsed.origin
+}
+
+function readSlackWebhookUrl(env: Env): string | null {
+  const value = env.HUMANDBS_SLACK_WEBHOOK_URL?.trim()
+  if (value === undefined || value === "") return null
+  return readUrl(env, "HUMANDBS_SLACK_WEBHOOK_URL", ["https:"])
 }
 
 const DEFAULT_APPLICATION_DB_SCHEMA = "jgasys"

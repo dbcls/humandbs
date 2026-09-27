@@ -20,6 +20,7 @@
  */
 
 import type { Executor } from "~/db/client.server"
+import { formatLabel } from "~/files/summary"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { makerOf } from "~/public/view.server"
@@ -27,15 +28,17 @@ import type { FacetDefinition } from "~/search/catalog.server"
 import { resolveTerms } from "~/search/catalog.server"
 import type { ListingSize } from "~/search/page-size"
 import {
+  countFormats,
   countTerms,
   dateBounds,
   numberBounds,
   type DateBounds,
+  type FormatCount,
   type TermCount,
 } from "~/search/counts.server"
 import { dateWindows, type DateWindow } from "~/search/date-window"
 import { OPEN_BOUND, serializeQuery, type DslRange, type QueryNode } from "~/search/dsl"
-import { DATE_FACETS, type DateFacet, type QueryFields } from "~/search/fields"
+import { DATE_FACETS, FILE_TYPE_FIELD, type DateFacet, type QueryFields } from "~/search/fields"
 import { messagesFor } from "~/i18n/messages"
 import type { SearchTarget } from "~/search/query.server"
 import { readSelection, toggleTerm, withoutFacet, withRange } from "~/search/selection"
@@ -154,7 +157,7 @@ export async function facetPanel(
   const datesChosen = DATE_FACETS.filter((field) =>
     selection.terms.has(field) || selection.ranges.has(field))
 
-  const [shared, perFacet, sharedBounds, perFacetBounds, dates]
+  const [shared, perFacet, sharedBounds, perFacetBounds, dates, formats]
     = await Promise.all([
       countTerms(
         db,
@@ -174,6 +177,7 @@ export async function facetPanel(
         dateBounds(db, { target, ast, fields }),
         ...datesChosen.map((field) => dateBounds(db, { target, ast: basisFor(field), fields })),
       ]),
+      countFormats(db, { target, ast: basisFor(FILE_TYPE_FIELD), fields }),
     ])
 
   const [sharedDates, ...ownDates] = dates
@@ -262,7 +266,14 @@ export async function facetPanel(
 
   return {
     categories: withDates(
-      categorise(views, definitions, locale),
+      withFileTypes(categorise(views, definitions, locale), fileTypeView({
+        counts: formats,
+        chosen: chosenTerms(FILE_TYPE_FIELD),
+        locale,
+        ast,
+        fields,
+        address,
+      })),
       DATE_FACETS.map((field) => dateView({
         field,
         locale,
@@ -276,6 +287,57 @@ export async function facetPanel(
     ),
     target,
   }
+}
+
+/**
+ * The file formats as the panel offers them: a vocabulary's box, over a column
+ * of the search row rather than a facet table ([fields.ts](../search/fields.ts)).
+ * The chosen values come first, as in every other box.
+ */
+function fileTypeView(input: {
+  counts: readonly FormatCount[]
+  chosen: readonly string[]
+  locale: Locale
+  ast: QueryNode | null
+  fields: QueryFields
+  address: (query: QueryNode | null) => string
+}): FacetView {
+  const { counts, chosen, locale, ast, fields, address } = input
+  const countOf = new Map(counts.map((row) => [row.code, row.count]))
+  const valueOf = (code: string, selected: boolean): FacetValueView => ({
+    code,
+    label: formatLabel(code),
+    maker: null,
+    count: countOf.get(code) ?? 0,
+    selected,
+    href: address(toggleTerm(ast, fields, FILE_TYPE_FIELD, code)),
+  })
+  return {
+    code: FILE_TYPE_FIELD,
+    label: messagesFor(locale).search.fields[FILE_TYPE_FIELD],
+    kind: "vocabulary",
+    values: [
+      ...chosen.map((code) => valueOf(code, true)),
+      ...counts.filter((row) => !chosen.includes(row.code)).map((row) => valueOf(row.code, false)),
+    ],
+    clearHref: chosen.length === 0 ? null : address(withoutFacet(ast, fields, FILE_TYPE_FIELD)),
+    range: null,
+  }
+}
+
+/** The category the file formats head: what the data is, beside its volume and its type. */
+const DATA_CATEGORY = "data"
+
+/**
+ * The file formats at the head of the data category. They are put there rather
+ * than sorted there, as the dates are, because they are not a catalog key and
+ * have no place in the catalog's order. A catalog with no such category has
+ * them in a box of their own at the end.
+ */
+function withFileTypes(categories: FacetCategoryView[], view: FacetView): FacetCategoryView[] {
+  const at = categories.findIndex((one) => one.code === DATA_CATEGORY)
+  if (at === -1) return [...categories, { code: null, label: null, facets: [view] }]
+  return categories.map((one, index) => index === at ? { ...one, facets: [view, ...one.facets] } : one)
 }
 
 /**

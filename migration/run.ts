@@ -19,19 +19,21 @@
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { sql } from "drizzle-orm"
+import { inArray, sql } from "drizzle-orm"
 
 import type { DatasetContent, ResearchContent, VersionContent } from "~/content/types"
 import { closePools, getOwnerDb } from "~/db/client.server"
 import {
   accessionDate,
   cauEntry,
+  contentKey,
   dataset,
   humAccession,
   labelPin,
   research,
   researchVersion,
 } from "~/db/schema"
+import { syncFileFormatTerms } from "~/files/format-terms.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import {
@@ -41,8 +43,10 @@ import {
   buildResearchContent,
   ownLines,
 } from "./build"
+import { withoutKeys } from "./archive-keys"
 import { ACCESS_CRITERIA_KEY, TYPE_OF_DATA_KEY } from "./catalog"
 import { loadDump, selectPublishedDatasets, versionNumber } from "./es"
+import { DROPPED_FILE_KEYS } from "./file-keys"
 import {
   identityOf,
   insertChunked,
@@ -68,7 +72,7 @@ async function load() {
     // access.
     await tx.execute(sql`
       TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry,
-                     hum_accession, accession_date, upstream_refresh, document, news, alert CASCADE
+                     hum_accession, accession_date, accession_file_summary, upstream_refresh, document, news, alert CASCADE
     `)
 
     const { keyIdByCode, termIdBySetAndCode, codeBySourceKey, knownCode } = await seedCatalog(
@@ -138,6 +142,14 @@ async function load() {
         byHand: hand,
       }) satisfies DatasetContent,
     ]))
+    // A dataset's size and formats are read from its files, not kept under a key (`file-keys.ts`).
+    const fileKeyIds = new Set(DROPPED_FILE_KEYS.flatMap((code) => {
+      const keyId = keyIdByCode.get(code)
+      return keyId === undefined ? [] : [keyId]
+    }))
+    for (const [datasetId, content] of descriptionOfDataset) {
+      descriptionOfDataset.set(datasetId, withoutKeys(content, fileKeyIds).content)
+    }
 
     const versions = dump.publishedVersions.filter((v) => researchIdByHum.has(v.humId))
     await insertChunked(
@@ -190,6 +202,8 @@ async function load() {
 
     const site = await loadSiteContent(tx)
 
+    await tx.delete(contentKey).where(inArray(contentKey.code, [...DROPPED_FILE_KEYS]))
+    await syncFileFormatTerms(tx, { removeUnlisted: true })
     const search = await rebuildSearchDocs(tx)
 
     return {

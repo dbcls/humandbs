@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 
+import { matchRoutes, type RouteObject } from "react-router"
 import { describe, expect, it, vi } from "vitest"
 
 /**
@@ -143,5 +144,44 @@ describe("編集画面が叩く経路", () => {
       if (wrapped.test(await readFile(file, "utf8"))) offenders.push(path.basename(file))
     }
     expect(offenders).toEqual([])
+  })
+})
+
+/**
+ * Under `/api/` a client is asking, so an address no endpoint answers has to
+ * reach the JSON 404 rather than the site's page — and the catch-all there
+ * must not take an address an endpoint does answer. React Router ranks the
+ * routes, so what is checked is the match, not the order of the list.
+ */
+describe("/api/ の下のアドレス", () => {
+  function toRoute(entry: Entry): RouteObject {
+    return entry.children === undefined
+      ? { path: entry.path, id: entry.file }
+      : { path: entry.path, id: entry.file, children: entry.children.map(toRoute) }
+  }
+
+  async function matchedFile(pathname: string): Promise<string | undefined> {
+    const matches = matchRoutes((await treeUnder("production")).map(toRoute), pathname)
+    return matches?.at(-1)?.route.id
+  }
+
+  it("エンドポイントのないアドレスは JSON の 404 の route に当たる", async () => {
+    for (const pathname of ["/api/nope", "/api/research/hum0001/v1/extra", "/api/", "/api/datasets"]) {
+      expect(await matchedFile(pathname), pathname).toBe("routes/api-not-found.ts")
+    }
+  })
+
+  it("エンドポイントと文書のアドレスは、それぞれの route に当たる", async () => {
+    expect(await matchedFile("/api/research")).toBe("routes/api-research-list.ts")
+    expect(await matchedFile("/api/research/hum0001")).toBe("routes/api-research.ts")
+    expect(await matchedFile("/api/research/hum0001/v1")).toBe("routes/api-research-version.ts")
+    expect(await matchedFile("/api/research.jsonl")).toBe("routes/api-research-bulk.ts")
+    expect(await matchedFile("/api/openapi.json")).toBe("routes/api-openapi.ts")
+    expect(await matchedFile("/api/docs")).toBe("routes/api-docs.ts")
+  })
+
+  it("/api の外のアドレスは取らない", async () => {
+    expect(await matchedFile("/apidocs")).not.toBe("routes/api-not-found.ts")
+    expect(await matchedFile("/hum0001")).not.toBe("routes/api-not-found.ts")
   })
 })

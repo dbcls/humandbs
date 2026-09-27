@@ -81,6 +81,7 @@ import {
   researchDraft,
   researchVersion,
 } from "~/db/schema"
+import { syncFileFormatTerms } from "~/files/format-terms.server"
 import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
 import { renderMarkdown } from "~/public/markdown.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
@@ -95,6 +96,7 @@ import {
   type TextReader,
 } from "./build"
 import { DROPPED_ARCHIVE_KEYS, withoutKeys } from "./archive-keys"
+import { DROPPED_FILE_KEYS } from "./file-keys"
 import { ACCESS_CRITERIA_KEY, contentKeySeeds, TYPE_OF_DATA_KEY } from "./catalog"
 import { applyCellEdits, type CellEdit } from "./cell-edits"
 import { headingKeys, restoreDashes } from "./dashes"
@@ -920,7 +922,7 @@ async function load() {
   const counts = await db.transaction(async (tx) => {
     await tx.execute(sql`
       TRUNCATE TABLE research, content_key, vocabulary_set, facet_category, cau_entry,
-                     hum_accession, accession_date, upstream_refresh, document, news, alert CASCADE
+                     hum_accession, accession_date, accession_file_summary, upstream_refresh, document, news, alert CASCADE
     `)
 
     const { keyIdByCode, termIdBySetAndCode, termIdsOf, codeBySourceKey, knownCode } = await seedCatalog(
@@ -930,13 +932,17 @@ async function load() {
       reshapeCatalog(contentKeySeeds(ordered), catalogPlan.keys, new Set(catalogPlan.gone)),
       vocabulary,
     )
-    // The archive keys are filled like any other and emptied once each description is settled (`archive-keys.ts`).
-    const droppedKeyIds = new Set(DROPPED_ARCHIVE_KEYS.map((code) => {
+    // The archive keys and the data volume and file format keys are filled like any other and emptied once each
+    // description is settled (`archive-keys.ts`, `file-keys.ts`).
+    const keyIdsOf = (codes: readonly string[]) => new Set(codes.map((code) => {
       const keyId = keyIdByCode.get(code)
       if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
       return keyId
     }))
+    const droppedKeyIds = keyIdsOf(DROPPED_ARCHIVE_KEYS)
+    const droppedFileKeyIds = keyIdsOf(DROPPED_FILE_KEYS)
     let archiveValues = 0
+    let fileValues = 0
     // The notes that repeat a term of the experiment give way to the term (`number-notes.ts`).
     const setAndCodeOfTerm = new Map([...termIdBySetAndCode].map(([setAndCode, termId]) => [termId, setAndCode]))
     const noteLookup: NoteLookup = {
@@ -947,10 +953,12 @@ async function load() {
       },
     }
     const noteChanges: (NoteChange & { hum: string, dataset: string | undefined, draft: boolean })[] = []
-    const withoutArchiveKeys = <D extends DatasetContent & { datasetId?: string }>(content: D, hum: string, draft: boolean): D => {
+    const withoutDroppedKeys = <D extends DatasetContent & { datasetId?: string }>(content: D, hum: string, draft: boolean): D => {
       const out = withoutKeys(content, droppedKeyIds)
       archiveValues += out.dropped
-      const settled = withoutRepeatedNotes(out.content, noteLookup)
+      const files = withoutKeys(out.content, droppedFileKeyIds)
+      fileValues += files.dropped
+      const settled = withoutRepeatedNotes(files.content, noteLookup)
       noteChanges.push(...settled.changes.map((one) => ({ ...one, hum, dataset: content.datasetId, draft })))
       return settled.content
     }
@@ -1139,7 +1147,7 @@ async function load() {
         return {
           researchId: identityOf(researchIdByHum, rv.humId, "research"),
           number,
-          content: { ...content, datasets: settledCells(rv.humId, content.datasets).map((one) => withoutArchiveKeys(one, rv.humId, false)) },
+          content: { ...content, datasets: settledCells(rv.humId, content.datasets).map((one) => withoutDroppedKeys(one, rv.humId, false)) },
           releaseDate: rv.versionReleaseDate,
         }
       }),
@@ -1199,7 +1207,7 @@ async function load() {
         return { datasetId, ...linked(describe(one, lines, preferred), { hum: humId, dataset: true, datasetId, keyIdOf: (code) => keyIdByCode.get(code) }) }
       }))
       const entries = linkedDatasets.map(({ datasetId, ...content }) => {
-        const described = settleRequests(withoutArchiveKeys({ ...content, datasetId }, humId, true))
+        const described = settleRequests(withoutDroppedKeys({ ...content, datasetId }, humId, true))
         said.push(...requestComments({ kind: "dataset", datasetId }, described.asked))
         return { draftId: row.id, datasetId, content: described.content }
       })
@@ -1241,7 +1249,8 @@ async function load() {
     // The articles each settled term links to, such as a data use policy's text.
     await linkTermsToDocuments(tx, [...vocabulary.terms].flatMap(([setCode, terms]) => terms.flatMap((term) =>
       term.document === null ? [] : [{ setCode, termCode: term.code, documentSlug: term.document }])))
-    await tx.delete(contentKey).where(inArray(contentKey.code, [...DROPPED_ARCHIVE_KEYS]))
+    await tx.delete(contentKey).where(inArray(contentKey.code, [...DROPPED_ARCHIVE_KEYS, ...DROPPED_FILE_KEYS]))
+    await syncFileFormatTerms(tx, { removeUnlisted: true })
     const search = await rebuildSearchDocs(tx)
 
     return {
@@ -1263,6 +1272,7 @@ async function load() {
       claimedTwice,
       nbdc: { selected: [...nbdcSelected.values()], dropped: [...nbdcDropped.values()] },
       archiveValues,
+      fileValues,
       noteChanges,
     }
   })
@@ -1314,6 +1324,7 @@ console.log("dead links followed", relinked.followed, "not found in content", re
 console.log("NBDC cells          ", counts.nbdc.dropped.filter((one) => one.whole).length, "taken out,", counts.nbdc.dropped.filter((one) => !one.whole).length,
   "with groups taken out;", counts.nbdc.selected.length, "files selected from them", written("nbdc-cells.json", counts.nbdc))
 console.log("archive key values  ", counts.archiveValues, "taken out of", DROPPED_ARCHIVE_KEYS.length, "keys")
+console.log("file key values     ", counts.fileValues, "taken out of", DROPPED_FILE_KEYS.length, "keys")
 console.log("number notes settled ", counts.noteChanges.length, written("number-notes.json", counts.noteChanges))
 if (counts.claimedTwice.length > 0) console.log("claimed twice:", written("claimed-twice.json", counts.claimedTwice))
 if (selection.missingDocuments.length > 0) console.log("pinned with no document:", selection.missingDocuments)

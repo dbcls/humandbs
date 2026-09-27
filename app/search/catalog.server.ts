@@ -25,10 +25,11 @@
 import { and, asc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm"
 
 import type { Executor } from "~/db/client.server"
+import { sortFormats } from "~/files/formats"
 import { contentKey, facetCategory, vocabularyTerm } from "~/db/schema"
 
 import { ROOT_ID } from "./counts.server"
-import type { FacetField } from "./fields"
+import { BUILT_IN_FIELDS, type FacetField } from "./fields"
 
 export interface FacetDefinition {
   field: FacetField
@@ -104,7 +105,8 @@ export async function loadFacetDefinitions(db: Executor): Promise<FacetDefinitio
       asc(contentKey.code),
     )
 
-  return (rows as FacetRow[]).map((row) => ({
+  // A key spelled like a built-in field is not a facet: the name is the built-in's (`fields.ts`).
+  return (rows as FacetRow[]).filter((row) => !BUILT_IN_FIELDS.has(row.code)).map((row) => ({
     field: {
       code: row.code,
       keyId: row.id,
@@ -173,6 +175,18 @@ export interface FacetValue {
  * **No counts.** How many rows a value would leave is a question about a
  * result; this is the list of what may be asked.
  */
+/**
+ * The file formats the published set has, in the list's order: the values
+ * `file-type` may be asked for. A column of the search row rather than facet
+ * rows ([fields.ts](fields.ts)), so read apart from the keys' values.
+ */
+export async function publishedFormats(db: Executor): Promise<string[]> {
+  const result = await db.execute<{ code: string }>(sql`
+    SELECT DISTINCT format.code FROM search_doc s, unnest(s.file_formats) AS format(code)
+  `)
+  return sortFormats(result.rows.map((row) => row.code))
+}
+
 export async function publishedFacetValues(db: Executor): Promise<FacetValue[]> {
   const result = await db.execute<{
     key_id: string

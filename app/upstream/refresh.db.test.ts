@@ -17,20 +17,30 @@ vi.mock("./application-db.server", () => ({
   fetchCauEntries: vi.fn(),
   fetchHumAccessions: vi.fn(),
   fetchJgadDates: vi.fn(),
+  fetchJgadFileGroups: vi.fn(),
 }))
 
 vi.mock("./ddbj-search.server", () => ({ fetchArchiveEntry: vi.fn() }))
+
+vi.mock("./public-files.server", () => ({ publicFiles: { text: vi.fn(), size: vi.fn() } }))
 
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 
+import { eq } from "drizzle-orm"
+
+import { FILE_FORMATS } from "~/files/formats"
+
 import {
   fetchCauEntries,
   fetchHumAccessions,
   fetchJgadDates,
+  fetchJgadFileGroups,
 } from "./application-db.server"
+import { geaFileListPath } from "./archive-files"
 import { fetchArchiveEntry } from "./ddbj-search.server"
+import { publicFiles } from "./public-files.server"
 import { claimDueSources, runUpstreamRefresh } from "./refresh.server"
 
 const db = getDb()
@@ -42,7 +52,10 @@ beforeEach(async () => {
   vi.mocked(fetchCauEntries).mockReset()
   vi.mocked(fetchHumAccessions).mockReset()
   vi.mocked(fetchJgadDates).mockReset()
+  vi.mocked(fetchJgadFileGroups).mockReset()
   vi.mocked(fetchArchiveEntry).mockReset()
+  vi.mocked(publicFiles.text).mockReset()
+  vi.mocked(publicFiles.size).mockReset()
   process.env.HUMANDBS_JGA_DATABASE_URL = CONNECTED
 })
 
@@ -210,20 +223,148 @@ describe("the dates, which two upstreams share", () => {
   })
 })
 
+/**
+ * The size and formats of a dataset's files. Two upstreams share the table, as
+ * with the dates, and the formats are codes of terms the refresh keeps equal
+ * to the list in the code.
+ */
+describe("the dataset files", () => {
+  const GEA = [
+    "#Archive/File\tName\tTime\tSize\tMD5",
+    "File\tE-GEAD-1076.idf.txt\tt\t2210\tm",
+    "Archive\tE-GEAD-1076.processed.zip\tt\t308971767\tm",
+    "File\tBD_CSF_Donor11.rds\tt\t8259697\tm",
+    "File\tBD_PBMC_Donor1.h5\tt\t19938473\tm",
+    "File\tgenes.results\tt\t1\tm",
+  ].join("\n")
+
+  it("writes each JGAD's size and formats, and reports the extensions that made none", async () => {
+    vi.mocked(fetchJgadFileGroups).mockResolvedValueOnce([
+      { accession: "JGAD000626", nameEnding: "x.cel.encrypt", fileCount: 96, byteCount: 6627294298 },
+      { accession: "JGAD000144", nameEnding: "x.table.encrypt", fileCount: 1, byteCount: 10 },
+      { accession: "JGAD000144", nameEnding: "x.vcf.gz.encrypt", fileCount: 22, byteCount: 1000 },
+    ])
+
+    const outcomes = await runUpstreamRefresh(db, ["jgad-file"])
+
+    expect(outcomes).toEqual([{ source: "jgad-file", status: "written", rowCount: 2, unknownExtensions: [["table", 1]] }])
+    expect(await summaries()).toEqual([
+      { accession: "JGAD000144", byteCount: 1010, formats: ["vcf"], source: "jgad-file" },
+      { accession: "JGAD000626", byteCount: 6627294298, formats: ["cel"], source: "jgad-file" },
+    ])
+  })
+
+  it("makes the file-type terms the list's before it writes", async () => {
+    vi.mocked(fetchJgadFileGroups).mockResolvedValueOnce([])
+
+    await runUpstreamRefresh(db, ["jgad-file"])
+
+    expect(await fileTypeCodes()).toEqual(FILE_FORMATS.map((one) => one.code))
+  })
+
+  it("keeps the JGAD rows when the application system fails", async () => {
+    vi.mocked(fetchJgadFileGroups).mockResolvedValueOnce([
+      { accession: "JGAD000626", nameEnding: "x.cel.encrypt", fileCount: 96, byteCount: 6627294298 },
+    ])
+    await runUpstreamRefresh(db, ["jgad-file"])
+    vi.mocked(fetchJgadFileGroups).mockRejectedValueOnce(new Error("statement timeout"))
+
+    const outcomes = await runUpstreamRefresh(db, ["jgad-file"])
+
+    expect(outcomes).toEqual([{ source: "jgad-file", status: "failed", failure: "statement timeout" }])
+    expect((await summaries()).map((row) => row.accession)).toEqual(["JGAD000626"])
+  })
+
+  it("reads the pinned datasets of the archives it knows from the public file server, and nothing else", async () => {
+    const researchId = await aResearch()
+    await pinDataset(researchId, "E-GEAD-1076")
+    await pinDataset(researchId, "E-GEAD-627")
+    await pinDataset(researchId, "JGAD000009")
+    await pinDataset(researchId, "hum0001-NHA001")
+    vi.mocked(publicFiles.text).mockImplementation((path) => Promise.resolve(path === geaFileListPath("E-GEAD-1076") ? GEA : null))
+
+    const outcomes = await runUpstreamRefresh(db, ["archive-file"])
+
+    expect(outcomes).toEqual([{ source: "archive-file", status: "written", rowCount: 1, unknownExtensions: [["results", 1]] }])
+    expect(await summaries()).toEqual([
+      { accession: "E-GEAD-1076", byteCount: 308971767, formats: ["rds", "hdf5"], source: "archive-file" },
+    ])
+    expect(vi.mocked(publicFiles.text).mock.calls.map(([path]) => path).sort()).toEqual([
+      geaFileListPath("E-GEAD-627"),
+      geaFileListPath("E-GEAD-1076"),
+    ])
+  })
+
+  it("keeps the archive rows when the file server does not respond", async () => {
+    const researchId = await aResearch()
+    await pinDataset(researchId, "E-GEAD-1076")
+    vi.mocked(publicFiles.text).mockResolvedValueOnce(GEA)
+    await runUpstreamRefresh(db, ["archive-file"])
+    vi.mocked(publicFiles.text).mockRejectedValueOnce(new Error("the DDBJ public file server answered 503"))
+
+    const outcomes = await runUpstreamRefresh(db, ["archive-file"])
+
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(["failed"])
+    expect((await summaries()).map((row) => row.accession)).toEqual(["E-GEAD-1076"])
+  })
+
+  it("replaces only its own source's rows", async () => {
+    const researchId = await aResearch()
+    await pinDataset(researchId, "E-GEAD-1076")
+    vi.mocked(publicFiles.text).mockResolvedValue(GEA)
+    vi.mocked(fetchJgadFileGroups).mockResolvedValue([
+      { accession: "JGAD000626", nameEnding: "x.cel.encrypt", fileCount: 96, byteCount: 6627294298 },
+    ])
+
+    await runUpstreamRefresh(db, ["jgad-file"])
+    await runUpstreamRefresh(db, ["archive-file"])
+    await runUpstreamRefresh(db, ["jgad-file"])
+
+    expect((await summaries()).map((row) => row.accession)).toEqual(["E-GEAD-1076", "JGAD000626"])
+  })
+
+  it("drops a dataset the server no longer has files for", async () => {
+    const researchId = await aResearch()
+    await pinDataset(researchId, "E-GEAD-1076")
+    vi.mocked(publicFiles.text).mockResolvedValueOnce(GEA)
+    await runUpstreamRefresh(db, ["archive-file"])
+    vi.mocked(publicFiles.text).mockResolvedValueOnce(null)
+
+    await runUpstreamRefresh(db, ["archive-file"])
+
+    expect(await summaries()).toEqual([])
+  })
+
+  async function summaries() {
+    return await db.select().from(s.accessionFileSummary).orderBy(s.accessionFileSummary.accession)
+  }
+
+  async function fileTypeCodes(): Promise<string[]> {
+    const rows = await db
+      .select({ code: s.vocabularyTerm.code })
+      .from(s.vocabularyTerm)
+      .innerJoin(s.vocabularySet, eq(s.vocabularySet.id, s.vocabularyTerm.setId))
+      .where(eq(s.vocabularySet.code, "file-type"))
+      .orderBy(s.vocabularyTerm.position)
+    return rows.map((row) => row.code)
+  }
+})
+
 describe("without a connection to the application system", () => {
   beforeEach(() => {
     delete process.env.HUMANDBS_JGA_DATABASE_URL
   })
 
-  it("skips the three sources that read it rather than failing them", async () => {
-    const outcomes = await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date"])
+  it("skips the four sources that read it rather than failing them", async () => {
+    const outcomes = await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date", "jgad-file"])
 
     expect(outcomes.every((outcome) => outcome.status === "skipped")).toBe(true)
     expect(vi.mocked(fetchCauEntries)).not.toHaveBeenCalled()
+    expect(vi.mocked(fetchJgadFileGroups)).not.toHaveBeenCalled()
   })
 
   it("leaves no record, because the table records how the last fetch went", async () => {
-    await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date"])
+    await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date", "jgad-file"])
 
     expect(await db.select().from(s.upstreamRefresh)).toHaveLength(0)
   })

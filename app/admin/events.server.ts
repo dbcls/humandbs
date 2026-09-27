@@ -127,7 +127,7 @@ export async function eventListing(db: Executor, params: URLSearchParams): Promi
   }
 }
 
-interface EventRecord {
+export interface EventRecord {
   id: string
   occurredAt: Date
   actorName: string
@@ -156,7 +156,11 @@ function datasetOf(record: EventRecord): string | null {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-async function namedRows(db: Executor, records: readonly EventRecord[]): Promise<EventRow[]> {
+/**
+ * Records as the front page lists them: each subject named the way it is
+ * called now. The Slack notification names what it reports the same way.
+ */
+export async function namedRows(db: Executor, records: readonly EventRecord[]): Promise<EventRow[]> {
   const datasetIds = [...new Set(records.flatMap((record) => datasetOf(record) ?? []))].filter((id) => UUID.test(id))
   const datasets = datasetIds.length === 0
     ? []

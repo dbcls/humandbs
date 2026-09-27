@@ -9,6 +9,9 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { and, eq } from "drizzle-orm"
+
+import { alertExcerpt } from "~/admin/events"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import type { Executor } from "~/db/client.server"
 import {
@@ -337,7 +340,15 @@ export async function loadSiteContent(
 
   // The editing screen shows since when an alert has been up by reading the
   // trail, so one that comes across standing is put up there as well — under
-  // the reserved actor, at the instant the input holds for it.
+  // the reserved actor, at the instant the input holds for it, named by the
+  // start of its text as the screen names one. The record keeps no other
+  // history of these alerts, so the ones an earlier load put up are replaced
+  // rather than left to pile up beside alerts that are gone.
+  await tx.delete(event).where(and(
+    eq(event.actorSub, BOOTSTRAP_ACTOR.sub),
+    eq(event.action, "publish-site-content"),
+    eq(event.subjectType, "alert"),
+  ))
   await insertChunked(
     alerts.flatMap((a, index) => a.shownAt === null
       ? []
@@ -348,6 +359,7 @@ export async function loadSiteContent(
           action: "publish-site-content" as const,
           subjectType: "alert" as const,
           subjectId: identityOf(alertIds, index, "alert"),
+          detail: { text: alertExcerpt(a.content.body) },
         }]),
     (chunk) => tx.insert(event).values(chunk),
   )

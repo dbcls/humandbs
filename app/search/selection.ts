@@ -18,20 +18,20 @@
  */
 
 import { group, OPEN_BOUND, type DslRange, type FieldNode, type QueryNode } from "./dsl"
-import { isDateFacet, type QueryFields } from "./fields"
+import { FILE_TYPE_FIELD, isDateFacet, type QueryFields } from "./fields"
 
 /**
  * Whether the panel has a control for this field, and so may take a condition
  * on it apart and put it back.
  *
  * Almost always this is "the catalog types the key as a vocabulary or a
- * number". The two dates are the exception the panel makes
- * ([fields.ts](fields.ts)), and they are read here rather than at each call so
- * that adding a value, taking one away and clearing a facet all agree about
- * what the panel owns.
+ * number". The two dates and the file formats are the exceptions the panel
+ * makes ([fields.ts](fields.ts)), and they are read here rather than at each
+ * call so that adding a value, taking one away and clearing a facet all agree
+ * about what the panel owns.
  */
 export function onPanel(fields: QueryFields, field: string): boolean {
-  return fields.facet(field) !== undefined || isDateFacet(field)
+  return fields.facet(field) !== undefined || isDateFacet(field) || field === FILE_TYPE_FIELD
 }
 
 export interface Selection {

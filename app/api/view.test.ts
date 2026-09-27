@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { Slot } from "~/content/types"
 import type { FileLabel } from "~/files/labels"
+import { NO_FILES, type FileSummary } from "~/files/summary"
 import type { CatalogView } from "~/public/view.server"
 
 import { apiDataset, apiResearch, type ApiContext } from "./view"
@@ -29,12 +30,13 @@ function catalogOf(): CatalogView {
 
 const context: ApiContext = { origin: ORIGIN, catalog: catalogOf() }
 
-function dataset(content = emptyDatasetContent(), fileLabels: ReadonlyMap<string, FileLabel> = new Map()) {
+function dataset(content = emptyDatasetContent(), fileLabels: ReadonlyMap<string, FileLabel> = new Map(), fileSummary: FileSummary = NO_FILES) {
   return apiDataset({
     label: "JGAD000001",
     humLabel: "hum0001",
     datePublished: "2020-01-01",
     dateModified: null,
+    fileSummary,
     content,
     files: [{ name: "a.zip", size: 12 }],
     fileLabels,
@@ -279,10 +281,24 @@ describe("what an answer names", () => {
     ])
   })
 
+  it("gives the total size and the formats read off the files, the formats as the file-type field's values", () => {
+    const answer = dataset(emptyDatasetContent(), new Map(), { byteCount: 6_627_294_298, formats: ["cel", "idat"] })
+    expect(answer).toMatchObject({
+      dataVolume: 6_627_294_298,
+      fileFormats: [{ code: "cel", label: { en: "CEL" } }, { code: "idat", label: { en: "IDAT" } }],
+    })
+  })
+
+  it("leaves the size out, key and all, when it cannot be told, and keeps an empty list of formats", () => {
+    const answer = dataset(emptyDatasetContent(), new Map(), NO_FILES)
+    expect(answer).not.toHaveProperty("dataVolume")
+    expect(answer).toHaveProperty("fileFormats", [])
+  })
+
   it("leaves the files out, key and all, when they were not asked for", () => {
     const content = { ...emptyDatasetContent(), fileSelection: ["a.zip"] }
     const answers = [
-      apiDataset({ label: "JGAD000001", humLabel: "hum0001", datePublished: null, dateModified: null, content, files: null, fileLabels: new Map() }, context),
+      apiDataset({ label: "JGAD000001", humLabel: "hum0001", datePublished: null, dateModified: null, content, files: null, fileLabels: new Map(), fileSummary: NO_FILES }, context),
       apiResearch({
         humLabel: "hum0001", versionNumber: 1, releaseDate: "2020-01-01", versions: [{ number: 1, releaseDate: "2020-01-01" }],
         content: emptyResearchContent(), datasetLabelById: new Map(), cau: [], files: null, fileLabels: new Map(),

@@ -34,6 +34,7 @@ describe("loadConfig", () => {
       },
       applicationDb: null,
       assistantOrigin: null,
+      slackWebhookUrl: null,
     })
   })
 })
@@ -211,5 +212,34 @@ describe("loadConfig とアシスタント", () => {
 
   it("refuses a scheme that is not http or https", () => {
     expect(() => loadConfig(withAssistant("ftp://assistant-api:8000"))).toThrow(ConfigError)
+  })
+})
+
+/**
+ * The Slack webhook: optional, since nothing is sent without it, and a
+ * credential, since whoever has the URL can post to the channel.
+ */
+describe("loadConfig と Slack の通知", () => {
+  const HOOK = "https://hooks.slack.com/services/T000/B000/secret-token"
+  const withHook = (value: string | undefined) => ({ ...VALID, HUMANDBS_SLACK_WEBHOOK_URL: value })
+
+  it("設定が無いときと空のときは null で、起動を止めない", () => {
+    expect(loadConfig(withHook(undefined)).slackWebhookUrl).toBeNull()
+    expect(loadConfig(withHook(" \n")).slackWebhookUrl).toBeNull()
+  })
+
+  it("https の URL は前後の空白を除いてそのまま使う", () => {
+    expect(loadConfig(withHook(` ${HOOK}\n`)).slackWebhookUrl).toBe(HOOK)
+  })
+
+  it("https でない URL と URL でない値は起動時にエラーにし、エラーに値を含めない", () => {
+    for (const value of [HOOK.replace("https:", "http:"), "hooks.slack.com/services/T000/B000/secret-token"]) {
+      expect(() => loadConfig(withHook(value))).toThrow(ConfigError)
+      try {
+        loadConfig(withHook(value))
+      } catch (error) {
+        expect(String(error)).not.toContain("secret-token")
+      }
+    }
   })
 })

@@ -167,10 +167,11 @@ const ja = {
      */
     keyword: "キーワード",
     fields: {
-      id: "ID",
-      title: "研究題目",
-      date_published: "公開日",
-      date_modified: "更新日",
+      "id": "ID",
+      "title": "研究題目",
+      "date_published": "公開日",
+      "date_modified": "更新日",
+      "file-type": "ファイル形式",
     },
     sort: {
       label: "並び替え",
@@ -289,6 +290,8 @@ const ja = {
     dateModified: "更新日",
     typeOfData: "データの種類",
     accessType: "アクセス制限",
+    dataVolume: "総データ量",
+    fileFormats: "ファイル形式",
     experiments: "解析手法",
     noExperiments: "解析手法の情報はありません。",
     files: "このデータセットに紐づく非制限公開ファイル",
@@ -501,6 +504,8 @@ const ja = {
         "hum-accession": "hum と JGA アクセッションの対応",
         "jgad-date": "JGAD の日付",
         "archive-date": "外部アクセッションの日付",
+        "jgad-file": "JGAD のファイル",
+        "archive-file": "外部アクセッションのファイル",
       },
     },
     admins: {
@@ -1697,10 +1702,11 @@ const en: Messages = {
     exclude: "Excluding",
     keyword: "Keyword",
     fields: {
-      id: "ID",
-      title: "Title",
-      date_published: "Date published",
-      date_modified: "Date modified",
+      "id": "ID",
+      "title": "Title",
+      "date_published": "Date published",
+      "date_modified": "Date modified",
+      "file-type": "File format",
     },
     sort: {
       label: "Sort by",
@@ -1799,6 +1805,8 @@ const en: Messages = {
     dateModified: "Date modified",
     typeOfData: "Type of data",
     accessType: "Access type",
+    dataVolume: "Total data volume",
+    fileFormats: "File formats",
     experiments: "Analysis method",
     noExperiments: "No information on analysis methods.",
     files: "Unrestricted-access files linked to this dataset",

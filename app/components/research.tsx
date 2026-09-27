@@ -436,12 +436,13 @@ export function ResearchBody({ view, locale, datasetHref, releaseNote = false, c
                           : null}
                       </Td>
                       <Td>
-                        {/* Every accession is the address of its dataset page;
-                            under a preview `linkTo` answers null, since a draft
-                            has no page to send anyone to. */}
+                        {/* A published dataset's accession is the address of
+                            its page; one the portal no longer publishes is
+                            text. Under a preview `linkTo` answers null, since a
+                            draft has no page to send anyone to. */}
                         <DatasetIds
                           locale={locale}
-                          items={usage.datasetAccessions.map((label) => ({ label, to: linkTo({ id: null, label }) }))}
+                          items={usage.datasets.map((one) => ({ label: one.label, to: one.published ? linkTo({ id: null, label: one.label }) : null }))}
                         />
                       </Td>
                     </tr>

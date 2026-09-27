@@ -43,6 +43,7 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 | `HUMANDBS_JGA_DATABASE_URL` | 申請管理システムの DB。配置先 (踏み台の内側) からは直接接続できるので、手元と違って値を埋める |
 | `HUMANDBS_S3_ACCESS_KEY` / `HUMANDBS_S3_SECRET_KEY` | ファイルストアの鍵。配置先ごとに作る (下の「ファイルストアの鍵」) |
 | `HUMANDBS_DATA_DIR` | DB とファイルストアのデータと、DB の backup を保存する dir (下の「データの保存先」) |
+| `HUMANDBS_SLACK_WEBHOOK_URL` | Slack への通知の送り先 ([publishing.md](publishing.md) の「Slack への通知」)。空なら送らない |
 
 redirect URI は Keycloak の client にも登録されている必要がある。登録が無いと認可要求が `400 Invalid parameter: redirect_uri` で失敗し、公開ページは表示されるのにログインだけができない状態になる。新しいアドレスで配置するときは、先に登録を依頼する。
 
@@ -153,6 +154,7 @@ podman-compose run --rm -T \
 ```
 
 - 移行は実行するたびに DB を空にしてから入れる。規則で決められなかったものを人が直した結果は、DB ではなく `migration/input/l12/hand/` の表に書き、移行がそれを読む。DB を直接直すと、次に移行を実行したときに消える。
+- 操作の記録と admin は空にしない。移行が操作の記録に書くのは、旧ポータルで表示中だったアラートを公開した記録 (予約された操作者、本文の先頭を名前にする) だけで、実行し直すと前の移行が書いたその記録を消して書き直す。消えたアラートの記録が実行のたびにたまらないようにするためである。
 - 規則で決められずに残ったものは `migration/input/l12/out/` に書き出される。
 - 旧ポータルから入れた研究の作成日時は Joomla でその研究のページを初めて書いた日時、下書きの作成日時と更新日時は次のバージョンのページを初めて書いた日時と最後に編集した日時にする。移行した日時にすると、admin の研究の一覧の更新日がすべて移行した日になるためである。移行の中で作る下書き (JGA で取り下げられたデータセットを残すもの) は移行した日時になる。
 - 旧ポータルのファイルの dir は、上の 2 つの `-v` の mount 先 (`/source/files` と `/source/public-files`) で渡す。mount 先を変えるときは `HUMANDBS_COPY_SOURCE` と `HUMANDBS_COPY_ASSETS` で指定する。

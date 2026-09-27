@@ -36,6 +36,7 @@ import type { CauUsage, StoredFile } from "~/content/public"
 import type { FileLabel } from "~/files/labels"
 import { toPlainText } from "~/content/richtext"
 import { inListingOrder } from "~/files/selection"
+import { formatLabel, type FileSummary } from "~/files/summary"
 import type {
   DatasetContent,
   DiseaseValue,
@@ -360,6 +361,8 @@ export interface DatasetInput {
   files: readonly StoredFile[] | null
   /** The labels of the research's files, by name. */
   fileLabels: ReadonlyMap<string, FileLabel>
+  /** Read off the dataset's files (`files/summary.ts`); a size that cannot be told leaves the key out. */
+  fileSummary: FileSummary
 }
 
 export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset {
@@ -375,6 +378,10 @@ export function apiDataset(input: DatasetInput, context: ApiContext): ApiDataset
       label: held(experiment.label),
       values: valuesOf(experiment.values, context.catalog),
     })),
+    ...input.fileSummary.byteCount === null ? {} : { dataVolume: input.fileSummary.byteCount },
+    // Called by its own name in either language, and written in English alone
+    // by the vocabulary (`files/formats.ts`).
+    fileFormats: input.fileSummary.formats.map((code) => ({ code, label: labelOf({ labelJa: null, labelEn: formatLabel(code) }) })),
     ...files === null ? {} : { files: selectedFiles(input, files, context) },
   }
 }

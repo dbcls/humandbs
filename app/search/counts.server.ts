@@ -123,6 +123,27 @@ export async function numberBounds(
   return result.rows.map((row) => ({ keyId: row.key_id, min: row.lo, max: row.hi }))
 }
 
+export interface FormatCount {
+  code: string
+  count: number
+}
+
+/**
+ * How many rows hold each file format. The formats are a column of the search
+ * row rather than rows of a facet table ([fields.ts](fields.ts)), so they are
+ * counted off the hits themselves.
+ */
+export async function countFormats(db: Executor, query: SearchQuery): Promise<FormatCount[]> {
+  const result = await db.execute<{ code: string, n: number }>(sql`
+    WITH ${hitsCte(query)}
+    SELECT format.code, count(*)::int AS n
+    FROM hits h, unnest(h.file_formats) AS format(code)
+    GROUP BY format.code
+    ORDER BY n DESC, format.code
+  `)
+  return result.rows.map((row) => ({ code: row.code, count: row.n }))
+}
+
 export interface DateBounds {
   min: string
   max: string

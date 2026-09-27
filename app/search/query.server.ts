@@ -20,7 +20,7 @@ import { sql, type SQL } from "drizzle-orm"
 import type { Executor } from "~/db/client.server"
 
 import { OPEN_BOUND, type FieldNode, type QueryNode } from "./dsl"
-import type { FacetField, QueryFields } from "./fields"
+import { FILE_TYPE_FIELD, type FacetField, type QueryFields } from "./fields"
 import { canonicalJgaIds } from "./jga-ids"
 
 import { type ListingSize, PAGE_SIZE, rowsPerPage } from "./page-size"
@@ -156,6 +156,10 @@ function compileField(node: FieldNode, query: SearchQuery): SQL {
     // A vocabulary takes no range; the parser has already refused one.
     return typeof node.value === "string" ? termPredicate(facet, node.value) : sql`FALSE`
   }
+  // The codes are lower-case (`codeFrom`), and the reader's spelling is not.
+  if (node.field === FILE_TYPE_FIELD) {
+    return typeof node.value === "string" ? sql`s.file_formats @> ARRAY[lower(${node.value})]` : sql`FALSE`
+  }
 
   const value = node.value
   if (typeof value !== "string") {
@@ -208,7 +212,7 @@ export function hitsCte(query: SearchQuery): SQL {
   const predicate = query.ast === null ? sql`TRUE` : compile(query.ast, query)
   return sql`hits AS MATERIALIZED (
     SELECT s.id AS doc_id, s.target_id, s.hum_label, s.dataset_label,
-           s.date_published, s.date_modified,
+           s.date_published, s.date_modified, s.file_formats,
            pgroonga_score(s.tableoid, s.ctid) AS score
     FROM search_doc s
     WHERE s.target_type = ${query.target}::search_target_type AND (${predicate})

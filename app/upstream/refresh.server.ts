@@ -23,18 +23,23 @@ import { isPortalIssuedId } from "~/admin/labels"
 import { lockAllResearches } from "~/admin/locks.server"
 import { loadConfig, type ApplicationDbConfig } from "~/config.server"
 import type { Database, Executor, Transaction } from "~/db/client.server"
-import { accessionDate, cauEntry, humAccession, labelPin, upstreamRefresh } from "~/db/schema"
+import { accessionDate, accessionFileSummary, cauEntry, humAccession, labelPin, upstreamRefresh } from "~/db/schema"
+import { syncFileFormatTerms } from "~/files/format-terms.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
 import { archiveResourceOf, calendarDayOf } from "./archive"
+import { archiveFilesKindOf, readArchiveFiles } from "./archive-files"
 import {
   fetchCauEntries,
   fetchHumAccessions,
   fetchJgadDates,
+  fetchJgadFileGroups,
   openApplicationDb,
   type AccessionDateUpstreamRow,
 } from "./application-db.server"
 import { fetchArchiveEntry } from "./ddbj-search.server"
+import { summarizeJgadFiles, summarizeListedFiles, type FileSummaries } from "./file-summary"
+import { publicFiles } from "./public-files.server"
 import { APPLICATION_DB_SOURCES, UPSTREAM_SOURCES, type UpstreamSource } from "./sources"
 
 const CHUNK = 500
@@ -47,13 +52,20 @@ const CHUNK = 500
 const REQUEST_INTERVAL_MS = 250
 
 export type SourceOutcome
-  = | { source: UpstreamSource, status: "written", rowCount: number }
-    | { source: UpstreamSource, status: "failed", failure: string }
-    | { source: UpstreamSource, status: "skipped" }
+  = | {
+    source: UpstreamSource
+    status: "written"
+    rowCount: number
+    /** For the file sources: how many files ended in each extension that made no format. */
+    unknownExtensions?: [string, number][]
+  }
+  | { source: UpstreamSource, status: "failed", failure: string }
+  | { source: UpstreamSource, status: "skipped" }
 
 /** A fetch that came back, holding its rows until the transaction opens. */
 interface Fetched {
   rowCount: number
+  unknownExtensions?: [string, number][]
   write: (tx: Transaction) => Promise<void>
 }
 
@@ -83,7 +95,12 @@ export async function runUpstreamRefresh(
       try {
         const fetched = await fetchSource(source, db, pool, applicationDb)
         written.set(source, fetched)
-        outcomes.push({ source, status: "written", rowCount: fetched.rowCount })
+        outcomes.push({
+          source,
+          status: "written",
+          rowCount: fetched.rowCount,
+          ...(fetched.unknownExtensions === undefined ? {} : { unknownExtensions: fetched.unknownExtensions }),
+        })
       } catch (error) {
         outcomes.push({ source, status: "failed", failure: reasonOf(error) })
       }
@@ -116,7 +133,11 @@ async function fetchSource(
     return { rowCount: rows.length, write: (tx) => writeDates(tx, source, rows) }
   }
 
-  // The three below are only reached with a connection; the caller skips them
+  if (source === "archive-file") {
+    return fileSummariesFetched(source, await fetchArchiveFiles(db))
+  }
+
+  // The four below are only reached with a connection; the caller skips them
   // otherwise, and this makes that known to the type checker rather than by comment.
   if (pool === null || applicationDb === null) {
     throw new Error("the application system is not configured")
@@ -147,11 +168,58 @@ async function fetchSource(
     }
   }
 
+  if (source === "jgad-file") {
+    return fileSummariesFetched(source, summarizeJgadFiles(await fetchJgadFileGroups(pool, applicationDb.schema)))
+  }
+
   const rows = firstPerKey(
     await fetchJgadDates(pool, applicationDb.schema),
     (row) => row.accession,
   )
   return { rowCount: rows.length, write: (tx) => writeDates(tx, source, rows) }
+}
+
+/**
+ * The pinned datasets of DRA, GEA and MetaboBank, as the DDBJ public file
+ * server distributes them. Like the dates, only primary labels: a secondary
+ * one is an old name for a dataset already covered. One accession at a time;
+ * a DRA submission's own files are asked for a few at a time
+ * (`archive-files.ts`).
+ */
+async function fetchArchiveFiles(db: Executor): Promise<FileSummaries> {
+  const pinned = await db
+    .select({ label: labelPin.label })
+    .from(labelPin)
+    .where(and(eq(labelPin.kind, "dataset"), eq(labelPin.isPrimary, true)))
+  const wanted = [...new Set(pinned.map((row) => row.label))]
+    .filter((label) => archiveFilesKindOf(label) !== null)
+    .sort()
+  const listed = []
+  for (const accession of wanted) {
+    listed.push({ accession, files: await readArchiveFiles(accession, publicFiles) })
+  }
+  return summarizeListedFiles(listed)
+}
+
+function fileSummariesFetched(source: UpstreamSource, summaries: FileSummaries): Fetched {
+  return {
+    rowCount: summaries.rows.length,
+    unknownExtensions: [...summaries.unknown].sort(([a, m], [b, n]) => n - m || a.localeCompare(b)),
+    write: async (tx) => {
+      // The terms have to be the list's before the search rows are rebuilt from these.
+      await syncFileFormatTerms(tx, { removeUnlisted: false })
+      const accessions = summaries.rows.map((row) => row.accession)
+      await tx.delete(accessionFileSummary).where(
+        accessions.length === 0
+          ? eq(accessionFileSummary.source, source)
+          : or(eq(accessionFileSummary.source, source), inArray(accessionFileSummary.accession, accessions)),
+      )
+      await insertChunked(
+        summaries.rows.map((row) => ({ ...row, source })),
+        (chunk) => tx.insert(accessionFileSummary).values(chunk),
+      )
+    },
+  }
 }
 
 /**
