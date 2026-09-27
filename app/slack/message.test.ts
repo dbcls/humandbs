@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { LINES_PER_HEADING, publishRecords, reviewActivities, slackText, type CommentRecord, type PressRecord, type PublishedRow } from "./message"
+import { COMMENTERS_PER_LINE, LINES_PER_HEADING, publishRecords, reviewActivities, slackText, type CommentRecord, type PressRecord, type PublishedRow } from "./message"
 
 const ORIGIN = "https://humandbs.example.org"
 
@@ -50,6 +50,23 @@ describe("slackText", () => {
 
   it("同じ名前でも、ログインしている人としていない人は別の人として並べる", () => {
     expect(textOf([commentBy("山田", true), commentBy("山田", false)])).toContain("コメント 2 件 (山田、山田 (anonymous))")
+  })
+
+  it(`書いた人が ${String(COMMENTERS_PER_LINE)} 人までならすべて並べ、それを超えると残りを人数にまとめる`, () => {
+    const people = (count: number) => Array.from({ length: count }, (_, index) => commentBy(`人${String(index)}`, true))
+    const atLimit = textOf(people(COMMENTERS_PER_LINE))
+    expect(atLimit).toContain(`人${String(COMMENTERS_PER_LINE - 1)})`)
+    expect(atLimit).not.toContain("ほか")
+
+    const over = textOf([...people(COMMENTERS_PER_LINE + 3), ...people(COMMENTERS_PER_LINE + 3)])
+    expect(over).toContain(`コメント ${String((COMMENTERS_PER_LINE + 3) * 2)} 件 (`)
+    expect(over).toContain(`人${String(COMMENTERS_PER_LINE - 1)}、ほか 3 人)`)
+    expect(over).not.toContain(`人${String(COMMENTERS_PER_LINE)}、`)
+  })
+
+  it("書いた人が何人いても、下書きの行の長さは人数によらない", () => {
+    const line = (count: number) => textOf(Array.from({ length: count }, (_, index) => commentBy(`${"名".repeat(80)}${String(index).padStart(5, "0")}`, false)))
+    expect(line(10_000).length - line(COMMENTERS_PER_LINE + 1).length).toBeLessThan(20)
   })
 
   it("ボタンは種類ごとに、レビューの画面と同じ名前で押された回数を送る", () => {

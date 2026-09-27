@@ -19,6 +19,7 @@
 export const PUBLIC_BUCKET = "files"
 import { dayInJst } from "~/dates"
 import { pageRange } from "~/paging"
+import type { FileListView, FileRowView } from "~/public/view.server"
 import { isPageSize, PAGE_SIZE, type PageSize } from "~/search/page-size"
 
 export const PRIVATE_BUCKET = "private"
@@ -294,6 +295,24 @@ export function pageOfFiles<T>(rows: readonly T[], page: number, size = FILES_PA
     page: wanted,
     pageCount,
     ...pageRange(wanted, size, rows.length),
+  }
+}
+
+/**
+ * One page of the download list. A store that did not respond arrives here as an
+ * empty listing, which the page draws as no download section — the same as a
+ * prefix that holds nothing, and the honest answer in both cases.
+ */
+export function fileListOf(rows: readonly FileRowView[], page: number, size: PageSize): FileListView {
+  const paged = pageOfFiles(rows, page, size)
+  return {
+    rows: paged.rows,
+    total: paged.total,
+    page: paged.page,
+    pageCount: paged.pageCount,
+    size,
+    rangeFrom: paged.rangeFrom,
+    rangeTo: paged.rangeTo,
   }
 }
 

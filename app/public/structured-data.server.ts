@@ -22,9 +22,6 @@ const DESCRIPTION_LENGTH = 200
 /** The most a `Dataset`'s description is read to. */
 const JSON_LD_DESCRIPTION_LENGTH = 5000
 
-/** Past this many files a dataset names its list of addresses instead of each file. */
-const FILES_LISTED = 100
-
 function cut(text: string, length: number): string {
   // By code point, so a character outside the basic plane is not cut in half.
   const chars = Array.from(text.replace(/\s+/g, " ").trim())
@@ -127,11 +124,11 @@ export function datasetSeo(view: DatasetView, input: { origin: string, locale: L
     ...access === undefined ? [] : [`${words.accessType}: ${access}`],
   ].join(stop) + stop.trim()
 
-  const distribution = view.files.length === 0
+  const distribution = view.files.total === 0
     ? []
-    : view.files.length > FILES_LISTED
+    : view.namedFiles === null
       ? [{ "@type": "DataDownload", "contentUrl": `${origin}${datasetFileListPath(view.label)}`, "encodingFormat": "text/plain" }]
-      : view.files.map((file) => ({
+      : view.namedFiles.map((file) => ({
           "@type": "DataDownload",
           "name": file.name,
           "contentUrl": `${origin}${filePath(view.humLabel, file.name)}`,

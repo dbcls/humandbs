@@ -14,15 +14,14 @@
 
 import type { Executor } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
-import type { FileListView, FileRowView } from "~/public/view.server"
-import type { PageSize } from "~/search/page-size"
+import type { FileRowView } from "~/public/view.server"
+import { PAGE_SIZES, type PageSize } from "~/search/page-size"
 
 import {
   commonPrefix,
   composeListing,
   filePageOf,
   fileRowsOf,
-  pageOfFiles,
   privatePrefix,
   PRIVATE_BUCKET,
   publicPrefix,
@@ -76,9 +75,18 @@ export async function publicListingsOf(
  * for expensive to call.
  */
 export async function everyPublicListing(): Promise<Map<string, StoredNode[]>> {
-  const nodes = await tolerantly(() => listPrefix(PUBLIC_BUCKET, ""))
+  return await everyListing(PUBLIC_BUCKET) ?? new Map()
+}
+
+/**
+ * Every prefix of a bucket at once, keyed by its first segment — a hum label
+ * in the public bucket, a research's identity in the private one. Null when the
+ * store did not respond.
+ */
+async function everyListing(bucket: typeof PUBLIC_BUCKET | typeof PRIVATE_BUCKET): Promise<Map<string, StoredNode[]> | null> {
+  const nodes = await tolerantly(() => listPrefix(bucket, ""))
+  if (nodes === null) return null
   const listings = new Map<string, StoredNode[]>()
-  if (nodes === null) return listings
 
   for (const node of nodes) {
     // The whole bucket is listed, so a name here is still a full key. The first
@@ -162,13 +170,17 @@ export async function researchesWithFiles(
  * is what `composeListing` settles; which side it is on does not change the count,
  * so the pending switches are not read.
  *
- * **One pair of listings per row**, bounded by the page size the way
+ * **One pair of listings per row on a page**, bounded by the page size the way
  * `publicListingsOf` is. A row whose store did not respond is `null` and the others
- * are kept, so one refusal does not blank the column.
+ * are kept, so one refusal does not blank the column. **Past the largest page
+ * — every research at once — each bucket is listed once instead**: a pair per
+ * row was a thousand requests for one page. Then a bucket that did not respond
+ * leaves every row without numbers, since none of them could be read.
  */
 export async function listingSummariesOf(
   rows: readonly { researchId: string, humLabel: string | null }[],
 ): Promise<Map<string, ListingSummary | null>> {
+  if (rows.length > LARGEST_PAGE) return listingSummariesOfEvery(rows)
   const summaries = await Promise.all(rows.map(async (row) => {
     const [publicNodes, privateNodes] = await Promise.all([
       publicListing(row.humLabel),
@@ -179,6 +191,20 @@ export async function listingSummariesOf(
     return { count: listing.length, bytes: listing.reduce((sum, entry) => sum + entry.size, 0) }
   }))
   return new Map(rows.map((row, at) => [row.researchId, summaries[at] ?? null]))
+}
+
+const LARGEST_PAGE = Math.max(...PAGE_SIZES)
+
+async function listingSummariesOfEvery(
+  rows: readonly { researchId: string, humLabel: string | null }[],
+): Promise<Map<string, ListingSummary | null>> {
+  const [publicListings, privateListings] = await Promise.all([everyListing(PUBLIC_BUCKET), everyListing(PRIVATE_BUCKET)])
+  return new Map(rows.map((row) => {
+    if (publicListings === null || privateListings === null) return [row.researchId, null]
+    const publicNodes = row.humLabel === null ? [] : publicListings.get(row.humLabel) ?? []
+    const listing = composeListing(publicNodes, privateListings.get(row.researchId) ?? [], [])
+    return [row.researchId, { count: listing.length, bytes: listing.reduce((sum, entry) => sum + entry.size, 0) }]
+  }))
 }
 
 /**
@@ -211,24 +237,6 @@ export function listingRows(
     isPublic: entry.isPublic,
     label: fileLabelIn(labels.get(entry.name), locale),
   }))
-}
-
-/**
- * One page of the download list. A store that did not respond arrives here as an
- * empty listing, which the page draws as no download section — the same as a
- * prefix that holds nothing, and the honest answer in both cases.
- */
-export function fileListOf(rows: readonly FileRowView[], page: number, size: PageSize): FileListView {
-  const paged = pageOfFiles(rows, page, size)
-  return {
-    rows: paged.rows,
-    total: paged.total,
-    page: paged.page,
-    pageCount: paged.pageCount,
-    size,
-    rangeFrom: paged.rangeFrom,
-    rangeTo: paged.rangeTo,
-  }
 }
 
 /** The page a `?files=` parameter requests. Anything unreadable is the first. */

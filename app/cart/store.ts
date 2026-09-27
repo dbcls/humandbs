@@ -157,13 +157,6 @@ export function noticeOf(before: string[], after: string[], at: number): CartNot
 }
 
 /**
- * Where an application is actually made. The portal collects the accessions and
- * hands the reader on; nothing about the application itself is kept here.
- */
-export const APPLICATION_FORM_URL
-  = "https://humandbs.ddbj.nig.ac.jp/nbdc/application/dataset_import"
-
-/**
  * What gets pasted into the application form: one component per dataset, under
  * the key the form reads. The shape is the one v1 produced, because the thing
  * at the other end has not changed.

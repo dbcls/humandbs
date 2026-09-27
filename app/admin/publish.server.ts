@@ -91,6 +91,8 @@ export type PublishOutcome
     | { status: "gone" }
     /** A number a version holds, or none at all for a draft that is not an update. */
     | { status: "number-unavailable" }
+    /** An update that changes nothing the published page shows. */
+    | { status: "unchanged" }
 
 export type WithdrawOutcome
   = | { status: "withdrawn", draftId: string }
@@ -545,6 +547,18 @@ export async function publishDraft(
     // stands in front of: the one it updates, or else the newest out.
     const datasets = publishCheckDatasets(snapshot)
     const previous = updating ?? snapshot.versions[0]
+
+    // **An update that changes nothing is refused**: the published page would
+    // read the same after it. The screen shuts the button on the same reading;
+    // this is under the lock, because a description saved back to what is out
+    // moves no revision of the draft.
+    if (updating !== null
+      && researchPathsChanged(updating.content, snapshot.draft.content).length === 0
+      && changesOf(updating, datasets).length === 0
+      && !orderChanged(datasetIdsOf(updating), datasets.map((row) => row.datasetId))
+      && request.releaseDate === updating.releaseDate) {
+      return { status: "unchanged" }
+    }
     const publishCheck = checkPublish({
       humLabel: snapshot.humLabel,
       content: snapshot.draft.content,

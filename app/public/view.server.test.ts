@@ -1,8 +1,10 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import type { CauUsage } from "~/content/public"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
+import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 import type {
   DataProvider,
   DatasetContent,
@@ -364,6 +366,71 @@ function dataset(content: DatasetContent) {
     files: [],
   }, "ja", catalog)
 }
+
+/**
+ * The largest selection is thousands of files, and a page shows twenty: the
+ * view sent to the browser holds the page the address asks for and no more,
+ * as a research's download list does.
+ */
+describe("a dataset page's files", () => {
+  const name = (at: number) => `f${String(at + 1).padStart(5, "0")}.txt`
+
+  function selecting(count: number, filePage?: { page: number, size: PageSize }) {
+    const names = Array.from({ length: count }, (_, at) => name(at))
+    return datasetView({
+      archiveFiles: null,
+      studyAccession: null,
+      secondaryLabels: [],
+      label: "NHA000001",
+      humLabel: "hum0001",
+      content: { ...emptyDatasetContent(), fileSelection: names },
+      selection: names,
+      datePublished: null,
+      dateModified: null,
+      // One the dataset does not select, which is never on any page.
+      files: [...names, "other.txt"].map((one) => ({ name: one, size: 1, isPublic: true, label: "" })),
+      filePage,
+    }, "ja", catalog).files
+  }
+
+  it("holds only the page asked for, and counts the whole selection", () => {
+    const files = selecting(8929, { page: 3, size: 100 })
+    expect(files.rows.map((row) => row.name)).toEqual(Array.from({ length: 100 }, (_, at) => name(200 + at)))
+    expect(files).toMatchObject({ total: 8929, page: 3, pageCount: 90, size: 100, rangeFrom: 201, rangeTo: 300 })
+  })
+
+  it("names every selected file for the structured data up to a hundred, and none past that", () => {
+    const named = (count: number) => datasetView({
+      archiveFiles: null,
+      studyAccession: null,
+      secondaryLabels: [],
+      label: "NHA000001",
+      humLabel: "hum0001",
+      content: { ...emptyDatasetContent(), fileSelection: Array.from({ length: count }, (_, at) => name(at)) },
+      selection: [],
+      datePublished: null,
+      dateModified: null,
+      files: Array.from({ length: count }, (_, at) => ({ name: name(at), size: 1, isPublic: true, label: "" })),
+    }, "ja", catalog).namedFiles
+    expect(named(100)?.map((row) => row.name)).toEqual(Array.from({ length: 100 }, (_, at) => name(at)))
+    expect(named(101)).toBeNull()
+  })
+
+  it("holds the first page of the default size when no page is asked for", () => {
+    const files = selecting(45)
+    expect(files.rows).toHaveLength(PAGE_SIZE)
+    expect(files).toMatchObject({ page: 1, size: PAGE_SIZE })
+  })
+
+  it("gives every selected file once across its pages, and nothing it does not select", () => {
+    fc.assert(fc.property(fc.integer({ min: 0, max: 230 }), fc.constantFrom(...PAGE_SIZES), (count, size) => {
+      const first = selecting(count, { page: 1, size })
+      const shown = Array.from({ length: first.pageCount }, (_, at) => selecting(count, { page: at + 1, size }).rows)
+        .flat().map((row) => row.name)
+      expect(shown).toEqual(Array.from({ length: count }, (_, at) => name(at)))
+    }), { numRuns: 30 })
+  })
+})
 
 describe("a row of a research's dataset table", () => {
   const experiment = (id: string, label: string) => ({ id, label: filled(label), values: [] })

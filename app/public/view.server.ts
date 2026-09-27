@@ -30,6 +30,7 @@ import type {
   ValueSlot,
   NumberValue,
 } from "~/content/types"
+import { fileListOf } from "~/files/prefix"
 import { datasetFileSummary, formatLabel, type ArchiveFiles, type FileSummary } from "~/files/summary"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { messagesFor } from "~/i18n/messages"
@@ -42,7 +43,7 @@ import {
   type Locale,
   type Resolved,
 } from "~/i18n/locale"
-import type { PageSize } from "~/search/page-size"
+import { PAGE_SIZE, type PageSize } from "~/search/page-size"
 
 import { awaitedItems, type AwaitedItem } from "./awaited"
 import { href } from "./urls"
@@ -916,12 +917,23 @@ export interface DatasetView {
   untranslated: boolean
   experiments: { id: string, label: FieldView, values: ValueView[] }[]
   /**
-   * What this dataset selects out of its research's prefix, in the prefix's order.
-   * Already narrowed to what the listing holds, so a selection
-   * naming something absent is simply not here.
+   * The page asked for of what this dataset selects out of its research's
+   * prefix, in the prefix's order. Already narrowed to what the listing holds,
+   * so a selection naming something absent is simply not here. **One page and
+   * no more**, as a research's download list is: the largest selection is
+   * thousands of files, and all of them were sent with every page.
    */
-  files: FileRowView[]
+  files: FileListView
+  /**
+   * Every file the dataset selects, while there are few enough to be named one
+   * by one in the page's structured data (`FILES_NAMED`); null past that, where
+   * the list of their addresses stands for them.
+   */
+  namedFiles: FileRowView[] | null
 }
+
+/** Past this many files a dataset's structured data names its list of addresses instead of each file. */
+export const FILES_NAMED = 100
 
 export interface DatasetViewInput {
   label: string
@@ -940,6 +952,8 @@ export interface DatasetViewInput {
   dateModified: string | null
   /** The research's prefix, which the selection is read against. */
   files: FileRowView[]
+  /** The page of the selection the address asks for; the first of the default size when none is. */
+  filePage?: { page: number, size: PageSize }
   /** What the archive's files are, for an archive's dataset (`accession_file_summary`). */
   archiveFiles: ArchiveFiles | null
   /** Set by a preview only: the items it has no value for yet are shown as still to come. */
@@ -995,6 +1009,7 @@ export function anchoredDatasetView(
     listing: input.files,
     archive: input.archiveFiles,
   }))
+  const selected = selectedFiles(input.content.fileSelection, input.files)
   const view: DatasetView = {
     label: input.label,
     humLabel: input.humLabel,
@@ -1016,7 +1031,8 @@ export function anchoredDatasetView(
         })
       : [],
     experiments,
-    files: selectedFiles(input.content.fileSelection, input.files),
+    files: fileListOf(selected, input.filePage?.page ?? 1, input.filePage?.size ?? PAGE_SIZE),
+    namedFiles: selected.length > FILES_NAMED ? null : selected,
     untranslated: fallbacks.seen(),
   }
   return { view, byAnchor: at.taken() }

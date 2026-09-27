@@ -150,6 +150,31 @@ describe("a research page", () => {
     expect(redirect.headers.get("location")).toBe("/research/hum0001/v1")
   })
 
+  it("is the same 404 for a secondary or differently cased label of an unpublished research as for one nobody pinned", async () => {
+    const researchId = await createResearch("hum0001")
+    await db.insert(s.labelPin)
+      .values({ kind: "hum", label: "hun0001", researchId, isPrimary: false })
+    await rebuildSearchDocs(db)
+
+    for (const humId of ["hun0001", "HUM0001", "hum9999"]) {
+      expect((await caught(() => researchPage({ ...ja, humId, wanted: "latest" }))).status, humId).toBe(404)
+      expect((await caught(() => researchPage({ ...ja, humId, wanted: 1 }))).status, humId).toBe(404)
+      expect((await caught(() => releaseListPage({ locale: "ja", humId }))).status, humId).toBe(404)
+    }
+  })
+
+  it("is the same 404 for a secondary label of a research whose every version is withdrawn", async () => {
+    const researchId = await createResearch("hum0001")
+    await db.insert(s.labelPin)
+      .values({ kind: "hum", label: "hun0001", researchId, isPrimary: false })
+    await publish(researchId, 1, [])
+    await db.delete(s.researchVersion)
+    await rebuildSearchDocs(db)
+
+    expect((await caught(() => researchPage({ ...ja, humId: "hun0001", wanted: "latest" }))).status).toBe(404)
+    expect((await caught(() => releaseListPage({ locale: "ja", humId: "HUN0001" }))).status).toBe(404)
+  })
+
   it("keeps the language of the address when it redirects", async () => {
     const researchId = await createResearch("hum0001")
     await db.insert(s.labelPin)
@@ -238,6 +263,18 @@ describe("a dataset page", () => {
 
     expect(redirect.status).toBe(302)
     expect(redirect.headers.get("location")).toBe("/dataset/JGAD000001")
+  })
+
+  it("is the same 404 for a superseded or differently cased id of an unpublished dataset as for one nobody pinned", async () => {
+    const researchId = await createResearch("hum0001")
+    const datasetId = await createDataset(researchId, "hum0001-NHA001")
+    await db.insert(s.labelPin)
+      .values({ kind: "dataset", label: "hum0001.v1.wgs.v1", datasetId, isPrimary: false })
+    await rebuildSearchDocs(db)
+
+    for (const id of ["hum0001.v1.wgs.v1", "HUM0001-nha001", "hum0001-NHA999"]) {
+      expect((await caught(() => datasetPage({ ...ja, datasetId: id }))).status, id).toBe(404)
+    }
   })
 
   it("redirects a superseded dataset id to the one that is current", async () => {
@@ -386,9 +423,9 @@ describe("the download list", () => {
     await rebuildSearchDocs(db)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`, "1")
 
-    const view = await datasetPage({ locale: "ja", datasetId: "JGAD000001" })
+    const view = await datasetPage({ ...ja, datasetId: "JGAD000001" })
 
-    expect(view.files).toEqual([{ name: "a.zip", size: 1, isPublic: true, label: "" }])
+    expect(view.files.rows).toEqual([{ name: "a.zip", size: 1, isPublic: true, label: "" }])
   })
 
   it("has the label of each file the dataset selects, which the research gave it", async () => {
@@ -401,9 +438,9 @@ describe("the download list", () => {
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.zip`)
     await db.insert(s.fileLabel).values({ researchId, fileName: "a.xlsx", labelJa: "", labelEn: "Dictionary file" })
 
-    const view = await datasetPage({ locale: "ja", datasetId: "JGAD000001" })
+    const view = await datasetPage({ ...ja, datasetId: "JGAD000001" })
 
-    expect(view.files.map((row) => [row.name, row.label])).toEqual([["a.xlsx", "Dictionary file"], ["b.zip", ""]])
+    expect(view.files.rows.map((row) => [row.name, row.label])).toEqual([["a.xlsx", "Dictionary file"], ["b.zip", ""]])
   })
 })
 
@@ -420,7 +457,7 @@ describe("a dataset page's secondary IDs", () => {
     await publish(researchId, 1, [datasetId, other])
     await rebuildSearchDocs(db)
 
-    const view = await datasetPage({ locale: "ja", datasetId: "NHA000001" })
+    const view = await datasetPage({ ...ja, datasetId: "NHA000001" })
 
     expect(view.secondaryLabels).toEqual(["hum0001.v1.freq.v1", "hum0001.v2.freq.v1"])
   })
@@ -506,7 +543,7 @@ describe("a dataset page's size and formats", () => {
     await db.insert(s.accessionFileSummary).values({ accession: "JGAD000626", byteCount: 6_627_294_298, formats: ["cel"], source: "jgad-file" })
     await rebuildSearchDocs(db)
 
-    const view = await datasetPage({ locale: "ja", datasetId: "JGAD000626" })
+    const view = await datasetPage({ ...ja, datasetId: "JGAD000626" })
 
     expect([view.dataVolume, view.fileFormats]).toEqual([6_627_294_298, ["CEL"]])
   })
@@ -521,7 +558,7 @@ describe("a dataset page's size and formats", () => {
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.txt`, "45")
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}unselected.txt`, "6789")
 
-    const view = await datasetPage({ locale: "ja", datasetId: "NHA000001" })
+    const view = await datasetPage({ ...ja, datasetId: "NHA000001" })
 
     // The file not in the public bucket is not counted, but its name still
     // gives a format: the search row and the API read the same names.
@@ -537,7 +574,7 @@ describe("a dataset page's size and formats", () => {
     await publish(researchId, 1, [nha])
     await rebuildSearchDocs(db)
 
-    const view = await datasetPage({ locale: "ja", datasetId: "NHA000001" })
+    const view = await datasetPage({ ...ja, datasetId: "NHA000001" })
 
     expect([view.dataVolume, view.fileFormats]).toEqual([null, ["VCF"]])
     descriptions.delete(nha)
@@ -549,7 +586,7 @@ describe("a dataset page's size and formats", () => {
     await publish(researchId, 1, [dra])
     await rebuildSearchDocs(db)
 
-    const view = await datasetPage({ locale: "ja", datasetId: "DRA000001" })
+    const view = await datasetPage({ ...ja, datasetId: "DRA000001" })
 
     expect([view.dataVolume, view.fileFormats]).toEqual([null, []])
   })

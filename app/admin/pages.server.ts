@@ -151,6 +151,7 @@ import { readAcknowledgements, readComments, type AcknowledgementView } from "~/
 import {
   drawDatasetDraft,
   drawDraft,
+  datasetRowViewsOf,
   draftDatasetRowViews,
   researchAnchorsOf,
   type DrawnDataset,
@@ -165,7 +166,7 @@ import {
 import { placeName, type PlaceSources } from "~/components/places"
 import { catalogLabel } from "~/i18n/catalog-label"
 import { unresolvedCount } from "~/review/comments"
-import { placeSources } from "~/review/places.server"
+import { placesAndDatasets, placeSources } from "~/review/places.server"
 import { isShareExpired, isShareOpen } from "~/review/share"
 
 export function notFound(): never {
@@ -1346,7 +1347,10 @@ export async function publishPage(
 ): Promise<PublishPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
-  const preview = await publishPreview(db, draftId, await privateNames(researchId))
+  const [preview, catalog] = await Promise.all([
+    privateNames(researchId).then((names) => publishPreview(db, draftId, names)),
+    loadCatalog(db),
+  ])
   if (preview === null) notFound()
 
   const labelOf = new Map(preview.datasetLabels.map((row) => [row.datasetId, row.label]))
@@ -1355,18 +1359,20 @@ export async function publishPage(
   const datasetHref = (datasetId: string): string =>
     href(locale, adminDraftDatasetPath(researchId, draftId, datasetId))
 
-  const named = [
+  const named = new Set([
     ...preview.publishCheck.blocks.flatMap((block) => block.kind === "dataset-id-missing" ? [block.datasetId] : []),
     ...preview.datasetChanges.map((change) => change.datasetId),
-  ]
-  const [shown, acknowledgements, comments, share, places, catalog] = await Promise.all([
-    draftDatasetRowViews(db, draftId, [...new Set(named)], locale),
+  ])
+  // Naming the places reads every dataset of the research, which holds the
+  // ones the table draws: they are drawn from that one reading, with the one
+  // catalog the changes are named from.
+  const [acknowledgements, comments, share, { places, datasets }] = await Promise.all([
     readAcknowledgements(db, draftId),
     readComments(db, draftId),
     readShare(db, draftId),
-    placeSources(db, researchId, draftId, draft.content, locale),
-    loadCatalog(db),
+    placesAndDatasets(db, researchId, draftId, draft.content, locale),
   ])
+  const shown = datasetRowViewsOf(datasets.filter((row) => named.has(row.id)), locale, catalog)
   const changes = publishChanges(preview, places, catalog, locale)
   const researchHref = href(locale, adminDraftPath(researchId, draftId))
 
@@ -1684,20 +1690,9 @@ export async function publishAction(
   const numberField = form.get("number")
   const number = numberField === null ? null : Number(numberField)
   if (number !== null && (!Number.isInteger(number) || number < 1)) badRequest()
-  const releaseDate = readString(form, "releaseDate") ?? ""
-  if (!RELEASE_DATE.test(releaseDate)) badRequest()
-
-  // **An update that changes nothing is refused**: the published page would read
-  // the same after it. The screen shuts the button on the same reading; this is
-  // for a form sent without it.
-  const preview = await publishPreview(db, draftId, await privateNames(researchId))
-  if (preview?.updating != null
-    && preview.researchPaths?.length === 0
-    && preview.datasetChanges.length === 0
-    && !preview.reordered
-    && releaseDate === preview.updating.releaseDate) {
-    return { status: "unchanged" }
-  }
+  // A day that exists: the field sends one, and the column takes nothing else.
+  const releaseDate = dayFromInput(readString(form, "releaseDate") ?? "")
+  if (releaseDate === null) badRequest()
 
   const outcome = await publishDraft(db, {
     at: { draftId, revision },
@@ -1712,8 +1707,6 @@ export async function publishAction(
   if (outcome.status === "unacknowledged") return { status: "unacknowledged" }
   return { status: outcome.status }
 }
-
-const RELEASE_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 function readString(form: FormData, name: string): string | undefined {
   const value = form.get(name)

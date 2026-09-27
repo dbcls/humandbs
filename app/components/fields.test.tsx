@@ -357,7 +357,7 @@ describe("the conflict banner", () => {
   const nameOf = (path: string) => `hum0001 / ${path.toUpperCase()}`
 
   it("draws each changed place as a bordered way to its section, not as a bare word", () => {
-    const html = render(<ConflictBanner locale="ja" changed={["summary.aims", "publications"]} nameOf={nameOf} />)
+    const html = render(<ConflictBanner locale="ja" changed={["summary.aims", "publications"]} nameOf={nameOf} onCompare={() => undefined} />)
     const ways = [...html.matchAll(/<a\b[^>]*href="#([^"]*)"[^>]*class="([^"]*)"/g)]
     expect(ways.map((way) => way[1])).toEqual(["summary", "publications"])
     for (const way of ways) expect(way[2]).toMatch(/\bborder\b/)
@@ -365,15 +365,21 @@ describe("the conflict banner", () => {
 
   it("names each place as the screen's other lists of places do, not by its path", () => {
     fc.assert(fc.property(fc.uniqueArray(fc.stringMatching(/^[a-z]{1,8}(\.[a-z]{1,8}){0,2}$/), { minLength: 1, maxLength: 5 }), (changed) => {
-      const html = render(<ConflictBanner locale="ja" changed={changed} nameOf={nameOf} />)
+      const html = render(<ConflictBanner locale="ja" changed={changed} nameOf={nameOf} onCompare={() => undefined} />)
       const words = [...html.matchAll(/<a\b[^>]*>(?:<[^>]*>)*([^<]*)/g)].map((way) => way[1]?.trim())
       expect(words).toEqual(changed.map(nameOf))
     }))
   })
 
   it("draws no ways when nothing it can name has changed", () => {
-    const html = render(<ConflictBanner locale="ja" changed={[]} nameOf={nameOf} />)
+    const html = render(<ConflictBanner locale="ja" changed={[]} nameOf={nameOf} onCompare={() => undefined} />)
     expect(html).not.toContain("<a")
+    expect(html).not.toContain("比較と取り込み")
+  })
+
+  it("offers one button to compare every changed place and settle them, rather than taking each as it was saved", () => {
+    const html = render(<ConflictBanner locale="ja" changed={["title", "summary.aims"]} nameOf={nameOf} onCompare={() => undefined} />)
+    expect(html.match(/<button[^>]*>(?:(?!<\/button>).)*比較と取り込み<\/button>/g)).toHaveLength(1)
   })
 })
 

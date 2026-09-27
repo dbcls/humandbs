@@ -67,6 +67,7 @@ export interface FieldAnnotations {
   at: string
   /** Somebody saved this field elsewhere after the screen was opened (a refused save's list). */
   changed: boolean
+  /** Opens the conflict dialog at this field, or at the place the import form is at. Null where there is nothing to settle. */
   onImport: (() => void) | null
   extra?: React.ReactNode
 }
@@ -846,11 +847,13 @@ export function AddElement({ label, onClick }: { label: string, onClick: () => v
  * them, **by the names the screen's other lists of places give them**
  * (`places.ts` の `placeName`).
  */
-export function ConflictBanner({ locale, changed, nameOf }: {
+export function ConflictBanner({ locale, changed, nameOf, onCompare }: {
   locale: Locale
   changed: string[]
   /** What the place a path names is called. */
   nameOf: (path: string) => string
+  /** Opens the dialog the changed places are compared and settled in (`import.tsx` の `MergeDialog`). */
+  onCompare: () => void
 }) {
   const t = messagesFor(locale).admin.editor
   return (
@@ -858,6 +861,13 @@ export function ConflictBanner({ locale, changed, nameOf }: {
       <Stack gap="tight">
         <p className="font-semibold">{t.conflictHeading}</p>
         <p>{changed.length === 0 ? t.conflictNone : t.conflictBody(changed.length)}</p>
+        {changed.length > 0 && (
+          <div>
+            <Button type="button" variant="primary" size="sm" icon={<Icon name="download" />} onClick={onCompare}>
+              {t.mergeOpen}
+            </Button>
+          </div>
+        )}
         {changed.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {changed.map((path) => (

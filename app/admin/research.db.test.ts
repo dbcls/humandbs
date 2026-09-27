@@ -196,6 +196,23 @@ describe("deleting a research", () => {
       expect(await db.select().from(s.research)).toHaveLength(1)
     })
 
+    /**
+     * A switch still running may yet put a file into a prefix read empty a
+     * moment ago. One that failed is left where it stopped and puts nothing.
+     */
+    it("refuses while a file of it is still switching, with its prefixes empty, and not for one that failed", async () => {
+      const fixture = await ready(LABEL)
+      researchId = fixture.researchId
+      await db.insert(s.filePublishJob).values({ researchId, fileName: "a.zip", action: "publish" })
+      await db.insert(s.filePublishJob).values({ researchId, fileName: "b.zip", action: "unpublish", state: "failed" })
+
+      expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "files-remain" })
+      expect(await db.select().from(s.research)).toHaveLength(1)
+
+      await db.delete(s.filePublishJob).where(eq(s.filePublishJob.fileName, "a.zip"))
+      expect(await deleteResearch(db, researchId, CURATOR)).toEqual({ status: "deleted" })
+    })
+
     it("deletes once the files are gone", async () => {
       const fixture = await ready(LABEL)
       researchId = fixture.researchId

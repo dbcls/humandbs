@@ -33,3 +33,23 @@ export function describedBy(
 ): Map<string, PublishedDataset> {
   return new Map((content?.datasets ?? []).map((row) => [row.datasetId, row] as const))
 }
+
+/**
+ * The content without the datasets the research no longer has: taken out of
+ * the order and out of what each publication names, and nothing else changed.
+ *
+ * **A dataset is deleted from the research, not from a draft**, and a version
+ * keeps naming it. A draft that still named it would have every save refused,
+ * since a save names only the research's datasets — so every draft of the
+ * research loses it when it goes, and a draft made from a version never gets it.
+ */
+export function withoutDatasets(content: ResearchContent, kept: (datasetId: string) => boolean): ResearchContent {
+  return {
+    ...content,
+    datasetIds: content.datasetIds.filter(kept),
+    relatedPublications: content.relatedPublications.map((publication) =>
+      publication.datasetIds.state === "value"
+        ? { ...publication, datasetIds: { state: "value", value: publication.datasetIds.value.filter(kept) } }
+        : publication),
+  }
+}

@@ -1074,6 +1074,21 @@ const ja = {
       importField: "取り込み",
       /** A field somebody saved elsewhere since the screen was opened — not a difference from the published version. */
       changedElsewhere: "別の場所で変更",
+      /** The dialog a refused save is settled in: the places changed elsewhere, compared with what this screen holds. */
+      mergeOpen: "比較と取り込み",
+      mergeTitle: "別の場所で保存された値との比較",
+      mergeNote: [
+        "別の場所で変わった項目ごとに、この画面の入力と比べて表示する。保存する値は、この画面で変えていない項目は別の場所で保存された値、変えた項目はこの画面の入力から始まる。",
+        "「取り込み」を押すと保存する値がフォームに入る。保存は「保存」で行う。",
+      ],
+      mergeMine: "この画面の入力",
+      mergeTheirs: "別の場所で保存された値",
+      mergeWritten: "保存する値",
+      mergeKept: "保存する要素",
+      mergeOnlyMine: "この画面の入力のみ",
+      mergeOnlyTheirs: "別の場所で保存された値のみ",
+      mergeSame: "別の場所で保存された値と同じです。決める値はありません。",
+      mergeApply: "取り込み",
     },
     import: {
       heading: "取り込み元の選択",

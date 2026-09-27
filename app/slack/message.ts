@@ -83,12 +83,21 @@ export interface PublishRecord {
 /** More than this many lines under one heading are summed up as a count, so that a backlog stays one readable message. */
 export const LINES_PER_HEADING = 30
 
+/**
+ * More than this many people on a draft's line are summed up as a count. **The
+ * names are typed by whoever holds the link**, as many as they like, and a
+ * message Slack refuses for its length is not sent at all — nor is anything
+ * after it, which waits behind it.
+ */
+export const COMMENTERS_PER_LINE = 10
+
 const WORDS = {
   review: "レビュー",
   publish: "公開",
   comments: (count: number) => `コメント ${count} 件`,
   pressed: (button: string, count: number) => `「${button}」${count} 回`,
   more: (count: number) => `ほか ${count} 件`,
+  morePeople: (count: number) => `ほか ${count} 人`,
 }
 
 /**
@@ -98,6 +107,7 @@ const WORDS = {
 export function reviewActivities(comments: readonly CommentRecord[], presses: readonly PressRecord[]): ReviewActivity[] {
   const anonymous = messagesFor("ja").comment.anonymous
   const byDraft = new Map<string, ReviewActivity>()
+  const seen = new Map<string, Set<string>>()
   const activityOf = (row: CommentRecord | PressRecord): ReviewActivity => {
     const known = byDraft.get(row.draftId)
     if (known !== undefined) return known
@@ -117,7 +127,12 @@ export function reviewActivities(comments: readonly CommentRecord[], presses: re
     const activity = activityOf(row)
     activity.comments += 1
     const shown = row.signedIn ? row.authorName : `${row.authorName} (${anonymous})`
-    if (!activity.commenters.includes(shown)) activity.commenters.push(shown)
+    const names = seen.get(row.draftId) ?? new Set<string>()
+    seen.set(row.draftId, names)
+    if (!names.has(shown)) {
+      names.add(shown)
+      activity.commenters.push(shown)
+    }
   }
   for (const row of presses) {
     activityOf(row).presses[row.kind] += 1
@@ -179,7 +194,10 @@ function reviewLine(activity: ReviewActivity, origin: string): string {
   const url = `${origin}/admin/research/${activity.researchId}/draft/${activity.draftId}/review`
   const parts: string[] = []
   if (activity.comments > 0) {
-    parts.push(`${WORDS.comments(activity.comments)} (${escapeSlack(activity.commenters.join("、"))})`)
+    const named = activity.commenters.slice(0, COMMENTERS_PER_LINE)
+    const rest = activity.commenters.length - named.length
+    const people = rest > 0 ? [...named, WORDS.morePeople(rest)] : named
+    parts.push(`${WORDS.comments(activity.comments)} (${escapeSlack(people.join("、"))})`)
   }
   for (const kind of ["commented", "approved"] as const) {
     const count = activity.presses[kind]

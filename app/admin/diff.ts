@@ -3,9 +3,9 @@
  *
  * The answer is a list of paths (`form.ts`), and the editor uses it twice: the
  * banner across the top of a rejected save names the fields somebody else
- * changed, and the indicator beside each of those fields is what offers to import
- * their value. Nothing is merged and nothing is reloaded — **what is in the
- * form stays in the form** until the author decides otherwise.
+ * changed, and the conflict dialog compares each of them with what the form
+ * holds (`import.ts` の `initialMerge`). Nothing is reloaded — **what is in the
+ * form stays in the form** until the author settles the dialog.
  *
  * How two values are told apart and how an array is compared are the same for a
  * research and for a dataset, so they are defined in `compare.ts`.
@@ -31,7 +31,6 @@ import type {
   RelatedPublicationInput,
   ResearchProjectInput,
 } from "./form"
-import { readAt, writeAt } from "./paths"
 
 function sameLink(a: LinkInput, b: LinkInput): boolean {
   return a.id === b.id && a.url === b.url && a.text === b.text
@@ -135,23 +134,4 @@ export function diffDraftInput(base: DraftInput, other: DraftInput): string[] {
 
   into.when(sameStrings(a.datasetIds, b.datasetIds), "datasetIds")
   return into.paths
-}
-
-/**
- * One field of `theirs` written over `mine`, addressed by the path the diff
- * reported. The memo sits beside the content rather than inside it, so it is
- * the one path that does not descend through `content`.
- */
-export function importField(mine: DraftInput, theirs: DraftInput, path: string): DraftInput {
-  const keys = path === "note" ? ["note"] : ["content", ...path.split(".")]
-  const taken = readAt(theirs, keys)
-  if (!taken.found) return mine
-  const written = writeAt(mine, keys, taken.value) as DraftInput
-  // **A publication's datasets are one place holding two lists** — the ones
-  // chosen and the ones typed (`publication` above) — so importing the place
-  // imports both.
-  if (keys[1] !== "relatedPublications" || keys.at(-1) !== "datasetIds") return written
-  const typed = [...keys.slice(0, -1), "externalIds"]
-  const other = readAt(theirs, typed)
-  return other.found ? writeAt(written, typed, other.value) as DraftInput : written
 }

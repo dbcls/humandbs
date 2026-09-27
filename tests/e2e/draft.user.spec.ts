@@ -33,7 +33,7 @@ test.describe("P-DRAFT 下書き", () => {
     })
   })
 
-  test("S-DRAFT-02: 同じ下書きを 2 つのタブで開くと、あとの保存が競合になり、入力が残り、相手の値を取り込める", async ({ page, browser }) => {
+  test("S-DRAFT-02: 同じ下書きを 2 つのタブで開くと、あとの保存が競合になり、入力が残り、比較のダイアログで保存する値を決められる", async ({ page, browser }) => {
     await withDraft(page, async (draft) => {
       const other = await (await browser.newContext({ baseURL: test.info().project.use.baseURL })).newPage()
       await openScreen(page, draft.path)
@@ -52,11 +52,52 @@ test.describe("P-DRAFT 下書き", () => {
       // 手元の入力は消えず、読み直しもしない
       await expect(titleInput(page)).toHaveValue(second)
 
-      // 変わった欄の見出しに相手の値を取り込むボタンがあり、押すとその値になる
+      await expect(page.getByRole("button", { name: "比較と取り込み" })).toBeVisible()
+      // 変わった欄の見出しの「取り込み」は比較のダイアログを開く。両方が変えた欄なので、保存する値はこの画面の入力で始まる
       const changed = page.getByRole("heading", { level: 2, name: /^研究題目 別の場所で変更/ })
       await changed.getByRole("button", { name: "取り込み" }).click()
-      // 保存済みの値と同じになったので、保存するものは無い
+      const merging = page.getByRole("dialog", { name: "別の場所で保存された値との比較" })
+      const written = merging.getByRole("textbox", { name: "保存する値 ja", exact: true })
+      await expect(written).toHaveValue(second)
+      await expect(merging.getByText(first).first()).toBeVisible()
+      await written.fill(first)
+      await merging.getByRole("button", { name: "取り込み", exact: true }).click()
+      await expect(merging).toHaveCount(0)
+      // 決めた値がフォームに入る。保存済みの値と同じになったので、保存するものは無い
       await expect(titleInput(page)).toHaveValue(first)
+      await other.context().close()
+    })
+  })
+
+  test("S-DRAFT-06: データセットの編集画面でも、あとの保存が競合になり、比較のダイアログで保存する値を決められる", async ({ page, browser }) => {
+    await withDraft(page, async (draft) => {
+      await page.goto(`${draft.path}/dataset`)
+      const datasets = page.locator(`a[href^="${draft.path}/dataset/"]:not([href$="/upstream"])`)
+      test.skip(await datasets.count() === 0, "下書きにデータセットが無い")
+      const datasetPath = await datasets.first().getAttribute("href") ?? ""
+      const other = await (await browser.newContext({ baseURL: test.info().project.use.baseURL })).newPage()
+      await openScreen(page, datasetPath)
+      await openScreen(other, datasetPath)
+      const typeOfData = (tab: Page) => tab.getByRole("textbox", { name: "データの種類 ja", exact: true })
+      test.skip(await typeOfData(page).count() === 0, "データセットにデータの種類の欄が無い")
+
+      const first = `${E2E} 先に保存したデータの種類`
+      const second = `${E2E} あとから保存したデータの種類`
+      await typeOfData(other).fill(first)
+      await saveDataset(other, datasetPath)
+      await typeOfData(page).fill(second)
+      await saveDataset(page, datasetPath, 409)
+      await expect(page.getByText("別の場所で保存されました")).toBeVisible()
+
+      await page.getByRole("button", { name: "比較と取り込み" }).click()
+      const merging = page.getByRole("dialog", { name: "別の場所で保存された値との比較" })
+      // 両方が変えた欄なので、保存する値はこの画面の入力で始まる
+      const written = merging.getByRole("textbox", { name: "保存する値 ja", exact: true })
+      await expect(written).toHaveValue(second)
+      await written.fill(first)
+      await merging.getByRole("button", { name: "取り込み", exact: true }).click()
+      await expect(merging).toHaveCount(0)
+      await expect(typeOfData(page)).toHaveValue(first)
       await other.context().close()
     })
   })
@@ -142,6 +183,14 @@ function titleInput(page: Page) {
 async function saveDraft(page: Page, status = 200): Promise<void> {
   const saved = page.waitForResponse((answer) => answer.request().method() === "POST"
     && /\/draft\/[0-9a-f-]{36}(\.data)?$/.test(new URL(answer.url()).pathname))
+  await page.getByRole("button", { name: "保存", exact: true }).last().click()
+  expect((await saved).status()).toBe(status)
+}
+
+/** Saves a dataset's form with the toolbar's button, and expects the response to the save to have `status`. */
+async function saveDataset(page: Page, datasetPath: string, status = 200): Promise<void> {
+  const saved = page.waitForResponse((answer) => answer.request().method() === "POST"
+    && new RegExp(`^${datasetPath}(\\.data)?$`).test(new URL(answer.url()).pathname))
   await page.getByRole("button", { name: "保存", exact: true }).last().click()
   expect((await saved).status()).toBe(status)
 }

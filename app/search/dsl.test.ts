@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { parseQuery, serializeQuery, type QueryNode } from "./dsl"
@@ -16,6 +17,20 @@ function errorOf(input: string) {
 }
 
 describe("reading a query", () => {
+  /**
+   * The database refuses the character in any text it is handed, so a query
+   * holding one is not one the search can run — refused here, it is answered
+   * as a query that could not be read rather than as a failure.
+   */
+  it("refuses a NUL anywhere, in a word, a phrase or a field's value, at the column it is at", () => {
+    const around = fc.constantFrom("cancer", "\"Homo sapiens\"", "id:hum0001", "title:\"a b\"", "a OR b", "")
+    fc.assert(fc.property(around, fc.nat(), (query, at) => {
+      const cut = at % (query.length + 1)
+      const given = `${query.slice(0, cut)}\u0000${query.slice(cut)}`
+      expect(errorOf(given)).toMatchObject({ code: "unexpected-token", column: cut + 1 })
+    }))
+  })
+
   it("treats an empty query as the whole published set rather than an error", () => {
     expect(ast("")).toBeNull()
     expect(ast("   ")).toBeNull()

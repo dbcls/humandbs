@@ -22,7 +22,7 @@
 import { useRef, useState, type ReactNode } from "react"
 
 import { describeAt } from "~/admin/changes"
-import { diffDraftInput, importField } from "~/admin/diff"
+import { diffDraftInput } from "~/admin/diff"
 import { draftAside } from "~/admin/draft-name"
 import type {
   DataProviderInput,
@@ -61,6 +61,7 @@ import { Badge, Stack } from "./base"
 import { DraftHead, DraftNameEditor, DraftTools, useDraftEditing, useDrawn } from "./draft-tools"
 import { DraftNote, OpenComments, WholeNote } from "./comments"
 import { FieldReview, type FieldReviewData } from "./field-review"
+import { MergeDialog, researchParts } from "./import"
 import { placeName, placeRows } from "./places"
 import { DoiValue, GrantIdsValue, ResearchBody, ResearchListTable } from "./research"
 import { CitableTable, datasetName, GrantIds, IdList, LinksField, researchFieldLabel } from "./research-fields"
@@ -136,7 +137,6 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
     initial: view.input,
     revision: view.revision,
     diff: diffDraftInput,
-    importAt: importField,
     body: (value) => ({ content: value.content }),
   })
 
@@ -257,8 +257,26 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
         <Stack>
           {editing.conflict !== null && (
             <div onClick={onHeaderBarJump}>
-              <ConflictBanner locale={locale} changed={editing.conflict.changed} nameOf={(path) => nameOf({ kind: "research-field", path })} />
+              <ConflictBanner
+                locale={locale}
+                changed={editing.conflict.changed}
+                nameOf={(path) => nameOf({ kind: "research-field", path })}
+                onCompare={() => { editing.openMerge(null) }}
+              />
             </div>
+          )}
+          {editing.conflict !== null && editing.merging !== null && (
+            <MergeDialog
+              locale={locale}
+              parts={researchParts(locale, view.datasets, view.citable, [input, editing.conflict.theirs], t.mergeWritten)}
+              base={editing.conflict.base}
+              mine={input}
+              theirs={editing.conflict.theirs}
+              changed={editing.conflict.changed}
+              at={editing.merging.at}
+              onClose={editing.closeMerge}
+              onSettle={editing.settle}
+            />
           )}
 
           <Stack gap="block">

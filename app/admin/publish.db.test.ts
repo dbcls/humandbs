@@ -567,6 +567,39 @@ describe("updating a version", () => {
     return { ...fixture, before, at: { draftId: draft.id, revision: saved.revision } }
   }
 
+  /**
+   * The published page would read the same after it. Checked here, under the
+   * lock, as well as on the screen: a description saved back to what is out
+   * after the screen read it moves no revision of the draft.
+   */
+  it("refuses an update that changes nothing, and writes nothing", async () => {
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
+    const before = await theVersion()
+    const draft = await updating(fixture.researchId, before.id)
+    const counted = await counts()
+
+    expect(await update({ draftId: draft.id, revision: draft.revision })).toEqual({ status: "unchanged" })
+
+    expect(await counts()).toEqual(counted)
+    expect((await theVersion()).id).toBe(before.id)
+  })
+
+  it("lets an update through whose only change is a dataset's description", async () => {
+    const fixture = await ready()
+    await publish({ draftId: fixture.draftId, revision: fixture.revision })
+    const draft = await updating(fixture.researchId, (await theVersion()).id)
+    const entry = only(await db.select().from(s.draftDatasetEntry).where(eq(s.draftDatasetEntry.draftId, draft.id)))
+    const saved = await saveDatasetEntry(
+      db,
+      { draftId: draft.id, datasetId: fixture.datasetId, revision: entry.revision },
+      described("直した記述"),
+    )
+    if (saved.status !== "saved") throw new Error(saved.status)
+
+    expect(await update({ draftId: draft.id, revision: draft.revision })).toEqual({ status: "published", versionNumber: 1 })
+  })
+
   it("puts the draft in the version's place under the same number, and nothing else remains", async () => {
     const fixture = await corrected()
 

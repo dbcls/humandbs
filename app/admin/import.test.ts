@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest"
 import { emptyResearchContent } from "~/content/empty"
 
 import { researchContentInput, type DraftInput, type TextPairInput } from "./form"
-import { initialImport, listRows, RESEARCH_IMPORT, sourceOrDraft, importFieldPaths } from "./import"
+import { diffDraftInput } from "./diff"
+import { initialImport, initialMerge, listRows, RESEARCH_IMPORT, sourceOrDraft, importFieldPaths } from "./import"
 
 function draft(edit: (content: DraftInput["content"]) => DraftInput["content"]): DraftInput {
   return { content: edit(researchContentInput(emptyResearchContent())) }
@@ -111,5 +112,48 @@ describe("a publication's datasets in the form", () => {
     const written = initialImport(RESEARCH_IMPORT, mine, theirs).content.relatedPublications[0]
     expect(written?.datasetIds).toEqual({ state: "value", ids: ["d1"] })
     expect(written?.externalIds).toEqual(["JGAD000002"])
+  })
+})
+
+describe("the lists the conflict dialog opens holding", () => {
+  const provider = (id: string, name: string) => ({
+    id,
+    name: pair(name, name),
+    organization: { name: pair("", "") },
+  })
+  const withProviders = (...rows: ReturnType<typeof provider>[]) => draft((content) => ({ ...content, dataProviders: rows }))
+  const ids = (value: DraftInput) => value.content.dataProviders.map((row) => row.id)
+  const merged = (base: DraftInput, mine: DraftInput, theirs: DraftInput) =>
+    initialMerge(RESEARCH_IMPORT, base, mine, theirs, diffDraftInput(base, theirs))
+
+  it("keeps a row added on either side, and one this screen changed that was removed elsewhere", () => {
+    const base = withProviders(provider("a", "A"), provider("b", "B"), provider("c", "C"))
+    const mine = withProviders(provider("a", "A"), provider("b", "B 直した"), provider("c", "C"), provider("m", "M"))
+    const theirs = withProviders(provider("a", "A"), provider("t", "T"))
+
+    expect(ids(merged(base, mine, theirs))).toEqual(["a", "b", "m", "t"])
+  })
+
+  it("drops a row this screen removed and a row removed elsewhere that this screen left alone", () => {
+    const base = withProviders(provider("a", "A"), provider("b", "B"), provider("c", "C"))
+    const mine = withProviders(provider("a", "A"), provider("c", "C"))
+    const theirs = withProviders(provider("a", "A"), provider("b", "B"))
+
+    expect(ids(merged(base, mine, theirs))).toEqual(["a"])
+  })
+
+  it("keeps a row this screen removed when it was changed elsewhere, as it keeps one removed elsewhere that this screen changed", () => {
+    const base = withProviders(provider("a", "A"), provider("b", "B"))
+    const mine = withProviders(provider("a", "A"))
+    const theirs = withProviders(provider("a", "A"), provider("b", "B 直した"))
+
+    expect(ids(merged(base, mine, theirs))).toEqual(["a", "b"])
+  })
+
+  it("takes the order saved elsewhere when this screen kept the list as it opened", () => {
+    const base = withProviders(provider("a", "A"), provider("b", "B"))
+    const theirs = withProviders(provider("b", "B"), provider("a", "A"))
+
+    expect(ids(merged(base, base, theirs))).toEqual(["b", "a"])
   })
 })

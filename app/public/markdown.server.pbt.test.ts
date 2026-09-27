@@ -118,7 +118,10 @@ describe("サイトコンテンツの markdown の不変量", () => {
       fc.option(word, { nil: null }),
       (gaps, inserted) => {
         const texts = gaps.map((gap) => gap.join(""))
-        if (inserted !== null) texts[0] = `${inserted}${texts[0] ?? ""}`
+        // The word goes after the separators before the first link: at the head
+        // of the line, a digit and ")" are an ordered list's marker, and the line
+        // is no longer a paragraph.
+        if (inserted !== null) texts[0] = `${texts[0] ?? ""}${inserted}`
         const source = texts.map((text, at) => at === texts.length - 1 ? text : `${text}[リンク${at}](/a${at})`).join("")
         const links = [...renderMarkdown(source, "ja").matchAll(/<a\b([^>]*)>/g)].map((match) => match[1] ?? "")
         expect(links).toHaveLength(texts.length - 1)

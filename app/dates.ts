@@ -123,10 +123,11 @@ const DAY_INPUT = /^\d{4}-\d{2}-\d{2}$/
  * **The shape is not enough**, for the reason `stampFromLocalInput` gives: a day
  * that does not exist has the right shape, and `Date` rolls it over into the
  * next month rather than refusing it, so the value is read back and has to be
- * the one that went in.
+ * the one that went in. **The calendar has no year 0**, and a `date` column
+ * refuses it, though the shape and `Date` both allow it.
  */
 export function dayFromInput(value: string): string | null {
-  if (!DAY_INPUT.test(value)) return null
+  if (!DAY_INPUT.test(value) || value.startsWith("0000")) return null
   const at = new Date(`${value}T00:00:00.000Z`)
   if (Number.isNaN(at.getTime()) || at.toISOString().slice(0, 10) !== value) return null
   return value

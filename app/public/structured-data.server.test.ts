@@ -48,7 +48,8 @@ function dataset(over: Partial<DatasetView> = {}): DatasetView {
     awaited: [],
     untranslated: false,
     experiments: [{ id: "e1", label: plain("WES"), values: [] }, { id: "e2", label: plain("WES"), values: [] }],
-    files: [],
+    files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
+    namedFiles: [],
     ...over,
   }
 }
@@ -171,13 +172,18 @@ describe("datasetSeo", () => {
   })
 
   it("非制限公開のファイルは 100 件まではそれぞれを、超えるとアドレスの一覧をダウンロード先にする", () => {
-    const files = (count: number) => Array.from({ length: count }, (_, at) => ({ name: `f${String(at)}.txt`, size: 1_500, isPublic: true, label: "" }))
-    const few = datasetSeo(dataset({ label: "NHA000001", humLabel: "hum0014", files: files(100) }), { origin: ORIGIN, locale: "ja" })
+    const rows = (count: number) => Array.from({ length: count }, (_, at) => ({ name: `f${String(at)}.txt`, size: 1_500, isPublic: true, label: "" }))
+    // The page holds one page of them; the structured data names every one while there are few enough.
+    const files = (count: number) => ({
+      files: { rows: rows(count).slice(0, 20), total: count, page: 1, pageCount: Math.ceil(count / 20), size: 20 as const, rangeFrom: 1, rangeTo: Math.min(count, 20) },
+      namedFiles: count > 100 ? null : rows(count),
+    })
+    const few = datasetSeo(dataset({ label: "NHA000001", humLabel: "hum0014", ...files(100) }), { origin: ORIGIN, locale: "ja" })
     expect(few.jsonLd.distribution).toHaveLength(100)
     expect((few.jsonLd.distribution as unknown[])[0]).toEqual({
       "@type": "DataDownload", "name": "f0.txt", "contentUrl": `${ORIGIN}/files/hum0014/f0.txt`, "contentSize": "1.5 KB",
     })
-    const many = datasetSeo(dataset({ label: "NHA000001", humLabel: "hum0014", files: files(101) }), { origin: ORIGIN, locale: "ja" })
+    const many = datasetSeo(dataset({ label: "NHA000001", humLabel: "hum0014", ...files(101) }), { origin: ORIGIN, locale: "ja" })
     expect(many.jsonLd.distribution).toEqual([{ "@type": "DataDownload", "contentUrl": `${ORIGIN}/dataset/NHA000001/files.txt`, "encodingFormat": "text/plain" }])
     expect(datasetSeo(dataset(), { origin: ORIGIN, locale: "ja" }).jsonLd).not.toHaveProperty("distribution")
   })

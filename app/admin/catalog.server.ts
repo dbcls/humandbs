@@ -17,7 +17,7 @@
  * rewrites everything that identifies it and then removes it.
  */
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm"
 import type { PgColumn } from "drizzle-orm/pg-core"
 
 import { requireCapability } from "~/auth/actor.server"
@@ -288,8 +288,7 @@ export async function catalogPage(request: Request): Promise<CatalogView> {
   await requireCapability(request, "manage-catalog")
   const db = getDb()
   const url = new URL(request.url)
-  const used = await publishedDatasetsByKey(db)
-  const drafted = await draftedKeyIds(db)
+  const [used, drafted] = await Promise.all([publishedDatasetsByKey(db), draftedKeyIds(db)])
   const fields = (await keyRows(db))
     .filter((key) => key.scope === "experiment")
     .map((key) => {
@@ -486,7 +485,7 @@ async function keyInUse(db: Executor, keyId: string): Promise<boolean> {
 async function publishedDatasetsByKey(db: Executor): Promise<Map<string, number>> {
   const rows = await db.execute<{ id: string, n: number }>(sql`
     SELECT held #>> '{}' AS id, count(DISTINCT doc.id)::int AS n
-    FROM search_doc AS doc, jsonb_path_query(doc.content, '$.**.keyId') AS held
+    FROM search_doc AS doc, LATERAL (${keysHeld(sql`doc.content`)}) AS keys(held)
     WHERE doc.target_type = 'dataset'
     GROUP BY 1
   `)
@@ -497,9 +496,25 @@ async function publishedDatasetsByKey(db: Executor): Promise<Map<string, number>
 async function draftedKeyIds(db: Executor): Promise<Set<string>> {
   const rows = await db.execute<{ id: string }>(sql`
     SELECT DISTINCT held #>> '{}' AS id
-    FROM draft_dataset_entry, jsonb_path_query(content, '$.**.keyId') AS held
+    FROM draft_dataset_entry AS entry, LATERAL (${keysHeld(sql`entry.content`)}) AS keys(held)
   `)
   return new Set(rows.rows.map((row) => row.id))
+}
+
+/**
+ * The two places a dataset holds a value — its own values and each
+ * experiment's — named rather than searched for. **A recursive path (`$.**`)
+ * reaches every value twice**, once through its array and once through the
+ * array's element, so the whole table was expanded twice over and spilled to
+ * disk to be grouped.
+ */
+const VALUE_PATHS = ["$.values[*]", "$.experiments[*].values[*]"] as const
+
+function keysHeld(content: SQL) {
+  return sql.join(
+    VALUE_PATHS.map((path) => sql`SELECT jsonb_path_query(${content}, ${`${path}.keyId`}::jsonpath)`),
+    sql` UNION ALL `,
+  )
 }
 
 /**
@@ -508,17 +523,14 @@ async function draftedKeyIds(db: Executor): Promise<Set<string>> {
  * slot). The set-valued form of `termInUse`, for the reason `usedKeyIds` gives.
  */
 async function usedTermIds(db: Executor): Promise<Set<string>> {
+  // The two value paths (`VALUE_PATHS`) times the two shapes a term is named in.
+  const named = VALUE_PATHS.flatMap((path) => [`${path}.value.termIds.value[*]`, `${path}.value.diseases.value[*].termIds[*]`])
   const rows = await db.execute<{ id: string }>(sql`
     SELECT DISTINCT held #>> '{}' AS id FROM (
-      SELECT jsonb_path_query(content, '$.**.termIds.value[*]') AS held
-      FROM search_doc WHERE target_type = 'dataset'
-      UNION ALL
-      SELECT jsonb_path_query(content, '$.**.diseases.value[*].termIds[*]')
-      FROM search_doc WHERE target_type = 'dataset'
-      UNION ALL
-      SELECT jsonb_path_query(content, '$.**.termIds.value[*]') FROM draft_dataset_entry
-      UNION ALL
-      SELECT jsonb_path_query(content, '$.**.diseases.value[*].termIds[*]') FROM draft_dataset_entry
+      ${sql.join(named.flatMap((path) => [
+        sql`SELECT jsonb_path_query(content, ${path}::jsonpath) AS held FROM search_doc WHERE target_type = 'dataset'`,
+        sql`SELECT jsonb_path_query(content, ${path}::jsonpath) FROM draft_dataset_entry`,
+      ]), sql` UNION ALL `)}
     ) AS q
   `)
   return new Set(rows.rows.map((row) => row.id))

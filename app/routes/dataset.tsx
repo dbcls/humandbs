@@ -1,4 +1,5 @@
 import { DatasetPage } from "~/components/dataset"
+import { readFilePage, readFileRows } from "~/files/listing.server"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { fileOrigin } from "~/public/file-lists.server"
@@ -10,8 +11,14 @@ import { readLocale } from "~/public/urls"
 import type { Route } from "./+types/dataset"
 
 export async function loader({ params, request }: Route.LoaderArgs) {
-  const { locale } = readLocale(new URL(request.url).pathname)
-  const view = await datasetPage({ locale, datasetId: params.datasetId })
+  const url = new URL(request.url)
+  const { locale } = readLocale(url.pathname)
+  const view = await datasetPage({
+    locale,
+    datasetId: params.datasetId,
+    filePage: readFilePage(url),
+    fileRows: readFileRows(url),
+  })
   const origin = fileOrigin()
   return { locale, view, origin, seo: datasetSeo(view, { origin, locale }) }
 }

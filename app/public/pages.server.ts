@@ -15,7 +15,8 @@ import { redirect } from "react-router"
 
 import { valueOr } from "~/content/empty"
 import { publicDatasetContent, publicResearch, PUBLISHED } from "~/content/public"
-import { fileListOf, publicListing, publicRows } from "~/files/listing.server"
+import { publicListing, publicRows } from "~/files/listing.server"
+import { fileListOf } from "~/files/prefix"
 import { fileLabelsByHumLabel, fileLabelsOf } from "~/files/labels.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -73,6 +74,13 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
   const resolved = await resolveHumLabel(db, request.humId)
   if (resolved === null) notFound()
 
+  // **Published first, redirected after.** Every spelling of a research that is
+  // not published is the same 404 as a label nobody pinned; redirected first,
+  // it would show that the research is there and what its primary label is.
+  const versions = await publishedVersions(db, resolved.id)
+  const latest = latestOf(versions)
+  if (latest === null) notFound()
+
   if (resolved.primaryLabel !== request.humId) {
     const path = request.wanted === "latest"
       ? researchPath(resolved.primaryLabel)
@@ -80,9 +88,6 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     throw redirect(href(request.locale, path))
   }
 
-  const versions = await publishedVersions(db, resolved.id)
-  const latest = latestOf(versions)
-  if (latest === null) notFound()
   const version = request.wanted === "latest" ? latest : findVersion(versions, request.wanted)
   if (version === null) notFound()
 
@@ -149,12 +154,12 @@ export async function releaseListPage(
   const db = getDb()
   const resolved = await resolveHumLabel(db, request.humId)
   if (resolved === null) notFound()
+  // Published first, redirected after (`researchPage`).
+  const versions = await publishedVersions(db, resolved.id)
+  if (versions.length === 0) notFound()
   if (resolved.primaryLabel !== request.humId) {
     throw redirect(href(request.locale, researchVersionsPath(resolved.primaryLabel)))
   }
-
-  const versions = await publishedVersions(db, resolved.id)
-  if (versions.length === 0) notFound()
 
   const projected = versions.map((version) => ({
     number: version.number,
@@ -181,17 +186,24 @@ export async function releaseListPage(
 }
 
 export async function datasetPage(
-  request: { locale: Locale, datasetId: string },
+  request: {
+    locale: Locale
+    datasetId: string
+    /** Which page of the files it selects, and how many rows a page holds. */
+    filePage: number
+    fileRows: PageSize
+  },
 ): Promise<DatasetView> {
   const db = getDb()
   const resolved = await resolveDatasetLabel(db, request.datasetId)
   if (resolved === null) notFound()
+  // Published first, redirected after (`researchPage`).
+  const row = await publishedDataset(db, resolved.id)
+  if (row === null) notFound()
   if (resolved.primaryLabel !== request.datasetId) {
     throw redirect(href(request.locale, datasetPath(resolved.primaryLabel)))
   }
 
-  const row = await publishedDataset(db, resolved.id)
-  if (row === null) notFound()
   const [catalog, listing, secondary, labels, archiveFiles] = await Promise.all([
     loadCatalog(db),
     publicListing(row.humLabel),
@@ -214,6 +226,7 @@ export async function datasetPage(
     datePublished: row.datePublished,
     dateModified: row.dateModified,
     files: publicRows(listing, labels.get(row.humLabel) ?? new Map(), request.locale),
+    filePage: { page: request.filePage, size: request.fileRows },
     archiveFiles,
   }, request.locale, catalog)
 }

@@ -135,6 +135,9 @@ export function datasetFileListPath(datasetLabel: string): string {
  * The query of one page of a file list. The page is always written, and the
  * page size only when it is not the default, as a listing writes `?size=`.
  */
+/** The two parameters a file list's page is asked for by (`fileListQuery`). */
+export const FILE_PAGE_PARAMS = ["files", "fileRows"] as const
+
 export function fileListQuery(page: number, size: number | null): string {
   const search = new URLSearchParams({ files: String(page) })
   if (size !== null) search.set("fileRows", String(size))
@@ -284,8 +287,23 @@ function ddbjSearchEntry(resource: string, accession: string): string {
  * the Japanese form.
  */
 export function applicationUrl(locale: Locale): string {
-  const base = "https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
-  return locale === "en" ? `${base}?lang=en` : base
+  return inLanguage(APPLICATION_SYSTEM, locale)
+}
+
+/**
+ * The form a cart's datasets are pasted into, in the same system and asked for
+ * in the page's language the same way (`applicationUrl`). The portal collects
+ * the accessions and hands the reader on; nothing about the application itself
+ * is kept here.
+ */
+export function applicationFormUrl(locale: Locale): string {
+  return inLanguage(`${APPLICATION_SYSTEM}dataset_import`, locale)
+}
+
+const APPLICATION_SYSTEM = "https://humandbs.ddbj.nig.ac.jp/nbdc/application/"
+
+function inLanguage(address: string, locale: Locale): string {
+  return locale === "en" ? `${address}?lang=en` : address
 }
 
 /**

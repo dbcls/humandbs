@@ -27,7 +27,8 @@ import { humLabelOf } from "~/admin/queries.server"
 import { readActor } from "~/auth/actor.server"
 import { emptyDatasetContent, valueOr } from "~/content/empty"
 import { publicDataset, publicDatasetContent, publicResearch } from "~/content/public"
-import { adminListing, listingRows, fileListOf, readFilePage, readFileRows } from "~/files/listing.server"
+import { adminListing, listingRows, readFilePage, readFileRows } from "~/files/listing.server"
+import { fileListOf } from "~/files/prefix"
 import { fileLabelsOf } from "~/files/labels.server"
 import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
@@ -81,7 +82,7 @@ import {
 } from "./comments.server"
 import { draftDatasetIds } from "~/admin/queries.server"
 
-import { previewDatasets, versionAgainst } from "./queries.server"
+import { previewDatasets, versionAgainst, type PreviewDatasetRow } from "./queries.server"
 
 /** A preview keeps what has not been settled. No public route can request this. */
 const PREVIEW = { keepUnsettled: true }
@@ -261,6 +262,19 @@ export async function draftDatasetRowViews(
   locale: Locale,
 ): Promise<Map<string, DatasetListCellsView>> {
   const [catalog, datasets] = await Promise.all([loadCatalog(db), previewDatasets(db, draftId, ids)])
+  return datasetRowViewsOf(datasets, locale, catalog)
+}
+
+/**
+ * The same rows, from datasets a screen has already read (`previewDatasets`)
+ * with the catalog it already holds — a screen that names the places of every
+ * dataset reads them all anyway.
+ */
+export function datasetRowViewsOf(
+  datasets: readonly PreviewDatasetRow[],
+  locale: Locale,
+  catalog: CatalogView,
+): Map<string, DatasetListCellsView> {
   return new Map(datasets.map((row) => {
     // The table reads no files, so the projection is given none.
     const dataset = publicDataset(row.content, { files: [], archive: row.archive }, PREVIEW)
@@ -513,6 +527,7 @@ export async function drawDatasetDraft(
     datePublished: dataset.dates.datePublished,
     dateModified: dataset.dates.dateModified,
     files: listing,
+    filePage: { page: readFilePage(new URL(request.url)), size: readFileRows(new URL(request.url)) },
     archiveFiles,
     awaitsPublication: true,
   }, locale, catalog)

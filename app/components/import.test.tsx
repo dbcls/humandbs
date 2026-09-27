@@ -7,7 +7,9 @@ import type { ResearchDatasetRow } from "~/admin/queries.server"
 import { emptyResearchContent } from "~/content/empty"
 import type { ImportSourceRow } from "~/admin/import.server"
 
-import { researchParts, sourceName, SourceTable, ImportForm } from "./import"
+import { diffDraftInput } from "~/admin/diff"
+
+import { MergeDialog, researchParts, sourceName, SourceTable, ImportForm } from "./import"
 
 const DATASETS: ResearchDatasetRow[] = [
   { id: "d1", label: "JGAD000141", pinId: null, published: true, portalIssued: false } as ResearchDatasetRow,
@@ -185,5 +187,59 @@ describe("取り込み元の名前", () => {
   it("名前の無い下書きは、名前が無いことを示す", () => {
     expect(sourceName({ kind: "draft", id: "d", name: "", updatedAt: "2026-09-24T04:25", updating: null }, "ja"))
       .toBe("下書き「下書き名未入力」")
+  })
+})
+
+describe("保存が衝突したときの比較のダイアログ", () => {
+  function titled(ja: string, aims = ""): DraftInput {
+    const empty = { state: "value" as const, text: "" }
+    const base = researchContentInput(emptyResearchContent())
+    return {
+      content: {
+        ...base,
+        title: { ja: { state: "value", text: ja }, en: empty },
+        summary: { ...base.summary, aims: { ja: { state: "value", text: aims }, en: empty } },
+      },
+    }
+  }
+
+  function dialog(base: DraftInput, mine: DraftInput, theirs: DraftInput): string {
+    const element = (
+      <MergeDialog
+        locale="ja"
+        parts={researchParts("ja", DATASETS, [], [mine, theirs], "保存する値")}
+        base={base}
+        mine={mine}
+        theirs={theirs}
+        changed={diffDraftInput(base, theirs)}
+        at={null}
+        onClose={() => undefined}
+        onSettle={() => undefined}
+      />
+    )
+    const router = createMemoryRouter([{ path: "/", element }])
+    return renderToStaticMarkup(<RouterProvider router={router} />)
+  }
+
+  it("別の場所で変わった項目だけを、この画面の入力・別の場所で保存された値・保存する値の 3 行で並べる", () => {
+    // 題目はこの画面も変え、目的は別の場所だけが変えた
+    const html = dialog(titled("元の題目", "元の目的"), titled("この画面の題目", "元の目的"), titled("別の題目", "別の目的"))
+    expect(html).toContain("別の場所で保存された値との比較")
+    expect(html).toContain("この画面の入力")
+    expect(html).toContain("別の場所で保存された値")
+    expect(html.match(/保存する値/g)?.length).toBeGreaterThanOrEqual(2)
+    expect(html).toContain("研究題目")
+    expect(html).toContain("目的")
+  })
+
+  it("保存する値は、この画面で変えていない項目は別の場所の値、変えた項目はこの画面の値で開く", () => {
+    const html = dialog(titled("元の題目", "元の目的"), titled("この画面の題目", "元の目的"), titled("別の題目", "別の目的"))
+    expect(html).toMatch(/aria-label="研究題目 ja"[^>]*value="この画面の題目"|value="この画面の題目"[^>]*aria-label="研究題目 ja"|<input[^>]*value="この画面の題目"/)
+    expect(html).toMatch(/<textarea[^>]*>別の目的<\/textarea>/)
+  })
+
+  it("別の場所で変わった項目がこの画面の入力と同じなら、決める値が無いことを示す", () => {
+    const html = dialog(titled("元の題目"), titled("同じ題目"), titled("同じ題目"))
+    expect(html).toContain("別の場所で保存された値と同じです。決める値はありません。")
   })
 })

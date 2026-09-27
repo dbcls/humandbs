@@ -730,6 +730,6 @@ describe("the download list a share link shows", () => {
 
     const view = await previewDatasetPage(get(), "ja", shared.token, created.datasetId)
 
-    expect(view.view.files).toEqual([{ name: "closed.zip", size: 1, isPublic: false, label: "" }])
+    expect(view.view.files.rows).toEqual([{ name: "closed.zip", size: 1, isPublic: false, label: "" }])
   })
 })

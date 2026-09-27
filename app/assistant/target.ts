@@ -110,13 +110,21 @@ export function hasBody(method: string): boolean {
  * narrower check kept on this one route, which hands a body on to a service
  * whose own endpoints the portal knows nothing about.
  *
- * **A missing header is not a foreign one.** A browser leaves `Origin` off a
- * plain read, and `null` is what a sandboxed document sends; neither names a
- * site to compare against. The host is compared rather than the whole origin,
- * because the scheme in front of the application is the proxy's rather than the
+ * **Where the browser reports the request came from is read first**, as the root
+ * check reads it (`auth/csrf.ts`): only `same-origin` and `none` (typed or
+ * bookmarked) pass. A link on another site opened by an administrator sends no
+ * `Origin` but does send the session, and a read here is whatever the service
+ * makes of it.
+ *
+ * **A missing `Origin` is not a foreign one.** A browser leaves it off a plain
+ * read, and `null` is what a sandboxed document sends; neither names a site to
+ * compare against. The host is compared rather than the whole origin, because
+ * the scheme in front of the application is the proxy's rather than the
  * browser's.
  */
 export function fromSameSite(request: Request): boolean {
+  const site = request.headers.get("sec-fetch-site")
+  if (site !== null && site !== "same-origin" && site !== "none") return false
   const stated = request.headers.get("origin")
   if (stated === null || stated === "null") return true
   try {

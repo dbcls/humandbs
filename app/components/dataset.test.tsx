@@ -3,12 +3,20 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
-import { FILES_PAGE_SIZE } from "~/files/prefix"
+import { FILES_PAGE_SIZE, fileListOf } from "~/files/prefix"
 import type { DatasetView } from "~/public/view.server"
+import type { PageSize } from "~/search/page-size"
 
 import { DatasetBody } from "./dataset"
 
-function view(fileCount: number, secondaryLabels: string[] = []): DatasetView {
+/** A dataset selecting `fileCount` files, holding the page of them the server cut. */
+function view(fileCount: number, secondaryLabels: string[] = [], page = 1, size: PageSize = FILES_PAGE_SIZE): DatasetView {
+  const rows = Array.from({ length: fileCount }, (_, at) => ({
+    name: `f${String(at + 1).padStart(3, "0")}.txt`,
+    size: 1,
+    isPublic: true,
+    label: "",
+  }))
   return {
     label: "NHA000001",
     humLabel: "hum0001",
@@ -23,21 +31,17 @@ function view(fileCount: number, secondaryLabels: string[] = []): DatasetView {
     awaited: [],
     untranslated: false,
     experiments: [],
-    files: Array.from({ length: fileCount }, (_, at) => ({
-      name: `f${String(at + 1).padStart(3, "0")}.txt`,
-      size: 1,
-      isPublic: true,
-      label: "",
-    })),
+    files: fileListOf(rows, page, size),
+    namedFiles: rows.length > 100 ? null : rows,
   }
 }
 
-function render(fileCount: number, address = "/dataset/NHA000001"): string {
+function render(fileCount: number, page = 1, size: PageSize = FILES_PAGE_SIZE): string {
   const Stub = createRoutesStub([{
     path: "/*",
-    Component: () => <DatasetBody view={view(fileCount)} locale="ja" researchHref="/research/hum0001" />,
+    Component: () => <DatasetBody view={view(fileCount, [], page, size)} locale="ja" researchHref="/research/hum0001" />,
   }])
-  return renderToStaticMarkup(<Stub initialEntries={[address]} />)
+  return renderToStaticMarkup(<Stub initialEntries={["/dataset/NHA000001"]} />)
 }
 
 function names(html: string): string[] {
@@ -59,17 +63,14 @@ describe("a dataset's files", () => {
     expect(html).toContain("?files=2")
   })
 
-  it("draws the page the address requests", () => {
-    const html = render(FILES_PAGE_SIZE + 1, "/dataset/NHA000001?files=2")
+  it("draws the page it was given, with a link to the one before", () => {
+    const html = render(FILES_PAGE_SIZE + 1, 2)
     expect(names(html)).toEqual([`f${String(FILES_PAGE_SIZE + 1).padStart(3, "0")}.txt`])
+    expect(html).toContain("?files=1")
   })
 
-  it("holds as many files on a page as the address asks for", () => {
-    expect(names(render(60, "/dataset/NHA000001?fileRows=50"))).toHaveLength(50)
-  })
-
-  it("reads a page size the list does not offer as the default one", () => {
-    expect(names(render(60, "/dataset/NHA000001?fileRows=30"))).toHaveLength(FILES_PAGE_SIZE)
+  it("draws as many files as the page it was given holds", () => {
+    expect(names(render(60, 1, 50))).toHaveLength(50)
   })
 
   it("offers the list of the files' addresses and a copy of each only where it is given where they are fetched from", () => {
@@ -112,12 +113,12 @@ describe("a dataset's files", () => {
     expect(html.indexOf("files.txt")).toBeLessThan(html.indexOf("<table", nameEnds))
   })
 
-  it("reads an address it cannot read as the nearest page, and never loses or repeats a file", () => {
+  it("draws each file of the page once, however many pages there are", () => {
     fc.assert(fc.property(
       fc.integer({ min: 1, max: 3 * FILES_PAGE_SIZE }),
-      fc.oneof(fc.integer({ min: -2, max: 6 }).map(String), fc.constantFrom("x", "1.5", "")),
-      (count, asked) => {
-        const shown = names(render(count, `/dataset/NHA000001?files=${asked}`))
+      fc.integer({ min: 1, max: 4 }),
+      (count, page) => {
+        const shown = names(render(count, page))
         expect(shown.length).toBeGreaterThan(0)
         expect(shown.length).toBeLessThanOrEqual(FILES_PAGE_SIZE)
         expect(new Set(shown).size).toBe(shown.length)

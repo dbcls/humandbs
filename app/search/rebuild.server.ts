@@ -30,7 +30,7 @@
  * back — so the two cannot drift.
  */
 
-import { and, eq, inArray, isNotNull } from "drizzle-orm"
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 
 import { publicDataset, publicResearchContent, PUBLISHED } from "~/content/public"
@@ -238,6 +238,13 @@ export async function rebuildSearchDocs(
   if (researchIds?.length === 0) return NOTHING
   const within = (column: AnyPgColumn) =>
     researchIds === undefined ? undefined : inArray(column, [...researchIds])
+
+  // **One rebuild at a time, until the one before has committed.** A refresh or
+  // a vocabulary edit rebuilds everything while a publish rebuilds its
+  // research, and their locks on the research rows do not keep each other out.
+  // The second would delete what it could see before the first committed and
+  // insert beside what the first wrote — a row the unique constraint refuses.
+  await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext('rebuild-search-docs'))`)
 
   // The facet rows reference this one, and both cascade.
   await db.delete(searchDoc).where(within(searchDoc.researchId))

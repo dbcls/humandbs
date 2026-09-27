@@ -171,4 +171,29 @@ describe("よそのサイトから来た要求", () => {
   it("URL として読めない値は通さない", () => {
     expect(fromSameSite(asking("not a url"))).toBe(false)
   })
+
+  /**
+   * A link on another site opened by an administrator sends no `Origin`, but the
+   * browser reports where the request came from — and the session goes with it.
+   */
+  it("ブラウザが別のサイトから来たと示すものは、読み取りでも Origin が無くても通さない", () => {
+    for (const site of ["cross-site", "same-site"]) {
+      for (const method of ["GET", "POST"]) {
+        const request = new Request("http://localhost:8080/admin/assistant/api/applications", {
+          method,
+          headers: { "sec-fetch-site": site },
+        })
+        expect(fromSameSite(request), `${method} ${site}`).toBe(false)
+      }
+    }
+  })
+
+  it("ブラウザがポータル自身から、または利用者が入力して来たと示すものは通す", () => {
+    for (const site of ["same-origin", "none"]) {
+      const request = new Request("http://localhost:8080/admin/assistant/api/applications", {
+        headers: { "sec-fetch-site": site },
+      })
+      expect(fromSameSite(request), site).toBe(true)
+    }
+  })
 })

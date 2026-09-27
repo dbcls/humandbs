@@ -18,7 +18,7 @@
  * fields, and a form of every field would bury them.
  */
 
-import { useId, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { Form } from "react-router"
 
 import { describeInput, lineRows, type ShownLine } from "~/admin/changes"
@@ -30,8 +30,10 @@ import type { DatasetRowView } from "~/public/view.server"
 import {
   heldIds,
   initialImport,
+  initialMerge,
   isList,
   listRows,
+  mergeFieldPaths,
   RESEARCH_IMPORT,
   importFieldPaths,
   withElement,
@@ -46,7 +48,7 @@ import { minuteInJst } from "~/dates"
 import { href, researchPath } from "~/public/urls"
 
 import { ScreenLink } from "./admin"
-import { Button, ButtonLink, Note, PANE_LABEL, Stack } from "./base"
+import { Button, ButtonLink, Dialog, Note, PANE_LABEL, Stack } from "./base"
 import { Flag, Stated } from "./flags"
 import { type FieldAnnotations, PairField, SingleField, StatedControls } from "./fields"
 import { Submit } from "./form"
@@ -161,7 +163,6 @@ export function ImportForm<T>({ locale, parts, mine, theirs, sourceLabel, revisi
   const [written, setWritten] = useState(opened)
   const places = useMemo(() => importFieldPaths(shape, mine, theirs), [shape, mine, theirs])
   const offers = places.length > 0 || after !== undefined
-  const read = (side: T, path: string) => parts.reading?.(side, path) ?? readingAt(shape, side, path)
 
   return (
     <Form method="post">
@@ -172,30 +173,162 @@ export function ImportForm<T>({ locale, parts, mine, theirs, sourceLabel, revisi
         {before}
         {!offers && <Empty>{t.same}</Empty>}
 
-        {places.map((path) => {
-          if (isList(shape, mine, theirs, path)) {
-            const rows = listRows(shape, mine, theirs, path)
-            return (
+        <ImportComparison
+          locale={locale}
+          parts={parts}
+          mine={mine}
+          theirs={theirs}
+          places={places}
+          written={written}
+          opened={opened}
+          onWrite={setWritten}
+          words={{ mine: t.current, theirs: sourceLabel, kept: t.kept, inBoth: t.inBoth, onlyMine: t.onlyCurrent, onlyTheirs: t.onlySource }}
+        />
+
+        {after}
+
+        {offers && <div><Submit variant="primary" icon={<Icon name="download" />}>{t.apply}</Submit></div>}
+      </Stack>
+    </Form>
+  )
+}
+
+/**
+ * A refused save, settled: the places changed elsewhere since the screen
+ * opened (`changed`), compared with what the screen holds, and the value to
+ * save under each (`import.ts` の `initialMerge`). **Nothing is sent from
+ * here** — the settled value goes into the form, and the screen's own save
+ * sends it against the revision the refusal came back with.
+ */
+export function MergeDialog<T>({ locale, parts, base, mine, theirs, changed, at, onClose, onSettle }: {
+  locale: Locale
+  parts: ImportParts<T>
+  /** What the screen opened holding, from which who changed each place is read. */
+  base: T
+  mine: T
+  theirs: T
+  changed: readonly string[]
+  /** The place to open at, when the dialog was opened from a field. */
+  at: string | null
+  onClose: () => void
+  onSettle: (written: T) => void
+}) {
+  const t = messagesFor(locale).admin.editor
+  const { shape } = parts
+  const opened = useMemo(() => initialMerge(shape, base, mine, theirs, changed), [shape, base, mine, theirs, changed])
+  const [written, setWritten] = useState(opened)
+  const places = useMemo(() => mergeFieldPaths(shape, mine, theirs, changed), [shape, mine, theirs, changed])
+  const body = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (at === null) return
+    body.current?.querySelector(`[data-import-at="${CSS.escape(at)}"]`)?.scrollIntoView({ block: "start" })
+  }, [at])
+
+  return (
+    <Dialog
+      title={t.mergeTitle}
+      note={t.mergeNote}
+      wide
+      held={{ open: true, close: onClose }}
+      action={(close) => (
+        <Button
+          type="button"
+          variant="primary"
+          icon={<Icon name="download" />}
+          onClick={() => {
+            close()
+            onSettle(written)
+          }}
+        >
+          {t.mergeApply}
+        </Button>
+      )}
+    >
+      <div ref={body}>
+        <Stack gap="block">
+          {places.length === 0 && <Empty>{t.mergeSame}</Empty>}
+          <ImportComparison
+            locale={locale}
+            parts={parts}
+            mine={mine}
+            theirs={theirs}
+            places={places}
+            written={written}
+            opened={opened}
+            onWrite={setWritten}
+            words={{
+              mine: t.mergeMine,
+              theirs: t.mergeTheirs,
+              kept: t.mergeKept,
+              inBoth: messagesFor(locale).admin.import.inBoth,
+              onlyMine: t.mergeOnlyMine,
+              onlyTheirs: t.mergeOnlyTheirs,
+            }}
+          />
+        </Stack>
+      </div>
+    </Dialog>
+  )
+}
+
+/** What the two readings of a place are called, and what a list's boxes keep. */
+export interface CompareWords {
+  mine: string
+  theirs: string
+  kept: string
+  inBoth: string
+  onlyMine: string
+  onlyTheirs: string
+}
+
+/**
+ * The places, each as the two readings compared and the value that will be
+ * written under them — **one part for the import form and the conflict
+ * dialog**, which differ only in what the three rows are called and in what
+ * is done with the value when it is settled.
+ */
+export function ImportComparison<T>({ locale, parts, mine, theirs, places, written, opened, onWrite, words }: {
+  locale: Locale
+  parts: ImportParts<T>
+  mine: T
+  theirs: T
+  places: readonly string[]
+  written: T
+  /** What the value opened holding, which an element ticked back in returns as. */
+  opened: T
+  onWrite: (next: (now: T) => T) => void
+  words: CompareWords
+}) {
+  const { shape } = parts
+  const read = (side: T, path: string) => parts.reading?.(side, path) ?? readingAt(shape, side, path)
+  return (
+    <>
+      {places.map((path) => {
+        if (isList(shape, mine, theirs, path)) {
+          const rows = listRows(shape, mine, theirs, path)
+          return (
+            <div key={path} data-import-at={path}>
               <ListPlace
-                key={path}
-                locale={locale}
                 title={parts.labelOf(path)}
                 rows={rows}
                 nameOf={(element) => parts.nameOf(path, element)}
                 held={heldIds(shape, written, path)}
-                sourceLabel={sourceLabel}
+                words={words}
+                locale={locale}
                 onTick={(id, on) => {
-                  setWritten((now) => withElement(shape, now, opened, rows, path, id, on))
+                  onWrite((now) => withElement(shape, now, opened, rows, path, id, on))
                 }}
               />
-            )
-          }
-          // A place inside an element the written value no longer keeps has
-          // nothing to be written into.
-          const held = readAt(written, shape.keysOf(path))
-          if (!held.found) return null
-          return (
-            <Section key={path} title={parts.labelOf(path)}>
+            </div>
+          )
+        }
+        // A place inside an element the written value no longer keeps has
+        // nothing to be written into.
+        const held = readAt(written, shape.keysOf(path))
+        if (!held.found) return null
+        return (
+          <div key={path} data-import-at={path}>
+            <Section title={parts.labelOf(path)}>
               <Stack gap="tight">
                 {/* **The two readings are the comparison the "変更あり" panel
                     draws** (`previous.tsx` の `CompareTable`): a sentence to a
@@ -204,29 +337,25 @@ export function ImportForm<T>({ locale, parts, mine, theirs, sourceLabel, revisi
                     found by eye. */}
                 <CompareTable
                   locale={locale}
-                  against={t.current}
-                  after={sourceLabel}
+                  against={words.mine}
+                  after={words.theirs}
                   rows={lineRows(read(mine, path) ?? [], read(theirs, path) ?? [], parts.termLabel)}
                 />
                 {parts.written(
                   path,
                   held.value,
-                  (next) => { setWritten((now) => writeAt(now, shape.keysOf(path), next) as T) },
+                  (next) => { onWrite((now) => writeAt(now, shape.keysOf(path), next) as T) },
                   {
                     read: (other) => readAt(written, shape.keysOf(other)).value,
-                    write: (other, next) => { setWritten((now) => writeAt(now, shape.keysOf(other), next) as T) },
+                    write: (other, next) => { onWrite((now) => writeAt(now, shape.keysOf(other), next) as T) },
                   },
                 )}
               </Stack>
             </Section>
-          )
-        })}
-
-        {after}
-
-        {offers && <div><Submit variant="primary" icon={<Icon name="download" />}>{t.apply}</Submit></div>}
-      </Stack>
-    </Form>
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -242,16 +371,15 @@ export function ImportForm<T>({ locale, parts, mine, theirs, sourceLabel, revisi
  * for what they do**, each indicating where the element is now; a change inside
  * an element both have is a place of its own, under the element's name.
  */
-function ListPlace({ locale, title, rows, nameOf, held, sourceLabel, onTick }: {
+function ListPlace({ locale, title, rows, nameOf, held, words, onTick }: {
   locale: Locale
   title: string
   rows: ListRow[]
   nameOf: (element: unknown) => string
   held: string[]
-  sourceLabel: string
+  words: CompareWords
   onTick: (id: string, on: boolean) => void
 }) {
-  const t = messagesFor(locale).admin.import
   const keptId = useId()
   const side = (present: boolean, element: unknown) => present ? { state: "value" as const, text: nameOf(element) } : null
   return (
@@ -259,13 +387,13 @@ function ListPlace({ locale, title, rows, nameOf, held, sourceLabel, onTick }: {
       <Stack gap="tight">
         <CompareTable
           locale={locale}
-          against={t.current}
-          after={sourceLabel}
+          against={words.mine}
+          after={words.theirs}
           rows={rows.map((row) => ({ label: "", before: side(row.inMine, row.element), after: side(row.inTheirs, row.element) }))}
         />
         <div role="group" aria-labelledby={keptId}>
           <Stack gap="tight">
-            <span id={keptId} className={PANE_LABEL}>{t.kept}</span>
+            <span id={keptId} className={PANE_LABEL}>{words.kept}</span>
             {rows.map((row) => (
               <label key={row.id} className="flex items-start gap-2 text-sm">
                 <span className="flex h-[1lh] items-center">
@@ -279,7 +407,7 @@ function ListPlace({ locale, title, rows, nameOf, held, sourceLabel, onTick }: {
                 <span className="flex flex-wrap items-baseline gap-x-3">
                   <span>{nameOf(row.element)}</span>
                   <span className="text-ink-muted text-xs">
-                    {row.inMine && row.inTheirs ? t.inBoth : row.inMine ? t.onlyCurrent : t.onlySource}
+                    {row.inMine && row.inTheirs ? words.inBoth : row.inMine ? words.onlyMine : words.onlyTheirs}
                   </span>
                 </span>
               </label>
@@ -297,9 +425,11 @@ export function researchParts(
   datasets: ResearchDatasetRow[],
   citable: DatasetRowView[],
   sides: readonly DraftInput[],
+  /** What the value that will be written is called: the import form's, unless the conflict dialog's. */
+  writtenLabel?: string,
 ): ImportParts<DraftInput> {
   const messages = messagesFor(locale)
-  const t = messages.admin.import
+  const t = { ...messages.admin.import, written: writtenLabel ?? messages.admin.import.written }
   const editor = messages.admin.editor
   const labelOf = new Map(datasets.map((row) => [row.id, row.label ?? editor.unpinnedDataset]))
   return {

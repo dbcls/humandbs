@@ -14,7 +14,7 @@ import type { Executor } from "~/db/client.server"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 
-import { previewDatasets } from "./queries.server"
+import { previewDatasets, type PreviewDatasetRow } from "./queries.server"
 
 export async function placeSources(
   db: Executor,
@@ -23,6 +23,20 @@ export async function placeSources(
   content: ResearchContent,
   locale: Locale,
 ): Promise<PlaceSources> {
+  return (await placesAndDatasets(db, researchId, draftId, content, locale)).places
+}
+
+/**
+ * The same, with every dataset of the research it read to name them, for a
+ * screen that also draws some of those datasets and would read them again.
+ */
+export async function placesAndDatasets(
+  db: Executor,
+  researchId: string,
+  draftId: string,
+  content: ResearchContent,
+  locale: Locale,
+): Promise<{ places: PlaceSources, datasets: PreviewDatasetRow[] }> {
   const [humLabel, datasets, listed, catalog] = await Promise.all([
     humLabelOf(db, researchId),
     researchDatasets(db, researchId),
@@ -32,7 +46,7 @@ export async function placeSources(
   // Every dataset of the research, not only the listed ones: an administrator
   // can leave a comment on one this draft does not publish.
   const described = await previewDatasets(db, draftId, datasets.map((row) => row.id))
-  return {
+  const places: PlaceSources = {
     humLabel,
     rows: placeRows(researchContentInput(content), locale),
     datasets: datasets.map((row) => {
@@ -42,4 +56,5 @@ export async function placeSources(
     experiments: Object.fromEntries(described.map((row) => [row.id, placeExperiments(datasetContentInput(row.content))])),
     keyLabels: Object.fromEntries(catalog.keys.map((key) => [key.id, catalogLabel(key, locale)])),
   }
+  return { places, datasets: described }
 }

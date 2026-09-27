@@ -43,7 +43,9 @@ export function readAt(target: unknown, keys: readonly string[]): Found {
   }
   if (typeof target !== "object" || target === null) return { found: false, value: undefined }
   const record = target as Record<string, unknown>
-  return head in record ? readAt(record[head], rest) : { found: false, value: undefined }
+  // Its own names only: `constructor` or `__proto__` is on every object and is
+  // no place in the content.
+  return Object.hasOwn(record, head) ? readAt(record[head], rest) : { found: false, value: undefined }
 }
 
 /**

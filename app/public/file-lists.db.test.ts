@@ -91,6 +91,14 @@ describe("researchUrlList", () => {
     expect(redirect.headers.get("Location")).toBe(`/research/${HUM}/files.txt`)
   })
 
+  it("is the same 404 for a secondary or differently cased label of an unpublished research", async () => {
+    const researchId = await seedResearch(db, HUM)
+    await db.insert(s.labelPin).values({ kind: "hum", label: "hun7002", researchId, isPrimary: false })
+
+    expect((await caught(() => researchUrlList("hun7002"))).status).toBe(404)
+    expect((await caught(() => researchUrlList("HUM7002"))).status).toBe(404)
+  })
+
   it("responds 503 rather than an empty list when the store does not respond", async () => {
     await published()
     vi.mocked(listPrefix).mockRejectedValueOnce(new Error("ECONNREFUSED"))
@@ -114,5 +122,14 @@ describe("datasetUrlList", () => {
     await seedDataset(db, researchId, "NHA900001")
 
     expect((await caught(() => datasetUrlList("NHA900001"))).status).toBe(404)
+  })
+
+  it("is the same 404 for a superseded or differently cased id of an unpublished dataset", async () => {
+    const researchId = await seedResearch(db, HUM)
+    const datasetId = await seedDataset(db, researchId, "NHA900001")
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "hum7002.v1.wgs.v1", datasetId, isPrimary: false })
+
+    expect((await caught(() => datasetUrlList("hum7002.v1.wgs.v1"))).status).toBe(404)
+    expect((await caught(() => datasetUrlList("nha900001"))).status).toBe(404)
   })
 })

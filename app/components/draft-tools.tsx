@@ -330,8 +330,6 @@ export interface DraftEditingOptions<T> {
   revision: number | null
   /** Where the two versions of this shape say different things. */
   diff: (base: T, other: T) => string[]
-  /** One field of theirs, put into mine. */
-  importAt: (mine: T, theirs: T, path: string) => T
   /** What a save posts besides the revision. */
   body: (value: T) => Record<string, unknown>
   /** What the review layer hangs beside a field, when the screen has one. */
@@ -348,8 +346,21 @@ export interface DraftEditing<T> {
   saved: boolean
   saving: boolean
   save: () => void
-  /** The version a refused save came back with, and where it disagrees. */
-  conflict: { theirs: T, changed: string[] } | null
+  /**
+   * The version a refused save came back with, the places it changed since the
+   * screen opened, and what the screen opened holding (`base`), from which who
+   * changed what is read.
+   */
+  conflict: { theirs: T, changed: string[], base: T } | null
+  /**
+   * The conflict dialog, while it is open: the place it opens at, when a field
+   * opened it. Null while it is shut.
+   */
+  merging: { at: string | null } | null
+  openMerge: (at: string | null) => void
+  closeMerge: () => void
+  /** The value the dialog settled on, put into the form in place of what it held. */
+  settle: (written: T) => void
   annotationsFor: (path: string) => FieldAnnotations
 }
 
@@ -359,8 +370,8 @@ export interface DraftEditing<T> {
  * **What is typed is never taken away.** A refused save leaves the form exactly
  * as it was and marks the fields the other version moved, and refused markup
  * comes back attached to the field it was written in. Nothing here replaces
- * what is in the form — the only return to an earlier state is the other
- * version, imported field by field.
+ * what is in the form but the conflict dialog, whose value the curator settles
+ * place by place (`import.tsx` の `MergeDialog`).
  *
  * The answer is taken while rendering rather than in an effect: it is one state
  * derived from another, not a message to an outside system, and which fields
@@ -372,7 +383,6 @@ export interface DraftEditing<T> {
  *   initial: view.input,
  *   revision: view.revision,
  *   diff: diffDraftInput,
- *   importAt: importField,
  *   body: (value) => ({ content: value.content }),
  *   extraFor: (path) => <FieldReview review={review} at={path} />,
  * })
@@ -382,7 +392,6 @@ export function useDraftEditing<T>({
   initial,
   revision: startingRevision,
   diff,
-  importAt,
   body,
   extraFor,
 }: DraftEditingOptions<T>): DraftEditing<T> {
@@ -391,7 +400,8 @@ export function useDraftEditing<T>({
   const [value, setValue] = useState<T>(initial)
   const [base, setBase] = useState<T>(initial)
   const [revision, setRevision] = useState<number | null>(startingRevision)
-  const [conflict, setConflict] = useState<{ theirs: T, changed: string[] } | null>(null)
+  const [conflict, setConflict] = useState<{ theirs: T, changed: string[], base: T } | null>(null)
+  const [merging, setMerging] = useState<{ at: string | null } | null>(null)
   const [saved, setSaved] = useState(false)
 
   // What the pending save sent, so that a success can record it as the
@@ -408,7 +418,10 @@ export function useDraftEditing<T>({
       setBase(sent)
       setConflict(null)
     } else {
-      setConflict({ theirs: answer.current, changed: diff(base, answer.current) })
+      // **What the screen opened holding is kept with the conflict**: the base
+      // moves on to what was saved, and the dialog still has to tell a place
+      // this screen changed from one it left alone.
+      setConflict({ theirs: answer.current, changed: diff(base, answer.current), base: conflict?.base ?? base })
       setRevision(answer.revision)
       setBase(answer.current)
     }
@@ -429,16 +442,16 @@ export function useDraftEditing<T>({
 
   /**
    * A field is marked when a refused save shows somebody else moved it, and
-   * offers their value. **Only a refusal marks the form**: a difference from a
-   * version or another draft is imported on its own screen, and read on the
-   * page beside the form.
+   * opens the conflict dialog at itself. **Only a refusal marks the form**: a
+   * difference from a version or another draft is imported on its own screen,
+   * and read on the page beside the form.
    */
   function annotationsFor(path: string): FieldAnnotations {
-    const theirs = conflict?.changed.includes(path) === true ? conflict.theirs : undefined
+    const moved = conflict?.changed.includes(path) === true
     return {
       at: path,
-      changed: theirs !== undefined,
-      onImport: theirs === undefined ? null : () => { edit(importAt(value, theirs, path)) },
+      changed: moved,
+      onImport: moved ? () => { setMerging({ at: path }) } : null,
       extra: extraFor?.(path),
     }
   }
@@ -451,6 +464,13 @@ export function useDraftEditing<T>({
     saving: fetcher.state !== "idle",
     save,
     conflict,
+    merging,
+    openMerge: (at) => { setMerging({ at }) },
+    closeMerge: () => { setMerging(null) },
+    settle: (written) => {
+      edit(written)
+      setMerging(null)
+    },
     annotationsFor,
   }
 }

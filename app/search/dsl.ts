@@ -150,6 +150,10 @@ export function truncatedWord(raw: string): string | null {
 }
 
 function tokenize(input: string): Token[] {
+  // The database refuses a NUL in any text it is handed, wherever in the query
+  // it stands, so the query is one that cannot be read rather than one that fails.
+  const nul = input.indexOf("\u0000")
+  if (nul !== -1) fail("unexpected-token", nul + 1)
   const tokens: Token[] = []
   let i = 0
   while (i < input.length) {

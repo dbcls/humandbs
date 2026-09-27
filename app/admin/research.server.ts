@@ -17,7 +17,11 @@
  * `/files/hum…/`, and whichever research is given that number next would list
  * them as its own. Each file is deleted from the files screen first, where
  * deleting one is confirmed on its own. The prefixes are read before the
- * transaction opens, so a store that does not respond deletes nothing.
+ * transaction opens, so a store that does not respond deletes nothing. **Nor
+ * is one deleted while a file of it is still switching** — read again under the
+ * lock, as taking a label off does (`labels.server.ts` の `unpinLabel`): a
+ * switch finishing between the two prefixes being read would put the file
+ * where they were read empty.
  */
 
 import { eq } from "drizzle-orm"
@@ -25,7 +29,7 @@ import { eq } from "drizzle-orm"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import type { Executor } from "~/db/client.server"
 import { labelPin, research, researchVersion } from "~/db/schema"
-import { researchHoldsFiles } from "~/files/jobs.server"
+import { pendingSwitches, researchHoldsFiles } from "~/files/jobs.server"
 
 import { lockResearch } from "./locks.server"
 
@@ -45,6 +49,7 @@ export async function deleteResearch(
     // Locked before anything else, so that a publish or an edit of this research
     // waits here rather than holding a draft the cascade below has to delete.
     if (!await lockResearch(tx, researchId, "update")) return { status: "gone" }
+    if ((await pendingSwitches(tx, researchId)).some((row) => !row.failed)) return { status: "files-remain" }
 
     // Only hum labels hang off a research; a dataset id hangs off its dataset.
     // **One at a time**: a transaction is one connection, so requesting both at

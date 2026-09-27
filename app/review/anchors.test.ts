@@ -83,6 +83,18 @@ describe("the place an anchor points at", () => {
     expect(pathExists(dataset(), "experiments.e9.label")).toBe(false)
   })
 
+  /**
+   * Every object inherits these names, and none of them is a place in the
+   * content: a comment on one would be kept under a place no screen draws.
+   */
+  it("does not exist for a name every object inherits, at the top or under a real place", () => {
+    const inherited = fc.constantFrom(...Object.getOwnPropertyNames(Object.prototype))
+    fc.assert(fc.property(inherited, fc.constantFrom("", "summary.", "title.", "dataProviders.p1."), (name, under) => {
+      expect(pathExists(research(), `${under}${name}`)).toBe(false)
+      expect(pathExists(dataset(), `${under}${name}`)).toBe(false)
+    }))
+  })
+
   /** The memo is the administrator's own and is not part of what is reviewed. */
   it("is not the draft's memo, which never reaches a preview", () => {
     expect(pathExists(research(), "note")).toBe(false)

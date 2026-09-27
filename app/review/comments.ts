@@ -108,12 +108,16 @@ export function commentsForPage(
     || (isFieldAnchor(anchor) && subjects.some((subject) => isSameSubject(subjectOf(anchor), subject))))
 }
 
-/** The comments of one subject, by the path each is attached to, oldest first. */
+/**
+ * The comments of one subject, by the path each is attached to, oldest first.
+ * **The record inherits nothing**, so a path named like something every object
+ * has (`constructor`) is a place like any other rather than a function.
+ */
 export function commentsByPath(
   comments: readonly CommentView[],
   subject: AnchorSubject,
 ): Record<string, CommentView[]> {
-  const held: Record<string, CommentView[]> = {}
+  const held = Object.create(null) as Record<string, CommentView[]>
   for (const one of commentsOfSubject(comments, subject)) {
     if (!isFieldAnchor(one.anchor)) continue
     const path = one.anchor.path

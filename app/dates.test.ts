@@ -208,6 +208,12 @@ describe("dayFromInput", () => {
     expect(dayFromInput("2026-00-10")).toBeNull()
   })
 
+  /** The calendar has no year 0, and a `date` column refuses it. */
+  it("0 年は日ではない", () => {
+    expect(dayFromInput("0000-01-01")).toBeNull()
+    expect(dayFromInput("0001-01-01")).toBe("0001-01-01")
+  })
+
   it("形の違うものは受けない", () => {
     for (const given of ["", "2026-9-3", "2026-09-23T00:00", "20260923", " 2026-09-23", "2026-09-23 ", "tomorrow"]) {
       expect(dayFromInput(given), given).toBeNull()

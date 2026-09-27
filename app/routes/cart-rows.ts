@@ -1,3 +1,4 @@
+import { isCartable } from "~/cart/store"
 import { cartRows } from "~/public/lists.server"
 import { readLocale } from "~/public/urls"
 
@@ -19,10 +20,14 @@ import type { Route } from "./+types/cart-rows"
  * **What was asked for comes back with the answer**, because that is the only
  * way the page can tell "this one was looked for and is not published" from
  * "this one was added a moment ago and has not been fetched yet".
+ *
+ * **Only what a cart can hold is looked up, once each** (`isCartable`): the
+ * page sends nothing else, and anything else — a NUL among it — is not a JGA
+ * dataset to find.
  */
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
   const locale = readLocale(url.pathname).locale
-  const ids = (url.searchParams.get("ids") ?? "").split(",").filter((id) => id !== "")
+  const ids = [...new Set((url.searchParams.get("ids") ?? "").split(",").filter(isCartable))]
   return { asked: ids, rows: await cartRows(ids, locale) }
 }

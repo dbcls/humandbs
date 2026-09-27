@@ -2,7 +2,8 @@ import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { datasetContentInputArb } from "./arbitraries/draft"
-import { diffDatasetInput, importDatasetField } from "./dataset-diff"
+import { diffDatasetInput } from "./dataset-diff"
+import { DATASET_IMPORT, initialMerge } from "./import"
 
 /**
  * The diff and the taking of a field share one path vocabulary and nothing in
@@ -11,10 +12,9 @@ import { diffDatasetInput, importDatasetField } from "./dataset-diff"
  * cannot be taken. **This law is the only thing that ties them together.**
  */
 describe("the conflict diff over a dataset", () => {
-  it("leaves nothing to report once every field it reported has been taken", () => {
+  it("leaves nothing to report once every field it reported is settled as it was saved", () => {
     fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (mine, theirs) => {
-      const taken = diffDatasetInput(mine, theirs)
-        .reduce((into, path) => importDatasetField(into, theirs, path), mine)
+      const taken = initialMerge(DATASET_IMPORT, mine, mine, theirs, diffDatasetInput(mine, theirs))
 
       expect(diffDatasetInput(taken, theirs)).toEqual([])
     }))

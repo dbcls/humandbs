@@ -763,6 +763,96 @@ describe("a dataset a draft adds", () => {
     ])
   })
 
+  /** A publication in the version naming both datasets, as its column does. */
+  async function citingBoth(researchId: string, going: string, staying: string): Promise<string> {
+    const version = only(await db.select().from(s.researchVersion).where(eq(s.researchVersion.researchId, researchId)))
+    await db.update(s.researchVersion).set({
+      content: {
+        ...version.content,
+        relatedPublications: [{
+          id: "p1",
+          title: filled("論文"),
+          doi: { state: "unknown" },
+          datasetIds: filled([going, staying]),
+          externalIds: ["JGAD999999"],
+        }],
+      },
+    }).where(eq(s.researchVersion.id, version.id))
+    return version.id
+  }
+
+  /**
+   * A save names only the research's datasets, so a draft still naming a
+   * deleted one could not be saved again, and nothing on its screen takes the
+   * name out.
+   */
+  it("takes it out of every draft of the research, from the order and from what each publication names", async () => {
+    const { researchId, draftId, going, staying } = await publishedPair()
+    const versionId = await citingBoth(researchId, going, staying)
+    const copyId = await draftCopiedFrom(db, researchId, 1)
+    const updating = await draftUpdating(db, researchId, versionId)
+    if (copyId === null || updating.status !== "opened") throw new Error("expected two drafts")
+
+    expect(await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, going, CURATOR))
+      .toEqual({ status: "deleted" })
+
+    for (const id of [copyId, updating.draftId]) {
+      const draft = await readDraft(db, id)
+      expect(draft?.content.datasetIds).toEqual([staying])
+      expect(draft?.content.relatedPublications[0]?.datasetIds).toEqual(filled([staying]))
+      expect(draft?.content.relatedPublications[0]?.externalIds).toEqual(["JGAD999999"])
+      // An editor holding the draft as it was cannot save it back over this.
+      expect(draft?.revision).toBe(2)
+    }
+    expect(await saveDraftContent(db, { draftId: copyId, revision: 1 }, { content: titled("古い画面") }))
+      .toEqual({ status: "conflict" })
+  })
+
+  it("moves no other draft's revision on when that draft does not name it", async () => {
+    const { researchId, draftId, going } = await publishedPair()
+    const otherDraftId = await createEmptyDraft(db, researchId)
+
+    await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, going, CURATOR)
+
+    expect((await readDraft(db, otherDraftId))?.revision).toBe(1)
+  })
+
+  /**
+   * The version keeps naming the dataset, so a draft made from it would hold an
+   * entry for a dataset that is no longer there.
+   */
+  it("leaves a version naming it free to be edited and copied, the drafts made from it without it", async () => {
+    const { researchId, draftId, going, staying } = await publishedPair()
+    const versionId = await citingBoth(researchId, going, staying)
+    await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, going, CURATOR)
+
+    const copyId = await draftCopiedFrom(db, researchId, 1)
+    const updating = await draftUpdating(db, researchId, versionId)
+    if (copyId === null || updating.status !== "opened") throw new Error("expected two drafts")
+
+    for (const id of [copyId, updating.draftId]) {
+      const draft = await readDraft(db, id)
+      expect(draft?.content.datasetIds).toEqual([staying])
+      expect(draft?.content.relatedPublications[0]?.datasetIds).toEqual(filled([staying]))
+      const entries = await db.select({ datasetId: s.draftDatasetEntry.datasetId }).from(s.draftDatasetEntry)
+        .where(eq(s.draftDatasetEntry.draftId, id))
+      expect(entries.map((entry) => entry.datasetId)).toEqual([staying])
+    }
+  })
+
+  it("leaves a version naming it free to be withdrawn, the draft it becomes without it", async () => {
+    const { researchId, draftId, going, staying } = await publishedPair()
+    const versionId = await citingBoth(researchId, going, staying)
+    await deleteResearchDataset(db, { draftId, revision: 1 }, researchId, going, CURATOR)
+
+    const withdrawn = await withdrawVersion(db, versionId, CURATOR)
+    if (withdrawn.status !== "withdrawn") throw new Error(`expected a withdrawal, got ${withdrawn.status}`)
+
+    const draft = await readDraft(db, withdrawn.draftId)
+    expect(draft?.content.datasetIds).toEqual([staying])
+    expect(draft?.content.relatedPublications[0]?.datasetIds).toEqual(filled([staying]))
+  })
+
   it("cannot take out one that belongs to another draft", async () => {
     const { researchId, draftId } = await createResearchWithDraft(db)
     const otherDraftId = await createEmptyDraft(db, researchId)

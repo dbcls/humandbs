@@ -32,10 +32,10 @@
  */
 
 import { useEffect, useId, useRef, useState } from "react"
-import { useFetcher } from "react-router"
+import { useFetcher, useSearchParams } from "react-router"
 
 import { describeAt } from "~/admin/changes"
-import { diffDatasetInput, importDatasetField } from "~/admin/dataset-diff"
+import { diffDatasetInput } from "~/admin/dataset-diff"
 import {
   emptyDiseaseRow,
   emptyNumberRow,
@@ -50,7 +50,8 @@ import {
   type ValueInput,
   type ValueKind,
 } from "~/admin/dataset-form"
-import type { SlotState } from "~/admin/form"
+import type { SlotState, TextInput } from "~/admin/form"
+import { DATASET_IMPORT } from "~/admin/import"
 import { isNhaId } from "~/admin/labels"
 import type { DatasetEditorView, DatasetLabelResult } from "~/admin/pages.server"
 import type { EditableCatalog, EditableKey, EditableTerm } from "~/admin/queries.server"
@@ -84,7 +85,7 @@ import { AnnotationLayer, Card, Code, Empty, Page, PageHeader } from "~/componen
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { href, researchPath } from "~/public/urls"
+import { FILE_PAGE_PARAMS, href, researchPath } from "~/public/urls"
 import { commentsByPath } from "~/review/comments"
 import type { DrawnDataset } from "~/review/preview.server"
 
@@ -96,6 +97,7 @@ import { IdForm } from "./dataset-id"
 import { FieldReview, type FieldReviewData } from "./field-review"
 import { DatasetBody } from "./dataset"
 import { FileSelection } from "./file-selection"
+import { annotationsAt, MergeDialog, writtenName, type ImportParts } from "./import"
 import {
   AddElement,
   ConflictBanner,
@@ -192,7 +194,6 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
     initial: view.input,
     revision: view.revision,
     diff: diffDatasetInput,
-    importAt: importDatasetField,
     body: (value) => ({ content: value }),
   })
 
@@ -204,13 +205,23 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
    * box — the ja and en sides of one value are one place.
    */
   const drawBody = JSON.stringify({ revision: view.revision, content: editing.value })
+  // **The page of the files the address asks for goes along**: the pane draws
+  // one page of the selection, cut on the server, and its steps move this
+  // screen's address.
+  const [params] = useSearchParams()
+  const filePage = FILE_PAGE_PARAMS
+    .flatMap((name) => {
+      const value = params.get(name)
+      return value === null ? [] : [`&${name}=${encodeURIComponent(value)}`]
+    })
+    .join("")
   const pageJa = useDrawn<DrawnDataset>(
-    datasetPagePath(researchId, draftId, view.datasetId, "ja"),
+    `${datasetPagePath(researchId, draftId, view.datasetId, "ja")}${filePage}`,
     drawBody,
     locale === "ja" ? view.page : null,
   )
   const pageEn = useDrawn<DrawnDataset>(
-    datasetPagePath(researchId, draftId, view.datasetId, "en"),
+    `${datasetPagePath(researchId, draftId, view.datasetId, "en")}${filePage}`,
     drawBody,
     locale === "en" ? view.page : null,
   )
@@ -259,6 +270,57 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   const conflictedUnder = (prefix: string) =>
     marked.filter((path) => path === prefix || path.startsWith(`${prefix}.`)).length
 
+  /**
+   * What the conflict dialog compares and writes with: the places named as the
+   * banner names them, and each value written with the control the form uses.
+   */
+  const mergeParts: ImportParts<DatasetContentInput> = {
+    shape: DATASET_IMPORT,
+    labelOf: (path) => placeName({ kind: "dataset-field", datasetId: view.datasetId, path }, places, locale),
+    nameOf: (path, element) => {
+      const record = element as { label?: unknown, keyId?: unknown }
+      if (path === "experiments") return writtenName(record.label)
+      return typeof record.keyId === "string" ? keyLabelOf.get(record.keyId) ?? record.keyId : ""
+    },
+    termLabel: (id) => termLabelOf.get(id) ?? id,
+    posted: (written) => written,
+    written: (path, value, onChange) => {
+      const annotations = annotationsAt(path)
+      if (path === "fileSelection" && Array.isArray(value)) {
+        return (
+          <Stack gap="tight">
+            <span className={PANE_LABEL}>{editor.mergeWritten}</span>
+            <FileSelection
+              locale={locale}
+              listing={view.listing}
+              labels={view.fileLabels}
+              selected={value.filter((one): one is string => typeof one === "string")}
+              filesAt={href(locale, adminResearchFilesPath(researchId))}
+              onChange={onChange}
+            />
+          </Stack>
+        )
+      }
+      if (/^experiments\.[^.]+\.label$/.test(path)) {
+        return <SingleField label={editor.mergeWritten} value={value as TextInput} annotations={annotations} locale={locale} onChange={onChange} />
+      }
+      const slot = value as ValueInput
+      const key = view.catalog.keys.find((one) => one.id === slot.keyId)
+      if (key === undefined) return null
+      return (
+        <ValueEditor
+          label={editor.mergeWritten}
+          locale={locale}
+          catalogKey={key}
+          terms={view.terms}
+          value={slot}
+          annotations={annotations}
+          onChange={onChange}
+        />
+      )
+    },
+  }
+
   /** What is worth knowing about an experiment while it is collapsed away. */
   function experimentNote(experiment: ExperimentInput): string {
     const count = t.valueCount(experiment.values.length)
@@ -275,8 +337,22 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
                 locale={locale}
                 changed={editing.conflict.changed}
                 nameOf={(path) => placeName({ kind: "dataset-field", datasetId: view.datasetId, path }, places, locale)}
+                onCompare={() => { editing.openMerge(null) }}
               />
             </div>
+          )}
+          {editing.conflict !== null && editing.merging !== null && (
+            <MergeDialog
+              locale={locale}
+              parts={mergeParts}
+              base={editing.conflict.base}
+              mine={input}
+              theirs={editing.conflict.theirs}
+              changed={editing.conflict.changed}
+              at={editing.merging.at}
+              onClose={editing.closeMerge}
+              onSettle={editing.settle}
+            />
           )}
 
           {/* **No section named for what it holds in general** (「基本情報」): each

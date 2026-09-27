@@ -38,7 +38,7 @@ import type {
   ResearchContent,
   VersionContent,
 } from "~/content/types"
-import { descriptionOf, draftContentOf } from "~/content/version"
+import { descriptionOf, draftContentOf, withoutDatasets } from "~/content/version"
 import type { Database, Executor, Transaction } from "~/db/client.server"
 import {
   comment,
@@ -518,6 +518,10 @@ export async function draftUpdating(
  * kept: the draft does not know which one it came from.
  *
  * This is also what withdrawing does with the row it takes out of the table.
+ *
+ * **A dataset deleted since is left out** (`withoutDatasets`). The version
+ * still names it, but a draft holding it could not be saved, and its entry
+ * would name a row that is gone.
  */
 export async function draftFromVersion(
   tx: Transaction,
@@ -525,20 +529,26 @@ export async function draftFromVersion(
   /** The version this draft is the update of, when it is one (`draftUpdating`). */
   updates: string | null = null,
 ): Promise<string> {
+  const present = new Set((await tx
+    .select({ id: dataset.id })
+    .from(dataset)
+    .where(eq(dataset.researchId, version.researchId))).map((row) => row.id))
+  const kept = (datasetId: string) => present.has(datasetId)
   const draft = one(await tx
     .insert(researchDraft)
     .values({
       researchId: version.researchId,
       // An update is shown by its version's number, and has no name of its own.
       name: updates === null ? await plannedNameIn(tx, version.researchId) : "",
-      content: draftContentOf(version.content),
+      content: withoutDatasets(draftContentOf(version.content), kept),
       replacesVersionId: updates,
       shareToken: newShareToken(),
     })
     .returning({ id: researchDraft.id }))
 
-  if (version.content.datasets.length > 0) {
-    await tx.insert(draftDatasetEntry).values(version.content.datasets.map((row) => ({
+  const described = version.content.datasets.filter((row) => kept(row.datasetId))
+  if (described.length > 0) {
+    await tx.insert(draftDatasetEntry).values(described.map((row) => ({
       draftId: draft.id,
       datasetId: row.datasetId,
       content: descriptionOf(row),
@@ -772,6 +782,12 @@ export function listingAfter(listed: readonly string[], change: ListingChange): 
  * that no cascade reaches, and one left behind would point at nothing a screen
  * draws while being counted as unresolved. Comments go with what they are
  * about, the way they go with a discarded draft.
+ *
+ * **So does every draft's naming of it** — the order and what each publication
+ * names (`withoutDatasets`). A save names only the research's datasets, so a
+ * draft left naming this one could not be saved again. A draft that named it
+ * moves its revision on, as a vocabulary merge does, so an editor holding it as
+ * it was is refused rather than writing the name back.
  */
 export async function deleteResearchDataset(
   db: Database,
@@ -799,19 +815,29 @@ export async function deleteResearchDataset(
       return { status: "refused" }
     }
 
-    const rows = await tx
-      .update(researchDraft)
-      .set({
-        content: {
-          ...before,
-          datasetIds: before.datasetIds.filter((id) => id !== datasetId),
-        },
-        revision: sql`${researchDraft.revision} + 1`,
-        updatedAt: sql`now()`,
-      })
-      .where(and(eq(researchDraft.id, at.draftId), eq(researchDraft.revision, at.revision)))
-      .returning({ revision: researchDraft.revision })
-    if (rows[0] === undefined) return { status: "conflict" }
+    // The research is locked (`currentContent`), and its drafts come next, all
+    // of them and in id order (`locks.server.ts`): this one is written with
+    // the others, and two deletions from two drafts would otherwise each hold
+    // one and wait for the other.
+    const drafts = await tx
+      .select({ id: researchDraft.id, content: researchDraft.content, revision: researchDraft.revision })
+      .from(researchDraft)
+      .where(eq(researchDraft.researchId, researchId))
+      .orderBy(asc(researchDraft.id))
+      .for("update")
+    const own = drafts.find((draft) => draft.id === at.draftId)
+    if (own === undefined) return { status: "gone" }
+    if (own.revision !== at.revision) return { status: "conflict" }
+
+    const kept = (id: string) => id !== datasetId
+    for (const draft of drafts) {
+      const next = withoutDatasets(draft.content, kept)
+      if (draft.id !== at.draftId && JSON.stringify(next) === JSON.stringify(draft.content)) continue
+      await tx
+        .update(researchDraft)
+        .set({ content: next, revision: sql`${researchDraft.revision} + 1`, updatedAt: sql`now()` })
+        .where(eq(researchDraft.id, draft.id))
+    }
 
     await tx.delete(dataset).where(eq(dataset.id, datasetId))
     await tx

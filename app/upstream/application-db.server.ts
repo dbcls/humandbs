@@ -38,6 +38,7 @@
 import { Pool } from "pg"
 
 import type { ApplicationDbConfig } from "~/config.server"
+import { likeEscaped } from "~/db/like"
 import type { ApplicationType } from "~/admin/listing"
 import { affiliationOf, joinAffiliation, type StatedAffiliation } from "~/upstream/affiliation"
 import { countryName } from "~/upstream/country"
@@ -48,6 +49,14 @@ import { countryName } from "~/upstream/country"
  * else's database indefinitely.
  */
 const STATEMENT_TIMEOUT_MS = 300_000
+
+/**
+ * How long connecting is waited on. **Without a bound, a database that takes
+ * the connection and never answers is waited on for good**: the admin screen
+ * reading it fails at the proxy's minute instead of saying it could not
+ * connect, and the refresh holds its runner, which then runs no source at all.
+ */
+export const APPLICATION_DB_CONNECT_TIMEOUT_MS = 10_000
 
 /** `public/live`, the only status DDBJ Search publishes an accession at. */
 const LIVE = 2098186
@@ -95,13 +104,21 @@ export interface JgadFileGroupUpstreamRow {
   byteCount: number
 }
 
-export function openApplicationDb(config: ApplicationDbConfig): Pool {
+export function openApplicationDb(
+  config: ApplicationDbConfig,
+  connectTimeoutMs = APPLICATION_DB_CONNECT_TIMEOUT_MS,
+): Pool {
   return new Pool({
     connectionString: config.url,
     application_name: "humandbs-upstream-refresh",
     options: `-c default_transaction_read_only=on -c statement_timeout=${STATEMENT_TIMEOUT_MS}`,
     // One query at a time; the refresh runs the four sources in sequence.
     max: 1,
+    connectionTimeoutMillis: connectTimeoutMs,
+    // A connection whose route has gone without a word is found out, and a
+    // query the server never answers is given up on after its own bound.
+    keepAlive: true,
+    query_timeout: STATEMENT_TIMEOUT_MS + connectTimeoutMs,
   })
 }
 
@@ -817,15 +834,15 @@ export async function searchDsBranches(
     SELECT ${ROW_COLUMNS}
     ${BRANCH_FROM}
     WHERE $1 = '' OR (
-         b.application_id ILIKE '%' || $1 || '%'
-      OR coalesce(b.hum_label, '') ILIKE '%' || $1 || '%'
-      OR coalesce(v."submission_study_title", '') ILIKE '%' || $1 || '%'
-      OR coalesce(v."submission_study_title_en", '') ILIKE '%' || $1 || '%'
-      OR coalesce(v."pi_last_name", '') || coalesce(v."pi_first_name", '') ILIKE '%' || $1 || '%'
-      OR coalesce(v."pi_first_name_en", '') || ' ' || coalesce(v."pi_last_name_en", '') ILIKE '%' || $1 || '%'
+         b.application_id ILIKE $3 ESCAPE '\\'
+      OR coalesce(b.hum_label, '') ILIKE $3 ESCAPE '\\'
+      OR coalesce(v."submission_study_title", '') ILIKE $3 ESCAPE '\\'
+      OR coalesce(v."submission_study_title_en", '') ILIKE $3 ESCAPE '\\'
+      OR coalesce(v."pi_last_name", '') || coalesce(v."pi_first_name", '') ILIKE $3 ESCAPE '\\'
+      OR coalesce(v."pi_first_name_en", '') || ' ' || coalesce(v."pi_last_name_en", '') ILIKE $3 ESCAPE '\\'
     )
     ORDER BY ap.approved_at DESC NULLS LAST, b.appl_id DESC
-    LIMIT $2`, [trimmed, limit])
+    LIMIT $2`, [trimmed, limit, `%${likeEscaped(trimmed)}%`])
   return rows.map(branchRow)
 }
 

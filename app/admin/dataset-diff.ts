@@ -2,7 +2,7 @@
  * Which fields two versions of a dataset entry disagree about.
  *
  * The same job as `diff.ts` and the same use on screen — name what somebody
- * else changed, and offer their value one field at a time — over the form a
+ * else changed, and settle each place in the conflict dialog — over the form a
  * dataset is edited in (`dataset-form.ts`).
  *
  * Two arrays are identified rather than positional. A value slot is identified
@@ -28,7 +28,6 @@ import type {
   ValueBody,
   ValueInput,
 } from "./dataset-form"
-import { readAt, writeAt } from "./paths"
 
 /**
  * **Every kind a form can hold is answered here.** A kind with no case would
@@ -102,16 +101,4 @@ export function diffDatasetInput(
   into.when(sameStrings(inListingOrder(base.fileSelection), inListingOrder(other.fileSelection)), "fileSelection")
 
   return into.paths
-}
-
-/** One field of `theirs` written over `mine`, addressed by a reported path. */
-export function importDatasetField(
-  mine: DatasetContentInput,
-  theirs: DatasetContentInput,
-  path: string,
-): DatasetContentInput {
-  const keys = path.split(".")
-  const taken = readAt(theirs, keys)
-  if (!taken.found) return mine
-  return writeAt(mine, keys, taken.value) as DatasetContentInput
 }

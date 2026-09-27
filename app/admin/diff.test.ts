@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { emptyResearchContent } from "~/content/empty"
 
-import { diffDraftInput, importField } from "./diff"
+import { diffDraftInput } from "./diff"
 import { researchContentInput, type DraftInput } from "./form"
 
 function draft(): DraftInput {
@@ -90,41 +90,5 @@ describe("diffDraftInput", () => {
     theirs.content.datasetIds = ["b", "a"]
 
     expect(diffDraftInput(mine, theirs)).toEqual(["datasetIds"])
-  })
-})
-
-describe("importField", () => {
-  it("writes one field of theirs over mine and leaves the rest alone", () => {
-    const mine = draft()
-    mine.content.title.ja = { state: "value", text: "mine" }
-    mine.content.releaseNote.ja = { state: "value", text: "my note" }
-    const theirs = draft()
-    theirs.content.title.ja = { state: "value", text: "theirs" }
-    theirs.content.releaseNote.ja = { state: "value", text: "their note" }
-
-    const taken = importField(mine, theirs, "title")
-
-    expect(taken.content.title.ja.text).toBe("theirs")
-    expect(taken.content.releaseNote.ja.text).toBe("my note")
-  })
-
-  it("takes a field of an element by its identity, whatever position it sits at", () => {
-    const mine = withProvider("p1", "Tanaka")
-    const theirs = withProvider("p1", "Suzuki")
-    theirs.content.dataProviders = [
-      ...withProvider("p0", "Sato").content.dataProviders,
-      ...theirs.content.dataProviders,
-    ]
-
-    const taken = importField(mine, theirs, "dataProviders.p1.name")
-
-    expect(taken.content.dataProviders).toHaveLength(1)
-    expect(taken.content.dataProviders[0]?.name.ja.text).toBe("Suzuki")
-  })
-
-  it("changes nothing when the path names an element the other side does not have", () => {
-    const mine = withProvider("p1", "Tanaka")
-
-    expect(importField(mine, draft(), "dataProviders.p1.name")).toEqual(mine)
   })
 })

@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { RESEARCH } from "./anchors"
@@ -71,6 +72,16 @@ describe("the comments a screen shows", () => {
       "summary.aims": [comments[2]],
     })
     expect(commentsByPath(comments, DATASET)).toEqual({ "values.k1": [comments[3]] })
+  })
+
+  it("groups a place named like something every object inherits, and holds nothing for such a place with no comments", () => {
+    const inherited = fc.constantFrom(...Object.getOwnPropertyNames(Object.prototype))
+    fc.assert(fc.property(inherited, inherited, (said1, asked) => {
+      const one = said({ id: "odd", anchor: { kind: "research-field", path: said1 } })
+      const byPath = commentsByPath([one], RESEARCH)
+      expect(byPath[said1]).toEqual([one])
+      if (asked !== said1) expect(byPath[asked]).toBeUndefined()
+    }))
   })
 
   it("keeps the whole and the memo apart from every subject, and from each other", () => {

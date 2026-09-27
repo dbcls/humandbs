@@ -22,6 +22,8 @@
  * paths, so ticking it keeps whatever those rows say.
  */
 
+import { diffDatasetInput } from "./dataset-diff"
+import type { DatasetContentInput } from "./dataset-form"
 import { diffDraftInput } from "./diff"
 import type { DraftInput } from "./form"
 import { identityOf, readAt, writeAt } from "./paths"
@@ -203,6 +205,73 @@ function blankValue(value: unknown): boolean {
   return blankSlot(value)
 }
 
+/**
+ * A save refused because somebody else saved first: the places they changed
+ * (`changed`, against what this screen opened with) that the screen's input and
+ * their saved value now disagree about, and the lists they changed inside. A
+ * place only this screen changed is its own to keep, and one both changed alike
+ * needs no deciding.
+ */
+export function mergeFieldPaths<T>(shape: ImportShape<T>, mine: T, theirs: T, changed: readonly string[]): string[] {
+  const moved = new Set(changed)
+  // A list they changed only inside an element is still theirs to decide with:
+  // this screen may have removed the element they changed.
+  return importFieldPaths(shape, mine, theirs).filter((path) => moved.has(path)
+    || (isList(shape, mine, theirs, path) && changed.some((one) => one.startsWith(`${path}.`))))
+}
+
+/**
+ * What the conflict dialog opens holding: the screen's input, with every
+ * offered place decided by who changed it since the screen opened (`base`).
+ *
+ * **A place this screen left as it opened takes what was saved elsewhere; a place
+ * both changed keeps this screen's.** The one who changed it knew why, and a
+ * curator who typed into a place is not to lose it without deciding to.
+ * **What this screen cannot write takes what was saved when it moved** (`skip`):
+ * a dataset created or reordered on another screen is not this screen's to undo.
+ *
+ * A list is decided an element at a time, the same way: an element added on
+ * either side is kept, one removed on one side goes unless the other side changed
+ * it, and a list this screen kept as it opened takes the saved order.
+ */
+export function initialMerge<T>(shape: ImportShape<T>, base: T, mine: T, theirs: T, changed: readonly string[]): T {
+  let written = mine
+  const moved = new Set(changed)
+  // What this screen changed is read the way what they changed is: by the
+  // diff, so text left under a state is not a change nobody can see.
+  const typed = shape.diff(base, mine)
+  const within = (paths: readonly string[], path: string) => paths.some((one) => one === path || one.startsWith(`${path}.`))
+  for (const path of shape.skip) {
+    if (!moved.has(path)) continue
+    const keys = shape.keysOf(path)
+    const saved = readAt(theirs, keys)
+    if (saved.found) written = writeAt(written, keys, saved.value) as T
+  }
+  for (const path of mergeFieldPaths(shape, mine, theirs, changed)) {
+    const keys = shape.keysOf(path)
+    if (isList(shape, mine, theirs, path)) {
+      const baseIds = new Set(heldIds(shape, base, path))
+      const current = new Map(listAt(written, keys).map((element) => [identityOf(element), element]))
+      const saved = new Map(listAt(theirs, keys).map((element) => [identityOf(element), element]))
+      const order = typed.includes(path) ? listRows(shape, mine, theirs, path).map((row) => row.id) : heldIds(shape, theirs, path)
+      const kept = order.filter((id) => {
+        if (current.has(id) && saved.has(id)) return true
+        if (current.has(id)) return !baseIds.has(id) || within(typed, `${path}.${id}`)
+        return !baseIds.has(id) || within(changed, `${path}.${id}`)
+      })
+      written = writeAt(written, keys, kept.map((id) => current.get(id) ?? saved.get(id))) as T
+      continue
+    }
+    if (typed.includes(path)) continue
+    const parts = [keys, ...(shape.along?.(path) ?? []).map((one) => shape.keysOf(one))]
+    for (const part of parts) {
+      const saved = readAt(theirs, part)
+      if (saved.found) written = writeAt(written, part, saved.value) as T
+    }
+  }
+  return written
+}
+
 export const RESEARCH_IMPORT: ImportShape<DraftInput> = {
   diff: diffDraftInput,
   keysOf: (path) => ["content", ...path.split(".")],
@@ -210,8 +279,15 @@ export const RESEARCH_IMPORT: ImportShape<DraftInput> = {
   // holds only their order.
   skip: ["datasetIds"],
   // A publication's datasets are one place in two lists: the research's own,
-  // chosen, and the ones typed (`diff.ts` の `importField`).
+  // chosen, and the ones typed (`diff.ts` の `publication`).
   along: (path) => /^relatedPublications\.[^.]+\.datasetIds$/.test(path)
     ? [path.replace(/datasetIds$/, "externalIds")]
     : [],
+}
+
+/** A dataset's entry. Its release date is the publish's to set, and its screen shows it without a field. */
+export const DATASET_IMPORT: ImportShape<DatasetContentInput> = {
+  diff: diffDatasetInput,
+  keysOf: (path) => path.split("."),
+  skip: ["releaseDate"],
 }

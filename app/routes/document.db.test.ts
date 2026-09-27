@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
@@ -74,6 +75,22 @@ describe("リンクを辿って開いた document", () => {
   it("ja prefix の redirect は query をそのまま付ける", async () => {
     const response = await thrownBy(loader(followed("/ja/research", "?q=cancer&sort=id")))
     expect(response.headers.get("location")).toBe("/research?q=cancer&sort=id")
+  })
+
+  it("ja prefix の redirect は、サイトの外を指すパスをトップページに向ける", async () => {
+    for (const path of ["/ja//evil.com", "/ja///evil.com", "/ja/\\evil.com", "/ja/\t/evil.com"]) {
+      const response = await thrownBy(loader(followed(path, "?x=1")))
+      expect(response.headers.get("location"), path).toBe("/")
+    }
+  })
+
+  it("ja prefix の redirect の行き先は、どんなパスでもサイトの中にある", async () => {
+    await fc.assert(fc.asyncProperty(fc.string({ maxLength: 12 }), fc.string({ maxLength: 8 }), async (rest, query) => {
+      const response = await thrownBy(loader(followed(`/ja/${rest}`, `?${encodeURIComponent(query)}`)))
+      const location = response.headers.get("location") ?? ""
+      expect(new URL(location, "https://humandbs.dbcls.jp/x").origin).toBe("https://humandbs.dbcls.jp")
+      expect(location).toMatch(/^\/(?![/\\])/)
+    }), { numRuns: 200 })
   })
 
   it("公開されていない slug は 404 のまま", async () => {

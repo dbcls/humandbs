@@ -1571,6 +1571,20 @@ describe("the publish screen", () => {
     expect(moved).not.toEqual({ status: "unchanged" })
   })
 
+  /** The field sends a day that exists; a form sent without it may not, and the column takes only one that does. */
+  it("refuses a release date that is not a day, rather than failing on it", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    for (const releaseDate of ["2024-02-30", "2024-13-01", "0000-01-01", "2024-5-1"]) {
+      const response = await thrown(() => publishAction(
+        postForm(token, "/x", { intent: "publish", revision: "1", number: "1", releaseDate }),
+        "ja",
+        { researchId, draftId },
+      ))
+      expect(response.status, releaseDate).toBe(400)
+    }
+  })
+
   /** The public page lists the datasets in the draft's order, so a new order is a change. */
   it("lets an update through whose only change is the order of the datasets", async () => {
     const token = await signIn(CURATOR, true)

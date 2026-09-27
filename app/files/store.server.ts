@@ -53,8 +53,29 @@ const globalForStore = globalThis as typeof globalThis & {
   humandbsSigner?: S3Client
 }
 
-function clientOptions() {
-  const { store } = loadConfig(process.env)
+/**
+ * How long a request to the store is waited on, in milliseconds: to connect,
+ * and from sending to the response's head.
+ *
+ * **Without a bound, a store that takes the connection and never answers is
+ * waited on for good** — the SDK sets no timer of its own. A page listing a
+ * prefix would then fail at the proxy's minute rather than leaving its section
+ * out, and a job would hold the file runner, which does nothing else until it
+ * returns. Every attempt of an ordinary request ends well within that minute.
+ */
+export const STORE_TIMEOUTS = { connection: 5_000, request: 10_000 }
+
+/**
+ * The bound for the requests that do the work before they answer: a copy moves
+ * the bytes first (six minutes for the largest file), and completing a large
+ * upload assembles it.
+ */
+const WORKING_TIMEOUT_MS = 60 * 60 * 1000
+
+export function storeClientOptions(
+  store: { endpoint: string, accessKeyId: string, secretAccessKey: string },
+  timeouts: { connection: number, request: number } = STORE_TIMEOUTS,
+) {
   return {
     endpoint: store.endpoint,
     region: "us-east-1",
@@ -62,7 +83,17 @@ function clientOptions() {
     // resolve a hostname that does not exist inside the compose network.
     forcePathStyle: true,
     credentials: { accessKeyId: store.accessKeyId, secretAccessKey: store.secretAccessKey },
+    // Without `throwOnRequestTimeout` the SDK only warns when the bound passes.
+    requestHandler: {
+      connectionTimeout: timeouts.connection,
+      requestTimeout: timeouts.request,
+      throwOnRequestTimeout: true,
+    },
   }
+}
+
+function clientOptions() {
+  return storeClientOptions(loadConfig(process.env).store)
 }
 
 function getStore(): S3Client {
@@ -215,7 +246,7 @@ export async function copyObject(from: ObjectRef, to: ObjectRef): Promise<void> 
     Bucket: to.bucket,
     Key: to.key,
     CopySource: `/${from.bucket}/${encodeURI(from.key)}`,
-  }))
+  }), { requestTimeout: WORKING_TIMEOUT_MS })
 }
 
 export async function deleteObject(ref: ObjectRef): Promise<void> {
@@ -321,7 +352,7 @@ export async function completeMultipart(
         .sort((a, b) => a.partNumber - b.partNumber)
         .map((part) => ({ PartNumber: part.partNumber, ETag: part.etag })),
     },
-  }))
+  }), { requestTimeout: WORKING_TIMEOUT_MS })
 }
 
 export async function abortMultipart(ref: ObjectRef, uploadId: string): Promise<void> {

@@ -1,9 +1,7 @@
-import { useSearchParams } from "react-router"
-
 import { Badge, Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
-import { filePageOf, fileRowsOf, formatSize, pageOfFiles } from "~/files/prefix"
+import { formatSize } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import type { AwaitedItem } from "~/public/awaited"
@@ -98,13 +96,9 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
 }) {
   const messages = messagesFor(locale)
   const t = messages.dataset
-  // The selection is cut here rather than on the server: the view is built by
-  // every screen that draws a dataset (the page, the preview, the editor's
-  // pane), and the page asked for is only ever the address's. It is the same
-  // parameters as the research's download list.
-  const [params] = useSearchParams()
-  const size = fileRowsOf(params)
-  const files = pageOfFiles(view.files, filePageOf(params), size)
+  // One page of the selection, cut on the server from the address's
+  // parameters, as the research's download list is.
+  const files = view.files
   // Where the archive describes the dataset: the registration's details are
   // there, and the portal holds none of them.
   const ddbjSearch = ddbjSearchEntryUrl(view.label)
@@ -194,7 +188,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         )}
       </Pairs>
 
-      {view.files.length > 0 && (
+      {files.total > 0 && (
         <Section title={t.files} end={fileUrls && <UrlListLink locale={locale} to={fileUrls.list} />}>
           <Downloads
             locale={locale}
@@ -205,7 +199,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
             rangeTo={files.rangeTo}
             page={files.page}
             pageCount={files.pageCount}
-            size={size}
+            size={files.size}
             at={fileListQuery}
             origin={fileUrls?.origin}
           />

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 import { useFetcher } from "react-router"
 
-import { APPLICATION_FORM_URL, applicationPayload, useCart } from "~/cart/store"
+import { applicationPayload, useCart } from "~/cart/store"
 import { Button, ButtonLink, CopyButton, Collapsible, Heading, IconButton, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
 import { AccessTypeBadge, Card, Crumbs, IdWithIcon, Page, Table, Td, Value } from "~/components/page"
@@ -10,7 +10,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import type { DatasetListRowView } from "~/public/view.server"
-import { cartPath, datasetPath, href, readLocale, researchPath } from "~/public/urls"
+import { applicationFormUrl, cartPath, datasetPath, href, readLocale, researchPath } from "~/public/urls"
 
 import type { Route } from "./+types/cart"
 import type { loader as rowsLoader } from "./cart-rows"
@@ -211,7 +211,7 @@ function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale
               the other half.
             */}
             <ButtonLink
-              to={APPLICATION_FORM_URL}
+              to={applicationFormUrl(locale)}
               external
               newTab
               newTabLabel={messages.newTab}

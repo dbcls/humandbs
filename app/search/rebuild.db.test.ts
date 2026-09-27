@@ -658,6 +658,44 @@ describe("which number keys become facet rows", () => {
  * research owns and nothing that it does not — which holds because a dataset
  * belongs to exactly one research, and so do its versions and its labels.
  */
+describe("two rebuilds at once", () => {
+  /**
+   * A daily refresh or a vocabulary edit rebuilds everything while a publish
+   * rebuilds its research, and neither's locks on the research rows keep the
+   * other out. The one that comes second has to find the first's rows and
+   * replace them, not insert beside them.
+   */
+  it("run one after the other, the second replacing what the first wrote", async () => {
+    const researchId = await createResearch("hum0001")
+    await publish(researchId, 1, [await createDataset(researchId, "JGAD000001")])
+    await rebuildSearchDocs(db)
+    const whole = await docs()
+
+    let release: () => void = () => undefined
+    const held = new Promise<void>((done) => {
+      release = done
+    })
+    let wrote: () => void = () => undefined
+    const written = new Promise<void>((done) => {
+      wrote = done
+    })
+    const first = db.transaction(async (tx) => {
+      await rebuildSearchDocs(tx)
+      wrote()
+      await held
+    })
+    await written
+    const second = db.transaction(async (tx) => rebuildSearchDocs(tx, { researchIds: [researchId] }))
+    // Long enough for the second to reach whatever it waits on.
+    await new Promise((done) => setTimeout(done, 200))
+    release()
+
+    await first
+    await expect(second).resolves.toMatchObject({ research: 1 })
+    expect(await docs()).toEqual(whole)
+  })
+})
+
 describe("rebuilding one research", () => {
   it("leaves every other research's rows exactly as they were", async () => {
     const mine = await createResearch("hum0001")

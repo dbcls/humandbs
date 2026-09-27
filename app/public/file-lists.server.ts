@@ -3,8 +3,9 @@
  * every one a dataset selects, as `fileUrlList` writes them.
  *
  * **They respond the way the pages do.** A research or a dataset that is not
- * published is the same 404 as one that does not exist, and a secondary ID
- * redirects to the list of the primary one. **A store that does not respond is a
+ * published is the same 404 as one that does not exist, however its ID is
+ * written, and a secondary ID of a published one redirects to the list of the
+ * primary one. **A store that does not respond is a
  * 503**, not an empty list: the page can leave its section out, but a file
  * that listed nothing would read as a research with nothing to fetch.
  */
@@ -40,8 +41,8 @@ export async function researchUrlList(humId: string): Promise<Response> {
   const db = getDb()
   const resolved = await resolveHumLabel(db, humId)
   if (resolved === null) notFound()
-  if (resolved.primaryLabel !== humId) throw redirect(researchFileListPath(resolved.primaryLabel))
   if (latestOf(await publishedVersions(db, resolved.id)) === null) notFound()
+  if (resolved.primaryLabel !== humId) throw redirect(researchFileListPath(resolved.primaryLabel))
 
   const names = listed(await publicListing(resolved.primaryLabel)).map((node) => node.name)
   return fileUrlListResponse(resolved.primaryLabel, fileUrlList(fileOrigin(), resolved.primaryLabel, names))
@@ -51,9 +52,9 @@ export async function datasetUrlList(datasetId: string): Promise<Response> {
   const db = getDb()
   const resolved = await resolveDatasetLabel(db, datasetId)
   if (resolved === null) notFound()
-  if (resolved.primaryLabel !== datasetId) throw redirect(datasetFileListPath(resolved.primaryLabel))
   const row = await publishedDataset(db, resolved.id)
   if (row === null) notFound()
+  if (resolved.primaryLabel !== datasetId) throw redirect(datasetFileListPath(resolved.primaryLabel))
 
   // The selection the dataset's page lists: what it names and the prefix holds.
   const files = listed(await publicListing(row.humLabel))

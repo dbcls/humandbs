@@ -5,7 +5,7 @@ import { grantAdmin } from "~/auth/admins.server"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
 import { createSession, sessionCookie } from "~/auth/session.server"
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
-import type { ContentValue } from "~/content/types"
+import type { ContentValue, DatasetContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
@@ -132,9 +132,20 @@ function diseaseOrTerm(value: { termId?: string, asDisease?: boolean }): Content
  * A published dataset with one value, so that "in use" means something.
  * Each call is a research of its own, so a second one needs labels of its own.
  */
+/** A dataset's content holding one value, in an experiment or among the dataset's own. */
+function holding(value: { keyId: string, termId?: string, asDisease?: boolean }, at: "experiment" | "dataset" | "both"): DatasetContent {
+  const slot = { keyId: value.keyId, value: diseaseOrTerm(value) }
+  return {
+    ...emptyDatasetContent(),
+    values: at === "experiment" ? [] : [slot],
+    experiments: at === "dataset" ? [] : [{ id: "experiment-1", label: filled("WGS"), values: [slot] }],
+  }
+}
+
 async function publishedValue(
   value: { keyId: string, termId?: string, asDisease?: boolean },
   labels: { hum: string, dataset: string } = { hum: "hum0001", dataset: "JGAD000001" },
+  at: "experiment" | "dataset" | "both" = "experiment",
 ): Promise<void> {
   const { id: researchId } = only(await db.insert(s.research).values({})
     .returning({ id: s.research.id }))
@@ -143,20 +154,7 @@ async function publishedValue(
   await seedVersion(db, {
     researchId,
     number: 1,
-    datasets: [{
-      datasetId,
-      content: {
-        ...emptyDatasetContent(),
-        experiments: [{
-          id: "experiment-1",
-          label: filled("WGS"),
-          values: [{
-            keyId: value.keyId,
-            value: diseaseOrTerm(value),
-          }],
-        }],
-      },
-    }],
+    datasets: [{ datasetId, content: holding(value, at) }],
   })
   await db.insert(s.labelPin)
     .values({ kind: "hum", label: labels.hum, researchId, isPrimary: true })
@@ -171,7 +169,10 @@ async function publishedValue(
  * A draft holding one value, published nowhere: what "in use" has to see and
  * the public listing never shows.
  */
-async function draftedValue(value: { keyId: string, termId?: string, asDisease?: boolean }): Promise<void> {
+async function draftedValue(
+  value: { keyId: string, termId?: string, asDisease?: boolean },
+  at: "experiment" | "dataset" | "both" = "dataset",
+): Promise<void> {
   const { id: researchId } = only(await db.insert(s.research).values({})
     .returning({ id: s.research.id }))
   const { id: datasetId } = only(await db.insert(s.dataset).values({ researchId })
@@ -179,17 +180,7 @@ async function draftedValue(value: { keyId: string, termId?: string, asDisease?:
   const { id: draftId } = only(await db.insert(s.researchDraft)
     .values({ researchId, content: emptyResearchContent(), shareToken: `share-${researchId}` })
     .returning({ id: s.researchDraft.id }))
-  await db.insert(s.draftDatasetEntry).values({
-    draftId,
-    datasetId,
-    content: {
-      ...emptyDatasetContent(),
-      values: [{
-        keyId: value.keyId,
-        value: diseaseOrTerm(value),
-      }],
-    },
-  })
+  await db.insert(s.draftDatasetEntry).values({ draftId, datasetId, content: holding(value, at) })
 }
 
 describe("who may read the catalog", () => {
@@ -249,6 +240,18 @@ describe("whether a key can still go", () => {
 
     const view = await catalogPage(get(token, "/admin/experiment-fields"))
     expect(view.keys.map((key) => [key.used, key.inUse])).toEqual([[0, true]])
+  })
+
+  it("finds a key held at either level of a dataset, published or drafted, and counts a dataset holding it at both once", async () => {
+    const token = await signIn(CURATOR, true)
+    const published = await freeTextKey("coverage")
+    const drafted = await freeTextKey("depth")
+    await publishedValue({ keyId: published }, undefined, "both")
+    await publishedValue({ keyId: published }, { hum: "hum0002", dataset: "JGAD000002" }, "dataset")
+    await draftedValue({ keyId: drafted }, "experiment")
+
+    const view = await catalogPage(get(token, "/admin/experiment-fields"))
+    expect(view.keys.map((key) => [key.code, key.used, key.inUse])).toEqual([["coverage", 2, true], ["depth", 0, true]])
   })
 
   it("counts each published dataset once under the key", async () => {
@@ -439,6 +442,31 @@ describe("the terms of a vocabulary", () => {
     // The screen reads it as in use, the way a term a vocabulary value names is.
     const view = await fieldTermsPage(get(token, "/admin/experiment-fields/disease"), "disease")
     expect(view?.terms.find((row) => row.id === termId)?.inUse).toBe(true)
+  })
+
+  it("finds a term wherever a value can name it: either level, published or drafted, a vocabulary value or a disease", async () => {
+    const token = await signIn(CURATOR, true)
+    const setId = await vocabulary("icd10")
+    const { id: keyId } = only(await db.insert(s.contentKey)
+      .values({ code: "disease", scope: "experiment", valueType: "disease", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId })
+      .returning({ id: s.contentKey.id }))
+    const cases = [
+      { code: "A01", asDisease: true, at: "dataset", published: true },
+      { code: "A02", asDisease: true, at: "experiment", published: false },
+      { code: "A03", asDisease: false, at: "dataset", published: false },
+      { code: "A04", asDisease: false, at: "experiment", published: true },
+    ] as const
+    for (const [at, one] of cases.entries()) {
+      const termId = await term(setId, one.code)
+      if (one.published) await publishedValue({ keyId, termId, asDisease: one.asDisease }, { hum: `hum000${String(at + 1)}`, dataset: `JGAD00000${String(at + 1)}` }, one.at)
+      else await draftedValue({ keyId, termId, asDisease: one.asDisease }, one.at)
+    }
+    await term(setId, "A05")
+
+    const view = await fieldTermsPage(get(token, "/admin/experiment-fields/disease"), "disease")
+    expect(view?.terms.map((row) => [row.code, row.inUse])).toEqual([
+      ["A01", true], ["A02", true], ["A03", true], ["A04", true], ["A05", false],
+    ])
   })
 
   it("renames a term without touching what points at it", async () => {

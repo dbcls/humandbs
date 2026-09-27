@@ -4,6 +4,7 @@ import { DOCS_PATH } from "~/api/endpoints"
 
 import {
   apiDocsPath,
+  applicationFormUrl,
   applicationUrl,
   askedPath,
   datasetPath,
@@ -204,6 +205,13 @@ describe("applicationUrl", () => {
   it("asks the application system for English on an English page and for nothing on a Japanese one", () => {
     expect(applicationUrl("en")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/?lang=en")
     expect(applicationUrl("ja")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/")
+  })
+})
+
+describe("applicationFormUrl", () => {
+  it("asks the form a cart hands its datasets to for English on an English page, as the system's front does", () => {
+    expect(applicationFormUrl("en")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/dataset_import?lang=en")
+    expect(applicationFormUrl("ja")).toBe("https://humandbs.ddbj.nig.ac.jp/nbdc/application/dataset_import")
   })
 })
 
