@@ -14,7 +14,7 @@ import { messagesFor } from "~/i18n/messages"
 
 import { datasetFileListPath, datasetPath, filePath, href, researchPath } from "./urls"
 import type { PageSeo } from "./seo"
-import { fieldText, type DatasetView, type FieldView, type ResearchView } from "./view.server"
+import { fieldText, valuesText, type DatasetView, type FieldView, type ResearchView } from "./view.server"
 
 /** A search result shows about this much, and a preview less. */
 const DESCRIPTION_LENGTH = 200
@@ -31,10 +31,13 @@ function cut(text: string, length: number): string {
   return chars.length <= length ? chars.join("") : `${chars.slice(0, length - 1).join("")}…`
 }
 
-/** The text a field shows, or undefined when it shows none. */
-function shown(field: FieldView | null): string | undefined {
+/**
+ * The text a field shows, or undefined when it shows none. A field whose lines
+ * are several values is given the separator to join them with.
+ */
+function shown(field: FieldView | null, separator?: string): string | undefined {
   if (field === null) return undefined
-  const text = fieldText(field).trim()
+  const text = (separator === undefined ? fieldText(field) : valuesText(field, separator)).trim()
   return text === "" ? undefined : text
 }
 
@@ -110,7 +113,8 @@ export function datasetSeo(view: DatasetView, input: { origin: string, locale: L
   const words = messagesFor(locale).dataset
   const url = `${origin}${href(locale, datasetPath(view.label))}`
   const researchUrl = `${origin}${href(locale, researchPath(view.humLabel))}`
-  const typeOfData = shown(view.typeOfData)
+  // Several types are a line each on the page, and one phrase here.
+  const typeOfData = shown(view.typeOfData, locale === "ja" ? "、" : ", ")
   const methods = [...new Set(present(view.experiments.map((experiment) => shown(experiment.label))))]
   const access = view.accessType?.label
 

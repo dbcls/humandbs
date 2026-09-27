@@ -66,6 +66,7 @@ import {
   fieldText,
   PLATFORM_KEY,
   researchListRowView,
+  valuesText,
   type CatalogView,
   type DatasetListRowView,
   type ResearchListRowView,
@@ -705,7 +706,7 @@ export async function datasetExportTable(
     rows: rows.map((row) => [
       row.label,
       row.humLabel,
-      row.typeOfData === null ? "" : fieldText(row.typeOfData),
+      row.typeOfData === null ? "" : valuesText(row.typeOfData, ", "),
       row.experimentLabels.join(", "),
       row.accessType?.label ?? "",
       row.datePublished ?? "",

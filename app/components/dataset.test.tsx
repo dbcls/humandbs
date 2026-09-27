@@ -20,6 +20,7 @@ function view(fileCount: number, secondaryLabels: string[] = []): DatasetView {
     typeOfData: null,
     dataVolume: null,
     fileFormats: [],
+    awaited: [],
     untranslated: false,
     experiments: [],
     files: Array.from({ length: fileCount }, (_, at) => ({
@@ -205,5 +206,39 @@ describe("an experiment's values", () => {
 
     expect(rowNames(html).slice(-2)).toEqual(["健康状態", "組織"])
     expect(chips(html)).toEqual([])
+  })
+})
+
+describe("the values a preview awaits", () => {
+  function renderView(over: Partial<DatasetView>, locale: "ja" | "en" = "ja"): string {
+    const Stub = createRoutesStub([{
+      path: "/*",
+      Component: () => <DatasetBody view={{ ...view(0), ...over }} locale={locale} researchHref="/research/hum0001" />,
+    }])
+    return renderToStaticMarkup(<Stub initialEntries={["/dataset/JGAD000999"]} />)
+  }
+  const chips = (html: string, words: string) => html.split(words).length - 1
+
+  it("keeps each awaited row with a muted dashed chip saying it is filled in after publication", () => {
+    const html = renderView({
+      label: "JGAD000999",
+      awaited: ["dataVolume", "fileFormats", "datePublished", "dateModified", "studyAccession"],
+    })
+    expect(chips(html, "公開後に自動で入ります")).toBe(5)
+    for (const title of ["総データ量", "ファイル形式", "公開日", "更新日", "JGA Study"]) expect(html).toContain(title)
+    expect(html).toMatch(/class="[^"]*\bborder-dashed\b[^"]*\bborder-line-strong text-ink-muted\b[^"]*"[^>]*>(?:(?!<\/span>)[\s\S])*<svg/)
+    expect(html).not.toContain("ご教示ください")
+  })
+
+  it("is worded in English on the English page", () => {
+    expect(chips(renderView({ label: "JGAD000999", awaited: ["datePublished"] }, "en"), "Filled in automatically after publication")).toBe(1)
+  })
+
+  it("shows a value rather than the chip, and leaves out a missing value nothing awaits", () => {
+    const html = renderView({ label: "JGAD000626", datePublished: "2023-01-10", awaited: [] })
+    expect(html).toContain("2023-01-10")
+    expect(chips(html, "公開後に自動で入ります")).toBe(0)
+    expect(html).not.toContain("総データ量")
+    expect(html).not.toContain("JGA Study")
   })
 })

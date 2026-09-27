@@ -11,9 +11,9 @@ describe("robotsText", () => {
     )
   })
 
-  it("検索エンジンに載せない配置は、すべてを拒否し、sitemap を示さない", () => {
+  it("検索エンジンに載せない配置は、API とその説明のページのほかをすべて拒否し、sitemap を示さない", () => {
     const text = robotsText({ origin: ORIGIN, noindex: true })
-    expect(text).toBe("User-agent: *\nDisallow: /\n")
+    expect(text).toBe("User-agent: *\nAllow: /api/\nAllow: /swagger-ui/\nDisallow: /\n")
     expect(text).not.toContain("Sitemap")
   })
 })

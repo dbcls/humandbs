@@ -44,6 +44,7 @@ import {
 } from "~/i18n/locale"
 import type { PageSize } from "~/search/page-size"
 
+import { awaitedItems, type AwaitedItem } from "./awaited"
 import { href } from "./urls"
 
 /**
@@ -264,6 +265,15 @@ export function fieldText(field: FieldView): string {
 }
 
 /**
+ * A value whose lines are several values, as one line of text: the lines joined
+ * with the separator given rather than with the space prose is joined with.
+ */
+export function valuesText(field: FieldView, separator: string): string {
+  if (field.state === "rich") return field.text.map((line) => line.map((span) => span.text).join("")).join(separator)
+  return fieldText(field)
+}
+
+/**
  * Where a value under a catalog key is anchored. The two keys the dataset page
  * places itself are still values in a list, so they anchor like the rest.
  */
@@ -374,21 +384,17 @@ function valueField(
         .map((id) => catalog.termById.get(id))
         .filter((term) => term !== undefined)
         .sort((a, b) => a.position - b.position || a.code.localeCompare(b.code, "en"))
-      const separator = locale === "ja" ? "、" : ", "
-      // **A term naming an article keeps its label a link to it.** The value
-      // only becomes prose — rather than the plain joined string every other
-      // vocabulary value is — once one of its terms asks for that.
-      if (terms.some((term) => term.documentSlug !== null)) {
-        const line: Line = terms.flatMap((term, at) => {
-          const span = term.documentSlug === null
-            ? { text: catalogLabel(term, locale) }
-            : { text: catalogLabel(term, locale), href: href(locale, `/${term.documentSlug}`) }
-          return at === 0 ? [span] : [{ text: separator }, span]
-        })
-        return { state: "rich", text: [line], untranslated: false }
+      // A line each, like the diseases and the numbers: the names of kits and
+      // instruments hold spaces, and run together on one line nobody can tell
+      // where one ends. **A term naming an article keeps its label a link to it.**
+      return {
+        state: "rich",
+        text: terms.map((term): Line => {
+          const text = catalogLabel(term, locale)
+          return [term.documentSlug === null ? { text } : { text, href: href(locale, `/${term.documentSlug}`) }]
+        }),
+        untranslated: false,
       }
-      const labels = terms.map((term) => catalogLabel(term, locale))
-      return { state: "plain", text: labels.join(separator), untranslated: false }
     }
     case "disease": {
       if (value.diseases.state === "not-applicable") return { state: "not-applicable" }
@@ -902,6 +908,11 @@ export interface DatasetView {
    */
   dataVolume: number | null
   fileFormats: string[]
+  /**
+   * The items above a preview shows as filled in after publication, for want
+   * of a value yet (`awaited.ts`). Always empty on a published page.
+   */
+  awaited: AwaitedItem[]
   untranslated: boolean
   experiments: { id: string, label: FieldView, values: ValueView[] }[]
   /**
@@ -924,6 +935,8 @@ export interface DatasetViewInput {
   files: FileRowView[]
   /** What the archive's files are, for an archive's dataset (`accession_file_summary`). */
   archiveFiles: ArchiveFiles | null
+  /** Set by a preview only: the items it has no value for yet are shown as still to come. */
+  awaitsPublication?: boolean
 }
 
 export function datasetView(
@@ -969,6 +982,12 @@ export function anchoredDatasetView(
 
   at.list("experiments", experiments.map((row) => fieldText(row.label)))
 
+  const summary = fileSummaryView(datasetFileSummary({
+    label: input.label,
+    selection: input.content.fileSelection,
+    listing: input.files,
+    archive: input.archiveFiles,
+  }))
   const view: DatasetView = {
     label: input.label,
     humLabel: input.humLabel,
@@ -978,12 +997,17 @@ export function anchoredDatasetView(
     dateModified: input.dateModified,
     accessType: row.accessType,
     typeOfData: row.typeOfData,
-    ...fileSummaryView(datasetFileSummary({
-      label: input.label,
-      selection: input.content.fileSelection,
-      listing: input.files,
-      archive: input.archiveFiles,
-    })),
+    ...summary,
+    awaited: input.awaitsPublication === true
+      ? awaitedItems({
+          label: input.label,
+          dataVolume: summary.dataVolume,
+          fileFormats: summary.fileFormats,
+          datePublished: input.datePublished,
+          dateModified: input.dateModified,
+          studyAccession: input.studyAccession,
+        })
+      : [],
     experiments,
     files: selectedFiles(input.content.fileSelection, input.files),
     untranslated: fallbacks.seen(),

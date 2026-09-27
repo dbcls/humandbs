@@ -45,6 +45,7 @@ function dataset(over: Partial<DatasetView> = {}): DatasetView {
     typeOfData: plain("NGS (Exome)"),
     dataVolume: 403_000_000_000,
     fileFormats: ["BAM"],
+    awaited: [],
     untranslated: false,
     experiments: [{ id: "e1", label: plain("WES"), values: [] }, { id: "e2", label: plain("WES"), values: [] }],
     files: [],
@@ -179,6 +180,15 @@ describe("datasetSeo", () => {
     const many = datasetSeo(dataset({ label: "NHA000001", humLabel: "hum0014", files: files(101) }), { origin: ORIGIN, locale: "ja" })
     expect(many.jsonLd.distribution).toEqual([{ "@type": "DataDownload", "contentUrl": `${ORIGIN}/dataset/NHA000001/files.txt`, "encodingFormat": "text/plain" }])
     expect(datasetSeo(dataset(), { origin: ORIGIN, locale: "ja" }).jsonLd).not.toHaveProperty("distribution")
+  })
+
+  it("データの種類が複数あれば、説明文と名前ではページの言語の区切りでつなぐ", () => {
+    const typeOfData: FieldView = { state: "rich", text: [[{ text: "NGS (PBAT-seq)" }], [{ text: "NGS (ChIP-seq)" }]], untranslated: false }
+    const ja = datasetSeo(dataset({ typeOfData, accessType: null, experiments: [] }), { origin: ORIGIN, locale: "ja" })
+    expect(ja.description).toBe("JGAD000004 (研究 hum0006)。データの種類: NGS (PBAT-seq)、NGS (ChIP-seq)。")
+    expect(ja.jsonLd.name).toBe("JGAD000004: NGS (PBAT-seq)、NGS (ChIP-seq)")
+    const en = datasetSeo(dataset({ typeOfData, accessType: null, experiments: [] }), { origin: ORIGIN, locale: "en" })
+    expect(en.description).toBe("JGAD000004 (Research hum0006). Type of data: NGS (PBAT-seq), NGS (ChIP-seq).")
   })
 })
 

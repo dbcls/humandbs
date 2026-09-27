@@ -39,6 +39,7 @@ import {
   loadCatalog,
   publishedDatasetLabels,
   secondaryLabels,
+  studyAccessionOf,
 } from "~/public/queries.server"
 import { askedPath } from "~/public/urls"
 import { PAGE_SIZE } from "~/search/page-size"
@@ -487,10 +488,11 @@ export async function drawDatasetDraft(
   const writing = content ?? row.content
   // The archive's files are read as its dates are: a draft's dataset the archive
   // already publishes has them, and one it does not yet has none.
-  const [stored, labels, archiveFiles] = await Promise.all([
+  const [stored, labels, archiveFiles, studyAccession] = await Promise.all([
     adminListing(db, draft.researchId, humLabel),
     fileLabelsOf(db, draft.researchId),
     row.label === null ? null : archiveFilesOf(db, row.label),
+    row.label === null ? null : studyAccessionOf(db, row.label),
   ])
   const listing = listingRows(stored, labels, locale)
 
@@ -502,15 +504,16 @@ export async function drawDatasetDraft(
   const anchored = anchoredDatasetView({
     label: row.label ?? "",
     humLabel: humLabel ?? "",
-    // A preview reads no upstream cache: what it is showing is a draft, and the
-    // cache holds published accessions only.
-    studyAccession: null,
+    // The caches hold published accessions only, so a dataset the archive has
+    // not published yet has none of these, and the preview shows them as still to come.
+    studyAccession,
     secondaryLabels: secondary,
     content: dataset.content,
     datePublished: dataset.dates.datePublished,
     dateModified: dataset.dates.dateModified,
     files: listing,
     archiveFiles,
+    awaitsPublication: true,
   }, locale, catalog)
 
   const changed = row.published === null
@@ -525,7 +528,7 @@ export async function drawDatasetDraft(
     : previousAt(changed, anchoredDatasetView({
         label: row.label ?? "",
         humLabel: humLabel ?? "",
-        studyAccession: null,
+        studyAccession,
         secondaryLabels: secondary,
         content: publicDatasetContent(
           row.published,

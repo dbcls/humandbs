@@ -1,15 +1,16 @@
 import { useSearchParams } from "react-router"
 
-import { Stack } from "~/components/base"
+import { Badge, Stack } from "~/components/base"
 import { AddToCartButton } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import { filePageOf, fileRowsOf, formatSize, pageOfFiles } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import type { AwaitedItem } from "~/public/awaited"
 import { datasetFileListPath, ddbjSearchEntryUrl, fileListQuery, href, jgaEntryUrl, listPath, researchPath } from "~/public/urls"
 import type { DatasetView, ValueView } from "~/public/view.server"
 
-import { experimentRows, type ExperimentChip } from "./experiment-chips"
+import { experimentRows, onOneLine, type ExperimentChip } from "./experiment-chips"
 import { Downloads, UrlListLink, type PublicFileUrls } from "./files"
 import {
   AccessTypeBadge,
@@ -107,6 +108,7 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
   // Where the archive describes the dataset: the registration's details are
   // there, and the portal holds none of them.
   const ddbjSearch = ddbjSearchEntryUrl(view.label)
+  const awaits = (item: AwaitedItem) => view.awaited.includes(item)
 
   return (
     <Stack gap="block">
@@ -132,21 +134,24 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         )}
         {/* Read off the files rather than written, so neither has a place in
             the form. A dataset with no file, or whose files could not be
-            listed, leaves them out: a size of zero would read as known. */}
-        {view.dataVolume !== null && (
-          <KeyValue title={t.dataVolume}>{formatSize(view.dataVolume)}</KeyValue>
-        )}
-        {view.fileFormats.length > 0 && (
-          <KeyValue title={t.fileFormats}>
-            <ul className="flex flex-wrap gap-2">
-              {view.fileFormats.map((format) => (
-                <li key={format} className="rounded border border-line-strong bg-white px-2 py-1 text-ink text-sm">
-                  {format}
-                </li>
-              ))}
-            </ul>
-          </KeyValue>
-        )}
+            listed, leaves them out: a size of zero would read as known. A
+            preview keeps the rows it has no value for yet (`awaited.ts`). */}
+        {view.dataVolume !== null
+          ? <KeyValue title={t.dataVolume}>{formatSize(view.dataVolume)}</KeyValue>
+          : awaits("dataVolume") && <KeyValue title={t.dataVolume}><Awaited locale={locale} /></KeyValue>}
+        {view.fileFormats.length > 0
+          ? (
+              <KeyValue title={t.fileFormats}>
+                <ul className="flex flex-wrap gap-2">
+                  {view.fileFormats.map((format) => (
+                    <li key={format} className="rounded border border-line-strong bg-white px-2 py-1 text-ink text-sm">
+                      {format}
+                    </li>
+                  ))}
+                </ul>
+              </KeyValue>
+            )
+          : awaits("fileFormats") && <KeyValue title={t.fileFormats}><Awaited locale={locale} /></KeyValue>}
         <KeyValue title={t.research}>
           {/* The same icon the two listings put before a research id, so the
               thing being pointed at is recognised before the label is read. */}
@@ -155,12 +160,12 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
         {/* A date the upstream archive has not given us is left out rather
             than drawn as an empty row: "there is no value" and "the label is
             here but the value is missing" read the same and only one is true. */}
-        {view.datePublished !== null && (
-          <KeyValue title={t.datePublished}>{view.datePublished}</KeyValue>
-        )}
-        {view.dateModified !== null && (
-          <KeyValue title={t.dateModified}>{view.dateModified}</KeyValue>
-        )}
+        {view.datePublished !== null
+          ? <KeyValue title={t.datePublished}>{view.datePublished}</KeyValue>
+          : awaits("datePublished") && <KeyValue title={t.datePublished}><Awaited locale={locale} /></KeyValue>}
+        {view.dateModified !== null
+          ? <KeyValue title={t.dateModified}>{view.dateModified}</KeyValue>
+          : awaits("dateModified") && <KeyValue title={t.dateModified}><Awaited locale={locale} /></KeyValue>}
         {/*
           **Last, because they are the ones that may not be there.** Four
           datasets in five have an entry in DDBJ Search, two in three a study,
@@ -173,13 +178,15 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
             <ExternalLink to={ddbjSearch} locale={locale}>{view.label}</ExternalLink>
           </KeyValue>
         )}
-        {view.studyAccession !== null && (
-          <KeyValue title={t.jgaStudy}>
-            <ExternalLink to={jgaEntryUrl(view.studyAccession)} locale={locale}>
-              {view.studyAccession}
-            </ExternalLink>
-          </KeyValue>
-        )}
+        {view.studyAccession !== null
+          ? (
+              <KeyValue title={t.jgaStudy}>
+                <ExternalLink to={jgaEntryUrl(view.studyAccession)} locale={locale}>
+                  {view.studyAccession}
+                </ExternalLink>
+              </KeyValue>
+            )
+          : awaits("studyAccession") && <KeyValue title={t.jgaStudy}><Awaited locale={locale} /></KeyValue>}
         {/* The ids an old paper or an old address names, so a reader who came
             by one sees it is this dataset. Not links: each leads here. */}
         {view.secondaryLabels.length > 0 && (
@@ -264,13 +271,13 @@ function Chips({ experimentId, chips, locale }: { experimentId: string, chips: E
             <span className="shrink-0 border-line-strong border-r bg-surface px-2 py-1 text-ink-muted">{value.label}</span>
             <div className="flex min-w-0 items-baseline gap-1 px-2 py-1">
               <ValueAtPath at={valueAnchor(experimentId, value)}>
-                <Value field={value.field} locale={locale} />
+                <Value field={onOneLine(value.field, locale)} locale={locale} />
               </ValueAtPath>
               {countedAs !== undefined && " "}
               {countedAs !== undefined && (
                 <ValueAtPath at={valueAnchor(experimentId, countedAs)}>
                   (
-                  <Value field={countedAs.field} locale={locale} />
+                  <Value field={onOneLine(countedAs.field, locale)} locale={locale} />
                   )
                 </ValueAtPath>
               )}
@@ -281,5 +288,20 @@ function Chips({ experimentId, chips, locale }: { experimentId: string, chips: E
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * In a preview, in place of a value the archive or the publication will fill
+ * in. **A small muted chip with a broken edge and a clock**: the broken edge is
+ * the frame a value will go in, as for a value not settled yet, and the muted
+ * colour and the clock keep it apart from the large red request, which asks
+ * the reader for something — this one asks nothing of them.
+ */
+function Awaited({ locale }: { locale: Locale }) {
+  return (
+    <Badge dashed icon={<Icon name="clock" aria-hidden="true" />}>
+      {messagesFor(locale).dataset.awaited}
+    </Badge>
   )
 }

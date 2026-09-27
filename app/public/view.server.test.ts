@@ -19,8 +19,10 @@ import {
   makerOf,
   researchListRowView,
   researchView,
+  valuesText,
   type CatalogKeyView,
   type CatalogView,
+  type FieldView,
   type ResearchListRowInput,
   type ResearchListRowView,
   type VocabularyTermView,
@@ -547,20 +549,108 @@ describe("a vocabulary value naming an article", () => {
     })
   })
 
-  it("keeps a term with no article as plain text beside one that has a link", () => {
+  it("keeps a term with no article as text without a link, on the line after the one with a link", () => {
     expect(fieldOf(["t-plain", "t-linked"], "ja")).toEqual({
       state: "rich",
-      text: [[
-        { text: "hum0001 policy", href: "/guidelines/data-use-policy" },
-        { text: "、" },
-        { text: "hum0002 policy" },
-      ]],
+      text: [
+        [{ text: "hum0001 policy", href: "/guidelines/data-use-policy" }],
+        [{ text: "hum0002 policy" }],
+      ],
       untranslated: false,
     })
   })
 
-  it("stays the plain joined text when none of the values names an article", () => {
-    expect(fieldOf(["t-plain"], "ja")).toEqual({ state: "plain", text: "hum0002 policy", untranslated: false })
+  it("draws a term naming no article as its label without a link", () => {
+    expect(fieldOf(["t-plain"], "ja")).toEqual({ state: "rich", text: [[{ text: "hum0002 policy" }]], untranslated: false })
+  })
+})
+
+describe("the several values one key holds", () => {
+  const TERMS: [string, VocabularyTermView][] = [
+    ["t-v5", { code: "sureselect-v5", labelJa: null, labelEn: "SureSelect Human All Exon V5", maker: null, position: 5, documentSlug: null }],
+    ["t-nebnext", { code: "nebnext-ultra", labelJa: null, labelEn: "NEBNext Ultra DNA Library Prep Kit for Illumina", maker: null, position: 1, documentSlug: null }],
+    ["t-v6", { code: "sureselect-v6", labelJa: null, labelEn: "SureSelect Human All Exon V6", maker: null, position: 6, documentSlug: null }],
+  ]
+  const withTerms: CatalogView = { ...catalog, termById: new Map([...catalog.termById, ...TERMS]) }
+
+  function fieldOf(termIds: string[], locale: "ja" | "en") {
+    return datasetView({
+      archiveFiles: null,
+      studyAccession: null,
+      secondaryLabels: [],
+      label: "JGAD000001",
+      humLabel: "hum0001",
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "e1",
+          label: filled("WES"),
+          values: [{ keyId: "k-early", value: { kind: "vocabulary", termIds: filled(termIds) } }],
+        }],
+      },
+      datePublished: "2020-01-01",
+      dateModified: null,
+      files: [],
+    }, locale, withTerms).experiments[0]?.values[0]?.field
+  }
+
+  /**
+   * The names hold spaces, so run together with a separator the reader cannot
+   * tell where one kit ends and the next begins once the line wraps.
+   */
+  it("draws a line for each value, in catalog order, on either language's page", () => {
+    for (const locale of ["ja", "en"] as const) {
+      expect(fieldOf(["t-v6", "t-v5", "t-nebnext"], locale)).toEqual({
+        state: "rich",
+        text: [
+          [{ text: "NEBNext Ultra DNA Library Prep Kit for Illumina" }],
+          [{ text: "SureSelect Human All Exon V5" }],
+          [{ text: "SureSelect Human All Exon V6" }],
+        ],
+        untranslated: false,
+      })
+    }
+  })
+
+  it("draws no line for a value the catalog no longer knows", () => {
+    expect(fieldOf(["t-v5", "t-forgotten"], "ja")).toEqual({
+      state: "rich",
+      text: [[{ text: "SureSelect Human All Exon V5" }]],
+      untranslated: false,
+    })
+  })
+
+  it("draws nothing for a key whose values the catalog no longer knows", () => {
+    expect(fieldOf(["t-forgotten"], "ja")).toEqual({ state: "rich", text: [], untranslated: false })
+  })
+
+  it("reads as one line of text with the values joined by the separator given", () => {
+    const field = fieldOf(["t-v6", "t-nebnext"], "ja")
+    if (field === undefined) throw new Error("the value is drawn")
+    expect(valuesText(field, ", ")).toBe("NEBNext Ultra DNA Library Prep Kit for Illumina, SureSelect Human All Exon V6")
+    expect(valuesText(field, "、")).toBe("NEBNext Ultra DNA Library Prep Kit for Illumina、SureSelect Human All Exon V6")
+  })
+})
+
+describe("valuesText", () => {
+  it("reads a single value as that value alone", () => {
+    expect(valuesText({ state: "rich", text: [[{ text: "NGS (WGS)" }]], untranslated: false }, ", ")).toBe("NGS (WGS)")
+    expect(valuesText({ state: "plain", text: "NGS (WGS)", untranslated: false }, ", ")).toBe("NGS (WGS)")
+  })
+
+  it("keeps the words of a line with a link and drops the address", () => {
+    const field: FieldView = {
+      state: "rich",
+      text: [[{ text: "hum0001 policy", href: "/guidelines/data-use-policy" }], [{ text: "hum0002 policy" }]],
+      untranslated: false,
+    }
+    expect(valuesText(field, ", ")).toBe("hum0001 policy, hum0002 policy")
+  })
+
+  it("reads a value in words of a state, or of none, as empty", () => {
+    expect(valuesText({ state: "unsettled" }, ", ")).toBe("")
+    expect(valuesText({ state: "not-applicable" }, ", ")).toBe("")
+    expect(valuesText({ state: "rich", text: [], untranslated: false }, ", ")).toBe("")
   })
 })
 

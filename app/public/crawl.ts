@@ -3,8 +3,14 @@
  *
  * **Both are written against the deployment's own origin**, so a sitemap never
  * points one deployment's crawler at another's pages. A deployment that keeps
- * itself out of search engines disallows everything and has no sitemap.
+ * itself out of search engines disallows its pages and has no sitemap, but
+ * leaves the API and its documentation page open: they are there to be read
+ * by programs, and an agent that honours robots.txt would otherwise be turned
+ * away from the one part of the site written for it.
  */
+
+/** The API and what its documentation page loads (`api/docs.ts`). */
+const OPEN_WHEN_NOINDEX = ["/api/", "/swagger-ui/"]
 
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "~/i18n/locale"
 
@@ -12,7 +18,7 @@ import { href } from "./urls"
 
 export function robotsText(input: { origin: string, noindex: boolean }): string {
   return input.noindex
-    ? "User-agent: *\nDisallow: /\n"
+    ? `User-agent: *\n${OPEN_WHEN_NOINDEX.map((path) => `Allow: ${path}\n`).join("")}Disallow: /\n`
     : `User-agent: *\nDisallow:\n\nSitemap: ${input.origin}/sitemap.xml\n`
 }
 

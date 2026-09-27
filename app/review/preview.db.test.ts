@@ -299,6 +299,36 @@ describe("a dataset preview", () => {
     expect(view.view.datePublished).toBe("2018-04-02")
     expect(view.view.dateModified).toBe("2023-11-15")
   })
+
+  it("reads the JGA study, the size and the formats of an accession JGA has published from the caches, and awaits nothing", async () => {
+    const { token, datasetId } = await withDataset(emptyDatasetContent())
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "JGAD000626", datasetId, isPrimary: true })
+    await db.insert(s.accessionDate).values({ accession: "JGAD000626", source: "jgad-date", datePublished: "2023-01-10", dateModified: "2024-02-01" })
+    await db.insert(s.humAccession).values({ accession: "JGAD000626", humLabel: "hum0264", kind: "jga-dataset", study: "JGAS000500" })
+    await db.insert(s.accessionFileSummary).values({ accession: "JGAD000626", byteCount: 6627294298, formats: ["cel"], source: "jgad-file" })
+
+    const view = (await previewDatasetPage(get(), "ja", token, datasetId)).view
+    expect(view.studyAccession).toBe("JGAS000500")
+    expect(view.dataVolume).toBe(6627294298)
+    expect(view.fileFormats).toEqual(["CEL"])
+    expect(view.awaited).toEqual([])
+  })
+
+  it("awaits all five for an accession JGA has not published yet", async () => {
+    const { token, datasetId } = await withDataset(emptyDatasetContent())
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "JGAD000999", datasetId, isPrimary: true })
+
+    const view = (await previewDatasetPage(get(), "ja", token, datasetId)).view
+    expect(view.awaited).toEqual(["dataVolume", "fileFormats", "datePublished", "dateModified", "studyAccession"])
+  })
+
+  it("awaits only the dates of a dataset the portal issued the ID for", async () => {
+    const { token, datasetId } = await withDataset(emptyDatasetContent())
+    await db.insert(s.labelPin).values({ kind: "dataset", label: "NHA000999", datasetId, isPrimary: true })
+
+    const view = (await previewDatasetPage(get(), "ja", token, datasetId)).view
+    expect(view.awaited).toEqual(["datePublished", "dateModified"])
+  })
 })
 
 describe("the listing row a draft is drawn with", () => {

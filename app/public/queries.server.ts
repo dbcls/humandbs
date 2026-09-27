@@ -326,6 +326,19 @@ export async function archiveFilesOf(db: Executor, label: string): Promise<Archi
 }
 
 /**
+ * The JGA study an accession sits under, from the same cache the published
+ * page reads (`publishedDataset`). A draft's dataset JGA has already published
+ * has one; one it has not, or one outside JGA, has none.
+ */
+export async function studyAccessionOf(db: Executor, label: string): Promise<string | null> {
+  const [row] = await db
+    .select({ study: humAccession.study })
+    .from(humAccession)
+    .where(eq(humAccession.accession, label))
+  return row?.study ?? null
+}
+
+/**
  * The usage records of one research, in the order upstream's project numbering
  * puts them. `applicationId` orders the rows and never leaves this function:
  * the column exists to match a cached row to upstream, and the pages and the

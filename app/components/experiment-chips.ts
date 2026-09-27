@@ -1,4 +1,5 @@
-import type { ValueView } from "~/public/view.server"
+import type { Locale } from "~/i18n/locale"
+import type { FieldView, ValueView } from "~/public/view.server"
 
 /**
  * The keys an experiment's page draws as chips, under the key whose paragraph
@@ -61,4 +62,20 @@ export function experimentRows(values: readonly ValueView[]): ExperimentRow[] {
   return values
     .filter((one) => !chipped(one))
     .map((one) => ({ value: one, chips: CHIPS_UNDER.has(one.code) ? chipsUnder(one.code) : [] }))
+}
+
+const SEPARATOR: Record<Locale, string> = { ja: "、", en: ", " }
+
+/**
+ * A value as a chip draws it: the values a row draws a line each, run together
+ * on one line with the page's list separator. A chip is one line of words about
+ * the paragraph above it, and a tissue with nine values would otherwise take
+ * nine lines under it.
+ */
+export function onOneLine(field: FieldView, locale: Locale): FieldView {
+  if (field.state !== "rich" || field.text.length <= 1) return field
+  return {
+    ...field,
+    text: [field.text.flatMap((line, at) => at === 0 ? line : [{ text: SEPARATOR[locale] }, ...line])],
+  }
 }
