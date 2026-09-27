@@ -50,7 +50,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join, relative } from "node:path"
 
-import { sql } from "drizzle-orm"
+import { inArray, sql } from "drizzle-orm"
 
 import { linkTermsToDocuments } from "~/admin/catalog.server"
 import { plannedDraftName } from "~/admin/draft-name"
@@ -71,6 +71,7 @@ import {
   accessionDate,
   cauEntry,
   comment,
+  contentKey,
   dataset,
   draftDatasetEntry,
   fileLabel,
@@ -93,6 +94,7 @@ import {
   type ProseReader,
   type TextReader,
 } from "./build"
+import { DROPPED_ARCHIVE_KEYS, withoutKeys } from "./archive-keys"
 import { ACCESS_CRITERIA_KEY, contentKeySeeds, TYPE_OF_DATA_KEY } from "./catalog"
 import { applyCellEdits, type CellEdit } from "./cell-edits"
 import { headingKeys, restoreDashes } from "./dashes"
@@ -370,6 +372,9 @@ const richPlain = (rich: RichText) => rich.map((line) => line.map((span) => span
  * the page showed, and cutting it where another page broke the same words
  * would show lines the page never had. A value read from v1's text or from the
  * HTML v1 kept, which has at times lost its paragraphs too, has them put back.
+ * A type of data written by hand (`type-of-data-fixes.ts`) has none put back:
+ * it has the lines of its row, and the listing breaks the same words to fit
+ * its column (`NGS` over `（scRNA-seq）`).
  *
  * **A value is written as the page wrote it only where v1's value is what v1
  * made of the page**: the same once v1's own folding (`normalizeForComparison`)
@@ -382,7 +387,7 @@ const richPlain = (rich: RichText) => rich.map((line) => line.map((span) => span
  * A reader reads each value once, so a value `ownLines` and the build both
  * read is counted once.
  */
-function recovery(ctx: RecoverContext, pages: ResearchPages, lines: LineDictionary): Recovery {
+function recovery(ctx: RecoverContext, pages: ResearchPages, lines: LineDictionary, typesWritten: ReadonlySet<string>): Recovery {
   const counts: Record<string, number> = {}
   const typeOfData = { page: 0, text: 0 }
   const notes: string[] = []
@@ -476,7 +481,7 @@ function recovery(ctx: RecoverContext, pages: ResearchPages, lines: LineDictiona
     const cell = text.trim() === "" ? null : pages.typeOfData(humId, lang, text, preferred)
     if (cell === null) {
       typeOfData.text += 1
-      return cutFromArticles(richTextFromPlain(text))
+      return typesWritten.has(text) ? richTextFromPlain(text) : cutFromArticles(richTextFromPlain(text))
     }
     typeOfData.page += 1
     const built = richTextFromCell(cell, ctx)
@@ -783,9 +788,8 @@ async function load() {
   if (existsSync(join(INPUT, "hand", "searchable-fixes.json"))) {
     applySearchableFixes(loaded.datasetsByKey.values(), readJson("hand", "searchable-fixes.json") as SearchableFix[])
   }
-  if (existsSync(join(INPUT, "hand", "type-of-data.json"))) {
-    applyTypeOfDataFixes(loaded.datasetsByKey.values(), readJson("hand", "type-of-data.json") as TypeOfDataFix[])
-  }
+  const typeOfDataFixes = existsSync(join(INPUT, "hand", "type-of-data.json")) ? readJson("hand", "type-of-data.json") as TypeOfDataFix[] : []
+  applyTypeOfDataFixes(loaded.datasetsByKey.values(), typeOfDataFixes)
   if (existsSync(join(INPUT, "hand", "criteria.json"))) {
     applyCriteriaFixes(loaded.datasetsByKey.values(), readJson("hand", "criteria.json") as CriteriaFix[])
   }
@@ -853,6 +857,7 @@ async function load() {
     aliases,
     researchPages([{ site: "prod", articles: articles.prod }, { site: "staging", articles: articles.staging }], aliases),
     lineDictionary([...articles.prod, ...articles.staging].map((article) => article.introtext)),
+    new Set(typeOfDataFixes.map((fix) => fix.typeOfData)),
   )
   const listing = listingProviders((readJson("listing-providers.json") as ListingProviders))
   const cms = siteContent()
@@ -920,6 +925,18 @@ async function load() {
       reshapeCatalog(contentKeySeeds(ordered), catalogPlan.keys, new Set(catalogPlan.gone)),
       vocabulary,
     )
+    // The archive keys are filled like any other and emptied once each description is settled (`archive-keys.ts`).
+    const droppedKeyIds = new Set(DROPPED_ARCHIVE_KEYS.map((code) => {
+      const keyId = keyIdByCode.get(code)
+      if (keyId === undefined) throw new Error(`catalog key ${code} was not inserted`)
+      return keyId
+    }))
+    let archiveValues = 0
+    const withoutArchiveKeys = <D extends DatasetContent>(content: D): D => {
+      const out = withoutKeys(content, droppedKeyIds)
+      archiveValues += out.dropped
+      return out.content
+    }
 
     const humIds = [...held.research.keys()].sort()
     const researchIdByHum = await insertReturning(
@@ -1105,7 +1122,7 @@ async function load() {
         return {
           researchId: identityOf(researchIdByHum, rv.humId, "research"),
           number,
-          content: { ...content, datasets: settledCells(rv.humId, content.datasets) },
+          content: { ...content, datasets: settledCells(rv.humId, content.datasets).map(withoutArchiveKeys) },
           releaseDate: rv.versionReleaseDate,
         }
       }),
@@ -1165,7 +1182,7 @@ async function load() {
         return { datasetId, ...linked(describe(one, lines, preferred), { hum: humId, dataset: true, datasetId, keyIdOf: (code) => keyIdByCode.get(code) }) }
       }))
       const entries = linkedDatasets.map(({ datasetId, ...content }) => {
-        const described = settleRequests(content)
+        const described = settleRequests(withoutArchiveKeys(content))
         said.push(...requestComments({ kind: "dataset", datasetId }, described.asked))
         return { draftId: row.id, datasetId, content: described.content }
       })
@@ -1207,6 +1224,7 @@ async function load() {
     // The articles each settled term links to, such as a data use policy's text.
     await linkTermsToDocuments(tx, [...vocabulary.terms].flatMap(([setCode, terms]) => terms.flatMap((term) =>
       term.document === null ? [] : [{ setCode, termCode: term.code, documentSlug: term.document }])))
+    await tx.delete(contentKey).where(inArray(contentKey.code, [...DROPPED_ARCHIVE_KEYS]))
     const search = await rebuildSearchDocs(tx)
 
     return {
@@ -1227,6 +1245,7 @@ async function load() {
       unread,
       claimedTwice,
       nbdc: { selected: [...nbdcSelected.values()], dropped: [...nbdcDropped.values()] },
+      archiveValues,
     }
   })
 
@@ -1276,6 +1295,7 @@ console.log("dead links followed", relinked.followed, "not found in content", re
   written("relinks-not-found.json", relinked.unfollowed))
 console.log("NBDC cells          ", counts.nbdc.dropped.filter((one) => one.whole).length, "taken out,", counts.nbdc.dropped.filter((one) => !one.whole).length,
   "with groups taken out;", counts.nbdc.selected.length, "files selected from them", written("nbdc-cells.json", counts.nbdc))
+console.log("archive key values  ", counts.archiveValues, "taken out of", DROPPED_ARCHIVE_KEYS.length, "keys")
 if (counts.claimedTwice.length > 0) console.log("claimed twice:", written("claimed-twice.json", counts.claimedTwice))
 if (selection.missingDocuments.length > 0) console.log("pinned with no document:", selection.missingDocuments)
 if (drafts.missingDocuments.length > 0) console.log("draft pins with no document:", drafts.missingDocuments)

@@ -71,7 +71,6 @@ export default function AdminContentsSeries({ loaderData, actionData }: Route.Co
               <Confirm
                 label={t.removeSeries}
                 title={t.removeSeriesTitle}
-                subject={{ name: t.slug, value: series.slug }}
                 warning={t.removeSeriesWarning(series.revisions.length)}
                 confirm={t.removeSeriesConfirm}
                 intent="delete-series"

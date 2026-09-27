@@ -61,6 +61,31 @@ describe("applyCellEdits", () => {
     expect(docs[0]?.experiments?.[0]?.data?.["Materials and Participants"]?.en?.text).toBe("Graves' disease (ICD10: C719)")
   })
 
+  it("replaces a cell of the named dataset only, leaving the same cell of another dataset of the research as it was", () => {
+    const volume = cell("１．76.6 GB(fastq)\n２．41.9 GB(fastq)", "")
+    const docs = [
+      { ...doc("hum0345", { "Total Data Volume": volume }), datasetId: "JGAD000647" },
+      { ...doc("hum0345", { "Total Data Volume": volume }), datasetId: "JGAD000671" },
+    ]
+    applyCellEdits(docs, [{
+      op: "replace", hum: "hum0345", dataset: "JGAD000671", key: "Total Data Volume", lang: "ja",
+      before: "１．76.6 GB(fastq)\n２．41.9 GB(fastq)", after: "41.9 GB(fastq)",
+    }])
+
+    expect(docs.map((one) => one.experiments?.[0]?.data?.["Total Data Volume"]?.ja?.text)).toEqual([
+      "１．76.6 GB(fastq)\n２．41.9 GB(fastq)",
+      "41.9 GB(fastq)",
+    ])
+  })
+
+  it("stops when an edit names a dataset that does not hold its text", () => {
+    const docs = [{ ...doc("hum0345", { "Total Data Volume": cell("41.9 GB(fastq)", "") }), datasetId: "JGAD000671" }]
+
+    expect(() => {
+      applyCellEdits(docs, [{ op: "replace", hum: "hum0345", dataset: "JGAD000647", key: "Total Data Volume", lang: "ja", before: "41.9 GB(fastq)", after: "x" }])
+    }).toThrow(/found nothing/)
+  })
+
   it("stops when a substitution finds its text nowhere", () => {
     const docs = [doc("hum0197", { "Materials and Participants": cell("バセドウ病 (ICD10: E050)", "") })]
 

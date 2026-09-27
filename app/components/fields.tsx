@@ -26,7 +26,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
 import { Button, ButtonLink, Chevron, Dialog, IconButton, type Lines, LinesOf, Note, PANE_LABEL, ReorderButtons, Stack, TOOLTIP } from "./base"
-import { Accepts, CONTROL } from "./form"
+import { Accepts, CONTROL, SLOT_STATE } from "./form"
 import { Icon, type IconName } from "./icons"
 import { NotApplicable, Section as PageSection, Table, Td } from "./page"
 import { Flag } from "./flags"
@@ -179,13 +179,15 @@ export function Section({ id, title, accepts, flags, remove, children }: {
  * thing reads, so it belongs to the name, not to the far end of the row where
  * the row's own delete sits.
  */
-export function FieldHead({ label, annotations, locale, untranslated = false, accepts, link, remove }: {
+export function FieldHead({ label, annotations, locale, untranslated = false, accepts, type, link, remove }: {
   label?: string
   annotations: FieldAnnotations
   locale: Locale
   untranslated?: boolean
   /** What the box reads what is typed as, said right after the name (`form.tsx` の `Accepts`). Not drawn without a name. */
   accepts?: string
+  /** What kind of value the field holds, right after the name (`key-type.tsx` の `KeyTypeBadge`). Not drawn without a name. */
+  type?: React.ReactNode
   /**
    * Removes the whole field, at the row's far end — the same place every
    * other row's own delete sits (`ItemCard`). Only a value slot under a
@@ -200,6 +202,7 @@ export function FieldHead({ label, annotations, locale, untranslated = false, ac
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className={PANE_LABEL}>{label}</span>
+      {type}
       {accepts !== undefined && <Accepts>{accepts}</Accepts>}
       <FieldFlags annotations={annotations} locale={locale} untranslated={untranslated} />
       {(link !== undefined || remove !== undefined) && (
@@ -309,14 +312,24 @@ function StateToggle({ icon, label, does, pressed, onClick }: {
  * field, so a screen holds dozens, and filling one for the ordinary answer
  * too would bury the one control that saves.
  */
-export function StateSwitch({ state, onChange, locale }: {
+export function StateSwitch({ state, onChange, locale, language }: {
   state: SlotState
   onChange: (next: SlotState) => void
   locale: Locale
+  /** The language of the slot it marks, for a field written in each (`form.tsx` の `focusElement`). */
+  language?: Locale
 }) {
   const t = messagesFor(locale).admin.editor
+  // **The background reaches past the toggles without moving them**, the way a
+  // list's is (`form.tsx` の `LIST_PLACE`): it is where a jump to a place set
+  // to a state lands.
   return (
-    <span role="group" aria-label={t.statesLabel} className="inline-flex items-center gap-1">
+    <span
+      role="group"
+      aria-label={t.statesLabel}
+      {...{ [SLOT_STATE]: language ?? "" }}
+      className="-m-1 inline-flex items-center gap-1 rounded p-1 transition-colors data-highlighted:bg-warning-surface"
+    >
       <StateToggle
         icon="help-circle"
         label={t.stateChoice.unknown}
@@ -417,6 +430,7 @@ export function SlotEditor({ language, named = true, value, multiline, onChange,
           state={value.state}
           onChange={(state) => { onChange({ ...value, state }) }}
           locale={locale}
+          language={language}
         />
       </span>
     </div>

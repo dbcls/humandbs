@@ -299,7 +299,7 @@ describe("how a key is named (keyLabelProblem)", () => {
   })
 
   it("leaves a free-text key's English case alone, since it may be named after an archive", () => {
-    expect(keyLabelProblem("Sequence Read Archive Accession", "Sequence Read Archive Accession", false)).toBeNull()
+    expect(keyLabelProblem("Gene Expression Omnibus Accession", "Gene Expression Omnibus Accession", false)).toBeNull()
   })
 
   it("finds the same problem whichever language the brackets are in", () => {

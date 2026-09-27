@@ -386,9 +386,9 @@ describe("how a key is named", () => {
 
   it("leaves a free-text key's English case to the writer, since it may be an archive's name", async () => {
     const token = await signIn(CURATOR, true)
-    const keyId = await freeTextKey("sra")
+    const keyId = await freeTextKey("geo")
 
-    const result = await catalogAction(post(token, { intent: "update-key", keyId, labelJa: "Sequence Read Archive Accession", labelEn: "Sequence Read Archive Accession" }))
+    const result = await catalogAction(post(token, { intent: "update-key", keyId, labelJa: "Gene Expression Omnibus Accession", labelEn: "Gene Expression Omnibus Accession" }))
 
     expect(result).toMatchObject({ status: "ok" })
   })

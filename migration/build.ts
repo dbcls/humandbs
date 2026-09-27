@@ -450,6 +450,9 @@ function plainLines(value: EsRichText | null | undefined, lang: Language, read: 
 /**
  * Every line each dataset states about itself, which is what makes a copy a copy,
  * and every group under a heading alone on its line that is about it (`headingGroups`).
+ * A cell naming no dataset states each of its lines, whole, about the dataset
+ * it is in: `8.5 GB (bam)` there is the same line as `JGAD000783: 8.5 GB (bam)`
+ * on a sibling, but `fastq: 8.5 GB` is not.
  * Given the reader the load builds prose with, the lines are the ones it reads;
  * `readFor` gives a dataset a reader of its own, as the load does.
  */
@@ -467,12 +470,19 @@ export function ownLines(
       for (const [sourceKey, value] of Object.entries(experiment.data ?? {})) {
         for (const lang of LANGUAGES) {
           const lines = plainLines(value[lang], lang, reader)
-          for (const line of lines) {
-            const { said, about } = readLine(line, labels, studies)
+          const read = lines.map((line) => readLine(line, labels, studies))
+          for (const { said, about } of read) {
             if (about.includes(one.label)) keys.add(lineKey(one.label, sourceKey, lang, said))
           }
-          for (const group of headingGroups(lines, labels, studies ?? NO_STUDIES) ?? []) {
+          const groups = headingGroups(lines, labels, studies ?? NO_STUDIES)
+          for (const group of groups ?? []) {
             if (group.about.includes(one.label)) keys.add(groupKey(one.label, sourceKey, lang, lines, group))
+          }
+          // A cell naming no dataset is the dataset's own, every line as it is written.
+          if (groups === null && read.every(({ about }) => about.length === 0)) {
+            for (const line of lines) {
+              if (line.trim() !== "") keys.add(lineKey(one.label, sourceKey, lang, line))
+            }
           }
         }
       }

@@ -238,14 +238,15 @@
   }
 
   /*
-   * **A link is underlined where it sits inside a sentence, and nowhere else.**
+   * **A link is underlined in an article's running text, and nowhere else.**
    * What WCAG requests (1.4.1) is that colour not be the only thing telling a link
    * from the words around it — which is a question only inside running text. A
    * title in a listing, an entry in the sitemap, a step in a trail: those are
    * links by their position, and underlining every one of them draws the page
-   * as a field of rules. The two places that are running text show it
-   * themselves: `.markdown a` below, and the prose spans of research content
-   * (`components/page.tsx`).
+   * as a field of rules. An article shows it itself (`.markdown a` below).
+   * **A research's values are not underlined either** (`components/page.tsx` の
+   * `SpanText`): most links in them are a value of their own — a policy, an
+   * accession — and the few inside a sentence are told apart by colour.
    *
    * Hovering underlines anything that is a link. A part that is a control
    * rather than a link (a button, a round one in the bar, a chip, a row in the

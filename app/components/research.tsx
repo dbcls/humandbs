@@ -460,6 +460,7 @@ export function datasetColumns(locale: Locale): string[] {
   return [
     messages.dataset.datasetId,
     messages.dataset.typeOfData,
+    messages.dataset.experiments,
     messages.dataset.accessType,
     messages.dataset.datePublished,
   ]
@@ -467,7 +468,8 @@ export function datasetColumns(locale: Locale): string[] {
 
 /**
  * One dataset's cells in a research's dataset table: its id, what kind of data
- * it is, how it is accessed, and when it was published.
+ * it is, what its experiments are called, how it is accessed, and when it was
+ * published — the dataset listing's cells, less the research and the update.
  *
  * **The dialog a publication's datasets are chosen in draws the same cells**
  * (`research-fields.tsx`), so what a curator picks from reads as the table the
@@ -493,6 +495,7 @@ export function DatasetCells({ row, name, to, newTab = false, locale }: {
       <Td>
         {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
       </Td>
+      <Td floor="min-w-48"><Experiments labels={row.experimentLabels} locale={locale} /></Td>
       <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
       <Td>{row.datePublished}</Td>
     </>

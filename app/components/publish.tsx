@@ -147,7 +147,6 @@ function Changes({ view }: { view: PublishPageView }) {
                     locale={locale}
                     label={t.researchChanged(view.researchChanges.length)}
                     title={t.researchChangesTitle}
-                    subject={{ name: messages.research.researchId, value: view.humLabel ?? messages.admin.research.unpinned }}
                     changes={view.researchChanges}
                     against={against}
                   />
@@ -204,7 +203,8 @@ function ChangeList({ locale, label, title, subject, changes, against }: {
   locale: PublishPageView["locale"]
   label: string
   title: string
-  subject: DialogSubject
+  /** Which row's changes, for a panel opened from a table's row. */
+  subject?: DialogSubject
   changes: readonly ChangeView[]
   /** What the left column is (「公開中の v4」). */
   against: string

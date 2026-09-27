@@ -14,7 +14,7 @@ function render(element: React.ReactNode): string {
 }
 
 function row(id: string): DatasetRowView {
-  return { id, label: `JGAD00000${id}`, typeOfData: null, accessType: null, datePublished: "2025-08-08" }
+  return { id, label: `JGAD00000${id}`, typeOfData: null, accessType: null, experimentLabels: [], datePublished: "2025-08-08" }
 }
 
 const ROWS = ["1", "2", "3"].map(row)

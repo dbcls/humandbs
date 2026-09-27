@@ -4,10 +4,12 @@ import { useFetcher } from "react-router"
 import { APPLICATION_FORM_URL, applicationPayload, useCart } from "~/cart/store"
 import { Button, ButtonLink, CopyButton, Collapsible, Heading, IconButton, Stack } from "~/components/base"
 import { Icon } from "~/components/icons"
-import { AccessTypeBadge, Card, Crumbs, IdWithIcon, Page, Table, Td } from "~/components/page"
+import { AccessTypeBadge, Card, Crumbs, IdWithIcon, Page, Table, Td, Value } from "~/components/page"
+import { Experiments } from "~/components/research"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
+import type { DatasetListRowView } from "~/public/view.server"
 import { cartPath, datasetPath, href, readLocale, researchPath } from "~/public/urls"
 
 import type { Route } from "./+types/cart"
@@ -113,11 +115,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
             align="middle"
             whenEmpty={messages.cart.emptyRow}
             actions={messages.cart.remove}
-            headers={[
-              messages.dataset.datasetId,
-              messages.research.researchId,
-              messages.dataset.accessType,
-            ]}
+            headers={cartColumns(locale)}
           >
             {shown.map((label) => {
               const row = rowOf.get(label)
@@ -130,7 +128,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                   </Td>
                   {row === undefined
                     ? (
-                        <Td className="text-ink-muted text-sm" colSpan={2}>
+                        <Td className="text-ink-muted text-sm" colSpan={cartColumns(locale).length - 1}>
                           {/* Only what the server has actually looked
                                     for can be reported as missing; a row just
                                     added is simply not fetched yet. */}
@@ -139,20 +137,7 @@ export default function Cart({ loaderData }: Route.ComponentProps) {
                             : ""}
                         </Td>
                       )
-                    : (
-                        <>
-                          <Td nowrap>
-                            <IdWithIcon kind="research" to={href(locale, researchPath(row.humLabel))}>
-                              {row.humLabel}
-                            </IdWithIcon>
-                          </Td>
-                          <Td>
-                            {row.accessType !== null && (
-                              <AccessTypeBadge term={row.accessType} />
-                            )}
-                          </Td>
-                        </>
-                      )}
+                    : <CartRowCells row={row} locale={locale} />}
                   <Td holds="icon">
                     <IconButton
                       name="close"
@@ -238,5 +223,39 @@ function ApplicationSteps({ payload, locale }: { payload: string, locale: Locale
         </Stack>
       </li>
     </ol>
+  )
+}
+
+/**
+ * The names over a cart's rows: **the dataset listing's columns, less the cart
+ * and the dates** — what a dataset is and how it is reached is what a reader
+ * checks before asking for it, and the listing is where it was chosen.
+ */
+export function cartColumns(locale: Locale): string[] {
+  const messages = messagesFor(locale)
+  return [
+    messages.dataset.datasetId,
+    messages.research.researchId,
+    messages.dataset.typeOfData,
+    messages.dataset.experiments,
+    messages.dataset.accessType,
+  ]
+}
+
+/** A published dataset's cells after its id, as the dataset listing draws them. */
+export function CartRowCells({ row, locale }: { row: DatasetListRowView, locale: Locale }) {
+  return (
+    <>
+      <Td nowrap>
+        <IdWithIcon kind="research" to={href(locale, researchPath(row.humLabel))}>
+          {row.humLabel}
+        </IdWithIcon>
+      </Td>
+      <Td floor="min-w-48">
+        {row.typeOfData !== null && <Value field={row.typeOfData} locale={locale} />}
+      </Td>
+      <Td floor="min-w-48"><Experiments labels={row.experimentLabels} locale={locale} /></Td>
+      <Td>{row.accessType !== null && <AccessTypeBadge term={row.accessType} />}</Td>
+    </>
   )
 }

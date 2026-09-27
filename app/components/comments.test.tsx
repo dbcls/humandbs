@@ -354,6 +354,13 @@ describe("the box for the next comment", () => {
     expect(reader).toContain("投稿する")
   })
 
+  it("sends in the filled style, since sending makes a comment", () => {
+    for (const context of [CONTEXT, READER]) {
+      const html = render(<CommentTimeline context={context} comments={[]} at={AT} placeholder={PANEL_BODY_TEXT} />)
+      expect(/<button[^>]*type="submit"[^>]*>/.exec(html)?.[0]).toContain("bg-brand")
+    }
+  })
+
   it("shows what goes in the box, and requests a name from a signed-out reader", () => {
     const html = render(<CommentTimeline context={READER} comments={[]} at={AT} placeholder={PANEL_BODY_TEXT} />)
     expect(html).toContain(`placeholder="${PANEL_BODY_TEXT}"`)

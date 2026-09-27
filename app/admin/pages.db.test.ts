@@ -1503,7 +1503,7 @@ describe("the publish screen", () => {
     expect(pin?.label).toBe("NHA000001")
   })
 
-  it("names each field an update changes, and each place a value is unsettled, as the places of comments are named", async () => {
+  it("names each field an update changes, and each place a value is unsettled, as the places of comments are named, leading to its box", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId } = await createResearchWithDraft(db)
     await db.insert(s.labelPin).values({ kind: "hum", label: "hum0001", researchId, isPrimary: true })
@@ -1541,7 +1541,7 @@ describe("the publish screen", () => {
     expect(unsettled?.spots).toContainEqual({
       name: "hum0001 / 研究題目",
       language: "en",
-      href: `/admin/research/${researchId}/draft/${update.id}`,
+      href: `/admin/research/${researchId}/draft/${update.id}#title@en`,
     })
   })
 

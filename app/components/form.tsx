@@ -20,8 +20,8 @@
  * as well.
  */
 
-import { createContext, useContext, useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react"
-import { Form, useNavigation } from "react-router"
+import { createContext, useContext, useEffect, useEffectEvent, useId, useRef, useState, type ComponentProps, type ReactNode } from "react"
+import { Form, useLocation, useNavigation } from "react-router"
 
 import { scrollPaneTo } from "./scroll"
 
@@ -45,6 +45,7 @@ import {
 import { Icon, Spinner } from "~/components/icons"
 
 import type { MountedMarkdown } from "./codemirror.client"
+import { readFieldHash } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { holdUnsaved } from "~/components/unsaved"
@@ -101,6 +102,13 @@ export const CONTROL_ROW = `${CONTROL_EDGE} rounded min-h-6 px-2 py-0.5 text-xs 
 export const LIST_PLACE = "-m-2 flex flex-col gap-4 rounded p-2 transition-colors data-highlighted:bg-warning-surface"
 
 /**
+ * The attribute a slot's pair of state toggles carries (`fields.tsx` の
+ * `StateSwitch`): the language of the slot they mark, or empty for a field
+ * with one value. A jump to a place set to a state looks for it (`focusElement`).
+ */
+export const SLOT_STATE = "data-slot-state"
+
+/**
  * The inputs of one place in the order a jump tries them: **the language's own
  * first**, each group in the order of the markup. Without a language, the markup's
  * order alone.
@@ -130,19 +138,30 @@ export function languageFirst<Input extends { lang: string }>(inputs: readonly I
  *
  * **A jump from one language's page lands on that language's box** (`language`,
  * read off the box's `lang`), and on the first box of the place when that
- * language has none to take the caret — a side set to a state, or a field with
- * no languages.
+ * language has none to take the caret — a field with no languages.
+ *
+ * **A place set to a state has no box to type in**: its boxes are gone or
+ * disabled until the state is let go of. The pressed state toggle takes the
+ * caret instead (`fields.tsx` の `StateSwitch`) — pressing it is what opens the
+ * box — and its pair takes the background, since a toggle already filled
+ * shows no background of its own. It is tried in the same order as the boxes,
+ * so a jump to the language that is unsettled lands on that language's toggle.
  *
  * Only the pane scrolls, and only up and down (`scroll.ts`).
  */
 export function focusElement(target: HTMLElement, block: "start" | "center", language?: Locale): void {
   scrollPaneTo(target, block)
-  for (const box of languageFirst([...target.querySelectorAll<HTMLElement>("input, textarea")], language)) {
-    box.focus({ preventScroll: true })
-    if (document.activeElement !== box) continue
-    box.dataset.highlighted = ""
-    box.addEventListener("blur", () => {
-      delete box.dataset.highlighted
+  const takers = [...target.querySelectorAll<HTMLElement>(`input, textarea, [${SLOT_STATE}] button[aria-pressed="true"]`)]
+    .map((element) => {
+      const states = element.closest<HTMLElement>(`[${SLOT_STATE}]`)
+      return { element, marked: states ?? element, lang: states?.getAttribute(SLOT_STATE) ?? element.lang }
+    })
+  for (const { element, marked } of languageFirst(takers, language)) {
+    element.focus({ preventScroll: true })
+    if (document.activeElement !== element) continue
+    marked.dataset.highlighted = ""
+    element.addEventListener("blur", () => {
+      delete marked.dataset.highlighted
     }, { once: true })
     return
   }
@@ -205,6 +224,24 @@ export function focusField(form: HTMLElement | null, path: string, section: stri
     if (around instanceof HTMLDetailsElement && !around.open) around.open = true
   }
   focusElement(target, field === null ? "start" : "center", language)
+}
+
+/**
+ * Going to the field an editing screen's address names (`urls.ts` の
+ * `fieldHash`), once the form is drawn — how a list of places on another screen
+ * (the publish check's) opens this one on the box to fill rather than at its
+ * top. **The same move as a jump from the page pane** (`goTo`), so the field is
+ * opened, brought to the middle and marked the same way.
+ */
+export function useFieldFromAddress(goTo: (path: string, language?: Locale) => void): void {
+  const { hash } = useLocation()
+  const go = useEffectEvent((path: string, language: Locale | null) => {
+    goTo(path, language ?? undefined)
+  })
+  useEffect(() => {
+    const place = readFieldHash(hash)
+    if (place !== null) go(place.path, place.language)
+  }, [hash])
 }
 
 /**

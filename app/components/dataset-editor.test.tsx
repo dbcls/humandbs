@@ -13,7 +13,7 @@ import type { DatasetContent } from "~/content/types"
 import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
 import type { DrawnDataset } from "~/review/preview.server"
 
-import { CandidateWords, ChoicesLink, copiedExperiment, DatasetEditor, resolveTerms } from "./dataset-editor"
+import { CandidateWords, ChoicesLink, copiedExperiment, DatasetEditor, resolveTerms, TermWords } from "./dataset-editor"
 import type { PlaceSources } from "./places"
 
 const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
@@ -479,7 +479,7 @@ describe("the dataset editing form", () => {
     expect(tagOf("但し書き \\(英語\\)")).toContain("value=\"average\"")
   })
 
-  it("draws no label or note box at all when nobody gave a number either one", () => {
+  it("draws the label and note boxes on a bare number too, so either can still be written", () => {
     const html = render(view({
       ...emptyDatasetContent(),
       values: [{
@@ -491,8 +491,29 @@ describe("the dataset editing form", () => {
       }],
     }))
 
-    expect(html).not.toContain("内訳")
-    expect(html).not.toContain("但し書き")
+    for (const name of ["内訳 \\(日本語\\)", "内訳 \\(英語\\)", "但し書き \\(日本語\\)", "但し書き \\(英語\\)"]) {
+      const tag = new RegExp(`<input[^>]*aria-label="${name}"[^>]*>`).exec(html)?.[0] ?? ""
+      expect(tag).toContain("value=\"\"")
+      expect(tag).toMatch(/\bw-32\b/)
+    }
+  })
+
+  it("keeps a row's number, its upper end and its unit in one part, so a line never breaks between them", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: NUMBER_KEY,
+        value: {
+          kind: "number",
+          values: { state: "value", value: [{ label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", note: null }] },
+        },
+      }],
+    }))
+    const at = html.indexOf("aria-label=\"内訳 (英語)\"")
+    const parts = html.slice(at, html.indexOf("aria-label=\"但し書き (日本語)\"", at))
+    const range = parts.slice(parts.indexOf("<span class=\"flex items-center gap-2\">"))
+    expect(range).toMatch(/^<span class="flex items-center gap-2"><input type="number"[^>]*>[\s\S]*<input type="number"[^>]*>[\s\S]*<\/span><span class="flex items-center gap-2"><input type="text"\s*$/)
+    expect(range.match(/<\/span><span class="flex items-center gap-2">/g)).toHaveLength(1)
   })
 
   it("shows a disease as the name somebody wrote and the code it is filed under", () => {
@@ -856,6 +877,65 @@ describe("a candidate in the term box's list", () => {
     const html = words("disease")
     expect(html.indexOf("controlled-access-type-2")).toBeGreaterThan(-1)
     expect(html.indexOf("controlled-access-type-2")).toBeLessThan(html.indexOf("制限公開"))
+  })
+})
+
+describe("the kind of value an experiment's field takes", () => {
+  const moved = new Set([NUMBER_KEY, VOCAB_KEY, DISEASE_KEY])
+  const experimentCatalog: EditableCatalog = {
+    ...catalog,
+    keys: catalog.keys.map((key) => moved.has(key.id) ? { ...key, scope: "experiment" } : key),
+  }
+  const html = render({
+    ...view({
+      ...emptyDatasetContent(),
+      experiments: [{
+        id: "exp-1",
+        label: filled("RNA-seq"),
+        values: [
+          { keyId: EXPERIMENT_KEY, value: { kind: "text", text: { ja: filled([[{ text: "30x" }]]), en: filled([]) } } },
+          { keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled(["term-open"]) } },
+          { keyId: NUMBER_KEY, value: { kind: "number", values: filled([{ label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", note: null }]) } },
+          { keyId: DISEASE_KEY, value: { kind: "disease", diseases: filled([{ termIds: [], nameJa: "NASH", nameEn: "" }]) } },
+        ],
+      }],
+    }),
+    catalog: experimentCatalog,
+  })
+  /** The words of the badges on the name rows under the experiment, in order. */
+  const badges = [...html.slice(html.indexOf("id=\"experiments\"")).matchAll(/<span class="[^"]*\brounded\b[^"]*"><svg[\s\S]*?<\/svg>([^<]+)<\/span>/g)]
+    .map((match) => match[1])
+
+  it("shows a chosen, a measured and a disease field's kind in the catalog's words, without the unit", () => {
+    expect(badges).toEqual(expect.arrayContaining(["選択肢", "数値", "疾患"]))
+    expect(badges).not.toContain("数値 (GB)")
+  })
+
+  it("leaves prose to what it accepts", () => {
+    expect(badges).not.toContain("自由文")
+  })
+
+  it("draws none on the dataset's own fields", () => {
+    const own = render(view({
+      ...emptyDatasetContent(),
+      values: [{ keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled(["term-open"]) } }],
+    }))
+    expect(own).not.toContain(">選択肢<")
+  })
+})
+
+describe("a chosen term's chip", () => {
+  const disease = { id: "term-c71", setId: SET, code: "C71", labelJa: "脳の悪性新生物＜腫瘍＞", labelEn: "Malignant neoplasm of brain", position: 1 }
+  const words = (kind?: "disease") => renderToStaticMarkup(<TermWords term={disease} locale="ja" kind={kind} />)
+
+  it("keeps a disease's code before its words, in the refinement pane's muted code", () => {
+    const html = words("disease")
+    expect(html).toMatch(/<code class="text-xs text-ink-muted">C71<\/code>/)
+    expect(html.indexOf("C71")).toBeLessThan(html.indexOf("脳の悪性新生物"))
+  })
+
+  it("reads as its words alone for any other vocabulary", () => {
+    expect(words()).toBe("脳の悪性新生物＜腫瘍＞")
   })
 })
 

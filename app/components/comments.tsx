@@ -472,7 +472,7 @@ export function CommentForm({ context, at, fetcher, placeholder }: {
           {/* **The button keeps its name while it works.** What it is doing is
               said beside it, where assistive tech hears it as news rather than as
               the control changing identity. */}
-          <Button type="submit" icon={<Icon name="send" aria-hidden="true" />} disabled={busy}>{post}</Button>
+          <Button type="submit" variant="primary" icon={<Icon name="send" aria-hidden="true" />} disabled={busy}>{post}</Button>
           <span role="status" className="self-center text-ink-muted text-xs">{busy ? t.posting : ""}</span>
         </div>
       </Stack>

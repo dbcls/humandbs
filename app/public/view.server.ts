@@ -480,6 +480,20 @@ export interface DatasetRowView {
   label: string
   accessType: TermView | null
   typeOfData: FieldView | null
+  /**
+   * What the dataset's experiments are called.
+   *
+   * **Free text rather than terms.** The label is the line above the table in
+   * the source article (`Experiment`), and the listing has it because that
+   * line is how a reader tells one dataset's work from another's. The
+   * controlled values describing the same work sit under catalog keys and are
+   * what the refinement panel counts.
+   *
+   * **Distinct, and in the order the dataset lists them** — a dataset that ran
+   * the same assay twice names it once, and the order is the one a curator put
+   * the experiments in.
+   */
+  experimentLabels: string[]
   datePublished: string | null
 }
 
@@ -513,6 +527,10 @@ function datasetRowView(
     label: input.label,
     accessType: firstTerm(valueUnderCode(input.content, catalog, ACCESS_TYPE_KEY), locale, catalog),
     typeOfData: typeOfData === null ? null : valueField(typeOfData, locale, catalog, fallbacks),
+    experimentLabels: [...new Set(input.content.experiments.flatMap((experiment) =>
+      experiment.label.state === "value" && experiment.label.value !== ""
+        ? [experiment.label.value]
+        : []))],
     datePublished: input.datePublished,
   }
 }
@@ -1092,20 +1110,6 @@ function termViews(termIds: readonly string[], locale: Locale, catalog: CatalogV
  */
 export interface DatasetListCellsView extends DatasetRowView {
   dateModified: string | null
-  /**
-   * What the dataset's experiments are called.
-   *
-   * **Free text rather than terms.** The label is the line above the table in
-   * the source article (`Experiment`), and the listing has it because that
-   * line is how a reader tells one dataset's work from another's. The
-   * controlled values describing the same work sit under catalog keys and are
-   * what the refinement panel counts.
-   *
-   * **Distinct, and in the order the dataset lists them** — a dataset that ran
-   * the same assay twice names it once, and the order is the one a curator put
-   * the experiments in.
-   */
-  experimentLabels: string[]
 }
 
 export interface DatasetListRowView extends DatasetListCellsView {
@@ -1125,15 +1129,7 @@ export function datasetListCellsOf(
   locale: Locale,
   catalog: CatalogView,
 ): DatasetListCellsView {
-  const row = datasetRowView(input, locale, catalog, fallbackTracker())
-  return {
-    ...row,
-    dateModified: input.dateModified,
-    experimentLabels: [...new Set(input.content.experiments.flatMap((experiment) =>
-      experiment.label.state === "value" && experiment.label.value !== ""
-        ? [experiment.label.value]
-        : []))],
-  }
+  return { ...datasetRowView(input, locale, catalog, fallbackTracker()), dateModified: input.dateModified }
 }
 
 export function datasetListRowView(

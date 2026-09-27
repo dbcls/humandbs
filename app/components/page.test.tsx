@@ -22,9 +22,11 @@ describe("a rendered value", () => {
       .toBe("1.73m²<br/>next")
   })
 
-  it("links a span whose destination the page may follow, and underlines it", () => {
+  it("links a span whose destination the page may follow, without an underline, alone or inside a sentence", () => {
     expect(prose([[{ text: "NBDC policy", href: "/nbdc-policy" }]]))
-      .toBe("<a href=\"/nbdc-policy\" class=\"visitable underline\">NBDC policy</a>")
+      .toBe("<a href=\"/nbdc-policy\" class=\"visitable\">NBDC policy</a>")
+    expect(prose([[{ text: "See " }, { text: "the policy", href: "/nbdc-policy" }, { text: "." }]]))
+      .toBe("See <a href=\"/nbdc-policy\" class=\"visitable\">the policy</a>.")
   })
 
   it("keeps the text of a span whose destination it may not, and drops the link", () => {

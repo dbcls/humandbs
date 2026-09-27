@@ -82,7 +82,7 @@ import {
   SingleField,
   StatedControls,
 } from "./fields"
-import { focusField, LIST_PLACE } from "./form"
+import { focusField, LIST_PLACE, useFieldFromAddress } from "./form"
 import { Icon } from "./icons"
 
 /**
@@ -222,6 +222,8 @@ export function DraftEditor({ view }: { view: AdminDraftPageView }) {
   function goTo(path: string, language?: Locale): void {
     focusField(form.current, path, sectionOf(path), language)
   }
+  // Opened from a list of places on another screen, on the field it named.
+  useFieldFromAddress(goTo)
 
   /**
    * What to call the place an open comment is about (`OpenComments`,

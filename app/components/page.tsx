@@ -1345,9 +1345,10 @@ export function Counted({ locale, total }: { locale: Locale, total: number }) {
  */
 function SpanText({ span }: { span: Span }) {
   const href = span.href === undefined ? null : linkHref(span.href)
-  // Underlined: this is the one place on a research page where a link is a
-  // few words inside a sentence rather than a line of its own (`app.css`).
-  return href === null ? <>{span.text}</> : <a href={href} className="visitable underline">{span.text}</a>
+  // **Not underlined, as no link on a research page is** (`app.css`): most of
+  // these are a value of their own — a policy, an accession — and a rule under
+  // each draws a table of values as a table of links.
+  return href === null ? <>{span.text}</> : <a href={href} className="visitable">{span.text}</a>
 }
 
 /** Lines of spans, and nothing else — the whole of what prose can hold. */

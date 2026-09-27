@@ -654,6 +654,23 @@ describe("ボタンの色と形", () => {
   })
 
   /**
+   * **A panel names what it acts on only when it is opened from a row**
+   * (`base.tsx` の `Dialog` の `subject`): a table's row is drawn at `row`, and a
+   * panel about the one thing a screen is about has its name in the screen's
+   * heading. A part handing its caller's line on (`subject={subject}`) is not a place.
+   */
+  it("本文の先頭の行があるのは、表の行から開くダイアログだけ", async () => {
+    const hits = (await everySource()).flatMap(({ name, text }) =>
+      openingTags(text, ["Dialog", "Confirm"])
+        .filter(({ body }) => {
+          const subject = ownAttribute(body, "subject")
+          return subject !== null && subject !== "{subject}" && ownAttribute(body, "size") !== "\"row\""
+        })
+        .map(({ tag }) => `${name}: ${tag}`))
+    expect(hits).toEqual([])
+  })
+
+  /**
    * **What is chosen is not what should be pressed.** A state shown in a style
    * spends the ranking the styles exist to express, so the control that holds one
    * is `Choice`, whose options divide a box rather than being shown as buttons of

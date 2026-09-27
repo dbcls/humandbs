@@ -34,7 +34,6 @@ import {
 } from "~/admin/catalog.server"
 import { adminExperimentFieldPath, adminExperimentFieldsPath } from "~/admin/urls"
 import {
-  Badge,
   Button,
   Confirm,
   Dialog,
@@ -53,7 +52,8 @@ import {
   Unsaved,
 } from "~/components/form"
 import { ScreenLink } from "~/components/admin"
-import { Icon, type IconName } from "~/components/icons"
+import { Icon } from "~/components/icons"
+import { KEY_TYPE_ICON, KeyTypeBadge } from "~/components/key-type"
 import { Card, Counted, Page, Table, Td } from "~/components/page"
 import { RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
 import { catalogLabel } from "~/i18n/catalog-label"
@@ -295,24 +295,6 @@ export default function AdminExperimentFields({ loaderData, actionData }: Route.
  * code, the two labels, what it holds, its place in the order, whether it is drawn —
  * and none of it is a control that a scanning eye has to step over.
  */
-/**
- * The icon a type is drawn with.
- *
- * **What a key holds is a shape before it is a word**, and the shapes are what
- * separate the four kinds at a glance: strokes on a page for prose, a bulleted
- * set for a value picked from one, a number sign for a measured one, a trace
- * for the one vocabulary that has a tree. A key that identifies something
- * elsewhere takes the link's icon rather than a shape of its own.
- */
-const TYPE_ICON: Record<CatalogKeyRow["valueType"], IconName> = {
-  text: "type",
-  single: "check",
-  accession: "link",
-  vocabulary: "list",
-  number: "hash",
-  disease: "activity",
-}
-
 function Row({ entry, ordered, at, of, locale }: {
   entry: CatalogKeyRow
   ordered: boolean
@@ -351,15 +333,8 @@ function Row({ entry, ordered, at, of, locale }: {
       <Td floor="min-w-36">{entry.labelJa}</Td>
       <Td floor="min-w-36">{entry.labelEn}</Td>
       <Td nowrap>
-        {/* **A kind, not a state, so it is a chip.** The glyph and the word
-            are the pair the pane narrows by; the box says the cell holds a
-            category of the field rather than something that happened to it.
-            Muted, because nothing here is to be picked out of the rows. */}
-        <Badge icon={<Icon name={TYPE_ICON[entry.valueType]} aria-hidden="true" />}>
-          {entry.canonicalUnit === null
-            ? t.types[entry.valueType]
-            : `${t.types[entry.valueType]} (${entry.canonicalUnit})`}
-        </Badge>
+        {/* The glyph and the word are the pair the pane narrows by. */}
+        <KeyTypeBadge type={entry.valueType} unit={entry.canonicalUnit} locale={locale} />
       </Td>
       {/* What the field draws from, when it draws from anything.
 
@@ -377,7 +352,7 @@ function Row({ entry, ordered, at, of, locale }: {
         {entry.terms === null
           ? null
           : (
-              <ScreenLink to={href(locale, adminExperimentFieldPath(entry.code))} icon={TYPE_ICON[entry.valueType]} size="row">
+              <ScreenLink to={href(locale, adminExperimentFieldPath(entry.code))} icon={KEY_TYPE_ICON[entry.valueType]} size="row">
                 {settled ? t.termCountRead(entry.terms) : t.termCount(entry.terms)}
               </ScreenLink>
             )}
@@ -556,7 +531,7 @@ function Filters({ view, locale }: {
               <Checkbox
                 key={one}
                 label={t.types[one]}
-                icon={<Icon name={TYPE_ICON[one]} aria-hidden="true" className="mr-1 text-ink-muted" />}
+                icon={<Icon name={KEY_TYPE_ICON[one]} aria-hidden="true" className="mr-1 text-ink-muted" />}
                 name="type"
                 value={one}
                 checked={view.types.includes(one)}

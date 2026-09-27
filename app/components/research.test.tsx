@@ -128,7 +128,7 @@ describe("the research page", () => {
 })
 
 describe("the dataset column of the download list", () => {
-  const ROW = { accessType: null, typeOfData: null, datePublished: null }
+  const ROW = { accessType: null, typeOfData: null, experimentLabels: [], datePublished: null }
 
   function withDatasets(
     datasets: ResearchView["datasets"],
@@ -257,11 +257,24 @@ function datasetRow(label: string, accessCode: string | null): DatasetRowView {
     label,
     accessType: accessCode === null ? null : { code: accessCode, label: accessCode, maker: null },
     typeOfData: null,
+    experimentLabels: [],
     datePublished: null,
   }
 }
 
 const CONTROLLED = [datasetRow("JGAD000001", "controlled-access-type-1")]
+
+describe("a research's dataset table", () => {
+  it("draws the dataset listing's columns less the research and the update, experiments after the type of data", () => {
+    const html = renderWith({ datasets: [{ ...datasetRow("JGAD000001", null), experimentLabels: ["WES", "RNA-seq"] }] })
+    const table = html.slice(html.indexOf("<th"), html.indexOf("</table>"))
+    const heads = [...table.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((match) => match[1]?.replace(/<[^>]+>/g, "").trim())
+
+    expect(heads.slice(0, 6)).toEqual(["カート", "データセット ID", "データの種類", "解析手法", "アクセス制限", "公開日"])
+    expect(table).toContain("WES")
+    expect(table).toContain("RNA-seq")
+  })
+})
 
 /**
  * What has happened to a research since it was published, as against what the

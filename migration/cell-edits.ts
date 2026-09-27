@@ -21,6 +21,10 @@
  *   The two are written differently (`（ICD10：C719）` and `(ICD10: C719)`), so
  *   one edit per spelling
  *
+ * An edit that names a `dataset`, by the ID v1 gave it, lands on that dataset
+ * only: v1 gave each dataset of a table the same cell even where its lines are
+ * numbered one per dataset (`１．76.6 GB` and `２．41.9 GB`).
+ *
  * **An edit that lands nowhere stops the load**, since it was written against
  * the input and not landing means one of the two has moved.
  */
@@ -30,7 +34,7 @@ import type { EsBilingualRich, EsDataset } from "./es"
 type Lang = "ja" | "en"
 
 export type CellEdit
-  = | { op: "replace", hum: string, key: string, lang: Lang, before: string, after: string }
+  = | { op: "replace", hum: string, dataset?: string, key: string, lang: Lang, before: string, after: string }
     | { op: "move", hum: string, key: string, lang: Lang, before: string, to: string }
     | { op: "add", hum: string, key: string, lang: Lang, text: string, besideKey: string, besideText: string }
     | { op: "substitute", hum: string, key: string, lang: Lang, find: string, replace: string }
@@ -56,6 +60,7 @@ export function applyCellEdits(docs: Iterable<EsDataset>, edits: readonly CellEd
     for (const experiment of doc.experiments ?? []) {
       for (const edit of edits) {
         if (edit.hum !== doc.humId || !experiment.data) continue
+        if (edit.op === "replace" && edit.dataset !== undefined && edit.dataset !== doc.datasetId) continue
         const data = experiment.data
         if (edit.op === "substitute") {
           const side = data[edit.key]?.[edit.lang]

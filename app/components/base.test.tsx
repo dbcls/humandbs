@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, ValueChip } from "./base"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, startAtTop, ValueChip } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -493,6 +493,40 @@ describe("copyText", () => {
     })
     await expect(copyText("x", given)).resolves.toBe("shown")
     expect(calls).toEqual(["show:x"])
+  })
+})
+
+describe("where a panel starts once shown", () => {
+  function panel(scrollTop: number) {
+    const focused: FocusOptions[] = []
+    const box = {
+      scrollTop,
+      focus: (options?: FocusOptions) => {
+        focused.push(options ?? {})
+      },
+    }
+    return { box, focused }
+  }
+
+  it("goes back to its top and takes the caret itself wherever the first control scrolled it", () => {
+    fc.assert(fc.property(fc.integer({ min: 1, max: 100_000 }), (scrolled) => {
+      const { box, focused } = panel(scrolled)
+      startAtTop(box)
+      expect(box.scrollTop).toBe(0)
+      expect(focused).toEqual([{ preventScroll: true }])
+    }))
+  })
+
+  it("leaves the caret on the first control when that is already in view", () => {
+    const { box, focused } = panel(0)
+    startAtTop(box)
+    expect(box.scrollTop).toBe(0)
+    expect(focused).toEqual([])
+  })
+
+  it("can take the caret, so that it can hold it at its top", () => {
+    const html = render(<Dialog title="研究の変更点" held={{ open: true, close: () => undefined }}><p>x</p></Dialog>)
+    expect(html).toMatch(/<dialog[^>]*tabindex="-1"/)
   })
 })
 

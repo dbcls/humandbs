@@ -2257,6 +2257,11 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
    * of the table's column and the row's value there (「ファイル名 foo.txt」).
    * The panel covers the row it was opened from, so this is where the reader
    * checks it before pressing.
+   *
+   * **Only for a panel opened from one row among several.** A panel about the
+   * one thing its screen is about (the research on its own screen, the article
+   * being edited) has nothing to tell apart: the screen's heading shows it, and
+   * the line would show it a second time.
    */
   subject?: DialogSubject | readonly DialogSubject[]
   /**
@@ -2355,8 +2360,10 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
   useEffect(() => {
     const el = box.current
     if (el === null) return
-    if (open) el.showModal()
-    else if (el.open) el.close()
+    if (open) {
+      el.showModal()
+      startAtTop(el)
+    } else if (el.open) el.close()
   }, [open])
 
   return (
@@ -2384,6 +2391,8 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
           if (event.target === box.current && pressedOut.current && outside(event)) close()
         }}
         aria-busy={holding || undefined}
+        // Focusable only from the script, for a panel that starts at its top (`startAtTop`).
+        tabIndex={-1}
         /* **The panel wraps its own words.** It is drawn in the top layer but
            inherits from where it is shown in the markup, and a row's cell that
            holds its controls on one line would otherwise hand the panel that
@@ -2429,6 +2438,21 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
       </dialog>
     </>
   )
+}
+
+/**
+ * **A panel opens at its top.** Shown, it moves the caret to the first thing
+ * in it that takes one, and scrolls that into view: in a panel of comparisons
+ * with nothing to press until the foot, that is the close button, and the panel
+ * opened on its last line. Where that moved it, it goes back to the top and the
+ * caret goes to the panel itself — the next Tab still reaches the first control.
+ * A panel whose first control is in view (a form's first box, a question's
+ * cancel) keeps the caret there.
+ */
+export function startAtTop(panel: Pick<HTMLElement, "scrollTop" | "focus">): void {
+  if (panel.scrollTop === 0) return
+  panel.scrollTop = 0
+  panel.focus({ preventScroll: true })
 }
 
 /**

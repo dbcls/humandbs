@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import type { ListingSize } from "~/search/page-size"
 
-import { branchListingQuery, filesQuery, listingQuery } from "./urls"
+import { branchListingQuery, fieldHash, filesQuery, listingQuery, readFieldHash } from "./urls"
 
 /** A setting of the listing of branches, of any shape the screen can write. */
 const branchListing = fc.record({
@@ -93,5 +93,33 @@ describe("the address of the research listing", () => {
       expect(written.getAll("status")).toEqual(query.statuses)
       expect(written.get("size")).toBe(query.size === null ? null : String(query.size))
     }))
+  })
+})
+
+describe("the field an editing screen's address opens it on", () => {
+  const language = fc.constantFrom<"ja" | "en" | null>("ja", "en", null)
+
+  it("reads back the path and language it was written with, whatever the path holds", () => {
+    fc.assert(fc.property(fc.string({ minLength: 1, unit: "grapheme" }), language, (path, lang) => {
+      const hash = fieldHash(path, lang)
+      expect(hash.startsWith("#")).toBe(true)
+      expect(readFieldHash(hash)).toEqual({ path, language: lang })
+    }))
+  })
+
+  it("keeps a path's dots and ids readable in the address", () => {
+    expect(fieldHash("summary.aims", "en")).toBe("#summary.aims@en")
+    expect(fieldHash("experiments.e1.values.k1", null)).toBe("#experiments.e1.values.k1")
+  })
+
+  it("names no field for an empty fragment or one that is not an escape of a path", () => {
+    expect(readFieldHash("")).toBeNull()
+    expect(readFieldHash("#")).toBeNull()
+    expect(readFieldHash("#@ja")).toBeNull()
+    expect(readFieldHash("#%E0%A4%A")).toBeNull()
+  })
+
+  it("reads a tail that is not a language as part of the path", () => {
+    expect(readFieldHash("#title@fr")).toEqual({ path: "title@fr", language: null })
   })
 })

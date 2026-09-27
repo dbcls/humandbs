@@ -115,7 +115,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
               <Confirm
                 label={t.deleteResearch}
                 title={t.deleteResearchTitle}
-                subject={{ name: messages.research.researchId, value: view.humLabel ?? messages.admin.research.unpinned }}
                 warning={t.deleteResearchWarning}
                 confirm={t.deleteResearchConfirm}
                 intent="delete-research"
@@ -358,6 +357,7 @@ function DraftRow({ draft, review, researchId, locale }: {
             <Confirm
               label={t.discard}
               title={t.discardTitle}
+              subject={{ name: messages.admin.draft.name, value: draftNameShown(draft.name, locale) }}
               warning={t.discardWarning}
               confirm={t.discardConfirm}
               intent="discard-draft"

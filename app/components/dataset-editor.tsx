@@ -79,8 +79,8 @@ import {
 } from "~/components/base"
 import { Answer, CONTROL, Select } from "~/components/form"
 import { Icon } from "~/components/icons"
-import { AnnotationLayer, Card, Empty, Page, PageHeader } from "~/components/page"
-import type { Bilingual } from "~/content/types"
+import { KeyTypeBadge } from "~/components/key-type"
+import { AnnotationLayer, Card, Code, Empty, Page, PageHeader } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -112,7 +112,7 @@ import {
   replacing,
   type FieldAnnotations,
 } from "./fields"
-import { focusField, focusElement } from "./form"
+import { focusField, focusElement, useFieldFromAddress } from "./form"
 import { Flag } from "./flags"
 import { placeExperiments, placeName, type PlaceSources } from "./places"
 
@@ -233,6 +233,8 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
   function goTo(path: string, language?: Locale): void {
     focusField(form.current, path, SECTION_OF[path.split(".")[0] ?? path], language)
   }
+  // Opened from a list of places on another screen, on the field it named.
+  useFieldFromAddress(goTo)
 
   /** The same move, for a banner that draws its own anchors. */
   function onHeaderBarJump(event: React.MouseEvent): void {
@@ -759,6 +761,13 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
 }) {
   const body = value.value
   const link = <ChoicesLink catalogKey={key} locale={locale} />
+  // **An experiment's field shows what kind of value it takes**, as the
+  // catalog's table does. Prose shows it already by what it accepts
+  // (「リンクと改行」); the dataset's own fields are the portal's and have no
+  // row in that table.
+  const type = key.scope === "experiment" && body.kind !== "text"
+    ? <KeyTypeBadge type={key.valueType} locale={locale} />
+    : undefined
   return (
     <>
       {body.kind === "text" && (
@@ -775,6 +784,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
       {body.kind === "vocabulary" && (
         <VocabularyField
           label={label}
+          type={type}
           named={named}
           link={link}
           locale={locale}
@@ -793,6 +803,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
       {body.kind === "number" && (
         <NumberField
           label={label}
+          type={type}
           named={named}
           locale={locale}
           annotations={annotations}
@@ -807,6 +818,7 @@ export function ValueEditor({ label, named = true, locale, catalogKey: key, term
       {body.kind === "disease" && (
         <DiseaseField
           label={label}
+          type={type}
           named={named}
           link={link}
           locale={locale}
@@ -968,11 +980,13 @@ function AddValue({ locale, keys, catalogLink, onAdd }: {
  * `X染色体: 147,353 SNVs` — is two facts, and typing them as two rows is what
  * makes them countable and filterable instead of prose.
  *
- * **The label and the note only appear once they are in use.** Most keys have
- * a single bare number, and four boxes where one is wanted is a form that requests
- * more than the value does. They come out when there is a second row (which is
- * when "which number is this" starts to have an answer) or when the row already
- * has one.
+ * **The label and the note are always there**, on every row, at a width that
+ * takes a short phrase (`常染色体`, `average`). A box that appeared only once one
+ * of them was written could not be written into on a row holding a bare number,
+ * which is where most rows start. **A row wraps between its three parts** —
+ * the label's pair, the number with its upper end and unit, the note's pair —
+ * and never inside one: `6 〜` on one line and its upper end on the next reads
+ * as two values.
  *
  * **The unit is a `Select` the screen holds.** A key offers a few units and
  * that is what a select is for; everything on this screen is in React state, so
@@ -986,8 +1000,13 @@ function AddValue({ locale, keys, catalogLink, onAdd }: {
  * (`app/admin/dataset-form.server.ts`), so the box marks itself wrong the
  * moment it is typed rather than waiting for that refusal.
  */
-function NumberField({ label, named: drawsName = true, locale, annotations, units, labelCandidates, state, rows, remove, onChange }: {
+/** The label and note boxes of a number's row: a short phrase, and the placeholder that names the box. */
+const NUMBER_WORDS_WIDTH = "w-32"
+
+function NumberField({ label, named: drawsName = true, type, locale, annotations, units, labelCandidates, state, rows, remove, onChange }: {
   label: string
+  /** What kind of value it takes, beside the name (`ValueEditor`). */
+  type?: React.ReactNode
   /** Whether it draws its own name row (`ValueEditor` の `named`). */
   named?: boolean
   locale: Locale
@@ -1002,8 +1021,6 @@ function NumberField({ label, named: drawsName = true, locale, annotations, unit
 }) {
   const t = messagesFor(locale).admin.datasetEditor
   const disabled = state !== "value"
-  const filled = (pair: Bilingual) => pair.ja !== "" || pair.en !== ""
-  const named = rows.length > 1 || rows.some((row) => filled(row.label) || filled(row.note))
   const box = `${CONTROL} text-sm disabled:opacity-50`
   const labelListId = useId()
   const edit = (at: number, next: Partial<NumberRow>) => {
@@ -1012,7 +1029,7 @@ function NumberField({ label, named: drawsName = true, locale, annotations, unit
 
   return (
     <Stack gap="tight" at={annotations.at}>
-      <FieldHead label={drawsName ? label : undefined} annotations={annotations} locale={locale} remove={remove} />
+      <FieldHead label={drawsName ? label : undefined} type={type} annotations={annotations} locale={locale} remove={remove} />
       {/* **The state toggles are shown at the right of the values**, level with the
           first row — where every other field puts them — rather than on a row
           of their own above the values. */}
@@ -1035,91 +1052,89 @@ function NumberField({ label, named: drawsName = true, locale, annotations, unit
                 : {}
               return (
                 <div key={at} className="flex flex-wrap items-center gap-2">
-                  {named && (
-                    <>
-                      <input
-                        type="text"
-                        value={row.label.ja}
-                        disabled={disabled}
-                        aria-label={t.numberLabelJa}
-                        placeholder={t.numberLabelJa}
-                        list={labelCandidates.length > 0 ? labelListId : undefined}
-                        onChange={(event) => { edit(at, { label: { ...row.label, ja: event.target.value } }) }}
-                        className={`${box} w-24`}
-                      />
-                      <input
-                        type="text"
-                        value={row.label.en}
-                        disabled={disabled}
-                        aria-label={t.numberLabelEn}
-                        placeholder={t.numberLabelEn}
-                        onChange={(event) => { edit(at, { label: { ...row.label, en: event.target.value } }) }}
-                        className={`${box} w-24`}
-                      />
-                    </>
-                  )}
-                  <input
-                    type="number"
-                    step="any"
-                    value={row.value}
-                    disabled={disabled}
-                    aria-label={label}
-                    onChange={(event) => { edit(at, { value: event.target.value }) }}
-                    className={`${box} w-40`}
-                  />
-                  <span aria-hidden="true" className="text-ink-muted text-sm">{t.numberRangeSeparator}</span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={row.high}
-                    disabled={disabled}
-                    aria-label={`${label} ${t.numberHigh}`}
-                    placeholder={t.numberHigh}
-                    {...invalidDescribed}
-                    onChange={(event) => { edit(at, { high: event.target.value }) }}
-                    className={`${box} w-40 ${highInvalid ? "border-danger" : ""}`}
-                  />
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={row.label.ja}
+                      disabled={disabled}
+                      aria-label={t.numberLabelJa}
+                      placeholder={t.numberLabelJa}
+                      list={labelCandidates.length > 0 ? labelListId : undefined}
+                      onChange={(event) => { edit(at, { label: { ...row.label, ja: event.target.value } }) }}
+                      className={`${box} ${NUMBER_WORDS_WIDTH}`}
+                    />
+                    <input
+                      type="text"
+                      value={row.label.en}
+                      disabled={disabled}
+                      aria-label={t.numberLabelEn}
+                      placeholder={t.numberLabelEn}
+                      onChange={(event) => { edit(at, { label: { ...row.label, en: event.target.value } }) }}
+                      className={`${box} ${NUMBER_WORDS_WIDTH}`}
+                    />
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.value}
+                      disabled={disabled}
+                      aria-label={label}
+                      onChange={(event) => { edit(at, { value: event.target.value }) }}
+                      className={`${box} w-40`}
+                    />
+                    <span aria-hidden="true" className="text-ink-muted text-sm">{t.numberRangeSeparator}</span>
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.high}
+                      disabled={disabled}
+                      aria-label={`${label} ${t.numberHigh}`}
+                      placeholder={t.numberHigh}
+                      {...invalidDescribed}
+                      onChange={(event) => { edit(at, { high: event.target.value }) }}
+                      className={`${box} w-40 ${highInvalid ? "border-danger" : ""}`}
+                    />
+                    {units.length > 1
+                      ? (
+                          <Select
+                            label={t.unit}
+                            hideLabel
+                            value={row.unit ?? ""}
+                            options={units.map((one) => ({ value: one, label: one }))}
+                            disabled={disabled}
+                            width="w-28"
+                            onChange={(unit) => { edit(at, { unit }) }}
+                          />
+                        )
+                      : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
+                  </span>
                   {highInvalid && (
                     <span id={highErrorId} className="flex items-center gap-1 text-danger text-xs">
                       <Icon name="alert" aria-hidden="true" />
                       {t.numberHighInvalid}
                     </span>
                   )}
-                  {units.length > 1
-                    ? (
-                        <Select
-                          label={t.unit}
-                          hideLabel
-                          value={row.unit ?? ""}
-                          options={units.map((one) => ({ value: one, label: one }))}
-                          disabled={disabled}
-                          width="w-28"
-                          onChange={(unit) => { edit(at, { unit }) }}
-                        />
-                      )
-                    : row.unit !== null && <span className="text-ink-muted text-sm">{row.unit}</span>}
-                  {named && (
-                    <>
-                      <input
-                        type="text"
-                        value={row.note.ja}
-                        disabled={disabled}
-                        aria-label={t.numberNoteJa}
-                        placeholder={t.numberNoteJa}
-                        onChange={(event) => { edit(at, { note: { ...row.note, ja: event.target.value } }) }}
-                        className={`${box} w-24`}
-                      />
-                      <input
-                        type="text"
-                        value={row.note.en}
-                        disabled={disabled}
-                        aria-label={t.numberNoteEn}
-                        placeholder={t.numberNoteEn}
-                        onChange={(event) => { edit(at, { note: { ...row.note, en: event.target.value } }) }}
-                        className={`${box} w-24`}
-                      />
-                    </>
-                  )}
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={row.note.ja}
+                      disabled={disabled}
+                      aria-label={t.numberNoteJa}
+                      placeholder={t.numberNoteJa}
+                      onChange={(event) => { edit(at, { note: { ...row.note, ja: event.target.value } }) }}
+                      className={`${box} ${NUMBER_WORDS_WIDTH}`}
+                    />
+                    <input
+                      type="text"
+                      value={row.note.en}
+                      disabled={disabled}
+                      aria-label={t.numberNoteEn}
+                      placeholder={t.numberNoteEn}
+                      onChange={(event) => { edit(at, { note: { ...row.note, en: event.target.value } }) }}
+                      className={`${box} ${NUMBER_WORDS_WIDTH}`}
+                    />
+                  </span>
                   {rows.length > 1 && (
                     <IconButton
                       name="trash"
@@ -1171,6 +1186,7 @@ function NumberField({ label, named: drawsName = true, locale, annotations, unit
 function VocabularyField({
   label,
   named = true,
+  type,
   link,
   locale,
   annotations,
@@ -1183,6 +1199,8 @@ function VocabularyField({
   onChange,
 }: {
   label: string
+  /** What kind of value it takes, beside the name (`ValueEditor`). */
+  type?: React.ReactNode
   /** The link to where this field's choices are kept (`ChoicesLink`). */
   link?: React.ReactNode
   /** Whether it draws its own name row (`ValueEditor` の `named`). */
@@ -1200,7 +1218,7 @@ function VocabularyField({
 }) {
   return (
     <Stack gap="tight" at={annotations.at}>
-      <FieldHead label={named ? label : undefined} annotations={annotations} locale={locale} link={link} remove={remove} />
+      <FieldHead label={named ? label : undefined} type={type} annotations={annotations} locale={locale} link={link} remove={remove} />
       <div className="md:max-w-md">
         {/* **The two indicators are shown beside the search box**, the way a
             translated field's stand beside its box (`fields.tsx` の
@@ -1244,8 +1262,10 @@ function VocabularyField({
  * there is nothing to align it to; offering the spellings already in would pull
  * a curator away from the source they are copying.
  */
-function DiseaseField({ label, named = true, link, locale, annotations, setId, known, state, diseases, remove, onChange }: {
+function DiseaseField({ label, named = true, type, link, locale, annotations, setId, known, state, diseases, remove, onChange }: {
   label: string
+  /** What kind of value it takes, beside the name (`ValueEditor`). */
+  type?: React.ReactNode
   /** The link to where this field's choices are kept (`ChoicesLink`). */
   link?: React.ReactNode
   /** Whether it draws its own name row (`ValueEditor` の `named`). */
@@ -1270,7 +1290,7 @@ function DiseaseField({ label, named = true, link, locale, annotations, setId, k
 
   return (
     <Stack gap="tight" at={annotations.at}>
-      <FieldHead label={named ? label : undefined} annotations={annotations} locale={locale} link={link} remove={remove} />
+      <FieldHead label={named ? label : undefined} type={type} annotations={annotations} locale={locale} link={link} remove={remove} />
       {/* **The state toggles are shown at the right of the values**, level with the
           first row — where every other field puts them — rather than on a row
           of their own above the values. */}
@@ -1452,7 +1472,7 @@ function TermPicker({ locale, setId, kind, disabled, known, termIds, onAdd, onRe
               {chosen.map((term) => (
                 <li key={term.id}>
                   <ValueChip remove={t.removeTerm} disabled={disabled} onRemove={() => { onRemove(term.id) }}>
-                    {catalogLabel(term, locale)}
+                    <TermWords term={term} locale={locale} kind={kind} />
                   </ValueChip>
                 </li>
               ))}
@@ -1493,6 +1513,21 @@ export function CandidateWords({ term, locale, kind }: { term: EditableTerm, loc
     <>
       {kind === "disease" && <code className="shrink-0 text-ink-muted text-xs">{term.code}</code>}
       <span>{catalogLabel(term, locale)}</span>
+    </>
+  )
+}
+
+/**
+ * A chosen term as its chip reads it. **A disease keeps its code once chosen**,
+ * the way the public listing's refinement pane shows one (`facets.tsx` の
+ * `Value`): the code is what the box is typed with, and what the public pages
+ * file the dataset under.
+ */
+export function TermWords({ term, locale, kind }: { term: EditableTerm, locale: Locale, kind?: "disease" }) {
+  return (
+    <>
+      {kind === "disease" && <Code size="xs" muted>{term.code}</Code>}
+      {catalogLabel(term, locale)}
     </>
   )
 }
@@ -1547,7 +1582,6 @@ function DatasetFacts({ view, locale }: {
                     <Confirm
                       label={detail.unpin}
                       title={detail.unpinDatasetTitle}
-                      subject={{ name: messages.dataset.datasetId, value: view.datasetLabel }}
                       warning={detail.unpinDatasetWarning(isNhaId(view.datasetLabel))}
                       confirm={detail.unpinConfirm}
                       intent="unpin"

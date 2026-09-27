@@ -143,6 +143,7 @@ import {
   adminDraftPublishPath,
   adminResearchListPath,
   adminResearchPath,
+  fieldHash,
 } from "./urls"
 
 import type { CommentView } from "~/review/comments"
@@ -1245,7 +1246,7 @@ export interface PublishSpotView {
   name: string
   /** The language it is about: the one unsettled, or the one a translation is missing in. */
   language: Language | null
-  /** The screen it is fixed on. */
+  /** The screen it is fixed on, opened on its box (`urls.ts` の `fieldHash`). */
   href: string
 }
 
@@ -1538,10 +1539,11 @@ function groupFindings(
         count: 1,
         note: null,
       }))
+      const language = finding.kind === "unsettled" ? finding.language : finding.missing
       spots.set(finding.kind, [...spots.get(finding.kind) ?? [], {
         name: into.spotName(subject, finding.path),
-        language: finding.kind === "unsettled" ? finding.language : finding.missing,
-        href: screen,
+        language,
+        href: `${screen}${fieldHash(finding.path, language)}`,
       }])
       continue
     }

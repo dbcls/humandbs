@@ -508,6 +508,37 @@ describe("a cell holding a table about several datasets", () => {
     expect(said(datasetOf(differing, "JGAD000001"))).toContain("32 GB")
   })
 
+  it("drops a line the dataset it identifies has in a cell of its own, without its ID", () => {
+    const unlabelled = [
+      dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB (bam、bai)"), "JGAD000001", null),
+      dumpRow(volume("32 GB （bam、bai）"), "JGAD000002", null),
+    ]
+    expect(said(datasetOf(unlabelled, "JGAD000001"))).toContain("88 GB")
+    expect(said(datasetOf(unlabelled, "JGAD000001"))).not.toContain("32 GB")
+  })
+
+  it("keeps a line whose words the dataset it identifies has only under a label of their own", () => {
+    const labelled = [
+      dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB"), "JGAD000001", null),
+      dumpRow(volume("fastq: 32 GB"), "JGAD000002", null),
+    ]
+    expect(said(datasetOf(labelled, "JGAD000001"))).toContain("32 GB")
+  })
+
+  /** A line without an ID in a cell that names datasets may be any of theirs. */
+  it("keeps a line the dataset it identifies has without its ID only beside lines naming datasets", () => {
+    const beside = [
+      dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB"), "JGAD000001", null),
+      dumpRow(volume("JGAD000001: 88 GB\n32 GB"), "JGAD000002", null),
+    ]
+    expect(said(datasetOf(beside, "JGAD000001"))).toContain("32 GB")
+    const headed = [
+      dumpRow(volume("JGAD000001: 88 GB\nJGAD000002: 32 GB"), "JGAD000001", null),
+      dumpRow(volume("【JGAD000001】\n32 GB"), "JGAD000002", null),
+    ]
+    expect(said(datasetOf(headed, "JGAD000001"))).toContain("32 GB")
+  })
+
   it("leaves a line whose label names no dataset at all", () => {
     const plain = [dumpRow(volume("常染色体: 5,961,600\nX染色体: 147,353"), "JGAD000001", null)]
     expect(said(datasetOf(plain, "JGAD000001"))).toContain("5,961,600")

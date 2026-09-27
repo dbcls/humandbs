@@ -59,6 +59,20 @@ describe("the state switch", () => {
   })
 })
 
+describe("where a jump to a place set to a state lands", () => {
+  it("marks each language's pair of toggles with its language, and a field's one pair with none", () => {
+    const en = render(<SlotEditor language="en" value={{ state: "unknown", text: "" }} onChange={() => { /* nothing changes here */ }} locale="ja" />)
+    expect(en).toMatch(/<span role="group" aria-label="値の扱い" data-slot-state="en"/)
+    const field = render(<StateSwitch state="unknown" locale="ja" onChange={() => { /* nothing changes here */ }} />)
+    expect(field).toMatch(/<span role="group" aria-label="値の扱い" data-slot-state=""/)
+  })
+
+  it("can take the background a jump leaves on it, without moving the toggles", () => {
+    const html = render(<StateSwitch state="unknown" locale="ja" onChange={() => { /* nothing changes here */ }} />)
+    expect(html).toMatch(/data-slot-state="" class="[^"]*-m-1 [^"]*p-1 [^"]*data-highlighted:bg-warning-surface/)
+  })
+})
+
 describe("what a state toggle shows it does", () => {
   it("draws the effect over the indicator — taking it on, or letting it go once held — and keeps the state's word as the name", () => {
     const value = render(<StateSwitch state="value" locale="ja" onChange={() => { /* nothing changes here */ }} />)

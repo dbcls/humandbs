@@ -9,6 +9,7 @@
  * ordinary case.
  */
 
+import type { Locale } from "~/i18n/locale"
 import type { ListingSize } from "~/search/page-size"
 
 export function adminPath(): string {
@@ -180,6 +181,33 @@ export function adminDraftDatasetPath(
   datasetId: string,
 ): string {
   return `${adminDraftDatasetsPath(researchId, draftId)}/${datasetId}`
+}
+
+/**
+ * The end of an editing screen's address that opens it on one field
+ * (`#summary.aims@en`): the field's path (`app/admin/paths.ts`) and, for a
+ * field written in each language, the language whose box takes the caret.
+ *
+ * **After `#`, not in the query.** It is where on the screen to look, and the
+ * server reads nothing from it — the screen is the same with or without it.
+ */
+export function fieldHash(path: string, language: Locale | null): string {
+  return `#${encodeURIComponent(path)}${language === null ? "" : `@${language}`}`
+}
+
+/** The field and language `fieldHash` wrote, or null for an address that names none. */
+export function readFieldHash(hash: string): { path: string, language: Locale | null } | null {
+  const body = hash.startsWith("#") ? hash.slice(1) : hash
+  const at = body.lastIndexOf("@")
+  const tail = at === -1 ? null : body.slice(at + 1)
+  const language = tail === "ja" || tail === "en" ? tail : null
+  let path: string
+  try {
+    path = decodeURIComponent(language === null ? body : body.slice(0, at))
+  } catch {
+    return null
+  }
+  return path === "" ? null : { path, language }
 }
 
 /**
