@@ -6,10 +6,12 @@ import {
   Scripts,
   ScrollRestoration,
   useLocation,
+  useMatches,
   useRouteLoaderData,
 } from "react-router"
 
 import { isAdminPath } from "~/admin/urls"
+import { loadConfig, publicOrigin } from "~/config.server"
 import { readActor } from "~/auth/actor.server"
 import { crossSiteRefusal, refusedAsCrossSite } from "~/auth/csrf"
 import { CartToast } from "~/components/cart"
@@ -19,6 +21,7 @@ import { startFileRunner } from "~/files/runner.server"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { activeAlerts } from "~/public/site.server"
+import { pageAlternates } from "~/public/crawl"
 import { readLocale } from "~/public/urls"
 import { isPreviewPath } from "~/review/urls"
 import { startSlackRunner } from "~/slack/runner.server"
@@ -67,12 +70,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   startSlackRunner()
   const locale = readLocale(new URL(request.url).pathname).locale
   const actor = await readActor(request)
+  const config = loadConfig(process.env)
   return {
     locale,
     alerts: await activeAlerts(locale),
     account: actor === null ? null : { name: actor.name, isAdmin: actor.isAdmin },
+    site: { origin: publicOrigin(config.auth), noindex: config.noindex },
   }
 }
+
+/**
+ * The routes whose page may exist in one language alone: an article and an
+ * announcement are published a language at a time, and the sitemap is where
+ * their languages are named (`public/crawl.server.ts`).
+ */
+const ONE_LANGUAGE_ROUTES = new Set(["routes/document", "ja-news-item", "en-news-item"])
 
 /**
  * The site's own icons, served from `public/` and kept from v1 as they
@@ -112,15 +124,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
    * the area has no English one (`app/routes.ts`) — and taking the prefix off
    * first would leave it looking like `/admin` and draw the frame around a 404.
    */
-  const pathname = useLocation().pathname
+  const { pathname, search } = useLocation()
   const { path } = readLocale(pathname)
   const managing = isAdminPath(pathname) && data?.account?.isAdmin === true
+  // The same page in the other language, for a page that has one: neither the
+  // management area nor a share link's preview has a second language to name.
+  const leaf = useMatches().at(-1)?.id
+  const alternates = data === undefined || isAdminPath(pathname) || isPreviewPath(pathname)
+    || (leaf !== undefined && ONE_LANGUAGE_ROUTES.has(leaf))
+    ? []
+    : pageAlternates(data.site.origin, path, search)
 
   return (
     <html lang={locale}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {data?.site.noindex === true && <meta name="robots" content="noindex" />}
+        {alternates.map((one) => <link key={one.hrefLang} rel="alternate" hrefLang={one.hrefLang} href={one.href} />)}
         <Meta />
         <Links />
       </head>

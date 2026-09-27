@@ -69,6 +69,11 @@ export interface AppConfig {
    * channel.
    */
   slackWebhookUrl: string | null
+  /**
+   * Whether the site keeps itself out of search engines: a deployment with the
+   * same content as another, which only the other should be found by.
+   */
+  noindex: boolean
 }
 
 export class ConfigError extends Error {
@@ -98,7 +103,16 @@ export function loadConfig(env: Env): AppConfig {
     applicationDb: readApplicationDb(env),
     assistantOrigin: readAssistantOrigin(env),
     slackWebhookUrl: readSlackWebhookUrl(env),
+    noindex: readFlag(env, "HUMANDBS_NOINDEX"),
   }
+}
+
+/** `true` or `false`; empty is `false`, which is how the env templates ship. */
+function readFlag(env: Env, name: string): boolean {
+  const value = env[name]?.trim() ?? ""
+  if (value === "" || value === "false") return false
+  if (value === "true") return true
+  throw new ConfigError(`${name} must be true or false`)
 }
 
 /**

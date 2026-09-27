@@ -31,6 +31,8 @@ x-app-environment: &app-environment
   HUMANDBS_ASSISTANT_ORIGIN: ${HUMANDBS_ASSISTANT_ORIGIN:-}
   # Where the Slack notification posts. Nothing is sent while it is empty.
   HUMANDBS_SLACK_WEBHOOK_URL: ${HUMANDBS_SLACK_WEBHOOK_URL:-}
+  # `true` keeps the site out of search engines (staging).
+  HUMANDBS_NOINDEX: ${HUMANDBS_NOINDEX:-}
 
 services:
   # Not published. Everything that needs a connection — psql, the schema

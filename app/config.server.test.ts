@@ -35,6 +35,7 @@ describe("loadConfig", () => {
       applicationDb: null,
       assistantOrigin: null,
       slackWebhookUrl: null,
+      noindex: false,
     })
   })
 })
@@ -240,6 +241,24 @@ describe("loadConfig と Slack の通知", () => {
       } catch (error) {
         expect(String(error)).not.toContain("secret-token")
       }
+    }
+  })
+})
+
+describe("loadConfig と検索エンジン", () => {
+  const withFlag = (value: string | undefined) => ({ ...VALID, HUMANDBS_NOINDEX: value })
+
+  it("設定が無いとき・空のとき・false のときは検索エンジンに載せる", () => {
+    for (const value of [undefined, "", " ", "false"]) expect(loadConfig(withFlag(value)).noindex, String(value)).toBe(false)
+  })
+
+  it("true のときだけ載せない", () => {
+    expect(loadConfig(withFlag(" true\n")).noindex).toBe(true)
+  })
+
+  it("true と false 以外は起動時にエラーにする", () => {
+    for (const value of ["yes", "1", "TRUE", "on"]) {
+      expect(() => loadConfig(withFlag(value)), value).toThrow("HUMANDBS_NOINDEX must be true or false")
     }
   })
 })

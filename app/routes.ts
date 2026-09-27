@@ -251,6 +251,9 @@ const fileLists = [
 
 export default [
   route("healthz", "routes/healthz.ts"),
+  // Above the catch-all, which would take them for articles' slugs.
+  route("robots.txt", "routes/robots.ts"),
+  route("sitemap.xml", "routes/sitemap.ts"),
   ...auth,
   ...api,
   ...fileLists,

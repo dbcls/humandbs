@@ -19,7 +19,7 @@ NBDC ヒトデータベース (https://humandbs.dbcls.jp) のポータルであ�
 | [docs/publishing.md](docs/publishing.md) | 公開。バージョン番号、公開前の確認、ID の割り当て、取り下げと削除、操作の記録、Slack への通知 |
 | [docs/files.md](docs/files.md) | データファイル。2 つの bucket と研究ごとの prefix、アップロード、公開と非公開の切り替え、ラベル |
 | [docs/site-content.md](docs/site-content.md) | 記事・お知らせ・アラート。本文の保存形式、slug とバージョン、表示の条件 |
-| [docs/public-site.md](docs/public-site.md) | 公開サイトの仕様。URL と言語、何が公開されるか、検索式と絞り込み、書き出し、カート |
+| [docs/public-site.md](docs/public-site.md) | 公開サイトの仕様。URL と言語、何が公開されるか、検索式と絞り込み、書き出し、カート、検索エンジンとリンクのプレビュー |
 | [docs/public-api.md](docs/public-api.md) | 外部に互換性を保証している JSON API。応答の形、検索と一括取得、互換性、エラー、DDBJ Search への提供 |
 | [docs/auth.md](docs/auth.md) | ログインと権限。誰が何をできるか、セッション、admin の追加と削除 |
 | [docs/assistant.md](docs/assistant.md) | 申請支援アシスタントとポータルの境界 |
