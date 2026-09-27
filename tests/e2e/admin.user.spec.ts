@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test"
 
 import { EXPECTED, NON_ADMIN, SIGNED_IN, sessionState } from "../../playwright.config"
-import { discardLeftoverInvitations, e2eResearch, invitationRows, test } from "./_admin"
+import { discardDraft, discardLeftoverInvitations, e2eResearch, invitationRows, makeDraft, test } from "./_admin"
 import { openScreen } from "./_screen"
 
 /**
@@ -274,6 +274,8 @@ test.describe("P-ADMIN", () => {
   })
 
   test("S-ADMIN-10: 操作の記録を操作・操作者・日付で絞り込め、上流の取得の状態とアプリのバージョンがトップにある", async ({ page }) => {
+    // 絞り込む記録を 1 つ作る。回す先によっては、e2e curator の下書きの削除がまだ無い
+    await discardDraft(page, await makeDraft(page))
     await page.goto("/admin")
     await expect(page.getByRole("heading", { name: "外部データの取り込み状況" })).toBeVisible()
     const version = page.getByText("アプリのバージョン").locator("xpath=following::code[1]")
