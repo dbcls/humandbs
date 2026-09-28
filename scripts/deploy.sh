@@ -6,7 +6,10 @@
 #   scripts/deploy.sh [--dry-run] rollback <tag>   swap back to the images of <tag>
 #
 # Run in the deployment's directory, as the user that runs it. The tag names
-# the images kept for a rollback; it defaults to the checked-out commit.
+# the images kept for a rollback; it defaults to the checked-out commit's
+# first eight hex digits. The length is fixed because git's own abbreviation
+# grows with the number of objects in a clone, and two clones of one commit
+# would otherwise tag it differently.
 # `--dry-run` prints what would change the deployment instead of doing it; the
 # checks that only read (images, containers) still run.
 #
@@ -171,7 +174,7 @@ case "${1:-}" in
     die "usage: scripts/deploy.sh [--dry-run] [tag] | scripts/deploy.sh [--dry-run] rollback <tag>"
     ;;
   *)
-    tag=${1:-$(git rev-parse --short HEAD 2>/dev/null || true)}
+    tag=${1:-$(git rev-parse --short=8 HEAD 2>/dev/null || true)}
     [ -n "$tag" ] || die "not a git checkout; give the tag: scripts/deploy.sh <tag>"
     refuse_other_containers
     podman container exists "${project}_db_1" || die "${project}_db_1 does not exist; this updates a running deployment"

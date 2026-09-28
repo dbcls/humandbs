@@ -95,7 +95,7 @@ podman-compose run --rm -T tools npm run icd10:import        # ICD10 を取り�
 ```bash
 git pull                     # source を更新する
 scripts/deploy.sh --dry-run  # 配置先を変えるコマンドを表示するだけで、実行しない
-scripts/deploy.sh            # tag を省くと、checkout している commit の短い hash を tag にする
+scripts/deploy.sh            # tag を省くと、checkout している commit の hash の先頭 8 文字を tag にする
 ```
 
 `scripts/deploy.sh` は次の順に進む。新しい image を作り終え、migration を当てるまでは、古い `app` と `proxy` が配信を続ける。
