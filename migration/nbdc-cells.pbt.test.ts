@@ -1,8 +1,9 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import type { Bilingual, DatasetContent, Line, RichText, ValueSlot } from "~/content/types"
+import type { Bilingual, Line, RichText } from "~/content/types"
 
+import type { SourceDatasetContent, SourceValueSlot } from "./number-words"
 import { settleNbdcCells, type NbdcCellContext } from "./nbdc-cells"
 
 const KEY = "key-nbdc"
@@ -32,9 +33,9 @@ const piece: fc.Arbitrary<Line> = fc.oneof(
 )
 const lines: fc.Arbitrary<RichText> = fc.array(piece, { minLength: 1, maxLength: 6 })
 
-const cell = (ja: RichText, en: RichText): ValueSlot =>
+const cell = (ja: RichText, en: RichText): SourceValueSlot =>
   ({ keyId: KEY, value: { kind: "text", text: { ja: { state: "value", value: ja }, en: { state: "value", value: en } } } })
-const datasetOf = (datasetId: string, cells: [RichText, RichText][], fileSelection: string[]): DatasetContent & { datasetId: string } => ({
+const datasetOf = (datasetId: string, cells: [RichText, RichText][], fileSelection: string[]): SourceDatasetContent & { datasetId: string } => ({
   datasetId,
   releaseDate: null,
   fileSelection,

@@ -48,34 +48,34 @@ describe("what a research is still missing", () => {
 })
 
 const BARE_NUMBER: NumberValue = {
-  label: null,
+  prefix: null,
   value: 1,
   unit: null,
   inputValue: 1,
   inputUnit: null,
   high: null,
   inputHigh: null,
-  note: null,
+  suffix: null,
 }
 
-function withNumberLabel(label: NumberValue["label"]): DatasetContent {
+function withNumberPrefix(prefix: NumberValue["prefix"]): DatasetContent {
   return {
     ...emptyDatasetContent(),
-    values: [{ keyId: "k1", value: { kind: "number", values: filled([{ ...BARE_NUMBER, label }]) } }],
+    values: [{ keyId: "k1", value: { kind: "number", values: filled([{ ...BARE_NUMBER, prefix }]) } }],
   }
 }
 
 describe("what a dataset is still missing", () => {
-  it("marks a number's label untranslated only when it was given and one side is empty", () => {
-    fc.assert(fc.property(optionalBilingualArb, (label) => {
-      const expected = label !== null && (label.ja === "") !== (label.en === "")
-      expect(datasetProblems(withNumberLabel(label)).untranslated.length > 0).toBe(expected)
+  it("marks a number's prefix untranslated only when it was given and one side is empty", () => {
+    fc.assert(fc.property(optionalBilingualArb, (prefix) => {
+      const expected = prefix !== null && (prefix.ja === "") !== (prefix.en === "")
+      expect(datasetProblems(withNumberPrefix(prefix)).untranslated.length > 0).toBe(expected)
     }))
   })
 
-  it("never reports a number's label as unsettled: it has no third state to ask for", () => {
-    fc.assert(fc.property(optionalBilingualArb, (label) => {
-      expect(datasetProblems(withNumberLabel(label)).unsettled).toEqual([])
+  it("never reports a number's prefix as unsettled: it has no third state to ask for", () => {
+    fc.assert(fc.property(optionalBilingualArb, (prefix) => {
+      expect(datasetProblems(withNumberPrefix(prefix)).unsettled).toEqual([])
     }))
   })
 })

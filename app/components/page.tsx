@@ -638,7 +638,11 @@ export function KeyValue({ title, at, split = false, below, children }: {
    * of its own.
    */
   below?: ReactNode
-  children: ReactNode
+  /**
+   * Nothing for a name that only heads what is `below`. **A value with a place
+   * keeps its box even when empty**, so the caret in its field lights something.
+   */
+  children?: ReactNode
 }) {
   const label = (
     <dt className={`flex flex-wrap items-center gap-2 text-ink-muted text-xs ${split ? "mb-2 break-after-avoid" : ""}`}>
@@ -646,7 +650,9 @@ export function KeyValue({ title, at, split = false, below, children }: {
       {at !== undefined && <Annotation at={at} name={title} />}
     </dt>
   )
-  const value = <dd>{at === undefined ? children : <ValueAtPath at={at}>{children}</ValueAtPath>}</dd>
+  const value = at === undefined && (children === undefined || children === null || children === false)
+    ? null
+    : <dd>{at === undefined ? children : <ValueAtPath at={at}>{children}</ValueAtPath>}</dd>
   const under = below === undefined ? null : <dd>{below}</dd>
   if (split) {
     return (

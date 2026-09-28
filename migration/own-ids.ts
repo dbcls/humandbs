@@ -20,7 +20,9 @@
  * be left of it or it would read the same as another number's label.
  */
 
-import type { ContentValue, DatasetContent, Line, NumberValue, RichText, ValueSlot } from "~/content/types"
+import type { Line, RichText } from "~/content/types"
+
+import type { SourceContentValue, SourceDatasetContent, SourceNumber, SourceValueSlot } from "./number-words"
 
 export interface OwnIdContext {
   /** Every ID the dataset is known by, and the JGA studies of those. */
@@ -134,7 +136,7 @@ function withoutInText(lines: RichText, own: ReadonlySet<string>, shapes: Shapes
 }
 
 /** Each number with the dataset's ID taken off the end of its label, where that still tells it apart. */
-function withoutInLabels(values: NumberValue[], shapes: Shapes): NumberValue[] {
+function withoutInLabels(values: SourceNumber[], shapes: Shapes): SourceNumber[] {
   const side = (said: string) => {
     const found = shapes.suffix.exec(said)
     return found === null ? said : said.slice(0, found.index)
@@ -159,11 +161,11 @@ interface Side {
 }
 
 function settledValue(
-  value: ContentValue,
+  value: SourceContentValue,
   own: ReadonlySet<string>,
   shapes: Shapes,
   record: (lang: "ja" | "en", before: string, after: string) => void,
-): ContentValue {
+): SourceContentValue {
   if (value.kind === "text") {
     const sides: Side[] = []
     for (const lang of ["ja", "en"] as const) {
@@ -198,11 +200,11 @@ function settledValue(
   return value
 }
 
-export function withoutOwnIds<D extends DatasetContent>(content: D, context: OwnIdContext): { content: D, changes: OwnIdChange[] } {
+export function withoutOwnIds<D extends SourceDatasetContent>(content: D, context: OwnIdContext): { content: D, changes: OwnIdChange[] } {
   const shapes = shapesOf(context.own)
   if (shapes === null) return { content, changes: [] }
   const changes: OwnIdChange[] = []
-  const settled = (slots: ValueSlot[], experiment: string | null): ValueSlot[] => {
+  const settled = (slots: SourceValueSlot[], experiment: string | null): SourceValueSlot[] => {
     const out = slots.map((slot) => {
       if (context.skippedKeys.has(slot.keyId)) return slot
       const value = settledValue(slot.value, context.own, shapes, (lang, before, after) => {

@@ -27,12 +27,9 @@ import { convert } from "~/content/units"
 import { countryName } from "~/upstream/country"
 import type {
   DataProvider,
-  DatasetContent,
-  Experiment,
   Grant,
   Link,
   LocalizedLinks,
-  NumberValue,
   RelatedPublication,
   ResearchContent,
   ResearchProject,
@@ -40,9 +37,9 @@ import type {
   Slot,
   TranslatedRichText,
   TranslatedText,
-  ValueSlot,
 } from "~/content/types"
 
+import type { SourceDatasetContent, SourceExperiment, SourceNumber, SourceValueSlot } from "./number-words"
 import { ACCESS_CRITERIA_SET, accessCriteriaTermCode } from "./catalog"
 import type {
   EsBilingual,
@@ -560,7 +557,7 @@ const comparableName = (name: string): string => name.replace(/[＊*\s]/g, "").t
  * copied them; a dataset whose caption is one of those diseases is about that
  * disease alone. Where no disease has the caption's name, all of them stay.
  */
-export function narrowedToCaption(slots: ValueSlot[], caption: { ja: string | null, en: string | null }): ValueSlot[] {
+export function narrowedToCaption(slots: SourceValueSlot[], caption: { ja: string | null, en: string | null }): SourceValueSlot[] {
   if (caption.ja === null && caption.en === null) return slots
   return slots.map((slot) => {
     if (slot.value.kind !== "disease" || slot.value.diseases.state !== "value") return slot
@@ -572,7 +569,7 @@ export function narrowedToCaption(slots: ValueSlot[], caption: { ja: string | nu
   })
 }
 
-export function buildDatasetContent(input: DatasetContentInput): DatasetContent {
+export function buildDatasetContent(input: DatasetContentInput): SourceDatasetContent {
   const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode, knownCode } = input
   const doc = dataset.doc
   const translations = input.labelTranslations ?? new Map()
@@ -652,8 +649,8 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
    * extracted layer**, not from the cell, so the cell's dash is the only record
    * that the key does not apply.
    */
-  const dashedFacets = (e: EsExperiment, held: readonly ValueSlot[]): ValueSlot[] => {
-    const slots: ValueSlot[] = []
+  const dashedFacets = (e: EsExperiment, held: readonly SourceValueSlot[]): SourceValueSlot[] => {
+    const slots: SourceValueSlot[] = []
     for (const [sourceKey, value] of Object.entries(e.data ?? {})) {
       const code = codeBySourceKey.get(sourceKey)
       if (code === undefined || !RETYPED_CODES.has(code) || !isDashCell(value)) continue
@@ -685,7 +682,7 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
     return [mergedRead === undefined ? target : { ...target, read: mergedRead }]
   }
 
-  const values: ValueSlot[] = []
+  const values: SourceValueSlot[] = []
 
   const criteriaKeyId = keyIdByCode.get(input.accessCriteriaKeyCode)
   const termCode = doc.criteria ? accessCriteriaTermCode(doc.criteria) : null
@@ -712,12 +709,12 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
     })
   }
 
-  const experiments: Experiment[] = (doc.experiments ?? []).map((e, i) => {
+  const experiments: SourceExperiment[] = (doc.experiments ?? []).map((e, i) => {
     // The numbers read out of the cells, gathered by the key they belong to:
     // several v1 cells may be the same key (`facets.ts` の `MERGED_SOURCES`),
     // one v1 cell may become several keys (`facets.ts` の `NUMBER_SPLITS`), and
     // a key may appear once.
-    const numbers = new Map<string, NumberValue[]>()
+    const numbers = new Map<string, SourceNumber[]>()
     // A code this cell attempted but read nothing usable out of, and why: the
     // slot becomes `unknown` rather than disappearing, because the cell said
     // something.
@@ -813,12 +810,12 @@ export function buildDatasetContent(input: DatasetContentInput): DatasetContent 
           const side = (lang: Language, rich: RichText): Slot<RichText> => (dashed[lang] ? { state: "not-applicable" } : held(rich))
           return [{ keyId, value: { kind: "text" as const, text: { ja: side("ja", ja), en: side("en", en) } } }]
         }),
-        ...[...notApplicable].flatMap((code): ValueSlot[] => {
+        ...[...notApplicable].flatMap((code): SourceValueSlot[] => {
           const keyId = keyIdByCode.get(code)
           if (keyId === undefined || (numbers.get(code)?.length ?? 0) > 0) return []
           return [{ keyId, value: { kind: "number", values: { state: "not-applicable" } } }]
         }),
-        ...[...numbers].flatMap(([code, nums]): ValueSlot[] => {
+        ...[...numbers].flatMap(([code, nums]): SourceValueSlot[] => {
           const keyId = keyIdByCode.get(code)
           if (keyId === undefined) return []
           if (nums.length > 0) {

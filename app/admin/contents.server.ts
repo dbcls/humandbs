@@ -32,11 +32,13 @@ import { catalogLabel } from "~/i18n/catalog-label"
 import { LOCALES, type Locale } from "~/i18n/locale"
 import { isLocale } from "~/i18n/locale"
 import { renderMarkdown } from "~/public/markdown.server"
-import type { ArticleView } from "~/public/site.server"
+import { ALERT_ORDER, type ArticleView } from "~/public/site.server"
 import { href, readLocale } from "~/public/urls"
 import { type ListingSize, readListingSize } from "~/search/page-size"
 
 import { stampFromLocalInput, today } from "~/dates"
+import { moved } from "./catalog"
+import { positions } from "./catalog.server"
 import { alertExcerpt } from "./events"
 import { axisCounts, pageOf, type ListingPage } from "./listing"
 import { readPage } from "./pages.server"
@@ -59,6 +61,7 @@ import {
   isNewsState,
   isPublishState,
   isVersioning,
+  latestVersionSlug,
   NEWS_DATINGS,
   NEWS_SORT,
   NEWS_STATES,
@@ -137,6 +140,7 @@ export type ContentsDone
     | "alert-shown"
     | "alert-hidden"
     | "alert-deleted"
+    | "alert-moved"
     | "dated"
 
 export type ContentsResult
@@ -478,12 +482,7 @@ export async function alertsPage(request: Request): Promise<AlertsView> {
       over: sql<boolean>`coalesce(${alert.displayUntil} <= (now() at time zone 'Asia/Tokyo'), false)`,
     })
     .from(alert)
-    // **Two alerts made in the same moment still have an order.** Rows written
-    // in one statement share a timestamp, and ordering by the time alone hands
-    // them back in whatever order they happen to lie in — which moves as soon as
-    // one of them is saved. The id is a v7, so it encodes the order they were
-    // made in.
-    .orderBy(asc(alert.createdAt), asc(alert.id))
+    .orderBy(...ALERT_ORDER)
 
   return {
     locale: readLocale(new URL(request.url).pathname).locale,
@@ -845,6 +844,10 @@ export async function alertAction(request: Request): Promise<ContentsResult> {
         return updateAlert(tx, form, actor, false)
       case "delete-alert":
         return deleteAlert(tx, form, actor)
+      case "move-alert-up":
+        return moveAlert(tx, form, "up")
+      case "move-alert-down":
+        return moveAlert(tx, form, "down")
       default:
         return { status: "unknown-target" }
     }
@@ -892,8 +895,13 @@ async function repointSeries(
 }
 
 /**
- * The next revision, empty, ready to be written and then pointed at. The number
- * comes from the form; the screen only fills the box with the one that follows.
+ * The next revision, ready to be written and then pointed at. The number comes
+ * from the form; the screen only fills the box with the one that follows.
+ *
+ * **It starts as a copy of the revision with the highest number**, title and
+ * body in each language that has one, unpublished. A revision is written by
+ * changing the one before it, and typing the whole text in again is how two
+ * revisions come to differ in what nobody meant to change.
  */
 async function addVersion(tx: Executor, seriesId: string, form: FormData): Promise<Applied> {
   const [series] = await tx
@@ -909,8 +917,21 @@ async function addVersion(tx: Executor, seriesId: string, form: FormData): Promi
   const slug = versionSlug(series.slug, number)
   if (await slugTaken(tx, slug)) return { status: "duplicate-slug" }
 
+  const revisions = await tx.select({ id: document.id, slug: document.slug }).from(document)
+  const latestSlug = latestVersionSlug(series.slug, revisions.map((one) => one.slug))
+  const latest = revisions.find((one) => one.slug === latestSlug)
+
   const [created] = await tx.insert(document).values({ slug }).returning({ id: document.id })
   if (created === undefined) return { status: "unknown-target" }
+  if (latest !== undefined) {
+    const texts = await tx
+      .select({ locale: documentContent.locale, content: documentContent.content })
+      .from(documentContent)
+      .where(eq(documentContent.documentId, latest.id))
+    if (texts.length > 0) {
+      await tx.insert(documentContent).values(texts.map((one) => ({ documentId: created.id, ...one })))
+    }
+  }
   return { status: "ok", goTo: adminDocumentPath(created.id) }
 }
 
@@ -967,9 +988,30 @@ async function deleteSeries(tx: Executor, seriesId: string, actor: Actor): Promi
   return { status: "ok", goTo: adminDocumentsPath() }
 }
 
+/**
+ * A new alert goes in at the top. It is what is being written next, and at the
+ * foot of a screen of alerts it would open out of sight.
+ */
 async function createAlert(tx: Executor): Promise<ContentsResult> {
-  await tx.insert(alert).values({ content: { body: { ja: "", en: "" } }, active: false })
+  await tx.update(alert).set({ position: sql`${alert.position} + 1` })
+  await tx.insert(alert).values({ content: { body: { ja: "", en: "" } }, active: false, position: 0 })
   return { status: "ok", done: "alert-created" }
+}
+
+/**
+ * One alert up or down by one. **Every alert is renumbered** from the order,
+ * so positions that arrived with gaps or ties come out consecutive.
+ */
+async function moveAlert(tx: Executor, form: FormData, direction: "up" | "down"): Promise<ContentsResult> {
+  const id = text(form, "alertId")
+  const rows = await tx.select({ id: alert.id }).from(alert).orderBy(...ALERT_ORDER)
+  if (!rows.some((row) => row.id === id)) return { status: "unknown-target" }
+  const ordered = moved(rows, id, direction)
+  await tx
+    .update(alert)
+    .set({ position: positions(ordered, alert.id) })
+    .where(inArray(alert.id, ordered.map((row) => row.id)))
+  return { status: "ok", done: "alert-moved" }
 }
 
 async function updateAlert(

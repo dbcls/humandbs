@@ -132,6 +132,11 @@ export const alert = pgTable("alert", {
   id: primaryId(),
   content: jsonb().$type<AlertContent>().notNull(),
   active: boolean().notNull().default(false),
+  /**
+   * The order an admin put the alerts in, the site showing them in it from the
+   * top. A new alert goes in at 0, above the rest.
+   */
+  position: integer().notNull().default(0),
   displayFrom: timestamp({ mode: "string" }),
   displayUntil: timestamp({ mode: "string" }),
   createdAt: createdAt(),

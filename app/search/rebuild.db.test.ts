@@ -474,7 +474,7 @@ describe("rebuildSearchDocs", () => {
     const research1 = await createResearch("hum0001")
     const datasetA = await withExperiments(research1, "JGAD000001", [
       { id: "experiment-1", keyId: diseaseKeyId, value: { kind: "vocabulary", termIds: filled([childTermId]) } },
-      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", values: filled([{ label: null, value: 5, unit: "GB", inputValue: 5, inputUnit: "GB", note: null }]) } },
+      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", values: filled([{ prefix: null, value: 5, unit: "GB", inputValue: 5, inputUnit: "GB", suffix: null }]) } },
     ])
     const datasetB = await withExperiments(research1, "JGAD000002", [
       { id: "experiment-1", keyId: assayKeyId, value: { kind: "vocabulary", termIds: filled([rnaSeqTermId]) } },
@@ -494,7 +494,7 @@ describe("rebuildSearchDocs", () => {
     const research2 = await createResearch("hum0002")
     const datasetC = await withExperiments(research2, "JGAD000003", [
       { id: "experiment-1", keyId: diseaseKeyId, value: { kind: "vocabulary", termIds: filled([childTermId]) } },
-      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", values: filled([{ label: null, value: 12.5, unit: "GB", inputValue: 12.5, inputUnit: "GB", note: null }]) } },
+      { id: "experiment-2", keyId: volumeKeyId, value: { kind: "number", values: filled([{ prefix: null, value: 12.5, unit: "GB", inputValue: 12.5, inputUnit: "GB", suffix: null }]) } },
     ])
     await db.insert(s.researchVersion).values({
       researchId: research2,
@@ -607,7 +607,7 @@ describe("which number keys become facet rows", () => {
         label: filled("WES"),
         values: [{
           keyId: displayOnly,
-          value: { kind: "number", values: filled([{ label: null, value: 21_000, unit: null, inputValue: 21_000, inputUnit: null, note: null }]) },
+          value: { kind: "number", values: filled([{ prefix: null, value: 21_000, unit: null, inputValue: 21_000, inputUnit: null, suffix: null }]) },
         }],
       }],
     })
@@ -635,7 +635,7 @@ describe("which number keys become facet rows", () => {
           value: {
             kind: "number",
             values: filled([
-              { label: null, value: 90, unit: "bp", inputValue: 90, inputUnit: "bp", high: 200, inputHigh: 200, note: null },
+              { prefix: null, value: 90, unit: "bp", inputValue: 90, inputUnit: "bp", high: 200, inputHigh: 200, suffix: null },
             ]),
           },
         }],

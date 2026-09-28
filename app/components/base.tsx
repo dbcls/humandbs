@@ -908,9 +908,11 @@ export function IconButton({ name, label, pressed, fill = false, titled = true, 
  * **How a press travels is the caller's**: a list held in the page moves on
  * `onMove`, a list the server holds wraps each button in its own form
  * (`render`), because an `IconButton` spends its `name` on the glyph and two in
- * one form have nothing left to tell the press apart by.
+ * one form have nothing left to tell the press apart by. A row that is itself a
+ * form, which no other form can sit inside, points each button at a form
+ * outside it (`form`).
  */
-export function ReorderButtons({ at, of, labels, onMove, render }: {
+export function ReorderButtons({ at, of, labels, onMove, render, form }: {
   /** The row's place, from 0. */
   at: number
   /** How many rows the list holds. */
@@ -918,13 +920,16 @@ export function ReorderButtons({ at, of, labels, onMove, render }: {
   labels: { up: string, down: string }
   onMove?: (by: -1 | 1) => void
   render?: (by: -1 | 1, button: ReactNode) => ReactNode
+  /** The id of the form each button submits. */
+  form?: (by: -1 | 1) => string
 }) {
   const one = (by: -1 | 1) => {
     const button = (
       <IconButton
         name={by === -1 ? "chevron-up" : "chevron-down"}
         label={by === -1 ? labels.up : labels.down}
-        type={render === undefined ? "button" : "submit"}
+        type={render === undefined && form === undefined ? "button" : "submit"}
+        form={form?.(by)}
         disabled={by === -1 ? at === 0 : at === of - 1}
         onClick={onMove === undefined ? undefined : () => { onMove(by) }}
       />
@@ -1345,7 +1350,8 @@ export function Chip({ field, value, to, remove }: {
           {field}
         </span>
       )}
-      <span className="flex min-w-0 flex-1 items-start gap-2 px-2 py-1">
+      {/* The × sits at the middle of the chip's height, wrapped or not. */}
+      <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1">
         <span className="min-w-0 break-words">{value}</span>
         <Icon name="close" aria-hidden="true" className="ml-auto shrink-0 text-ink-muted" />
       </span>

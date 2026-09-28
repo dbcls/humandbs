@@ -18,13 +18,19 @@ import * as s from "~/db/schema"
 import { seedResearch, seedVersion } from "~/db/seed"
 import { DRAFT_ANCHOR } from "~/review/anchors"
 
-import { notifySlack, SEND_INTERVAL_MS, SETTLE_MS, type SendToSlack } from "./notify.server"
+import { notifySlack, SETTLE_MS, type SendToSlack } from "./notify.server"
 
 const db = getDb()
 
 const ORIGIN = "https://humandbs.example.org"
 const ADMIN = "admin-sub"
+/** 19:00 in JST, on a boundary of every interval these tests use. */
 const START = new Date("2026-09-27T10:00:00Z")
+/**
+ * Five minutes, which divides a day as an interval has to: the calls below at
+ * 5 and 10 minutes are each the first past a boundary.
+ */
+const INTERVAL = 5
 const BOOTSTRAP = { sub: BOOTSTRAP_ACTOR.sub, name: BOOTSTRAP_ACTOR.name }
 
 /** The time a call at `minutes` after the first reads up to. */
@@ -80,7 +86,7 @@ async function readUntil(): Promise<Date | undefined> {
 
 /** The first call, which only records where reading starts. */
 async function begin(send: SendToSlack | null = null): Promise<void> {
-  expect(await notifySlack(db, { now: at(0), origin: ORIGIN, send })).toBe("not-due")
+  expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(0), origin: ORIGIN, send })).toBe("not-due")
 }
 
 describe("notifySlack", () => {
@@ -91,21 +97,25 @@ describe("notifySlack", () => {
 
     await begin(send)
     expect(await readUntil()).toEqual(readUpTo(0))
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("quiet")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send })).toBe("quiet")
     expect(sent).toEqual([])
   })
 
-  it("前の回から 5 分たつまでは送らず、ちょうど 5 分で送る", async () => {
+  it("60 分なら毎時 0 分までに起きたことを、0 分から 1 分たって送る。区切りを過ぎるまでは送らない", async () => {
     const { draftId } = await seedDraft()
     const { sent, send } = recorder()
-    await begin(send)
-    await commentAt(draftId, readUpTo(1), { sub: null, name: "山田" })
+    const hourly = (now: Date) => notifySlack(db, { intervalMinutes: 60, now, origin: ORIGIN, send })
+    expect(await hourly(at(0))).toBe("not-due")
+    // 19:00 in JST is the first boundary past the start; nothing had happened by then.
+    expect(await hourly(at(1))).toBe("quiet")
+    expect(await readUntil()).toEqual(at(0))
 
-    const almost = new Date(at(0).getTime() + SEND_INTERVAL_MS - 1)
-    expect(await notifySlack(db, { now: almost, origin: ORIGIN, send })).toBe("not-due")
+    await commentAt(draftId, at(30), { sub: null, name: "山田" })
+    expect(await hourly(new Date(at(61).getTime() - 1))).toBe("not-due")
     expect(sent).toEqual([])
-    expect(await notifySlack(db, { now: new Date(at(0).getTime() + SEND_INTERVAL_MS), origin: ORIGIN, send })).toBe("sent")
+    expect(await hourly(at(61))).toBe("sent")
     expect(sent).toHaveLength(1)
+    expect(await readUntil()).toEqual(at(60))
   })
 
   it("共有リンクからのコメントは送り、本文は送らない。admin が書いたコメントと押したボタンは送らない", async () => {
@@ -120,7 +130,8 @@ describe("notifySlack", () => {
       { draftId, kind: "approved", actorSub: ADMIN, actorName: "管理者", createdAt: readUpTo(4) },
     ])
 
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("sent")
+    // The first call past the 19:05 boundary, which all of them are before.
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(6), origin: ORIGIN, send })).toBe("sent")
     expect(sent).toEqual([[
       "*レビュー*",
       `• <${ORIGIN}/admin/research/${researchId}/draft/${draftId}/review|hum0034 / v7 予定>: `
@@ -134,7 +145,7 @@ describe("notifySlack", () => {
     await begin(send)
     await commentAt(draftId, readUpTo(1), BOOTSTRAP)
 
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("quiet")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send })).toBe("quiet")
     expect(sent).toEqual([])
   })
 
@@ -145,8 +156,8 @@ describe("notifySlack", () => {
     // Written just after the point the call at 5 minutes reads up to.
     await commentAt(draftId, new Date(readUpTo(5).getTime() + 1), { sub: null, name: "遅れて書いた人" })
 
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("quiet")
-    expect(await notifySlack(db, { now: at(10), origin: ORIGIN, send })).toBe("sent")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send })).toBe("quiet")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(10), origin: ORIGIN, send })).toBe("sent")
     expect(sent).toHaveLength(1)
     expect(sent[0]).toContain("遅れて書いた人")
   })
@@ -157,12 +168,12 @@ describe("notifySlack", () => {
     await commentAt(draftId, readUpTo(1), { sub: null, name: "山田" })
 
     const refuse: SendToSlack = () => Promise.reject(new Error("Slack did not accept the message: 500"))
-    await expect(notifySlack(db, { now: at(5), origin: ORIGIN, send: refuse })).rejects.toThrow("500")
+    await expect(notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send: refuse })).rejects.toThrow("500")
     expect(await readUntil()).toEqual(readUpTo(0))
 
     await commentAt(draftId, readUpTo(6), { sub: null, name: "佐藤" })
     const { sent, send } = recorder()
-    expect(await notifySlack(db, { now: at(6), origin: ORIGIN, send })).toBe("sent")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(6), origin: ORIGIN, send })).toBe("sent")
     expect(sent[0]).toContain("コメント 2 件 (山田 (anonymous)、佐藤 (anonymous))")
     expect(await readUntil()).toEqual(readUpTo(6))
   })
@@ -171,10 +182,10 @@ describe("notifySlack", () => {
     const { draftId } = await seedDraft()
     await begin()
     await commentAt(draftId, readUpTo(1), { sub: null, name: "山田" })
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send: null })).toBe("unsent")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send: null })).toBe("unsent")
 
     const { sent, send } = recorder()
-    expect(await notifySlack(db, { now: at(10), origin: ORIGIN, send })).toBe("quiet")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(10), origin: ORIGIN, send })).toBe("quiet")
     expect(sent).toEqual([])
   })
 
@@ -201,7 +212,7 @@ describe("notifySlack", () => {
     ])
 
     const { sent, send } = recorder()
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("sent")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send })).toBe("sent")
     expect(sent).toEqual([[
       "*公開*",
       `• 公開: <${ORIGIN}/research/hum0034/v3|hum0034 v3> (管理者)`,
@@ -219,11 +230,11 @@ describe("notifySlack", () => {
 
     await getOwnerDb().transaction(async (holder) => {
       await holder.select().from(s.slackNotification).for("update")
-      expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("busy")
+      expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send })).toBe("busy")
     })
     expect(sent).toEqual([])
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("sent")
-    expect(await notifySlack(db, { now: at(10), origin: ORIGIN, send })).toBe("quiet")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send })).toBe("sent")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(10), origin: ORIGIN, send })).toBe("quiet")
     expect(sent).toHaveLength(1)
   })
 
@@ -234,7 +245,7 @@ describe("notifySlack", () => {
     await db.delete(s.researchDraft)
 
     const { sent, send } = recorder()
-    expect(await notifySlack(db, { now: at(5), origin: ORIGIN, send })).toBe("quiet")
+    expect(await notifySlack(db, { intervalMinutes: INTERVAL, now: at(5), origin: ORIGIN, send })).toBe("quiet")
     expect(sent).toEqual([])
   })
 })

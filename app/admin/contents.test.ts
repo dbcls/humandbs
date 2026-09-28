@@ -6,6 +6,7 @@ import {
   entryNames,
   filterEntries,
   filterNewsRows,
+  latestVersionSlug,
   matchingEntries,
   type NewsFilter,
   type NewsRow,
@@ -84,6 +85,12 @@ describe("バージョンの slug", () => {
 
   it("他の slug のバージョンは数に入らない", () => {
     expect(nextVersionNumber("x", ["y/version/7"])).toBe(1)
+  })
+
+  it("コピー元は番号がいちばん大きいバージョンで、並び順にも文字列の大小にもよらない", () => {
+    expect(latestVersionSlug("x", ["x/version/9", "x/version/10", "x/version/2"])).toBe("x/version/10")
+    expect(latestVersionSlug("x", ["y/version/7", "x", "x/version/0"])).toBeNull()
+    expect(latestVersionSlug("x", [])).toBeNull()
   })
 
   it("**バージョン番号として通るのは 1 以上の整数だけ**", () => {

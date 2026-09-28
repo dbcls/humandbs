@@ -58,14 +58,7 @@ import { newShareToken } from "~/admin/drafts.server"
 import { MEMO_ANCHOR } from "~/review/anchors"
 import { isPortalIssuedId } from "~/admin/labels"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
-import type {
-  Bilingual,
-  DatasetContent,
-  ListingProvider,
-  ResearchContent,
-  RichText,
-  VersionContent,
-} from "~/content/types"
+import type { Bilingual, ListingProvider, ResearchContent, RichText } from "~/content/types"
 import { closePools, getOwnerDb } from "~/db/client.server"
 import {
   accessionDate,
@@ -95,6 +88,7 @@ import {
   type ProseReader,
   type TextReader,
 } from "./build"
+import { countingKeys, prefixedDataset, prefixedVersion, type SourceDatasetContent, type SourceVersionContent } from "./number-words"
 import { DROPPED_ARCHIVE_KEYS, withoutKeys } from "./archive-keys"
 import { DROPPED_FILE_KEYS } from "./file-keys"
 import { ACCESS_CRITERIA_KEY, contentKeySeeds, TYPE_OF_DATA_KEY } from "./catalog"
@@ -968,7 +962,7 @@ async function load() {
     }
     const processedIdKeys = keyIdsOf(["processed-data-dataset-id"])
     const ownIdChanges: (OwnIdChange & { hum: string, dataset: string | undefined, draft: boolean })[] = []
-    const withoutDroppedKeys = <D extends DatasetContent & { datasetId?: string }>(content: D, hum: string, draft: boolean): D => {
+    const withoutDroppedKeys = <D extends SourceDatasetContent & { datasetId?: string }>(content: D, hum: string, draft: boolean): D => {
       const out = withoutKeys(content, droppedKeyIds)
       archiveValues += out.dropped
       const files = withoutKeys(out.content, droppedFileKeyIds)
@@ -1077,7 +1071,7 @@ async function load() {
     const selected = fileSeed()
     // The key each vocabulary's values are under, for the fixes to find.
     const keyCodeOfSet = new Map(VOCABULARY_FACETS.map((facet) => [facet.setCode, facet.code]))
-    const describe = (one: PublishedDataset, siblings: ReadonlySet<string>, preferred: Preferred): DatasetContent => {
+    const describe = (one: PublishedDataset, siblings: ReadonlySet<string>, preferred: Preferred): SourceDatasetContent => {
       const fixed = applyVocabularyFixes(describeFromDump(one, siblings, preferred), vocabulary.fixes, {
         hum: one.humId,
         datasetId: one.label,
@@ -1089,7 +1083,7 @@ async function load() {
       const both = fillTranslations(named, { hum: one.humId, label: nha.get(one.label) ?? one.label }, translations, (code) => keyIdByCode.get(code), translated)
       return { ...both, fileSelection: nha.has(one.label) ? selected.get(one.label) ?? [] : [] }
     }
-    const describeFromDump = (one: PublishedDataset, siblings: ReadonlySet<string>, preferred: Preferred): DatasetContent => buildDatasetContent({
+    const describeFromDump = (one: PublishedDataset, siblings: ReadonlySet<string>, preferred: Preferred): SourceDatasetContent => buildDatasetContent({
       dataset: one,
       keyIdByCode,
       codeBySourceKey,
@@ -1117,7 +1111,7 @@ async function load() {
     })
     const publishedLines = ownLines(published, undefined, (one) => prose.readIn(one.humId, publishedPreferred(one.humId)), jgasToJgad)
     const nbdcKeyId = keyIdByCode.get("nbdc-dataset-accession")
-    const settledCells = <D extends DatasetContent & { datasetId: string }>(hum: string, datasets: D[]): D[] => {
+    const settledCells = <D extends SourceDatasetContent & { datasetId: string }>(hum: string, datasets: D[]): D[] => {
       if (nbdcKeyId === undefined) return datasets
       const context: NbdcCellContext = {
         keyId: nbdcKeyId,
@@ -1138,6 +1132,7 @@ async function load() {
     ]))
 
     const versions = held.publishedVersions.filter((v) => researchIdByHum.has(v.humId))
+    const counting = await countingKeys(tx)
     await insertChunked(
       versions.map((rv) => {
         if (!rv.versionReleaseDate) throw new Error(`${rv.humVersionId} has no release date`)
@@ -1160,11 +1155,14 @@ async function load() {
             const content = descriptionOfDataset.get(datasetId)
             return content === undefined ? [] : [{ datasetId, ...content }]
           }),
-        } satisfies VersionContent, { hum: rv.humId, dataset: false, keyIdOf: (code) => keyIdByCode.get(code) })
+        } satisfies SourceVersionContent, { hum: rv.humId, dataset: false, keyIdOf: (code) => keyIdByCode.get(code) })
         return {
           researchId: identityOf(researchIdByHum, rv.humId, "research"),
           number,
-          content: { ...content, datasets: settledCells(rv.humId, content.datasets).map((one) => withoutDroppedKeys(one, rv.humId, false)) },
+          content: prefixedVersion(
+            { ...content, datasets: settledCells(rv.humId, content.datasets).map((one) => withoutDroppedKeys(one, rv.humId, false)) },
+            counting,
+          ),
           releaseDate: rv.versionReleaseDate,
         }
       }),
@@ -1226,7 +1224,7 @@ async function load() {
       const entries = linkedDatasets.map(({ datasetId, ...content }) => {
         const described = settleRequests(withoutDroppedKeys({ ...content, datasetId }, humId, true))
         said.push(...requestComments({ kind: "dataset", datasetId }, described.asked))
-        return { draftId: row.id, datasetId, content: described.content }
+        return { draftId: row.id, datasetId, content: prefixedDataset(described.content, counting) }
       })
       draftEntries += await insertChunked(entries, (chunk) => tx.insert(draftDatasetEntry).values(chunk))
       questions += await insertChunked(said, (chunk) => tx.insert(comment).values(chunk.map((one) => ({

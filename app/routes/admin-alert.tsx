@@ -2,7 +2,7 @@ import { Fragment, useId, useState } from "react"
 import { Form } from "react-router"
 
 import { alertAction, alertsPage, type AlertRow, type BodyProblem } from "~/admin/contents.server"
-import { Confirm, Heading, Stack } from "~/components/base"
+import { Confirm, Heading, ReorderButtons, Stack } from "~/components/base"
 import { BodyProblems, contentsSaid, goToLine, SHOWING } from "~/components/contents"
 import { Answer, Editing, Field, LanguagePair, Submit, TextArea, Unsaved } from "~/components/form"
 import { Icon } from "~/components/icons"
@@ -79,6 +79,8 @@ export default function AdminContentsAlert({ loaderData, actionData }: Route.Com
                       {index > 0 && <hr className="border-line" />}
                       <AlertForm
                         row={row}
+                        at={index}
+                        of={alerts.length}
                         locale={locale}
                         refused={actionData?.status === "body" && actionData.alertId === row.id ? actionData.problems : []}
                       />
@@ -117,10 +119,15 @@ function bodyOf(form: HTMLFormElement, name: string): string {
  * the save, which takes one language at a time.
  *
  * **One form rather than three.** Every button names its own intent, so what
- * has been typed travels with whichever of them is pressed.
+ * has been typed travels with whichever of them is pressed. **Moving it is
+ * the exception**: it saves nothing typed, so the two buttons submit forms of
+ * their own, outside this one (`ReorderButtons` の `form`).
  */
-function AlertForm({ row, locale, refused }: {
+function AlertForm({ row, at, of, locale, refused }: {
   row: AlertRow
+  /** Its place in the list, from the top. */
+  at: number
+  of: number
   locale: Locale
   /** The lines of this alert's words its last save refused. */
   refused: BodyProblem[]
@@ -128,92 +135,111 @@ function AlertForm({ row, locale, refused }: {
   const messages = messagesFor(locale)
   const t = messages.admin.contents
   const [ready, setReady] = useState(row.ja !== "" && row.en !== "")
+  const moveForm = `${useId()}-move`
+  const moveFormOf = (by: -1 | 1) => `${moveForm}${by === -1 ? "up" : "down"}`
 
+  // One element for the list to space: the two forms hold nothing to draw.
   return (
-    <Editing
-      method="post"
-      className="flex flex-col gap-4"
-      onInput={(event) => {
-        const form = event.currentTarget
-        setReady(bodyOf(form, "ja") !== "" && bodyOf(form, "en") !== "")
-      }}
-    >
-      <input type="hidden" name="alertId" value={row.id} />
-      {/* Which of these the site is indicating, above the words rather than in the
-          state of a control at the foot of them — and at the other end of that
-          line, the way to take the whole alert away. It acts on the alert
-          rather than on what is typed into it, so it is shown with what identifies
-          the alert rather than among the controls that write it. **When it is
-          shown is the period's to say**, under the words, not a day beside the
-          state. */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex flex-wrap items-center gap-3 text-sm">
-          <AlertState row={row} locale={locale} />
-        </p>
-        <Confirm
-          label={t.alert.remove}
-          title={t.alert.removeTitle}
-          warning={t.alert.removeWarning}
-          confirm={t.alert.removeConfirm}
-          intent="delete-alert"
-        />
-      </div>
-      {/* **The two languages are one value.** */}
-      <LanguagePair>
-        {(["ja", "en"] as const).map((language) => (
-          <AlertBody
-            key={language}
-            language={language}
-            value={row[language]}
-            problems={refused.filter((one) => one.locale === language)}
-            locale={locale}
-          />
-        ))}
-      </LanguagePair>
-      {/* **The period is part of the alert rather than of showing it**, so it is
-          written with the words and saved by either button: the state above
-          says whether the site shows it now, and the period says when. */}
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-end gap-3">
-          <Field
-            label={t.alert.displayFrom}
-            name="displayFrom"
-            type="datetime-local"
-            width="w-56"
-            value={row.displayFrom === null ? "" : asLocalInput(row.displayFrom)}
-          />
-          <Field
-            label={t.alert.displayUntil}
-            name="displayUntil"
-            type="datetime-local"
-            width="w-56"
-            value={row.displayUntil === null ? "" : asLocalInput(row.displayUntil)}
-          />
+    <div>
+      {([-1, 1] as const).map((by) => (
+        <Form key={by} method="post" id={moveFormOf(by)}>
+          <input type="hidden" name="intent" value={by === -1 ? "move-alert-up" : "move-alert-down"} />
+          <input type="hidden" name="alertId" value={row.id} />
+        </Form>
+      ))}
+      <Editing
+        method="post"
+        className="flex flex-col gap-4"
+        onInput={(event) => {
+          const form = event.currentTarget
+          setReady(bodyOf(form, "ja") !== "" && bodyOf(form, "en") !== "")
+        }}
+      >
+        <input type="hidden" name="alertId" value={row.id} />
+        {/* Which of these the site is indicating, above the words rather than in the
+            state of a control at the foot of them — and at the other end of that
+            line, the ways to move the whole alert and to take it away. They act on
+            the alert rather than on what is typed into it, so they are shown with
+            what identifies the alert rather than among the controls that write it.
+            **When it is shown is the period's to say**, under the words, not a
+            day beside the state. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex flex-wrap items-center gap-3 text-sm">
+            <AlertState row={row} locale={locale} />
+          </p>
+          <span className="flex items-center gap-1">
+            <ReorderButtons
+              at={at}
+              of={of}
+              labels={{ up: messages.admin.moveUp, down: messages.admin.moveDown }}
+              form={moveFormOf}
+            />
+            <Confirm
+              label={t.alert.remove}
+              title={t.alert.removeTitle}
+              warning={t.alert.removeWarning}
+              confirm={t.alert.removeConfirm}
+              intent="delete-alert"
+            />
+          </span>
         </div>
-        <Empty>{t.alert.periodNote}</Empty>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        {row.active
-          ? (
-              <Submit intent="hide-alert" icon={<Icon name="eye-off" />} className={SHOWING}>
-                {t.alert.hide}
-              </Submit>
-            )
-          : (
-              <Submit
-                intent="show-alert"
-                icon={<Icon name="eye" />}
-                className={SHOWING}
-                disabled={ready ? undefined : t.alert.showBlocked}
-                reasonAt="left"
-              >
-                {t.alert.show}
-              </Submit>
-            )}
-        <Submit intent="update-alert" icon={<Icon name="save" />} saves>{t.alert.save}</Submit>
-        <Unsaved locale={locale} />
-      </div>
-    </Editing>
+        {/* **The two languages are one value.** */}
+        <LanguagePair>
+          {(["ja", "en"] as const).map((language) => (
+            <AlertBody
+              key={language}
+              language={language}
+              value={row[language]}
+              problems={refused.filter((one) => one.locale === language)}
+              locale={locale}
+            />
+          ))}
+        </LanguagePair>
+        {/* **The period is part of the alert rather than of showing it**, so it is
+            written with the words and saved by either button: the state above
+            says whether the site shows it now, and the period says when. */}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-end gap-3">
+            <Field
+              label={t.alert.displayFrom}
+              name="displayFrom"
+              type="datetime-local"
+              width="w-56"
+              value={row.displayFrom === null ? "" : asLocalInput(row.displayFrom)}
+            />
+            <Field
+              label={t.alert.displayUntil}
+              name="displayUntil"
+              type="datetime-local"
+              width="w-56"
+              value={row.displayUntil === null ? "" : asLocalInput(row.displayUntil)}
+            />
+          </div>
+          <Empty>{t.alert.periodNote}</Empty>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {row.active
+            ? (
+                <Submit intent="hide-alert" icon={<Icon name="eye-off" />} className={SHOWING}>
+                  {t.alert.hide}
+                </Submit>
+              )
+            : (
+                <Submit
+                  intent="show-alert"
+                  icon={<Icon name="eye" />}
+                  className={SHOWING}
+                  disabled={ready ? undefined : t.alert.showBlocked}
+                  reasonAt="left"
+                >
+                  {t.alert.show}
+                </Submit>
+              )}
+          <Submit intent="update-alert" icon={<Icon name="save" />} saves>{t.alert.save}</Submit>
+          <Unsaved locale={locale} />
+        </div>
+      </Editing>
+    </div>
   )
 }
 

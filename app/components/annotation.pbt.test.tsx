@@ -216,7 +216,7 @@ describe("the anchors a dataset page draws", () => {
         values: [
           { keyId: "k-materials", value: { kind: "text", text: prose("健常者：2名") } },
           { keyId: "k-health", value: term },
-          { keyId: "k-count", value: { kind: "number", values: filled([{ value: 2, high: null, unit: null, inputValue: 2, inputHigh: null, inputUnit: null, label: null, note: null }]) } },
+          { keyId: "k-count", value: { kind: "number", values: filled([{ value: 2, high: null, unit: null, inputValue: 2, inputHigh: null, inputUnit: null, prefix: null, suffix: null }]) } },
           { keyId: "k-counted-as", value: term },
           { keyId: "k-sample", value: { kind: "text", text: prose("末梢血") } },
           { keyId: "k-tissue", value: term },

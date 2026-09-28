@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import type { Bilingual, DatasetContent, Line, RichText, ValueSlot } from "~/content/types"
+import type { Bilingual, Line, RichText } from "~/content/types"
 
+import type { SourceDatasetContent, SourceValueSlot } from "./number-words"
 import { settleNbdcCells, type NbdcCellContext } from "./nbdc-cells"
 
 const KEY = "key-nbdc"
@@ -12,10 +13,10 @@ const line = (...parts: (string | [string, string])[]): Line =>
   parts.map((part) => (typeof part === "string" ? { text: part } : { text: part[0], href: part[1] }))
 const file = (name: string, hum = "hum0001") => `/files/${hum}/${name}`
 
-const cell = (ja: RichText, en: RichText = ja, keyId = KEY): ValueSlot =>
+const cell = (ja: RichText, en: RichText = ja, keyId = KEY): SourceValueSlot =>
   ({ keyId, value: { kind: "text", text: { ja: { state: "value", value: ja }, en: { state: "value", value: en } } } })
 
-const dataset = (datasetId: string, cells: ValueSlot[], fileSelection: string[] = []): DatasetContent & { datasetId: string } => ({
+const dataset = (datasetId: string, cells: SourceValueSlot[], fileSelection: string[] = []): SourceDatasetContent & { datasetId: string } => ({
   datasetId,
   releaseDate: null,
   fileSelection,
@@ -44,7 +45,7 @@ const context = (over: Partial<NbdcCellContext> = {}): NbdcCellContext => ({
   ...over,
 })
 
-const cellsOf = (one: DatasetContent) => one.experiments.flatMap((experiment) => experiment.values.filter((slot) => slot.keyId === KEY))
+const cellsOf = (one: SourceDatasetContent) => one.experiments.flatMap((experiment) => experiment.values.filter((slot) => slot.keyId === KEY))
 
 describe("settleNbdcCells", () => {
   describe("the files selected", () => {
@@ -98,7 +99,7 @@ describe("settleNbdcCells", () => {
         [line("(1) hum0001.v1.gwas.v1"), line("- ", ["Dictionary file", file("dict.xlsx")])],
       ), cell([line("kept")], [line("kept")], OTHER_KEY)])], context())
 
-      expect(cellsOf(out.datasets[0] as DatasetContent)).toEqual([])
+      expect(cellsOf(out.datasets[0] as SourceDatasetContent)).toEqual([])
       expect(out.datasets[0]?.experiments[0]?.values.map((slot) => slot.keyId)).toEqual([OTHER_KEY])
       expect(out.dropped).toEqual([{
         datasetId: "d-1",
@@ -115,7 +116,7 @@ describe("settleNbdcCells", () => {
         line("Dictionary file（", ["BBJ", file("dict_BBJ.html")], "、", ["EUR", file("dict_EUR.html")], "）"),
       ])])], context())
 
-      expect(cellsOf(out.datasets[0] as DatasetContent)).toEqual([])
+      expect(cellsOf(out.datasets[0] as SourceDatasetContent)).toEqual([])
     })
 
     it("may have a caption over the line of the file whose label it is, with a footnote mark", () => {
@@ -124,7 +125,7 @@ describe("settleNbdcCells", () => {
         [line("Arrhythmia"), line("*", ["hum0001.v1.gwas.v1", file("AR.zip")])],
       )])], context())
 
-      expect(cellsOf(out.datasets[0] as DatasetContent)).toEqual([])
+      expect(cellsOf(out.datasets[0] as SourceDatasetContent)).toEqual([])
     })
 
     it("may have lines captioned for another dataset whose files one of the research's datasets selects", () => {
@@ -144,7 +145,7 @@ describe("settleNbdcCells", () => {
     const stays = (ja: RichText, en: RichText = ja, over: Partial<NbdcCellContext> = {}, selection: string[] = []) => {
       const one = dataset("d-1", [cell(ja, en)], selection)
       const out = settleNbdcCells([one], context(over))
-      expect(cellsOf(out.datasets[0] as DatasetContent)).toEqual(cellsOf(one))
+      expect(cellsOf(out.datasets[0] as SourceDatasetContent)).toEqual(cellsOf(one))
       expect(out.dropped).toEqual([])
     }
 
@@ -187,7 +188,7 @@ describe("settleNbdcCells", () => {
     it("loses the groups the file table shows in full and keeps the others", () => {
       const out = settleNbdcCells([dataset("d-1", [groups()])], context())
 
-      expect(cellsOf(out.datasets[0] as DatasetContent)).toEqual([cell(
+      expect(cellsOf(out.datasets[0] as SourceDatasetContent)).toEqual([cell(
         [line("【個別データ】"), line("Phenotype：", ["JGAD000101", "https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000101"])],
         [line("[Individual datasets]"), line("Phenotype: ", ["JGAD000101", "https://ddbj.nig.ac.jp/resource/jga-dataset/JGAD000101"])],
       )])
@@ -197,13 +198,13 @@ describe("settleNbdcCells", () => {
     it("stays whole where the two languages are not grouped the same way", () => {
       const one = dataset("d-1", [groups(false)])
 
-      expect(cellsOf(settleNbdcCells([one], context()).datasets[0] as DatasetContent)).toEqual(cellsOf(one))
+      expect(cellsOf(settleNbdcCells([one], context()).datasets[0] as SourceDatasetContent)).toEqual(cellsOf(one))
     })
 
     it("is taken out whole where the file table shows every group in full", () => {
       const out = settleNbdcCells([dataset("d-1", [cell([line("【GWAS】"), line(["hum0001.v1.gwas.v1", file("gwas.zip")])], [line("[GWAS]"), line(["hum0001.v1.gwas.v1", file("gwas.zip")])])])], context())
 
-      expect(cellsOf(out.datasets[0] as DatasetContent)).toEqual([])
+      expect(cellsOf(out.datasets[0] as SourceDatasetContent)).toEqual([])
     })
   })
 })

@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { grantAdmin } from "~/auth/admins.server"
@@ -8,7 +8,7 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
 import { renderMarkdown } from "~/public/markdown.server"
-import { findDocument } from "~/public/site.server"
+import { activeAlerts, findDocument } from "~/public/site.server"
 
 import {
   alertAction,
@@ -401,6 +401,41 @@ describe("バージョン", () => {
 
     const slugs = (await db.select({ slug: s.document.slug }).from(s.document)).map((r) => r.slug)
     expect(slugs.sort()).toEqual(["x/version/10", "x/version/9"])
+  })
+
+  it("**新しいバージョンは番号がいちばん大きいバージョンのコピーで始まり、未公開になる**", async () => {
+    const token = await signIn(CURATOR, true)
+    const id = await makeDocument("x")
+    await publishSide(id, "ja", "v1 の本文")
+    await publishSide(id, "en", "v1 body")
+    await documentAction(post(token, adminDocumentPath(id), { intent: "cut-into-version", number: "1" }), id)
+    const series = only(await db.select().from(s.documentSeries))
+    const add = (number: string) => thrown(() => seriesAction(
+      post(token, adminSeriesPath(series.id), { intent: "add-version", number }),
+      series.id,
+    ))
+    const textsOf = async (slug: string) => (await db
+      .select({ locale: s.documentContent.locale, content: s.documentContent.content, published: s.documentContent.published })
+      .from(s.documentContent)
+      .innerJoin(s.document, eq(s.document.id, s.documentContent.documentId))
+      .where(eq(s.document.slug, slug)))
+      .toSorted((a, b) => a.locale.localeCompare(b.locale))
+
+    await add("3")
+    expect(await textsOf("x/version/3")).toEqual([
+      { locale: "en", content: { title: "題", body: "v1 body" }, published: false },
+      { locale: "ja", content: { title: "題", body: "v1 の本文" }, published: false },
+    ])
+
+    // Added below the highest, a revision still starts from the highest.
+    const three = only(await db.select({ id: s.document.id }).from(s.document).where(eq(s.document.slug, "x/version/3")))
+    await db.update(s.documentContent).set({ content: { title: "題", body: "v3 の本文" } })
+      .where(and(eq(s.documentContent.documentId, three.id), eq(s.documentContent.locale, "ja")))
+    await add("2")
+    expect((await textsOf("x/version/2")).map((one) => [one.locale, one.content.body, one.published]))
+      .toEqual([["en", "v1 body", false], ["ja", "v3 の本文", false]])
+    // The revision copied from is left as it was.
+    expect((await textsOf("x/version/1")).every((one) => one.published)).toBe(true)
   })
 
   it("既に使われているバージョン番号はエラーになる", async () => {
@@ -1006,6 +1041,47 @@ describe("アラート", () => {
 
     expect((await alertsPage(get(token, adminAlertPath()))).alerts.map((row) => row.id))
       .toEqual(order)
+  })
+
+  it("新しいアラートはいちばん上に入り、ほかの並びは変わらない", async () => {
+    const token = await signIn(CURATOR, true)
+    const listed = async () => (await alertsPage(get(token, adminAlertPath()))).alerts.map((row) => row.id)
+
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const [first = ""] = await listed()
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const [second = ""] = await listed()
+    await alertAction(post(token, adminAlertPath(), { intent: "create-alert" }))
+    const [third = ""] = await listed()
+
+    expect(await listed()).toEqual([third, second, first])
+  })
+
+  it("上下のボタンで 1 つずつ動き、両端ではそれ以上動かず、一覧と公開ページが同じ順になる", async () => {
+    const token = await signIn(CURATOR, true)
+    const made = await db
+      .insert(s.alert)
+      .values(["1", "2", "3"].map((ja) => ({ content: { body: { ja, en: ja } }, active: true })))
+      .returning({ id: s.alert.id })
+    const [a = "", b = "", c = ""] = made.map((row) => row.id).sort()
+    const listed = async () => (await alertsPage(get(token, adminAlertPath()))).alerts.map((row) => row.id)
+    const move = (alertId: string, intent: "move-alert-up" | "move-alert-down") =>
+      alertAction(post(token, adminAlertPath(), { intent, alertId }))
+
+    expect(await move(c, "move-alert-up")).toEqual({ status: "ok", done: "alert-moved" })
+    expect(await listed()).toEqual([a, c, b])
+    await move(a, "move-alert-down")
+    expect(await listed()).toEqual([c, a, b])
+    await move(c, "move-alert-up")
+    await move(b, "move-alert-down")
+    expect(await listed()).toEqual([c, a, b])
+    expect((await activeAlerts("ja")).map((one) => one.html.replace(/<[^>]+>/g, "").trim()))
+      .toEqual(["3", "1", "2"])
+    // Positions come out consecutive, whatever they were before.
+    expect((await db.select({ position: s.alert.position }).from(s.alert)).map((row) => row.position).toSorted())
+      .toEqual([0, 1, 2])
+
+    expect(await move("00000000-0000-7000-8000-000000000000", "move-alert-up")).toEqual({ status: "unknown-target" })
   })
 
   /**

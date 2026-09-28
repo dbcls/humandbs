@@ -47,8 +47,9 @@ export function IdForm({ nextNhaId, locale, onIssuing, size, filled = false }: {
 
   return (
     <>
-      {/* An empty id is refused before it is sent: the `label_pin` table has nothing to
-          say about "", and the server treats it as a row that is not there. */}
+      {/* **No check of the browser's own.** An empty id is sent like any other and
+          the server answers it in the screen's own message, the way every other
+          form here says what is missing — not in a popup of the browser's own. */}
       <input
         key={issuing ? "issuing" : "typing"}
         type="text"
@@ -56,7 +57,6 @@ export function IdForm({ nextNhaId, locale, onIssuing, size, filled = false }: {
         aria-label={messages.admin.datasetEditor.idHeading}
         {...(issuing ? { value: nextNhaId ?? "", readOnly: true } : {})}
         disabled={issuing}
-        required={!issuing}
         placeholder={detail.pinDatasetPlaceholder}
         className={`${size === "row" ? CONTROL_ROW : `${CONTROL} text-sm`} w-48 disabled:opacity-50`}
       />

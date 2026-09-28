@@ -30,8 +30,17 @@ export interface ExperimentChip {
   countedAs?: ValueView
 }
 
+/** A key a row is headed by: its identity, for the row's place, and its name. */
+export interface KeyHeading {
+  keyId: string
+  label: string
+}
+
 export interface ExperimentRow {
-  value: ValueView
+  keyId: string
+  label: string
+  /** Null for a paragraph that is not written: the row is its name with the classifications under it. */
+  value: ValueView | null
   /** The classifications drawn under this row's paragraph. */
   chips: ExperimentChip[]
 }
@@ -40,17 +49,24 @@ const underOf = new Map([...CHIPS_UNDER].flatMap(([under, codes]) => codes.map((
 
 /**
  * An experiment's values as its page draws them, in the order they come: a row
- * each, with the classifications gathered under their paragraph. **A
- * classification whose paragraph is not there stays a row**, as every value
- * was before — a chip is a word about a paragraph, and with none it would be a
- * word about nothing.
+ * each, with the classifications gathered under their paragraph.
+ *
+ * **A classification whose paragraph is not written is still a chip**, under a
+ * row of the paragraph's name alone (`headings`), placed where the first of
+ * them comes. The chips read the same whether or not the paragraph was written,
+ * and a row of the paragraph's name keeps them from being taken for the value
+ * above. Where the catalog does not name the paragraph, each stays a row.
  */
-export function experimentRows(values: readonly ValueView[]): ExperimentRow[] {
+export function experimentRows(
+  values: readonly ValueView[],
+  headings: Readonly<Record<string, KeyHeading>>,
+): ExperimentRow[] {
   const present = new Set(values.map((one) => one.code))
   const byCode = new Map(values.map((one) => [one.code, one]))
-  const chipped = (one: ValueView) => {
+  const headingOf = (code: string): KeyHeading | undefined => headings[code]
+  const underHeading = (one: ValueView): string | undefined => {
     const under = underOf.get(one.code)
-    return under !== undefined && present.has(under)
+    return under !== undefined && (present.has(under) || headingOf(under) !== undefined) ? under : undefined
   }
   const chipsUnder = (code: string): ExperimentChip[] => values
     .filter((one) => underOf.get(one.code) === code)
@@ -59,9 +75,18 @@ export function experimentRows(values: readonly ValueView[]): ExperimentRow[] {
       const countedAs = one.code === COUNT ? byCode.get(COUNTED_AS) : undefined
       return [countedAs === undefined ? { value: one } : { value: one, countedAs }]
     })
-  return values
-    .filter((one) => !chipped(one))
-    .map((one) => ({ value: one, chips: CHIPS_UNDER.has(one.code) ? chipsUnder(one.code) : [] }))
+
+  const headed = new Set<string>()
+  return values.flatMap((one): ExperimentRow[] => {
+    const under = underHeading(one)
+    if (under === undefined) {
+      return [{ keyId: one.keyId, label: one.label, value: one, chips: CHIPS_UNDER.has(one.code) ? chipsUnder(one.code) : [] }]
+    }
+    const heading = headingOf(under)
+    if (present.has(under) || headed.has(under) || heading === undefined) return []
+    headed.add(under)
+    return [{ ...heading, value: null, chips: chipsUnder(under) }]
+  })
 }
 
 const SEPARATOR: Record<Locale, string> = { ja: "、", en: ", " }

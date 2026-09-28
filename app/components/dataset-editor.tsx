@@ -41,7 +41,7 @@ import {
   emptyNumberRow,
   emptyValueInput,
   highBelowValue,
-  labelCandidatesFor,
+  prefixCandidatesFor,
   UneditableValueKind,
   type DatasetContentInput,
   type DiseaseRow,
@@ -890,7 +890,7 @@ function ValueEditor({ label, named = true, locale, catalogKey: key, terms, valu
           locale={locale}
           annotations={annotations}
           units={key.inputUnits ?? []}
-          labelCandidates={labelCandidatesFor(key.code)}
+          prefixCandidates={prefixCandidatesFor(key.code)}
           state={body.state}
           rows={body.rows}
           remove={remove}
@@ -1059,13 +1059,15 @@ function AddValue({ locale, keys, catalogLink, onAdd }: {
  * `X染色体: 147,353 SNVs` — is two facts, and typing them as two rows is what
  * makes them countable and filterable instead of prose.
  *
- * **The label and the note are always there**, on every row, at a width that
- * takes a short phrase (`常染色体`, `average`). A box that appeared only once one
- * of them was written could not be written into on a row holding a bare number,
- * which is where most rows start. **A row wraps between its three parts** —
- * the label's pair, the number with its upper end and unit, the note's pair —
- * and never inside one: `6 〜` on one line and its upper end on the next reads
- * as two values.
+ * **What is written before and after the number is typed as it is shown** —
+ * `常染色体: ` and ` SNVs`, spaces and marks included — so the row reads left to
+ * right as the page will. **The prefix and the suffix are always there**, on
+ * every row, at a width that takes a short phrase. A box that appeared only
+ * once one of them was written could not be written into on a row holding a
+ * bare number, which is where most rows start. **A row wraps between its three
+ * parts** — the prefix's pair, the number with its upper end and unit, the
+ * suffix's pair — and never inside one: `6 〜` on one line and its upper end on
+ * the next reads as two values.
  *
  * **The unit is a `Select` the screen holds.** A key offers a few units and
  * that is what a select is for; everything on this screen is in React state, so
@@ -1079,10 +1081,10 @@ function AddValue({ locale, keys, catalogLink, onAdd }: {
  * (`app/admin/dataset-form.server.ts`), so the box marks itself wrong the
  * moment it is typed rather than waiting for that refusal.
  */
-/** The label and note boxes of a number's row: a short phrase, and the placeholder that names the box. */
+/** The prefix and suffix boxes of a number's row: a short phrase, and the placeholder that names the box. */
 const NUMBER_WORDS_WIDTH = "w-32"
 
-function NumberField({ label, named: drawsName = true, type, locale, annotations, units, labelCandidates, state, rows, remove, onChange }: {
+function NumberField({ label, named: drawsName = true, type, locale, annotations, units, prefixCandidates, state, rows, remove, onChange }: {
   label: string
   /** What kind of value it takes, beside the name (`ValueEditor`). */
   type?: React.ReactNode
@@ -1091,8 +1093,8 @@ function NumberField({ label, named: drawsName = true, type, locale, annotations
   locale: Locale
   annotations: FieldAnnotations
   units: string[]
-  /** Free-text suggestions for the label box, not a closed set (`app/admin/dataset-form.ts`). */
-  labelCandidates: readonly string[]
+  /** Free-text suggestions for the prefix box, not a closed set (`app/admin/dataset-form.ts`). */
+  prefixCandidates: readonly string[]
   state: SlotState
   rows: NumberRow[]
   remove?: { label: string, onClick: () => void }
@@ -1101,7 +1103,7 @@ function NumberField({ label, named: drawsName = true, type, locale, annotations
   const t = messagesFor(locale).admin.datasetEditor
   const disabled = state !== "value"
   const box = `${CONTROL} text-sm disabled:opacity-50`
-  const labelListId = useId()
+  const prefixListId = useId()
   const edit = (at: number, next: Partial<NumberRow>) => {
     onChange({ state, rows: rows.map((row, i) => (i === at ? { ...row, ...next } : row)) })
   }
@@ -1115,14 +1117,14 @@ function NumberField({ label, named: drawsName = true, type, locale, annotations
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1 md:max-w-xl">
           <Stack gap="tight">
-            {labelCandidates.length > 0 && (
-              <datalist id={labelListId}>
-                {labelCandidates.map((candidate) => <option key={candidate} value={candidate} />)}
+            {prefixCandidates.length > 0 && (
+              <datalist id={prefixListId}>
+                {prefixCandidates.map((candidate) => <option key={candidate} value={candidate} />)}
               </datalist>
             )}
             {rows.map((row, at) => {
               const highInvalid = highBelowValue(row)
-              const highErrorId = `${labelListId}-high-${at}`
+              const highErrorId = `${prefixListId}-high-${at}`
               // Rendered as a spread rather than `aria-invalid={false}` — React
               // writes an `aria-*` prop out whichever way it is set, and a valid
               // row has nothing to describe (`fields.tsx` の `SlotEditor` の `described`).
@@ -1134,21 +1136,21 @@ function NumberField({ label, named: drawsName = true, type, locale, annotations
                   <span className="flex items-center gap-2">
                     <input
                       type="text"
-                      value={row.label.ja}
+                      value={row.prefix.ja}
                       disabled={disabled}
-                      aria-label={t.numberLabelJa}
-                      placeholder={t.numberLabelJa}
-                      list={labelCandidates.length > 0 ? labelListId : undefined}
-                      onChange={(event) => { edit(at, { label: { ...row.label, ja: event.target.value } }) }}
+                      aria-label={t.numberPrefixJa}
+                      placeholder={t.numberPrefixJa}
+                      list={prefixCandidates.length > 0 ? prefixListId : undefined}
+                      onChange={(event) => { edit(at, { prefix: { ...row.prefix, ja: event.target.value } }) }}
                       className={`${box} ${NUMBER_WORDS_WIDTH}`}
                     />
                     <input
                       type="text"
-                      value={row.label.en}
+                      value={row.prefix.en}
                       disabled={disabled}
-                      aria-label={t.numberLabelEn}
-                      placeholder={t.numberLabelEn}
-                      onChange={(event) => { edit(at, { label: { ...row.label, en: event.target.value } }) }}
+                      aria-label={t.numberPrefixEn}
+                      placeholder={t.numberPrefixEn}
+                      onChange={(event) => { edit(at, { prefix: { ...row.prefix, en: event.target.value } }) }}
                       className={`${box} ${NUMBER_WORDS_WIDTH}`}
                     />
                   </span>
@@ -1197,20 +1199,20 @@ function NumberField({ label, named: drawsName = true, type, locale, annotations
                   <span className="flex items-center gap-2">
                     <input
                       type="text"
-                      value={row.note.ja}
+                      value={row.suffix.ja}
                       disabled={disabled}
-                      aria-label={t.numberNoteJa}
-                      placeholder={t.numberNoteJa}
-                      onChange={(event) => { edit(at, { note: { ...row.note, ja: event.target.value } }) }}
+                      aria-label={t.numberSuffixJa}
+                      placeholder={t.numberSuffixJa}
+                      onChange={(event) => { edit(at, { suffix: { ...row.suffix, ja: event.target.value } }) }}
                       className={`${box} ${NUMBER_WORDS_WIDTH}`}
                     />
                     <input
                       type="text"
-                      value={row.note.en}
+                      value={row.suffix.en}
                       disabled={disabled}
-                      aria-label={t.numberNoteEn}
-                      placeholder={t.numberNoteEn}
-                      onChange={(event) => { edit(at, { note: { ...row.note, en: event.target.value } }) }}
+                      aria-label={t.numberSuffixEn}
+                      placeholder={t.numberSuffixEn}
+                      onChange={(event) => { edit(at, { suffix: { ...row.suffix, en: event.target.value } }) }}
                       className={`${box} ${NUMBER_WORDS_WIDTH}`}
                     />
                   </span>
@@ -1695,6 +1697,7 @@ function DatasetFacts({ view, locale }: {
             case "issued": return detail.issued(answer.label)
             case "taken": return detail.pinTaken
             case "reserved": return detail.pinReserved
+            case "empty": return detail.pinDatasetUnfilled
             default: return null
           }
         }}

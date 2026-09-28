@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import type { DatasetContent, DiseaseValue } from "~/content/types"
+import type { DiseaseValue } from "~/content/types"
 
+import type { SourceDatasetContent } from "./number-words"
 import { assertDiseaseEditsApplied, type DiseaseEdit, editDiseases } from "./disease-edits"
 
 const disease = (nameJa: string | null, nameEn: string | null, termIds: string[] = ["t-1"]): DiseaseValue => ({ termIds, nameJa, nameEn })
 
-const datasetWith = (...diseases: DiseaseValue[]): DatasetContent => ({
+const datasetWith = (...diseases: DiseaseValue[]): SourceDatasetContent => ({
   releaseDate: null,
   fileSelection: [],
   values: [],
@@ -20,7 +21,7 @@ const datasetWith = (...diseases: DiseaseValue[]): DatasetContent => ({
   }],
 })
 
-const diseasesOf = (dataset: DatasetContent): DiseaseValue[] | null => {
+const diseasesOf = (dataset: SourceDatasetContent): DiseaseValue[] | null => {
   const slot = dataset.experiments[0]?.values.find((one) => one.value.kind === "disease")
   if (slot?.value.kind !== "disease" || slot.value.diseases.state !== "value") return null
   return slot.value.diseases.value

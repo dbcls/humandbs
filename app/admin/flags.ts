@@ -131,12 +131,12 @@ class Walk {
       this.slot(path, presence(value.termIds, (ids) => ids.length === 0))
     } else if (value.kind === "number") {
       this.slot(path, presence(value.values, (numbers) => numbers.length === 0))
-      // Each number's label and note is its own translated pair, addressed by
+      // Each number's prefix and suffix is its own translated pair, addressed by
       // its position: numbers carry no identity of their own (`app/content/types.ts`).
       if (value.values.state === "value") {
         value.values.value.forEach((number, at) => {
-          this.pair(`${path}.${at}.label`, ofOptionalBilingual(number.label, "ja"), ofOptionalBilingual(number.label, "en"))
-          this.pair(`${path}.${at}.note`, ofOptionalBilingual(number.note, "ja"), ofOptionalBilingual(number.note, "en"))
+          this.pair(`${path}.${at}.prefix`, ofOptionalBilingual(number.prefix, "ja"), ofOptionalBilingual(number.prefix, "en"))
+          this.pair(`${path}.${at}.suffix`, ofOptionalBilingual(number.suffix, "ja"), ofOptionalBilingual(number.suffix, "en"))
         })
       }
     } else if (value.kind === "disease") {

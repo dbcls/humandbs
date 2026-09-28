@@ -773,7 +773,7 @@ async function renumber(
  * `unknown`, and a `case` whose every branch is unknown has no type to write
  * into an integer column.
  */
-function positions(ordered: readonly { id: string }[], column: PgColumn) {
+export function positions(ordered: readonly { id: string }[], column: PgColumn) {
   const branches = ordered.map((row, at) => sql`when ${row.id} then ${at}::int`)
   return sql`case ${column} ${sql.join(branches, sql` `)} end`
 }

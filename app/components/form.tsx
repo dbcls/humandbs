@@ -444,7 +444,6 @@ export function Field({
   width = "w-48",
   type = "text",
   placeholder,
-  pattern,
   hideLabel = false,
 }: FieldLook & {
   value?: string
@@ -457,11 +456,6 @@ export function Field({
    * a line under the box, where it reads as a rule about the value.
    */
   placeholder?: string
-  /**
-   * The shape the value has to have. **The server checks it too** — this only
-   * saves the round trip and shows the problem before the box is left.
-   */
-  pattern?: string
   /** For a row where a visible label would leave nothing lined up with it. */
   hideLabel?: boolean
 }) {
@@ -475,8 +469,6 @@ export function Field({
         defaultValue={value}
         disabled={disabled}
         placeholder={placeholder}
-        pattern={pattern}
-        title={pattern === undefined ? undefined : label}
         className={`${CONTROL} ${width} ${edge(error)} disabled:opacity-50`}
         {...invalid(id, error)}
       />

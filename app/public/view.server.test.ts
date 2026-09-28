@@ -366,6 +366,32 @@ function dataset(content: DatasetContent) {
   }, "ja", catalog)
 }
 
+describe("the names a dataset page heads chips with", () => {
+  it("names the paragraphs the catalog has, in the page's language, and leaves out the ones it does not", () => {
+    const withParagraph = key("k-materials", "materials-and-participants", 20)
+    const named: CatalogView = {
+      ...catalog,
+      keyById: new Map([...catalog.keyById, [withParagraph.id, withParagraph]]),
+      keyByCode: new Map([...catalog.keyByCode, [withParagraph.code, withParagraph]]),
+    }
+    const view = (locale: "ja" | "en") => datasetView({
+      archiveFiles: null,
+      studyAccession: null,
+      secondaryLabels: [],
+      label: "JGAD000001",
+      humLabel: "hum0001",
+      content: emptyDatasetContent(),
+      selection: [],
+      datePublished: null,
+      dateModified: null,
+      files: [],
+    }, locale, named)
+
+    expect(view("ja").chipHeadings).toEqual({ "materials-and-participants": { keyId: "k-materials", label: "materials-and-participants ja" } })
+    expect(view("en").chipHeadings).toEqual({ "materials-and-participants": { keyId: "k-materials", label: "materials-and-participants en" } })
+  })
+})
+
 /**
  * The largest selection is thousands of files, and a page shows twenty: the
  * view sent to the browser holds the page the address asks for and no more,
@@ -529,7 +555,7 @@ describe("what a dataset page has", () => {
           value: {
             kind: "number",
             values: filled([
-              { label: null, value: 375.31, unit: "GB", inputValue: 375.31, inputUnit: "GB", note: null },
+              { prefix: null, value: 375.31, unit: "GB", inputValue: 375.31, inputUnit: "GB", suffix: null },
             ]),
           },
         }],
@@ -553,7 +579,7 @@ describe("what a dataset page has", () => {
           value: {
             kind: "number",
             values: filled([
-              { label: null, value: 900, unit: "GB", inputValue: 0.9, inputUnit: "TB", high: 1300, inputHigh: 1.3, note: null },
+              { prefix: null, value: 900, unit: "GB", inputValue: 0.9, inputUnit: "TB", high: 1300, inputHigh: 1.3, suffix: null },
             ]),
           },
         }],
@@ -564,6 +590,40 @@ describe("what a dataset page has", () => {
       text: [[{ text: "0.9–1.3 TB" }]],
       untranslated: false,
     })
+  })
+
+  it("writes the prefix and the suffix around a count as they are, and falls back for a side left empty", () => {
+    const view = (locale: "ja" | "en") => datasetView({
+      archiveFiles: null,
+      studyAccession: null,
+      secondaryLabels: [],
+      label: "JGAD000001",
+      humLabel: "hum0001",
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "e1",
+          label: filled("WGS"),
+          values: [{
+            keyId: "k-early",
+            value: {
+              kind: "number",
+              values: filled([
+                { prefix: { ja: "常染色体: ", en: "Autosomes: " }, value: 5961600, unit: null, inputValue: 5961600, inputUnit: null, suffix: { ja: " SNVs", en: " SNVs" } },
+                { prefix: { ja: "X染色体: ", en: "" }, value: 147353, unit: null, inputValue: 147353, inputUnit: null, suffix: null },
+              ]),
+            },
+          }],
+        }],
+      },
+      selection: [],
+      datePublished: null,
+      dateModified: null,
+      files: [],
+    }, locale, catalog).experiments[0]?.values[0]?.field
+
+    expect(view("ja")).toEqual({ state: "rich", text: [[{ text: "常染色体: 5,961,600 SNVs" }], [{ text: "X染色体: 147,353" }]], untranslated: false })
+    expect(view("en")).toEqual({ state: "rich", text: [[{ text: "Autosomes: 5,961,600 SNVs" }], [{ text: "X染色体: 147,353" }]], untranslated: true })
   })
 
   it("falls back to the English label of a term that has no Japanese one", () => {

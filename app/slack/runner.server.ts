@@ -2,9 +2,9 @@
  * What sends the Slack message without anybody asking for it.
  *
  * **It runs inside the application process**, as the file switches and the
- * upstream refresh do. It looks every minute and sends at most once in
- * `SEND_INTERVAL_MS`; the row it claims keeps several processes from sending
- * the same thing.
+ * upstream refresh do. It looks every minute and sends once the clock has
+ * passed the next boundary of the configured interval (`notifySlack`); the
+ * row it claims keeps several processes from sending the same thing.
  *
  * It runs with no webhook configured as well, reading past what happens so
  * that configuring one later does not send what happened before.
@@ -34,6 +34,7 @@ async function tick(): Promise<void> {
     const webhookUrl = config.slackWebhookUrl
     await notifySlack(getDb(), {
       now: new Date(),
+      intervalMinutes: config.slackIntervalMinutes,
       origin: publicOrigin(config.auth),
       send: webhookUrl === null ? null : (text) => postToSlack(webhookUrl, text),
     })

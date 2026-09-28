@@ -69,3 +69,26 @@ describe("loadOwnerDatabaseUrl", () => {
     }))
   })
 })
+
+describe("the Slack notification's interval", () => {
+  const load = (value: string) => loadConfig({ ...VALID, HUMANDBS_SLACK_INTERVAL_MINUTES: value }).slackIntervalMinutes
+
+  it("takes a whole number of minutes exactly when it divides a day", () => {
+    fc.assert(fc.property(fc.integer({ min: 1, max: 3 * 1440 }), (minutes) => {
+      if (1440 % minutes === 0) expect(load(String(minutes))).toBe(minutes)
+      else expect(() => load(String(minutes))).toThrow(ConfigError)
+    }))
+  })
+
+  it("never lets the value into the error message", () => {
+    fc.assert(fc.property(fc.string(), (value) => {
+      try {
+        load(value)
+      } catch (error) {
+        expect(error).toBeInstanceOf(ConfigError)
+        expect((error as ConfigError).message)
+          .toBe("HUMANDBS_SLACK_INTERVAL_MINUTES must be a number of minutes that divides a day (1440)")
+      }
+    }))
+  })
+})

@@ -412,7 +412,7 @@ function number(catalog: CatalogWithTerms, code: string, value: number): Built {
   const unit = key.canonicalUnit
   const held: ContentValue = {
     kind: "number",
-    values: filled([{ label: null, value, unit, inputValue: value, inputUnit: unit, note: null }]),
+    values: filled([{ prefix: null, value, unit, inputValue: value, inputUnit: unit, suffix: null }]),
   }
   return { slot: { keyId: key.id, value: held }, dropped: [] }
 }

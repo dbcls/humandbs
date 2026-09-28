@@ -14,13 +14,14 @@ function render(nextNhaId: string | null, size?: "row"): string {
 }
 
 describe("the box a dataset's id is given in", () => {
-  it("opens as a box to type an accession in, refusing it empty, with the two ways beside it", () => {
+  it("opens as a box to type an accession in, with the two ways beside it and no check of the browser's own", () => {
     const html = render("NHA000007")
     const box = /<input[^>]*name="label"[^>]*>/.exec(html)?.[0] ?? ""
     const buttons = html.match(/<button[^>]*>[\s\S]*?<\/button>/g) ?? []
     const named = (word: string) => buttons.find((button) => button.includes(word)) ?? ""
 
-    expect(box).toContain("required=\"\"")
+    // An empty box is sent and answered in the screen's message, not in the browser's popup.
+    expect(box).not.toMatch(/\b(required|pattern)=/)
     expect(box).toContain("aria-label=\"データセット ID\"")
     expect(named("割り当て")).toContain("value=\"pin\"")
     // Pressed before the script is ready, it must not send anything: issuing

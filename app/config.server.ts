@@ -70,6 +70,12 @@ export interface AppConfig {
    */
   slackWebhookUrl: string | null
   /**
+   * How often the Slack notification is sent, in minutes. Each message covers
+   * up to a multiple of it counted from midnight in Japan, so it divides a day:
+   * sixty sends every hour on the hour.
+   */
+  slackIntervalMinutes: number
+  /**
    * Whether the site keeps itself out of search engines: a deployment with the
    * same content as another, which only the other should be found by.
    */
@@ -103,6 +109,7 @@ export function loadConfig(env: Env): AppConfig {
     applicationDb: readApplicationDb(env),
     assistantOrigin: readAssistantOrigin(env),
     slackWebhookUrl: readSlackWebhookUrl(env),
+    slackIntervalMinutes: readSlackIntervalMinutes(env),
     noindex: readFlag(env, "HUMANDBS_NOINDEX"),
   }
 }
@@ -155,6 +162,21 @@ function readSlackWebhookUrl(env: Env): string | null {
   const value = env.HUMANDBS_SLACK_WEBHOOK_URL?.trim()
   if (value === undefined || value === "") return null
   return readUrl(env, "HUMANDBS_SLACK_WEBHOOK_URL", ["https:"])
+}
+
+/** Hourly, on the hour: often enough to answer a comment the same morning, rarely enough to read. */
+const DEFAULT_SLACK_INTERVAL_MINUTES = 60
+
+const MINUTES_PER_DAY = 24 * 60
+
+function readSlackIntervalMinutes(env: Env): number {
+  const value = env.HUMANDBS_SLACK_INTERVAL_MINUTES?.trim()
+  if (value === undefined || value === "") return DEFAULT_SLACK_INTERVAL_MINUTES
+  const minutes = /^[0-9]+$/.test(value) ? Number(value) : 0
+  if (minutes < 1 || MINUTES_PER_DAY % minutes !== 0) {
+    throw new ConfigError(`HUMANDBS_SLACK_INTERVAL_MINUTES must be a number of minutes that divides a day (${String(MINUTES_PER_DAY)})`)
+  }
+  return minutes
 }
 
 const DEFAULT_APPLICATION_DB_SCHEMA = "jgasys"

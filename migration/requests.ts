@@ -28,7 +28,9 @@
  * always left as a comment.
  */
 
-import type { CommentAnchor, NumberValue, RichText, Slot } from "~/content/types"
+import type { CommentAnchor, RichText, Slot } from "~/content/types"
+
+import type { SourceNumber } from "./number-words"
 
 /** The phrasings curators asked in. Each is a request, never a data value. */
 const REQUEST = /ご教示|お知らせください|ご確認|でしょうか|ますか[？?]|お願いします|ご記入/
@@ -92,7 +94,7 @@ function wordsOf(slot: Slot<unknown>): string | null {
   return null
 }
 
-function isNumbers(value: unknown): value is NumberValue[] {
+function isNumbers(value: unknown): value is SourceNumber[] {
   return Array.isArray(value) && value.length > 0 && value.every((one: unknown) => typeof one === "object" && one !== null
     && typeof (one as { inputValue?: unknown }).inputValue === "number")
 }
@@ -103,10 +105,10 @@ function isNumbers(value: unknown): value is NumberValue[] {
  * `K: ご教示ください`. **Every number is written**, the answered ones too, since
  * the whole slot goes unsettled and the comment is what keeps them.
  */
-function askedNumbers(numbers: readonly NumberValue[]): { ja: string, en: string } | null {
+function askedNumbers(numbers: readonly SourceNumber[]): { ja: string, en: string } | null {
   const asks = numbers.some((one) => [one.label?.ja, one.label?.en, one.note?.ja, one.note?.en].some((words) => words !== undefined && isRequest(words)))
   if (!asks) return null
-  const line = (one: NumberValue, lang: "ja" | "en") => {
+  const line = (one: SourceNumber, lang: "ja" | "en") => {
     const label = one.label?.[lang] ? `${one.label[lang]}: ` : ""
     const high = one.inputHigh == null ? "" : `-${one.inputHigh}`
     const unit = one.inputUnit === null ? "" : ` ${one.inputUnit}`

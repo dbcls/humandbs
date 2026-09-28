@@ -25,8 +25,9 @@
  * three-character one it belongs to and the rollup has something to roll up.
  */
 
-import type { DiseaseValue, NumberValue, ValueSlot } from "~/content/types"
+import type { DiseaseValue } from "~/content/types"
 
+import type { SourceNumber, SourceValueSlot } from "./number-words"
 import { counts, GENOME_REGION_LABELS, numbersWithUnit, type ReadNumber } from "./numbers"
 import { icd10Resolve } from "~/icd10/codes"
 
@@ -894,7 +895,7 @@ export function collectTerms(experiments: Iterable<EsExperiment>): Map<string, T
   ]))
 }
 
-function numberValue(value: number, unit: string | null): NumberValue {
+function numberValue(value: number, unit: string | null): SourceNumber {
   return { label: null, value, unit, inputValue: value, inputUnit: unit, high: null, inputHigh: null, note: null }
 }
 
@@ -916,9 +917,9 @@ export function facetValueSlots(
     termIdsOf?: (setCode: string, code: string) => string[]
   },
   diseaseText?: DiseaseText,
-): ValueSlot[] {
+): SourceValueSlot[] {
   const searchable = experiment.searchable ?? {}
-  const slots: ValueSlot[] = []
+  const slots: SourceValueSlot[] = []
   const termIdsOf = identity.termIdsOf ?? ((setCode: string, code: string) => {
     const id = identity.termIdBySetAndCode.get(`${setCode}/${code}`)
     return id === undefined ? [] : [id]
@@ -962,7 +963,7 @@ export function diseaseSlots(
     knownCode: (code: string) => boolean
   },
   text?: DiseaseText,
-): ValueSlot[] {
+): SourceValueSlot[] {
   const keyId = identity.keyIdByCode.get(DISEASE_KEY)
   if (keyId === undefined) return []
   const diseases: DiseaseValue[] = diseasesOf(experiment, text).map((seed) => ({

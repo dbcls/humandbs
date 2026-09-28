@@ -83,14 +83,14 @@ function missingDataset(content: DatasetContent) {
 }
 
 const BARE_NUMBER: NumberValue = {
-  label: null,
+  prefix: null,
   value: 1,
   unit: null,
   inputValue: 1,
   inputUnit: null,
   high: null,
   inputHigh: null,
-  note: null,
+  suffix: null,
 }
 
 function withNumber(value: NumberValue): DatasetContent {
@@ -101,22 +101,22 @@ function withNumber(value: NumberValue): DatasetContent {
 }
 
 describe("what a dataset is still missing", () => {
-  it("finds nothing missing in a number nobody gave a label or a note to", () => {
+  it("finds nothing missing in a number nobody gave a prefix or a suffix to", () => {
     expect(missingDataset(withNumber(BARE_NUMBER))).toEqual({ unsettled: false, untranslated: false })
   })
 
-  it("counts a number's note the same way as its label", () => {
-    expect(missingDataset(withNumber({ ...BARE_NUMBER, note: { ja: "約", en: "" } })).untranslated)
+  it("counts a number's suffix the same way as its prefix", () => {
+    expect(missingDataset(withNumber({ ...BARE_NUMBER, suffix: { ja: " (約)", en: "" } })).untranslated)
       .toBe(true)
   })
 
-  it("does not count a label given in both languages", () => {
-    expect(missingDataset(withNumber({ ...BARE_NUMBER, label: { ja: "常染色体", en: "Autosome" } })).untranslated)
+  it("does not count a prefix given in both languages", () => {
+    expect(missingDataset(withNumber({ ...BARE_NUMBER, prefix: { ja: "常染色体: ", en: "Autosome: " } })).untranslated)
       .toBe(false)
   })
 
-  it("does not count a label whose both sides are empty, the same as no label at all", () => {
-    expect(missingDataset(withNumber({ ...BARE_NUMBER, label: { ja: "", en: "" } })).untranslated)
+  it("does not count a prefix whose both sides are empty, the same as no prefix at all", () => {
+    expect(missingDataset(withNumber({ ...BARE_NUMBER, prefix: { ja: "", en: "" } })).untranslated)
       .toBe(false)
   })
 
@@ -128,14 +128,14 @@ describe("what a dataset is still missing", () => {
         value: {
           kind: "number",
           values: filled([
-            { ...BARE_NUMBER, label: { ja: "常染色体", en: "" } },
-            { ...BARE_NUMBER, label: { ja: "X染色体", en: "X chromosome" } },
+            { ...BARE_NUMBER, prefix: { ja: "常染色体: ", en: "" } },
+            { ...BARE_NUMBER, prefix: { ja: "X染色体: ", en: "X chromosome: " } },
           ]),
         },
       }],
     }
     const problems = datasetProblems(content)
 
-    expect(problems.untranslated).toEqual([{ path: "values.k1.0.label", missing: "en" }])
+    expect(problems.untranslated).toEqual([{ path: "values.k1.0.prefix", missing: "en" }])
   })
 })

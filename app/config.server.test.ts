@@ -35,6 +35,7 @@ describe("loadConfig", () => {
       applicationDb: null,
       assistantOrigin: null,
       slackWebhookUrl: null,
+      slackIntervalMinutes: 60,
       noindex: false,
     })
   })
@@ -240,6 +241,35 @@ describe("loadConfig と Slack の通知", () => {
         loadConfig(withHook(value))
       } catch (error) {
         expect(String(error)).not.toContain("secret-token")
+      }
+    }
+  })
+})
+
+/**
+ * How often the Slack notification is sent: a number of minutes the sends
+ * fall on the clock by, which only works for one that divides a day.
+ */
+describe("loadConfig と Slack の通知の間隔", () => {
+  const withInterval = (value: string | undefined) => ({ ...VALID, HUMANDBS_SLACK_INTERVAL_MINUTES: value })
+
+  it("設定が無いときと空のときは 60 分", () => {
+    for (const value of [undefined, "", " \n"]) expect(loadConfig(withInterval(value)).slackIntervalMinutes, String(value)).toBe(60)
+  })
+
+  it("1 日の分数 (1440) の約数は、前後の空白を除いてそのまま使う", () => {
+    for (const [value, minutes] of [["1", 1], [" 5\n", 5], ["45", 45], ["90", 90], ["1440", 1440]] as const) {
+      expect(loadConfig(withInterval(value)).slackIntervalMinutes).toBe(minutes)
+    }
+  })
+
+  it("1440 の約数でない分・0・整数でない値は起動時にエラーにし、エラーに値を含めない", () => {
+    for (const value of ["7", "100", "2880", "0", "-60", "1.5", "60m", "1e1", "abc"]) {
+      expect(() => loadConfig(withInterval(value)), value).toThrow(ConfigError)
+      try {
+        loadConfig(withInterval(value))
+      } catch (error) {
+        expect(String(error)).not.toContain(`: ${value}`)
       }
     }
   })

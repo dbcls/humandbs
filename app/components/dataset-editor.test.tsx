@@ -306,7 +306,7 @@ describe("the dataset editing form", () => {
           value: {
             kind: "number",
             values: filled([{
-              label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", high: null, inputHigh: null, note: null,
+              prefix: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", high: null, inputHigh: null, suffix: null,
             }]),
           },
         },
@@ -331,7 +331,7 @@ describe("the dataset editing form", () => {
           kind: "number",
           values: {
             state: "value",
-            value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
+            value: [{ prefix: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", suffix: null }],
           },
         },
       }],
@@ -355,14 +355,14 @@ describe("the dataset editing form", () => {
           values: {
             state: "value",
             value: [{
-              label: null,
+              prefix: null,
               value: 900,
               unit: "GB",
               inputValue: 0.9,
               inputUnit: "TB",
               high: 1300,
               inputHigh: 1.3,
-              note: null,
+              suffix: null,
             }],
           },
         },
@@ -387,14 +387,14 @@ describe("the dataset editing form", () => {
           values: {
             state: "value",
             value: [{
-              label: null,
+              prefix: null,
               value: 1300,
               unit: "GB",
               inputValue: 1.3,
               inputUnit: "GB",
               high: 900,
               inputHigh: 0.9,
-              note: null,
+              suffix: null,
             }],
           },
         },
@@ -410,7 +410,7 @@ describe("the dataset editing form", () => {
     expect(lowInput).not.toContain("aria-invalid")
   })
 
-  it("offers this key's label candidates on the label box, and no others", () => {
+  it("offers this key's prefix candidates on the prefix box, and no others", () => {
     const withCandidates = render(view({
       ...emptyDatasetContent(),
       values: [{
@@ -420,8 +420,8 @@ describe("the dataset editing form", () => {
           values: {
             state: "value",
             value: [
-              { label: { ja: "常染色体", en: "" }, value: 1, unit: null, inputValue: 1, inputUnit: null, note: null },
-              { label: null, value: 2, unit: null, inputValue: 2, inputUnit: null, note: null },
+              { prefix: { ja: "常染色体: ", en: "" }, value: 1, unit: null, inputValue: 1, inputUnit: null, suffix: null },
+              { prefix: null, value: 2, unit: null, inputValue: 2, inputUnit: null, suffix: null },
             ],
           },
         },
@@ -429,8 +429,8 @@ describe("the dataset editing form", () => {
     }))
 
     expect(withCandidates).toContain("<datalist")
-    expect(withCandidates).toContain("<option value=\"常染色体\"");
-    ["X染色体", "Y染色体", "ミトコンドリア", "全ゲノム"].forEach((candidate) => {
+    expect(withCandidates).toContain("<option value=\"常染色体: \"");
+    ["X染色体: ", "Y染色体: ", "ミトコンドリア: ", "全ゲノム: "].forEach((candidate) => {
       expect(withCandidates).toContain(`<option value="${candidate}"`)
     })
 
@@ -442,7 +442,7 @@ describe("the dataset editing form", () => {
           kind: "number",
           values: {
             state: "value",
-            value: [{ label: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
+            value: [{ prefix: null, value: 1536, unit: "GB", inputValue: 1.5, inputUnit: "TB", suffix: null }],
           },
         },
       }],
@@ -452,7 +452,7 @@ describe("the dataset editing form", () => {
     expect(withoutCandidates).not.toContain("<option")
   })
 
-  it("draws a label and a note as a box per language, and shows what each already holds", () => {
+  it("draws a prefix and a suffix as a box per language, and shows what each already holds, spaces and all", () => {
     const html = render(view({
       ...emptyDatasetContent(),
       values: [{
@@ -462,12 +462,12 @@ describe("the dataset editing form", () => {
           values: {
             state: "value",
             value: [{
-              label: { ja: "常染色体", en: "" },
+              prefix: { ja: "常染色体: ", en: "" },
               value: 1,
               unit: "GB",
               inputValue: 1,
               inputUnit: "GB",
-              note: { ja: "", en: "average" },
+              suffix: { ja: "", en: " (average)" },
             }],
           },
         },
@@ -477,25 +477,25 @@ describe("the dataset editing form", () => {
     const tagOf = (ariaLabel: string) =>
       new RegExp(`<input[^>]*aria-label="${ariaLabel}"[^>]*>`).exec(html)?.[0] ?? ""
 
-    expect(tagOf("内訳 \\(日本語\\)")).toContain("value=\"常染色体\"")
-    expect(tagOf("内訳 \\(英語\\)")).toContain("value=\"\"")
-    expect(tagOf("但し書き \\(日本語\\)")).toContain("value=\"\"")
-    expect(tagOf("但し書き \\(英語\\)")).toContain("value=\"average\"")
+    expect(tagOf("Prefix ja")).toContain("value=\"常染色体: \"")
+    expect(tagOf("Prefix en")).toContain("value=\"\"")
+    expect(tagOf("Suffix ja")).toContain("value=\"\"")
+    expect(tagOf("Suffix en")).toContain("value=\" (average)\"")
   })
 
-  it("draws the label and note boxes on a bare number too, so either can still be written", () => {
+  it("draws the prefix and suffix boxes on a bare number too, so either can still be written", () => {
     const html = render(view({
       ...emptyDatasetContent(),
       values: [{
         keyId: NUMBER_KEY,
         value: {
           kind: "number",
-          values: { state: "value", value: [{ label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", note: null }] },
+          values: { state: "value", value: [{ prefix: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", suffix: null }] },
         },
       }],
     }))
 
-    for (const name of ["内訳 \\(日本語\\)", "内訳 \\(英語\\)", "但し書き \\(日本語\\)", "但し書き \\(英語\\)"]) {
+    for (const name of ["Prefix ja", "Prefix en", "Suffix ja", "Suffix en"]) {
       const tag = new RegExp(`<input[^>]*aria-label="${name}"[^>]*>`).exec(html)?.[0] ?? ""
       expect(tag).toContain("value=\"\"")
       expect(tag).toMatch(/\bw-32\b/)
@@ -509,12 +509,12 @@ describe("the dataset editing form", () => {
         keyId: NUMBER_KEY,
         value: {
           kind: "number",
-          values: { state: "value", value: [{ label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", note: null }] },
+          values: { state: "value", value: [{ prefix: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", suffix: null }] },
         },
       }],
     }))
-    const at = html.indexOf("aria-label=\"内訳 (英語)\"")
-    const parts = html.slice(at, html.indexOf("aria-label=\"但し書き (日本語)\"", at))
+    const at = html.indexOf("aria-label=\"Prefix en\"")
+    const parts = html.slice(at, html.indexOf("aria-label=\"Suffix ja\"", at))
     const range = parts.slice(parts.indexOf("<span class=\"flex items-center gap-2\">"))
     expect(range).toMatch(/^<span class="flex items-center gap-2"><input type="number"[^>]*>[\s\S]*<input type="number"[^>]*>[\s\S]*<\/span><span class="flex items-center gap-2"><input type="text"\s*$/)
     expect(range.match(/<\/span><span class="flex items-center gap-2">/g)).toHaveLength(1)
@@ -899,7 +899,7 @@ describe("the kind of value an experiment's field takes", () => {
         values: [
           { keyId: EXPERIMENT_KEY, value: { kind: "text", text: { ja: filled([[{ text: "30x" }]]), en: filled([]) } } },
           { keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled(["term-open"]) } },
-          { keyId: NUMBER_KEY, value: { kind: "number", values: filled([{ label: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", note: null }]) } },
+          { keyId: NUMBER_KEY, value: { kind: "number", values: filled([{ prefix: null, value: 1, unit: "GB", inputValue: 1, inputUnit: "GB", suffix: null }]) } },
           { keyId: DISEASE_KEY, value: { kind: "disease", diseases: filled([{ termIds: [], nameJa: "NASH", nameEn: "" }]) } },
         ],
       }],

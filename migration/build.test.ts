@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import { isPortalIssuedId } from "~/admin/labels"
 import { filled } from "~/content/empty"
-import type { Slot, ValueSlot } from "~/content/types"
+import type { Slot } from "~/content/types"
 
+import type { SourceValueSlot } from "./number-words"
 import { buildCauRows, buildDatasetContent, buildResearchContent, captionOf, narrowedToCaption, ownLines, type ProseReader } from "./build"
 import type { EsDataset, EsExperiment, EsResearchVersion, PublishedDataset } from "./es"
 import { byHand, labelTranslations, type LabelTranslations, type ReadNumber } from "./numbers"
@@ -874,7 +875,7 @@ describe("the type of data", () => {
 
 describe("the disease of one row of a disease-by-disease table", () => {
   const disease = (nameJa: string, nameEn: string) => ({ termIds: [nameEn], nameJa, nameEn })
-  const slot = (...diseases: ReturnType<typeof disease>[]): ValueSlot => ({ keyId: "k", value: { kind: "disease", diseases: { state: "value", value: diseases } } })
+  const slot = (...diseases: ReturnType<typeof disease>[]): SourceValueSlot => ({ keyId: "k", value: { kind: "disease", diseases: { state: "value", value: diseases } } })
   const table = (label: string): EsExperiment => ({
     data: {
       "NBDC Dataset Accession": {

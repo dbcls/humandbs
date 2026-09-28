@@ -16,7 +16,9 @@
  * and `>`) is put into words the same way here (`withoutSign`).
  */
 
-import type { Bilingual, ContentValue, DatasetContent, NumberValue } from "~/content/types"
+import type { Bilingual } from "~/content/types"
+
+import type { SourceContentValue, SourceDatasetContent, SourceNumber } from "./number-words"
 
 /** A reference genome as the notes spell it, and the term it is the same as. */
 const GENOMES: readonly (readonly [RegExp, string])[] = [
@@ -75,8 +77,8 @@ export interface NoteLookup {
 export interface NoteChange {
   experiment: string
   key: string
-  before: Pick<NumberValue, "label" | "note">
-  after: Pick<NumberValue, "label" | "note">
+  before: Pick<SourceNumber, "label" | "note">
+  after: Pick<SourceNumber, "label" | "note">
 }
 
 /** Keys whose notes name the reference genome a count was taken against. */
@@ -88,7 +90,7 @@ const NUMBER_KEYS = [
   "probe-number", "gene-number", "peak-number", "total-data-volume",
 ] as const
 
-function termCodes(values: DatasetContent["experiments"][number]["values"], keyId: string | undefined, setCode: string, lookup: NoteLookup): Set<string> {
+function termCodes(values: SourceDatasetContent["experiments"][number]["values"], keyId: string | undefined, setCode: string, lookup: NoteLookup): Set<string> {
   const slot = values.find((one) => one.keyId === keyId)?.value
   if (slot?.kind !== "vocabulary" || slot.termIds.state !== "value") return new Set()
   return new Set(slot.termIds.value.flatMap((id) => lookup.termCodeOf(setCode, id) ?? []))
@@ -122,7 +124,7 @@ const SIGN_WORDS: Readonly<Record<string, Bilingual>> = {
  * `90 %`), where the number has none; where it has one the note is left as it
  * is rather than one of the two being lost.
  */
-function withoutSign(one: Pick<NumberValue, "label" | "note">): Pick<NumberValue, "label" | "note"> | undefined {
+function withoutSign(one: Pick<SourceNumber, "label" | "note">): Pick<SourceNumber, "label" | "note"> | undefined {
   if (one.note === null) return undefined
   const sides = [one.note.ja.trim(), one.note.en.trim()]
   const read = sides.map((side) => (side === "" ? null : SIGNED.exec(side)))
@@ -140,7 +142,7 @@ function withoutSign(one: Pick<NumberValue, "label" | "note">): Pick<NumberValue
  * A description with the notes that repeat a term taken out and the signs put
  * into words, and what changed. The number itself and its unit are never touched.
  */
-export function withoutRepeatedNotes<T extends Pick<DatasetContent, "experiments">>(
+export function withoutRepeatedNotes<T extends Pick<SourceDatasetContent, "experiments">>(
   content: T,
   lookup: NoteLookup,
 ): { content: T, changes: NoteChange[] } {
@@ -157,12 +159,12 @@ export function withoutRepeatedNotes<T extends Pick<DatasetContent, "experiments
     const readTypes = termCodes(experiment.values, readTypeKey, "read-type", lookup)
     const unchanged = changes.length
     const values = experiment.values.map((slot) => {
-      const value: ContentValue = slot.value
+      const value: SourceContentValue = slot.value
       if (value.kind !== "number" || value.values.state !== "value") return slot
       const key = codeOfKey.get(slot.keyId)
       if (key === undefined) return slot
       const before = changes.length
-      const numbers = value.values.value.map((one): NumberValue => {
+      const numbers = value.values.value.map((one): SourceNumber => {
         if (one.note === null) return one
         const repeated = key === "read-length"
           ? withoutReadTwice(one.note, readTypes)

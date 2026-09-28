@@ -42,11 +42,11 @@ import type { SlotState, TextInput, TextPairInput } from "./form"
 export type ValueKind = "text" | "vocabulary" | "number" | "disease"
 
 /**
- * One number as it is typed: the value and unit as written, and the two words
- * that say which number it is and what qualifies it.
+ * One number as it is typed: the value and unit as written, and what is
+ * written before and after it (`prefix` and `suffix` in `app/content/types.ts`).
  *
  * **A key holds a row per number** (`app/content/types.ts`), so the editor edits
- * a list. The label and the note are a plain pair of strings rather than a
+ * a list. The prefix and the suffix are a plain pair of strings rather than a
  * `Bilingual | null` because that is what a text box holds for each language;
  * both sides empty becomes `null` on the way in, the same as one side ever was.
  *
@@ -57,11 +57,11 @@ export type ValueKind = "text" | "vocabulary" | "number" | "disease"
  * (`app/admin/dataset-form.server.ts`).
  */
 export interface NumberRow {
-  label: Bilingual
+  prefix: Bilingual
   value: string
   unit: string | null
   high: string
-  note: Bilingual
+  suffix: Bilingual
 }
 
 /**
@@ -80,7 +80,7 @@ export function highBelowValue(row: NumberRow): boolean {
 }
 
 /**
- * Labels a key's numbers are usually given, offered on the label box as
+ * Prefixes a key's numbers are usually given, offered on the prefix box as
  * suggestions a curator can still type past.
  * **Keyed by the catalog's own `code`**, which is the smallest way to reach
  * this from the editing screen: the catalog has no column for it
@@ -88,12 +88,12 @@ export function highBelowValue(row: NumberRow): boolean {
  * is drawn from — `migration/facets.ts` の `TextNumberKey.labelCandidates` —
  * belongs to the one-off migration and does not ship into the running app.
  */
-const NUMBER_LABEL_CANDIDATES: Readonly<Record<string, readonly string[]>> = {
-  "variant-number": ["常染色体", "X染色体", "Y染色体", "ミトコンドリア", "全ゲノム"],
+const NUMBER_PREFIX_CANDIDATES: Readonly<Record<string, readonly string[]>> = {
+  "variant-number": ["常染色体: ", "X染色体: ", "Y染色体: ", "ミトコンドリア: ", "全ゲノム: "],
 }
 
-export function labelCandidatesFor(code: string): readonly string[] {
-  return NUMBER_LABEL_CANDIDATES[code] ?? []
+export function prefixCandidatesFor(code: string): readonly string[] {
+  return NUMBER_PREFIX_CANDIDATES[code] ?? []
 }
 
 /**
@@ -186,11 +186,11 @@ function valueBody(keyId: string, value: ContentValue): ValueBody {
             kind: "number",
             state: "value",
             rows: value.values.value.map((one) => ({
-              label: one.label ?? emptyBilingual(),
+              prefix: one.prefix ?? emptyBilingual(),
               value: String(one.inputValue),
               unit: one.inputUnit,
               high: one.inputHigh == null ? "" : String(one.inputHigh),
-              note: one.note ?? emptyBilingual(),
+              suffix: one.suffix ?? emptyBilingual(),
             })),
           }
         : { kind: "number", state: value.values.state, rows: [] }
@@ -268,7 +268,7 @@ function emptyBilingual(): Bilingual {
 }
 
 export function emptyNumberRow(unit: string | null): NumberRow {
-  return { label: emptyBilingual(), value: "", unit, high: "", note: emptyBilingual() }
+  return { prefix: emptyBilingual(), value: "", unit, high: "", suffix: emptyBilingual() }
 }
 
 export function emptyDiseaseRow(): DiseaseRow {

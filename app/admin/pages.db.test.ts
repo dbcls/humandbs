@@ -657,6 +657,21 @@ describe("the research screen's forms", () => {
     expect(await db.select().from(s.labelPin)).toEqual([])
   })
 
+  it("answers a research ID left empty or blank with a message rather than a refusal", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId } = await createResearchWithDraft(db)
+
+    for (const label of ["", "   "]) {
+      const answer = await researchDetailAction(
+        postForm(token, "/x", { intent: "pin", label }),
+        "ja",
+        researchId,
+      )
+      expect(answer, JSON.stringify(label)).toEqual({ status: "empty" })
+    }
+    expect(await db.select().from(s.labelPin)).toEqual([])
+  })
+
   it("discards a draft and comes back to the research", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -1369,6 +1384,20 @@ describe("the dataset screens of a draft", () => {
     expect((await datasetEditorPage(get(token, "/x"), "ja", second)).datasetLabel).toBe("NHA000002")
   })
 
+  it("answers a dataset id left empty or blank with a message rather than a refusal", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await draftDatasetListAction(postForm(token, "/x", { intent: "create-dataset", revision: "1" }), "ja", { researchId, draftId })
+    const [one] = (await draftDatasetListPage(get(token, "/x"), "ja", { researchId, draftId })).rows
+    const params = { researchId, draftId, datasetId: one?.id ?? "" }
+
+    for (const label of ["", "   "]) {
+      expect(await datasetLabelAction(postForm(token, "/x", { intent: "pin", label }), params), JSON.stringify(label))
+        .toEqual({ status: "empty" })
+    }
+    expect((await datasetEditorPage(get(token, "/x"), "ja", params)).datasetLabel).toBeNull()
+  })
+
   it("puts the research's datasets in order from the dataset screen", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -1516,6 +1545,19 @@ describe("the publish screen", () => {
     const [pin] = await db.select({ label: s.labelPin.label }).from(s.labelPin)
       .where(eq(s.labelPin.datasetId, datasetId))
     expect(pin?.label).toBe("NHA000001")
+  })
+
+  it("answers an ID left empty in either kind of row with a message that names the kind", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const created = await createDatasetInDraft(db, { draftId, revision: 1 }, researchId)
+    const datasetId = created.status === "created" ? created.datasetId : ""
+
+    expect(await publishAction(postForm(token, "/x", { intent: "pin", kind: "hum", label: " " }), "ja", { researchId, draftId }))
+      .toEqual({ status: "empty", kind: "hum" })
+    expect(await publishAction(postForm(token, "/x", { intent: "pin", kind: "dataset", label: "", datasetId }), "ja", { researchId, draftId }))
+      .toEqual({ status: "empty", kind: "dataset" })
+    expect(await db.select().from(s.labelPin)).toEqual([])
   })
 
   it("names each field an update changes, and each place a value is unsettled, as the places of comments are named, leading to its box", async () => {

@@ -37,7 +37,9 @@
  *   real archive and is checked by hand
  */
 
-import type { Bilingual, NumberValue } from "~/content/types"
+import type { Bilingual } from "~/content/types"
+
+import type { SourceNumber } from "./number-words"
 
 /** A line as it was written, split into what v2 stores. */
 export interface ReadNumber {
@@ -460,7 +462,7 @@ export function storedNumber(
   canonical: string | null,
   convertedHigh: number | null = null,
   translations: LabelTranslations = new Map(),
-): NumberValue {
+): SourceNumber {
   return {
     label: read.label === null ? null : bilingualOf(read.label, translations),
     value: converted,

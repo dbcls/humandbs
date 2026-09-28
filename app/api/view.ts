@@ -169,35 +169,35 @@ function termsOf(slot: Slot<string[]>, catalog: CatalogView): ApiTerm[] | null |
 }
 
 /**
- * A number's label or note, as a value per language. `undefined` when there is
- * none to report — either the field was never given, or both languages hold
- * nothing, which is the same fact the content type itself normalises to `null`
- * (`app/content/types.ts`).
+ * What is written before or after a number, as a value per language and with
+ * its spaces as written. `undefined` when there is none to report — either the
+ * field was never given, or both languages hold nothing, which is the same fact
+ * the content type itself normalises to `null` (`app/content/types.ts`).
  */
-function numberText(pair: NumberValue["label"]): ApiText | undefined {
+function numberText(pair: NumberValue["prefix"]): ApiText | undefined {
   if (pair === null) return undefined
   const text = plainPair(pair.ja, pair.en)
   return Object.keys(text).length === 0 ? undefined : text
 }
 
 /**
- * **A list, because a key holds a list** (`app/content/types.ts`). What each
- * entry is about and what qualifies it travel with it: a client that only wants
- * the number can read `value`, and one that wants to report which number it was
- * has the label without parsing prose.
+ * **A list, because a key holds a list** (`app/content/types.ts`). What is
+ * written before and after each entry travels with it: a client that only wants
+ * the number can read `value`, and one that wants to show it as the page does
+ * joins the prefix, the number and the suffix.
  */
 function numberOf(slot: Slot<NumberValue[]>): ApiNumber[] | null | undefined {
   if (slot.state === "not-applicable") return null
   if (slot.state === "unknown") return undefined
   return slot.value.map((one) => {
-    const label = numberText(one.label)
-    const note = numberText(one.note)
+    const prefix = numberText(one.prefix)
+    const suffix = numberText(one.suffix)
     return {
       value: one.value,
       unit: one.unit,
       high: one.high ?? null,
-      ...(label === undefined ? {} : { label }),
-      ...(note === undefined ? {} : { note }),
+      ...(prefix === undefined ? {} : { prefix }),
+      ...(suffix === undefined ? {} : { suffix }),
     }
   })
 }

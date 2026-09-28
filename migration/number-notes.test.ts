@@ -1,8 +1,9 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import type { Bilingual, DatasetContent, NumberValue, ValueSlot } from "~/content/types"
+import type { Bilingual } from "~/content/types"
 
+import type { SourceDatasetContent, SourceNumber, SourceValueSlot } from "./number-words"
 import { type NoteLookup, withoutRepeatedNotes } from "./number-notes"
 
 const lookup: NoteLookup = {
@@ -10,27 +11,27 @@ const lookup: NoteLookup = {
   termCodeOf: (setCode, termId) => (termId.startsWith(`${setCode}/`) ? termId.slice(setCode.length + 1) : undefined),
 }
 
-const terms = (setCode: string, ...codes: string[]): ValueSlot => ({
+const terms = (setCode: string, ...codes: string[]): SourceValueSlot => ({
   keyId: `key:${setCode}`,
   value: { kind: "vocabulary", termIds: { state: "value", value: codes.map((code) => `${setCode}/${code}`) } },
 })
 
-const number = (note: Bilingual | null, label: Bilingual | null = null): NumberValue => ({
+const number = (note: Bilingual | null, label: Bilingual | null = null): SourceNumber => ({
   label, value: 495887, unit: "SNPs", inputValue: 495887, inputUnit: "SNPs", high: null, inputHigh: null, note,
 })
 
-const numbers = (key: string, ...values: NumberValue[]): ValueSlot => ({
+const numbers = (key: string, ...values: SourceNumber[]): SourceValueSlot => ({
   keyId: `key:${key}`,
   value: { kind: "number", values: { state: "value", value: values } },
 })
 
-const described = (...values: ValueSlot[]): Pick<DatasetContent, "experiments"> => ({
+const described = (...values: SourceValueSlot[]): Pick<SourceDatasetContent, "experiments"> => ({
   experiments: [{ id: "experiment-1", label: { state: "value", value: "GWAS" }, values }],
 })
 
 const same = (said: string): Bilingual => ({ ja: said, en: said })
 
-function notesOf(content: Pick<DatasetContent, "experiments">, key: string): (Bilingual | null)[] {
+function notesOf(content: Pick<SourceDatasetContent, "experiments">, key: string): (Bilingual | null)[] {
   const slot = content.experiments[0]?.values.find((one) => one.keyId === `key:${key}`)?.value
   return slot?.kind === "number" && slot.values.state === "value" ? slot.values.value.map((one) => one.note) : []
 }
@@ -173,7 +174,7 @@ describe("withoutRepeatedNotes", () => {
     }),
   )
   const numberArb = fc.record({ note: noteArb, label: fc.option(fc.record({ ja: fc.string(), en: fc.string() }), { nil: null }), value: fc.double({ noNaN: true }) })
-    .map(({ note, label, value }): NumberValue => ({ ...number(note, label), value, inputValue: value }))
+    .map(({ note, label, value }): SourceNumber => ({ ...number(note, label), value, inputValue: value }))
   const contentArb = fc.record({
     genomes: fc.subarray(["grch37", "grch38", "ncbi36"]),
     readTypes: fc.subarray(["paired-end", "single-end", "mixed"]),
@@ -189,8 +190,8 @@ describe("withoutRepeatedNotes", () => {
   it("changes nothing but the notes, and a label only where there was none", () => {
     fc.assert(fc.property(contentArb, (content) => {
       const { content: out } = withoutRepeatedNotes(content, lookup)
-      const without = (one: Pick<DatasetContent, "experiments">) => JSON.parse(JSON.stringify(one, (key, value: unknown) => (key === "note" || key === "label" ? undefined : value))) as unknown
-      const labels = (one: Pick<DatasetContent, "experiments">) => one.experiments[0]?.values.flatMap((slot) => (slot.value.kind === "number" && slot.value.values.state === "value" ? slot.value.values.value.map((number) => number.label) : [])) ?? []
+      const without = (one: Pick<SourceDatasetContent, "experiments">) => JSON.parse(JSON.stringify(one, (key, value: unknown) => (key === "note" || key === "label" ? undefined : value))) as unknown
+      const labels = (one: Pick<SourceDatasetContent, "experiments">) => one.experiments[0]?.values.flatMap((slot) => (slot.value.kind === "number" && slot.value.values.state === "value" ? slot.value.values.value.map((number) => number.label) : [])) ?? []
 
       expect(without(out)).toEqual(without(content))
       labels(content).forEach((label, at) => {

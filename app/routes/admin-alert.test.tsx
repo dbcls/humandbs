@@ -52,3 +52,35 @@ describe("保存を拒否されたアラートの本文", () => {
     expect(html).not.toContain("aria-invalid=\"true\"")
   })
 })
+
+describe("アラートの並び替え", () => {
+  /** Each `<button>`'s attributes, in the order they are drawn. */
+  const buttons = (html: string) => [...html.matchAll(/<button([^>]*)>/g)].map((match) => match[1] ?? "")
+  const named = (html: string, label: string) => buttons(html).filter((attrs) => attrs.includes(`aria-label="${label}"`))
+  const formBody = (html: string, id: string) => new RegExp(`<form[^>]*id="${id}"[^>]*>([\\s\\S]*?)</form>`).exec(html)?.[1] ?? ""
+
+  it("上下のボタンは、本文のフォームの外にある intent と id だけのフォームを送る", () => {
+    const html = screen([alertRow("first", "一つ目"), alertRow("second", "二つ目")], undefined)
+
+    const target = /form="([^"]+)"/.exec(named(html, "上へ")[1] ?? "")?.[1] ?? ""
+    const body = formBody(html, target)
+    expect(body).toContain("name=\"intent\" value=\"move-alert-up\"")
+    expect(body).toContain("name=\"alertId\" value=\"second\"")
+    expect(body).not.toContain("<textarea")
+  })
+
+  it("最初のアラートは上へ、最後のアラートは下へ動かせない", () => {
+    const html = screen([alertRow("first", "一つ目"), alertRow("second", "二つ目")], undefined)
+
+    expect(named(html, "上へ").map((attrs) => attrs.includes(" disabled=\"\""))).toEqual([true, false])
+    expect(named(html, "下へ").map((attrs) => attrs.includes(" disabled=\"\""))).toEqual([false, true])
+  })
+
+  it("上下のボタンは削除のボタンの左にある", () => {
+    const html = screen([alertRow("first", "一つ目")], undefined)
+
+    const down = html.indexOf("aria-label=\"下へ\"")
+    expect(down).toBeGreaterThan(-1)
+    expect(down).toBeLessThan(html.indexOf(">削除<", down))
+  })
+})

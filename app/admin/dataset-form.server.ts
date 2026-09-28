@@ -47,7 +47,7 @@ import {
   textSlot,
 } from "./form.server"
 
-/** A number's label or note as typed: a plain string per language, with no state of its own. */
+/** A number's prefix or suffix as typed: a plain string per language, with no state of its own. */
 const bilingualInputSchema = z.object({ ja: z.string(), en: z.string() })
 
 /**
@@ -60,11 +60,11 @@ const bilingualInputSchema = z.object({ ja: z.string(), en: z.string() })
  * succeeded (`widthsOrdered`, below).
  */
 const numberRowSchema = z.object({
-  label: bilingualInputSchema,
+  prefix: bilingualInputSchema,
   value: z.string(),
   unit: z.string().nullable(),
   high: z.string(),
-  note: bilingualInputSchema,
+  suffix: bilingualInputSchema,
 })
 
 const valueBodySchema = z.discriminatedUnion("kind", [
@@ -133,14 +133,17 @@ export const saveDatasetSchema = z.object({
 })
 
 /**
- * A number's label or note, trimmed side by side. `null` when both sides are
- * empty — that is what the type treats as no label at all
- * (`app/content/types.ts`), so a box left untouched in both languages does not
- * become a pair the publish check counts as untranslated.
+ * A number's prefix or suffix, side by side. **The spaces are kept**: they are
+ * what separates the words from the number on the page (`常染色体: `, ` SNVs`),
+ * so a side is taken as it was typed — and as empty only when it holds nothing
+ * but spaces. `null` when both sides are empty, which is what the type treats
+ * as none at all (`app/content/types.ts`), so a box left untouched in both
+ * languages does not become a pair the publish check counts as untranslated.
  */
-function bilingualOrNull(pair: Bilingual): Bilingual | null {
-  const trimmed = { ja: pair.ja.trim(), en: pair.en.trim() }
-  return trimmed.ja === "" && trimmed.en === "" ? null : trimmed
+function writtenOrNull(pair: Bilingual): Bilingual | null {
+  const side = (typed: string) => (typed.trim() === "" ? "" : typed)
+  const written = { ja: side(pair.ja), en: side(pair.en) }
+  return written.ja === "" && written.en === "" ? null : written
 }
 
 /**
@@ -155,14 +158,14 @@ function numberValue(row: NumberRow, canonical: string | null): NumberValue | nu
   if (converted === null) return null
   const high = highValue(row.high, row.unit, canonical)
   return {
-    label: bilingualOrNull(row.label),
+    prefix: writtenOrNull(row.prefix),
     value: converted,
     unit: canonical,
     inputValue: typed,
     inputUnit: row.unit,
     high: high?.converted ?? null,
     inputHigh: high?.typed ?? null,
-    note: bilingualOrNull(row.note),
+    suffix: writtenOrNull(row.suffix),
   }
 }
 

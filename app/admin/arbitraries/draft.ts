@@ -130,17 +130,17 @@ function numberValueArb(unit: string | null): fc.Arbitrary<NumberValue> {
   const held = fc.integer({ min: -1_000_000, max: 1_000_000 })
   return held.chain((value) => fc.record({
     span: fc.option(fc.integer({ min: 0, max: 1_000_000 }), { nil: null }),
-    label: numberTextArb,
-    note: numberTextArb,
-  }).map(({ span, label, note }): NumberValue => ({
-    label,
+    prefix: numberTextArb,
+    suffix: numberTextArb,
+  }).map(({ span, prefix, suffix }): NumberValue => ({
+    prefix,
     value,
     unit,
     inputValue: value,
     inputUnit: unit,
     high: span === null ? null : value + span,
     inputHigh: span === null ? null : value + span,
-    note,
+    suffix,
   })))
 }
 

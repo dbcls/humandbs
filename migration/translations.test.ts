@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest"
 
-import type { DatasetContent, RichText, Slot } from "~/content/types"
+import type { RichText, Slot } from "~/content/types"
 
+import type { SourceDatasetContent } from "./number-words"
 import { assertTranslationsApplied, fillResearchTranslations, fillTranslations, type ResearchTranslation, richTextOf, type Translation } from "./translations"
 
 const rich = (...lines: string[]): Slot<RichText> => ({ state: "value", value: lines.map((line) => [{ text: line }]) })
 const empty: Slot<RichText> = { state: "value", value: [] }
 
-const dataset = (ja: Slot<RichText>, en: Slot<RichText>): DatasetContent => ({
+const dataset = (ja: Slot<RichText>, en: Slot<RichText>): SourceDatasetContent => ({
   releaseDate: null,
   fileSelection: [],
   values: [{ keyId: "k-type", value: { kind: "text", text: { ja: rich("NGS"), en: empty } } }],

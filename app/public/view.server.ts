@@ -14,6 +14,7 @@
  * only the code that walks them can know it.
  */
 
+import { CHIPS_UNDER, type KeyHeading } from "~/components/experiment-chips"
 import type { CauUsage } from "~/content/public"
 import type {
   ContentValue,
@@ -48,26 +49,19 @@ import { PAGE_SIZE, type PageSize } from "~/search/page-size"
 import { awaitedItems, type AwaitedItem } from "./awaited"
 import { href } from "./urls"
 
-/**
- * A value as a page shows it. `unsettled` only ever reaches a screen through a
- * preview: the public projection turns an unsettled value into an empty one
- * before it gets here, and a preview keeps it precisely so the frame stays
- * visible with the question attached to it.
- */
-/**
- * One number as a reader sees it: what it is about, the number itself with its
- * unit, and whatever qualifies it. Each part is dropped when it is absent, so a
- * key holding a single bare number still reads as that number and nothing else.
- */
 /** A single figure, without its unit: broken at the thousands so six digits in a row never happen. */
 function writtenFigure(value: number): string {
   return Math.abs(value) >= 10_000 ? value.toLocaleString("en-US") : String(value)
 }
 
 /**
- * A number written out, and whether writing it fell back to the other
- * language for its label or its note — the two places a number holds a
- * translated pair (`resolveOptionalBilingual`).
+ * One number as a reader sees it: what is written before it, the number with
+ * its unit, and what is written after it, joined as they are — the prefix and
+ * suffix carry their own spaces and marks (`app/content/types.ts`). Each part is
+ * left out when it is absent, so a key holding a single bare number reads as
+ * that number and nothing else. Whether writing it fell back to the other
+ * language for the prefix or the suffix is returned beside it
+ * (`resolveOptionalBilingual`).
  */
 function writtenNumber(number: NumberValue, locale: Locale): { text: string, untranslated: boolean } {
   // **What was typed, not what was stored.** The canonical unit exists so that
@@ -89,15 +83,20 @@ function writtenNumber(number: NumberValue, locale: Locale): { text: string, unt
     ? writtenFigure(value)
     : `${writtenFigure(value)}–${writtenFigure(high)}`
   const said = unit === null ? shown : `${shown}${close ? "" : " "}${unit}`
-  const label = resolveOptionalBilingual(number.label, locale)
-  const note = resolveOptionalBilingual(number.note, locale)
-  const named = label === null ? said : `${label.text}: ${said}`
+  const prefix = resolveOptionalBilingual(number.prefix, locale)
+  const suffix = resolveOptionalBilingual(number.suffix, locale)
   return {
-    text: note === null ? named : `${named} (${note.text})`,
-    untranslated: (label?.untranslated ?? false) || (note?.untranslated ?? false),
+    text: `${prefix?.text ?? ""}${said}${suffix?.text ?? ""}`,
+    untranslated: (prefix?.untranslated ?? false) || (suffix?.untranslated ?? false),
   }
 }
 
+/**
+ * A value as a page shows it. `unsettled` only ever reaches a screen through a
+ * preview: the public projection turns an unsettled value into an empty one
+ * before it gets here, and a preview keeps it precisely so the frame stays
+ * visible with the question attached to it.
+ */
 export type FieldView
   = | { state: "not-applicable" }
     | { state: "unsettled" }
@@ -905,6 +904,12 @@ export interface DatasetView {
   untranslated: boolean
   experiments: { id: string, label: FieldView, values: ValueView[] }[]
   /**
+   * The names of the paragraphs classifications are drawn under
+   * (`experiment-chips.ts` の `CHIPS_UNDER`), by code — what heads the chips of
+   * an experiment that has the classifications without the paragraph.
+   */
+  chipHeadings: Record<string, KeyHeading>
+  /**
    * The page asked for of what this dataset selects out of its research's
    * prefix, in the prefix's order. Already narrowed to what the listing holds,
    * so a selection naming something absent is simply not here. **One page and
@@ -991,6 +996,11 @@ export function anchoredDatasetView(
 
   at.list("experiments", experiments.map((row) => fieldText(row.label)))
 
+  const chipHeadings = Object.fromEntries([...CHIPS_UNDER.keys()].flatMap((code) => {
+    const key = catalog.keyByCode.get(code)
+    return key === undefined ? [] : [[code, { keyId: key.id, label: catalogLabel(key, locale) }]]
+  }))
+
   const summary = fileSummaryView(datasetFileSummary({
     label: input.label,
     selection: input.selection,
@@ -1019,6 +1029,7 @@ export function anchoredDatasetView(
         })
       : [],
     experiments,
+    chipHeadings,
     files: fileListOf(selected, input.filePage?.page ?? 1, input.filePage?.size ?? PAGE_SIZE),
     namedFiles: selected.length > FILES_NAMED ? null : selected,
     untranslated: fallbacks.seen(),

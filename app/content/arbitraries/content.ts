@@ -137,12 +137,12 @@ export const localizedLinksArb: fc.Arbitrary<LocalizedLinks> = fc.record({
  * ends move together the way `value` and `inputValue` already do.
  */
 const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
-  label: optionalBilingualArb,
+  prefix: optionalBilingualArb,
   value: fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e12, max: 1e12 }),
   unit: fc.option(fc.string(), { nil: null }),
   inputValue: fc.double({ noNaN: true, noDefaultInfinity: true, min: -1e12, max: 1e12 }),
   inputUnit: fc.option(fc.string(), { nil: null }),
-  note: optionalBilingualArb,
+  suffix: optionalBilingualArb,
 }).chain((base) => fc.option(
   fc.double({ noNaN: true, noDefaultInfinity: true, min: 0, max: 1e6 }),
   { nil: null },

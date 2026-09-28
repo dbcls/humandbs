@@ -30,8 +30,10 @@
  * in the article's policy row, and a policy is a term.
  */
 
-import type { Bilingual, DatasetContent, Line, RichText, Slot, ValueSlot } from "~/content/types"
+import type { Bilingual, Line, RichText, Slot } from "~/content/types"
 import { inListingOrder } from "~/files/selection"
+
+import type { SourceDatasetContent, SourceValueSlot } from "./number-words"
 
 export interface NbdcCellContext {
   /** The NBDC Dataset Accession key's id. */
@@ -46,7 +48,7 @@ export interface NbdcCellContext {
   labelOf: (name: string) => Bilingual | undefined
 }
 
-type Described = DatasetContent & { datasetId: string }
+type Described = SourceDatasetContent & { datasetId: string }
 
 /** A cell taken out, whole or a group of it, as its lines read. */
 export interface DroppedCell {
@@ -277,7 +279,7 @@ export function settleNbdcCells<D extends Described>(datasets: readonly D[], ctx
     if (reading === null) return one
     const selectedHere = new Set(selection)
     const experiments = one.experiments.map((experiment) => {
-      const values = experiment.values.flatMap((slot): ValueSlot[] => {
+      const values = experiment.values.flatMap((slot): SourceValueSlot[] => {
         if (slot.keyId !== ctx.keyId || slot.value.kind !== "text") return [slot]
         const { text } = slot.value
         const ja = valueLines(text.ja)

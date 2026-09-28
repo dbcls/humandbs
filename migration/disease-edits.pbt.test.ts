@@ -1,14 +1,15 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import type { DatasetContent, DiseaseValue } from "~/content/types"
+import type { DiseaseValue } from "~/content/types"
 
+import type { SourceDatasetContent } from "./number-words"
 import { type DiseaseEdit, editDiseases } from "./disease-edits"
 
 const CODES = ["C34", "C349", "C50", "C18"]
 const codeOf = (termId: string) => termId.slice("t-".length)
 
-const datasetWith = (diseases: DiseaseValue[]): DatasetContent => ({
+const datasetWith = (diseases: DiseaseValue[]): SourceDatasetContent => ({
   releaseDate: null,
   fileSelection: [],
   values: [],
@@ -19,7 +20,7 @@ const datasetWith = (diseases: DiseaseValue[]): DatasetContent => ({
   }],
 })
 
-const diseasesOf = (dataset: DatasetContent): DiseaseValue[] => {
+const diseasesOf = (dataset: SourceDatasetContent): DiseaseValue[] => {
   const slot = dataset.experiments[0]?.values.find((one) => one.value.kind === "disease")
   return slot?.value.kind === "disease" && slot.value.diseases.state === "value" ? slot.value.diseases.value : []
 }

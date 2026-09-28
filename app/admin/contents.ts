@@ -67,6 +67,16 @@ export function nextVersionNumber(base: string, slugs: readonly string[]): numbe
   return Math.max(0, ...numbers) + 1
 }
 
+/** The revision of `base` with the highest number, or null when it has none. */
+export function latestVersionSlug(base: string, slugs: readonly string[]): string | null {
+  let latest: { slug: string, number: number } | null = null
+  for (const slug of slugs) {
+    const number = versionNumberIn(base, slug)
+    if (number !== null && (latest === null || number > latest.number)) latest = { slug, number }
+  }
+  return latest?.slug ?? null
+}
+
 /** The revision number a form has, or null if what it has is not one. */
 export function parseVersionNumber(input: string): number | null {
   const trimmed = input.trim()

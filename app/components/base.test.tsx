@@ -435,6 +435,15 @@ describe("moving a row (ReorderButtons)", () => {
     const inPage = render(<ReorderButtons at={1} of={3} labels={{ up: "上へ", down: "下へ" }} onMove={() => undefined} />)
     expect(buttons(inPage).every((one) => one.includes("type=\"button\""))).toBe(true)
   })
+
+  it("submits the form each direction names, where the row is a form that cannot hold them", () => {
+    const [up, down] = buttons(render(
+      <ReorderButtons at={1} of={3} labels={{ up: "上へ", down: "下へ" }} form={(by) => (by === -1 ? "f-up" : "f-down")} />,
+    ))
+    expect(up).toContain("form=\"f-up\"")
+    expect(down).toContain("form=\"f-down\"")
+    expect([up, down].every((one) => one?.includes("type=\"submit\""))).toBe(true)
+  })
 })
 
 describe("copyText", () => {

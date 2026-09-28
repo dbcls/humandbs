@@ -225,14 +225,14 @@ export function DatasetBody({ view, locale, researchHref, accessAnchor, typeOfDa
                     )}
                   >
                     <Pairs>
-                      {experimentRows(experiment.values).map(({ value, chips }) => (
+                      {experimentRows(experiment.values, view.chipHeadings).map(({ keyId, label, value, chips }) => (
                         <KeyValue
-                          key={value.keyId}
-                          title={value.label}
-                          at={valueAnchor(experiment.id, value)}
+                          key={keyId}
+                          title={label}
+                          at={value === null ? undefined : valueAnchor(experiment.id, value)}
                           below={chips.length === 0 ? undefined : <Chips experimentId={experiment.id} chips={chips} locale={locale} />}
                         >
-                          <Value field={value.field} locale={locale} />
+                          {value !== null && <Value field={value.field} locale={locale} />}
                         </KeyValue>
                       ))}
                     </Pairs>

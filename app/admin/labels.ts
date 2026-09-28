@@ -23,19 +23,14 @@ const NHA_WIDTH = 6
  * the address a reader holds (`/research/hum0588`), it identifies the prefix the files
  * are served from, and it is what the data submission applications contain — so a
  * spelling outside it cannot be published and cannot be linked to.
- *
- * Written unanchored so that an input can take it as its `pattern`, which
- * anchors it itself. **The prefix only saves the round trip**: what decides is the
- * check on the way in.
  */
-export const HUM_LABEL_PATTERN = "hum\\d{4}"
-
 export function isHumLabel(label: string): boolean {
-  return new RegExp(`^${HUM_LABEL_PATTERN}$`).test(label)
+  return /^hum\d{4}$/.test(label)
 }
 
 /**
- * The shape of an id the portal issues. Written unanchored, like the hum label's.
+ * The shape of an id the portal issues. Written unanchored: each use anchors
+ * it, here and in the query that reads the last number issued (`labels.server.ts`).
  */
 export const NHA_ID_PATTERN = `NHA\\d{${NHA_WIDTH}}`
 

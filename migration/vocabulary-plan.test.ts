@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { DatasetContent, ValueSlot } from "~/content/types"
-
+import type { SourceDatasetContent, SourceValueSlot } from "./number-words"
 import { applyVocabularyFixes, plannedCodesOf, vocabularyPlanOf, type VocabularyFix } from "./vocabulary-plan"
 
 const tsv = (...rows: string[][]) => rows.map((row) => row.join("\t")).join("\n")
@@ -53,9 +52,9 @@ describe("vocabularyPlanOf", () => {
 })
 
 describe("applyVocabularyFixes", () => {
-  const vocab = (keyId: string, ...termIds: string[]): ValueSlot => ({ keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } })
-  const experiment = (id: string, label: string, values: ValueSlot[]) => ({ id, label: { state: "value" as const, value: label }, values })
-  const dataset = (...experiments: DatasetContent["experiments"]): DatasetContent => ({ releaseDate: null, fileSelection: [], values: [], experiments })
+  const vocab = (keyId: string, ...termIds: string[]): SourceValueSlot => ({ keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } })
+  const experiment = (id: string, label: string, values: SourceValueSlot[]) => ({ id, label: { state: "value" as const, value: label }, values })
+  const dataset = (...experiments: SourceDatasetContent["experiments"]): SourceDatasetContent => ({ releaseDate: null, fileSelection: [], values: [], experiments })
   const target = {
     hum: "hum0001",
     datasetId: "JGAD000001",

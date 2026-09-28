@@ -18,6 +18,17 @@ export function today(): string {
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 /**
+ * The last instant at or before `at` that falls on a multiple of `minutes`
+ * counted from midnight in JST: the hour on the hour for sixty. With a
+ * `minutes` that divides a day, the same clock times come round every day.
+ */
+export function lastBoundaryInJst(at: Date, minutes: number): Date {
+  const step = minutes * 60 * 1000
+  const local = at.getTime() + JST_OFFSET_MS
+  return new Date(Math.floor(local / step) * step - JST_OFFSET_MS)
+}
+
+/**
  * An instant as the minute it fell on in JST.
  *
  * **Instants are held in UTC and read by people working in JST**, so one

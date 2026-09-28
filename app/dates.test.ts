@@ -5,6 +5,7 @@ import {
   asLocalInput,
   dayFromInput,
   dayInJst,
+  lastBoundaryInJst,
   minuteInJst,
   minuteOf,
   stampFromLocalInput,
@@ -211,5 +212,15 @@ describe("dayFromInput", () => {
         expect(dayFromInput(day)).toBe(day)
       },
     ))
+  })
+})
+
+describe("lastBoundaryInJst", () => {
+  it("puts sixty minutes on the hour and a day at midnight, in JST", () => {
+    // 19:59 JST.
+    const at = new Date("2026-09-28T10:59:00Z")
+    expect(lastBoundaryInJst(at, 60)).toEqual(new Date("2026-09-28T10:00:00Z"))
+    expect(lastBoundaryInJst(at, 1440)).toEqual(new Date("2026-09-27T15:00:00Z"))
+    expect(lastBoundaryInJst(new Date("2026-09-28T10:00:00Z"), 60)).toEqual(new Date("2026-09-28T10:00:00Z"))
   })
 })

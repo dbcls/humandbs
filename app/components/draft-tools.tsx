@@ -287,6 +287,10 @@ const DRAW_AFTER = 300
  * **Both languages are drawn, not the one being looked at.** Which pane holds
  * which page is the reader's own arrangement and both can hold one at once, so
  * a drawing that waited to be looked at would arrive after the look.
+ *
+ * **Drawing does not read the screen's loaders again.** The post writes
+ * nothing, so what the screen loaded is as current after it as before; left to
+ * the default, every pause would reload the whole screen once per language.
  */
 export function useDrawn<T>(at: string, body: string, initial: T | null): T | null {
   // The fetcher is typed by what the route responds with; a generic one cannot
@@ -295,7 +299,7 @@ export function useDrawn<T>(at: string, body: string, initial: T | null): T | nu
   const submit = drawing.submit
   useEffect(() => {
     const waiting = setTimeout(() => {
-      void submit(body, { method: "post", action: at, encType: "application/json" })
+      void submit(body, { method: "post", action: at, encType: "application/json", defaultShouldRevalidate: false })
     }, DRAW_AFTER)
     return () => {
       clearTimeout(waiting)

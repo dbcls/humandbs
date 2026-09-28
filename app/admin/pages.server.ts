@@ -977,6 +977,8 @@ async function catalogAccepts(
 /** What pinning a dataset's id returns. */
 export type DatasetLabelResult
   = | { status: "pinned" | "unpinned" | "taken" | "reserved" }
+    /** 「割り当て」was pressed with nothing typed. */
+    | { status: "empty" }
     /** The id is read by the issue itself, so it is said: another issue may have taken the one shown. */
     | { status: "issued", label: string }
 
@@ -1028,6 +1030,7 @@ export async function datasetLabelAction(
   if (intent !== "pin") badRequest()
   const label = form.get("label")
   if (typeof label !== "string") badRequest()
+  if (label.trim() === "") return { status: "empty" }
   const outcome = await pinLabel(
     db,
     { kind: "dataset", label, subjectId: datasetId, isPrimary: true },
@@ -1114,6 +1117,8 @@ export type ResearchDetailResult
     | { status: "taken" }
     /** A research ID was typed in a shape no address could be made from. */
     | { status: "malformed" }
+    /** 「割り当て」was pressed with nothing typed. */
+    | { status: "empty" }
     /** The research ID's public address still holds files, or a file is switching. */
     | { status: "holds-files" }
     /** The research being deleted still has files. */
@@ -1174,6 +1179,7 @@ export async function researchDetailAction(
     // the dataset is written (`datasetLabelAction`).
     const label = form.get("label")
     if (typeof label !== "string") badRequest()
+    if (label.trim() === "") return { status: "empty" }
     if (!isHumLabel(label.trim())) return { status: "malformed" }
     const outcome = await pinLabel(
       db,
@@ -1626,6 +1632,8 @@ export type PublishResult
     | { status: "issued", label: string }
     /** A research ID was typed in a shape no address could be made from. */
     | { status: "malformed" }
+    /** 「割り当て」was pressed with nothing typed, in the row of an ID of this kind. */
+    | { status: "empty", kind: "hum" | "dataset" }
 
 /**
  * Publishing, and pinning the labels that stop it. The pin is here because the
@@ -1648,6 +1656,7 @@ export async function publishAction(
     if (kind !== "hum" && kind !== "dataset") badRequest()
     const label = form.get("label")
     if (typeof label !== "string") badRequest()
+    if (label.trim() === "") return { status: "empty", kind }
     if (kind === "hum" && !isHumLabel(label.trim())) return { status: "malformed" }
     const subjectId = kind === "hum" ? researchId : identity(readString(form, "datasetId"))
 

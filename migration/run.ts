@@ -21,7 +21,7 @@ import { join } from "node:path"
 
 import { inArray, sql } from "drizzle-orm"
 
-import type { DatasetContent, ResearchContent, VersionContent } from "~/content/types"
+import type { ResearchContent } from "~/content/types"
 import { closePools, getOwnerDb } from "~/db/client.server"
 import {
   accessionDate,
@@ -43,6 +43,7 @@ import {
   buildResearchContent,
   ownLines,
 } from "./build"
+import { countingKeys, prefixedVersion, type SourceDatasetContent, type SourceVersionContent } from "./number-words"
 import { withoutKeys } from "./archive-keys"
 import { ACCESS_CRITERIA_KEY, TYPE_OF_DATA_KEY } from "./catalog"
 import { loadDump, selectPublishedDatasets, versionNumber } from "./es"
@@ -140,7 +141,7 @@ async function load() {
         ownLines: linesOwned,
         unread,
         byHand: hand,
-      }) satisfies DatasetContent,
+      }) satisfies SourceDatasetContent,
     ]))
     // A dataset's size and formats are read from its files, not kept under a key (`file-keys.ts`).
     const fileKeyIds = new Set(DROPPED_FILE_KEYS.flatMap((code) => {
@@ -152,6 +153,7 @@ async function load() {
     }
 
     const versions = dump.publishedVersions.filter((v) => researchIdByHum.has(v.humId))
+    const counting = await countingKeys(tx)
     await insertChunked(
       versions.map((rv) => {
         // Every published version in the dump has one; a version without a date
@@ -170,13 +172,13 @@ async function load() {
         return {
           researchId: identityOf(researchIdByHum, rv.humId, "research"),
           number,
-          content: {
+          content: prefixedVersion({
             ...body,
             datasets: datasetIds.flatMap((datasetId) => {
               const content = descriptionOfDataset.get(datasetId)
               return content === undefined ? [] : [{ datasetId, ...content }]
             }),
-          } satisfies VersionContent,
+          } satisfies SourceVersionContent, counting),
           releaseDate: rv.versionReleaseDate,
         }
       }),

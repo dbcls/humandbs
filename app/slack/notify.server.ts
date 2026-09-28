@@ -13,6 +13,7 @@ import { and, asc, eq, gt, inArray, isNotNull, isNull, lte, ne, or, sql, type An
 import type { EventSubjectKind } from "~/admin/events"
 import { namedRows } from "~/admin/events.server"
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
+import { lastBoundaryInJst } from "~/dates"
 import type { Database, Executor } from "~/db/client.server"
 import { adminUser, comment, event, labelPin, researchDraft, reviewAcknowledgement, slackNotification } from "~/db/schema"
 import { isLocale } from "~/i18n/locale"
@@ -28,9 +29,6 @@ import {
   type PublishRecord,
   type ReviewActivity,
 } from "./message"
-
-/** At most one message in this long: one per comment would be too many to read. */
-export const SEND_INTERVAL_MS = 5 * 60 * 1000
 
 /**
  * How old a row has to be before it is read. A row's time is when its
@@ -53,8 +51,12 @@ export type NotifyOutcome
     | "busy"
 
 /**
- * One message, if one is due. The first call only records the time: what
- * happened before there was anywhere to send it is not sent.
+ * One message, if one is due: once the clock has passed a boundary of the
+ * interval and the rows up to it have settled, what happened up to that
+ * boundary. **Messages fall on the clock** — every hour on the hour for sixty
+ * minutes (`lastBoundaryInJst`), the interval dividing a day
+ * (`config.server.ts`). The first call only records the time: what happened before there
+ * was anywhere to send it is not sent.
  *
  * Slack is called with the row locked, and a failure to send rolls the
  * transaction back, so the point read up to moves only past what Slack has
@@ -62,17 +64,18 @@ export type NotifyOutcome
  */
 export async function notifySlack(
   db: Database,
-  input: { now: Date, origin: string, send: SendToSlack | null },
+  input: { now: Date, intervalMinutes: number, origin: string, send: SendToSlack | null },
 ): Promise<NotifyOutcome> {
-  const upTo = new Date(input.now.getTime() - SETTLE_MS)
+  const settled = new Date(input.now.getTime() - SETTLE_MS)
+  const upTo = lastBoundaryInJst(settled, input.intervalMinutes)
   return db.transaction(async (tx) => {
-    await tx.insert(slackNotification).values({ readUntil: upTo }).onConflictDoNothing()
+    await tx.insert(slackNotification).values({ readUntil: settled }).onConflictDoNothing()
     const [claimed] = await tx
       .select({ readUntil: slackNotification.readUntil })
       .from(slackNotification)
       .for("update", { skipLocked: true })
     if (claimed === undefined) return "busy"
-    if (upTo.getTime() - claimed.readUntil.getTime() < SEND_INTERVAL_MS) return "not-due"
+    if (upTo.getTime() <= claimed.readUntil.getTime()) return "not-due"
 
     let outcome: NotifyOutcome = "unsent"
     if (input.send !== null) {

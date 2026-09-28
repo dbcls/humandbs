@@ -1,8 +1,9 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import type { Bilingual, DatasetContent, Line, NumberValue, RichText, ValueSlot } from "~/content/types"
+import type { Bilingual, Line, RichText } from "~/content/types"
 
+import type { SourceDatasetContent, SourceNumber, SourceValueSlot } from "./number-words"
 import { type OwnIdContext, withoutOwnIds } from "./own-ids"
 
 const own = new Set(["JGAD000696", "JGAS000570", "hum0068.v5.mfi.v1"])
@@ -10,35 +11,35 @@ const context: OwnIdContext = { own, skippedKeys: new Set(["key:processed-data-d
 
 const plain = (...lines: string[]): RichText => lines.map((text) => (text === "" ? [] : [{ text }]))
 
-const text = (key: string, ja: RichText, en: RichText): ValueSlot => ({
+const text = (key: string, ja: RichText, en: RichText): SourceValueSlot => ({
   keyId: `key:${key}`,
   value: { kind: "text", text: { ja: { state: "value", value: ja }, en: { state: "value", value: en } } },
 })
 
-const number = (label: Bilingual | null): NumberValue => ({
+const number = (label: Bilingual | null): SourceNumber => ({
   label, value: 100, unit: "bp", inputValue: 100, inputUnit: "bp", high: null, inputHigh: null, note: null,
 })
 
-const numbers = (key: string, ...values: NumberValue[]): ValueSlot => ({
+const numbers = (key: string, ...values: SourceNumber[]): SourceValueSlot => ({
   keyId: `key:${key}`,
   value: { kind: "number", values: { state: "value", value: values } },
 })
 
-const described = (...values: ValueSlot[]): DatasetContent => ({
+const described = (...values: SourceValueSlot[]): SourceDatasetContent => ({
   releaseDate: null,
   fileSelection: [],
   values: [],
   experiments: [{ id: "experiment-1", label: { state: "value", value: "RNA-seq" }, values }],
 })
 
-function textOf(content: DatasetContent, key: string, lang: "ja" | "en"): string[] {
+function textOf(content: SourceDatasetContent, key: string, lang: "ja" | "en"): string[] {
   const slot = content.experiments[0]?.values.find((one) => one.keyId === `key:${key}`)?.value
   if (slot?.kind !== "text") return []
   const side = slot.text[lang]
   return side.state === "value" ? side.value.map((line) => line.map((span) => span.text).join("")) : []
 }
 
-function labelsOf(content: DatasetContent, key: string): (Bilingual | null)[] {
+function labelsOf(content: SourceDatasetContent, key: string): (Bilingual | null)[] {
   const slot = content.experiments[0]?.values.find((one) => one.keyId === `key:${key}`)?.value
   return slot?.kind === "number" && slot.values.state === "value" ? slot.values.value.map((one) => one.label) : []
 }

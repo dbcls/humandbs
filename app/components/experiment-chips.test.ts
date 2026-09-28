@@ -4,17 +4,26 @@ import { describe, expect, it } from "vitest"
 import type { Line } from "~/content/types"
 import type { FieldView, ValueView } from "~/public/view.server"
 
-import { CHIPS_UNDER, experimentRows, onOneLine } from "./experiment-chips"
+import { CHIPS_UNDER, experimentRows, onOneLine, type KeyHeading } from "./experiment-chips"
 
 function value(code: string): ValueView {
   return { keyId: `k-${code}`, code, label: code, field: { state: "plain", text: code, untranslated: false } }
 }
 
-/** What the rows draw, as codes: a row's own key, and its chips after a `>`. */
-function shape(values: ValueView[]): string[] {
-  return experimentRows(values).map((row) => row.chips.length === 0
-    ? row.value.code
-    : `${row.value.code} > ${row.chips.map((chip) => chip.countedAs === undefined ? chip.value.code : `${chip.value.code}+${chip.countedAs.code}`).join(" ")}`)
+/** The paragraphs the catalog names, as the page is given them. */
+const HEADINGS = Object.fromEntries([...CHIPS_UNDER.keys()].map((code) => [code, { keyId: `k-${code}`, label: code }]))
+
+/**
+ * What the rows draw, as codes: a row's key (in brackets where the row has no
+ * value of its own), and its chips after a `>`.
+ */
+function shape(values: ValueView[], headings: Record<string, KeyHeading> = HEADINGS): string[] {
+  return experimentRows(values, headings).map((row) => {
+    const head = row.value === null ? `[${row.label}]` : row.value.code
+    return row.chips.length === 0
+      ? head
+      : `${head} > ${row.chips.map((chip) => chip.countedAs === undefined ? chip.value.code : `${chip.value.code}+${chip.countedAs.code}`).join(" ")}`
+  })
 }
 
 describe("experimentRows", () => {
@@ -43,8 +52,18 @@ describe("experimentRows", () => {
       .toEqual(["materials-and-participants > subject-count"])
   })
 
-  it("keeps a classification as a row of its own where the paragraph it belongs under is not there", () => {
-    expect(shape(["disease", "health-status", "subject-count", "subject-count-type", "tissue"].map(value)))
+  it("draws the classifications under the paragraph's name, where the first of them comes, when the paragraph is not written", () => {
+    expect(shape(["disease", "health-status", "subject-count", "subject-count-type", "platform", "tissue"].map(value)))
+      .toEqual([
+        "disease",
+        "[materials-and-participants] > health-status subject-count+subject-count-type",
+        "platform",
+        "[sample-description] > tissue",
+      ])
+  })
+
+  it("keeps a classification as a row of its own where the catalog does not name its paragraph", () => {
+    expect(shape(["disease", "health-status", "subject-count", "subject-count-type", "tissue"].map(value), {}))
       .toEqual(["disease", "health-status", "subject-count", "subject-count-type", "tissue"])
   })
 
@@ -53,17 +72,26 @@ describe("experimentRows", () => {
       .toEqual(["materials-and-participants", "sample-description"])
   })
 
-  it("draws every value once and keeps the rows in the order they came", () => {
+  it("draws every value once, heads each paragraph once, and keeps the rows in the order they came", () => {
     const codes = [...new Set([...CHIPS_UNDER].flatMap(([under, chips]) => [under, ...chips]))]
     const others = ["disease", "cell-line", "platform", "reference-sequence", "total-data-volume"]
-    fc.assert(fc.property(fc.subarray([...codes, ...others]), fc.boolean(), (picked, shuffle) => {
+    const headings = fc.subarray([...CHIPS_UNDER.keys()]).map((named) =>
+      Object.fromEntries(named.map((code) => [code, { keyId: `k-${code}`, label: code }])))
+    fc.assert(fc.property(fc.subarray([...codes, ...others]), fc.boolean(), headings, (picked, shuffle, named) => {
       const values = (shuffle ? picked.toReversed() : picked).map(value)
-      const rows = experimentRows(values)
-      const drawn = rows.flatMap((row) => [row.value, ...row.chips.flatMap((chip) => chip.countedAs === undefined ? [chip.value] : [chip.value, chip.countedAs])])
+      const rows = experimentRows(values, named)
+      const chipped = (row: (typeof rows)[number]) => row.chips.flatMap((chip) => chip.countedAs === undefined ? [chip.value] : [chip.value, chip.countedAs])
+      const drawn = rows.flatMap((row) => [...(row.value === null ? [] : [row.value]), ...chipped(row)])
 
       expect(drawn.map((one) => one.code).toSorted()).toEqual(values.map((one) => one.code).toSorted())
+      expect(new Set(rows.map((row) => row.keyId)).size).toBe(rows.length)
+      // A row with no value of its own is only ever a paragraph the catalog names, heading chips.
+      for (const row of rows.filter((one) => one.value === null)) {
+        expect(Object.values(named).map((one) => one.keyId)).toContain(row.keyId)
+        expect(row.chips.length).toBeGreaterThan(0)
+      }
       const order = values.map((one) => one.code)
-      const rowOrder = rows.map((row) => order.indexOf(row.value.code))
+      const rowOrder = rows.map((row) => order.indexOf((row.value ?? chipped(row)[0])?.code ?? ""))
       expect(rowOrder).toEqual(rowOrder.toSorted((a, b) => a - b))
     }))
   })

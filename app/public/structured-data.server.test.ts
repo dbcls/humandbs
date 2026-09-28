@@ -48,6 +48,7 @@ function dataset(over: Partial<DatasetView> = {}): DatasetView {
     awaited: [],
     untranslated: false,
     experiments: [{ id: "e1", label: plain("WES"), values: [] }, { id: "e2", label: plain("WES"), values: [] }],
+    chipHeadings: {},
     files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
     namedFiles: [],
     ...over,

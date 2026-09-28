@@ -125,7 +125,7 @@ describe("a value under a catalog key", () => {
           kind: "number",
           values: {
             state: "value",
-            value: [{ label: null, value: 100, unit: "bp", inputValue: 0.1, inputUnit: "kbp", note: null }],
+            value: [{ prefix: null, value: 100, unit: "bp", inputValue: 0.1, inputUnit: "kbp", suffix: null }],
           },
         },
       }],
@@ -138,7 +138,7 @@ describe("a value under a catalog key", () => {
     }])
   })
 
-  it("reports a number's label and note as a value per language", () => {
+  it("reports a number's prefix and suffix as a value per language, spaces as written", () => {
     const answer = dataset({
       ...emptyDatasetContent(),
       values: [{
@@ -148,37 +148,37 @@ describe("a value under a catalog key", () => {
           values: {
             state: "value",
             value: [{
-              label: { ja: "常染色体", en: "" },
+              prefix: { ja: "常染色体: ", en: "" },
               value: 100,
               unit: "bp",
               inputValue: 0.1,
               inputUnit: "kbp",
-              note: { ja: "", en: "average" },
+              suffix: { ja: "", en: " (average)" },
             }],
           },
         },
       }],
     })
     expect(answer.values[0]).toMatchObject({
-      numbers: [{ label: { ja: "常染色体" }, note: { en: "average" } }],
+      numbers: [{ prefix: { ja: "常染色体: " }, suffix: { en: " (average)" } }],
     })
   })
 
-  it("leaves out a number's label and note where neither language was given one", () => {
+  it("leaves out a number's prefix and suffix where neither language was given one", () => {
     const answer = dataset({
       ...emptyDatasetContent(),
       values: [{
         keyId: "key-2",
         value: {
           kind: "number",
-          values: { state: "value", value: [{ label: null, value: 100, unit: "bp", inputValue: 0.1, inputUnit: "kbp", note: null }] },
+          values: { state: "value", value: [{ prefix: null, value: 100, unit: "bp", inputValue: 0.1, inputUnit: "kbp", suffix: null }] },
         },
       }],
     })
     const value = answer.values[0]
     const [one] = value?.type === "number" ? value.numbers ?? [] : []
-    expect(one).not.toHaveProperty("label")
-    expect(one).not.toHaveProperty("note")
+    expect(one).not.toHaveProperty("prefix")
+    expect(one).not.toHaveProperty("suffix")
   })
 
   it("has the upper end of a width, and null on a number that is not one", () => {
@@ -190,7 +190,7 @@ describe("a value under a catalog key", () => {
           kind: "number",
           values: {
             state: "value",
-            value: [{ label: null, value: 900, unit: "GB", inputValue: 0.9, inputUnit: "TB", high: 1300, inputHigh: 1.3, note: null }],
+            value: [{ prefix: null, value: 900, unit: "GB", inputValue: 0.9, inputUnit: "TB", high: 1300, inputHigh: 1.3, suffix: null }],
           },
         },
       }],

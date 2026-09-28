@@ -17,7 +17,7 @@
  * `/research/{humId}` responds with the newest version.
  */
 
-import { and, desc, eq, or, sql } from "drizzle-orm"
+import { and, asc, desc, eq, or, sql } from "drizzle-orm"
 
 import { getDb } from "~/db/client.server"
 import { likeEscaped } from "~/db/like"
@@ -241,6 +241,13 @@ export interface AlertView {
  * no end, and "now" is JST, the clock the period is written in
  * (`news.publishedAt`); the end itself is already outside.
  */
+/**
+ * The order the alerts are shown in, and listed in on their screen. **Two
+ * alerts at one position still have an order**: rows written in one statement
+ * share a timestamp, and the id is a v7, which encodes the order they were made in.
+ */
+export const ALERT_ORDER = [asc(alert.position), asc(alert.createdAt), asc(alert.id)] as const
+
 export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
   const db = getDb()
   const now = sql`(now() at time zone 'Asia/Tokyo')`
@@ -252,9 +259,7 @@ export async function activeAlerts(locale: Locale): Promise<AlertView[]> {
       sql`(${alert.displayFrom} IS NULL OR ${alert.displayFrom} <= ${now})`,
       sql`(${alert.displayUntil} IS NULL OR ${now} < ${alert.displayUntil})`,
     ))
-    // The id breaks the tie: alerts written in one statement share a
-    // timestamp, and the v7 id encodes the order they were made in.
-    .orderBy(alert.createdAt, alert.id)
+    .orderBy(...ALERT_ORDER)
 
   return rows
     .map((row) => ({

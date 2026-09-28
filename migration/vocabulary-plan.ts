@@ -30,7 +30,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import type { DatasetContent, ValueSlot } from "~/content/types"
+import type { SourceDatasetContent, SourceValueSlot } from "./number-words"
 
 export interface PlannedTerm {
   code: string
@@ -158,7 +158,7 @@ export interface FixTarget {
   termIdOf: (setCode: string, code: string) => string | undefined
 }
 
-function headingOf(experiment: DatasetContent["experiments"][number], labelCount: Map<string, number>): string[] {
+function headingOf(experiment: SourceDatasetContent["experiments"][number], labelCount: Map<string, number>): string[] {
   const label = experiment.label.state === "value" ? experiment.label.value : ""
   const shared = (labelCount.get(label) ?? 0) > 1
   return shared ? [`${label} [${experiment.id}]`] : [label, `${label} [${experiment.id}]`]
@@ -170,10 +170,10 @@ function headingOf(experiment: DatasetContent["experiments"][number], labelCount
  * nothing; a value left with no term is removed.
  */
 export function applyVocabularyFixes(
-  dataset: DatasetContent,
+  dataset: SourceDatasetContent,
   fixes: readonly VocabularyFix[],
   target: FixTarget,
-): { dataset: DatasetContent, applied: Set<VocabularyFix> } {
+): { dataset: SourceDatasetContent, applied: Set<VocabularyFix> } {
   const applied = new Set<VocabularyFix>()
   const mine = fixes.filter((fix) => fix.hum === target.hum && fix.datasetId === target.datasetId)
   if (mine.length === 0) return { dataset, applied }
@@ -189,7 +189,7 @@ export function applyVocabularyFixes(
   }
   const experiments = dataset.experiments.map((experiment) => {
     const headings = headingOf(experiment, labelCount)
-    let values: ValueSlot[] = experiment.values
+    let values: SourceValueSlot[] = experiment.values
     for (const fix of mine) {
       if (!headings.includes(fix.header)) continue
       const keyId = target.keyIdOfSet(fix.setCode)
@@ -199,7 +199,7 @@ export function applyVocabularyFixes(
       const held = slot?.value.kind === "vocabulary" && slot.value.termIds.state === "value" ? slot.value.termIds.value : []
       const removed = new Set(fix.remove.map((code) => idOf(fix.setCode, code)))
       const termIds = [...new Set([...held.filter((id) => !removed.has(id)), ...fix.add.map((code) => idOf(fix.setCode, code))])]
-      const next: ValueSlot = { keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } }
+      const next: SourceValueSlot = { keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } }
       if (termIds.length === 0) values = values.filter((one) => one.keyId !== keyId)
       else if (slot === undefined) values = [...values, next]
       else values = values.map((one) => one.keyId === keyId ? next : one)

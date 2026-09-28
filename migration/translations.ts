@@ -16,7 +16,9 @@
  * value has moved, or has been written since.
  */
 
-import type { DatasetContent, Line, RichText, TranslatedRichText, ValueSlot } from "~/content/types"
+import type { Line, RichText, TranslatedRichText } from "~/content/types"
+
+import type { SourceDatasetContent, SourceValueSlot } from "./number-words"
 
 export interface Translation {
   hum: string
@@ -53,15 +55,15 @@ const isEmpty = (side: TranslatedRichText["ja"]) => side.state === "value" && si
 
 /** A dataset of one research with its entries filled in, adding each entry that found its value to `applied`. */
 export function fillTranslations(
-  dataset: DatasetContent,
+  dataset: SourceDatasetContent,
   where: { hum: string, label: string },
   entries: readonly Translation[],
   keyIdOf: (code: string) => string | undefined,
   applied: Set<Translation>,
-): DatasetContent {
+): SourceDatasetContent {
   const own = entries.filter((entry) => entry.hum === where.hum && entry.dataset === where.label)
   if (own.length === 0) return dataset
-  const filled = (slots: ValueSlot[], experiment: string | null): ValueSlot[] => slots.map((slot) => {
+  const filled = (slots: SourceValueSlot[], experiment: string | null): SourceValueSlot[] => slots.map((slot) => {
     const value = slot.value
     if (value.kind !== "text") return slot
     const entry = own.find((one) => one.experiment === experiment && keyIdOf(one.key) === slot.keyId)

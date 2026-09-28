@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react"
 import { Form, Link } from "react-router"
 
 import { draftAside } from "~/admin/draft-name"
-import { HUM_LABEL_PATTERN } from "~/admin/labels"
 import type { PublishBlockView, PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
 import type { ChangeView } from "~/admin/publish-changes"
 import { adminDraftDatasetPath, adminDraftPath, adminDraftReviewPath, adminResearchPath, draftCommentsPath } from "~/admin/urls"
@@ -70,6 +69,7 @@ export function PublishConfirmation({ view, result }: {
             case "reserved": return messages.admin.detail.pinReserved
             case "number-unavailable": return t.numberUnavailable
             case "malformed": return messages.admin.detail.pinMalformed
+            case "empty": return answer.kind === "hum" ? messages.admin.detail.pinUnfilled : messages.admin.detail.pinDatasetUnfilled
             case "unchanged": return view.updating === null ? null : t.unchanged(`v${view.updating.number}`)
             default: return null
           }
@@ -355,10 +355,8 @@ function PinForm({ block, locale, nextNhaId, onIssuing }: {
       <input
         type="text"
         name="label"
-        required
         aria-label={detail.pinLabel}
         placeholder={detail.pinPlaceholder}
-        pattern={HUM_LABEL_PATTERN}
         className={`${CONTROL} text-sm`}
       />
       <Submit variant="primary" icon={<Icon name="link" />}>{t.pin}</Submit>

@@ -26,7 +26,9 @@
  * moved.
  */
 
-import type { DatasetContent, DiseaseValue } from "~/content/types"
+import type { DiseaseValue } from "~/content/types"
+
+import type { SourceDatasetContent } from "./number-words"
 
 export interface DiseaseEdit {
   hum: string
@@ -58,7 +60,7 @@ const sameCodes = (named: readonly string[], held: readonly (string | undefined)
  * one**, the way the rules make one value of a disease an article writes twice.
  */
 export function editDiseases(
-  dataset: DatasetContent,
+  dataset: SourceDatasetContent,
   hum: string,
   edits: readonly DiseaseEdit[],
   applied: Set<DiseaseEdit>,
@@ -68,7 +70,7 @@ export function editDiseases(
   label?: string,
   /** The code of a term, for the edits that name codes. */
   codeOf: (termId: string) => string | undefined = () => undefined,
-): DatasetContent {
+): SourceDatasetContent {
   const own = edits
     .filter((edit) => edit.hum === hum && (edit.dataset === undefined || edit.dataset === label))
     .toSorted((a, b) => Number(a.dataset === undefined) - Number(b.dataset === undefined))

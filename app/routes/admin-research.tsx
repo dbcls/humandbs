@@ -1,7 +1,7 @@
 import { data, Form } from "react-router"
 
 import { draftNameShown } from "~/admin/draft-name"
-import { HUM_LABEL_PATTERN, unpinHold, type UnpinHold } from "~/admin/labels"
+import { unpinHold, type UnpinHold } from "~/admin/labels"
 import type { AdminDraftReviewRow, AdminResearchVersionRow } from "~/admin/pages.server"
 import { researchDetailAction, researchDetailPage } from "~/admin/pages.server"
 import type { AdminDraftRow } from "~/admin/queries.server"
@@ -94,6 +94,7 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
             case "updating": return t.withdrawUpdating
             case "taken": return t.pinTaken
             case "malformed": return t.pinMalformed
+            case "empty": return t.pinUnfilled
             case "holds-files": return t.unpinHoldsFiles
             case "files-remain": return t.deleteResearchFilesRemain
             default: return null
@@ -265,7 +266,6 @@ export default function AdminResearch({ loaderData, actionData }: Route.Componen
                     label={t.pinLabel}
                     name="label"
                     placeholder={t.pinPlaceholder}
-                    pattern={HUM_LABEL_PATTERN}
                     width="w-full"
                   />
                   <Checkbox label={t.pinPrimary} name="isPrimary" checked />

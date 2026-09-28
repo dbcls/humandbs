@@ -136,23 +136,30 @@ export interface Link {
  */
 export interface NumberValue {
   /**
-   * What this number is about, where the key holds more than one — the part of
-   * the genome counted, the data product measured. `null` when the key holds a
-   * single number, which is most of them and wants no label at all.
+   * What is written before the number, exactly as it is shown — `常染色体: `,
+   * separator and space included. `null` when there is none, which is most
+   * numbers: a key holding a single number wants nothing in front of it.
+   *
+   * **Written as shown rather than as a label the page decorates.** Whether a
+   * number is headed `常染色体: ` or `(1) ` or not at all is the author's to
+   * write, and a field the page adds a colon to is one nobody can write
+   * anything else into.
    *
    * Each language is a plain string rather than a slot with a state of its
-   * own — a label is either given or it is not, and there is no third state to
+   * own — it is either given or it is not, and there is no third state to
    * hold. Once given, an empty side falls back to the other and counts toward
    * the untranslated total the same as every other translated pair
    * (`resolveOptionalBilingual` in `app/i18n/locale.ts`). A pair with both
-   * sides empty is written as `null`, the same value an absent label is.
+   * sides empty is written as `null`, the same value an absent one is.
    */
-  label: Bilingual | null
+  prefix: Bilingual | null
   /** Converted to the key's canonical unit. A width's lower end when `high` is set. */
   value: number
+  /** The key's canonical unit. Null on a key that counts, which has none. */
   unit: string | null
   /** What the editor actually typed, kept so a bad conversion can be redone. */
   inputValue: number
+  /** The unit it was typed in, one the key offers. Null on a key that counts. */
   inputUnit: string | null
   /**
    * The upper end of a value written as a width — `0.9-1.3 GB`, `85〜120 GB` —
@@ -167,13 +174,12 @@ export interface NumberValue {
   /** `high` in the unit it was typed in, the way `inputValue` is `value`'s. */
   inputHigh?: number | null
   /**
-   * What qualifies the number without being part of it — `平均`, the assembly a
-   * count was made against, the format a volume is in. Kept apart from the
-   * label because it implies nothing about which number this is. The same
-   * shape as `label`, and the same rule: `null` when there is none, and an
+   * What is written after the number and its unit, exactly as it is shown —
+   * ` SNVs` for what was counted, ` (平均)` for what qualifies it. The same
+   * shape as `prefix`, and the same rule: `null` when there is none, and an
    * empty side of a given pair falls back and counts as untranslated.
    */
-  note: Bilingual | null
+  suffix: Bilingual | null
 }
 
 /**
@@ -211,7 +217,12 @@ export interface DiseaseValue {
   nameEn: string | null
 }
 
-export type ContentValue
+/**
+ * `Number` is the shape a number has, for the one reader that holds another:
+ * the data migration builds its numbers as the source wrote them and writes
+ * them in this shape as it stores them (`migration/number-words.ts`).
+ */
+export type ContentValue<Number = NumberValue>
   = | { kind: "text", text: TranslatedRichText }
     | { kind: "single", value: Slot<string> }
     | { kind: "accession", value: Slot<string> }
@@ -221,14 +232,14 @@ export type ContentValue
      * at all is a key with no slot, and the write path drops it rather than
      * storing a value that holds nothing (`app/admin/dataset-form.server.ts`).
      */
-    | { kind: "number", values: Slot<NumberValue[]> }
+    | { kind: "number", values: Slot<Number[]> }
     /** Same rule as the numbers: an empty list is a slot that should not exist. */
     | { kind: "disease", diseases: Slot<DiseaseValue[]> }
 
-export interface ValueSlot {
+export interface ValueSlot<Number = NumberValue> {
   /** References `content_key.id`. */
   keyId: string
-  value: ContentValue
+  value: ContentValue<Number>
 }
 
 /** What a draft edits: the body of a research, without the descriptions. */
@@ -285,12 +296,12 @@ export interface ResearchContent {
  * dataset out of it expands the whole version. Public reads go through the
  * published rows, which hold each description separately (`search.ts`).
  */
-export interface VersionContent extends Omit<ResearchContent, "datasetIds"> {
-  datasets: PublishedDataset[]
+export interface VersionContent<Number = NumberValue> extends Omit<ResearchContent, "datasetIds"> {
+  datasets: PublishedDataset<Number>[]
 }
 
 /** A dataset as a version has it: which one it is, and how it read then. */
-export interface PublishedDataset extends DatasetContent {
+export interface PublishedDataset<Number = NumberValue> extends DatasetContent<Number> {
   datasetId: string
 }
 
@@ -368,7 +379,7 @@ export interface RelatedPublication {
  * can describe the same dataset differently and each stays right for its own
  * moment.
  */
-export interface DatasetContent {
+export interface DatasetContent<Number = NumberValue> {
   /**
    * Only NHA IDs have a date here. Dates for external accessions come from the
    * archive cache, so storing one would be a second source for the same fact.
@@ -382,11 +393,11 @@ export interface DatasetContent {
    */
   fileSelection: string[]
   /** Values under keys scoped to the dataset (access criteria, type of data). */
-  values: ValueSlot[]
-  experiments: Experiment[]
+  values: ValueSlot<Number>[]
+  experiments: Experiment<Number>[]
 }
 
-export interface Experiment {
+export interface Experiment<Number = NumberValue> {
   id: string
   /**
    * Free text taken from the line above the table in the source article. It is
@@ -395,7 +406,7 @@ export interface Experiment {
    */
   label: Slot<string>
   /** Values under keys scoped to an experiment. */
-  values: ValueSlot[]
+  values: ValueSlot<Number>[]
 }
 
 /** One locale of a document or news item. These have no versions and no pins. */

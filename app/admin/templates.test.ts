@@ -300,7 +300,7 @@ describe("the dataset a DRA submission seeds", () => {
       kind: "number",
       values: {
         state: "value",
-        value: [{ label: null, value: 150, unit: "bp", inputValue: 150, inputUnit: "bp", note: null }],
+        value: [{ prefix: null, value: 150, unit: "bp", inputValue: 150, inputUnit: "bp", suffix: null }],
       },
     })
   })

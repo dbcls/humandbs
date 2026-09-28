@@ -15,7 +15,7 @@ import { datasetContentOf, saveDatasetSchema, widthsOrdered } from "./dataset-fo
 /** The units of the keys these tests use. Only the numeric ones have any. */
 const UNITS = (keyId: string): string | null => (keyId === "data-volume-gb" ? "GB" : null)
 
-/** A number row's label or note, left untouched in both languages. */
+/** A number row's prefix or suffix, left untouched in both languages. */
 const EMPTY = { ja: "", en: "" }
 
 function text(keyId: string, ja: string, en = ""): ValueInput {
@@ -129,7 +129,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: EMPTY, value: "1.5", unit: "TB", high: "", note: EMPTY }],
+          rows: [{ prefix: EMPTY, value: "1.5", unit: "TB", high: "", suffix: EMPTY }],
         },
       }]
     }), UNITS)
@@ -139,20 +139,20 @@ describe("reading a dataset back off the form", () => {
       values: {
         state: "value",
         value: [{
-          label: null,
+          prefix: null,
           value: 1500,
           unit: "GB",
           inputValue: 1.5,
           inputUnit: "TB",
           high: null,
           inputHigh: null,
-          note: null,
+          suffix: null,
         }],
       },
     })
   })
 
-  it("keeps a number's label and note as a pair, trimmed side by side", () => {
+  it("keeps a number's prefix and suffix as a pair, spaces and all, since they are what the page shows", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
@@ -160,11 +160,11 @@ describe("reading a dataset back off the form", () => {
           kind: "number",
           state: "value",
           rows: [{
-            label: { ja: " 常染色体 ", en: "" },
+            prefix: { ja: "常染色体: ", en: "" },
             value: "1.5",
             unit: "TB",
             high: "",
-            note: { ja: "", en: " average " },
+            suffix: { ja: "", en: " (average)" },
           }],
         },
       }]
@@ -172,26 +172,26 @@ describe("reading a dataset back off the form", () => {
 
     const value = result.values[0]?.value
     const [one] = value?.kind === "number" && value.values.state === "value" ? value.values.value : []
-    expect(one?.label).toEqual({ ja: "常染色体", en: "" })
-    expect(one?.note).toEqual({ ja: "", en: "average" })
+    expect(one?.prefix).toEqual({ ja: "常染色体: ", en: "" })
+    expect(one?.suffix).toEqual({ ja: "", en: " (average)" })
   })
 
-  it("stores a label or a note left untouched in both languages as null, not as an empty pair", () => {
+  it("stores a prefix or a suffix holding only spaces in both languages as null, not as an empty pair", () => {
     const result = datasetContentOf(form((input) => {
       input.values = [{
         keyId: "data-volume-gb",
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: { ja: " ", en: "" }, value: "1.5", unit: "TB", high: "", note: EMPTY }],
+          rows: [{ prefix: { ja: " ", en: "" }, value: "1.5", unit: "TB", high: "", suffix: { ja: "  ", en: " \t" } }],
         },
       }]
     }), UNITS)
 
     const value = result.values[0]?.value
     const [one] = value?.kind === "number" && value.values.state === "value" ? value.values.value : []
-    expect(one?.label).toBeNull()
-    expect(one?.note).toBeNull()
+    expect(one?.prefix).toBeNull()
+    expect(one?.suffix).toBeNull()
   })
 
   it("converts a width's upper end the same way as its lower end, and keeps what was typed", () => {
@@ -201,7 +201,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: EMPTY, value: "0.9", unit: "TB", high: "1.3", note: EMPTY }],
+          rows: [{ prefix: EMPTY, value: "0.9", unit: "TB", high: "1.3", suffix: EMPTY }],
         },
       }]
     }), UNITS)
@@ -211,14 +211,14 @@ describe("reading a dataset back off the form", () => {
       values: {
         state: "value",
         value: [{
-          label: null,
+          prefix: null,
           value: 900,
           unit: "GB",
           inputValue: 0.9,
           inputUnit: "TB",
           high: 1300,
           inputHigh: 1.3,
-          note: null,
+          suffix: null,
         }],
       },
     })
@@ -239,7 +239,7 @@ describe("reading a dataset back off the form", () => {
           value: {
             kind: "number",
             state: "value",
-            rows: [{ label: EMPTY, value: "1.3", unit: "GB", high: "0.9", note: EMPTY }],
+            rows: [{ prefix: EMPTY, value: "1.3", unit: "GB", high: "0.9", suffix: EMPTY }],
           },
         }]
       }),
@@ -255,7 +255,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: EMPTY, value: "1.3", unit: "GB", high: "0.9", note: EMPTY }],
+          rows: [{ prefix: EMPTY, value: "1.3", unit: "GB", high: "0.9", suffix: EMPTY }],
         },
       }]
     })
@@ -268,7 +268,7 @@ describe("reading a dataset back off the form", () => {
           value: {
             kind: "number",
             state: "value",
-            rows: [{ label: EMPTY, value: "1.3", unit: "GB", high: "0.9", note: EMPTY }],
+            rows: [{ prefix: EMPTY, value: "1.3", unit: "GB", high: "0.9", suffix: EMPTY }],
           },
         }],
       }]
@@ -279,7 +279,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: EMPTY, value: "0.9", unit: "GB", high: "1.3", note: EMPTY }],
+          rows: [{ prefix: EMPTY, value: "0.9", unit: "GB", high: "1.3", suffix: EMPTY }],
         },
       }]
     })
@@ -297,7 +297,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "value",
-          rows: [{ label: EMPTY, value: "  ", unit: "GB", high: "", note: EMPTY }],
+          rows: [{ prefix: EMPTY, value: "  ", unit: "GB", high: "", suffix: EMPTY }],
         },
       }]
     }), UNITS)
@@ -312,7 +312,7 @@ describe("reading a dataset back off the form", () => {
         value: {
           kind: "number",
           state: "unknown",
-          rows: [{ label: EMPTY, value: "1.5", unit: "TB", high: "", note: EMPTY }],
+          rows: [{ prefix: EMPTY, value: "1.5", unit: "TB", high: "", suffix: EMPTY }],
         },
       }]
     }), UNITS)
@@ -410,7 +410,7 @@ describe("putting a dataset on the form", () => {
           kind: "number",
           values: {
             state: "value",
-            value: [{ label: null, value: 1500, unit: "GB", inputValue: 1.5, inputUnit: "TB", note: null }],
+            value: [{ prefix: null, value: 1500, unit: "GB", inputValue: 1.5, inputUnit: "TB", suffix: null }],
           },
         },
       }],
@@ -420,7 +420,7 @@ describe("putting a dataset on the form", () => {
     expect(datasetContentInput(content).values[0]?.value).toEqual({
       kind: "number",
       state: "value",
-      rows: [{ label: EMPTY, value: "1.5", unit: "TB", high: "", note: EMPTY }],
+      rows: [{ prefix: EMPTY, value: "1.5", unit: "TB", high: "", suffix: EMPTY }],
     })
   })
 
@@ -435,14 +435,14 @@ describe("putting a dataset on the form", () => {
           values: {
             state: "value",
             value: [{
-              label: null,
+              prefix: null,
               value: 900,
               unit: "GB",
               inputValue: 0.9,
               inputUnit: "TB",
               high: 1300,
               inputHigh: 1.3,
-              note: null,
+              suffix: null,
             }],
           },
         },
@@ -453,7 +453,7 @@ describe("putting a dataset on the form", () => {
     expect(datasetContentInput(content).values[0]?.value).toEqual({
       kind: "number",
       state: "value",
-      rows: [{ label: EMPTY, value: "0.9", unit: "TB", high: "1.3", note: EMPTY }],
+      rows: [{ prefix: EMPTY, value: "0.9", unit: "TB", high: "1.3", suffix: EMPTY }],
     })
   })
 
@@ -510,7 +510,7 @@ describe("putting a dataset on the form", () => {
 
 describe("highBelowValue", () => {
   const row = (value: string, high: string) =>
-    ({ label: EMPTY, value, unit: null, high, note: EMPTY })
+    ({ prefix: EMPTY, value, unit: null, high, suffix: EMPTY })
 
   it("is false when nothing is typed for the upper end", () => {
     expect(highBelowValue(row("1.3", ""))).toBe(false)

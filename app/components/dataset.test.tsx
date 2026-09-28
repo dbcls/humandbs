@@ -31,6 +31,7 @@ function view(fileCount: number, secondaryLabels: string[] = [], page = 1, size:
     awaited: [],
     untranslated: false,
     experiments: [],
+    chipHeadings: {},
     files: fileListOf(rows, page, size),
     namedFiles: rows.length > 100 ? null : rows,
   }
@@ -172,8 +173,13 @@ describe("an experiment's values", () => {
   const plain = (text: string) => ({ state: "plain" as const, text, untranslated: false })
   const value = (code: string, label: string, text: string) => ({ keyId: `k-${code}`, code, label, field: plain(text) })
 
-  function drawn(values: ReturnType<typeof value>[]): string {
-    const withExperiment: DatasetView = { ...view(0), experiments: [{ id: "e1", label: plain("SNP array"), values }] }
+  const HEADINGS = {
+    "materials-and-participants": { keyId: "k-materials-and-participants", label: "材料と対象者" },
+    "sample-description": { keyId: "k-sample-description", label: "試料説明" },
+  }
+
+  function drawn(values: ReturnType<typeof value>[], chipHeadings: DatasetView["chipHeadings"] = HEADINGS): string {
+    const withExperiment: DatasetView = { ...view(0), experiments: [{ id: "e1", label: plain("SNP array"), values }], chipHeadings }
     const Stub = createRoutesStub([{
       path: "/*",
       Component: () => <DatasetBody view={withExperiment} locale="ja" researchHref="/research/hum0001" />,
@@ -202,8 +208,22 @@ describe("an experiment's values", () => {
     expect(chips(html)).toEqual(["健康状態 罹患", "対象者数 96 (人数)", "組織 末梢血"])
   })
 
-  it("draws a classification as a row where the paragraph is not there", () => {
-    const html = drawn([value("health-status", "健康状態", "罹患"), value("tissue", "組織", "末梢血")])
+  it("draws the classifications as chips under the paragraph's name where the paragraph is not written", () => {
+    const html = drawn([
+      value("disease", "疾患", "特発性過眠症 (G471)"),
+      value("subject-count-type", "対象者数の数え方", "人数"),
+      value("tissue", "組織", "末梢血"),
+      value("platform", "プラットフォーム", "Affymetrix Genome-Wide Human SNP Array 6.0"),
+    ])
+
+    expect(rowNames(html).slice(-4)).toEqual(["疾患", "材料と対象者", "試料説明", "プラットフォーム"])
+    expect(chips(html)).toEqual(["対象者数の数え方 人数", "組織 末梢血"])
+    // The name heads the chips alone: no value is drawn for a paragraph that is not written.
+    expect(html).not.toMatch(/材料と対象者<\/dt><dd>(?!<ul)/)
+  })
+
+  it("draws a classification as a row where the catalog does not name its paragraph", () => {
+    const html = drawn([value("health-status", "健康状態", "罹患"), value("tissue", "組織", "末梢血")], {})
 
     expect(rowNames(html).slice(-2)).toEqual(["健康状態", "組織"])
     expect(chips(html)).toEqual([])
