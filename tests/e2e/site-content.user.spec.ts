@@ -88,7 +88,7 @@ function bodyAndSave(page: Page): [Locator, Locator] {
 async function expectBodyRefused(page: Page, body: Locator, save: Locator): Promise<void> {
   await body.fill(`${E2E} の本文\n<b>太字</b>`)
   await save.click()
-  await expect(page.getByText("本文に直すところがあるため、保存していません。問題のある行を欄の下に表示しています。")).toBeVisible()
+  await expect(page.getByRole("status").filter({ hasText: "本文に直すところがあるため、保存していません。問題のある行を欄の下に表示しています。" })).toHaveCount(1)
   await expect(page.getByText("2 行目: HTML のタグは書けません")).toBeVisible()
 
   await body.fill(`${E2E} の本文`)

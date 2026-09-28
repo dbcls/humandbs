@@ -308,7 +308,7 @@ test.describe("P-ADMIN", () => {
     const before = await mine.count()
 
     await page.getByRole("button", { name: "招待リンクの作成" }).click()
-    await expect(page.getByText("招待リンクを作成しました。リンクはこの画面を離れると表示できません。")).toBeVisible()
+    await expect(page.getByRole("status").filter({ hasText: "招待リンクを作成しました。リンクはこの画面を離れると表示できません。" })).toHaveCount(1)
     await expect(mine).toHaveCount(before + 1)
 
     await discardLeftoverInvitations(page)
