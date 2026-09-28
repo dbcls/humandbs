@@ -2316,8 +2316,7 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
    * action that is not a form being sent.
    *
    * **A panel without one writes as it goes** (`fields.tsx` の `ItemList`), and
-   * its cancel button uses the outlined style: it is the one thing there to press,
-   * and the word-only style is for a cancel button shown beside an action.
+   * its only button is the one that closes it.
    */
   action?: (close: () => void) => ReactNode
   /**

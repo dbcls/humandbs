@@ -970,7 +970,8 @@ function isEditable(key: EditableKey): boolean {
  * box that opens its list as it is entered**, the same combobox a vocabulary is
  * chosen with (`ComboBox`), filtered by what the key is called. A collapsible labelled
  * 「項目の追加」 read as a heading, and what it held was found by opening it.
- * Choosing adds the field and takes the caret to it.
+ * Choosing puts the key in the box, and the add button beside it puts the
+ * field in the form and takes the caret to it.
  *
  * **The shape does not follow the number of keys on offer.** A dataset down to
  * a couple of spare items and an experiment down to most of ninety draw the
@@ -982,10 +983,6 @@ function isEditable(key: EditableKey): boolean {
  * vocabulary's terms, the keys on offer already came down with the document —
  * a dataset or an experiment only ever has as many catalog keys as the scope
  * defines, not a set that grows the way a vocabulary does.
- *
- * **Nothing is chosen and then confirmed** — a second press to commit a choice
- * already made is a step that only exists because the first control could not
- * act.
  */
 function AddValue({ locale, keys, catalogLink, onAdd }: {
   locale: Locale

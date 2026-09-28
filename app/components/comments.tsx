@@ -4,9 +4,9 @@
  * The preview, the review screen and the editing screens all show the same
  * thing, and they differ in two ways only: where the form posts, and whether
  * the reader may resolve and delete. The preview posts to the page it is on
- * and gets a redirect back, so it works with JavaScript switched off; an
- * editing screen posts to a resource route that responds with the comments,
- * because it is holding unsaved work and must not navigate.
+ * and gets a redirect back; an editing screen posts to a resource route that
+ * responds with the comments, because it is holding unsaved work and must not
+ * navigate.
  *
  * **The comments at one place are a flat timeline**: oldest first, one box to
  * write the next one under them, and each resolved on its own. There is no

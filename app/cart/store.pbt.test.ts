@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { addToCart, isCartable, noticeOf, parseCart, removeFromCart } from "./store"
+import { addingOverflows, addToCart, CART_LIMIT, isCartable, noticeOf, parseCart, removeFromCart } from "./store"
 
 /** An accession the application system takes. */
 const jgad = fc.integer({ min: 1, max: 999_999 })
@@ -110,6 +110,28 @@ describe("what a press reports about itself", () => {
         expect(held).toContain(notice.only)
         expect(after).not.toContain(notice.only)
       }
+    }))
+  })
+})
+
+describe("the cart's limit", () => {
+  /** Carts close enough to the limit for a press to cross it. */
+  const nearlyFull = fc.integer({ min: CART_LIMIT - 40, max: CART_LIMIT })
+    .map((size) => Array.from({ length: size }, (_, at) => `JGAD${String(at + 1).padStart(6, "0")}`))
+  const offered = fc.array(fc.oneof(jgad, anyId), { maxLength: 60 })
+
+  it("is never passed by adding to a cart within it", () => {
+    fc.assert(fc.property(nearlyFull, offered, (held, ids) => {
+      expect(addToCart(held, ids).length).toBeLessThanOrEqual(CART_LIMIT)
+    }))
+  })
+
+  it("lets a press put in everything new it offers, or nothing at all", () => {
+    fc.assert(fc.property(nearlyFull, offered, (held, ids) => {
+      const after = addToCart(held, ids)
+      const offeredNew = new Set(ids.filter((id) => isCartable(id) && !held.includes(id)))
+      if (addingOverflows(held, ids)) expect(after).toEqual(held)
+      else expect(after.length - held.length).toBe(offeredNew.size)
     }))
   })
 })

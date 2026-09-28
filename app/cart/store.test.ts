@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  addingOverflows,
   addToCart,
   applicationPayload,
+  CART_LIMIT,
   cartPressGathers,
   isCartable,
+  fullNoticeOf,
   noticeOf,
   parseCart,
   removeFromCart,
@@ -57,8 +60,45 @@ describe("adding to the cart", () => {
     expect(addToCart([], ["JGAD000001", "DRA014188"])).toEqual(["JGAD000001"])
   })
 
-  it("takes a whole large row, since the cart has no ceiling", () => {
+  it("takes a whole large row while the cart stays within the limit", () => {
     expect(addToCart(many(200), ["JGAD009999"])).toHaveLength(201)
+  })
+})
+
+describe("the cart's limit", () => {
+  it("is 500 datasets", () => {
+    expect(CART_LIMIT).toBe(500)
+  })
+
+  it("takes a row that brings the cart to exactly the limit", () => {
+    expect(addToCart(many(480), many(20, 1000))).toHaveLength(500)
+    expect(addingOverflows(many(480), many(20, 1000))).toBe(false)
+  })
+
+  it("takes nothing from a row that would carry the cart past the limit, so no row is left half in", () => {
+    const held = many(480)
+    expect(addToCart(held, many(21, 1000))).toEqual(held)
+    expect(addingOverflows(held, many(21, 1000))).toBe(true)
+  })
+
+  it("refuses one more dataset once the cart is full", () => {
+    expect(addToCart(many(500), ["JGAD009999"])).toHaveLength(500)
+    expect(addingOverflows(many(500), ["JGAD009999"])).toBe(true)
+  })
+
+  it("counts only what is not in the cart yet, so a full cart still lets a row it already holds be pressed", () => {
+    expect(addingOverflows(many(500), ["JGAD000001"])).toBe(false)
+    expect(addingOverflows(many(499), ["JGAD000001", "JGAD009999"])).toBe(false)
+  })
+
+  it("counts a dataset named twice as one, and ignores what cannot go in a cart", () => {
+    expect(addingOverflows(many(499), ["JGAD009999", "JGAD009999", "DRA014188"])).toBe(false)
+  })
+
+  it("is reported with how many were offered and where the cart stands, and nothing moved", () => {
+    const held = many(480)
+    const notice = fullNoticeOf(held, many(30, 1000), 7)
+    expect(notice).toEqual({ kind: "full", count: 30, only: null, total: 480, before: held, at: 7 })
   })
 })
 

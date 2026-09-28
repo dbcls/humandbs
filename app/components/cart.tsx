@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 
 import type { CartNotice } from "~/cart/store"
-import { cartPressGathers, isCartable, useCart, useCartNotice } from "~/cart/store"
+import { CART_LIMIT, cartPressGathers, isCartable, useCart, useCartNotice } from "~/cart/store"
 import { Button, ButtonLink, IconButton, Menu, Note, Toast, TOAST_MS } from "~/components/base"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -115,6 +115,7 @@ export function AddToCartButton({ datasetLabel, locale }: {
 
 /** What the last press did, in one sentence. */
 function noticeSentence(notice: CartNotice, messages: Messages): string {
+  if (notice.kind === "full") return messages.cart.full(CART_LIMIT)
   if (notice.kind === "removed" && notice.total === 0 && notice.count > 1) {
     return messages.cart.clearedAll(notice.count)
   }
@@ -135,6 +136,9 @@ function noticeSentence(notice: CartNotice, messages: Messages): string {
  * two thousand pixels below the count in the top bar, so without this the only
  * answer to a press is the colour of a 36px glyph. One of these is shown at a
  * time, in the corner, and holds the undo back to the state before the press.
+ *
+ * A press refused at the limit is told in the same place, with nothing to
+ * undo because nothing moved.
  *
  * **It waits while it is being read.** The timer is held off while a pointer is
  * over the box or the focus is inside it — the undo is a control, and a
@@ -178,7 +182,7 @@ export function CartToast({ locale }: { locale: Locale }) {
               }}
             >
               <Note
-                kind="done"
+                kind={notice.kind === "full" ? "warning" : "done"}
                 action={(
                   <IconButton name="close" label={messages.cart.dismiss} onClick={dismiss} />
                 )}
@@ -188,9 +192,11 @@ export function CartToast({ locale }: { locale: Locale }) {
                   {/* Outlined rather than bare: it is the one thing in the box
                       to press, and a word in the brand colour beside a sentence
                       reads as a link back to something. */}
-                  <Button type="button" variant="secondary" size="xs" icon={<Icon name="undo" />} onClick={undo}>
-                    {messages.cart.undo}
-                  </Button>
+                  {notice.kind !== "full" && (
+                    <Button type="button" variant="secondary" size="xs" icon={<Icon name="undo" />} onClick={undo}>
+                      {messages.cart.undo}
+                    </Button>
+                  )}
                 </span>
               </Note>
             </div>

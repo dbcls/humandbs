@@ -336,6 +336,7 @@ const ja = {
     tookOne: (label: string) => `${label} をカートから外しました`,
     tookMany: (count: number) => `${count} 件をカートから外しました`,
     clearedAll: (count: number) => `${count} 件をすべて外しました`,
+    full: (limit: number) => `カートに入れられるのは ${limit} 件までです。`,
   },
   account: {
     logIn: "ログイン",
@@ -1876,6 +1877,7 @@ const en: Messages = {
     tookOne: (label: string) => `${label} removed from the cart`,
     tookMany: (count: number) => `${count} datasets removed from the cart`,
     clearedAll: (count: number) => `All ${count} removed from the cart`,
+    full: (limit: number) => `The cart can hold up to ${limit} datasets.`,
   },
   account: {
     logIn: "Log in",

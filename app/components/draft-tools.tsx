@@ -24,8 +24,8 @@ import { Flag } from "./flags"
 
 /**
  * The header of an editing screen: what is being edited, the back link out of
- * it, and — for the research editor only — this draft's other screens and its
- * memo.
+ * it, and — for the research editor only — the links to this draft's other
+ * screens and the draft's name.
  *
  * **The first line is the same name row every screen has** (`Heading`):
  * the role, the identifier beside it, and the back link on the right. An
@@ -33,12 +33,12 @@ import { Flag } from "./flags"
  * than merging it into the name, because it is a fact about the draft's
  * state and not part of what the screen is called.
  *
- * **The second line is what this draft is, read once.** Its other three
- * screens, the memo, the comments about the whole of it, and the link to import
- * a data-providing application — read on the way in and not needed again
- * while typing, which is why it collapses away with the name. A dataset is a part
- * of the draft rather than a screen of its own, so its screen has no second
- * line.
+ * **The second line is the draft's name, read once** (`overview`): read when
+ * the screen opens and not needed again while typing, which is why it
+ * collapses away with the name row. The links to the draft's other screens sit in the name row
+ * after the back link (`headExtra`), and the memo and the comments about the
+ * whole draft are in the toolbar. A dataset is a part of the draft rather than
+ * a screen of its own, so its screen has no second line.
  *
  * **The last row is the toolbar, and it is the one row that stays.** The
  * card sticks to the top of the window; once it is held there, the name and

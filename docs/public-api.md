@@ -57,7 +57,7 @@
 
 エラーは RFC 7807 の problem details (`application/problem+json`) で返し、`type` は `https://humandbs.dbcls.jp/problems/{slug}` である。
 
-- 404 は公開されているものが無いときと、API に無いアドレス (`/api/` の下) のとき、422 はパラメータを解釈できないとき (`?q=`・並び順・ページ番号・accession の種類) に返す。
+- 404 は公開されているものが無いときと、API に無いアドレス (`/api/` の下) のとき、422 はパラメータを解釈できないとき (`?q=`・並び順・ページ番号・accession の種類・`true` でも `false` でもない `includeFiles`) に返す。
 - 400 は使わない。拒否する理由はどれもパラメータの形の問題で、業務上の決まりに反するものが無いためである。
 
 ## DDBJ Search への提供

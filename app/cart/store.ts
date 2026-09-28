@@ -22,13 +22,11 @@
  * an unrestricted-access dataset needs no application at all, and a portal-issued
  * NHA id would have nowhere to be pasted.
  *
- * **There is no ceiling on how many.** There was one, of a hundred, and what it
- * held back was a toggle that put a whole page of results in at once — a control
- * that no longer exists. On its own a reader cannot reach that far: the largest
- * research holds 95 JGA datasets, and every one in the portal comes to 681,
- * which is 37 KB of the 5 MB the browser will keep. A number the portal made up
- * cannot stand in for a limit the application system might have, either — if
- * there is one at the far end, a hundred is not it.
+ * **At most `CART_LIMIT`.** The rows of `/cart` are fetched with the
+ * accessions in the address, and past about 630 of them the address outgrows
+ * the 8 KB the proxy accepts, leaving the page with no table. **A press that
+ * would carry the cart past the limit puts nothing in**: a research row left
+ * half in the cart would be a state its toggle cannot take back in one press.
  */
 
 import { useCallback, useSyncExternalStore } from "react"
@@ -63,14 +61,28 @@ export function parseCart(raw: string | null): string[] {
   return [...new Set(ids)]
 }
 
+/** How many datasets the cart holds at most. */
+export const CART_LIMIT = 500
+
+/** What of `ids` the cart would take: cartable, not held yet, each once. */
+function newIn(current: string[], ids: string[]): string[] {
+  const held = new Set(current)
+  return [...new Set(ids.filter((id) => isCartable(id) && !held.has(id)))]
+}
+
+/** Whether putting `ids` in would carry the cart past `CART_LIMIT`. */
+export function addingOverflows(current: string[], ids: string[]): boolean {
+  const added = newIn(current, ids)
+  return added.length > 0 && current.length + added.length > CART_LIMIT
+}
+
 /**
  * Adding keeps the order things were put in, and what is already in the cart is
- * not moved to the end of it.
+ * not moved to the end of it. A press that would pass the limit adds nothing.
  */
 export function addToCart(current: string[], ids: string[]): string[] {
-  const held = new Set(current)
-  const added = ids.filter((id) => isCartable(id) && !held.has(id))
-  return [...current, ...new Set(added)]
+  if (addingOverflows(current, ids)) return current
+  return [...current, ...newIn(current, ids)]
 }
 
 export function removeFromCart(current: string[], ids: string[]): string[] {
@@ -106,11 +118,15 @@ export function cartPressGathers(current: string[], ids: string[]): boolean {
  *
  * **`before` is the undo.** Holding the whole list rather than the
  * difference is what lets one control undo a press that both added and dropped,
- * and the list is a hundred short strings at the very most.
+ * and the list is `CART_LIMIT` short strings at the very most.
  */
 export interface CartNotice {
-  kind: "added" | "removed"
-  /** How many ids moved. Never zero: a press that moves nothing reports nothing. */
+  /** `full` is a press refused because it would pass `CART_LIMIT`; nothing moved. */
+  kind: "added" | "removed" | "full"
+  /**
+   * How many ids moved — or, for `full`, how many the press offered. Never
+   * zero: a press that moves nothing and offers nothing reports nothing.
+   */
   count: number
   /** The one id that moved, when exactly one did: the reader wants to see it. */
   only: string | null
@@ -154,6 +170,11 @@ export function noticeOf(before: string[], after: string[], at: number): CartNot
     before,
     at,
   }
+}
+
+/** A press refused at the limit: it offered `ids`, and the cart stays as `before`. */
+export function fullNoticeOf(before: string[], ids: string[], at: number): CartNotice {
+  return { kind: "full", count: newIn(before, ids).length, only: null, total: before.length, before, at }
 }
 
 /**
@@ -305,6 +326,11 @@ export function useCart(): Cart {
   const ids = useSyncExternalStore(subscribe, readCart, serverSnapshot)
   const holds = useCallback((id: string) => heldIn(ids).has(id), [ids])
   const add = useCallback((toAdd: string[]) => {
+    const before = readCart()
+    if (addingOverflows(before, toAdd)) {
+      setNotice(fullNoticeOf(before, toAdd, ++pressed))
+      return
+    }
     press(addToCart, toAdd)
   }, [])
   const remove = useCallback((toRemove: string[]) => {
