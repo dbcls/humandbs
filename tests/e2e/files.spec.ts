@@ -32,9 +32,12 @@ test.describe("P-ANON 非制限公開ファイル", () => {
 
     const size = section.locator("summary[aria-label^=\"表示件数:\"]")
     await size.scrollIntoViewIfNeeded()
-    const opened = await where()
     await size.click()
-    await section.getByRole("link", { name: "50", exact: true }).click()
+    // 開いたメニューの選択肢が画面の下にはみ出ることがあるので、これも先に画面に入れてから測る
+    const fifty = section.getByRole("link", { name: "50", exact: true })
+    await fifty.scrollIntoViewIfNeeded()
+    const opened = await where()
+    await fifty.click()
     await expect(page).toHaveURL(/[?&]fileRows=50(&|$)/)
     // 件数を選ぶと 1 ページ目に戻る
     expect(new URL(page.url()).searchParams.get("files") ?? "1").toBe("1")
