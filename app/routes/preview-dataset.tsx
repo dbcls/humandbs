@@ -26,8 +26,9 @@ export function headers() {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
+  const datasetLabel = loaderData.datasetLabel ?? messages.preview.unnamedDataset(loaderData.datasetNumber)
   return [
-    { title: windowTitle(messages, [loaderData.datasetLabel, loaderData.humLabel, messages.preview.heading]) },
+    { title: windowTitle(messages, [datasetLabel, loaderData.humLabel, messages.preview.heading]) },
     { name: "robots", content: "noindex, nofollow" },
   ]
 }

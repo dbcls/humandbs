@@ -13,6 +13,7 @@ import type { FileLabel } from "~/files/labels"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { fileDownloadHref } from "~/admin/urls"
+import { useBusyHere } from "~/navigating"
 import { datasetPath, filePath, href } from "~/public/urls"
 import { PAGE_SIZE, type PageSize } from "~/search/page-size"
 
@@ -22,6 +23,7 @@ import {
   Confirm,
   Dialog,
   Note,
+  PALE,
   Progress,
   Stack,
   CopyButton,
@@ -127,77 +129,80 @@ export function Downloads<Row extends DownloadRow>({
   // is nothing to page or choose, and a count over a handful of rows reads as
   // a listing's tools on a page's section.
   const tools = total > PAGE_SIZE
+  const busy = useBusyHere()
 
   return (
-    <Stack gap="tight">
-      {tools && (
-        <FileListTools
-          locale={locale}
-          size={size}
-          at={(chosen) => at(1, chosen)}
-          paging={{ total, from: rangeFrom, to: rangeTo, page, pageCount, at: (to) => at(to, written) }}
-        />
-      )}
-      {/* `whenEmpty` は要らない — 配布するものが無い研究では、この節ごと描かれない
-          (`research.tsx` / `dataset.tsx`)。 */}
-      {/* **The label's column is there on every list**, labelled or not: the
-          columns of a research's list and of any other are then the same ones
-          in the same places. */}
-      <Table
-        headers={[
-          t.downloadName,
-          t.downloadLabel,
-          t.downloadSize,
-          ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
-        ]}
-        actions={origin === undefined ? undefined : t.copyUrl}
-      >
-        {rows.map((row) => (
-          <tr key={row.name}>
-            <Td>
-              {/* **A name that fetches is shown with the download icon** — pressing it
-                  starts a download rather than opening a page, and the indicator shows
-                  so before the press. A name not public yet fetches nothing and
-                  goes without. */}
-              {row.isPublic && humLabel !== null
-                ? (
-                    <a href={filePath(humLabel, row.name)} className="visitable">
-                      <Icon name="download" aria-hidden="true" className="mr-1" />
-                      <FileName name={row.name} />
-                    </a>
-                  )
-                : <NotPublicYet locale={locale} humLabel={humLabel} name={row.name} />}
-            </Td>
-            <Td floor="min-w-40">{row.label}</Td>
-            <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
-            {selectedBy !== undefined && <Td nowrap>{selectedBy(row)}</Td>}
-            {origin !== undefined && (
-              <Td nowrap holds="control">
-                {row.isPublic && humLabel !== null && (
-                  <CopyAddress address={filePath(humLabel, row.name)} origin={origin} locale={locale} />
-                )}
-              </Td>
-            )}
-          </tr>
-        ))}
-      </Table>
-      {/* Under the table the page steps alone, as under a listing: the choice of
-          size is made once, above, before the rows are read. */}
-      {pageCount > 1 && (
-        <div className="flex justify-end">
-          <Paging
+    <div className={PALE[busy ? "on" : "off"]} aria-busy={busy}>
+      <Stack gap="tight">
+        {tools && (
+          <FileListTools
             locale={locale}
-            total={total}
-            from={rangeFrom}
-            to={rangeTo}
-            page={page}
-            pageCount={pageCount}
-            at={(to) => at(to, written)}
-            inPlace
+            size={size}
+            at={(chosen) => at(1, chosen)}
+            paging={{ total, from: rangeFrom, to: rangeTo, page, pageCount, at: (to) => at(to, written) }}
           />
-        </div>
-      )}
-    </Stack>
+        )}
+        {/* `whenEmpty` は要らない — 配布するものが無い研究では、この節ごと描かれない
+            (`research.tsx` / `dataset.tsx`)。 */}
+        {/* **The label's column is there on every list**, labelled or not: the
+            columns of a research's list and of any other are then the same ones
+            in the same places. */}
+        <Table
+          headers={[
+            t.downloadName,
+            t.downloadLabel,
+            t.downloadSize,
+            ...(selectedBy === undefined ? [] : [messages.dataset.datasetId]),
+          ]}
+          actions={origin === undefined ? undefined : t.copyUrl}
+        >
+          {rows.map((row) => (
+            <tr key={row.name}>
+              <Td>
+                {/* **A name that fetches is shown with the download icon** — pressing it
+                    starts a download rather than opening a page, and the indicator shows
+                    so before the press. A name not public yet fetches nothing and
+                    goes without. */}
+                {row.isPublic && humLabel !== null
+                  ? (
+                      <a href={filePath(humLabel, row.name)} className="visitable">
+                        <Icon name="download" aria-hidden="true" className="mr-1" />
+                        <FileName name={row.name} />
+                      </a>
+                    )
+                  : <NotPublicYet locale={locale} humLabel={humLabel} name={row.name} />}
+              </Td>
+              <Td floor="min-w-40">{row.label}</Td>
+              <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
+              {selectedBy !== undefined && <Td nowrap>{selectedBy(row)}</Td>}
+              {origin !== undefined && (
+                <Td nowrap holds="control">
+                  {row.isPublic && humLabel !== null && (
+                    <CopyAddress address={filePath(humLabel, row.name)} origin={origin} locale={locale} />
+                  )}
+                </Td>
+              )}
+            </tr>
+          ))}
+        </Table>
+        {/* Under the table the page steps alone, as under a listing: the choice of
+            size is made once, above, before the rows are read. */}
+        {pageCount > 1 && (
+          <div className="flex justify-end">
+            <Paging
+              locale={locale}
+              total={total}
+              from={rangeFrom}
+              to={rangeTo}
+              page={page}
+              pageCount={pageCount}
+              at={(to) => at(to, written)}
+              inPlace
+            />
+          </div>
+        )}
+      </Stack>
+    </div>
   )
 }
 

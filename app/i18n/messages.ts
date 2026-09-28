@@ -32,6 +32,8 @@ const ja = {
   otherLanguageOnly: "英語のみ",
   notFoundTitle: "ページが見つかりません",
   notFoundBody: "お探しのページは存在しないか、公開されていません。",
+  errorTitle: "エラーが発生しました",
+  errorBody: "時間をおいて、もう一度お試しください。",
   notApplicable: "該当なし",
   /** How a value settled as not applicable is shown: short, with `notApplicable` on pointing at it. */
   notApplicableShort: "N/A",
@@ -375,7 +377,8 @@ const ja = {
     /** A side of a compared table and how many elements it holds. */
     rowCount: (side: string, count: number) => `${side}: ${count} 件`,
     backToResearch: "研究の画面へ戻る",
-    unnamedDataset: "ID 未発行",
+    /** A dataset with no id pinned yet, by its row in the research's dataset table. */
+    unnamedDataset: (number: number) => `データセット ID ${number} (ID 未発行)`,
     who: "お名前",
     whoHint: "コメントに表示されるお名前です。DDBJ アカウントでログインすると、アカウントのお名前で記録されます。",
     /** Between typing a name and signing in: the two ways of indicating who is writing. */
@@ -1643,6 +1646,8 @@ const en: Messages = {
   skipToContent: "Skip to content",
   notFoundTitle: "Page not found",
   notFoundBody: "This page does not exist, or it is not published.",
+  errorTitle: "Something went wrong",
+  errorBody: "Please try again later.",
   notApplicable: "Not applicable",
   notApplicableShort: "N/A",
   newTab: " (opens in a new tab)",
@@ -1680,7 +1685,7 @@ const en: Messages = {
     ],
   },
   submission: {
-    heading: "Data Submission",
+    heading: "Data submission",
     navigator: "Submission navigator",
     navigatorFor: "New users",
     apply: "Apply to submit data",
@@ -1689,7 +1694,7 @@ const en: Messages = {
     procedure: "Please see [here](https://bsi.nig.ac.jp/humandbs#%E3%83%87%E3%83%BC%E3%82%BF%E6%8F%90%E4%BE%9B%E7%94%B3%E8%AB%8B%E3%81%AB%E5%90%91%E3%81%91%E3%81%9F%E4%BA%8B%E5%89%8D%E6%BA%96%E5%82%99) for the data submission procedure.",
   },
   use: {
-    heading: "Data Use",
+    heading: "Data use",
     find: "Find available datasets",
     findFor: "If you have not yet identified the dataset ID",
     apply: "Apply to use the data",
@@ -1893,7 +1898,7 @@ const en: Messages = {
     compareDraft: "This draft",
     rowCount: (side: string, count: number) => `${side}: ${count} ${count === 1 ? "item" : "items"}`,
     backToResearch: "Back to the research",
-    unnamedDataset: "ID not issued",
+    unnamedDataset: (number: number) => `Dataset ID ${number} (ID not issued)`,
     who: "Your name",
     whoHint: "The name shown on your comments. If you log in with a DDBJ account, your account name is recorded instead.",
     whoOr: "or",

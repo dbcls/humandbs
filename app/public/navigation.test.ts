@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { FOOTER, NAVBAR, NAVBAR_STEP, navigationPaths } from "./navigation"
+import { FOOTER, NAVBAR, NAVBAR_STEP, navigationPaths, type NavEntry } from "./navigation"
 import { SCREEN_PATHS } from "./urls"
 
 const NAMED_STEP: Record<string, number> = { "sm": 640, "md": 768, "lg": 1024, "xl": 1280, "2xl": 1536 }
@@ -86,5 +86,38 @@ describe("グローバルナビとフッタ", () => {
   it("バーに出ない行き先も、メニューか サイトマップにある", () => {
     const inMenu = new Set(NAVBAR.map((item) => item.path))
     for (const entry of FOOTER) expect(inMenu.has(entry.path) || entry.children !== undefined).toBe(true)
+  })
+})
+
+/** Read wherever it appears, not only capitalised at the start of a sentence. */
+const ACRONYMS = new Set(["NBDC", "DDBJ", "JGA", "ID", "API", "FAQ"])
+
+/** A committee's own name, or a guideline's own title, kept as the office writes it. */
+const PROPER_NOUN_LABELS = new Set([
+  "Data Access Committee",
+  "NBDC Guidelines for Human Data Sharing",
+  "NBDC Security Guidelines for Human Data (for Data Users)",
+  "NBDC Security Guidelines for Human Data (for Data Submitters)",
+  "NBDC Security Guidelines for Human Data (for Database Center and Off-premise Server Operation Managers)",
+])
+
+function isSentenceCase(label: string): boolean {
+  if (PROPER_NOUN_LABELS.has(label)) return true
+  return label.split(/\s+/).every((word, index) => {
+    if (index === 0) return true
+    const bare = word.replace(/^\W+|\W+$/g, "")
+    return bare === "" || ACRONYMS.has(bare) || !/^[A-Z]/.test(bare)
+  })
+}
+
+function englishLabels(): string[] {
+  const entries: NavEntry[] = [...NAVBAR, ...FOOTER]
+  return entries.flatMap((entry) => [entry.label.en, ...(entry.children ?? []).map((child) => child.label.en)])
+}
+
+describe("バーとフッタの英語のラベル", () => {
+  it("先頭語以外は、頭字語と固有名詞を除いて小文字で始まる", () => {
+    const offenders = englishLabels().filter((label) => !isSentenceCase(label))
+    expect(offenders).toStrictEqual([])
   })
 })

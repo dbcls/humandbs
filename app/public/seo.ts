@@ -14,10 +14,11 @@ export interface PageSeo {
   url: string
   /** A sentence or two, for a search result and a link preview. */
   description: string
-  jsonLd: Record<string, unknown>
+  /** Null for a page that shares its subject with another page holding the JSON-LD. */
+  jsonLd: Record<string, unknown> | null
 }
 
-/** The page's title, description, preview and JSON-LD, as a route's `meta` returns them. */
+/** The page's title, description, preview and, where the page has one, JSON-LD, as a route's `meta` returns them. */
 export function seoMeta(seo: PageSeo, title: string, locale: Locale): MetaDescriptor[] {
   return [
     { title },
@@ -28,6 +29,6 @@ export function seoMeta(seo: PageSeo, title: string, locale: Locale): MetaDescri
     { property: "og:description", content: seo.description },
     { property: "og:url", content: seo.url },
     { property: "og:locale", content: locale === "ja" ? "ja_JP" : "en_US" },
-    { "script:ld+json": seo.jsonLd },
+    ...seo.jsonLd === null ? [] : [{ "script:ld+json": seo.jsonLd }],
   ]
 }

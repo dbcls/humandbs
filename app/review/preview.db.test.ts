@@ -13,6 +13,7 @@ import {
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
+import { messagesFor } from "~/i18n/messages"
 import { PRIVATE_BUCKET, PUBLIC_BUCKET, privatePrefix, publicPrefix } from "~/files/prefix"
 import { clearPrefix, putTestObject } from "~/files/_store"
 import { emptyDatabase } from "~/db/empty.server"
@@ -328,6 +329,25 @@ describe("a dataset preview", () => {
 
     const view = (await previewDatasetPage(get(), "ja", token, datasetId)).view
     expect(view.awaited).toEqual(["datePublished", "dateModified"])
+  })
+
+  it("numbers an id-less dataset by its row in the research preview's own table", async () => {
+    const { draftId, researchId, token } = await sharedDraft()
+    const first = await createDatasetInDraft(db, { draftId, revision: 2 }, researchId)
+    if (first.status !== "created") throw new Error("the dataset was not created")
+    const second = await createDatasetInDraft(db, { draftId, revision: 3 }, researchId)
+    if (second.status !== "created") throw new Error("the dataset was not created")
+
+    const research = await previewResearchPage(get(), "ja", token)
+    const at = research.view.datasets.findIndex((row) => row.id === second.datasetId)
+    expect(research.view.datasets[at]?.label).toBe("")
+    expect(at).toBe(1)
+
+    const view = await previewDatasetPage(get(), "ja", token, second.datasetId)
+    expect(view.datasetLabel).toBe(null)
+    expect(view.datasetNumber).toBe(at + 1)
+    expect(messagesFor("ja").preview.unnamedDataset(view.datasetNumber))
+      .toContain(`${messagesFor("ja").dataset.datasetId} ${at + 1}`)
   })
 })
 

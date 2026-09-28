@@ -2729,7 +2729,15 @@ export function useDismissible() {
   const { key } = useLocation()
 
   useEffect(() => {
-    if (box.current !== null) box.current.open = false
+    const element = box.current
+    if (!element?.open) return
+    // Closing hides everything but the summary, which is where a reader whose
+    // focus was inside gets left otherwise — the same place Escape returns it
+    // to. `preventScroll` because the move here follows the page's own, not
+    // the reader's.
+    const holdsFocus = document.activeElement !== null && element.contains(document.activeElement)
+    element.open = false
+    if (holdsFocus) element.querySelector("summary")?.focus({ preventScroll: true })
   }, [key])
 
   useEffect(() => {

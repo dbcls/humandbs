@@ -316,7 +316,7 @@ describe("the publish screen", () => {
     expect(html).not.toMatch(/disabled=""/)
   })
 
-  /** The review screen's table (#217): a row per person, when they last pressed and how often. */
+  /** The review screen's table: a row per person, when they last pressed and how often. */
   it("lists who pressed each review button as the review screen does — a table of name, last time and count", () => {
     const html = render(view({
       review: {

@@ -12,7 +12,7 @@ import { formatSize } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { datasetFileListPath, datasetPath, filePath, href, researchPath } from "./urls"
+import { datasetFileListPath, datasetPath, filePath, href, researchPath, researchVersionPath } from "./urls"
 import type { PageSeo } from "./seo"
 import { fieldText, valuesText, type DatasetView, type FieldView, type ResearchView } from "./view.server"
 
@@ -51,11 +51,20 @@ function citationOf(doi: string): string {
   return /^10\.\d+\//.test(doi) ? `https://doi.org/${doi}` : doi
 }
 
-export function researchSeo(view: ResearchView, input: { origin: string, locale: Locale }): PageSeo {
+/** What a research's page shows first: its title, or the hum label where there is none. */
+function researchName(view: ResearchView): string {
+  return shown(view.title) ?? view.humLabel
+}
+
+/** The research's aims, or its name where the aims are not settled, cut to `length`. */
+function researchDescription(view: ResearchView, length: number): string {
+  return cut(shown(view.summary.aims) ?? researchName(view), length)
+}
+
+export function researchSeo(view: ResearchView, input: { origin: string, locale: Locale }): PageSeo & { jsonLd: Record<string, unknown> } {
   const { origin, locale } = input
   const url = `${origin}${href(locale, researchPath(view.humLabel))}`
-  const name = shown(view.title) ?? view.humLabel
-  const aims = shown(view.summary.aims)
+  const name = researchName(view)
 
   const creator = view.dataProviders.flatMap((provider) => {
     const person = shown(provider.principalInvestigator)
@@ -77,14 +86,14 @@ export function researchSeo(view: ResearchView, input: { origin: string, locale:
 
   return {
     url,
-    description: cut(aims ?? name, DESCRIPTION_LENGTH),
+    description: researchDescription(view, DESCRIPTION_LENGTH),
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "Dataset",
       "@id": url,
       url,
       name,
-      "description": cut(aims ?? name, JSON_LD_DESCRIPTION_LENGTH),
+      "description": researchDescription(view, JSON_LD_DESCRIPTION_LENGTH),
       "identifier": view.humLabel,
       "inLanguage": locale,
       "version": String(view.versionNumber),
@@ -105,7 +114,23 @@ export function researchSeo(view: ResearchView, input: { origin: string, locale:
   }
 }
 
-export function datasetSeo(view: DatasetView, input: { origin: string, locale: Locale }): PageSeo {
+/**
+ * A version's page has the research's description and link preview but no
+ * JSON-LD: the research already has a `Dataset` at its own page, and giving
+ * every version one as well would have a search engine read the same research
+ * as several distinct datasets (the reason a version's page is left off the
+ * sitemap).
+ */
+export function researchVersionSeo(view: ResearchView, input: { origin: string, locale: Locale }): PageSeo {
+  const { origin, locale } = input
+  return {
+    url: `${origin}${href(locale, researchVersionPath(view.humLabel, view.versionNumber))}`,
+    description: researchDescription(view, DESCRIPTION_LENGTH),
+    jsonLd: null,
+  }
+}
+
+export function datasetSeo(view: DatasetView, input: { origin: string, locale: Locale }): PageSeo & { jsonLd: Record<string, unknown> } {
   const { origin, locale } = input
   const words = messagesFor(locale).dataset
   const url = `${origin}${href(locale, datasetPath(view.label))}`

@@ -914,10 +914,18 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
         </div>
       )}
       <div className="relative">
+        {/*
+          **Relative, so that a sr-only span inside the table is clipped by
+          this box rather than by the ancestor above it.** An absolutely
+          positioned element takes its containing block from the nearest
+          positioned ancestor, skipping past any overflow in between — without
+          this, the actions column's sr-only heading widens the page instead
+          of scrolling with the table.
+        */}
         <div
           ref={box}
           data-table-scroller
-          className="overflow-x-auto"
+          className="relative overflow-x-auto"
           onScroll={() => {
             measure()
             tie(box.current, rail.current)
@@ -1245,12 +1253,18 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most, in
           <Chevron dir="left" />
         </Link>
       )}
+      {/*
+        **The current page is a link too, to the same page, rather than a
+        span.** A control that turns into a span once pressed takes the focus
+        with it: the reader who pressed it is left with nothing to have
+        pressed.
+      */}
       {pageWindow(page, pageCount, most).map((number) => (
         number === page
           ? (
-              <span key={number} className={PAGE_HERE} aria-current="page">
+              <Link key={number} to={at(number)} {...stay} className={PAGE_HERE} aria-current="page">
                 {number}
-              </span>
+              </Link>
             )
           : <Link key={number} to={at(number)} {...stay} className={PAGE_STEP}>{number}</Link>
       ))}

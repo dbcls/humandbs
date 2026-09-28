@@ -15,8 +15,9 @@ import { loadConfig, publicOrigin } from "~/config.server"
 import { readActor } from "~/auth/actor.server"
 import { crossSiteRefusal, refusedAsCrossSite } from "~/auth/csrf"
 import { CartToast } from "~/components/cart"
+import { Heading, Stack } from "~/components/base"
 import { Announcements, SiteFooter, SiteHeader } from "~/components/layout"
-import { Page } from "~/components/page"
+import { Card, Page } from "~/components/page"
 import { startFileRunner } from "~/files/runner.server"
 import { DEFAULT_LOCALE } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -208,6 +209,16 @@ export default function App() {
   return <Outlet />
 }
 
+/**
+ * **Only 404 has a message of its own; every other error shows the same one.**
+ * A bare status number gives the reader nothing to do, where "not found" does
+ * (go back, check the address), so a 500 and an uncaught exception both ask
+ * the reader to try again later.
+ *
+ * Laid out as the public screens are (`Page` → `Card` → `Stack` → `Heading`)
+ * with no `Crumbs`: this also renders for an error under `/admin`, which has
+ * no breadcrumbs.
+ */
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const locale = useRouteLoaderData<typeof loader>("root")?.locale ?? DEFAULT_LOCALE
   const messages = messagesFor(locale)
@@ -218,24 +229,32 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   if (isRouteErrorResponse(error)) {
     if (error.status !== 404) {
-      title = String(error.status)
-      detail = error.statusText
+      title = messages.errorTitle
+      detail = messages.errorBody
     }
-  } else if (import.meta.env.DEV && error instanceof Error) {
-    title = error.name
-    detail = error.message
-    stack = error.stack
+  } else {
+    title = messages.errorTitle
+    detail = messages.errorBody
+    if (import.meta.env.DEV && error instanceof Error) {
+      title = error.name
+      detail = error.message
+      stack = error.stack
+    }
   }
 
   return (
-    <Page>
-      <h1 className="font-bold text-2xl">{title}</h1>
-      <p className="mt-2">{detail}</p>
-      {stack !== undefined && (
-        <pre className="mt-6 w-full overflow-x-auto bg-surface p-4 text-xs">
-          <code>{stack}</code>
-        </pre>
-      )}
+    <Page width="reading">
+      <Card under={false}>
+        <Stack gap="normal">
+          <Heading title={title} />
+          <p>{detail}</p>
+          {stack !== undefined && (
+            <pre className="w-full overflow-x-auto bg-surface p-4 text-xs">
+              <code>{stack}</code>
+            </pre>
+          )}
+        </Stack>
+      </Card>
     </Page>
   )
 }

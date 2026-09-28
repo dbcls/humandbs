@@ -119,7 +119,7 @@ export function PreviewDatasetScreen({ view, problem }: {
     <Page>
       <PreviewHead
         shell={view}
-        label={view.datasetLabel ?? t.unnamedDataset}
+        label={view.datasetLabel ?? t.unnamedDataset(view.datasetNumber)}
         locale={locale}
         problem={problem}
       >

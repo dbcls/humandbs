@@ -81,12 +81,12 @@ const GUIDELINE_DOCUMENTS: NavLink[] = [
 
 const DATA_SUBMISSION: NavLink = {
   path: "/data-submission",
-  label: { ja: "データの提供", en: "Data Submission" },
+  label: { ja: "データの提供", en: "Data submission" },
 }
 
 const DATA_USE: NavLink = {
   path: "/data-use",
-  label: { ja: "データの利用", en: "Data Use" },
+  label: { ja: "データの利用", en: "Data use" },
 }
 
 const RESEARCH_LIST: NavLink = {
@@ -101,12 +101,12 @@ const DATASET_LIST: NavLink = {
 
 const DATA_PROCESSING: NavLink = {
   path: "/data-processing",
-  label: { ja: "加工データ", en: "Data Processing" },
+  label: { ja: "加工データ", en: "Data processing" },
 }
 
 const OFF_PREMISE_SERVER: NavLink = {
   path: "/off-premise-server",
-  label: { ja: "機関外サーバ", en: "Off-premise Server" },
+  label: { ja: "機関外サーバ", en: "Off-premise server" },
 }
 
 const DAC: NavLink = {
@@ -121,7 +121,7 @@ const PUBLICATIONS: NavLink = {
 
 const VIOLATION: NavLink = {
   path: "/violation",
-  label: { ja: "ガイドライン違反", en: "Guideline Violation" },
+  label: { ja: "ガイドライン違反", en: "Guideline violation" },
 }
 
 const FAQ: NavLink = {
@@ -131,7 +131,7 @@ const FAQ: NavLink = {
 
 const PRIVACY_POLICY: NavLink = {
   path: "/privacy-policy",
-  label: { ja: "プライバシーポリシー", en: "Privacy Policy" },
+  label: { ja: "プライバシーポリシー", en: "Privacy policy" },
 }
 
 const CONTACT_US: NavLink = {
@@ -197,16 +197,16 @@ export const NAVBAR: NavLink[] = [
  */
 export const NAVBAR_STEP: { bar: string, menu: string }[] = [
   { bar: "hidden min-[736px]:block", menu: "min-[736px]:hidden" },
-  { bar: "hidden min-[848px]:block", menu: "min-[848px]:hidden" },
+  { bar: "hidden min-[840px]:block", menu: "min-[840px]:hidden" },
   { bar: "hidden min-[944px]:block", menu: "min-[944px]:hidden" },
-  { bar: "hidden min-[1032px]:block", menu: "min-[1032px]:hidden" },
+  { bar: "hidden lg:block", menu: "lg:hidden" },
   { bar: "hidden min-[1152px]:block", menu: "min-[1152px]:hidden" },
   { bar: "hidden min-[1256px]:block", menu: "min-[1256px]:hidden" },
-  { bar: "hidden min-[1408px]:block", menu: "min-[1408px]:hidden" },
-  { bar: "hidden min-[1584px]:block", menu: "min-[1584px]:hidden" },
-  { bar: "hidden min-[1688px]:block", menu: "min-[1688px]:hidden" },
-  { bar: "hidden min-[1736px]:block", menu: "min-[1736px]:hidden" },
-  { bar: "hidden min-[1832px]:block", menu: "min-[1832px]:hidden" },
+  { bar: "hidden min-[1400px]:block", menu: "min-[1400px]:hidden" },
+  { bar: "hidden min-[1576px]:block", menu: "min-[1576px]:hidden" },
+  { bar: "hidden min-[1680px]:block", menu: "min-[1680px]:hidden" },
+  { bar: "hidden min-[1728px]:block", menu: "min-[1728px]:hidden" },
+  { bar: "hidden min-[1824px]:block", menu: "min-[1824px]:hidden" },
   { bar: "hidden min-[1976px]:block", menu: "min-[1976px]:hidden" },
   { bar: "hidden min-[2008px]:block", menu: "min-[2008px]:hidden" },
 ]

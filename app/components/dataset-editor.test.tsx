@@ -994,6 +994,11 @@ describe("the parts of an experiment's card", () => {
     const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((found) => found[1])
     expect(ids.filter((id, at) => ids.indexOf(id) !== at)).toEqual([])
   })
+
+  it("puts the copy, move and remove buttons before the collapsible in the markup, so Tab reaches them before the open card's own fields", () => {
+    const html = render(view({ ...emptyDatasetContent(), experiments: [{ id: "e1", label: filled("RNA-seq"), values: [] }] }))
+    expect(html.indexOf("aria-label=\"解析手法の複製\"")).toBeLessThan(html.indexOf("<details"))
+  })
 })
 
 describe("adding an item", () => {

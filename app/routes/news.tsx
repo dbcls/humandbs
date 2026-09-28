@@ -1,10 +1,11 @@
 import { redirect } from "react-router"
 
-import { Heading, Stack } from "~/components/base"
+import { Heading, PALE, Stack } from "~/components/base"
 import { Card, Crumbs, Empty, Page, Paging } from "~/components/page"
 import { SearchBox } from "~/components/search"
 import { NewsList } from "~/components/site"
 import { messagesFor } from "~/i18n/messages"
+import { useBusyHere } from "~/navigating"
 import { parsePageNumber } from "~/paging"
 import { windowTitle } from "~/i18n/title"
 import { newsList } from "~/public/site.server"
@@ -54,6 +55,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export default function News({ loaderData }: Route.ComponentProps) {
   const { locale, items, page, pageCount, total, rangeFrom, rangeTo, find } = loaderData
   const messages = messagesFor(locale)
+  const busy = useBusyHere()
   const pageHref = (to: number) => {
     const at = new URLSearchParams()
     if (find !== "") at.set("q", find)
@@ -94,49 +96,55 @@ export default function News({ loaderData }: Route.ComponentProps) {
         <Stack gap="normal">
           <Heading title={messages.news.all} />
 
-          {/*
-            The box, how many there are, and the way through them, on one line:
-            all three are about which announcements are on screen, and the box
-            is the only one of them the reader acts on first.
+          {/* The box and the list are about the same search, so both dim together
+              while a search or a page is still loading (`useBusyHere`). */}
+          <div className={PALE[busy ? "on" : "off"]} aria-busy={busy}>
+            <Stack gap="normal">
+              {/*
+                The box, how many there are, and the way through them, on one line:
+                all three are about which announcements are on screen, and the box
+                is the only one of them the reader acts on first.
 
-            The box is a GET form, so the search is in the address and can be
-            linked to. It is not the public search: announcements are not
-            indexed, and this is one `ILIKE` over 682 rows. It is drawn as the
-            same box all the same — which index responds
-            is not something a reader can see. **It searches as the words are
-            typed**, and clearing the box is what lifts the search.
-          */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            {/*
-              Wide enough for the words somebody searches announcements with,
-              and no wider: sharing the line with the count and the page links
-              is what the box is doing here, so taking the rest of the row would
-              push those two to the far edge of a 1440px screen.
-            */}
-            <div className="mr-auto w-full max-w-96">
-              <SearchBox
-                action={href(locale, newsPath())}
-                name="q"
-                value={find}
-                label={messages.news.find}
-                placeholder={messages.search.searchHint}
-                submit={messages.search.submit}
-                size="compact"
-                searchAsTyped
-              />
-            </div>
-            {items.length > 0 && paging}
+                The box is a GET form, so the search is in the address and can be
+                linked to. It is not the public search: announcements are not
+                indexed, and this is one `ILIKE` over 682 rows. It is drawn as the
+                same box all the same — which index responds
+                is not something a reader can see. **It searches as the words are
+                typed**, and clearing the box is what lifts the search.
+              */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                {/*
+                  Wide enough for the words somebody searches announcements with,
+                  and no wider: sharing the line with the count and the page links
+                  is what the box is doing here, so taking the rest of the row would
+                  push those two to the far edge of a 1440px screen.
+                */}
+                <div className="mr-auto w-full max-w-96">
+                  <SearchBox
+                    action={href(locale, newsPath())}
+                    name="q"
+                    value={find}
+                    label={messages.news.find}
+                    placeholder={messages.search.searchHint}
+                    submit={messages.search.submit}
+                    size="compact"
+                    searchAsTyped
+                  />
+                </div>
+                {items.length > 0 && paging}
+              </div>
+
+              {items.length === 0
+                ? <Empty>{find === "" ? messages.news.none : messages.news.noMatch}</Empty>
+                : (
+                    <Stack gap="normal">
+                      <NewsList locale={locale} items={items} dateBeside />
+                      {/* The same pair, at the end of the page it describes. */}
+                      <div className="flex justify-end">{paging}</div>
+                    </Stack>
+                  )}
+            </Stack>
           </div>
-
-          {items.length === 0
-            ? <Empty>{find === "" ? messages.news.none : messages.news.noMatch}</Empty>
-            : (
-                <Stack gap="normal">
-                  <NewsList locale={locale} items={items} dateBeside />
-                  {/* The same pair, at the end of the page it describes. */}
-                  <div className="flex justify-end">{paging}</div>
-                </Stack>
-              )}
         </Stack>
       </Card>
     </Page>

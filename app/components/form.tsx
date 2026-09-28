@@ -1236,10 +1236,10 @@ export function Submit({
 /**
  * What a form did, said once at the top of the screen.
  *
- * It is a `Note` that announces itself when it appears: a save that responds on
- * the same page is otherwise silent to anybody not watching that corner. The
- * box it is drawn in is the one every other remark uses, rather than its own
- * arrangement of the same glyph, border and text.
+ * The box it is drawn in is the one every other remark uses, rather than its
+ * own arrangement of the same glyph, border and text. **Screen readers read the
+ * message from the live region `Answered` keeps in the page** (see `Toast`),
+ * not from this box, so the `Note` here is not `live`.
  *
  * **It has no margin and no width.** It is drawn inside `Answered`, which
  * decides where it sits and how wide it gets.
@@ -1258,7 +1258,6 @@ export function Result({ ok, also, children }: {
   return (
     <Note
       kind={ok ? "done" : "danger"}
-      live
       action={(
         <>
           {also}
@@ -1297,7 +1296,7 @@ export function Answer<A extends object>({ answer, locale, said, ok = saysOk, al
   const words = answer === null || answer === undefined ? null : said(answer)
   const spoken = words === null ? null : answer
   return (
-    <Answered answer={spoken} locale={locale} label={label} dismiss={dismiss}>
+    <Answered answer={spoken} announce={words ?? ""} locale={locale} label={label} dismiss={dismiss}>
       {spoken !== null && spoken !== undefined && words !== null && (
         <Result ok={ok(spoken)} also={also?.(spoken)}>{words}</Result>
       )}
@@ -1330,9 +1329,11 @@ const Dismiss = createContext<ReactNode>(undefined)
  * worked) hands over what it wants shown, and nothing arrives here that the
  * screen had not decided to show.
  */
-export function Answered({ answer, locale, label, dismiss, children }: {
+export function Answered({ answer, announce, locale, label, dismiss, children }: {
   /** The last response. A new one raises the box; `null` and `undefined` do not. */
   answer: unknown
+  /** The message `children` shows, for the live region that stays in the page (`Toast`'s `announce`). */
+  announce: string
   locale: Locale
   /**
    * The region's name and the close button's, for an answer outside the management
@@ -1374,7 +1375,7 @@ export function Answered({ answer, locale, label, dismiss, children }: {
   }, [nth, reading])
 
   return (
-    <Toast label={label ?? messages.admin.notice} announce="" at="head">
+    <Toast label={label ?? messages.admin.notice} announce={nth === 0 ? "" : announce} at="head">
       {nth === 0
         ? undefined
         : (

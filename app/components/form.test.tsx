@@ -218,6 +218,12 @@ describe("the answer to what was sent (Answer)", () => {
     const html = render(<Answer answer={{ status: "issued" }} locale="ja" said={() => "NHA000001 を発行しました。"} ok={(answer) => answer.status === "issued"} />)
     expect(html).not.toContain("border-danger")
   })
+
+  it("puts the message in the region that stays up, not in the box that comes and goes", () => {
+    const html = render(<Answer<Sent> answer={{ status: "ok", did: "key を作成" }} locale="ja" said={said} />)
+    expect(html).toContain("<p role=\"status\" class=\"sr-only\">key を作成しました。</p>")
+    expect(html.match(/role="status"/g)).toHaveLength(1)
+  })
 })
 
 describe("the box a jump from a page lands on", () => {

@@ -134,6 +134,8 @@ export interface PreviewResearchPageView extends PreviewShell {
 export interface PreviewDatasetPageView extends PreviewShell {
   datasetId: string
   datasetLabel: string | null
+  /** Its row in the research preview's dataset table, from 1 — how an unnamed dataset is numbered there too. */
+  datasetNumber: number
   view: DatasetView
   accessAnchor: string | null
   typeOfDataAnchor: string | null
@@ -591,6 +593,7 @@ export async function previewDatasetPage(
     ]),
     datasetId,
     datasetLabel: drawn.label,
+    datasetNumber: shown.indexOf(datasetId) + 1,
     view: drawn.view,
     accessAnchor: drawn.accessAnchor,
     typeOfDataAnchor: drawn.typeOfDataAnchor,

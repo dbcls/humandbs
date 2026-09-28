@@ -661,3 +661,37 @@ describe("研究の画面の「バージョンと下書き」の説明文", () =
     }
   })
 })
+
+/**
+ * The interface's English is written in sentence case (`Data submission`, not
+ * `Data Submission`); admin has no English of its own (`admin: ja.admin`), so
+ * the check reads the public side alone.
+ */
+describe("公開側の英語の heading は Sentence case", () => {
+  /** Read wherever it appears, not only capitalised at the start of a sentence. */
+  const ACRONYMS = new Set(["NBDC", "DDBJ", "JGA", "ID", "API"])
+  /** The site's own name, kept as it reads elsewhere (`siteName`). */
+  const PROPER_NOUN_HEADINGS = new Set(["About NBDC Human Database"])
+
+  function isSentenceCase(text: string): boolean {
+    if (PROPER_NOUN_HEADINGS.has(text)) return true
+    return text.split(/\s+/).every((word, index) => {
+      if (index === 0) return true
+      const bare = word.replace(/^\W+|\W+$/g, "")
+      return bare === "" || ACRONYMS.has(bare) || !/^[A-Z]/.test(bare)
+    })
+  }
+
+  const headings = warnings(messagesFor("en"), "en")
+    .filter(([path]) => !path.startsWith("en.admin."))
+    .filter(([path]) => /heading$/i.test(lastKey(path)))
+
+  it("規則に掛かる件数が十分ある", () => {
+    expect(headings.length).toBeGreaterThan(8)
+  })
+
+  it("先頭語以外は、頭字語と固有名詞を除いて小文字で始まる", () => {
+    const offenders = headings.filter(([, text]) => !isSentenceCase(text))
+    expect(offenders.map(([path]) => path)).toStrictEqual([])
+  })
+})

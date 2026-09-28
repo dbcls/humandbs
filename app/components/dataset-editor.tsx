@@ -1738,15 +1738,9 @@ function ExperimentCard({ locale, index, count, summary, note, open, onMove, onC
   }
   return (
     <div className="relative rounded border border-line">
-      <details open={shown} onToggle={(event) => { setShown(event.currentTarget.open) }} className="group/collapsible">
-        <summary className="flex min-h-12 list-none items-center gap-2 py-1.5 pr-44 pl-4 text-sm marker:content-none">
-          <CollapsibleChevron />
-          <span className="text-ink-muted text-xs">{index + 1}</span>
-          <span className="min-w-0 truncate font-semibold">{summary}</span>
-          <span className="shrink-0 text-ink-muted text-xs">{note}</span>
-        </summary>
-        <div className="border-line border-t px-4 py-3">{children}</div>
-      </details>
+      {/* Before the `<details>` in the markup, and not after it, so that Tab
+          reaches these before the fields an open card holds — the position
+          is absolute, so where they sit on screen does not move. */}
       <div className="absolute top-0 right-2 flex h-12 items-center gap-1">
         <IconButton name="copy" label={t.datasetEditor.copyExperiment} onClick={onCopy} />
         <ReorderButtons
@@ -1757,6 +1751,15 @@ function ExperimentCard({ locale, index, count, summary, note, open, onMove, onC
         />
         <IconButton name="trash" label={t.editor.remove} onClick={onRemove} />
       </div>
+      <details open={shown} onToggle={(event) => { setShown(event.currentTarget.open) }} className="group/collapsible">
+        <summary className="flex min-h-12 list-none items-center gap-2 py-1.5 pr-44 pl-4 text-sm marker:content-none">
+          <CollapsibleChevron />
+          <span className="text-ink-muted text-xs">{index + 1}</span>
+          <span className="min-w-0 truncate font-semibold">{summary}</span>
+          <span className="shrink-0 text-ink-muted text-xs">{note}</span>
+        </summary>
+        <div className="border-line border-t px-4 py-3">{children}</div>
+      </details>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { seoMeta } from "./seo"
-import { datasetSeo, researchSeo } from "./structured-data.server"
+import { datasetSeo, researchSeo, researchVersionSeo } from "./structured-data.server"
 import type { DatasetView, FieldView, ResearchView } from "./view.server"
 
 const ORIGIN = "https://humandbs.example.org"
@@ -140,6 +140,20 @@ describe("researchSeo", () => {
   })
 })
 
+describe("researchVersionSeo", () => {
+  it("そのバージョンのアドレスと説明文だけを書き、JSON-LD は書かない", () => {
+    const seo = researchVersionSeo(research({ versionNumber: 2 }), { origin: ORIGIN, locale: "ja" })
+    expect(seo.url).toBe(`${ORIGIN}/research/hum0001/v2`)
+    expect(seo.description).toBe("目的の文。")
+    expect(seo.jsonLd).toBeNull()
+  })
+
+  it("英語のページは英語のアドレスで書く", () => {
+    const seo = researchVersionSeo(research({ versionNumber: 2 }), { origin: ORIGIN, locale: "en" })
+    expect(seo.url).toBe(`${ORIGIN}/en/research/hum0001/v2`)
+  })
+})
+
 describe("datasetSeo", () => {
   it("説明文は、どの研究のデータセットかと、データの種類・解析手法・アクセス制限をページの言語で並べる", () => {
     expect(datasetSeo(dataset(), { origin: ORIGIN, locale: "ja" }).description)
@@ -212,5 +226,11 @@ describe("seoMeta", () => {
       { property: "og:locale", content: "en_US" },
       { "script:ld+json": seo.jsonLd },
     ])
+  })
+
+  it("JSON-LD が無いページは script:ld+json を書かない", () => {
+    const seo = researchVersionSeo(research(), { origin: ORIGIN, locale: "ja" })
+    const meta = seoMeta(seo, "hum0001 | Research list | NBDC ヒトデータベース", "ja")
+    expect(meta.some((entry) => "script:ld+json" in entry)).toBe(false)
   })
 })

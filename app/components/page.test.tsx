@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
-import { AnnotationLayer, HeaderBarSection, DatasetIds, Fact, Facts, IdWithIcon, KeyValue, AnnotatedCell, pageWindow, Paging, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
+import { AnnotationLayer, HeaderBarSection, DatasetIds, Fact, Facts, IdWithIcon, KeyValue, AnnotatedCell, pageWindow, Paging, PageLinks, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -382,6 +382,17 @@ describe("どれだけ出ていて、残りへどう行くか", () => {
   })
 })
 
+describe("PageLinks の今のページ", () => {
+  // span に置き換わると、そのページ番号を押した後に focus が body に移る。
+  it("今のページも他のページ番号と同じ <a aria-current=\"page\"> で描く", () => {
+    const html = routed(
+      <PageLinks label="ページ" page={2} pageCount={3} at={(n) => `?page=${n}`} previous="前へ" next="次へ" />,
+    )
+    expect(html).toMatch(/<a[^>]*aria-current="page"[^>]*>2<\/a>/)
+    expect(html).not.toContain("<span")
+  })
+})
+
 describe("横に流れる表で残る列", () => {
   /*
     公開の一覧はマークを先頭に 2 列残し、admin の研究一覧は名前の列を 1 つ残す。
@@ -502,6 +513,17 @@ describe("a table's column of things to press (Table actions)", () => {
   it("spans the sentence of an empty table over every column, the column of actions too", () => {
     const html = routed(<Table headers={["名前", "日"]} actions whenEmpty="ありません。">{[]}</Table>)
     expect(html).toContain("colSpan=\"3\"")
+  })
+
+  it("gives its sr-only span a containing block inside the scrolling div, not outside it", () => {
+    const html = routed(
+      <Table headers={["名前"]} actions>
+        <tr>
+          <Td>a</Td>
+        </tr>
+      </Table>,
+    )
+    expect(html).toMatch(/<div data-table-scroller="true" class="[^"]*\brelative\b/)
   })
 })
 

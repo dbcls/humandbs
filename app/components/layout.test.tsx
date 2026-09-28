@@ -264,6 +264,6 @@ describe("サイトのフッタ", () => {
   })
 
   it("英語では英語のラベルで出る", () => {
-    expect(render(<SiteFooter locale="en" />, "/en")).toContain("Privacy Policy")
+    expect(render(<SiteFooter locale="en" />, "/en")).toContain("Privacy policy")
   })
 })

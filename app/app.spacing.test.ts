@@ -36,7 +36,14 @@ const PUBLIC_SCREENS = [
   "document",
   "preview",
   "preview-dataset",
+  // Not under `routes/` — the 404 / error screen (`ErrorBoundary`).
+  "root",
 ]
+
+/** `root` lives at `app/root.tsx`; every other screen is `app/routes/<screen>.tsx`. */
+function publicScreenPath(screen: string): string {
+  return screen === "root" ? path.join(ROOT, "root.tsx") : path.join(ROOT, "routes", `${screen}.tsx`)
+}
 
 /** Every class list written in a file, attribute by attribute. */
 function classLists(source: string): string[] {
@@ -105,7 +112,7 @@ describe("縦の間隔", () => {
   it("公開画面が margin を書かず、間隔は Stack が管理する", async () => {
     const offenders: string[] = []
     for (const screen of PUBLIC_SCREENS) {
-      const text = await readFile(path.join(ROOT, "routes", `${screen}.tsx`), "utf8")
+      const text = await readFile(publicScreenPath(screen), "utf8")
       const hits = marginsIn(text)
       if (hits.length > 0) offenders.push(`${screen}.tsx: ${hits.join(" ")}`)
     }
@@ -510,6 +517,27 @@ describe("一覧の件数とページ送り", () => {
 })
 
 /**
+ * **読み込みが終わるまで、一覧は前のページのまま表示される。** `useBusyHere` (`PALE`) で
+ * 薄くして `aria-busy` を付けないと、押しても何も変わっていないように見える。
+ */
+describe("ページ送りの読み込み中の表示", () => {
+  it("Paging・FileListTools・ListingTools を描くファイルは useBusyHere を呼ぶ (または RefinableList の busy を使う)", async () => {
+    const sources = [...await sourcesUnder("routes"), ...await sourcesUnder("components")]
+      .filter(({ name }) => name !== "components/page.tsx" && name !== "components/search.tsx")
+    const offenders: string[] = []
+    let checked = 0
+    for (const { name, text } of sources) {
+      if (!/<Paging\b|<FileListTools\b|<ListingTools\b/.test(text)) continue
+      checked += 1
+      if (!text.includes("useBusyHere()") && !/<RefinableList\b/.test(text)) offenders.push(name)
+    }
+    expect(offenders).toEqual([])
+    // The rule has something to hold: this many files draw one of the three.
+    expect(checked).toBeGreaterThan(5)
+  })
+})
+
+/**
  * **開閉するパネルが閉じる 3 通り (Escape・外を押す・遷移) は `base.tsx` の `useDismissible` だけが管理する**。
  * パネルごとに書くと、どれか 1 つだけが閉じ方を
  * 1 つ欠いても、他のパネルと見比べるまで誰も気づかない。
@@ -670,6 +698,24 @@ describe("ボタンの色と形", () => {
           const subject = ownAttribute(body, "subject")
           return subject !== null && subject !== "{subject}" && ownAttribute(body, "size") !== "\"row\""
         })
+        .map(({ tag }) => `${name}: ${tag}`))
+    expect(hits).toEqual([])
+  })
+
+  /**
+   * **逆向き: 表の行から開く `Confirm` は、どの行の操作かを表示する。** `subject` が無いと、
+   * 何行も並ぶうちのどれを操作しているか確認のダイアログだけでは分からない。`Dialog`
+   * (編集のダイアログ・場所の一覧) は表の行の確認ではないので対象にしない。例外は
+   * `components/dataset-editor.tsx` のデータセット ID の解除 1 件 — 画面に 1 つ
+   * しかないもので、表示する行が無い。
+   */
+  it("表の行から開く Confirm (size=\"row\") には subject を渡す", async () => {
+    const EXEMPT = new Set(["components/dataset-editor.tsx"])
+    const hits = (await everySource()).flatMap(({ name, text }) =>
+      openingTags(text, ["Confirm"])
+        .filter(({ body }) => ownAttribute(body, "size") === "\"row\""
+          && ownAttribute(body, "subject") === null
+          && !EXEMPT.has(name))
         .map(({ tag }) => `${name}: ${tag}`))
     expect(hits).toEqual([])
   })

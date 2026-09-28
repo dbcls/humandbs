@@ -259,6 +259,10 @@ export function SearchForm({
  * have to be one node to sit together, and one node cannot be split around the
  * result.
  *
+ * **On a wide screen, Tab follows the grid's own column order rather than the
+ * markup's** (`reading-flow: grid-columns`), so the dimensions come right
+ * after the box and its conditions instead of after the whole result.
+ *
  * **The first row is one line across both columns.** What names the pane sits
  * on the left, how the result is presented on the right, and the rule under the
  * heading is continued by the table's own first edge — so the two read as one
@@ -364,7 +368,7 @@ export function RefinableList({
   return (
     <div
       aria-busy={busy}
-      className={`grid gap-x-6 md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_auto_1fr] lg:grid-cols-[16rem_minmax(0,1fr)] ${PALE[busy ? "on" : "off"]}`}
+      className={`grid gap-x-6 md:[reading-flow:grid-columns] md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_auto_1fr] lg:grid-cols-[16rem_minmax(0,1fr)] ${PALE[busy ? "on" : "off"]}`}
     >
       <div className="flex flex-col justify-end md:col-start-1 md:row-start-1">
         <PaneHeading title={messages.search.refine.heading} rule="start">

@@ -331,6 +331,10 @@ function Invitations({ invitations, created, locale }: {
                 <Confirm
                   label={t.cancel}
                   title={t.cancelTitle}
+                  subject={[
+                    { name: t.createdBy, value: one.createdByName },
+                    { name: t.createdAt, value: minuteInJst(one.createdAt) },
+                  ]}
                   warning={t.cancelWarning}
                   confirm={t.cancel}
                   intent="cancel-invitation"
