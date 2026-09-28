@@ -40,8 +40,14 @@ COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build --chown=node:node /app/build ./build
 # The commit this image was built from, shown on the management front page and
-# in /healthz. Last, so that a new value rebuilds nothing but this layer.
+# in /healthz. Last, so that a new value rebuilds nothing but these layers.
+# **The RUN is what takes the new value.** podman reuses a cached ENV layer
+# whatever value the argument brings, and only a RUN is rebuilt when it
+# changes; without it, a commit whose build output is the same as the last
+# one would keep the last one's tag, and `scripts/deploy.sh` would take that
+# for a failed build.
 ARG HUMANDBS_VERSION=
+RUN true
 ENV HUMANDBS_VERSION=${HUMANDBS_VERSION}
 EXPOSE 5173
 CMD ["react-router-serve", "./build/server/index.js"]
