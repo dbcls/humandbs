@@ -12,6 +12,7 @@ import { LatestDetailRequests } from "./admin-assistant-controller"
 import { datasetIds, Datasets } from "./admin-assistant-datasets"
 import type { AssessmentData } from "./admin-assistant-model"
 import { PersonReport } from "./admin-assistant-person-report"
+import { domain } from "./admin-assistant-report-primitives"
 import { AssistantReport } from "./admin-assistant-report"
 
 const words = messagesFor("ja").admin.assistant
@@ -20,6 +21,12 @@ const words = messagesFor("ja").admin.assistant
 function render(element: React.ReactNode): string {
   const Stub = createRoutesStub([{ path: "/*", Component: () => element }])
   return renderToStaticMarkup(<Stub initialEntries={["/admin/assistant"]} />)
+}
+
+/** The markup of the one anchor whose href is the given address. */
+function anchorFor(html: string, href: string): string {
+  const escaped = href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(`<a href="${escaped}"[^>]*>[^]*?</a>`).exec(html)?.[0] ?? ""
 }
 
 const person = {
@@ -49,11 +56,18 @@ describe("アシスタントの人物検証表示", () => {
       />,
     )
 
-    expect(html.match(/参考 URL/g)).toHaveLength(1)
-    // Each opens a new tab with the site's own indicator and words for that (`page.tsx` の `ExternalLink`).
-    expect(html).toMatch(/>example\.ac\.jp<svg[^]*?\(新しいタブで開きます\)<\/span><\/a><\/span><span>, <a/)
-    expect(html).toContain(">registry.example.go.jp<svg")
-    expect(html).toContain("rel=\"noopener noreferrer\"")
+    expect(html.match(new RegExp(words.referenceUrl, "g"))).toHaveLength(1)
+
+    for (const url of [
+      "https://example.ac.jp/about",
+      "https://registry.example.go.jp/entities/1",
+    ]) {
+      const anchor = anchorFor(html, url)
+      expect(anchor).toContain("target=\"_blank\"")
+      expect(anchor).toContain("rel=\"noopener noreferrer\"")
+      expect(anchor).toContain(`>${domain(url)}<`)
+      expect(anchor).toContain(messagesFor("ja").newTab)
+    }
   })
 
   it("正規化後の電話番号が元の番号と同じなら重複表示しない", () => {
@@ -141,10 +155,6 @@ describe("アシスタントの人物検証表示", () => {
     expect(positionVerification).toBeLessThan(organization)
   })
 
-  it("メール整合性の名称はドメインを対象とする", () => {
-    expect(words.emailConsistency).toBe("メールドメインの整合性")
-  })
-
   it("所属・メール・電話・住所の直後に関連する検証結果をまとめて表示する", () => {
     const html = render(
       <PersonReport
@@ -213,7 +223,6 @@ describe("アシスタントの人物検証表示", () => {
       address,
       addressVerification,
     ]].sort((left, right) => left - right))
-    expect(html.match(/ml-4 border-line border-l pl-3/g)).toHaveLength(4)
   })
 
   it("通らなかった判定だけに色を付け、通った判定は本文の色のままにする", () => {
@@ -287,7 +296,15 @@ describe("アシスタントレポートのレイアウト", () => {
     expect(panel(words.researcher)).toBeGreaterThanOrEqual(0)
     expect(panel(words.submitter)).toBeGreaterThan(panel(words.researcher))
     expect(panel(words.institutionHead)).toBeGreaterThan(panel(words.submitter))
-    expect(html).not.toContain("lg:grid-cols-3")
+  })
+
+  it("メール整合性の名称はドメインを対象とする", () => {
+    const html = renderReport({
+      email_domain_consistency_result: { all_match: true, summary: "OK" },
+    })
+    const heading = /<h2[^>]*>([^]*?)<\/h2>/.exec(html)?.[1] ?? ""
+
+    expect(heading).toContain("ドメイン")
   })
 
   it("整合性の否定判定だけを色で強調する", () => {
@@ -486,6 +503,33 @@ describe("アシスタントのデータセット管理", () => {
     expect(html).not.toContain(words.addDatasets)
     expect(html).not.toContain(words.removeDataset)
     expect(html).toContain("JGAD000001")
+  })
+
+  it.each([
+    ["利用申請", { manage: true, submissionChecks: false }],
+    ["提供申請", { manage: false, submissionChecks: true }],
+    ["", { manage: false, submissionChecks: false }],
+    [undefined, { manage: false, submissionChecks: false }],
+  ])("申請の種類が %j のとき、利用申請だけに追加・削除を、提供申請だけに提供申請のチェックを表示する", (applicationType, expected) => {
+    const html = render(
+      <AssistantReport
+        locale="ja"
+        report={{
+          dataset_analysis_list: [{ id: "JGAD000001", found_in_database: true }],
+          submission_application_check_result: { items: [{ description: "提供申請の項目", status: "ok" }] },
+        }}
+        words={words}
+        applicationType={applicationType}
+        busy={false}
+        onAddDatasets={() => Promise.resolve(true)}
+        onRemoveDataset={() => undefined}
+      />,
+    )
+
+    expect({
+      manage: html.includes(words.addDatasets),
+      submissionChecks: html.includes(words.submissionChecks),
+    }).toEqual(expected)
   })
 
   it("詳細 URL が未取得でも一覧にデータセット ID を表示する", () => {

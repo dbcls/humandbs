@@ -8,7 +8,7 @@ import { useFetchers, useLocation, useNavigation } from "react-router"
  * listings do: the loader responds in 12–62ms, and an indicator put up and taken away
  * inside a fifth of a second reads as a flicker rather than as an answer.
  */
-export const SHOW_BUSY_AFTER = 200
+const SHOW_BUSY_AFTER = 200
 
 /**
  * Whether a navigation to the address already on screen is still under way.

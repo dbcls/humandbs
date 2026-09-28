@@ -396,7 +396,7 @@ async function writeSeededDatasets(
  * catalog has no word for. A value with no field to go in — its key is not
  * in the catalog — has nowhere to be said.
  */
-export function droppedComments(
+function droppedComments(
   datasetId: string,
   dropped: readonly DroppedValue[],
 ): { anchor: CommentAnchor, body: string }[] {

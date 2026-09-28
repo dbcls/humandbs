@@ -12,9 +12,8 @@
  *
  * **No control here is marked `required`.** The rules live on the server, where
  * a save is checked against the whole content rather than one box at a time, and
- * a form under `SectionTabs` cannot use the browser's own validation at all: a
- * required field inside a hidden panel cannot be focused, so pressing save does
- * nothing and explains nothing.
+ * a required field inside a collapsed panel cannot be focused, so pressing save
+ * does nothing and explains nothing.
  *
  * What a control *looks* like is `base.tsx`, which the public pages draw from
  * as well.
@@ -868,42 +867,6 @@ export function Checkbox({ label, icon, name, value, checked, count, required, h
 }
 
 /**
- * One of a few, all of them visible.
- *
- * A `<fieldset>` rather than a set of labelled boxes, so that the question the
- * options answer is announced once instead of repeated on each of them.
- */
-export function RadioGroup({ label, name, value, options, hint, disabled }: {
-  label: string
-  name: string
-  value?: string
-  options: { value: string, label: string }[]
-  hint?: Lines
-  disabled?: boolean
-}) {
-  return (
-    <fieldset className="flex flex-col gap-2 text-sm" disabled={disabled}>
-      <legend className={PANE_LABEL}>{label}</legend>
-      <div className="flex flex-wrap gap-4">
-        {options.map((option) => (
-          <label key={option.value} className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              name={name}
-              value={option.value}
-              defaultChecked={option.value === value}
-              className="size-4 accent-brand"
-            />
-            {option.label}
-          </label>
-        ))}
-      </div>
-      {hint !== undefined && <span className="text-ink-muted text-xs"><LinesOf text={hint} /></span>}
-    </fieldset>
-  )
-}
-
-/**
  * Choosing a file to send.
  *
  * The bytes never pass through the application — the browser puts them into the
@@ -1006,34 +969,6 @@ export function LanguagePair({ children }: { children: ReactNode }) {
  * height the cell beside it is already using.
  */
 const CHECKBOX_CELL = "flex h-[1lh] items-center"
-
-/**
- * The checkbox at the head of a column of checkboxes.
- *
- * It works on the form's own elements rather than on state, because the boxes
- * it turns on and off are uncontrolled: the form posts what is ticked and
- * nothing on the page reads the ticks before it is submitted. Holding them in
- * state would re-render the whole table on every tick to no end.
- */
-export function SelectAll({ name, label }: { name: string, label: string }) {
-  return (
-    <span className={CHECKBOX_CELL}>
-      <input
-        type="checkbox"
-        aria-label={label}
-        onChange={(event) => {
-          const form = event.currentTarget.form
-          if (form === null) return
-          const checked = event.currentTarget.checked
-          const boxes = form.querySelectorAll<HTMLInputElement>(
-            `input[type="checkbox"][name="${name}"]`,
-          )
-          for (const box of boxes) box.checked = checked
-        }}
-      />
-    </span>
-  )
-}
 
 /** Whether anything in the form has been typed into since it was loaded. */
 const Changed = createContext<boolean | undefined>(undefined)

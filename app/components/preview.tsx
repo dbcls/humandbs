@@ -283,7 +283,7 @@ export function PreviewHead({ shell, label, locale, problem, whole, children }: 
  * **Each is named by the button's own word**, built from it, so the step and
  * the button cannot show different things.
  */
-export function stepsFor(shell: PreviewShell): ReactNode[] {
+function stepsFor(shell: PreviewShell): ReactNode[] {
   const t = messagesFor(shell.locale).preview
   return [
     shell.signedInName === null

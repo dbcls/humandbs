@@ -69,7 +69,7 @@ function writtenFigure(value: number): string {
  * language for its label or its note — the two places a number holds a
  * translated pair (`resolveOptionalBilingual`).
  */
-export function writtenNumber(number: NumberValue, locale: Locale): { text: string, untranslated: boolean } {
+function writtenNumber(number: NumberValue, locale: Locale): { text: string, untranslated: boolean } {
   // **What was typed, not what was stored.** The canonical unit exists so that
   // a range can be asked of the key at all; nobody wrote `1351.68 GB`, they
   // wrote `1.32 TB`, and showing the conversion back to them is the page
@@ -547,18 +547,6 @@ function datasetRowView(
 }
 
 /**
- * One row of a research's dataset table on its own, for a screen that draws
- * the same columns outside a research page (the draft's dataset screen).
- */
-export function datasetRowOf(
-  input: DatasetRowInput,
-  locale: Locale,
-  catalog: CatalogView,
-): DatasetRowView {
-  return datasetRowView(input, locale, catalog, fallbackTracker())
-}
-
-/**
  * A usage record with one language chosen. The record itself is `CauUsage`
  * (`app/content/public.ts`) — the pages and the JSON API read the same rows, so
  * there is one shape for them and this is only what a page does to it.
@@ -933,7 +921,7 @@ export interface DatasetView {
 }
 
 /** Past this many files a dataset's structured data names its list of addresses instead of each file. */
-export const FILES_NAMED = 100
+const FILES_NAMED = 100
 
 export interface DatasetViewInput {
   label: string

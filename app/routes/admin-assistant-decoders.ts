@@ -266,7 +266,7 @@ export function decodeTaskDetail(
   }
 }
 
-export function decodeAssessment(value: unknown): AssessmentData | undefined {
+function decodeAssessment(value: unknown): AssessmentData | undefined {
   const valueRecord = record(value)
   if (valueRecord === undefined) return undefined
   const translation = record(valueRecord.abstract_translation)

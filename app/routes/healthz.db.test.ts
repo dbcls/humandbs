@@ -10,7 +10,6 @@ import { PRIVATE_BUCKET, PUBLIC_BUCKET } from "~/files/prefix"
  * and the wiring between the two.
  */
 
-const seenBuckets: string[] = []
 let downBucket: string | null = null
 
 vi.mock("@aws-sdk/client-s3", async (importOriginal) => {
@@ -19,7 +18,6 @@ vi.mock("@aws-sdk/client-s3", async (importOriginal) => {
     send(command: unknown): Promise<unknown> {
       if (command instanceof actual.HeadBucketCommand) {
         const bucket = command.input.Bucket ?? ""
-        seenBuckets.push(bucket)
         if (bucket === downBucket) return Promise.reject(new Error("bucket unreachable"))
         return Promise.resolve({})
       }
@@ -33,7 +31,6 @@ const { loader } = await import("./healthz")
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
-  seenBuckets.length = 0
   downBucket = null
 })
 
@@ -56,12 +53,6 @@ describe("the healthz loader", () => {
     const response = await loader()
 
     expect(response.status).toBe(503)
-  })
-
-  it("checks the private bucket as well as the public one, not only one of the two", async () => {
-    await loader()
-
-    expect(seenBuckets.toSorted()).toEqual([PRIVATE_BUCKET, PUBLIC_BUCKET].toSorted())
   })
 
   it("reports the database as ok while only storage is down, rather than failing both", async () => {

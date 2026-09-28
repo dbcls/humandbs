@@ -7,6 +7,7 @@ import { descriptionOf } from "~/content/version"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
+import { acknowledgeDraft, postAboutDraft } from "~/review/comments.server"
 
 import {
   createDatasetInDraft,
@@ -16,6 +17,7 @@ import {
   draftUpdating,
   saveDatasetEntry,
   saveDraftContent,
+  setDraftSharing,
 } from "./drafts.server"
 import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
 import { readDraft } from "./queries.server"
@@ -210,6 +212,22 @@ describe("publishing a draft", () => {
  * The one date the portal is master of. An NHA ID has no archive to query, and
  * the day the version goes out is the only day this publish knows.
  */
+describe("the review of a draft", () => {
+  it("neither stops a publish nor adds to its check: a shared link, open comments, pressed indicators", async () => {
+    const fixture = await ready()
+    const before = await publishPreview(db, fixture.draftId, NO_PRIVATE_FILES)
+    const provider = { sub: null, name: "提供者" }
+
+    await setDraftSharing(db, fixture.draftId, { enabled: true, expiresAt: null })
+    await postAboutDraft(db, { draftId: fixture.draftId, kind: "draft", author: provider, body: "まだ直していません" })
+    await acknowledgeDraft(db, { draftId: fixture.draftId, kind: "commented", actor: provider })
+
+    expect((await publishPreview(db, fixture.draftId, NO_PRIVATE_FILES))?.publishCheck).toEqual(before?.publishCheck)
+    expect(await publish({ draftId: fixture.draftId, revision: fixture.revision }))
+      .toEqual({ status: "published", versionNumber: 1 })
+  })
+})
+
 describe("the release date an NHA dataset is given", () => {
   it("is the day the version goes out, when the dataset has none of its own", async () => {
     const fixture = await ready()

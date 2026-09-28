@@ -32,28 +32,6 @@ export function minuteInJst(instant: string): string {
 }
 
 /**
- * Now, as the second it falls on in JST.
- *
- * **An announcement's date is a JST wall clock in a column that has no
- * zone** (`app/db/schema/site.ts`), so a value made for one is written in that
- * same clock rather than converted on the way out. `en-CA` writes the date the
- * way the column holds it and puts the time after a comma, which is the one
- * thing to undo.
- */
-export function nowInJst(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(new Date()).replace(", ", " ")
-}
-
-/**
  * A stored stamp as the minute it identifies. **The minute is as fine as anything
  * on screen goes** — the second is neither typed nor read, and printing it puts
  * two characters of noise in every row of a listing.

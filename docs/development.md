@@ -52,7 +52,7 @@ docker compose exec app npm run build         # 本番用に build する
 ```
 
 - `app` が止まっているときは `docker compose run --rm --no-deps app <command>` で 1 回だけ実行できる。ただし `test:db` は `db` を使うので `--no-deps` を付けない。
-- `test:db` を 2 つ同時に走らせない。理由は [testing.md](testing.md) の「テスト同士の独立」にある。
+- `test:db` は同時に 1 つしか走らず、ほかの実行が終わるまで 2 つ目は 1 件も実行せずに止まる ([testing.md](testing.md) の「テスト同士の独立」)。
 
 ## DB と schema の変更
 

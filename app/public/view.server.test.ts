@@ -16,7 +16,6 @@ import type {
 import {
   ACCESS_TYPE_KEY,
   TYPE_OF_DATA_KEY,
-  datasetRowOf,
   datasetView,
   makerOf,
   researchListRowView,
@@ -436,17 +435,27 @@ describe("a row of a research's dataset table", () => {
   const experiment = (id: string, label: string) => ({ id, label: filled(label), values: [] })
 
   it("names each experiment once, in the dataset's order, and leaves an unnamed one out", () => {
-    const row = datasetRowOf({
-      id: "d1",
-      label: "JGAD000001",
-      content: {
-        ...emptyDatasetContent(),
-        experiments: [experiment("e1", "WES"), experiment("e2", "RNA-seq"), experiment("e3", "WES"), experiment("e4", "")],
-      },
-      datePublished: null,
-    }, "ja", catalog)
+    const [row] = researchView({
+      humLabel: "hum0001",
+      versionNumber: 1,
+      releaseDate: "2020-01-01",
+      latestVersionNumber: 1,
+      content: research(),
+      datasets: [{
+        id: "d1",
+        label: "JGAD000001",
+        content: {
+          ...emptyDatasetContent(),
+          experiments: [experiment("e1", "WES"), experiment("e2", "RNA-seq"), experiment("e3", "WES"), experiment("e4", "")],
+        },
+        datePublished: null,
+      }],
+      datasetLabelById: new Map(),
+      cau: [],
+      files: { rows: [], total: 0, page: 1, pageCount: 1, size: 20, rangeFrom: 0, rangeTo: 0 },
+    }, "ja", catalog).datasets
 
-    expect(row.experimentLabels).toEqual(["WES", "RNA-seq"])
+    expect(row?.experimentLabels).toEqual(["WES", "RNA-seq"])
   })
 })
 

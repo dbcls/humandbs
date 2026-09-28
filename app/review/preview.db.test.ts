@@ -656,6 +656,33 @@ describe("writing from a share link", () => {
       .toEqual([[{ kind: "draft" }, "全体について"]])
   })
 
+  it("refuses to resolve, reopen or delete a comment, even the provider's own, and leaves it as it was", async () => {
+    const { draftId, token } = await sharedDraft()
+    await previewAction(post({ intent: "comment", path: "title", name: "提供者", body: "題目の確認" }), token, RESEARCH)
+    const [own] = await readComments(db, draftId)
+    if (own === undefined) throw new Error("the comment was not written")
+
+    for (const intent of ["resolve", "reopen", "delete"]) {
+      expect(await status(previewAction(post({ intent, commentId: own.id }), token, RESEARCH))).toBe(400)
+    }
+
+    expect(await readComments(db, draftId)).toEqual([own])
+  })
+
+  it("keeps every comment once the link has expired, and shows them again when it is extended", async () => {
+    const { draftId, token } = await sharedDraft()
+    await previewAction(post({ intent: "comment", path: "title", name: "提供者", body: "題目の確認" }), token, RESEARCH)
+    const said = await readComments(db, draftId)
+    expect(said).toHaveLength(1)
+
+    await setDraftSharing(db, draftId, { enabled: true, expiresAt: new Date(Date.now() - 1000) })
+    expect(await status(previewResearchPage(get(), "ja", token))).toBe(404)
+    expect(await readComments(db, draftId)).toEqual(said)
+
+    await setDraftSharing(db, draftId, { enabled: true, expiresAt: null })
+    expect((await previewResearchPage(get(), "ja", token)).comments.map((one) => one.body)).toEqual(["題目の確認"])
+  })
+
   it("writes nothing at all once the link is private", async () => {
     const { draftId, token } = await sharedDraft()
     await setDraftSharing(db, draftId, { enabled: false, expiresAt: null })

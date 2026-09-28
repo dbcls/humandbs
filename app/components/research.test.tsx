@@ -646,3 +646,47 @@ describe("研究概要の値が段組みの次の列へ続いてよいか", () =
     expect(runsLong({ state: "not-applicable" })).toBe(false)
   })
 })
+
+/**
+ * A field a provider has not answered yet, and a section with nothing in it,
+ * both keep the heading that names them and the place they sit in the page —
+ * so that whoever is filling the draft in can see what is still missing.
+ */
+describe("headings for an unsettled field and an empty section", () => {
+  const t = messagesFor("ja").research
+
+  it("keeps the aims, methods and targets headings while every one is unsettled", () => {
+    const html = renderWith({
+      summary: {
+        aims: { state: "unsettled" },
+        methods: { state: "unsettled" },
+        targets: { state: "unsettled" },
+        links: NO_LINKS,
+      },
+    })
+
+    expect(html).toContain(t.aims)
+    expect(html).toContain(t.methods)
+    expect(html).toContain(t.targets)
+  })
+
+  it("keeps the aims heading over a settled but empty value, drawing nothing beside it", () => {
+    const html = renderWith({
+      summary: {
+        aims: { state: "rich", text: [], untranslated: false },
+        methods: { state: "rich", text: [], untranslated: false },
+        targets: { state: "rich", text: [], untranslated: false },
+        links: NO_LINKS,
+      },
+    })
+
+    expect(html).toContain(t.aims)
+  })
+
+  it("keeps the datasets section and its heading in place when the version lists none", () => {
+    const html = renderWith({ datasets: [] })
+
+    expect(html).toContain(t.datasets)
+    expect(html).toContain(t.noDatasets)
+  })
+})

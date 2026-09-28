@@ -97,7 +97,7 @@ export function grantStatements(app: Connection, owner: Connection): string[] {
 }
 
 /** Runs the statements above on the owner connection. Idempotent. */
-export async function applyGrants(owner: Executor, statements: string[]): Promise<void> {
+async function applyGrants(owner: Executor, statements: string[]): Promise<void> {
   for (const statement of statements) {
     await owner.execute(sql.raw(statement))
   }

@@ -913,7 +913,7 @@ export type SaveDatasetResult
  * too** — one per classification that holds it — and the screen has to resolve
  * those labels the same way.
  */
-export function namedTerms(content: DatasetContent): string[] {
+function namedTerms(content: DatasetContent): string[] {
   return [...content.values, ...content.experiments.flatMap((e) => e.values)]
     .flatMap((slot) => {
       const value = slot.value

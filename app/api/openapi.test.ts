@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import routes from "~/routes"
+import { BUILT_IN_FIELDS } from "~/search/fields"
 
 import { API_ENDPOINTS, DOCS_PATH, OPENAPI_PATH } from "./endpoints"
 import { apiDocument, documentPath } from "./openapi"
@@ -71,6 +72,14 @@ describe("the document", () => {
       for (const status of endpoint.problems) {
         expect(Object.keys(operation?.responses ?? {})).toContain(String(status))
       }
+    }
+  })
+
+  it("names every built-in field wherever it lists them", () => {
+    const fields = document.paths["/api/fields"]?.get as { description?: string } | undefined
+    const searchField = document.components?.schemas?.SearchField as { properties: { label: { description?: string } } }
+    for (const description of [fields?.description, searchField.properties.label.description]) {
+      for (const code of BUILT_IN_FIELDS.keys()) expect(description).toContain(`\`${code}\``)
     }
   })
 })

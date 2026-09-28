@@ -477,8 +477,7 @@ function PaneExpand({ locale, inForce, onToggle }: {
 export function RefineAxis({ label, children }: { label: string, children: ReactNode }) {
   return (
     // A `fieldset` rather than a heading and a list, so the question the boxes
-    // answer is announced once instead of on each of them (`form.tsx` の
-    // `RadioGroup`).
+    // answer is announced once instead of on each of them.
     <fieldset>
       {/* **The step under the name is the legend's own.** A `legend` is drawn
           out of the box's flow rather than as one of its items, so a gap set on
@@ -1097,7 +1096,7 @@ export function Pagination({ locale, target, query, sort, order, page, pageCount
   )
 }
 
-export function InvalidQuery({ locale, column }: { locale: Locale, column: number }) {
+function InvalidQuery({ locale, column }: { locale: Locale, column: number }) {
   const messages = messagesFor(locale)
   return (
     <Note kind="danger">

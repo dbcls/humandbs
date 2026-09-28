@@ -17,7 +17,7 @@
  * (`５．` becomes `５`) — punctuation in an address is noise, and a heading that
  * is punctuation alone has no words to name it by.
  */
-export function headingId(text: string): string {
+function headingId(text: string): string {
   const said = text.trim().toLowerCase().replaceAll(/\s+/g, "-").replaceAll(/[^\p{L}\p{N}_-]/gu, "")
   // A heading of punctuation alone leaves separators and nothing to read, and
   // `#---` names a place no better than `#section` does.

@@ -70,14 +70,6 @@ export function commentSpotId(path: string): string {
   return `comment-${encodeURIComponent(path)}`
 }
 
-/** One string for one place, for grouping and for looking a place up. */
-export function anchorKey(anchor: CommentAnchor): string {
-  if (anchor.kind === "draft" || anchor.kind === "memo") return anchor.kind
-  return anchor.kind === "research-field"
-    ? `research:${anchor.path}`
-    : `dataset:${anchor.datasetId}:${anchor.path}`
-}
-
 export function isSameSubject(a: AnchorSubject, b: AnchorSubject): boolean {
   if (a.kind === "research" || b.kind === "research") return a.kind === b.kind
   return a.datasetId === b.datasetId

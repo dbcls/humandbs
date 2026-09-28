@@ -30,6 +30,8 @@ const ORIGIN = publicOrigin(loadConfig(process.env).auth)
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
+  // A failure queued for one case and never reached is not left for the next.
+  vi.mocked(listPrefix).mockReset()
 })
 
 afterEach(async () => {

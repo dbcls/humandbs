@@ -351,19 +351,3 @@ export function formatSize(bytes: number): string {
   const shown = unit === 0 ? String(Math.round(value)) : value.toFixed(value < 100 ? 1 : 0)
   return `${shown} ${UNITS[unit]}`
 }
-
-/**
- * The selection a dataset holds, in the order it holds it, keeping only what
- * the listing has. The same rule the public projection applies, needed here as
- * well because the editor offers a picker over the same listing.
- */
-export function selectedFrom(
-  selection: readonly string[],
-  listing: readonly ListedFile[],
-): ListedFile[] {
-  const byName = new Map(listing.map((entry) => [entry.name, entry]))
-  return selection.flatMap((name) => {
-    const entry = byName.get(name)
-    return entry === undefined ? [] : [entry]
-  })
-}

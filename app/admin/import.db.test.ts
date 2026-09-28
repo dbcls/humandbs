@@ -7,8 +7,11 @@ import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import { seedVersion } from "~/db/seed"
 
-import { createResearchWithDraft, draftUpdating } from "./drafts.server"
-import { importPage } from "./import.server"
+import { createEmptyDraft, createResearchWithDraft, draftUpdating, saveDraftContent } from "./drafts.server"
+import { researchContentInput } from "./form"
+import { researchContentOf } from "./form.server"
+import { importAction, importPage } from "./import.server"
+import { readDraft } from "./queries.server"
 
 const db = getDb()
 const SIGNED_IN = { sub: "0f3a-1b2c", name: "curator", idToken: "an-id-token" }
@@ -73,5 +76,62 @@ describe("a version being updated, among the sources", () => {
     expect(source.id).toBe(at.updateId)
     expect(Number.isNaN(Date.parse(source.updatedAt))).toBe(false)
     expect(source.updating).toBe(1)
+  })
+})
+
+describe("the draft being imported into", () => {
+  it("is refused as not found when asked for as its own source", async () => {
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const other = await createEmptyDraft(db, researchId)
+    const token = await signIn()
+    const get = (query: string) => new Request(
+      `http://localhost:8080/admin/research/${researchId}/draft/${draftId}/import${query}`,
+      { headers: new Headers({ cookie: sessionCookie(token).split(";")[0] ?? "" }) },
+    )
+
+    const refused = await importPage(get(`?draft=${draftId}`), "ja", { researchId, draftId }).then(
+      () => null,
+      (thrown: unknown) => thrown,
+    )
+    expect(refused).toBeInstanceOf(Response)
+    expect((refused as Response).status).toBe(404)
+    // Another draft of the same research is a source.
+    expect((await importPage(get(`?draft=${other}`), "ja", { researchId, draftId })).chosen?.source)
+      .toMatchObject({ kind: "draft", id: other })
+  })
+})
+
+describe("confirming an import", () => {
+  it("is checked against the revision the form was opened at, as a save is, and writes nothing on a conflict", async () => {
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const token = await signIn()
+    const opened = await readDraft(db, draftId)
+    if (opened === null) throw new Error("no draft")
+    // Somebody else saves while the import screen is open.
+    const saved = await saveDraftContent(db, { draftId, revision: opened.revision }, {
+      content: researchContentOf(researchContentInput(opened.content)),
+    })
+    expect(saved.status).toBe("saved")
+    const between = await readDraft(db, draftId)
+
+    const imported = researchContentInput(opened.content)
+    const post = (revision: number) => new Request(
+      `http://localhost:8080/admin/research/${researchId}/draft/${draftId}/import`,
+      {
+        method: "POST",
+        headers: new Headers({ cookie: sessionCookie(token).split(";")[0] ?? "" }),
+        body: new URLSearchParams({
+          revision: String(revision),
+          content: JSON.stringify({ ...imported, title: { ja: { state: "value", text: "取り込んだ題" }, en: imported.title.en } }),
+        }),
+      },
+    )
+
+    expect(await importAction(post(opened.revision), "ja", { researchId, draftId })).toEqual({ status: "conflict" })
+    expect(await readDraft(db, draftId)).toEqual(between)
+
+    const done = await importAction(post(between?.revision ?? -1), "ja", { researchId, draftId })
+    expect(done).toBeInstanceOf(Response)
+    expect((await readDraft(db, draftId))?.content.title.ja).toEqual({ state: "value", value: "取り込んだ題" })
   })
 })

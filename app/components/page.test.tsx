@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises"
+import path from "node:path"
+
 import type { ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
@@ -542,5 +545,34 @@ describe("a box named on a header bar (HeaderBarSection)", () => {
     expect(html).toMatch(/^<li class="overflow-hidden rounded border border-line">/)
     expect(html).toContain("<h2 class=\"flex flex-wrap items-center gap-2 font-semibold\">v1</h2>")
     expect(html).toContain("2026-01-01")
+  })
+})
+
+/**
+ * A place that differs from the published version is drawn by `Annotation`,
+ * `ValueAtPath` and `AnnotatedCell`, under the page pane's own layer (above:
+ * nothing is drawn on a page without a layer). The form beside it edits the
+ * same places and never puts that layer over itself, so the difference could
+ * only reach the form through the form's components calling these directly.
+ */
+describe("the differences from the published version", () => {
+  // A word boundary on both sides, so that `FieldAnnotations` — the form's own
+  // conflict flag (`fields.tsx`) — is not read as a use of `Annotation`.
+  const DRAWN_BY = [/\bAnnotation\b/, /\bValueAtPath\b/, /\bAnnotatedCell\b/]
+
+  const source = (name: string): Promise<string> => readFile(path.join(import.meta.dirname, name), "utf8")
+
+  it("are never drawn by the form's field components", async () => {
+    for (const name of ["fields.tsx", "form.tsx"]) {
+      const text = await source(name)
+      for (const drawn of DRAWN_BY) expect(text).not.toMatch(drawn)
+    }
+  })
+
+  it("are drawn by the research and dataset pages, so the check above looks for the right names", async () => {
+    for (const name of ["research.tsx", "dataset.tsx"]) {
+      const text = await source(name)
+      expect(DRAWN_BY.some((drawn) => drawn.test(text))).toBe(true)
+    }
   })
 })

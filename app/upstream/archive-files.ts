@@ -155,7 +155,7 @@ const DRA_CONCURRENCY = 4
  * A DRA submission's fastq: one directory per experiment, each with its runs'
  * files. The listing rounds the sizes, so each file's own size is asked for.
  */
-export async function readDraFiles(accession: string, files: PublicFiles): Promise<ListedFiles | null> {
+async function readDraFiles(accession: string, files: PublicFiles): Promise<ListedFiles | null> {
   const root = draDirectoryPath(accession)
   const listing = await files.text(root)
   if (listing === null) return null

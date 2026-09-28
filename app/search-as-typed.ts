@@ -21,7 +21,7 @@ import { useSubmit } from "react-router"
  */
 
 /** How long the typing has to stop before a listing searches for itself. */
-export const SEARCH_AFTER_TYPING = 400
+const SEARCH_AFTER_TYPING = 400
 
 export interface Ask {
   /** Put on the `<Form>`, which is what is read and submitted. */

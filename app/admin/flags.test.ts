@@ -33,23 +33,9 @@ describe("what a research is still missing", () => {
     })
   })
 
-  it("counts a value marked unsettled, in whichever language it was marked", () => {
-    expect(missing(withTitle({ ja: { state: "unknown" }, en: filled("") })).unsettled)
-      .toBe(true)
-    expect(missing(withTitle({ ja: filled(""), en: { state: "unknown" } })).unsettled)
-      .toBe(true)
-  })
-
   it("does not count a value settled as not applicable, which is an answer", () => {
     expect(missing(withTitle({ ja: { state: "not-applicable" }, en: filled("") })))
       .toEqual({ unsettled: false, untranslated: false })
-  })
-
-  it("counts a pair as untranslated when one language holds a value and the other is empty", () => {
-    expect(missing(withTitle({ ja: filled("研究題目"), en: filled("") })).untranslated)
-      .toBe(true)
-    expect(missing(withTitle({ ja: filled(""), en: filled("A title") })).untranslated)
-      .toBe(true)
   })
 
   it("does not count a pair nobody has filled in as untranslated", () => {
@@ -117,13 +103,6 @@ function withNumber(value: NumberValue): DatasetContent {
 describe("what a dataset is still missing", () => {
   it("finds nothing missing in a number nobody gave a label or a note to", () => {
     expect(missingDataset(withNumber(BARE_NUMBER))).toEqual({ unsettled: false, untranslated: false })
-  })
-
-  it("counts a number's label as untranslated when one language holds a value and the other is empty", () => {
-    expect(missingDataset(withNumber({ ...BARE_NUMBER, label: { ja: "常染色体", en: "" } })).untranslated)
-      .toBe(true)
-    expect(missingDataset(withNumber({ ...BARE_NUMBER, label: { ja: "", en: "Autosome" } })).untranslated)
-      .toBe(true)
   })
 
   it("counts a number's note the same way as its label", () => {

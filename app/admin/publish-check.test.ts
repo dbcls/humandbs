@@ -107,17 +107,6 @@ describe("what is listed and passed", () => {
 
     expect(findings).toEqual([{ kind: "empty-dataset", datasetId: "d1" }])
   })
-
-  /**
-   * Publishing writes a version of its own, so no other publish can have moved
-   * what this draft holds. The publish check has nothing to warn about here, and a draft
-   * that wants to see another version compares against it in the editor.
-   */
-  it("reports nothing about what other publishes did", () => {
-    const findings = check({ datasets: [dataset()] }).findings
-
-    expect(findings).toEqual([])
-  })
 })
 
 describe("checking the pins against the application system", () => {

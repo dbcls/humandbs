@@ -823,7 +823,7 @@ function Values({ locale, catalog, terms, scope, path, values, annotationsFor, o
  * **Written once**, so the dataset's own form and the import form write a
  * value the same way.
  */
-export function ValueEditor({ label, named = true, locale, catalogKey: key, terms, value, annotations, remove, onChange }: {
+function ValueEditor({ label, named = true, locale, catalogKey: key, terms, value, annotations, remove, onChange }: {
   label: string
   /**
    * Whether the field draws its own name row. **Not when a heading names it**

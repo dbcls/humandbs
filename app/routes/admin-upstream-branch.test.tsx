@@ -3,6 +3,7 @@ import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
 import type { SeededFieldView, UpstreamBranchPageView, UpstreamBranchView } from "~/admin/templates.server"
+import { Pairs } from "~/components/page"
 import { BranchPairs } from "~/components/upstream"
 import { messagesFor } from "~/i18n/messages"
 
@@ -32,7 +33,8 @@ describe("枝番 1 本の申請の内容", () => {
   })
 
   it("公開ページと同じ列挙の形 (Pairs) で描く", () => {
-    expect(draw()).toMatch(/^<dl class="[^"]*sm:columns-2/)
+    const pairsOpenTag = /^<dl[^>]*>/.exec(renderToStaticMarkup(<Pairs>{null}</Pairs>))?.[0] ?? ""
+    expect(draw().startsWith(pairsOpenTag)).toBe(true)
   })
 
   it("空の言語は描かず、両方空なら未入力と示す", () => {
@@ -109,6 +111,12 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     const html = screen({ connected: false, branch: null, chosen: null })
     expect(html).not.toContain("新規")
     expect(html).not.toContain("データ更新")
+  })
+
+  it("申請管理 DB に接続できない環境でも一覧へ戻るボタンは残し、接続できないことを示す", () => {
+    const html = screen({ connected: false, branch: null, chosen: null })
+    expect(html).toContain(t.notConnected)
+    expect(html).toMatch(new RegExp(`<a[^>]*>[\\s\\S]*?${t.backToList}[\\s\\S]*?</a>`))
   })
 
   it("研究 ID が未発行なら、指定せずに作成を始める", () => {

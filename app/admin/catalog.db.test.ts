@@ -664,13 +664,17 @@ describe("the ICD10 vocabulary", () => {
       .toEqual([termId, other].sort())
   })
 
-  it("leaves a flat vocabulary flat", async () => {
+  it("leaves a flat vocabulary flat, even when a new value is sent under an existing one", async () => {
     const token = await signIn(CURATOR, true)
     const setId = await vocabulary("assay")
-
     await catalogAction(post(token, { intent: "create-term", setId, code: "wgs", labelEn: "WGS" }))
+    const parentId = only(await db.select().from(s.vocabularyTerm)).id
 
-    expect(only(await db.select().from(s.vocabularyTerm)).parentId).toBeNull()
+    await catalogAction(post(token, { intent: "create-term", setId, code: "wgs-pcr-free", labelEn: "WGS PCR-free", parentId }))
+
+    const rows = await db.select().from(s.vocabularyTerm)
+    expect(rows).toHaveLength(2)
+    expect(rows.map((row) => row.parentId)).toEqual([null, null])
   })
 })
 

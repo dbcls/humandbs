@@ -55,7 +55,7 @@ export interface DbLinks {
  * because that is the address DDBJ Search has been building all along and the
  * one the portal promises to keep responding forever.
  */
-export function xrefOf(type: AccessionType, identifier: string, origin: string): Xref {
+function xrefOf(type: AccessionType, identifier: string, origin: string): Xref {
   const url = type === "humandbs"
     ? `${origin}/${encodeURIComponent(identifier)}`
     : `${SEARCH_ENTRY_BASE}/${type}/${encodeURIComponent(identifier)}`

@@ -10,7 +10,7 @@ import {
   Papers,
   PlanNotes,
 } from "./admin-assistant-document-report"
-import type { AssessmentData, AssistantWords } from "./admin-assistant-model"
+import { applicationKind, type AssessmentData, type AssistantWords } from "./admin-assistant-model"
 import { PersonPanel, PersonReport } from "./admin-assistant-person-report"
 import {
   display,
@@ -44,6 +44,7 @@ export function AssistantReport({
   onAddDatasets: (ids: string[]) => Promise<boolean>
   onRemoveDataset: (datasetId: string) => void
 }) {
+  const kind = applicationKind(applicationType)
   const sameEmail
     = report.researcher_info?.email !== undefined
       && report.researcher_info.email !== ""
@@ -129,7 +130,7 @@ export function AssistantReport({
           ]}
           words={words}
         />
-        {applicationType?.includes("提供") === true && (
+        {kind === "submission" && (
           <Checklist
             title={words.submissionChecks}
             items={report.submission_application_check_result?.items}
@@ -250,7 +251,7 @@ export function AssistantReport({
           paperMethods={report.paper_analysis_method_list}
           abstractIcd10={report.abstract_icd10_list}
           paperIcd10={report.papers?.flatMap((paper) => paper.icd10_code_list ?? [])}
-          canManage={applicationType !== "提供申請"}
+          canManage={kind === "use"}
           busy={busy}
           onAddDatasets={onAddDatasets}
           onRemoveDataset={onRemoveDataset}

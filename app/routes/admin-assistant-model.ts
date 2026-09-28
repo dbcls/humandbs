@@ -12,6 +12,19 @@ export interface Task {
   application_type?: string
 }
 
+/**
+ * Which of the assistant's two kinds of application a task is filed as. Only a
+ * use application has datasets the curator may add or remove, as the
+ * assistant's own endpoints allow nowhere else, and only a submission
+ * application has the submission checks. A task that names neither gets
+ * neither.
+ */
+export function applicationKind(applicationType: string | undefined): "use" | "submission" | null {
+  if (applicationType === "利用申請") return "use"
+  if (applicationType === "提供申請") return "submission"
+  return null
+}
+
 export interface TaskDetail extends Task {
   filename?: string
   assessment_data?: AssessmentData | null

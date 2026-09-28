@@ -16,7 +16,7 @@
  * There is no v1 to defer to on those, so each is decided once, here.
  */
 
-import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react"
 import { Link, useActionData, useLocation } from "react-router"
 
 import { Icon, Spinner, type IconName } from "~/components/icons"
@@ -90,7 +90,7 @@ export const REMARK_CLASSES = {
  * (`mt-0.5`, `mt-1`, nothing at all). Putting the drawing in a box the line's
  * own height centres it wherever it is used.
  */
-export function LineIcon({ name, className = "" }: { name: IconName, className?: string }) {
+function LineIcon({ name, className = "" }: { name: IconName, className?: string }) {
   return (
     <span className={REMARK_CLASSES.icon}>
       <Icon name={name} className={`text-base ${className}`} />
@@ -1665,26 +1665,6 @@ export function SwitchTabs({ label, tabs }: {
 }
 
 /**
- * The tabs a long form is split into.
- *
- * **Only the display is switched: every field stays in the document**, so one
- * save sends the whole form and nothing an editor typed can be lost by moving
- * between tabs. That is also why a tab has to be able to show an indicator — an
- * unsaved change, a difference from the published version, an unread comment,
- * a problem the save reported — since the reader cannot see the section it is
- * in.
- *
- * **The tab strip is one stop for the keyboard, and the arrows move within it.**
- * One `<button>` per section would put seven stops between the reader and the
- * fields; this is the pattern WAI-ARIA describes for tabs, and the reason it
- * exists.
- *
- * A form under these tabs must not use the browser's own validation: a required
- * field inside a hidden panel cannot be focused, so submitting does nothing at
- * all and implies nothing about why. Validate on the server, which is where the
- * rules are.
- */
-/**
  * What a tab and its panel are named.
  *
  * **A strip can be told to name its own**, because a screen may have two of
@@ -1695,6 +1675,22 @@ function tabbedAs(scope: string | undefined, id: string): string {
   return scope === undefined ? id : `${scope}-${id}`
 }
 
+/**
+ * The tabs a pane switches what it shows with (`admin.tsx` の `usePanes`).
+ *
+ * **A tab can show an indicator** — an unsaved change, a difference from the
+ * published version, an unread comment, a problem the save reported — since
+ * the reader cannot see what the other tabs hold.
+ *
+ * **The tab strip is one stop for the keyboard, and the arrows move within it.**
+ * One `<button>` per tab would put a stop per tab between the reader and what
+ * the pane shows; this is the pattern WAI-ARIA describes for tabs, and the
+ * reason it exists.
+ *
+ * **Only the shown tab names its panel** (`aria-controls`): the other tabs'
+ * contents are not drawn at all, and a name that leads to nothing on the page
+ * is worse than none. The panel is drawn with `TabPanel`.
+ */
 export function SectionTabs({ label, tabs, current, onSelect, scope, aside }: {
   label: string
   tabs: { id: string, label: string, badge?: ReactNode }[]
@@ -1745,7 +1741,7 @@ export function SectionTabs({ label, tabs, current, onSelect, scope, aside }: {
           role="tab"
           id={`tab-${tabbedAs(scope, tab.id)}`}
           aria-selected={tab.id === current}
-          aria-controls={`tabpanel-${tabbedAs(scope, tab.id)}`}
+          aria-controls={tab.id === current ? `tabpanel-${tabbedAs(scope, tab.id)}` : undefined}
           tabIndex={tab.id === current ? 0 : -1}
           onClick={() => { onSelect(tab.id) }}
           className={`-mb-px inline-flex items-center gap-1.5 border-b-[3px] px-4 py-2 text-sm ${
@@ -1763,18 +1759,22 @@ export function SectionTabs({ label, tabs, current, onSelect, scope, aside }: {
   )
 }
 
-export function TabPanel({ id, current, children, scope }: {
+/**
+ * What the shown tab of a `SectionTabs` strip shows, named by that tab and
+ * naming it back. It is the element that holds the content rather than a
+ * wrapper around it, so the pane's layout sees no extra level.
+ */
+export function TabPanel({ id, scope, children, ...rest }: {
   id: string
-  current: string
-  children: ReactNode
   scope?: string
-}) {
+  children: ReactNode
+} & Omit<ComponentProps<"div">, "id" | "role" | "children">) {
   return (
     <div
+      {...rest}
       role="tabpanel"
       id={`tabpanel-${tabbedAs(scope, id)}`}
       aria-labelledby={`tab-${tabbedAs(scope, id)}`}
-      hidden={id !== current}
     >
       {children}
     </div>

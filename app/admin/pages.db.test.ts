@@ -396,6 +396,21 @@ describe("saving a draft", () => {
     expect((await readDraft(db, draftId))?.content.title.ja).toEqual(filled("書いたもの"))
   })
 
+  it("writes a draft whose required fields are empty or unsettled, since a save checks nothing for completeness", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    const input = draftInput()
+    input.content.title.ja = { state: "value", text: "" }
+    input.content.title.en = { state: "unknown", text: "" }
+    input.content.summary.aims.ja = { state: "unknown", text: "" }
+
+    const result = await saveDraftAction(postJson(token, "/x", payloadOf(1, input)), { researchId, draftId })
+
+    expect(result).toEqual({ status: "saved", revision: 2 })
+    const saved = await readDraft(db, draftId)
+    expect([saved?.content.title.en.state, saved?.content.summary.aims.ja.state]).toEqual(["unknown", "unknown"])
+  })
+
   it("hands back what the draft holds now when the revision no longer matches", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)

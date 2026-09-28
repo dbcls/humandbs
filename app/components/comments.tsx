@@ -405,7 +405,7 @@ export function groupedByAnchor(
  * shows 投稿中 and shuts the send button** (`postingInFlight`) — a row being
  * resolved is that row's business, and it shuts its own buttons.
  */
-export function CommentForm({ context, at, fetcher, placeholder }: {
+function CommentForm({ context, at, fetcher, placeholder }: {
   context: CommentContext
   at?: string
   fetcher: Fetcher

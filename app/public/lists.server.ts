@@ -35,6 +35,7 @@ import {
 import { isDateFacet, queryFields, type QueryFields } from "~/search/fields"
 import { pageRange, parsePageNumber } from "~/paging"
 import { joinKeyword, splitKeyword } from "~/search/keyword"
+import { type ListingSize, PAGE_SIZE, readListingSize, rowsPerPage } from "~/search/page-size"
 import type { ExportTable } from "~/search/export"
 import {
   countMatches,
@@ -42,10 +43,6 @@ import {
   DEFAULT_SORT,
   isSortKey,
   isSortOrder,
-  type ListingSize,
-  PAGE_SIZE,
-  readListingSize,
-  rowsPerPage,
   searchAllDocs,
   searchDocs,
   type SearchHit,

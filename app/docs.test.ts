@@ -90,6 +90,7 @@ const COINED: readonly { word: string, pattern: RegExp, allowed?: readonly strin
   { word: "名乗る", pattern: /名乗/ }, // 表示する
   { word: "名指す", pattern: /名指/ }, // 指定する
   { word: "黙って", pattern: /黙/ }, // 警告なしに
+  { word: "歩目", pattern: /歩目|[1一] ?歩ずつ/ }, // 1 つ目の直し / 段階 / 1 つずつ
   { word: "公開ゲート", pattern: /公開ゲート/ }, // 公開前の確認
 ]
 
@@ -313,6 +314,7 @@ describe("docs の書き方の検査", () => {
     expect(coinedWords("絞り込みの軸")).toEqual(["軸"])
     expect(coinedWords("1 段増える")).toEqual(["段"])
     expect(coinedWords("描画では黙って除く")).toEqual(["黙って"])
+    expect(coinedWords("2 歩目は 1 歩ずつ直す")).toEqual(["歩目"])
     expect(coinedWords("出版物と矢印と情報源とバージョン")).toEqual([])
     expect(coinedWords("自由記述のキーを有効にし、割り当てを判断する段落と前段")).toEqual([])
     expect(coinedWords("画面を組み立てる。テストが落ちる。持ち主の ID")).toEqual([])

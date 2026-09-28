@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 import { dayInJst } from "~/dates"
 
-import { attachmentDisposition, composeListing, narrowedFiles, pageOfFiles, selectedFrom, type FileFilter, type StoredNode } from "./prefix"
+import { attachmentDisposition, composeListing, narrowedFiles, pageOfFiles, type FileFilter, type StoredNode } from "./prefix"
 
 /**
  * The laws the prefix is read by.
@@ -91,22 +91,6 @@ describe("pageOfFiles", () => {
 
         expect(cut.page).toBeGreaterThanOrEqual(1)
         expect(cut.page).toBeLessThanOrEqual(cut.pageCount)
-      },
-    ))
-  })
-})
-
-describe("selectedFrom", () => {
-  it("keeps a subsequence of the selection, and nothing the listing does not hold", () => {
-    fc.assert(fc.property(
-      fc.array(nameArb, { maxLength: 8 }),
-      nodesArb,
-      (selection, open) => {
-        const listing = composeListing(open, [], [])
-        const listed = new Set(listing.map((entry) => entry.name))
-        const kept = selectedFrom(selection, listing).map((entry) => entry.name)
-
-        expect(kept).toEqual(selection.filter((name) => listed.has(name)))
       },
     ))
   })

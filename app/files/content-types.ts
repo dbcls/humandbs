@@ -6,7 +6,7 @@
  * deliberately absent here — it is markup, and an inline one would run on the
  * portal's own origin.
  */
-export const CONTENT_TYPES: Record<string, string> = {
+const CONTENT_TYPES: Record<string, string> = {
   ".pdf": "application/pdf",
   ".png": "image/png",
   ".jpg": "image/jpeg",

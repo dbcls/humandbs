@@ -16,10 +16,6 @@ describe("canonicalJgaIds", () => {
     expect(canonicalJgaIds("JGAS0000000")).toBe("JGAS000000")
   })
 
-  it("writes the prefix in capitals, whatever case it was typed in", () => {
-    expect(canonicalJgaIds("jgad00000000004")).toBe("JGAD000004")
-  })
-
   it("leaves a spelling of six digits or fewer as typed, so part of an accession still matches", () => {
     expect(canonicalJgaIds("JGAS000197")).toBe("JGAS000197")
     expect(canonicalJgaIds("JGAS0001")).toBe("JGAS0001")

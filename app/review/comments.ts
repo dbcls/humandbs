@@ -68,7 +68,7 @@ export function checkName(name: string): "name-required" | "too-long" | null {
   return null
 }
 
-export function commentsOfSubject(
+function commentsOfSubject(
   comments: readonly CommentView[],
   subject: AnchorSubject,
 ): CommentView[] {
@@ -129,12 +129,4 @@ export function commentsByPath(
 /** How many are still waiting for an answer. The memo is not a question, so it is never counted. */
 export function unresolvedCount(comments: readonly CommentView[]): number {
   return comments.filter((one) => one.anchor.kind !== "memo" && !one.resolved).length
-}
-
-/** For a list across places: anything open above anything settled, newest first. */
-export function byAttention(comments: readonly CommentView[]): CommentView[] {
-  return [...comments].sort((a, b) => {
-    if (a.resolved !== b.resolved) return a.resolved ? 1 : -1
-    return b.createdAt.localeCompare(a.createdAt)
-  })
 }

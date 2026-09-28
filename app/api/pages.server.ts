@@ -420,7 +420,7 @@ export async function searchFields(): Promise<Response> {
 
   return jsonResponse({
     fields: [
-      // The four the search row is made of are the ones an answer opens with,
+      // The fields the search row is made of are the ones an answer opens with,
       // by the names the search screen gives them.
       ...[...BUILT_IN_FIELDS.keys()].flatMap((code) => described(code, {
         label: builtInLabel(code),

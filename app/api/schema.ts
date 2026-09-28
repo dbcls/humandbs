@@ -20,6 +20,8 @@
 
 import { z } from "zod"
 
+import { BUILT_IN_FIELDS } from "../search/fields"
+
 const dateString = z.string().meta({ description: "A calendar day, `YYYY-MM-DD`, cut in JST." })
 
 /**
@@ -28,7 +30,7 @@ const dateString = z.string().meta({ description: "A calendar day, `YYYY-MM-DD`,
  * offered — the API has no locale, and falling one back onto the other would
  * present a value as a translation that nobody said was one.
  */
-export const textSchema = z.object({
+const textSchema = z.object({
   ja: z.string().nullable().optional(),
   en: z.string().nullable().optional(),
 }).meta({
@@ -38,7 +40,7 @@ export const textSchema = z.object({
     + "whose value is known not to exist. Neither falls back on the other.",
 })
 
-export const linkSchema = z.object({
+const linkSchema = z.object({
   url: z.string(),
   text: z.string(),
 }).meta({ id: "Link", description: "A destination and the words that stand for it." })
@@ -48,7 +50,7 @@ export const linkSchema = z.object({
  * keep their destination: a machine-usable reference is a typed slot rather than
  * something buried in a sentence.
  */
-export const linksSchema = z.object({
+const linksSchema = z.object({
   ja: z.array(linkSchema).nullable().optional(),
   en: z.array(linkSchema).nullable().optional(),
 }).meta({
@@ -60,7 +62,7 @@ export const linksSchema = z.object({
 })
 
 /** A vocabulary value. The code is the spelling an address uses to filter by it. */
-export const termSchema = z.object({
+const termSchema = z.object({
   code: z.string(),
   label: textSchema,
 }).meta({
@@ -75,7 +77,7 @@ export const termSchema = z.object({
  * `terms` may be empty — a disease no classification names is an ordinary
  * value, so a code cannot be assumed to be there.
  */
-export const diseaseSchema = z.object({
+const diseaseSchema = z.object({
   terms: z.array(termSchema),
   name: textSchema,
 }).meta({
@@ -99,7 +101,7 @@ export const diseaseSchema = z.object({
  * `high` is the upper end of a value written as a width — `0.9-1.3 GB` reads as
  * `value: 0.9, high: 1.3` — and is `null` on every number that is not one.
  */
-export const numberValueSchema = z.object({
+const numberValueSchema = z.object({
   value: z.number(),
   unit: z.string().nullable(),
   high: z.number().nullable(),
@@ -119,7 +121,7 @@ export const numberValueSchema = z.object({
 const valueHead = { key: z.string(), label: textSchema }
 
 /** A value under a catalog key. The type reports which of the payloads is present. */
-export const valueSchema = z.discriminatedUnion("type", [
+const valueSchema = z.discriminatedUnion("type", [
   z.object({ ...valueHead, type: z.literal("text"), text: textSchema }),
   z.object({ ...valueHead, type: z.literal("single"), value: z.string().nullable() }),
   z.object({ ...valueHead, type: z.literal("accession"), value: z.string().nullable() }),
@@ -142,7 +144,7 @@ export const valueSchema = z.discriminatedUnion("type", [
  * does not say it ("Dictionary file"), in each language an administrator wrote
  * — absent when there is none, like every other value that is not there.
  */
-export const fileSchema = z.object({
+const fileSchema = z.object({
   name: z.string(),
   size: z.number().int(),
   url: z.string(),
@@ -233,7 +235,7 @@ export const researchSchema = z.object({
     + "appear as ids: each has an address of its own, and one research can hold hundreds.",
 })
 
-export const experimentSchema = z.object({
+const experimentSchema = z.object({
   label: z.string().nullable().optional(),
   values: z.array(valueSchema),
 }).meta({
@@ -312,16 +314,19 @@ export const datasetSearchSchema
  *
  * `values` is present on a `term` field and lists what the published set
  * actually has. `unit` is present on a `number` field, whose values are a
- * span rather than a list. The fields belonging to the search row itself have
- * neither; their label is the one the search screen gives them, since they are
- * not in the catalog.
+ * span rather than a list. The fields belonging to the search row itself are
+ * not in the catalog, so their label is the one the search screen gives them;
+ * of them, only `file-type` is a term field.
  */
-export const searchFieldSchema = z.object({
+/** The fields the search row is made of, as the document writes them, in the order an answer lists them. */
+export const BUILT_IN_FIELD_CODES = [...BUILT_IN_FIELDS.keys()].map((code) => `\`${code}\``).join(", ")
+
+const searchFieldSchema = z.object({
   code: z.string().meta({ description: "How a query names the field." }),
   type: z.enum(["identifier", "text", "date", "term", "number"]),
   label: textSchema.optional().meta({
-    description: "The name the portal shows for the field: the catalog's, or the search screen's for the four "
-      + "built-in fields (`id`, `title`, `date_published`, `date_modified`).",
+    description: "The name the portal shows for the field: the catalog's, or the search screen's for the "
+      + `built-in fields (${BUILT_IN_FIELD_CODES}).`,
   }),
   unit: z.string().optional().meta({ description: "The unit the stored values are in." }),
   values: z.array(termSchema).optional().meta({
@@ -353,7 +358,7 @@ export const accessionTypeSchema = z.enum(["humandbs", "jga-dataset", "jga-study
       + "`jga-dataset` a JGAD accession, `jga-study` a JGAS accession.",
   })
 
-export const xrefSchema = z.object({
+const xrefSchema = z.object({
   identifier: z.string(),
   type: accessionTypeSchema,
   url: z.string().meta({

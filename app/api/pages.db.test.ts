@@ -8,6 +8,7 @@ import * as s from "~/db/schema"
 import { seedDataset, seedVersion } from "~/db/seed"
 import { clearPrefix, putTestObject } from "~/files/_store"
 import { PUBLIC_BUCKET, publicPrefix } from "~/files/prefix"
+import { BUILT_IN_FIELDS } from "~/search/fields"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 import { SORT_KEYS } from "~/search/sort"
 
@@ -564,13 +565,17 @@ describe("the usage project a cached usage record came from", () => {
 })
 
 describe("the fields a query can name", () => {
-  it("names the four built-in fields in both languages, as the search screen does", async () => {
-    const { fields } = await body(await searchFields()) as { fields: { code: string, label?: { ja?: string, en?: string } }[] }
-    expect(fields.slice(0, 4)).toEqual([
+  it("opens with every built-in field in both languages, as the search screen names them", async () => {
+    const { fields } = await body(await searchFields()) as { fields: { code: string, type: string, label?: unknown, values?: unknown }[] }
+    expect(fields.slice(0, BUILT_IN_FIELDS.size).map(({ code, type, label }) => ({ code, type, label }))).toEqual([
       { code: "id", type: "identifier", label: { ja: "ID", en: "ID" } },
       { code: "title", type: "text", label: { ja: "研究題目", en: "Title" } },
       { code: "date_published", type: "date", label: { ja: "公開日", en: "Date published" } },
       { code: "date_modified", type: "date", label: { ja: "更新日", en: "Date modified" } },
+      { code: "file-type", type: "term", label: { ja: "ファイル形式", en: "File format" } },
     ])
+    // Of the built-in fields, only the formats are a closed set to list.
+    expect(fields.slice(0, BUILT_IN_FIELDS.size).filter((field) => field.values !== undefined).map((field) => field.code))
+      .toEqual(["file-type"])
   })
 })

@@ -5,7 +5,6 @@ import { RESEARCH } from "./anchors"
 import {
   BODY_LIMIT,
   NAME_LIMIT,
-  byAttention,
   checkComment,
   checkName,
   commentsByPath,
@@ -103,16 +102,5 @@ describe("the comments a screen shows", () => {
       said({ id: "c7" }),
       said({ id: "memo", anchor: { kind: "memo" } }),
     ])).toBe(1)
-  })
-})
-
-describe("the order a list across places is read in", () => {
-  it("puts what is still open above what is settled, most recently said first", () => {
-    const rows = [
-      said({ id: "old-open", createdAt: "2026-08-01T00:00:00.000Z" }),
-      said({ id: "resolved", resolved: true, createdAt: "2026-08-09T00:00:00.000Z" }),
-      said({ id: "new-open", createdAt: "2026-08-05T00:00:00.000Z" }),
-    ]
-    expect(byAttention(rows).map((row) => row.id)).toEqual(["new-open", "old-open", "resolved"])
   })
 })

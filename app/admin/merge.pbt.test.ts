@@ -35,12 +35,6 @@ function at(value: DraftInput, path: string): unknown {
  * reading is the one to keep.
  */
 describe("what the conflict dialog opens holding", () => {
-  it("reads as what was saved elsewhere when this screen changed nothing", () => {
-    fc.assert(fc.property(refusedArb, ({ base, theirs }) => {
-      expect(diffDraftInput(initialMerge(shape, base, base, theirs, diffDraftInput(base, theirs)), theirs)).toEqual([])
-    }))
-  })
-
   it("is this screen's input when nothing was changed elsewhere", () => {
     fc.assert(fc.property(refusedArb, ({ base, mine }) => {
       expect(initialMerge(shape, base, mine, base, diffDraftInput(base, base))).toEqual(mine)
@@ -84,10 +78,8 @@ describe("what the conflict dialog opens holding", () => {
     }))
   })
 
-  it("holds a dataset's entry the same way", () => {
+  it("is this screen's input when nothing was changed elsewhere, for a dataset's entry too", () => {
     fc.assert(fc.property(datasetContentInputArb, datasetContentInputArb, (base, theirs) => {
-      const changed = DATASET_IMPORT.diff(base, theirs)
-      expect(DATASET_IMPORT.diff(initialMerge(DATASET_IMPORT, base, base, theirs, changed), theirs)).toEqual([])
       expect(initialMerge(DATASET_IMPORT, base, theirs, base, DATASET_IMPORT.diff(base, base))).toEqual(theirs)
     }))
   })

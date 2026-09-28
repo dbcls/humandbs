@@ -17,7 +17,7 @@ import type { DatasetContent, ResearchContent } from "~/content/types"
 import { datasetProblems, researchProblems, type Language } from "./flags"
 
 /** Only the accessions the application system is the authority for. */
-export const CHECKED_ACCESSION = /^JGA[DS]\d+$/
+const CHECKED_ACCESSION = /^JGA[DS]\d+$/
 
 export type PublishBlock
   = | { kind: "hum-label-missing" }

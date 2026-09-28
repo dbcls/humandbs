@@ -87,12 +87,6 @@ export async function datasetWithSecondaryId(
   return null
 }
 
-/** Whether a dataset is one a reader needs no application for. */
-export function isUnrestricted(dataset: DatasetHit): boolean {
-  return dataset.values.some((value) =>
-    value.key === "access-criteria" && (value.terms ?? []).some((term) => term.code === "unrestricted-access"))
-}
-
 /** A research whose every dataset is unrestricted-access. */
 export async function unrestrictedResearch(request: APIRequestContext): Promise<string | null> {
   const open = await hits<DatasetHit>(

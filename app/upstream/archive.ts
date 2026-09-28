@@ -27,11 +27,6 @@ export function archiveResourceOf(accession: string): string | null {
   return RESOURCE_BY_PREFIX.find(([prefix]) => accession.startsWith(prefix))?.[1] ?? null
 }
 
-/** Whether this source is the one that holds the dates for an accession at all. */
-export function isArchiveAccession(accession: string): boolean {
-  return archiveResourceOf(accession) !== null
-}
-
 const CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /**

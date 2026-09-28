@@ -15,7 +15,7 @@
 
 import { BUILT_IN_FIELDS } from "~/search/fields"
 
-export const CODE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const CODE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export type CodeProblem = "malformed" | "reserved"
 

@@ -15,6 +15,7 @@
  */
 
 import { sql } from "drizzle-orm"
+import { Client } from "pg"
 
 import type { Executor } from "./client.server"
 
@@ -63,5 +64,35 @@ export async function assertTestDatabase(owner: Executor, expected: string): Pro
       `the database tests are connected to "${actual}" rather than "${expected}"; `
       + "they empty every table, so nothing is run",
     )
+  }
+}
+
+/** What the advisory lock a run of the database tests holds is keyed on. */
+const RUN_LOCK = "humandbs database tests"
+
+/**
+ * Holding the test database for one run of the database tests, and the way to
+ * let it go.
+ *
+ * **Within a run the files go one at a time, but two runs do not know of each
+ * other**: every case empties every table first, so a second run started beside
+ * the first clears its rows mid-case, and the failures move from run to run.
+ * The run holds an advisory lock on a connection of its own for as long as it
+ * lasts; a run that finds it held stops before running anything. The lock goes
+ * with the connection, so a run that dies leaves nothing behind.
+ */
+export async function holdTestDatabase(url: string): Promise<() => Promise<void>> {
+  const client = new Client({ connectionString: url })
+  await client.connect()
+  const { rows } = await client.query<{ held: boolean }>("SELECT pg_try_advisory_lock(hashtext($1)) AS held", [RUN_LOCK])
+  if (rows[0]?.held !== true) {
+    await client.end()
+    throw new Error(
+      `another run of the database tests is using "${databaseName(url)}"; `
+      + "nothing is run until it has finished",
+    )
+  }
+  return async () => {
+    await client.end()
   }
 }

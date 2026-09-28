@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { archiveResourceOf, calendarDayOf, isArchiveAccession } from "./archive"
+import { archiveResourceOf, calendarDayOf } from "./archive"
 
 describe("archiveResourceOf", () => {
   it.each([
@@ -21,7 +21,7 @@ describe("archiveResourceOf", () => {
   })
 
   it("does not guess for a prefix nobody has registered", () => {
-    expect(isArchiveAccession("XYZ000001")).toBe(false)
+    expect(archiveResourceOf("XYZ000001")).toBeNull()
   })
 })
 

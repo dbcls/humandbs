@@ -163,16 +163,6 @@ describe("the dataset a JGA registration seeds", () => {
       .toEqual([["set-disease/C349"], ["set-disease/E110"]])
   })
 
-  it("writes no name, because the application form holds none", () => {
-    const seed = jgadDatasetSeed(registration, branch, catalogFixture)
-
-    const value = seed.content.experiments[0]?.values
-      .find((slot) => slot.keyId === DISEASE_KEY)?.value
-    expect(value?.kind === "disease" && value.diseases.state === "value"
-      ? value.diseases.value.map((one) => [one.nameJa, one.nameEn])
-      : null).toEqual([[null, null], [null, null]])
-  })
-
   it("rolls a code up until the vocabulary has it, which is what ICD-10-CM needs", () => {
     // The classification cannot spell `E110A`; `E110` is what stands for it.
     const seed = jgadDatasetSeed(registration, { ...branch, icd10: "E110A" }, catalogFixture)

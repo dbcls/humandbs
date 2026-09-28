@@ -70,12 +70,12 @@ export type StateWords = Record<Exclude<SlotState, "value">, string>
  * text to show, and a row showing 未入力 for it would suggest the curator has not
  * answered when they have.
  */
-export function sideLine(side: TextInput, states: StateWords): { text: string, isState: boolean } {
+function sideLine(side: TextInput, states: StateWords): { text: string, isState: boolean } {
   return side.state === "value" ? { text: side.text, isState: false } : { text: states[side.state], isState: true }
 }
 
 /** The Japanese side, or the English while the Japanese side is a value with nothing typed. */
-export function pairLine(pair: { ja: TextInput, en: TextInput }, states: StateWords): { text: string, isState: boolean } {
+function pairLine(pair: { ja: TextInput, en: TextInput }, states: StateWords): { text: string, isState: boolean } {
   const ja = sideLine(pair.ja, states)
   return ja.text !== "" ? ja : sideLine(pair.en, states)
 }

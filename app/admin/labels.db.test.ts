@@ -36,6 +36,8 @@ const CURATOR = { sub: "0f3a-1b2c", name: "curator" }
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
+  // A failure queued for one case and never reached is not left for the next.
+  vi.mocked(listPrefix).mockReset()
 })
 
 afterAll(async () => {
@@ -146,6 +148,24 @@ describe("pinning a label", () => {
       { label: "hum0002", isPrimary: true },
     ])
     expect(await db.select().from(s.event)).toHaveLength(2)
+  })
+
+  it("refuses a label that another research holds as a secondary ID, whether pinned as primary or secondary", async () => {
+    const mine = await createResearch()
+    const other = await createResearch()
+    await pinLabel(db, { kind: "hum", label: "hum0001", subjectId: mine, isPrimary: true }, CURATOR)
+    await pinLabel(db, { kind: "hum", label: "hum0002", subjectId: other, isPrimary: true }, CURATOR)
+    await pinLabel(db, { kind: "hum", label: "hum0003", subjectId: other, isPrimary: false }, CURATOR)
+
+    for (const isPrimary of [true, false]) {
+      expect(await pinLabel(db, { kind: "hum", label: "hum0003", subjectId: mine, isPrimary }, CURATOR))
+        .toEqual({ status: "taken" })
+    }
+    expect(await pins()).toEqual([
+      { label: "hum0001", isPrimary: true },
+      { label: "hum0002", isPrimary: true },
+      { label: "hum0003", isPrimary: false },
+    ])
   })
 
   it("refuses a label for an identity that is not there", async () => {

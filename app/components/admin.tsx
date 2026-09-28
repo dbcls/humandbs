@@ -4,7 +4,7 @@ import { useLocation } from "react-router"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { ButtonLink, Choice, SectionTabs, Chevron, type ButtonSize } from "./base"
+import { ButtonLink, Choice, SectionTabs, Chevron, TabPanel, type ButtonSize } from "./base"
 import { Icon, type IconName } from "./icons"
 
 /**
@@ -197,7 +197,9 @@ export function usePanes({ locale, contents, opens, under = "page" }: {
             instead — and a box only clips what it is the containing block of,
             so the comment buttons hanging beside the fields escape the pane and
             stretch the document to the length of the form. */}
-        <div data-pane-body className="relative min-h-0 flex-1 overflow-y-auto">{shown?.body}</div>
+        <TabPanel id={shown?.id ?? ""} scope={side} data-pane-body className="relative min-h-0 flex-1 overflow-y-auto">
+          {shown?.body}
+        </TabPanel>
       </div>
     )
   }

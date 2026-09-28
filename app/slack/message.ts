@@ -170,7 +170,7 @@ export function publishRecords(rows: readonly PublishedRow[]): PublishRecord[] {
  * Slack reads `&`, `<` and `>` as markup — `<!channel>` notifies everybody —
  * so every word somebody typed is escaped before it goes in.
  */
-export function escapeSlack(text: string): string {
+function escapeSlack(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 }
 

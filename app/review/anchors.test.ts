@@ -6,7 +6,7 @@ import type { DatasetContent, ResearchContent } from "~/content/types"
 
 import { fieldHash } from "~/admin/urls"
 
-import { RESEARCH, anchorKey, anchorOf, commentSpotId, isAnchorPath, isSameSubject, pathExists, subjectOf } from "./anchors"
+import { RESEARCH, anchorOf, commentSpotId, isAnchorPath, isSameSubject, pathExists, subjectOf } from "./anchors"
 
 const DATASET = { kind: "dataset" as const, datasetId: "d1" }
 
@@ -52,13 +52,6 @@ describe("an anchor path", () => {
 })
 
 describe("an anchor", () => {
-  it("names one place, so two subjects with the same path are two anchors", () => {
-    expect(anchorKey(anchorOf(RESEARCH, "title")))
-      .not.toBe(anchorKey(anchorOf(DATASET, "title")))
-    expect(anchorKey(anchorOf(DATASET, "title")))
-      .not.toBe(anchorKey(anchorOf({ kind: "dataset", datasetId: "d2" }, "title")))
-  })
-
   it("remembers which subject it is about", () => {
     expect(subjectOf(anchorOf(RESEARCH, "title"))).toEqual(RESEARCH)
     expect(subjectOf(anchorOf(DATASET, "title"))).toEqual(DATASET)
@@ -93,11 +86,6 @@ describe("the place an anchor points at", () => {
       expect(pathExists(research(), `${under}${name}`)).toBe(false)
       expect(pathExists(dataset(), `${under}${name}`)).toBe(false)
     }))
-  })
-
-  /** The memo is the administrator's own and is not part of what is reviewed. */
-  it("is not the draft's memo, which never reaches a preview", () => {
-    expect(pathExists(research(), "note")).toBe(false)
   })
 })
 

@@ -108,7 +108,7 @@ function richSide(slot: TranslatedRichText["ja"]): string | null | undefined {
   return plain === "" ? undefined : plain
 }
 
-export function richOf(value: TranslatedRichText): ApiText | undefined {
+function richOf(value: TranslatedRichText): ApiText | undefined {
   return pair(richSide(value.ja), richSide(value.en))
 }
 

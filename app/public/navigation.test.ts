@@ -39,8 +39,12 @@ describe("グローバルナビとフッタ", () => {
     }
   })
 
-  it("開くのはフッタだけで、バーの項目はどれも 1 つの行き先", () => {
-    expect(FOOTER.filter((entry) => entry.children !== undefined)).toHaveLength(2)
+  it("開くのはフッタだけで、開く項目はどれも 1 件以上の子を持つ", () => {
+    for (const entry of NAVBAR) expect("children" in entry).toBe(false)
+    for (const entry of FOOTER) {
+      if (entry.children === undefined) continue
+      expect(entry.children.length).toBeGreaterThan(0)
+    }
   })
 
   it("開く項目の子に、その項目自身と同じ行き先が並ばない", () => {

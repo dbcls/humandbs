@@ -23,7 +23,7 @@ import type { ListingSize } from "~/search/page-size"
 import { archiveResourceOf } from "~/upstream/archive"
 
 /** Every locale except the default one is addressed under its own prefix. */
-export function localePrefix(locale: Locale): string {
+function localePrefix(locale: Locale): string {
   return locale === DEFAULT_LOCALE ? "" : `/${locale}`
 }
 
@@ -49,7 +49,7 @@ const DATA_SUFFIX = ".data"
  * language prefix** (`href`), so both the builders and the reader of an
  * address have to know it by the same string.
  */
-export const ADMIN_ROOT = "/admin"
+const ADMIN_ROOT = "/admin"
 
 /**
  * The path a request asked for, without the `.data` a client navigation

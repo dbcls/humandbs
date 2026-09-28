@@ -7,9 +7,7 @@ import {
   dayInJst,
   minuteInJst,
   minuteOf,
-  nowInJst,
   stampFromLocalInput,
-  today,
 } from "./dates"
 
 /**
@@ -72,25 +70,6 @@ const someMinute = fc.date({
   min: new Date("2000-01-01T00:00:00.000Z"),
   max: new Date("2100-01-01T00:00:00.000Z"),
   noInvalidDate: true,
-})
-
-describe("nowInJst", () => {
-  it("お知らせの列と同じ形で返る", () => {
-    expect(nowInJst()).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
-  })
-
-  it("日付の部分は today() と同じ日を指す", () => {
-    expect(nowInJst().slice(0, 10)).toBe(today())
-  })
-
-  it("時は 24 時制で書く", () => {
-    // 12 時制なら午後が 01〜12 になって、そのまま並べると夕方が朝より前に来る。
-    // 列の値は文字列のまま比べられるので、ここが 24 時制であることが「公開日時が
-    // 過ぎたか」の判定そのものを支えている。
-    const hour = Number(nowInJst().slice(11, 13))
-    expect(hour).toBeGreaterThanOrEqual(0)
-    expect(hour).toBeLessThanOrEqual(23)
-  })
 })
 
 describe("minuteOf", () => {

@@ -335,7 +335,6 @@ describe("a way that opens a new tab (ButtonLink newTab)", () => {
     void (<ButtonLink to="/x" newTab>x</ButtonLink>)
     // @ts-expect-error — the glyph of a way that leaves is the part's, not the caller's
     void (<ButtonLink to="/x" newTab newTabLabel="n" icon={<Chevron dir="right" />}>x</ButtonLink>)
-    expect(true).toBe(true)
   })
 
   it("ends a link to another screen in the chevron that moves (chevron)", () => {

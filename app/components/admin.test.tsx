@@ -48,6 +48,24 @@ describe("usePanes", () => {
     expect(parts("bar").control).toContain("表示 pane")
   })
 
+  it("points each tab that names a panel at a panel drawn on the page, which names the tab back", () => {
+    const { view } = parts("page")
+    const tabs = [...view.matchAll(/<button[^>]*role="tab"[^>]*>/g)].map((match) => match[0])
+    const controlled = tabs.flatMap((tab) => {
+      const panel = /aria-controls="([^"]+)"/.exec(tab)?.[1]
+      const id = /\bid="([^"]+)"/.exec(tab)?.[1]
+      return panel === undefined ? [] : [{ panel, id }]
+    })
+
+    // One shown content in each of the two panes.
+    expect(controlled).toHaveLength(2)
+    for (const { panel, id } of controlled) {
+      const element = new RegExp(`<div[^>]*\\bid="${panel}"[^>]*>`).exec(view)?.[0]
+      expect(element).toContain("role=\"tabpanel\"")
+      expect(element).toContain(`aria-labelledby="${id ?? ""}"`)
+    }
+  })
+
   it("shows the word beside the switch once, hidden from the reader the group's name already reaches", () => {
     const { control } = parts("bar")
     expect(control).toContain("aria-hidden=\"true\">表示 pane<")

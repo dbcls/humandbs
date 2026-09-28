@@ -228,7 +228,7 @@ export async function versionAgainst(
 }
 
 /** The version a reader would see now, which is what a preview is measured against. */
-export async function latestPublishedVersion(
+async function latestPublishedVersion(
   db: Executor,
   researchId: string,
 ): Promise<PublishedVersion | null> {

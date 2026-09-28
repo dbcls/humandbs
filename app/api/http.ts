@@ -19,9 +19,9 @@
 
 import type { Problem } from "./problem"
 
-export const JSON_TYPE = "application/json"
-export const PROBLEM_TYPE = "application/problem+json"
-export const NDJSON_TYPE = "application/x-ndjson"
+const JSON_TYPE = "application/json"
+const PROBLEM_TYPE = "application/problem+json"
+const NDJSON_TYPE = "application/x-ndjson"
 
 function headers(contentType: string): HeadersInit {
   return {

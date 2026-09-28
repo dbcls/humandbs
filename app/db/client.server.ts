@@ -30,7 +30,7 @@ export function getPool(): Pool {
  * and emptying the database between tests all need the owner. **Nothing that
  * serves a request may use it.**
  */
-export function getOwnerPool(): Pool {
+function getOwnerPool(): Pool {
   globalForDb.humandbsOwnerPool ??= new Pool({
     connectionString: loadOwnerDatabaseUrl(process.env),
   })

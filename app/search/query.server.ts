@@ -30,16 +30,6 @@ import type { SortKey, SortOrder } from "./sort"
 export type { SearchTarget } from "./target"
 
 export {
-  isPageSize,
-  type ListingSize,
-  PAGE_SIZE,
-  PAGE_SIZES,
-  type PageSize,
-  readListingSize,
-  rowsPerPage,
-} from "./page-size"
-
-export {
   defaultOrder,
   DEFAULT_SORT,
   isSortKey,

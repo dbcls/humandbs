@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { getOwnerDb } from "~/db/client.server"
 
-import { assertTestDatabase, databaseName } from "./test-database"
+import { assertTestDatabase, databaseName, holdTestDatabase } from "./test-database"
 
 /** These run against the test database, so they need `docker compose up`. */
 const owner = getOwnerDb()
@@ -26,5 +26,12 @@ describe("assertTestDatabase", () => {
     await expect(assertTestDatabase(owner, "humandbs")).rejects.toThrow(
       new RegExp(`connected to "${connected}"`),
     )
+  })
+})
+
+describe("holdTestDatabase", () => {
+  it("refuses a second run while this one holds the test database, and names the database", async () => {
+    await expect(holdTestDatabase(process.env.HUMANDBS_OWNER_DATABASE_URL ?? ""))
+      .rejects.toThrow(new RegExp(`another run of the database tests is using "${connected}"`))
   })
 })

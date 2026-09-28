@@ -287,7 +287,7 @@ export interface CompareWords {
  * dialog**, which differ only in what the three rows are called and in what
  * is done with the value when it is settled.
  */
-export function ImportComparison<T>({ locale, parts, mine, theirs, places, written, opened, onWrite, words }: {
+function ImportComparison<T>({ locale, parts, mine, theirs, places, written, opened, onWrite, words }: {
   locale: Locale
   parts: ImportParts<T>
   mine: T

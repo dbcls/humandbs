@@ -83,10 +83,17 @@ describe("a query and its written form", () => {
 })
 
 describe("reading anything at all", () => {
-  it("either gives a tree or reports where it stopped, and never throws", () => {
+  it("reports a column inside the input when it refuses, and reads back the same tree when it succeeds", () => {
     fc.assert(fc.property(fc.string(), (input) => {
       const parsed = parseQuery(input, BUILT_IN_ONLY)
-      if (!parsed.ok) expect(parsed.error.column).toBeGreaterThanOrEqual(1)
+      if (!parsed.ok) {
+        expect(parsed.error.column).toBeGreaterThanOrEqual(1)
+        expect(parsed.error.column).toBeLessThanOrEqual(Math.max(1, input.length))
+        return
+      }
+      const reread = parseQuery(serializeQuery(parsed.ast), BUILT_IN_ONLY)
+      expect(reread.ok).toBe(true)
+      if (reread.ok) expect(reread.ast).toEqual(parsed.ast)
     }))
   })
 })

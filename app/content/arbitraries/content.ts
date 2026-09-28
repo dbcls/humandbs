@@ -158,7 +158,8 @@ const numberValueArb: fc.Arbitrary<NumberValue> = fc.record({
  * projections have to account for.
  */
 const diseaseValueArb: fc.Arbitrary<DiseaseValue> = fc.record({
-  termIds: fc.array(idArb, { maxLength: 2 }),
+  // A save drops a repeated term, so stored content never holds one twice.
+  termIds: fc.uniqueArray(idArb, { maxLength: 2 }),
   nameJa: fc.option(fc.string(), { nil: null }),
   nameEn: fc.option(fc.string(), { nil: null }),
 })
@@ -169,7 +170,7 @@ export const contentValueArb: fc.Arbitrary<ContentValue> = fc.oneof(
   fc.record({ kind: fc.constant("accession" as const), value: slotArb(fc.string()) }),
   fc.record({
     kind: fc.constant("vocabulary" as const),
-    termIds: slotArb(fc.array(idArb, { maxLength: 3 })),
+    termIds: slotArb(fc.uniqueArray(idArb, { maxLength: 3 })),
   }),
   fc.record({
     kind: fc.constant("number" as const),

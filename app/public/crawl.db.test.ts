@@ -49,7 +49,8 @@ describe("sitemapPages", () => {
 
     const pages = await sitemapPages(db)
 
-    expect(pages.map((page) => page.path)).toEqual(["/", "/research", "/dataset", "/news", "/research/hum0001", "/dataset/JGAD000001"])
+    expect(pages.map((page) => page.path).toSorted())
+      .toEqual(["/", "/dataset", "/dataset/JGAD000001", "/news", "/research", "/research/hum0001"])
     for (const page of pages) expect(page.locales, page.path).toEqual(["ja", "en"])
     expect(pages.find((page) => page.path === "/research/hum0001")?.lastModified).toBe("2026-09-01")
   })

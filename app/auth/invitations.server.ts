@@ -23,7 +23,7 @@ import { addAdmin } from "./admins.server"
 import type { EventActor } from "./events.server"
 import { hashSessionToken, newSessionToken } from "./session.server"
 
-export const INVITATION_DAYS = 7
+const INVITATION_DAYS = 7
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

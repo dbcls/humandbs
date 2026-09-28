@@ -42,7 +42,7 @@ export async function lockResearch(
 }
 
 /** Locks several research rows in id order, returning the ids that exist. */
-export async function lockResearches(
+async function lockResearches(
   tx: Transaction,
   researchIds: readonly string[],
   strength: ResearchLock,

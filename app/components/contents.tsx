@@ -72,7 +72,7 @@ function stateWord(locale: Locale, state: NewsState): string {
 }
 
 /** A language's state as one word, from what the row knows: published or not, and whether the item's date is ahead. */
-export function newsStateOf(state: LocaleState, ahead: boolean): NewsState {
+function newsStateOf(state: LocaleState, ahead: boolean): NewsState {
   if (!state.published) return "unpublished"
   return ahead ? "scheduled" : "published"
 }

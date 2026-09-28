@@ -31,6 +31,7 @@
  * it was typed.
  */
 
+import { dayFromInput } from "~/dates"
 import { icd10Code } from "~/icd10/codes"
 
 import { operatorFor, type FacetField, type QueryFields, type ValueKind } from "./fields"
@@ -222,7 +223,8 @@ function tokenize(input: string): Token[] {
 }
 
 /**
- * A day the calendar has, written the one way the address writes days.
+ * A day the calendar has, written the one way the address writes days: the
+ * same days a `date` field of the management screens takes (`dayFromInput`).
  *
  * **Year 0000 is not a day.** JavaScript's calendar has a year zero and
  * PostgreSQL's `date` does not, so a value passed here has to be one the
@@ -230,9 +232,7 @@ function tokenize(input: string): Token[] {
  * rather than letting the query fail on the way in.
  */
 export function isRealDate(value: string): boolean {
-  if (!DATE_TOKEN.test(value) || value.startsWith("0000")) return false
-  const date = new Date(`${value}T00:00:00Z`)
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+  return dayFromInput(value) !== null
 }
 
 const DECIMAL = /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/

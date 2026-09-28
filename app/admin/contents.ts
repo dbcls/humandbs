@@ -227,7 +227,7 @@ export function publishStateOf(entry: TreeEntry, locale: Locale): PublishState {
  * articles. An announcement has the pair a document does, and the axis a
  * curator narrows either listing by has to mean the same thing on both.
  */
-export function publishStateIn(states: LocaleStates, locale: Locale): PublishState {
+function publishStateIn(states: LocaleStates, locale: Locale): PublishState {
   return states[locale].published ? "published" : "unpublished"
 }
 

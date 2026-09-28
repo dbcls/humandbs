@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { useRevalidator } from "react-router"
 
 /** How often a screen waiting on a job that runs in the background reads itself again. */
-export const WAITING_INTERVAL_MS = 3000
+const WAITING_INTERVAL_MS = 3000
 
 /**
  * Reads the screen's data again every few seconds while `waiting` — a file

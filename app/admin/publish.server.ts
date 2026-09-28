@@ -466,25 +466,6 @@ export async function publishPreview(
   })
 }
 
-/**
- * The publish check as it stands for a draft, read without a lock and without writing.
- *
- * **Every screen of the draft shows the publish check's status**, not only the
- * confirmation: the step indicator counts what would stop a publish and what
- * would have to be confirmed. It is advice, the same as the confirmation
- * screen's — what a publish is allowed to do is decided under the lock.
- */
-export async function draftPublishCheck(
-  db: Database,
-  draftId: string,
-  privateFiles: ReadonlySet<string>,
-): Promise<PublishCheck | null> {
-  return db.transaction(async (tx): Promise<PublishCheck | null> => {
-    const snapshot = await readPublishSnapshot(tx, draftId, false)
-    return snapshot === null ? null : publishCheckOf(snapshot, privateFiles)
-  })
-}
-
 /** The publish check's question, put from what was read. */
 function publishCheckOf(snapshot: PublishSnapshot, privateFiles: ReadonlySet<string>): PublishCheck {
   return checkPublish({

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { eq } from "drizzle-orm"
+import { eq, getTableColumns } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it } from "vitest"
 
 import { BOOTSTRAP_ACTOR } from "~/auth/events.server"
@@ -481,15 +481,11 @@ describe("writing a dataset of a draft", () => {
    * Nothing records what the entry started from: a draft is a copy, and what it
    * is compared against is chosen when somebody requests a comparison.
    */
-  it("keeps nothing beside the content it was saved with", async () => {
-    const { researchId, draftId } = await createResearchWithDraft(db)
-    const datasetId = await makeDataset(researchId, described("as published"))
-
-    await saveDatasetEntry(db, { draftId, datasetId, revision: null }, described("first"))
-
-    const row = only(await db.select().from(s.draftDatasetEntry))
-    expect(Object.keys(row).toSorted())
-      .toEqual(["content", "datasetId", "draftId", "id", "revision"])
+  it("keeps nothing beside the content it was saved with", () => {
+    const contents = Object.entries(getTableColumns(s.draftDatasetEntry))
+      .filter(([, column]) => column.dataType === "json")
+      .map(([name]) => name)
+    expect(contents).toEqual(["content"])
   })
 
   it("refuses a first save that is not the one which created the entry", async () => {

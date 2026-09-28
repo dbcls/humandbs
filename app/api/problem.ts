@@ -40,7 +40,7 @@ const TITLES: Record<number, string> = {
   500: "Internal Server Error",
 }
 
-export function problemOf(input: {
+function problemOf(input: {
   slug: ProblemSlug
   status: number
   detail: string
@@ -56,7 +56,7 @@ export function problemOf(input: {
 }
 
 /** The path an error is reported against, which is the request's own path. */
-export function instanceOf(request: Request): string {
+function instanceOf(request: Request): string {
   const url = new URL(request.url)
   return `${url.pathname}${url.search}`
 }

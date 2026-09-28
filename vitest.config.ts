@@ -29,6 +29,8 @@ export default defineConfig({
           name: "db",
           environment: "node",
           include: ["app/**/*.db.test.ts", "migration/**/*.db.test.ts"],
+          // Holds the test database for the run, so a second run stops at once.
+          globalSetup: ["./vitest.db-global-setup.ts"],
           // Points the connections at the test database and refuses to go on if
           // they landed anywhere else.
           setupFiles: ["./vitest.db-setup.ts"],

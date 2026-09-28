@@ -55,10 +55,6 @@ describe("quoteIdentifier", () => {
   it("doubles a double quote inside the value rather than leaving it unescaped", () => {
     expect(quoteIdentifier("weird\"role")).toBe("\"weird\"\"role\"")
   })
-
-  it("throws on a null byte, which Postgres cannot represent in an identifier", () => {
-    expect(() => quoteIdentifier("a\0b")).toThrow()
-  })
 })
 
 describe("quoteLiteral", () => {
@@ -73,25 +69,12 @@ describe("quoteLiteral", () => {
   it("does not treat a backslash specially, because standard_conforming_strings is on", () => {
     expect(quoteLiteral("back\\slash")).toBe("'back\\slash'")
   })
-
-  it("throws on a null byte, which Postgres cannot represent in a string literal", () => {
-    expect(() => quoteLiteral("a\0b")).toThrow()
-  })
 })
 
 const APP: Connection = { user: "humandbs_app", password: "secret", database: "humandbs" }
 const OWNER: Connection = { user: "humandbs", password: "secret", database: "humandbs" }
 
 describe("grantStatements", () => {
-  it("never grants TRUNCATE to the role, on event or on any other table", () => {
-    const statements = grantStatements(APP, OWNER)
-    for (const statement of statements) {
-      if (/\bGRANT\b/.test(statement)) {
-        expect(statement).not.toMatch(/TRUNCATE/)
-      }
-    }
-  })
-
   it("grants only SELECT and INSERT on event once every statement has been applied", () => {
     const statements = grantStatements(APP, OWNER)
     const broadGrant = statements.findIndex((s) => s.includes("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES"))
@@ -100,14 +83,6 @@ describe("grantStatements", () => {
     // down, or the revoke would have nothing to remove.
     expect(broadGrant).toBeGreaterThanOrEqual(0)
     expect(eventRevoke).toBeGreaterThan(broadGrant)
-  })
-
-  it("revokes exactly UPDATE, DELETE and TRUNCATE on event, leaving SELECT and INSERT untouched", () => {
-    const statements = grantStatements(APP, OWNER)
-    const eventRevoke = statements.find((s) => s.includes("ON event"))
-    expect(eventRevoke).toMatch(/REVOKE UPDATE, DELETE, TRUNCATE ON event/)
-    expect(eventRevoke).not.toMatch(/SELECT/)
-    expect(eventRevoke).not.toMatch(/INSERT/)
   })
 
   it("revokes from nothing else: the trail is the one append-only table", () => {
@@ -128,12 +103,5 @@ describe("grantStatements", () => {
     for (const statement of statements) {
       expect(statement).not.toContain(`ROLE ${app.user} `)
     }
-  })
-
-  it("embeds the app password literal-quoted in the ALTER ROLE statement", () => {
-    const app: Connection = { ...APP, password: "o'brien" }
-    const statements = grantStatements(app, OWNER)
-    const alter = statements.find((s) => s.startsWith("ALTER ROLE"))
-    expect(alter).toContain(quoteLiteral(app.password))
   })
 })

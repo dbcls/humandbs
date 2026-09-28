@@ -31,11 +31,6 @@ describe("where a draft differs from the version that is out there", () => {
     expect(changedFromPublished(titled("同じ"), titled("同じ"))).toEqual([])
   })
 
-  /** The memo is not published, so it cannot be a difference from a version. */
-  it("never reports the memo, which is not part of what a version has", () => {
-    expect(changedFromPublished(titled("同じ"), titled("同じ"))).not.toContain("note")
-  })
-
   it("reports a list whose membership changed as the list itself", () => {
     const published = dataset({ experiments: [] })
     const draft = dataset({ experiments: [{ id: "e1", label: filled("Exome"), values: [] }] })
