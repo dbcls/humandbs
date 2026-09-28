@@ -13,8 +13,9 @@ export const filePublishJobState = pgEnum("file_publish_job_state", [
 ])
 
 /**
- * Work queued against the file store. Besides the labels (`fileLabel`), **this
- * is the only thing Postgres knows about files** — whether a file is public is
+ * Work queued against the file store. Besides the labels (`fileLabel`) and the
+ * files the research's page lists (`researchPageFile`), **this is the only
+ * thing Postgres knows about files** — whether a file is public is
  * which bucket it sits in, and S3 is the authority for that.
  *
  * Switching buckets is a copy of the actual bytes (seconds per gigabyte, and
@@ -81,4 +82,22 @@ export const fileLabel = pgTable("file_label", {
 }, (t) => [
   unique("file_label_file_unique").on(t.researchId, t.fileName),
   check("file_label_has_text", sql`${t.labelJa} <> '' OR ${t.labelEn} <> ''`),
+])
+
+/**
+ * The files of a research's prefix that the research's public page lists.
+ * **A row is the file being listed**, and a file with none is not: the page
+ * lists what an admin picked, and a file uploaded is picked by nobody.
+ *
+ * Keyed the way a label is (`fileLabel`), for the same reasons: switching the
+ * file between buckets and re-pinning the hum label leave the row alone,
+ * renaming the file moves it and deleting the file deletes it.
+ */
+export const researchPageFile = pgTable("research_page_file", {
+  id: primaryId(),
+  researchId: uuid().notNull().references(() => research.id, { onDelete: "cascade" }),
+  fileName: text().notNull(),
+  createdAt: createdAt(),
+}, (t) => [
+  unique("research_page_file_file_unique").on(t.researchId, t.fileName),
 ])

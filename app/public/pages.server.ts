@@ -18,6 +18,7 @@ import { publicDatasetContent, publicResearch, PUBLISHED } from "~/content/publi
 import { publicListing, publicRows } from "~/files/listing.server"
 import { fileListOf } from "~/files/prefix"
 import { fileLabelsByHumLabel, fileLabelsOf } from "~/files/labels.server"
+import { researchPageFilesOf } from "~/files/research-page.server"
 import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import type { PageSize } from "~/search/page-size"
@@ -91,10 +92,11 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
   const version = request.wanted === "latest" ? latest : findVersion(versions, request.wanted)
   if (version === null) notFound()
 
-  const [catalog, cau, labels] = await Promise.all([
+  const [catalog, cau, labels, onPage] = await Promise.all([
     loadCatalog(db),
     controlledAccessUsers(db, resolved.primaryLabel),
     fileLabelsOf(db, resolved.id),
+    researchPageFilesOf(db, resolved.id),
   ])
 
   // The download list is the public bucket, listed. A store that does not
@@ -144,7 +146,13 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
     datasetLabelById,
     humByLabel: cited.humByLabel,
     cau: projected.cau,
-    files: fileListOf(publicRows(listing, labels, request.locale), request.filePage, request.fileRows),
+    // The page's own list is the files set to be listed on it; the datasets'
+    // selections above are read against the whole prefix.
+    files: fileListOf(
+      publicRows(listing?.filter((node) => onPage.has(node.name)) ?? null, labels, request.locale),
+      request.filePage,
+      request.fileRows,
+    ),
   }, request.locale, catalog)
 }
 

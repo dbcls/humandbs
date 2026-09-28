@@ -223,7 +223,8 @@ export const researchSchema = z.object({
   })),
   files: z.array(fileSchema).optional().meta({
     description:
-      "The files under the research's prefix in the public bucket, as the store lists them. "
+      "The files the research's public page lists: those under its prefix in the public bucket "
+      + "that are set to be listed on the research's page. A dataset's files are under the dataset. "
       + "Present only when `includeFiles=true` was asked for: a research can hold over ten "
       + "thousand files. The list is the prefix as it is now, whichever version was asked for.",
   }),

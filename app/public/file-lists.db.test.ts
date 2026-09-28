@@ -67,13 +67,23 @@ async function published(): Promise<{ researchId: string, datasetId: string }> {
 }
 
 describe("researchUrlList", () => {
-  it("lists every public file of the research, one address to a line, saved under its label", async () => {
-    await published()
+  it("lists the public files the research's page lists, one address to a line, saved under its label", async () => {
+    const { researchId } = await published()
+    await db.insert(s.researchPageFile).values([{ researchId, fileName: "a b.zip" }, { researchId, fileName: "b.zip" }])
 
     const response = await researchUrlList(HUM)
 
     expect(await response.text()).toBe(`${ORIGIN}/files/${HUM}/a%20b.zip\n${ORIGIN}/files/${HUM}/b.zip\n`)
     expect(response.headers.get("Content-Disposition")).toContain(`${HUM}-files.txt`)
+  })
+
+  it("leaves out a public file the research's page does not list, and a listed name the prefix does not hold", async () => {
+    const { researchId } = await published()
+    await db.insert(s.researchPageFile).values([{ researchId, fileName: "b.zip" }, { researchId, fileName: "gone.zip" }])
+
+    const response = await researchUrlList(HUM)
+
+    expect(await response.text()).toBe(`${ORIGIN}/files/${HUM}/b.zip\n`)
   })
 
   it("is the same 404 for a research with nothing published as for one that does not exist", async () => {

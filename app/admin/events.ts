@@ -24,6 +24,8 @@ export const EVENT_ACTIONS = [
   "unpublish-file",
   "delete-file",
   "edit-file-label",
+  "list-file-on-research-page",
+  "unlist-file-on-research-page",
   "publish-site-content",
   "unpublish-site-content",
   "grant-admin",

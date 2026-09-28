@@ -103,22 +103,22 @@ export async function unrestrictedResearch(request: APIRequestContext): Promise<
 }
 
 /**
- * A research whose unrestricted-access files run to more than one page of the
+ * A dataset whose unrestricted-access files run to more than one page of the
  * section, and how many there are.
  *
- * Looked for among the researches of datasets that name file formats, since
- * the formats of a portal-numbered dataset come from the files linked to it.
+ * Looked for among the datasets that name file formats, since the formats of
+ * a portal-numbered dataset come from the files linked to it.
  */
-export async function researchWithFilePages(
+export async function datasetWithFilePages(
   request: APIRequestContext,
   perPage = 20,
 ): Promise<{ id: string, files: number } | null> {
   const found = await hits<DatasetHit>(request, `/api/dataset?q=${encodeURIComponent("id:NHA*")}`, 3)
-  const researches = [...new Set(found.filter((one) => (one.fileFormats?.length ?? 0) > 0).map((one) => one.research))]
+  const datasets = found.filter((one) => (one.fileFormats?.length ?? 0) > 0).map((one) => one.id)
   let fewest: { id: string, files: number } | null = null
-  // The fewest files over a page: a research can hold ten thousand.
-  for (const id of researches.slice(0, 10)) {
-    const { files } = await (await request.get(`/api/research/${id}?includeFiles=true`)).json() as {
+  // The fewest files over a page: a dataset can hold thousands.
+  for (const id of datasets.slice(0, 20)) {
+    const { files } = await (await request.get(`/api/dataset/${id}?includeFiles=true`)).json() as {
       files?: unknown[]
     }
     const count = files?.length ?? 0

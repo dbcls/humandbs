@@ -1187,7 +1187,7 @@ describe("the dataset screens of a draft", () => {
     })
   })
 
-  it("refuses a file selection on a dataset an archive issued, which the picker never offers", async () => {
+  it("saves a file selection on a dataset an archive issued, as on one the portal issued", async () => {
     const token = await signIn(CURATOR, true)
     await seedCatalog()
     const { researchId, draftId } = await createResearchWithDraft(db)
@@ -1200,8 +1200,9 @@ describe("the dataset screens of a draft", () => {
       content: { releaseDate: "", fileSelection: ["a.fastq.gz"], values: [], experiments: [] },
     }
 
-    expect((await thrown(() => saveDatasetAction(postJson(token, "/x", payload), params))).status).toBe(400)
-    expect(await db.select().from(s.draftDatasetEntry)).toHaveLength(0)
+    expect(await saveDatasetAction(postJson(token, "/x", payload), params)).toMatchObject({ status: "saved" })
+    const [entry] = await db.select().from(s.draftDatasetEntry)
+    expect(entry?.content.fileSelection).toEqual(["a.fastq.gz"])
   })
 
   it("writes a text value holding markup the tree cannot keep as the characters typed", async () => {
@@ -1522,6 +1523,28 @@ describe("making the files a version needs public", () => {
 })
 
 describe("the publish screen", () => {
+  it("reads each file no dataset selects and the research's page does not list as the file screen does, and leads to that screen", async () => {
+    const token = await signIn(CURATOR, true)
+    const { researchId, draftId } = await createResearchWithDraft(db)
+    await pinLabel(db, { kind: "hum", label: "hum0001", subjectId: researchId, isPrimary: true }, BOOTSTRAP_ACTOR)
+    try {
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b c.zip`)
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix("hum0001")}a.zip`)
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix("hum0001")}README.pdf`)
+      await db.insert(s.researchPageFile).values({ researchId, fileName: "README.pdf" })
+
+      const view = await publishPage(get(token, "/x"), "ja", { researchId, draftId })
+      const group = view.groups.find((one) => one.kind === "unlisted-file")
+
+      expect(group?.count).toBe(2)
+      expect(group?.places).toEqual([{ label: "ファイル一覧", href: `/admin/research/${researchId}/files`, count: 2, note: null }])
+      expect(view.unlistedFiles.rows.map((row) => [row.name, row.isPublic])).toEqual([["a.zip", true], ["b c.zip", false]])
+    } finally {
+      await clearPrefix(PRIVATE_BUCKET, privatePrefix(researchId))
+      await clearPrefix(PUBLIC_BUCKET, publicPrefix("hum0001"))
+    }
+  })
+
   it("names each dataset that has none as its row, and issues an NHA id to it from there", async () => {
     const token = await signIn(CURATOR, true)
     const { researchId, draftId } = await createResearchWithDraft(db)

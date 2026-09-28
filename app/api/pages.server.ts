@@ -30,6 +30,7 @@ import { getDb } from "~/db/client.server"
 import { everyPublicListing, publicListingsOf } from "~/files/listing.server"
 import type { FileLabel } from "~/files/labels"
 import { fileLabelsByHumLabel } from "~/files/labels.server"
+import { researchPageFilesByResearch, researchPageFilesOf } from "~/files/research-page.server"
 import { datasetFileSummary, formatLabel } from "~/files/summary"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -174,12 +175,13 @@ export async function researchEntry(
   const version = wanted === "latest" ? latest : findVersion(versions, wanted)
   if (version === null) return problemResponse(notFound(request, "research-version"))
 
-  const [context, cau, listings, labels, fileLabels] = await Promise.all([
+  const [context, cau, listings, labels, fileLabels, onPage] = await Promise.all([
     contextOf(),
     cauByHumLabel(db, [resolved.primaryLabel]),
     include ? publicListingsOf([resolved.primaryLabel]) : null,
     publishedDatasetLabels(db, citedDatasetIds(version.content)),
     include ? fileLabelsByHumLabel(db, [resolved.primaryLabel]) : null,
+    include ? researchPageFilesOf(db, resolved.id) : null,
   ])
 
   const bundle: ResearchBundle = {
@@ -194,9 +196,18 @@ export async function researchEntry(
     context,
     labels,
     cau,
-    files: listings === null ? null : listings.get(resolved.primaryLabel) ?? [],
+    files: listings === null ? null : onResearchPage(listings.get(resolved.primaryLabel), onPage),
     fileLabels: fileLabels?.get(resolved.primaryLabel) ?? new Map(),
   }))
+}
+
+/**
+ * A research's files as its page lists them: those set to be listed there
+ * (`researchPageFile`), out of the whole prefix a dataset's selection is read
+ * against.
+ */
+function onResearchPage(listing: readonly StoredFile[] | undefined, listed: ReadonlySet<string> | null | undefined): StoredFile[] {
+  return (listing ?? []).filter((file) => listed?.has(file.name) === true)
 }
 
 /**
@@ -222,15 +233,16 @@ async function researchObjects(
 ): Promise<ApiResearch[]> {
   if (bundles.length === 0) return []
   const db = getDb()
-  const [labels, cau] = await Promise.all([
+  const [labels, cau, onPage] = await Promise.all([
     datasetLabels(db, bundles.map((bundle) => bundle.researchId)),
     cauByHumLabel(db, bundles.map((bundle) => bundle.humLabel)),
+    listings === null ? null : researchPageFilesByResearch(db, bundles.map((bundle) => bundle.researchId)),
   ])
   return bundles.map((bundle) => researchObject(bundle, {
     context,
     labels,
     cau,
-    files: listings === null ? null : listings.get(bundle.humLabel) ?? [],
+    files: listings === null ? null : onResearchPage(listings.get(bundle.humLabel), onPage?.get(bundle.researchId)),
     fileLabels: fileLabels?.get(bundle.humLabel) ?? new Map(),
   }))
 }

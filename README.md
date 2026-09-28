@@ -26,7 +26,7 @@ NBDC ヒトデータベース (https://humandbs.dbcls.jp) のポータルであ�
 | [docs/upstream.md](docs/upstream.md) | 外部から取ってきたデータ。取得元とキャッシュ、失敗したとき、制限公開データの利用者、データセットのファイルの大きさと形式 |
 | [docs/editing.md](docs/editing.md) | 下書きの編集。同時編集と保存、取り込み、申請から研究を作る、レビュー、場所の呼び方 |
 | [docs/publishing.md](docs/publishing.md) | 公開。バージョン番号、公開前の確認、ID の割り当て、取り下げと削除、操作の記録、Slack への通知 |
-| [docs/files.md](docs/files.md) | データファイル。2 つの bucket と研究ごとの prefix、アップロード、公開と非公開の切り替え、ラベル |
+| [docs/files.md](docs/files.md) | データファイル。2 つの bucket と研究ごとの prefix、アップロード、公開と非公開の切り替え、データセットとの対応、研究のページへの表示、ラベル |
 | [docs/site-content.md](docs/site-content.md) | 記事・お知らせ・アラート。本文の保存形式、slug とバージョン、表示の条件 |
 | [docs/auth.md](docs/auth.md) | ログインと権限。誰が何をできるか、セッション、admin の追加と削除 |
 | [docs/assistant.md](docs/assistant.md) | 申請支援アシスタントとポータルの境界 |

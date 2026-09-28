@@ -35,6 +35,11 @@ export type PublishFinding
     | { kind: "pin-disagrees-upstream", datasetId: string, label: string, upstreamHumLabel: string }
     /** A file this dataset selects is in the private bucket, so a reader would not get it. */
     | { kind: "private-file", datasetId: string, fileName: string }
+    /**
+     * A file of the prefix no dataset of this version selects and the
+     * research's page does not list: no public page lists it anywhere.
+     */
+    | { kind: "unlisted-file", fileName: string }
 
 export type PublishFindingKind = PublishFinding["kind"]
 
@@ -45,6 +50,7 @@ export const PUBLISH_FINDING_KINDS: readonly PublishFindingKind[] = [
   "pin-unknown-upstream",
   "pin-disagrees-upstream",
   "private-file",
+  "unlisted-file",
 ]
 
 export interface PublishCheckDataset {
@@ -67,6 +73,13 @@ export interface PublishCheckInput {
    * having looked.
    */
   upstream: ReadonlyMap<string, string>
+  files: PublishCheckFiles
+}
+
+/** The research's prefix as it was read before the publish, for the findings about files. */
+export interface PublishCheckFiles {
+  /** Every name the prefix holds, on either side. */
+  stored: ReadonlySet<string>
   /**
    * The names sitting in the private bucket. A selection naming one of them
    * would draw nothing on the published page, and making them public is a
@@ -76,7 +89,9 @@ export interface PublishCheckInput {
    * A name in neither bucket is not listed: the selection is a note over the
    * listing, not a claim that the file exists, and it simply does not draw.
    */
-  privateFiles: ReadonlySet<string>
+  private: ReadonlySet<string>
+  /** The names the research's page lists (`researchPageFile`). */
+  onResearchPage: ReadonlySet<string>
 }
 
 export interface PublishCheck {
@@ -128,7 +143,7 @@ function findingsOf(input: PublishCheckInput): PublishFinding[] {
 
   const privateFiles: PublishFinding[] = input.datasets.flatMap((dataset) =>
     (dataset.content?.fileSelection ?? [])
-      .filter((fileName) => input.privateFiles.has(fileName))
+      .filter((fileName) => input.files.private.has(fileName))
       .map((fileName) => ({
         kind: "private-file" as const,
         datasetId: dataset.datasetId,
@@ -141,7 +156,22 @@ function findingsOf(input: PublishCheckInput): PublishFinding[] {
     ...empty,
     ...pinFindings(input),
     ...privateFiles,
+    ...unlistedFiles(input),
   ]
+}
+
+/**
+ * **Told, not held against the publish**: a file can be on its way to a
+ * dataset in a later draft. What is listed is each file of the prefix that
+ * neither a dataset of this version selects nor the research's page lists —
+ * such a file stays fetchable by its address, but no page lists it.
+ */
+function unlistedFiles(input: PublishCheckInput): PublishFinding[] {
+  const selected = new Set(input.datasets.flatMap((dataset) => dataset.content?.fileSelection ?? []))
+  return [...input.files.stored]
+    .filter((fileName) => !selected.has(fileName) && !input.files.onResearchPage.has(fileName))
+    .sort()
+    .map((fileName) => ({ kind: "unlisted-file" as const, fileName }))
 }
 
 /**

@@ -703,6 +703,135 @@ describe("the files screen", () => {
       expect(await labels()).toEqual([])
     })
   })
+
+  describe("whether the research's page lists a file", () => {
+    const list = (token: string, name: string, listed: boolean, search = "") =>
+      filesAction(postForm(token, [["intent", "research-page"], ["name", name], ["listed", String(listed)]], search), JA, researchId)
+
+    async function listed(): Promise<[string, string][]> {
+      const rows = await db.select().from(s.researchPageFile)
+      return rows.map((row) => [row.researchId === researchId ? "this" : "other", row.fileName] as [string, string]).toSorted()
+    }
+
+    async function listEvents(): Promise<{ action: string, subjectId: string }[]> {
+      return (await db.select().from(s.event))
+        .filter((row) => row.action === "list-file-on-research-page" || row.action === "unlist-file-on-research-page")
+        .map((row) => ({ action: row.action, subjectId: row.subjectId }))
+    }
+
+    it("is off for a file nobody has set, and on once ticked, returning to the listing it was sent from", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      expect((await filesPage(get(token), JA, researchId)).onResearchPage).toEqual([])
+
+      const answer = await list(token, "a.zip", true, READ_AT)
+
+      expect(sentTo(answer)).toEqual([`/admin/research/${researchId}/files`, KEPT])
+      expect(await listed()).toEqual([["this", "a.zip"]])
+      expect((await filesPage(get(token), JA, researchId)).onResearchPage).toEqual(["a.zip"])
+    })
+
+    it("is turned off again, and a second press of either leaves one row or none", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      await list(token, "a.zip", true)
+      await list(token, "a.zip", true)
+      expect(await listed()).toEqual([["this", "a.zip"]])
+
+      await list(token, "a.zip", false)
+      await list(token, "a.zip", false)
+      expect(await listed()).toEqual([])
+    })
+
+    it("saves nothing for a name the prefix does not hold on either side", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+
+      await list(token, "gone.zip", true)
+
+      expect(await listed()).toEqual([])
+    })
+
+    it("refuses a name that is not one file of the prefix, and a state other than on or off", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      expect((await thrown(() => list(token, "dir/a.zip", true))).status).toBe(400)
+      const odd = filesAction(postForm(token, [["intent", "research-page"], ["name", "a.zip"], ["listed", "yes"]]), JA, researchId)
+      expect((await thrown(() => odd)).status).toBe(400)
+      expect(await listed()).toEqual([])
+    })
+
+    it("is refused to somebody signed in without the capability to manage files", async () => {
+      await research()
+      const token = await signIn(READER, false)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+
+      expect((await thrown(() => list(token, "a.zip", true))).status).toBe(403)
+      expect(await listed()).toEqual([])
+    })
+
+    it("writes down each change on a public file and nothing for a press that changes nothing, and nothing for a private one", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}a.zip`)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}b.zip`)
+
+      await list(token, "a.zip", true)
+      await list(token, "a.zip", true)
+      await list(token, "a.zip", false)
+      await list(token, "b.zip", true)
+
+      expect(await listEvents()).toEqual([
+        { action: "list-file-on-research-page", subjectId: "a.zip" },
+        { action: "unlist-file-on-research-page", subjectId: "a.zip" },
+      ])
+    })
+
+    it("goes to the new name when the file is renamed, and with the file when it is deleted", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}a.zip`)
+      await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}c.zip`)
+      await list(token, "a.zip", true)
+      await list(token, "c.zip", true)
+      await db.insert(s.researchPageFile).values({ researchId, fileName: "b.zip" })
+
+      await rename(token, "a.zip", "b.zip")
+      expect(await listed()).toEqual([["this", "b.zip"], ["this", "c.zip"]])
+
+      await filesAction(postForm(token, [["intent", "delete"], ["name", "c.zip"]]), JA, researchId)
+      expect(await listed()).toEqual([["this", "b.zip"]])
+    })
+
+    it("is shown for the files on the page and no others, and none of another research's", async () => {
+      await research()
+      const token = await signIn(CURATOR, true)
+      for (const name of ["a.zip", "b.zip", "c.zip"]) {
+        await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}${name}`)
+      }
+      await list(token, "a.zip", true)
+      await list(token, "c.zip", true)
+      const other = only(await db.insert(s.research).values({}).returning({ id: s.research.id })).id
+      await db.insert(s.researchPageFile).values({ researchId: other, fileName: "b.zip" })
+
+      expect((await filesPage(get(token, "?sort=slug&size=20"), JA, researchId)).onResearchPage).toEqual(["a.zip", "c.zip"])
+      expect((await filesPage(get(token, "?q=c.zip"), JA, researchId)).onResearchPage).toEqual(["c.zip"])
+    })
+
+    it("is deleted with its research", async () => {
+      await research()
+      await db.insert(s.researchPageFile).values({ researchId, fileName: "a.zip" })
+
+      await db.delete(s.research).where(eq(s.research.id, researchId))
+
+      expect(await listed()).toEqual([])
+    })
+  })
 })
 
 describe("an upload", () => {

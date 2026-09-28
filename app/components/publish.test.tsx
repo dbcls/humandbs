@@ -46,6 +46,7 @@ function view(over: Partial<PublishPageView> = {}): PublishPageView {
     updatingReleaseDate: null,
     datasetRows: {},
     review: { shared: false, expired: false, unresolved: 0, acknowledgements: [], comments: [], signedInName: "curator", places: NO_PLACES },
+    unlistedFiles: { rows: [], labels: {} },
     ...over,
   }
 }
@@ -288,6 +289,34 @@ describe("the publish screen", () => {
     expect(row("未確定の値")).not.toContain(">研究の内容<")
     expect(row("内容が空のデータセット")).toContain(">JGAD000001</a>")
     expect(row("内容が空のデータセット")).not.toContain("場所の一覧")
+  })
+
+  it("lists the files no page lists under one row, whose files are opened from one button", () => {
+    const html = render(view({
+      findingCount: 2,
+      groups: [{
+        kind: "unlisted-file",
+        count: 2,
+        fileNames: [],
+        places: [{ label: "ファイル一覧", href: "/admin/research/x/files", count: 2, note: null }],
+        spots: [],
+      }],
+      unlistedFiles: {
+        rows: [
+          { name: "a.zip", size: 1, isPublic: true, updatedAt: "2026-09-01T00:00:00.000Z", pending: null },
+          { name: "b.pdf", size: 2, isPublic: false, updatedAt: "2026-09-02T00:00:00.000Z", pending: null },
+        ],
+        labels: {},
+      },
+    }))
+    const at = html.indexOf(">データセットに紐づけず、研究ページにも表示しないファイル</td>")
+    const row = html.slice(html.lastIndexOf("<tr", at), html.indexOf("</tr>", at))
+
+    expect(at).toBeGreaterThan(-1)
+    expect(row).toContain(">2 件<")
+    expect(row).toMatch(/<button[^>]*>[\s\S]*?ファイルの一覧<\/button>/)
+    expect(row).not.toContain("場所の一覧")
+    expect(row).not.toContain(">ファイル一覧<")
   })
 
   it("shows the first version has nothing to be measured against", () => {

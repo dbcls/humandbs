@@ -40,7 +40,7 @@ import { isUploadableName, type ListedFile } from "~/files/prefix"
 import { adminListing, publicListing, researchesWithFiles } from "~/files/listing.server"
 import type { FileLabel } from "~/files/labels"
 import { fileLabelsOf } from "~/files/labels.server"
-import { pendingSwitches, privateNames, switchFiles } from "~/files/jobs.server"
+import { pendingSwitches, publishCheckFiles, switchFiles } from "~/files/jobs.server"
 import { wakeFileRunner } from "~/files/runner.server"
 import { resolveText, type Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
@@ -141,6 +141,7 @@ import {
   adminDraftDatasetsPath,
   adminDraftPath,
   adminDraftPublishPath,
+  adminResearchFilesPath,
   adminResearchListPath,
   adminResearchPath,
   fieldHash,
@@ -802,9 +803,8 @@ export interface DatasetEditorView {
   /** The labels of the prefix's files, by name. A file with none is not a key. */
   fileLabels: Record<string, FileLabel>
   /**
-   * Whether this dataset may have a file selection at all, read off its id.
-   * An archive's dataset is distributed by the archive, so the screen does
-   * not offer the picker and the save refuses a selection.
+   * Whether the portal issued this dataset's id, read off it: its dates come
+   * from its publish rather than from an archive.
    */
   portalIssued: boolean
 }
@@ -1065,10 +1065,6 @@ export async function saveDatasetAction(
   const rows = await draftDatasetRows(db, draftId, researchId, draft.content.datasetIds)
   const row = rows.find((candidate) => candidate.id === datasetId)
   if (row === undefined) notFound()
-  // The picker is not drawn for an archive's dataset, so a selection on one is
-  // an input the form never offered.
-  if (!row.portalIssued && payload.data.content.fileSelection.length > 0) badRequest()
-
   const catalog = await loadEditableCatalog(db)
   if (!await catalogAccepts(db, payload.data.content, catalog)) badRequest()
 
@@ -1337,6 +1333,35 @@ export interface PublishPageView {
   /** The datasets the screen names — in the blocks and the changes — as the dataset listing's cells draw them. */
   datasetRows: Record<string, DatasetListCellsView>
   review: PublishReviewView
+  /**
+   * The files no dataset of this version selects and the research's page does
+   * not list, as the research's file screen draws them. Empty when there are none.
+   */
+  unlistedFiles: { rows: ListedFile[], labels: Record<string, FileLabel> }
+}
+
+/**
+ * The files the publish check found no page lists, read from the prefix as the
+ * file screen reads it. **Read only when there are some**: a research's prefix
+ * can hold ten thousand files, and a draft with none to show reads nothing more.
+ */
+async function unlistedFilesOf(
+  db: ReturnType<typeof getDb>,
+  researchId: string,
+  humLabel: string | null,
+  findings: readonly PublishFinding[],
+): Promise<PublishPageView["unlistedFiles"]> {
+  const names = new Set(findings.flatMap((finding) => finding.kind === "unlisted-file" ? [finding.fileName] : []))
+  if (names.size === 0) return { rows: [], labels: {} }
+  const [listing, labels] = await Promise.all([adminListing(db, researchId, humLabel), fileLabelsOf(db, researchId)])
+  const rows = (listing ?? []).filter((row) => names.has(row.name))
+  return {
+    rows,
+    labels: Object.fromEntries(rows.flatMap((row) => {
+      const label = labels.get(row.name)
+      return label === undefined ? [] : [[row.name, label]]
+    })),
+  }
 }
 
 /**
@@ -1353,8 +1378,9 @@ export async function publishPage(
 ): Promise<PublishPageView> {
   const { db, actor, researchId, draftId, draft } = await draftOf(request, params)
 
+  const humLabel = await humLabelOf(db, researchId)
   const [preview, catalog] = await Promise.all([
-    privateNames(researchId).then((names) => publishPreview(db, draftId, names)),
+    publishCheckFiles(db, researchId, humLabel).then((files) => publishPreview(db, draftId, files)),
     loadCatalog(db),
   ])
   if (preview === null) notFound()
@@ -1411,7 +1437,9 @@ export async function publishPage(
         places,
         locale,
       ),
+      filesHref: href(locale, adminResearchFilesPath(researchId)),
     }),
+    unlistedFiles: await unlistedFilesOf(db, researchId, humLabel, preview.publishCheck.findings),
     findingCount: preview.publishCheck.findings.length,
     researchChanges: changes.research,
     order: changes.order,
@@ -1524,6 +1552,8 @@ function groupFindings(
     naming: (datasetId: string) => string
     /** What a field a finding is at is called, on every screen listing places. */
     spotName: (subject: PublishSubject, path: string) => string
+    /** The research's file screen. */
+    filesHref: string
   },
 ): PublishGroupView[] {
   const t = messagesFor(locale).admin.publish
@@ -1572,6 +1602,17 @@ function groupFindings(
       place(finding.kind, finding.datasetId, () => ({
         label: finding.label,
         href: null,
+        count: 1,
+        note: null,
+      }))
+      continue
+    }
+    if (finding.kind === "unlisted-file") {
+      // One place, the file screen, where each is linked or listed; the files
+      // themselves are drawn from `unlistedFiles`.
+      place(finding.kind, "files", () => ({
+        label: messagesFor(locale).admin.files.heading,
+        href: into.filesHref,
         count: 1,
         note: null,
       }))
@@ -1708,7 +1749,7 @@ export async function publishAction(
     number,
     releaseDate,
     acknowledged: form.get("acknowledged") === "on",
-    privateFiles: await privateNames(researchId),
+    files: await publishCheckFiles(db, researchId, await humLabelOf(db, researchId)),
   }, actorOf(actor))
 
   if (outcome.status === "published") return redirect(href(locale, adminResearchPath(researchId)))

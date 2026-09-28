@@ -1,9 +1,10 @@
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 
-import { countFindings, checkPublish, type PublishCheckDataset, type PublishCheckInput } from "./publish-check"
+import { countFindings, checkPublish, type PublishCheckDataset, type PublishCheckFiles, type PublishCheckInput } from "./publish-check"
 
 /**
  * The two kinds of check, and the line between them.
@@ -14,6 +15,7 @@ import { countFindings, checkPublish, type PublishCheckDataset, type PublishChec
  */
 
 const NO_UPSTREAM = new Map<string, string>()
+const NO_FILES: PublishCheckFiles = { stored: new Set(), private: new Set(), onResearchPage: new Set() }
 
 function check(over: Partial<PublishCheckInput> = {}) {
   return checkPublish({
@@ -21,7 +23,7 @@ function check(over: Partial<PublishCheckInput> = {}) {
     content: emptyResearchContent(),
     datasets: [],
     upstream: NO_UPSTREAM,
-    privateFiles: new Set<string>(),
+    files: NO_FILES,
     ...over,
   })
 }
@@ -181,7 +183,7 @@ describe("files a dataset selects", () => {
   it("lists a selected file that is still in the private bucket", () => {
     const findings = check({
       datasets: [selecting(["closed.zip"])],
-      privateFiles: new Set(["closed.zip"]),
+      files: { ...NO_FILES, private: new Set(["closed.zip"]) },
     }).findings
 
     expect(findings).toEqual([{ kind: "private-file", datasetId: "d1", fileName: "closed.zip" }])
@@ -190,7 +192,7 @@ describe("files a dataset selects", () => {
   it("reports nothing about a selected file a reader can already fetch", () => {
     const findings = check({
       datasets: [selecting(["open.zip"])],
-      privateFiles: new Set(["closed.zip"]),
+      files: { ...NO_FILES, private: new Set(["closed.zip"]) },
     }).findings
 
     expect(findings).toEqual([])
@@ -201,7 +203,7 @@ describe("files a dataset selects", () => {
     // file exists, so a name in neither bucket simply does not draw.
     const findings = check({
       datasets: [selecting(["gone.zip"])],
-      privateFiles: new Set(["closed.zip"]),
+      files: { ...NO_FILES, private: new Set(["closed.zip"]) },
     }).findings
 
     expect(findings).toEqual([])
@@ -210,7 +212,7 @@ describe("files a dataset selects", () => {
   it("lists one file once per dataset that selects it, because each is a place to look", () => {
     const findings = check({
       datasets: [selecting(["closed.zip"], "d1"), selecting(["closed.zip"], "d2")],
-      privateFiles: new Set(["closed.zip"]),
+      files: { ...NO_FILES, private: new Set(["closed.zip"]) },
     }).findings
 
     expect(findings.map((finding) => finding.kind)).toEqual(["private-file", "private-file"])
@@ -219,7 +221,7 @@ describe("files a dataset selects", () => {
   it("reports nothing about a dataset with no description to hold a selection", () => {
     const findings = check({
       datasets: [dataset({ content: null })],
-      privateFiles: new Set(["closed.zip"]),
+      files: { ...NO_FILES, private: new Set(["closed.zip"]) },
     }).findings
 
     expect(findings).toEqual([{ kind: "empty-dataset", datasetId: "d1" }])
@@ -228,9 +230,87 @@ describe("files a dataset selects", () => {
   it("never stops the publish over a file", () => {
     const blocks = check({
       datasets: [selecting(["closed.zip"])],
-      privateFiles: new Set(["closed.zip"]),
+      files: { ...NO_FILES, private: new Set(["closed.zip"]) },
     }).blocks
 
     expect(blocks).toEqual([])
+  })
+})
+
+describe("files no page lists", () => {
+  function selecting(names: string[], datasetId = "d1"): PublishCheckDataset {
+    return dataset({
+      datasetId,
+      content: { ...emptyDatasetContent(), fileSelection: names },
+    })
+  }
+
+  function stored(names: string[], over: Partial<PublishCheckFiles> = {}): PublishCheckFiles {
+    return { ...NO_FILES, stored: new Set(names), ...over }
+  }
+
+  it("lists a file of the prefix that no dataset selects and the research's page does not list", () => {
+    const findings = check({ datasets: [selecting(["a.zip"])], files: stored(["a.zip", "b.pdf"]) }).findings
+
+    expect(findings).toEqual([{ kind: "unlisted-file", fileName: "b.pdf" }])
+  })
+
+  it("reports nothing about a file the research's page lists, whatever the datasets select", () => {
+    const findings = check({
+      datasets: [selecting([])],
+      files: stored(["README.pdf"], { onResearchPage: new Set(["README.pdf"]) }),
+    }).findings
+
+    expect(findings).toEqual([])
+  })
+
+  it("counts a selection of any dataset of the version, not only the first", () => {
+    const findings = check({
+      datasets: [selecting(["a.zip"], "d1"), selecting(["b.zip"], "d2")],
+      files: stored(["a.zip", "b.zip"]),
+    }).findings
+
+    expect(findings).toEqual([])
+  })
+
+  it("lists a private file no page lists as well: publishing it later would not list it either", () => {
+    const findings = check({
+      datasets: [],
+      files: stored(["closed.zip"], { private: new Set(["closed.zip"]) }),
+    }).findings
+
+    expect(findings).toEqual([{ kind: "unlisted-file", fileName: "closed.zip" }])
+  })
+
+  it("takes a dataset with no description as selecting nothing", () => {
+    const findings = check({ datasets: [dataset({ content: null })], files: stored(["a.zip"]) }).findings
+
+    expect(findings).toEqual([
+      { kind: "empty-dataset", datasetId: "d1" },
+      { kind: "unlisted-file", fileName: "a.zip" },
+    ])
+  })
+
+  it("never stops the publish over a file no page lists", () => {
+    expect(check({ files: stored(["a.zip"]) }).blocks).toEqual([])
+  })
+
+  it("lists each stored file once, in name order, exactly when neither a selection nor the page lists it", () => {
+    const name = fc.constantFrom("a.zip", "b.zip", "c.pdf", "d.txt", "e.bam")
+    fc.assert(fc.property(
+      fc.uniqueArray(name),
+      fc.array(fc.uniqueArray(name), { maxLength: 3 }),
+      fc.uniqueArray(name),
+      (names, selections, listed) => {
+        const findings = check({
+          datasets: selections.map((selection, at) => selecting(selection, `d${String(at)}`)),
+          files: stored(names, { onResearchPage: new Set(listed) }),
+        }).findings
+        const selected = new Set(selections.flat())
+        const expected = names.filter((one) => !selected.has(one) && !listed.includes(one)).sort()
+
+        expect(findings.flatMap((finding) => finding.kind === "unlisted-file" ? [finding.fileName] : [])).toEqual(expected)
+      },
+    ))
   })
 })

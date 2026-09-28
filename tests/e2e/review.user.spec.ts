@@ -183,6 +183,10 @@ test.describe("P-REVIEW 共有リンク", () => {
     const name = e2eFileName("preview.txt")
     await writeFile(test.info().outputPath(name), `${E2E}\n`)
     await uploadFiles(page, [test.info().outputPath(name)])
+    // 研究の公開ページの節には、表示に設定したファイルだけが並ぶ
+    const listed = page.getByRole("checkbox", { name: `研究ページに表示: ${name}` })
+    await listed.check()
+    await expect(listed).toBeChecked()
     try {
       await withSharedDraft(page, async (_draft, preview) => {
         const provider = await anonymous(browser)

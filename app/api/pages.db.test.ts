@@ -196,6 +196,7 @@ describe("a file's label", () => {
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.xlsx`)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.zip`)
     await db.insert(s.fileLabel).values({ researchId, fileName: "a.xlsx", labelJa: "", labelEn: "Dictionary file" })
+    await db.insert(s.researchPageFile).values([{ researchId, fileName: "a.xlsx" }, { researchId, fileName: "b.zip" }])
     // The addresses are compared by their path: the origin is the site's configured one.
     const files = (answer: unknown): unknown =>
       (answer as { files: { url: string }[] }).files.map((file) => ({ ...file, url: new URL(file.url).pathname }))
@@ -213,6 +214,30 @@ describe("a file's label", () => {
     expect(files(dataset)).toEqual(expected)
     expect(files(searched.hits[0])).toEqual(expected)
     expect(files(bulk)).toEqual(expected)
+  })
+
+  it("is the research's for the files its page lists and no other, and the dataset's for what it selects", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    await seedVersion(db, {
+      researchId,
+      number: 1,
+      datasets: [{ datasetId, content: { ...emptyDatasetContent(), fileSelection: ["b.zip"] } }],
+    })
+    await rebuildSearchDocs(db)
+    for (const name of ["a.xlsx", "b.zip", "c.txt"]) await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${name}`)
+    await db.insert(s.researchPageFile).values({ researchId, fileName: "a.xlsx" })
+    const names = (answer: unknown): string[] => (answer as { files: { name: string }[] }).files.map((file) => file.name)
+
+    const research = await body(await researchEntry(get("/x?includeFiles=true"), HUM, "latest"))
+    const searched = await body(await apiSearch(get("/api/research?includeFiles=true"), "research")) as { hits: unknown[] }
+    const [bulk] = await lines(await apiBulk(get("/api/research.jsonl?includeFiles=true"), "research"))
+    const dataset = await body(await datasetEntry(get("/x?includeFiles=true"), "JGAD000001"))
+
+    expect(names(research)).toEqual(["a.xlsx"])
+    expect(names(searched.hits[0])).toEqual(["a.xlsx"])
+    expect(names(bulk)).toEqual(["a.xlsx"])
+    expect(names(dataset)).toEqual(["b.zip"])
   })
 
   it("is left out, key and all, unless the files are asked for", async () => {

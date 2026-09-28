@@ -11,7 +11,7 @@ import {
   claimJob,
   forgetSwitches,
   pendingSwitches,
-  privateNames,
+  publishCheckFiles,
   reconcile,
   recoverAbandoned,
   requestSwitch,
@@ -329,12 +329,40 @@ describe("renumbering a research", () => {
 })
 
 describe("what the publish check is checked against", () => {
-  it("reads the private bucket rather than anything the database holds", async () => {
+  it("reads both buckets rather than anything the database holds, and marks the private side", async () => {
     await research(label())
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}closed.zip`)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}open.zip`)
 
-    expect([...await privateNames(researchId)]).toEqual(["closed.zip"])
+    const files = await publishCheckFiles(db, researchId, humLabel)
+
+    expect([...files.stored].sort()).toEqual(["closed.zip", "open.zip"])
+    expect([...files.private]).toEqual(["closed.zip"])
+    expect([...files.onResearchPage]).toEqual([])
+  })
+
+  it("reads which files the research's page lists from the database, whether the store holds them or not", async () => {
+    await research(label())
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(humLabel)}open.zip`)
+    await db.insert(s.researchPageFile).values([
+      { researchId, fileName: "open.zip" },
+      { researchId, fileName: "gone.zip" },
+    ])
+
+    const files = await publishCheckFiles(db, researchId, humLabel)
+
+    expect([...files.onResearchPage].sort()).toEqual(["gone.zip", "open.zip"])
+    expect([...files.stored]).toEqual(["open.zip"])
+  })
+
+  it("reads only the private side of a research with no ID, which has no public prefix", async () => {
+    await research()
+    await putTestObject(PRIVATE_BUCKET, `${privatePrefix(researchId)}closed.zip`)
+
+    const files = await publishCheckFiles(db, researchId, null)
+
+    expect([...files.stored]).toEqual(["closed.zip"])
+    expect([...files.private]).toEqual(["closed.zip"])
   })
 })
 

@@ -102,14 +102,27 @@ export function ComboBox<T>({ label, placeholder, disabled = false, options, key
   onChoose: (option: T) => void
   /**
    * Keep the choice in the box, as these words, rather than emptying it — for a
-   * choice that is confirmed by a button beside the box rather than acted on
-   * as it is made. Typing again goes back to looking.
+   * field that holds one choice, the way a pull-down shows its value. Typing
+   * again goes back to looking, and **leaving the box without choosing puts the
+   * choice's words back**: words half typed over it would read as the value.
    */
   kept?: (option: T) => string
-  /** What the box holds when it is drawn: the words of a choice already made (`kept`). */
+  /**
+   * What the box holds when it is drawn: the words of a choice already made
+   * (`kept`). A new one from the caller — the choice cleared beside the box —
+   * replaces what the box holds.
+   */
   initial?: string
 }) {
   const [find, setFind] = useState(initial)
+  // The words of the choice in force, which leaving the box puts back.
+  const [held, setHeld] = useState(initial)
+  const [drawnWith, setDrawnWith] = useState(initial)
+  if (initial !== drawnWith) {
+    setDrawnWith(initial)
+    setHeld(initial)
+    setFind(initial)
+  }
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const box = useRef<HTMLInputElement>(null)
@@ -134,7 +147,9 @@ export function ComboBox<T>({ label, placeholder, disabled = false, options, key
   }
   const choose = (option: T) => {
     onChoose(option)
-    setFind(kept === undefined ? "" : kept(option))
+    const words = kept === undefined ? "" : kept(option)
+    setHeld(words)
+    setFind(words)
     setOpen(false)
     setActive(0)
   }
@@ -175,7 +190,10 @@ export function ComboBox<T>({ label, placeholder, disabled = false, options, key
         onKeyDown={onKeyDown}
         onFocus={enter}
         onClick={enter}
-        onBlur={() => { setOpen(false) }}
+        onBlur={() => {
+          setOpen(false)
+          if (kept !== undefined) setFind(held)
+        }}
         className={`${CONTROL} w-full pr-8 text-sm disabled:opacity-50`}
       />
       {/* The indicator of a list that opens here, the way a pull-down draws it.

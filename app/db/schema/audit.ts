@@ -29,6 +29,9 @@ export const eventAction = pgEnum("event_action", [
   "delete-file",
   /** A label changed on a file readers can fetch: what the public file table shows beside it. */
   "edit-file-label",
+  /** A file readers can fetch put on the research's page, or taken off it: what the page's file table lists. */
+  "list-file-on-research-page",
+  "unlist-file-on-research-page",
   "publish-site-content",
   "unpublish-site-content",
   "grant-admin",

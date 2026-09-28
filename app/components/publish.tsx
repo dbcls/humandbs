@@ -4,7 +4,7 @@ import { Form, Link } from "react-router"
 import { draftAside } from "~/admin/draft-name"
 import type { PublishBlockView, PublishGroupView, PublishPageView, PublishResult } from "~/admin/pages.server"
 import type { ChangeView } from "~/admin/publish-changes"
-import { adminDraftDatasetPath, adminDraftPath, adminDraftReviewPath, adminResearchPath, draftCommentsPath } from "~/admin/urls"
+import { adminDraftDatasetPath, adminDraftPath, adminDraftReviewPath, adminResearchFilesPath, adminResearchPath, draftCommentsPath } from "~/admin/urls"
 import type { CommentAnchor } from "~/content/types"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
@@ -14,6 +14,7 @@ import { AdminBack, ScreenLink } from "./admin"
 import { Dialog, Heading, Stack, type DialogSubject } from "./base"
 import { OpenComments, type CommentContext } from "./comments"
 import { IdForm, shownNhaId } from "./dataset-id"
+import { FileTable } from "./files"
 import { Flag, Stated } from "./flags"
 import { Answer, Checkbox, CONTROL, Field, Submit } from "./form"
 import { Icon } from "./icons"
@@ -468,7 +469,7 @@ function Findings({ view }: { view: PublishPageView }) {
           whenEmpty={t.noFindings}
         >
           {view.groups.map((group) => (
-            <FindingRow key={group.kind} group={group} locale={locale} />
+            <FindingRow key={group.kind} group={group} view={view} />
           ))}
         </Table>
         {view.groups.length > 0 && <Checkbox label={t.acknowledge(view.findingCount)} name="acknowledged" />}
@@ -477,7 +478,8 @@ function Findings({ view }: { view: PublishPageView }) {
   )
 }
 
-function FindingRow({ group, locale }: { group: PublishGroupView, locale: PublishPageView["locale"] }) {
+function FindingRow({ group, view }: { group: PublishGroupView, view: PublishPageView }) {
+  const locale = view.locale
   const t = messagesFor(locale).admin.publish
 
   return (
@@ -485,9 +487,11 @@ function FindingRow({ group, locale }: { group: PublishGroupView, locale: Publis
       <Td nowrap>{t.kinds[group.kind]}</Td>
       <Td nowrap>{t.findingTimes(group.count)}</Td>
       <Td>
-        {group.spots.length > 0
-          ? <Spots group={group} locale={locale} />
-          : <Screens group={group} />}
+        {group.kind === "unlisted-file"
+          ? <UnlistedFiles view={view} />
+          : group.spots.length > 0
+            ? <Spots group={group} locale={locale} />
+            : <Screens group={group} />}
       </Td>
       <Td nowrap holds="control">
         {group.kind === "private-file" && group.fileNames.length > 0 && (
@@ -509,6 +513,7 @@ function FindingRow({ group, locale }: { group: PublishGroupView, locale: Publis
 function Spots({ group, locale }: { group: PublishGroupView, locale: PublishPageView["locale"] }) {
   const messages = messagesFor(locale)
   const t = messages.admin.publish
+  const languages = group.spots.some((spot) => spot.language !== null)
   return (
     <Dialog
       label={t.spots}
@@ -518,14 +523,53 @@ function Spots({ group, locale }: { group: PublishGroupView, locale: PublishPage
       dismiss={messages.comment.close}
       wide
     >
-      <Table headers={[t.findingFields, t.spotLanguage]}>
+      {/* A kind about files has no language, and a column of empty cells is left out. */}
+      <Table headers={languages ? [t.findingFields, t.spotLanguage] : [t.findingFields]}>
         {group.spots.map((spot, at) => (
           <tr key={`${at}-${spot.name}`}>
             <Td><Link to={spot.href}>{spot.name}</Link></Td>
-            <Td nowrap>{spot.language ?? ""}</Td>
+            {languages && <Td nowrap>{spot.language ?? ""}</Td>}
           </tr>
         ))}
       </Table>
+    </Dialog>
+  )
+}
+
+/**
+ * The files no page lists, in a panel, **drawn as the research's file screen
+ * draws them** (`FileTable`): a file is told apart by its side, its labels, its
+ * size and its day, not by its name alone. What is done to one — linking it to
+ * a dataset, listing it on the research's page, deleting it — is done on the
+ * file screen, which the panel leads to.
+ */
+function UnlistedFiles({ view }: { view: PublishPageView }) {
+  const locale = view.locale
+  const messages = messagesFor(locale)
+  const t = messages.admin.publish
+  return (
+    <Dialog
+      label={t.unlistedFiles}
+      size="row"
+      icon={<Icon name="list" aria-hidden="true" />}
+      title={t.kinds["unlisted-file"]}
+      note={t.unlistedFilesNote}
+      dismiss={messages.comment.close}
+      wide
+      action={() => (
+        <ScreenLink to={href(locale, adminResearchFilesPath(view.researchId))} icon="file">
+          {messages.admin.files.heading}
+        </ScreenLink>
+      )}
+    >
+      <FileTable
+        readOnly
+        locale={locale}
+        researchId={view.researchId}
+        humLabel={view.humLabel}
+        rows={view.unlistedFiles.rows}
+        labels={view.unlistedFiles.labels}
+      />
     </Dialog>
   )
 }

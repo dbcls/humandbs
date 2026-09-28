@@ -57,6 +57,7 @@ import {
   checkPublish,
   type PublishBlock,
   type PublishCheckDataset,
+  type PublishCheckFiles,
   type PublishFinding,
   type PublishCheck,
 } from "./publish-check"
@@ -75,12 +76,12 @@ export interface PublishRequest {
   /** The administrator has seen the listed findings and passed them. */
   acknowledged: boolean
   /**
-   * The names in the private bucket, read before the transaction opened. The
-   * publish check only lists these, so a name that moved in the meantime costs nothing —
-   * and reading the store while holding the draft's row would hold a lock
-   * across a call to something outside the portal.
+   * The research's prefix, read before the transaction opened. The publish
+   * check only lists what it finds there, so a name that moved in the meantime
+   * costs nothing — and reading the store while holding the draft's row would
+   * hold a lock across a call to something outside the portal.
    */
-  privateFiles: ReadonlySet<string>
+  files: PublishCheckFiles
 }
 
 export type PublishOutcome
@@ -415,7 +416,7 @@ export interface PublishPreview {
 export async function publishPreview(
   db: Database,
   draftId: string,
-  privateFiles: ReadonlySet<string>,
+  files: PublishCheckFiles,
 ): Promise<PublishPreview | null> {
   return db.transaction(async (tx): Promise<PublishPreview | null> => {
     const snapshot = await readPublishSnapshot(tx, draftId, false)
@@ -423,7 +424,7 @@ export async function publishPreview(
 
     const datasets = publishCheckDatasets(snapshot)
     const previous = snapshot.updating ?? snapshot.versions[0]
-    const publishCheck = publishCheckOf(snapshot, privateFiles)
+    const publishCheck = publishCheckOf(snapshot, files)
 
     const listedIds = datasets.map((row) => row.datasetId)
     const before = new Set(previous === undefined ? [] : datasetIdsOf(previous))
@@ -467,13 +468,13 @@ export async function publishPreview(
 }
 
 /** The publish check's question, put from what was read. */
-function publishCheckOf(snapshot: PublishSnapshot, privateFiles: ReadonlySet<string>): PublishCheck {
+function publishCheckOf(snapshot: PublishSnapshot, files: PublishCheckFiles): PublishCheck {
   return checkPublish({
     humLabel: snapshot.humLabel,
     content: snapshot.draft.content,
     datasets: publishCheckDatasets(snapshot),
     upstream: snapshot.upstreamHumLabelOf,
-    privateFiles,
+    files,
   })
 }
 
@@ -545,7 +546,7 @@ export async function publishDraft(
       content: snapshot.draft.content,
       datasets,
       upstream: snapshot.upstreamHumLabelOf,
-      privateFiles: request.privateFiles,
+      files: request.files,
     })
     if (publishCheck.blocks.length > 0) return { status: "blocked", blocks: publishCheck.blocks }
     if (publishCheck.findings.length > 0 && !request.acknowledged) {

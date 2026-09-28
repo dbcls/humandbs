@@ -19,6 +19,7 @@ import {
   saveDraftContent,
   setDraftSharing,
 } from "./drafts.server"
+import type { PublishCheckFiles } from "./publish-check"
 import { publishDraft, publishPreview, withdrawVersion } from "./publish.server"
 import { readDraft } from "./queries.server"
 
@@ -95,14 +96,14 @@ async function ready(options: { describe?: boolean } = {}) {
 }
 
 /** No file is waiting to be made public; the store is not reached from here. */
-const NO_PRIVATE_FILES: ReadonlySet<string> = new Set()
+const NO_FILES: PublishCheckFiles = { stored: new Set(), private: new Set(), onResearchPage: new Set() }
 
 const RELEASE_DATE = "2026-08-10"
 
 function publish(at: { draftId: string, revision: number }, number = 1, releaseDate = RELEASE_DATE) {
   return publishDraft(
     db,
-    { at, number, releaseDate, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+    { at, number, releaseDate, acknowledged: true, files: NO_FILES },
     CURATOR,
   )
 }
@@ -215,14 +216,14 @@ describe("publishing a draft", () => {
 describe("the review of a draft", () => {
   it("neither stops a publish nor adds to its check: a shared link, open comments, pressed indicators", async () => {
     const fixture = await ready()
-    const before = await publishPreview(db, fixture.draftId, NO_PRIVATE_FILES)
+    const before = await publishPreview(db, fixture.draftId, NO_FILES)
     const provider = { sub: null, name: "提供者" }
 
     await setDraftSharing(db, fixture.draftId, { enabled: true, expiresAt: null })
     await postAboutDraft(db, { draftId: fixture.draftId, kind: "draft", author: provider, body: "まだ直していません" })
     await acknowledgeDraft(db, { draftId: fixture.draftId, kind: "commented", actor: provider })
 
-    expect((await publishPreview(db, fixture.draftId, NO_PRIVATE_FILES))?.publishCheck).toEqual(before?.publishCheck)
+    expect((await publishPreview(db, fixture.draftId, NO_FILES))?.publishCheck).toEqual(before?.publishCheck)
     expect(await publish({ draftId: fixture.draftId, revision: fixture.revision }))
       .toEqual({ status: "published", versionNumber: 1 })
   })
@@ -297,7 +298,7 @@ describe("a publish that is refused", () => {
         number: 1,
         releaseDate: RELEASE_DATE,
         acknowledged: false,
-        privateFiles: NO_PRIVATE_FILES,
+        files: NO_FILES,
       },
       CURATOR,
     )
@@ -567,7 +568,7 @@ describe("updating a version", () => {
   function update(at: { draftId: string, revision: number }) {
     return publishDraft(
       db,
-      { at, number: null, releaseDate: RELEASE_DATE, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+      { at, number: null, releaseDate: RELEASE_DATE, acknowledged: true, files: NO_FILES },
       CURATOR,
     )
   }
@@ -664,7 +665,7 @@ describe("updating a version", () => {
     if (published.status !== "published") throw new Error(published.status)
     const draft = await updating(fixture.researchId, first.id)
 
-    const preview = await publishPreview(db, draft.id, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, draft.id, NO_FILES)
 
     expect(preview?.updating).toEqual({ number: 1, releaseDate: RELEASE_DATE })
     expect(preview?.researchPaths).toEqual([])
@@ -716,7 +717,7 @@ describe("looking a publish over first", () => {
     const fixture = await ready()
     const before = await counts()
 
-    const preview = await publishPreview(db, fixture.draftId, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, fixture.draftId, NO_FILES)
 
     expect(preview?.nextNumber).toBe(1)
     expect(preview?.heldNumbers).toEqual([])
@@ -734,7 +735,7 @@ describe("looking a publish over first", () => {
     await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const draftId = await copied(fixture.researchId)
 
-    const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, draftId, NO_FILES)
 
     expect(preview?.nextNumber).toBe(2)
     expect(preview?.heldNumbers).toEqual([1])
@@ -745,7 +746,7 @@ describe("looking a publish over first", () => {
     await publish({ draftId: fixture.draftId, revision: fixture.revision })
     const draftId = await copied(fixture.researchId)
 
-    const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, draftId, NO_FILES)
 
     expect(preview?.researchPaths).toEqual([])
     expect(preview?.listingAdded).toEqual([])
@@ -765,12 +766,12 @@ describe("looking a publish over first", () => {
     if (draft === null) throw new Error("no copy")
     expect(draft.content.datasetIds).toEqual([fixture.datasetId, made.datasetId])
 
-    expect((await publishPreview(db, draftId, NO_PRIVATE_FILES))?.reordered).toBe(false)
+    expect((await publishPreview(db, draftId, NO_FILES))?.reordered).toBe(false)
 
     await saveDraftContent(db, { draftId, revision: draft.revision }, {
       content: { ...draft.content, datasetIds: [made.datasetId, fixture.datasetId] },
     })
-    const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, draftId, NO_FILES)
 
     expect(preview?.reordered).toBe(true)
     expect(preview?.researchPaths).toEqual([])
@@ -794,7 +795,7 @@ describe("looking a publish over first", () => {
     const ready2 = await readDraft(db, other)
     await publish({ draftId: other, revision: ready2?.revision ?? 0 }, 2)
 
-    const preview = await publishPreview(db, behind, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, behind, NO_FILES)
 
     expect(preview?.publishCheck.findings).toEqual([])
     expect(preview?.heldNumbers).toEqual([2, 1])
@@ -815,7 +816,7 @@ describe("a published dataset the draft has not written", () => {
     const first = await theDescription()
 
     const draftId = await createEmptyDraft(db, fixture.researchId)
-    const preview = await publishPreview(db, draftId, NO_PRIVATE_FILES)
+    const preview = await publishPreview(db, draftId, NO_FILES)
     expect(preview?.datasetChanges).toEqual([])
     expect(preview?.publishCheck.findings.filter((finding) => finding.kind === "empty-dataset")).toEqual([])
 

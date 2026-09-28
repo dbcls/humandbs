@@ -726,13 +726,18 @@ describe("the download list a share link shows", () => {
     opened = ""
   })
 
-  it("shows what is still private, because at draft time that is all there is", async () => {
+  it("shows what is still private, because at draft time that is all there is, of the files the research's page lists", async () => {
     const shared = await sharedDraft()
     opened = shared.researchId
     await db.insert(s.labelPin)
       .values({ kind: "hum", label: HUM, researchId: shared.researchId, isPrimary: true })
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(shared.researchId)}closed.zip`, "1")
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}open.zip`, "12")
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}unlisted.zip`, "1")
+    await db.insert(s.researchPageFile).values([
+      { researchId: shared.researchId, fileName: "closed.zip" },
+      { researchId: shared.researchId, fileName: "open.zip" },
+    ])
 
     const view = await previewResearchPage(get(), "ja", shared.token)
 
@@ -749,6 +754,10 @@ describe("the download list a share link shows", () => {
       .values({ kind: "hum", label: HUM, researchId: shared.researchId, isPrimary: true })
     await putTestObject(PRIVATE_BUCKET, `${privatePrefix(shared.researchId)}closed.zip`, "1")
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}open.zip`, "12")
+    await db.insert(s.researchPageFile).values([
+      { researchId: shared.researchId, fileName: "closed.zip" },
+      { researchId: shared.researchId, fileName: "open.zip" },
+    ])
     await db.insert(s.fileLabel).values([
       { researchId: shared.researchId, fileName: "closed.zip", labelJa: "非公開", labelEn: "Private" },
       { researchId: shared.researchId, fileName: "open.zip", labelJa: "公開", labelEn: "" },

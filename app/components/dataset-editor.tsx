@@ -377,22 +377,20 @@ export function DatasetEditor({ view }: { view: DatasetEditorView }) {
             </Stack>
           </div>
 
-          {view.portalIssued && (
-            <Section
-              id={FILES}
-              title={t.files}
-              flags={<FieldFlags annotations={editing.annotationsFor("fileSelection")} locale={locale} />}
-            >
-              <FileSelection
-                locale={locale}
-                listing={view.listing}
-                labels={view.fileLabels}
-                selected={input.fileSelection}
-                filesAt={href(locale, adminResearchFilesPath(researchId))}
-                onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
-              />
-            </Section>
-          )}
+          <Section
+            id={FILES}
+            title={t.files}
+            flags={<FieldFlags annotations={editing.annotationsFor("fileSelection")} locale={locale} />}
+          >
+            <FileSelection
+              locale={locale}
+              listing={view.listing}
+              labels={view.fileLabels}
+              selected={input.fileSelection}
+              filesAt={href(locale, adminResearchFilesPath(researchId))}
+              onChange={(fileSelection) => { editing.edit({ ...input, fileSelection }) }}
+            />
+          </Section>
 
           <Section
             id={EXPERIMENTS}
@@ -1308,6 +1306,7 @@ function VocabularyField({
         <TermPicker
           locale={locale}
           setId={setId}
+          single={!multiple}
           disabled={state !== "value"}
           known={known}
           termIds={termIds}
@@ -1489,10 +1488,18 @@ export function resolveTerms(known: readonly EditableTerm[], ids: readonly strin
  * **A chosen term is one control, and pressing it is what removes it** — the
  * condition and the way to lift it are the same object, as they are for a chip
  * over a listing.
+ *
+ * **A value that holds one term looks like a pull-down**: the term is shown in
+ * the box itself, choosing another replaces it, and a button beside the box
+ * clears it. One that holds several lists them as chips over a box that adds.
+ * Told apart by the box before anything is chosen, the author knows whether a
+ * choice adds to what is there or takes its place.
  */
-function TermPicker({ locale, setId, kind, disabled, known, termIds, onAdd, onRemove, trailing }: {
+function TermPicker({ locale, setId, single = false, kind, disabled, known, termIds, onAdd, onRemove, trailing }: {
   locale: Locale
   setId: string | null
+  /** The value holds one term (`content_key.multiple` off). */
+  single?: boolean
   /**
    * Which reading the box wants of what is typed. A disease is written as a
    * classification code as often as a word, and the code has to be normalised
@@ -1524,6 +1531,10 @@ function TermPicker({ locale, setId, kind, disabled, known, termIds, onAdd, onRe
   const [found, setFound] = useState<EditableTerm[]>([])
   const chosen = resolveTerms([...known, ...found], termIds)
   const held = new Set(termIds)
+  // A value that holds more than its key allows is drawn as chips, so that
+  // each can be taken off; the save refuses it until then.
+  const [one] = chosen
+  const asOne = single && chosen.length <= 1
   const candidates = (search.data ?? [])
     .filter((term) => term.setId === setId && !held.has(term.id))
     .slice(0, PICKER_RESULTS)
@@ -1546,22 +1557,24 @@ function TermPicker({ locale, setId, kind, disabled, known, termIds, onAdd, onRe
 
   return (
     <Stack gap="tight">
-      {chosen.length === 0
-        ? <Empty>{t.noTerm}</Empty>
-        : (
-            <ul className="flex flex-wrap gap-2">
-              {chosen.map((term) => (
-                <li key={term.id}>
-                  <ValueChip remove={t.removeTerm} disabled={disabled} onRemove={() => { onRemove(term.id) }}>
-                    <TermWords term={term} locale={locale} kind={kind} />
-                  </ValueChip>
-                </li>
-              ))}
-            </ul>
-          )}
+      {asOne
+        ? null
+        : chosen.length === 0
+          ? <Empty>{t.noTerm}</Empty>
+          : (
+              <ul className="flex flex-wrap gap-2">
+                {chosen.map((term) => (
+                  <li key={term.id}>
+                    <ValueChip remove={t.removeTerm} disabled={disabled} onRemove={() => { onRemove(term.id) }}>
+                      <TermWords term={term} locale={locale} kind={kind} />
+                    </ValueChip>
+                  </li>
+                ))}
+              </ul>
+            )}
       <div className="flex items-center gap-2">
         <ComboBox
-          label={t.findTerm}
+          label={asOne ? t.findTerm : t.addTerm}
           disabled={disabled || setId === null}
           options={candidates}
           keyOf={(term) => term.id}
@@ -1576,7 +1589,12 @@ function TermPicker({ locale, setId, kind, disabled, known, termIds, onAdd, onRe
             setFound((before) => [...before, term])
             onAdd(term.id)
           }}
+          kept={asOne ? (term) => catalogLabel(term, locale) : undefined}
+          initial={asOne && one !== undefined ? catalogLabel(one, locale) : ""}
         />
+        {asOne && one !== undefined && !disabled && (
+          <IconButton name="close" label={t.clearTerm} onClick={() => { onRemove(one.id) }} />
+        )}
         {trailing}
       </div>
     </Stack>

@@ -55,6 +55,7 @@ import { listingsOf, forgetSwitches, pendingSwitches, switchFiles, type SwitchRe
 import { FILE_LABEL_MAX_LENGTH, type FileLabel, sameFileLabel, typedFileLabel } from "./labels"
 import { fileLabelsOf, forgetFileLabels, moveFileLabel, writeFileLabel } from "./labels.server"
 import { adminListing, commonListing } from "./listing.server"
+import { forgetResearchPageFiles, moveResearchPageFile, researchPageFilesOf, writeResearchPageFile } from "./research-page.server"
 import { wakeFileRunner } from "./runner.server"
 import {
   abortMultipart,
@@ -134,6 +135,8 @@ export interface FilesPageView {
   selectedBy: Record<string, string[]>
   /** The labels of the files on the page, by the file's name. A file with none is not a key. */
   labels: Record<string, FileLabel>
+  /** The files on the page that the research's public page lists (`researchPageFile`). */
+  onResearchPage: string[]
   /** The words looked for in the name, as typed. Empty when none were. */
   keyword: string
   /** The first and the last day kept, each `null` when that end is open. */
@@ -207,7 +210,11 @@ export async function filesPage(
     ? bySide
     : bySide.filter((entry) => states.includes(stateOf(entry)))
   const page = pageOfFiles(sortedFiles(narrowed, sort, order), Number.isInteger(wanted) ? wanted : 1, rowsPerPage(size, narrowed.length))
-  const [selections, fileLabels] = await Promise.all([publishedFileSelections(db, id), fileLabelsOf(db, id)])
+  const [selections, fileLabels, listed] = await Promise.all([
+    publishedFileSelections(db, id),
+    fileLabelsOf(db, id),
+    researchPageFilesOf(db, id),
+  ])
 
   return {
     locale,
@@ -223,6 +230,7 @@ export async function filesPage(
       const label = fileLabels.get(row.name)
       return label === undefined ? [] : [[row.name, label]]
     })),
+    onResearchPage: page.rows.flatMap((row) => listed.has(row.name) ? [row.name] : []),
     keyword,
     from,
     to,
@@ -284,6 +292,7 @@ export async function filesAction(
   const back = backToListing(request, locale, adminResearchFilesPath(id), RESEARCH_FILES_SETTINGS)
   if (intent === "rename") return renameResearchFile(db, id, form, actorOf(actor), back)
   if (intent === "label") return labelResearchFile(db, id, humLabel, form, actorOf(actor), back)
+  if (intent === "research-page") return listOnResearchPage(db, id, humLabel, form, actorOf(actor), back)
 
   const names = form.getAll("name").flatMap((value) => typeof value === "string" ? [value] : [])
   if (names.length === 0) return { status: "nothing-selected" }
@@ -329,7 +338,8 @@ function actorOf(actor: { sub: string, name: string }): EventActor {
  * things deleting and publishing write. Moving the private copy changes
  * nothing anybody can fetch.
  *
- * The file's label goes to the new name with it (`moveFileLabel`).
+ * The file's label and whether the research's page lists it go to the new
+ * name with it (`moveFileLabel`, `moveResearchPageFile`).
  */
 async function renameResearchFile(
   db: ReturnType<typeof getDb>,
@@ -377,6 +387,7 @@ async function renameResearchFile(
   if (found) {
     await db.transaction(async (tx) => {
       await moveFileLabel(tx, researchId, from, name)
+      await moveResearchPageFile(tx, researchId, from, name)
       for (const moved of shown) {
         await recordEvent(tx, {
           actor,
@@ -447,6 +458,48 @@ async function labelResearchFile(
 }
 
 /**
+ * Listing a file on the research's public page, or taking it off, from the
+ * row's checkbox.
+ *
+ * **Only a file the prefix holds is set**, as with a label: a name on neither
+ * side saves nothing. **A change on a file readers can fetch is written
+ * down** — the research's page lists it or stops listing it from the moment
+ * it is saved, without a publish to record it.
+ */
+async function listOnResearchPage(
+  db: ReturnType<typeof getDb>,
+  researchId: string,
+  humLabel: string | null,
+  form: FormData,
+  actor: EventActor,
+  back: Response,
+): Promise<Response> {
+  const name = form.get("name")
+  const listed = form.get("listed")
+  if (typeof name !== "string" || (listed !== "true" && listed !== "false")) badRequest()
+  if (!isUploadableName(name)) badRequest()
+
+  const isPublic = humLabel !== null
+    && await objectExists({ bucket: PUBLIC_BUCKET, key: publicPrefix(humLabel) + name })
+  if (!isPublic && !(await objectExists({ bucket: PRIVATE_BUCKET, key: privatePrefix(researchId) + name }))) {
+    return back
+  }
+
+  await db.transaction(async (tx) => {
+    const before = await writeResearchPageFile(tx, researchId, name, listed === "true")
+    if (!isPublic || before === (listed === "true")) return
+    await recordEvent(tx, {
+      actor,
+      action: listed === "true" ? "list-file-on-research-page" : "unlist-file-on-research-page",
+      subjectType: "file",
+      subjectId: name,
+      detail: { research: researchId },
+    })
+  })
+  return back
+}
+
+/**
  * Take the file away, wherever it is. Every prefix the research has ever held is
  * cleared, because a copy left in a retired one would still answer at its old
  * address.
@@ -456,8 +509,8 @@ async function labelResearchFile(
  * after this delete and the file would stay public with the trail indicating it
  * was deleted. The switch's row is held while this is decided, so the runner
  * cannot take it up in between; a switch that gave up moves nothing and is
- * forgotten with the file, and so is its label. False means nothing was
- * deleted.
+ * forgotten with the file, and so are its label and whether the research's
+ * page lists it. False means nothing was deleted.
  */
 async function deleteFiles(
   researchId: string,
@@ -489,6 +542,7 @@ async function deleteFiles(
 
   await db.transaction(async (tx) => {
     await forgetFileLabels(tx, researchId, names)
+    await forgetResearchPageFiles(tx, researchId, names)
     for (const name of names) {
       await recordEvent(tx, {
         actor,

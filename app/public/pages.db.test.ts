@@ -333,6 +333,11 @@ describe("the download list", () => {
     await clearPrefix(PUBLIC_BUCKET, publicPrefix(HUM))
   })
 
+  /** Set the research's page to list these files (`researchPageFile`). */
+  async function onPage(researchId: string, names: readonly string[]): Promise<void> {
+    await db.insert(s.researchPageFile).values(names.map((fileName) => ({ researchId, fileName })))
+  }
+
   it("is the public bucket listed, and holds nothing the research did not put there", async () => {
     const researchId = await createResearch(HUM)
     await publish(researchId, 1, [])
@@ -340,6 +345,7 @@ describe("the download list", () => {
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}b.zip`, "12")
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`, "1")
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix("hum7999")}other.zip`)
+    await onPage(researchId, ["a.zip", "b.zip", "other.zip"])
 
     const view = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
 
@@ -355,6 +361,7 @@ describe("the download list", () => {
     await publish(researchId, 1, [])
     await rebuildSearchDocs(db)
     for (const name of ["a.xlsx", "b.pdf", "c.pdf", "d.zip"]) await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${name}`)
+    await onPage(researchId, ["a.xlsx", "b.pdf", "c.pdf", "d.zip"])
     await db.insert(s.fileLabel).values([
       { researchId, fileName: "a.xlsx", labelJa: "辞書ファイル", labelEn: "Dictionary file" },
       { researchId, fileName: "b.pdf", labelJa: "論文", labelEn: "" },
@@ -375,6 +382,7 @@ describe("the download list", () => {
     await publish(researchId, 1, [])
     await rebuildSearchDocs(db)
     await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`)
+    await onPage(researchId, ["a.zip"])
     const other = await createResearch("hum7998")
     await db.insert(s.fileLabel).values({ researchId: other, fileName: "a.zip", labelJa: "他", labelEn: "other" })
 
@@ -390,6 +398,7 @@ describe("the download list", () => {
     for (let at = 0; at < 21; at += 1) {
       await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${String(at).padStart(4, "0")}.zip`)
     }
+    await onPage(researchId, Array.from({ length: 21 }, (_, at) => `${String(at).padStart(4, "0")}.zip`))
 
     const first = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
     const second = await researchPage({ ...ja, humId: HUM, wanted: "latest", filePage: 2 })
@@ -407,12 +416,41 @@ describe("the download list", () => {
     for (let at = 0; at < 21; at += 1) {
       await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${String(at).padStart(4, "0")}.zip`)
     }
+    await onPage(researchId, Array.from({ length: 21 }, (_, at) => `${String(at).padStart(4, "0")}.zip`))
 
     const view = await researchPage({ ...ja, humId: HUM, wanted: "latest", fileRows: 50 })
 
     expect(view.files.rows).toHaveLength(21)
     expect(view.files.pageCount).toBe(1)
     expect(view.files.size).toBe(50)
+  })
+
+  it("lists only the files set to be listed on the research's page, while a dataset's page lists what it selects", async () => {
+    const researchId = await createResearch(HUM)
+    const datasetId = await createDataset(researchId, "JGAD000001")
+    descriptions.set(datasetId, { ...emptyDatasetContent(), fileSelection: ["data.zip", "genes.xlsx"] })
+    await publish(researchId, 1, [datasetId])
+    await rebuildSearchDocs(db)
+    for (const name of ["data.zip", "genes.xlsx", "README.pdf", "stray.txt"]) await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}${name}`)
+    await onPage(researchId, ["genes.xlsx", "README.pdf", "gone.pdf"])
+
+    const research = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
+    const dataset = await datasetPage({ ...ja, datasetId: "JGAD000001" })
+
+    expect(research.files.rows.map((row) => row.name)).toEqual(["README.pdf", "genes.xlsx"])
+    expect(research.files.total).toBe(2)
+    expect(dataset.files.rows.map((row) => row.name)).toEqual(["data.zip", "genes.xlsx"])
+  })
+
+  it("has no files on the research's page when none is set to be listed there, however many the prefix holds", async () => {
+    const researchId = await createResearch(HUM)
+    await publish(researchId, 1, [])
+    await rebuildSearchDocs(db)
+    await putTestObject(PUBLIC_BUCKET, `${publicPrefix(HUM)}a.zip`)
+
+    const view = await researchPage({ ...ja, humId: HUM, wanted: "latest" })
+
+    expect(view.files.total).toBe(0)
   })
 
   it("keeps only the dataset selections the prefix holds", async () => {

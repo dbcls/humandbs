@@ -1,0 +1,2 @@
+ALTER TYPE "public"."event_action" ADD VALUE 'list-file-on-research-page' BEFORE 'publish-site-content';--> statement-breakpoint
+ALTER TYPE "public"."event_action" ADD VALUE 'unlist-file-on-research-page' BEFORE 'publish-site-content';

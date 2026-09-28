@@ -25,6 +25,7 @@
 
 import { and, asc, eq, inArray, lt, sql } from "drizzle-orm"
 
+import type { PublishCheckFiles } from "~/admin/publish-check"
 import { recordEvent, type EventActor } from "~/auth/events.server"
 import type { Database, Executor } from "~/db/client.server"
 import { filePublishJob, labelPin } from "~/db/schema"
@@ -37,6 +38,7 @@ import {
   type PendingSwitch,
   type SwitchAction,
 } from "./prefix"
+import { researchPageFilesOf } from "./research-page.server"
 import { copyObject, deleteObject, listPrefix, objectExists, type ObjectRef } from "./store.server"
 
 /** An attempt that started this long ago is taken to have died with its process. */
@@ -183,10 +185,27 @@ export async function pendingSwitches(
   }))
 }
 
-/** The names sitting in the private bucket, which is what the publish check checks against. */
-export async function privateNames(researchId: string): Promise<Set<string>> {
-  const nodes = await listPrefix(PRIVATE_BUCKET, privatePrefix(researchId))
-  return new Set(nodes.map((node) => node.name))
+/**
+ * The research's prefix as the publish check checks against it: read from the
+ * store rather than from anything the database holds, and the files the
+ * research's page lists.
+ */
+export async function publishCheckFiles(
+  executor: Executor,
+  researchId: string,
+  humLabel: string | null,
+): Promise<PublishCheckFiles> {
+  const [privateNodes, publicNodes, onResearchPage] = await Promise.all([
+    listPrefix(PRIVATE_BUCKET, privatePrefix(researchId)),
+    humLabel === null ? [] : listPrefix(PUBLIC_BUCKET, publicPrefix(humLabel)),
+    researchPageFilesOf(executor, researchId),
+  ])
+  const privateNames = new Set(privateNodes.map((node) => node.name))
+  return {
+    stored: new Set([...privateNames, ...publicNodes.map((node) => node.name)]),
+    private: privateNames,
+    onResearchPage,
+  }
 }
 
 /**

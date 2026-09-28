@@ -445,9 +445,13 @@ export function Section({ title, note, at, aside, end, fill = false, children }:
  * **Neither end can be named in CSS**: `:first-child` and `:last-child` are the
  * ends of the source, not of a column, and which pair a column begins with is
  * decided after layout. So the rule is drawn over every pair, and the list
- * clips its own top 1px away: every column begins at the list's top, so the
- * two rules that land there are the only ones in that row. The list is pulled
- * up by the same 1px so that the first pair's words stay where they were.
+ * clips its own top away: every column begins at the list's top, so the two
+ * rules that land there are the only ones in that row. The list is pulled up by
+ * the rule's 1px so that the first pair's words stay where they were. **The
+ * clip is 2px, not the rule's 1px**: at a fractional position Safari draws the
+ * rule snapped to a device pixel but cuts the clip where it falls, so a clip of
+ * exactly the rule's width left a sliver of it visible along the top. The
+ * second pixel is the first pair's padding, which draws nothing.
  *
  * **Nothing is drawn outside a pair's own box.** Shifting each pair up by its
  * rule's width (`top: -1px`) would take the rule at the head of the second
@@ -468,7 +472,7 @@ export function Section({ title, note, at, aside, end, fill = false, children }:
  */
 export function Pairs({ children }: { children: ReactNode }) {
   return (
-    <dl className="-mt-px gap-x-8 overflow-clip [clip-path:inset(1px_0_0_0)] sm:columns-2 [&>*]:border-line [&>*]:border-t">
+    <dl className="-mt-px gap-x-8 overflow-clip [clip-path:inset(2px_0_0_0)] sm:columns-2 [&>*]:border-line [&>*]:border-t">
       {children}
     </dl>
   )

@@ -25,8 +25,10 @@ const EXPERIMENT_KEY = "00000000-0000-0000-0000-0000000000a4"
 const NUMBER_KEY = "00000000-0000-0000-0000-0000000000a5"
 const DISEASE_KEY = "00000000-0000-0000-0000-0000000000a6"
 const LABELLED_NUMBER_KEY = "00000000-0000-0000-0000-0000000000a7"
+const MULTI_KEY = "00000000-0000-0000-0000-0000000000a8"
 const SET = "00000000-0000-0000-0000-0000000000b1"
 const ICD10_SET = "00000000-0000-0000-0000-0000000000b2"
+const PLATFORM_SET = "00000000-0000-0000-0000-0000000000b3"
 
 const catalog: EditableCatalog = {
   keys: [
@@ -53,6 +55,19 @@ const catalog: EditableCatalog = {
       position: 1,
       vocabularySetId: SET,
       multiple: false,
+      canonicalUnit: null,
+      inputUnits: null,
+    },
+    {
+      id: MULTI_KEY,
+      code: "platform",
+      scope: "dataset",
+      valueType: "vocabulary",
+      labelJa: "プラットフォーム",
+      labelEn: "Platform",
+      position: 2,
+      vocabularySetId: PLATFORM_SET,
+      multiple: true,
       canonicalUnit: null,
       inputUnits: null,
     },
@@ -132,6 +147,14 @@ const TERMS = [
     code: "unrestricted",
     labelJa: "非制限公開",
     labelEn: "Unrestricted",
+    position: 0,
+  },
+  {
+    id: "term-hiseq",
+    setId: PLATFORM_SET,
+    code: "hiseq-2500",
+    labelJa: "HiSeq 2500",
+    labelEn: "HiSeq 2500",
     position: 0,
   },
   {
@@ -259,11 +282,55 @@ describe("the dataset editing form", () => {
   it("shows nothing chosen as an empty vocabulary item rather than as no item", () => {
     const html = render(view({
       ...emptyDatasetContent(),
-      values: [{ keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled([]) } }],
+      values: [
+        { keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled([]) } },
+        { keyId: MULTI_KEY, value: { kind: "vocabulary", termIds: filled([]) } },
+      ],
     }))
 
     expect(html).toContain("アクセス制限")
+    expect(html).toMatch(/<input[^>]*role="combobox"[^>]*aria-label="選択肢を探す"[^>]*value=""/)
+    // Several terms are listed over the box, so an empty list is shown as 未選択.
     expect(html).toContain("未選択")
+  })
+
+  describe("an item that holds one term and one that holds several", () => {
+    function both(): string {
+      return render(view({
+        ...emptyDatasetContent(),
+        values: [
+          { keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: filled(["term-open"]) } },
+          { keyId: MULTI_KEY, value: { kind: "vocabulary", termIds: filled(["term-hiseq"]) } },
+        ],
+      }))
+    }
+
+    it("shows a one-term item's term in the box itself, the way a pull-down does", () => {
+      expect(both()).toMatch(/<input[^>]*role="combobox"[^>]*aria-label="選択肢を探す"[^>]*value="非制限公開"/)
+    })
+
+    it("lists a several-term item's terms as chips over an empty box that adds", () => {
+      const html = both()
+
+      expect(html).toMatch(/<button[^>]*>HiSeq 2500<svg[\s\S]*?<span class="sr-only">解除<\/span><\/button>/)
+      expect(html).toMatch(/<input[^>]*role="combobox"[^>]*aria-label="選択肢の追加"[^>]*value=""/)
+    })
+
+    it("draws a one-term item's term as no chip, and clears it with a button beside the box", () => {
+      const html = both()
+
+      expect(html).not.toMatch(/<button[^>]*>非制限公開<svg/)
+      expect([...html.matchAll(/aria-label="選択の解除"/g)]).toHaveLength(1)
+    })
+
+    it("offers no clearing while the item is settled as not a value", () => {
+      const html = render(view({
+        ...emptyDatasetContent(),
+        values: [{ keyId: VOCAB_KEY, value: { kind: "vocabulary", termIds: { state: "unknown" } } }],
+      }))
+
+      expect(html).not.toContain("aria-label=\"選択の解除\"")
+    })
   })
 
   it("puts a vocabulary item's own delete on its name row, ahead of its search box", () => {
@@ -604,14 +671,9 @@ describe("the dataset editing form", () => {
     expect(html).not.toContain("別の場所で保存されました")
   })
 
-  it("offers a file selection for a dataset the portal issued the id for", () => {
+  it("offers a file selection for a dataset whoever issued its id, the portal or an archive", () => {
     expect(render(view(emptyDatasetContent(), true))).toContain("ファイルの紐づけ")
-  })
-
-  it("does not offer a file selection for a dataset an archive issued the id for", () => {
-    const html = render(view(emptyDatasetContent(), false))
-    expect(html).not.toContain("ファイルの紐づけ")
-    expect(html).not.toContain(`/admin/research/${RESEARCH_ID}/files`)
+    expect(render(view(emptyDatasetContent(), false))).toContain("ファイルの紐づけ")
   })
 
   it("leads to the research's files screen in a new tab from the files section", () => {

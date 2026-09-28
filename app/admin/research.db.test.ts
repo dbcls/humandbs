@@ -12,6 +12,7 @@ import { PRIVATE_BUCKET, privatePrefix, PUBLIC_BUCKET, publicPrefix } from "~/fi
 import { clearPrefix, keysUnder, putTestObject } from "~/files/_store"
 
 import { createDatasetInDraft, createResearchWithDraft, saveDatasetEntry, saveDraftContent } from "./drafts.server"
+import type { PublishCheckFiles } from "./publish-check"
 import { publishDraft } from "./publish.server"
 import { deleteResearch } from "./research.server"
 
@@ -26,7 +27,7 @@ const db = getDb()
 
 const CURATOR = { sub: "0f3a-1b2c", name: "curator" }
 const AS_VERSION = { number: 1, releaseDate: "2026-08-10" } as const
-const NO_PRIVATE_FILES: ReadonlySet<string> = new Set()
+const NO_FILES: PublishCheckFiles = { stored: new Set(), private: new Set(), onResearchPage: new Set() }
 
 beforeEach(async () => {
   await emptyDatabase(getOwnerDb())
@@ -90,7 +91,7 @@ async function waitingOnLocks(count: number): Promise<void> {
 async function publish(fixture: Awaited<ReturnType<typeof ready>>): Promise<void> {
   const outcome = await publishDraft(
     db,
-    { at: { draftId: fixture.draftId, revision: fixture.revision }, ...AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+    { at: { draftId: fixture.draftId, revision: fixture.revision }, ...AS_VERSION, acknowledged: true, files: NO_FILES },
     CURATOR,
   )
   if (outcome.status !== "published") throw new Error(outcome.status)
@@ -243,7 +244,7 @@ describe("deleting a research", () => {
       await waitingOnLocks(1)
       const publishing = publishDraft(
         db,
-        { at: { draftId: fixture.draftId, revision: fixture.revision }, ...AS_VERSION, acknowledged: true, privateFiles: NO_PRIVATE_FILES },
+        { at: { draftId: fixture.draftId, revision: fixture.revision }, ...AS_VERSION, acknowledged: true, files: NO_FILES },
         CURATOR,
       )
       await waitingOnLocks(2)

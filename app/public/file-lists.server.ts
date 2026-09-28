@@ -1,6 +1,6 @@
 /**
- * The URL lists of the public pages: every public file of a research, and
- * every one a dataset selects, as `fileUrlList` writes them.
+ * The URL lists of the public pages: the public files a research's page lists,
+ * and every one a dataset selects, as `fileUrlList` writes them.
  *
  * **They respond the way the pages do.** A research or a dataset that is not
  * published is the same 404 as one that does not exist, however its ID is
@@ -17,6 +17,7 @@ import { publicDatasetContent, PUBLISHED } from "~/content/public"
 import { getDb } from "~/db/client.server"
 import { publicListing } from "~/files/listing.server"
 import type { StoredNode } from "~/files/prefix"
+import { researchPageFilesOf } from "~/files/research-page.server"
 import { fileUrlList, fileUrlListResponse } from "~/files/url-list"
 
 import { publishedDataset, publishedVersions, resolveDatasetLabel, resolveHumLabel } from "./queries.server"
@@ -44,7 +45,9 @@ export async function researchUrlList(humId: string): Promise<Response> {
   if (latestOf(await publishedVersions(db, resolved.id)) === null) notFound()
   if (resolved.primaryLabel !== humId) throw redirect(researchFileListPath(resolved.primaryLabel))
 
-  const names = listed(await publicListing(resolved.primaryLabel)).map((node) => node.name)
+  // The files the research's page lists, as its section does.
+  const [listing, onPage] = await Promise.all([publicListing(resolved.primaryLabel), researchPageFilesOf(db, resolved.id)])
+  const names = listed(listing).flatMap((node) => onPage.has(node.name) ? [node.name] : [])
   return fileUrlListResponse(resolved.primaryLabel, fileUrlList(fileOrigin(), resolved.primaryLabel, names))
 }
 

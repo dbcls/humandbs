@@ -155,6 +155,7 @@ export default function AdminResearchFiles({ loaderData, actionData }: Route.Com
                     origin={view.origin}
                     selectedBy={view.selectedBy}
                     labels={view.labels}
+                    onResearchPage={view.onResearchPage}
                     whenEmpty={inForce === 0 ? t.empty : t.noMatch}
                   />
                 </RefinableList>

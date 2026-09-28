@@ -1,5 +1,5 @@
 import { Fragment, useRef, useState, type DragEvent, type ReactNode } from "react"
-import { Form } from "react-router"
+import { Form, useNavigation } from "react-router"
 
 import { mapConcurrently } from "~/concurrency"
 import { dayInJst } from "~/dates"
@@ -248,15 +248,17 @@ function NotPublicYet({ locale, humLabel, name }: {
  * that starts because a name was read is not one the reader decided on; the
  * download is shown beside the name as an act of its own, and a file nobody
  * outside can reach offers neither it nor its address.
+ *
+ * **The same table is where the files are only looked at** (`readOnly`, the
+ * publish check's list of files no page lists): the files read the way the
+ * file screen reads them, and what is done to them is done there.
  */
-export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpty, selectedBy, labels }: {
+export function FileTable(props: {
   locale: Locale
   /** The research whose prefix this is: a private file is fetched through it. */
   researchId: string
   rows: readonly ListedFile[]
   humLabel: string | null
-  /** The site's public origin, which a copied address is written on. */
-  origin: string
   /** What to show in place of the rows when there are none. The prefix's own word by default. */
   whenEmpty?: string
   /**
@@ -266,19 +268,31 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
   selectedBy?: Readonly<Record<string, readonly string[]>>
   /** The files' labels, by name. A file with none is not a key. */
   labels: Readonly<Record<string, FileLabel>>
-}) {
+} & ({
+  /** Only looked at: the column of ticks and the operations are left out. */
+  readOnly: true
+} | {
+  readOnly?: false
+  /** The site's public origin, which a copied address is written on. */
+  origin: string
+  /** The files the research's public page lists, by name. */
+  onResearchPage: readonly string[]
+})) {
+  const { locale, researchId, rows, humLabel, whenEmpty, selectedBy, labels } = props
   const messages = messagesFor(locale)
   const t = messages.admin.files
+  const acting = props.readOnly === true ? null : { origin: props.origin, listed: new Set(props.onResearchPage) }
 
   return (
     <Table
-      actions
+      actions={acting !== null}
       // No cell of a row runs to a second line but the name, and the row
       // holds controls a line taller than its words.
       align="middle"
       headers={[
         t.name,
         t.state,
+        ...(acting === null ? [] : [t.onResearchPage]),
         t.labelJa,
         t.labelEn,
         t.size,
@@ -292,14 +306,48 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
           key={row.name}
           row={row}
           label={labels[row.name]}
+          acting={acting === null ? null : { origin: acting.origin, onResearchPage: acting.listed.has(row.name) }}
           researchId={researchId}
           humLabel={humLabel}
-          origin={origin}
           locale={locale}
           selectedBy={selectedBy === undefined ? undefined : (selectedBy[row.name] ?? [])}
         />
       ))}
     </Table>
+  )
+}
+
+/**
+ * Whether the research's public page lists the file, **saved the moment it is
+ * ticked** — a column of ticks with one save button under the table would
+ * leave rows that look set and are not. The box shows the press at once, and
+ * once the listing has been read again, what the server holds: a press that
+ * saved nothing goes back.
+ */
+function ResearchPageTick({ name, listed, locale }: { name: string, listed: boolean, locale: Locale }) {
+  const t = messagesFor(locale).admin.files
+  const [pressed, setPressed] = useState<boolean | null>(null)
+  const settled = useNavigation().state === "idle"
+  const [wasSettled, setWasSettled] = useState(settled)
+  if (settled !== wasSettled) {
+    setWasSettled(settled)
+    if (settled) setPressed(null)
+  }
+  return (
+    <Form method="post" preventScrollReset>
+      <input type="hidden" name="intent" value="research-page" />
+      <input type="hidden" name="name" value={name} />
+      <input type="hidden" name="listed" value={listed ? "false" : "true"} />
+      <input
+        type="checkbox"
+        aria-label={`${t.onResearchPage}: ${name}`}
+        checked={pressed ?? listed}
+        onChange={(event) => {
+          setPressed(event.currentTarget.checked)
+          event.currentTarget.form?.requestSubmit()
+        }}
+      />
+    </Form>
   )
 }
 
@@ -321,12 +369,13 @@ export function FileTable({ locale, researchId, rows, humLabel, origin, whenEmpt
  * **A label is edited at any time, switch or not**: it is kept by the file's
  * name, which a switch does not change.
  */
-function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy }: {
+function FileRow({ row, label, acting, researchId, humLabel, locale, selectedBy }: {
   row: ListedFile
   label: FileLabel | undefined
+  /** What the row's controls need; null where the file is only looked at. */
+  acting: { origin: string, onResearchPage: boolean } | null
   researchId: string
   humLabel: string | null
-  origin: string
   locale: Locale
   selectedBy: readonly string[] | undefined
 }) {
@@ -349,6 +398,11 @@ function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy 
       <Td nowrap>
         <State locale={locale} entry={row} />
       </Td>
+      {acting !== null && (
+        <Td holds="icon">
+          <ResearchPageTick name={row.name} listed={acting.onResearchPage} locale={locale} />
+        </Td>
+      )}
       <Td floor="min-w-40">{label?.ja}</Td>
       <Td floor="min-w-40">{label?.en}</Td>
       <Td nowrap className="tabular-nums">{formatSize(row.size)}</Td>
@@ -367,81 +421,83 @@ function FileRow({ row, label, researchId, humLabel, origin, locale, selectedBy 
         </Td>
       )}
       <Td nowrap>{dayInJst(row.updatedAt)}</Td>
-      <Td nowrap holds="control">
-        <span className="flex items-center gap-1">
-          {fetchedFrom !== null && (
-            <ButtonLink
-              to={fetchedFrom}
-              external
-              download
-              size="row"
-              icon={<Icon name="download" />}
-            >
-              {t.download}
-            </ButtonLink>
-          )}
-          {reachable && <CopyAddress address={address} origin={origin} locale={locale} />}
-          <Form method="post">
-            <input type="hidden" name="name" value={row.name} />
-            <Submit
-              intent={row.isPublic ? "unpublish" : "publish"}
-              size="row"
-              icon={<Icon name={row.isPublic ? "lock" : "upload"} />}
-              disabled={switching}
-            >
-              {running ? t.switchingNow : row.isPublic ? t.unpublish : t.publish}
-            </Submit>
-          </Form>
-          <Form method="post">
-            <input type="hidden" name="from" value={row.name} />
-            <SlugEditor
-              locale={locale}
-              file
-              intent="rename"
-              name="to"
-              value={row.name}
-              hint={t.renameHint}
-              size="row"
-              disabled={running ? t.renameSwitching : undefined}
-            />
-          </Form>
-          <Editing method="post">
-            <input type="hidden" name="name" value={row.name} />
-            <Dialog
-              label={t.editLabel}
-              title={t.editLabelTitle}
-              subject={{ name: t.name, value: row.name }}
-              note={t.labelNote}
-              size="row"
-              icon={<Icon name="edit" />}
-              action={() => (
-                <Submit intent="label" icon={<Icon name="save" />} saves>
-                  {t.saveLabel}
-                </Submit>
-              )}
-              status={<Unsaved locale={locale} />}
-            >
-              <LanguagePair>
-                <Field label={t.labelJa} name="labelJa" value={label?.ja ?? ""} width="w-full" />
-                <Field label={t.labelEn} name="labelEn" value={label?.en ?? ""} width="w-full" />
-              </LanguagePair>
-            </Dialog>
-          </Editing>
-          <Form method="post">
-            <input type="hidden" name="name" value={row.name} />
-            <Confirm
-              label={t.delete}
-              title={t.deleteTitle}
-              subject={{ name: t.name, value: row.name }}
-              warning={t.deleteWarning}
-              confirm={t.deleteConfirm}
-              intent="delete"
-              size="row"
-              disabled={running ? t.deleteSwitching : undefined}
-            />
-          </Form>
-        </span>
-      </Td>
+      {acting !== null && (
+        <Td nowrap holds="control">
+          <span className="flex items-center gap-1">
+            {fetchedFrom !== null && (
+              <ButtonLink
+                to={fetchedFrom}
+                external
+                download
+                size="row"
+                icon={<Icon name="download" />}
+              >
+                {t.download}
+              </ButtonLink>
+            )}
+            {reachable && <CopyAddress address={address} origin={acting.origin} locale={locale} />}
+            <Form method="post">
+              <input type="hidden" name="name" value={row.name} />
+              <Submit
+                intent={row.isPublic ? "unpublish" : "publish"}
+                size="row"
+                icon={<Icon name={row.isPublic ? "lock" : "upload"} />}
+                disabled={switching}
+              >
+                {running ? t.switchingNow : row.isPublic ? t.unpublish : t.publish}
+              </Submit>
+            </Form>
+            <Form method="post">
+              <input type="hidden" name="from" value={row.name} />
+              <SlugEditor
+                locale={locale}
+                file
+                intent="rename"
+                name="to"
+                value={row.name}
+                hint={t.renameHint}
+                size="row"
+                disabled={running ? t.renameSwitching : undefined}
+              />
+            </Form>
+            <Editing method="post">
+              <input type="hidden" name="name" value={row.name} />
+              <Dialog
+                label={t.editLabel}
+                title={t.editLabelTitle}
+                subject={{ name: t.name, value: row.name }}
+                note={t.labelNote}
+                size="row"
+                icon={<Icon name="edit" />}
+                action={() => (
+                  <Submit intent="label" icon={<Icon name="save" />} saves>
+                    {t.saveLabel}
+                  </Submit>
+                )}
+                status={<Unsaved locale={locale} />}
+              >
+                <LanguagePair>
+                  <Field label={t.labelJa} name="labelJa" value={label?.ja ?? ""} width="w-full" />
+                  <Field label={t.labelEn} name="labelEn" value={label?.en ?? ""} width="w-full" />
+                </LanguagePair>
+              </Dialog>
+            </Editing>
+            <Form method="post">
+              <input type="hidden" name="name" value={row.name} />
+              <Confirm
+                label={t.delete}
+                title={t.deleteTitle}
+                subject={{ name: t.name, value: row.name }}
+                warning={t.deleteWarning}
+                confirm={t.deleteConfirm}
+                intent="delete"
+                size="row"
+                disabled={running ? t.deleteSwitching : undefined}
+              />
+            </Form>
+          </span>
+        </Td>
+      )}
     </tr>
   )
 }

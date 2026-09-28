@@ -30,6 +30,7 @@ import { publicDataset, publicDatasetContent, publicResearch } from "~/content/p
 import { adminListing, listingRows, readFilePage, readFileRows } from "~/files/listing.server"
 import { fileListOf } from "~/files/prefix"
 import { fileLabelsOf } from "~/files/labels.server"
+import { researchPageFilesOf } from "~/files/research-page.server"
 import type { AcknowledgementKind, DatasetContent, ResearchContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
@@ -314,7 +315,11 @@ export async function drawDraft(
   const cau = humLabel === null ? [] : await controlledAccessUsers(db, humLabel)
   // Both buckets: at draft time nothing is public yet, and showing only the
   // public side would empty the download list exactly when it is being checked.
-  const [stored, labels] = await Promise.all([adminListing(db, draft.researchId, humLabel), fileLabelsOf(db, draft.researchId)])
+  const [stored, labels, onPage] = await Promise.all([
+    adminListing(db, draft.researchId, humLabel),
+    fileLabelsOf(db, draft.researchId),
+    researchPageFilesOf(db, draft.researchId),
+  ])
   const listing = listingRows(stored, labels, locale)
 
   const projected = publicResearch(draft.content, { cau, files: listing }, PREVIEW)
@@ -358,7 +363,13 @@ export async function drawDraft(
     ]),
     humByLabel: cited.humByLabel,
     cau: projected.cau,
-    files: fileListOf(listing, readFilePage(new URL(request.url)), readFileRows(new URL(request.url))),
+    // The research's own list is the files set to be listed on its page, as
+    // the published page's is; the datasets above are read against them all.
+    files: fileListOf(
+      listing.filter((row) => onPage.has(row.name)),
+      readFilePage(new URL(request.url)),
+      readFileRows(new URL(request.url)),
+    ),
   }, locale, catalog)
 
   const row = researchListRowView({
