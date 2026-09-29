@@ -1272,7 +1272,7 @@ describe("a public file through the proxy", () => {
     expect(fetched.headers["content-disposition"]).toBe("attachment")
   })
 
-  it("is answered with the portal's 404 page rather than the store's error saved as a file when it is not there", async () => {
+  it("is replaced by the portal's 404 page, not by the store's error saved as a file, when it is not there", async () => {
     await fc.assert(fc.asyncProperty(
       fc.string({ minLength: 1, maxLength: 20, unit: "grapheme" })
         .filter((name) => !/[\p{Cc}/]/u.test(name) && name !== "." && name !== ".."),
