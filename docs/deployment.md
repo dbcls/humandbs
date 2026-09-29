@@ -76,7 +76,7 @@ DB とファイルストアのデータをホストのどこに保存するか�
 配置先に初めてポータルを起動する手順である。配置先の dir で、配置先のユーザーとして実行する。
 
 ```bash
-git clone -b v2 <repo> <dir> && cd <dir>                     # source を取得する
+git clone <repo> <dir> && cd <dir>                           # source を取得する
 cp env.production .env                                       # staging なら env.staging。CHANGE_ME を埋める
 ln -s compose.deploy.yml compose.override.yml                # 配置先の設定を読み込ませる
 mkdir -p <HUMANDBS_DATA_DIR>/pgdata <HUMANDBS_DATA_DIR>/s3data   # .env に書いた dir の下にデータの dir を作る
