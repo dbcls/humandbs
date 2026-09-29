@@ -2242,10 +2242,11 @@ export interface DialogSubject {
  * elsewhere in the same form would fire the action nobody asked for; and a form
  * holding two of these would send both sets of fields.
  *
- * **It opens a beat after the press.** The browser gives focus at the moment
- * the panel opens, and only to what is there — opening in the same breath as
- * the press hands focus to the empty panel itself, and the reader has to tab
- * into it before the cancel button is under their hands.
+ * **Shown, the panel holds the caret itself, not a control in it**
+ * (`startAtTop`). A cancel button or a first box that has the caret without
+ * having been pressed draws the ring over a panel the reader opened with the
+ * pointer, and Enter pressed on opening would press what nobody chose. The
+ * first Tab reaches the first control, and Escape closes it from the start.
  *
  * **The panel is in the form it is written in**, so the fields inside it are
  * the ones the browser sends; what the top layer moves is where it is drawn,
@@ -2445,7 +2446,8 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
         }}
         aria-busy={holding || undefined}
         aria-labelledby={titleId}
-        // Focusable only from the script, for a panel that starts at its top (`startAtTop`).
+        // Focusable only from the script, for the panel to hold the caret when
+        // shown (`startAtTop`). It is not a control, so it draws no ring for it.
         tabIndex={-1}
         /* **The panel wraps its own words.** It is drawn in the top layer but
            inherits from where it is shown in the markup, and a row's cell that
@@ -2453,7 +2455,7 @@ export function Dialog({ label, title, subject, note, variant = "secondary", siz
            line too: the words inside would run off the side instead of
            breaking. The weight and colour are set for the same reason — a
            indicator on a header bar's title opened a panel written in bold. */
-        className={`m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] ${wide ? "max-w-5xl" : "max-w-2xl"} overflow-y-auto whitespace-normal rounded-lg border border-line bg-white p-6 font-normal text-ink shadow-lg backdrop:bg-ink/40`}
+        className={`m-auto max-h-[calc(100dvh-4rem)] w-[calc(100%-2rem)] ${wide ? "max-w-5xl" : "max-w-2xl"} overflow-y-auto whitespace-normal rounded-lg border border-line bg-white p-6 font-normal text-ink shadow-lg outline-none backdrop:bg-ink/40`}
       >
         {open && (
           <Stack gap="normal">
@@ -2505,16 +2507,14 @@ export function wentThrough(answer: unknown): boolean {
 }
 
 /**
- * **A panel opens at its top.** Shown, it moves the caret to the first thing
- * in it that takes one, and scrolls that into view: in a panel of comparisons
- * with nothing to press until the foot, that is the close button, and the panel
- * opened on its last line. Where that moved it, it goes back to the top and the
- * caret goes to the panel itself — the next Tab still reaches the first control.
- * A panel whose first control is in view (a form's first box, a question's
- * cancel) keeps the caret there.
+ * **A panel opens at its top, with the caret on the panel itself.** Shown, it
+ * moves the caret to the first thing in it that takes one — a question's
+ * cancel, a form's first box — and scrolls that into view: in a panel of
+ * comparisons with nothing to press until the foot, that is the close button,
+ * and the panel opened on its last line. It goes back to the top, and the caret
+ * goes to the panel (`Dialog`); the next Tab reaches the first control.
  */
 export function startAtTop(panel: Pick<HTMLElement, "scrollTop" | "focus">): void {
-  if (panel.scrollTop === 0) return
   panel.scrollTop = 0
   panel.focus({ preventScroll: true })
 }
@@ -2527,8 +2527,8 @@ export function startAtTop(panel: Pick<HTMLElement, "scrollTop" | "focus">): voi
  * sentence: expanded in place it pushes its neighbours sideways, and a row that
  * held two of them could ask twice at once. Over the page the row stays where
  * it was, the panel cannot run off the edge of the window wherever the control
- * happens to sit, and the keyboard comes with it — `Esc` closes, and focus
- * starts on the cancel button rather than on the action.
+ * happens to sit, and the keyboard comes with it — `Esc` closes, and neither
+ * the cancel button nor the action has focus until Tab reaches it (`Dialog`).
  *
  * **What is being acted on is named under the title, not left to the warning**
  * (`Dialog` の `subject`). The warning shows what will happen, not which of the

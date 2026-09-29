@@ -579,9 +579,11 @@ export function TextArea({
  * **Not a native `<select>`.** The one part of a select the page can reach is
  * the closed box; the list it opens is drawn outside the page and matches
  * nothing else on it. What that costs is paid
- * here: ↑ / ↓ / Home / End walk the choices, Enter and Space choose, Escape
- * closes and hands focus back to the box. **No type-ahead** — a list long
- * enough to search is a picker with a box of its own, not a select.
+ * here: Tab goes into the choices, ↑ / ↓ / Home / End walk them, Enter and
+ * Space choose, Escape closes and hands focus back to the box. **Opening it
+ * moves no focus**: a choice that took the caret on its own would draw the ring
+ * over a list the reader opened with the pointer. **No type-ahead** — a list
+ * long enough to search is a picker with a box of its own, not a select.
  *
  * **What is chosen travels in a hidden field**, so the form around it submits
  * as it would around a native one. Given `onChange` it is controlled instead,
@@ -622,15 +624,12 @@ export function Select({
   const chosen = onChange === undefined ? held : (value ?? "")
   const current = options.find((option) => option.value === chosen)
 
-  // The line pressed closes the panel it is shown in and hands focus back to
-  // the box, the way Escape does (`useDismissible`).
   const choose = (event: React.MouseEvent<HTMLButtonElement>, next: string) => {
     if (onChange === undefined) setHeld(next)
     else onChange(next)
     const panel = event.currentTarget.closest("details")
     if (panel === null) return
-    panel.open = false
-    panel.querySelector("summary")?.focus()
+    closeChoices(panel, panel.querySelector("summary"), event.detail)
   }
   // The walk the browser's own list would have given.
   const walk = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -652,12 +651,6 @@ export function Select({
       <details
         ref={box}
         className={`relative ${width}`}
-        // Opened, the choice in force takes focus, so the walk starts from it.
-        onToggle={(event) => {
-          if (event.currentTarget.open) {
-            event.currentTarget.querySelector<HTMLElement>("[aria-selected='true']")?.focus()
-          }
-        }}
         // Leaving by Tab closes it, as leaving by Escape does: a panel left
         // open behind a focus that moved on is lying over something else.
         onBlur={(event) => {
@@ -706,6 +699,21 @@ export function Select({
       </details>
     </Labelled>
   )
+}
+
+/**
+ * Closing a `Select` once a line is chosen, given how many presses the click
+ * counted (`detail`).
+ *
+ * **Chosen by a key, the caret goes back to the box**, the way Escape hands it
+ * back (`useDismissible`): the line that had it is hidden, and a reader working
+ * by keyboard would be left on nothing. A key's click counts no presses.
+ * **Chosen by the pointer, the caret is left where it was** — the box taking it
+ * on its own would draw the ring.
+ */
+export function closeChoices(panel: { open: boolean }, box: Pick<HTMLElement, "focus"> | null, presses: number): void {
+  panel.open = false
+  if (presses === 0) box?.focus()
 }
 
 /**

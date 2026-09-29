@@ -525,16 +525,26 @@ describe("where a panel starts once shown", () => {
     }))
   })
 
-  it("leaves the caret on the first control when that is already in view", () => {
+  it("takes the caret itself even when the first control is in view", () => {
     const { box, focused } = panel(0)
     startAtTop(box)
     expect(box.scrollTop).toBe(0)
-    expect(focused).toEqual([])
+    expect(focused).toEqual([{ preventScroll: true }])
   })
 
   it("can take the caret, so that it can hold it at its top", () => {
     const html = render(<Dialog title="研究の変更点" held={{ open: true, close: () => undefined }}><p>x</p></Dialog>)
     expect(html).toMatch(/<dialog[^>]*tabindex="-1"/)
+  })
+
+  it("draws no ring while it holds the caret, a question as well as a form", () => {
+    const held = { open: true, close: () => undefined }
+    for (const html of [
+      render(<Dialog title="研究の変更点" held={held}><input name="x" /></Dialog>),
+      render(<Confirm title="記事の削除" warning="元に戻せません。" confirm="削除" held={held} />),
+    ]) {
+      expect(html).toMatch(/<dialog[^>]*class="[^"]*\boutline-none\b/)
+    }
   })
 })
 

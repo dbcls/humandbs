@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 
 import { Icon } from "~/components/icons"
 
-import { Answer, Field, focusTargetPath, languageFirst, MarkdownEditor, SaveNews, Select, Submit, TextArea } from "./form"
+import { Answer, closeChoices, Field, focusTargetPath, languageFirst, MarkdownEditor, SaveNews, Select, Submit, TextArea } from "./form"
 
 /** Rendered under a router, since a panel off a control watches the address to close. */
 function render(element: React.ReactNode): string {
@@ -54,6 +54,32 @@ describe("a select", () => {
 
     expect(html).toContain("sr-only\">単位<")
     expect(html).toContain("aria-label=\"単位\"")
+  })
+})
+
+describe("a select closing on a choice (closeChoices)", () => {
+  function closing(presses: number, box: boolean) {
+    const panel = { open: true }
+    let focused = 0
+    const focus = () => {
+      focused += 1
+    }
+    closeChoices(panel, box ? { focus } : null, presses)
+    return { open: panel.open, focused }
+  }
+
+  it("closes and hands the caret back to the box when chosen by a key", () => {
+    expect(closing(0, true)).toEqual({ open: false, focused: 1 })
+  })
+
+  it("closes and leaves the caret where it was when chosen by the pointer, however many presses", () => {
+    fc.assert(fc.property(fc.integer({ min: 1, max: 10 }), (presses) => {
+      expect(closing(presses, true)).toEqual({ open: false, focused: 0 })
+    }))
+  })
+
+  it("closes without a box to hand the caret to", () => {
+    expect(closing(0, false)).toEqual({ open: false, focused: 0 })
   })
 })
 
