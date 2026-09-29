@@ -241,6 +241,9 @@ services:
       target: proxy
     environment:
       TZ: ${HUMANDBS_TZ:-Asia/Tokyo}
+      # The host it hands on to the application and the object store is taken
+      # from this at start, and nginx does not start without one.
+      HUMANDBS_AUTH_REDIRECT_URI: ${HUMANDBS_AUTH_REDIRECT_URI:?HUMANDBS_AUTH_REDIRECT_URI is required}
     ports:
       - "${HUMANDBS_PUBLIC_BIND_HOST:-127.0.0.1}:${HUMANDBS_PUBLIC_PORT:-8080}:8080"
     depends_on:

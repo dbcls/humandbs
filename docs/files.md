@@ -22,7 +22,7 @@
 
 ### 配信の安全
 
-- ファイルストアのポートは外に出さない。ファイルストアの filer の HTTP は認証なしで非公開の bucket の中身まで返すためである。読み書きはすべて proxy を通し、署名付き URL の宛先もこのサイトの origin で作る。署名が host を含むためである。
+- ファイルストアのポートは外に出さない。ファイルストアの filer の HTTP は認証なしで非公開の bucket の中身まで返すためである。読み書きはすべて proxy を通し、署名付き URL の宛先もこのサイトの origin で作る。署名が host を含むためである。proxy はファイルストアに渡す host をこのサイトの host に固定するので、途中の中継が host を書き換えても署名は検証できる。
 - 配信するファイルを、このサイトの origin の文書として動かさない。Content-Type はアップロードした人が決め、ファイルストアは中身から種類を推測することもあるので、proxy がどちらの bucket にも `X-Content-Type-Options: nosniff` を付け、画像と PDF 以外は `Content-Disposition: attachment` にする。
 - SVG は画像として扱わず、attachment にする。直接開くと、SVG の中の script が実行されるためである。
 - PDF 以外には `Content-Security-Policy: sandbox` を付け、inline で開いても別の origin として script なしで表示させる。PDF を除くのは、ブラウザの PDF viewer が sandbox の中では動かないためである。`/private/` は常に attachment で sandbox を付ける。

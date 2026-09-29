@@ -57,4 +57,6 @@ CMD ["react-router-serve", "./build/server/index.js"]
 # application keeps its own copy, so a file this image lacks is still served.
 FROM docker.io/library/nginx:1.29-alpine AS proxy
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+# Run by the image's entrypoint before nginx starts; it has to stay executable.
+COPY docker/nginx/public-host.sh /docker-entrypoint.d/40-public-host.sh
 COPY --from=build /app/build/client /srv/client

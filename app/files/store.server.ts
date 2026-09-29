@@ -111,8 +111,9 @@ function getStore(): S3Client {
  *
  * **The endpoint is the site's own origin, not the store's.** The store's port
  * is not published, so a browser reaches it through the front proxy; a
- * signature covers the host it was made for, and the proxy passes that host on
- * unchanged, so the store verifies what the browser actually sent.
+ * signature covers the host it was made for, and the proxy hands the store this
+ * same host whatever Host header arrived, so the store verifies against the
+ * address the browser used.
  */
 function getSigner(): S3Client {
   const config = loadConfig(process.env)

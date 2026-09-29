@@ -33,6 +33,7 @@ cookie には推測できない値を 1 つだけ入れ、セッションの内�
 書き込みの要求は、同じ origin から来たものだけを受け付ける。
 
 - GET・HEAD・OPTIONS 以外の要求は、`Sec-Fetch-Site` が `same-origin` か `none` で、`Origin` を送るならそれがこのホストを指すときだけ通す。それ以外 (別のホスト、`null`、どちらのヘッダも無い) は理由を示さずに 403 を返す。ただし、ページを表示する route に別のホストか `null` の `Origin` で送られた要求は、React Router 自身の検査が先に 400 を返す。どちらも書き込みはしない。
+- 比べる相手のホストは proxy が app に渡す `Host` で、proxy はこれを `HUMANDBS_AUTH_REDIRECT_URI` の host に固定する ([deployment.md](deployment.md) の「構成」)。途中の中継が `Host` を書き換えても、ブラウザがアクセスしたアドレスと比べるためである。
 - 検査は root の middleware (`app/auth/csrf.ts`) で全 route に 1 か所でかける。React Router 自身の検査はページを表示する route にしか適用されず、`SameSite=Lax` の cookie は同じ登録ドメインの別のサブドメインからの POST にも付くためである。
 
 ## admin の追加と削除

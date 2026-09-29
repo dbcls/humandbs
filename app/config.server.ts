@@ -265,6 +265,11 @@ export function cookiesAreSecure(auth: AuthConfig): boolean {
  * store is only reachable inside the network, and its port is deliberately not
  * published — a browser has to go through the front proxy, and the signature
  * covers the host it was made for.
+ *
+ * **The front proxy derives the same host from the same variable** and hands it
+ * to the application and the store as their Host, so that a form's `Origin` and
+ * a signature are checked against this origin. Its script is held to
+ * `new URL(...).host` by a test; the two must not drift apart.
  */
 export function publicOrigin(auth: AuthConfig): string {
   return new URL(auth.redirectUri).origin

@@ -28,6 +28,7 @@ docker compose exec app npm run icd10:import             # ICD10 の配布物を
 - bucket を `s3:buckets` で先に作るのは、書き込みのついでに bucket を作らないためである。ファイルがどちらの bucket にあるかで公開か非公開かが決まるので、bucket は意図して作る。
 - ICD10 の配布物は repo に置かない。`icd10:import` が初回に取得して `migration/input/` に残し、2 回目からはそれを読む。開発用データの読み込みも同じファイルを読む。
 - proxy が 8080 番で待ち受けるのは、Keycloak (DDBJ の staging) に `http://localhost:8080/auth/callback` が登録されているためである。`HUMANDBS_PUBLIC_PORT` を変えるとログインできなくなる。ポータル固有の環境変数は `HUMANDBS_` で始まる。
+- 手元の proxy には `localhost:8080` でアクセスする。proxy は app に渡す host を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定するので ([deployment.md](deployment.md) の「構成」)、別の名前 (`127.0.0.1:8080` や `proxy:8080`) では表示はできても書き込みができない。
 
 ### 作り直す
 

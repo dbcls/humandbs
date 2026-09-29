@@ -20,6 +20,7 @@ staging と production は、この repo から作った image で動く。配�
 - 圧縮も proxy が行う。nginx の image は `gzip` が off なので、`docker/nginx/default.conf` で on にしている。
 - 安全のための header (CSP・`X-Frame-Options`・`nosniff`・`Referrer-Policy`) は、proxy がすべての応答に付ける。値は `docker/nginx/default.conf` にある。アプリが自分で `Referrer-Policy` を決めた応答 (共有リンク) はその値を残す。配信するファイルの header は [files.md](files.md) の「配信の安全」にある。
 - proxy は平文で待ち受け、TLS はホストの外の終端で処理する。proxy が `Strict-Transport-Security` を付けるのは、TLS の終端が `X-Forwarded-Proto: https` を渡したときだけである。終端がこの header を渡さないなら、HSTS は終端の側で付ける。
+- proxy は、app とファイルストアに渡す `Host` を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定し、ファイルストアには `X-Forwarded-Host` も同じ値で渡す。TLS の終端や途中の中継が `Host` を書き換えても、書き込みの `Origin` の検査 ([auth.md](auth.md) の「CSRF」) と署名付き URL の検証を、ブラウザがアクセスしたアドレスで行うためである。ファイルストアは `X-Forwarded-Host` があればその値で署名を検証する。host は proxy の起動時にこの変数から取り出し、取り出せなければ proxy は起動しない。
 - アシスタント (`assistant-api`) は `assistant` network にあり、同じ network にいるのは `app` だけである。アシスタントからは DB・ファイルストア・filer に接続できない。外部への通信はできる。
 
 ### podman-compose 1.0.6 に合わせていること
@@ -38,7 +39,7 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 
 | 変数 | 配置での意味 |
 |---|---|
-| `HUMANDBS_AUTH_REDIRECT_URI` | サイトの origin はこの値から決まる。presigned URL の宛先と cookie の `Secure` もここで決まるので、外から実際に見えるアドレスを書く |
+| `HUMANDBS_AUTH_REDIRECT_URI` | サイトの origin はこの値から決まる。presigned URL の宛先と cookie の `Secure` もここで決まるので、外から実際に見えるアドレスを書く。proxy が app とファイルストアに渡す host もこの値なので、別のアドレスでアクセスすると、表示はできるが書き込みと署名付き URL は失敗する |
 | `HUMANDBS_PUBLIC_BIND_HOST` / `HUMANDBS_PUBLIC_PORT` | proxy の待ち受け。TLS の終端が別のホストなので `0.0.0.0` にする |
 | `HUMANDBS_DATABASE_URL` / `HUMANDBS_OWNER_DATABASE_URL` | アプリの role と schema の owner。アプリの role は `migrate` が URL のとおりに作る |
 | `HUMANDBS_JGA_DATABASE_URL` | 申請管理システムの DB。配置先 (踏み台の内側) からは直接接続できるので、手元と違って値を埋める |
