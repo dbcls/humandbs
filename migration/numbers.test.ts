@@ -4,7 +4,6 @@ import {
   bilingualOf,
   byHand,
   counts,
-  labelTranslations,
   numbersWithUnit,
   readCell,
   storedNumber,
@@ -184,42 +183,24 @@ describe("what somebody read by hand", () => {
 })
 
 describe("sorting a v1 label or note to the side of its own language", () => {
-  const NO_TABLE = labelTranslations({})
-
   it("puts a string with kana or kanji in ja and leaves en empty", () => {
-    expect(bilingualOf("常染色体", NO_TABLE)).toEqual({ ja: "常染色体", en: "" })
-    expect(bilingualOf("平均", NO_TABLE)).toEqual({ ja: "平均", en: "" })
+    expect(bilingualOf("常染色体")).toEqual({ ja: "常染色体", en: "" })
+    expect(bilingualOf("平均")).toEqual({ ja: "平均", en: "" })
   })
 
   it("puts a string with no Japanese script in en and leaves ja empty", () => {
-    expect(bilingualOf("GWAS", NO_TABLE)).toEqual({ ja: "", en: "GWAS" })
-    expect(bilingualOf("", NO_TABLE)).toEqual({ ja: "", en: "" })
-  })
-
-  it("takes both sides from the table when the exact string is on record", () => {
-    const table = labelTranslations({ 常染色体: { ja: "常染色体", en: "Autosome" } })
-    expect(bilingualOf("常染色体", table)).toEqual({ ja: "常染色体", en: "Autosome" })
-  })
-
-  it("falls back to the script rule for a string the table does not hold", () => {
-    const table = labelTranslations({ 常染色体: { ja: "常染色体", en: "Autosome" } })
-    expect(bilingualOf("GWAS", table)).toEqual({ ja: "", en: "GWAS" })
+    expect(bilingualOf("GWAS")).toEqual({ ja: "", en: "GWAS" })
+    expect(bilingualOf("")).toEqual({ ja: "", en: "" })
   })
 })
 
 describe("storedNumber", () => {
   const READ = { label: "常染色体", value: 6_000_000, unit: "SNVs", high: null, note: "約 hg19" }
 
-  it("sorts the label and the note by script when there is no translation table", () => {
+  it("sorts the label and the note by script", () => {
     const stored = storedNumber(READ, 6_000_000, "SNVs")
     expect(stored.label).toEqual({ ja: "常染色体", en: "" })
     expect(stored.note).toEqual({ ja: "約 hg19", en: "" })
-  })
-
-  it("takes both sides from the table when it is given one", () => {
-    const table = labelTranslations({ 常染色体: { ja: "常染色体", en: "Autosome" } })
-    const stored = storedNumber(READ, 6_000_000, "SNVs", null, table)
-    expect(stored.label).toEqual({ ja: "常染色体", en: "Autosome" })
   })
 
   it("leaves the label and the note null when the line read neither", () => {

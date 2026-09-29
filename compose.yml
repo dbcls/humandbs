@@ -128,8 +128,8 @@ services:
     init: true
 
   # The same image for everything else an operator runs once: the admin list,
-  # the buckets, the ICD10 import, the data migration and the file have. It
-  # has the owner's connection as well, which the served application does not.
+  # the buckets and the ICD10 import. It has the owner's connection as well,
+  # which the served application does not.
   # `migration/input/` is not in the image (it is kept out of the repository),
   # so it is mounted here.
   tools:

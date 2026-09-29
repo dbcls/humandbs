@@ -113,7 +113,7 @@ docker compose exec app npm run db:seed-review     # レビュー中の下書き
 
 - `db:load-dev-data` は全部を 1 つのトランザクションで置き換えるので、途中で失敗しても前のデータが残る。admin とセッションは消さない。schema を変えたら `db:migrate:dev` のあとに流し直す。
 - 記事・お知らせ・アラートの本文は本番と同じ変換を通る。旧ポータルの HTML は markdown に変換され、扱えない記法があると止まる。
-- `s3:common-assets` は、本文が参照しているファイルだけを旧ポータル (`HUMANDBS_LEGACY_ORIGIN`) から取得してアップロードする。取得したファイルは `migration/input/public-files/` に残るので、2 回目からは外部に取りに行かない。
+- `s3:common-assets` は、本文が参照しているファイルだけを本番のポータルの `https://humandbs.dbcls.jp/files/common/` から取得してアップロードする。取得したファイルは `migration/input/public-files/` に残るので、2 回目からは外部に取りに行かない。
 - `db:seed-review` は、コメント・提供者が押したボタンの記録・未確定と未翻訳の欄・ID の無いデータセットを含む下書きを足す。何度流しても結果は同じである。`db:load-dev-data` を流し直したら実行し直す。
 - 外部 accession の日付は dump の初出日から作る。JGAD の日付は申請管理システムから取れないので入らない。
 

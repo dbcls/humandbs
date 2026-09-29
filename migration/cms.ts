@@ -114,9 +114,9 @@ export const UNPUBLISHED_SLUGS = ["hum0185-v1-st1"]
 
 const INPUT = join(process.cwd(), "migration", "input")
 
-/** Reads `cms.json` from `dir`, which defaults to the development input. */
-export function loadCms(dir: string = INPUT): CmsDump {
-  return JSON.parse(readFileSync(join(dir, "cms.json"), "utf8")) as CmsDump
+/** Reads `cms.json` from the development input. */
+export function loadCms(): CmsDump {
+  return JSON.parse(readFileSync(join(INPUT, "cms.json"), "utf8")) as CmsDump
 }
 
 const LOCALES = ["ja", "en"] as const

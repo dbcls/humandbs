@@ -123,9 +123,7 @@ function plainList(values: readonly (string | null | undefined)[] | null | undef
  * **Companies that bought each other are not merged here.** `Thermo Fisher
  * Scientific`, `Life Technologies`, `Applied Biosystems` and `Affymetrix` name
  * one another's histories rather than one another, and so do `BGI` and `MGI`;
- * telling which machines are the same needs the machine, not the company. The
- * production load settles that by hand, machine by machine, and there one
- * machine sold under two company names is one term (`vocabulary-plan.ts`).
+ * telling which machines are the same needs the machine, not the company.
  */
 const MAKER_SPELLINGS: Record<string, string> = {
   "MGI Tech": "MGI",
@@ -262,13 +260,7 @@ export const DISEASE_SET = "icd10"
 export const DISEASE_KEY = "disease"
 
 /** The v1 field whose free text names the diseases, in both languages. */
-export const DISEASE_SOURCE = "Materials and Participants"
-
-/** The text the diseases are read from, one string per language, lines apart. */
-export interface DiseaseText {
-  ja: string
-  en: string
-}
+const DISEASE_SOURCE = "Materials and Participants"
 
 /**
  * The diseases one experiment's article names.
@@ -278,13 +270,8 @@ export interface DiseaseText {
  * once by translating the Japanese away, once by replacing the English with the
  * classification's own heading. The article still has both
  * (`migration/diseases.ts`).
- *
- * **The text is the article's own where the load has it** (`written`): v1
- * made its line breaks spaces, which ran the count ending one line into the
- * name starting the next (`6症例 IM`), and made its brackets half-width.
  */
-function diseasesOf(experiment: EsExperiment, written?: DiseaseText): ReturnType<typeof diseasesIn> {
-  if (written !== undefined) return diseasesIn(written.ja, written.en)
+function diseasesOf(experiment: EsExperiment): ReturnType<typeof diseasesIn> {
   const node = experiment.data?.[DISEASE_SOURCE]
   if (node === undefined) return []
   return diseasesIn(node.ja?.text ?? "", node.en?.text ?? "")
@@ -910,20 +897,14 @@ export function facetValueSlots(
     keyIdByCode: Map<string, string>
     termIdBySetAndCode: Map<string, string>
     knownCode: (code: string) => boolean
-    /**
-     * The terms a code goes to where the vocabulary was settled by hand: one,
-     * several, or none (`vocabulary-plan.ts`). Without it, a code is its own term.
-     */
-    termIdsOf?: (setCode: string, code: string) => string[]
   },
-  diseaseText?: DiseaseText,
 ): SourceValueSlot[] {
   const searchable = experiment.searchable ?? {}
   const slots: SourceValueSlot[] = []
-  const termIdsOf = identity.termIdsOf ?? ((setCode: string, code: string) => {
+  const termIdsOf = (setCode: string, code: string): string[] => {
     const id = identity.termIdBySetAndCode.get(`${setCode}/${code}`)
     return id === undefined ? [] : [id]
-  })
+  }
   for (const facet of VOCABULARY_FACETS) {
     const keyId = identity.keyIdByCode.get(facet.code)
     if (keyId === undefined || facet.read === null) continue
@@ -931,7 +912,7 @@ export function facetValueSlots(
     if (termIds.length === 0) continue
     slots.push({ keyId, value: { kind: "vocabulary", termIds: { state: "value", value: termIds } } })
   }
-  slots.push(...diseaseSlots(experiment, identity, diseaseText))
+  slots.push(...diseaseSlots(experiment, identity))
   for (const facet of NUMBER_FACETS) {
     const keyId = identity.keyIdByCode.get(facet.code)
     const held = facet.read(searchable)
@@ -962,11 +943,10 @@ export function diseaseSlots(
     termIdBySetAndCode: Map<string, string>
     knownCode: (code: string) => boolean
   },
-  text?: DiseaseText,
 ): SourceValueSlot[] {
   const keyId = identity.keyIdByCode.get(DISEASE_KEY)
   if (keyId === undefined) return []
-  const diseases: DiseaseValue[] = diseasesOf(experiment, text).map((seed) => ({
+  const diseases: DiseaseValue[] = diseasesOf(experiment).map((seed) => ({
     termIds: [...new Set(seed.codes.flatMap((written) => {
       const code = icd10Resolve(written, identity.knownCode)
       if (code === null) return []

@@ -87,22 +87,20 @@ describe("a cell of groups under headings alone on their lines", () => {
   const cell = fc.integer({ min: 2, max: 4 }).chain((count) => fc.record({
     count: fc.constant(count),
     prefix: fc.array(word, { maxLength: 2 }),
-    groups: fc.array(fc.record({ study: fc.integer({ min: 1, max: count }), lines: fc.array(word, { minLength: 1, maxLength: 3 }) }), { minLength: 1, maxLength: 5 }),
+    groups: fc.array(fc.record({ heading: fc.integer({ min: 1, max: count }), lines: fc.array(word, { minLength: 1, maxLength: 3 }) }), { minLength: 1, maxLength: 5 }),
   }))
   const labelOf = (n: number) => `JGAD00000${String(n)}`
-  const studyOf = (n: number) => `JGAS00000${String(n)}`
 
-  const divide = ({ count, prefix, groups }: { count: number, prefix: string[], groups: { study: number, lines: string[] }[] }) => {
-    const text = [...prefix, ...groups.flatMap((group) => [`【${studyOf(group.study)}】`, ...group.lines])].join("\n")
+  const divide = ({ count, prefix, groups }: { count: number, prefix: string[], groups: { heading: number, lines: string[] }[] }) => {
+    const text = [...prefix, ...groups.flatMap((group) => [`【${labelOf(group.heading)}】`, ...group.lines])].join("\n")
     const labels = Array.from({ length: count }, (_, i) => labelOf(i + 1))
-    const studies = new Map(labels.map((label, i) => [studyOf(i + 1), [label]]))
     const all: PublishedDataset[] = labels.map((label) => ({
       label,
       humId: "hum0001",
       firstListedOn: null,
       doc: { datasetId: label, version: "v1", humId: "hum0001", experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }] },
     }))
-    const owned = ownLines(all, undefined, undefined, studies)
+    const owned = ownLines(all)
     return new Map(all.map((one) => {
       const content = buildDatasetContent({
         dataset: one,
@@ -114,7 +112,6 @@ describe("a cell of groups under headings alone on their lines", () => {
         typeOfDataKeyCode: "type-of-data",
         datasetLabels: new Set(labels),
         ownLines: owned,
-        studies,
         unread: [],
         byHand: new Map(),
       })
@@ -128,10 +125,10 @@ describe("a cell of groups under headings alone on their lines", () => {
     fc.assert(fc.property(cell, (input) => {
       const divided = divide(input)
       for (const [label, lines] of divided) {
-        const own = input.groups.filter((group) => labelOf(group.study) === label)
+        const own = input.groups.filter((group) => labelOf(group.heading) === label)
         const expected = own.length === 0
-          ? [...input.prefix, ...input.groups.flatMap((group) => [`【${studyOf(group.study)}】`, ...group.lines])]
-          : [...input.prefix, ...input.groups.flatMap((group) => (labelOf(group.study) === label ? [`【${studyOf(group.study)}】`, ...group.lines] : []))]
+          ? [...input.prefix, ...input.groups.flatMap((group) => [`【${labelOf(group.heading)}】`, ...group.lines])]
+          : [...input.prefix, ...input.groups.flatMap((group) => (labelOf(group.heading) === label ? [`【${labelOf(group.heading)}】`, ...group.lines] : []))]
         expect(lines).toEqual(expected)
       }
     }))
@@ -141,8 +138,8 @@ describe("a cell of groups under headings alone on their lines", () => {
     fc.assert(fc.property(cell, (input) => {
       const divided = divide(input)
       for (const group of input.groups) {
-        const block = [`【${studyOf(group.study)}】`, ...group.lines].join("\n")
-        expect(divided.get(labelOf(group.study))?.join("\n")).toContain(block)
+        const block = [`【${labelOf(group.heading)}】`, ...group.lines].join("\n")
+        expect(divided.get(labelOf(group.heading))?.join("\n")).toContain(block)
       }
     }))
   })

@@ -1,11 +1,12 @@
 /**
  * Fills the `common/` prefix with the images and documents articles point at.
  *
- * The bodies are not in the repository. They are fetched from the portal the
- * development data came from and left under `migration/input/` (git-ignored),
- * so a second run reads what is there and does not go out; a hand-placed copy
- * under the same name is used as it stands, which is how an environment with no
- * way out runs this at all. This is the arrangement the ICD10 dictionary uses.
+ * The bodies are not in the repository. They are fetched from the production
+ * portal, which serves the same prefix, and left under `migration/input/`
+ * (git-ignored), so a second run reads what is there and does not go out; a
+ * hand-placed copy under the same name is used as it stands, which is how an
+ * environment with no way out runs this at all. This is the arrangement the
+ * ICD10 dictionary uses.
  *
  * **What is fetched is what the content refers to.** The list is read out of the
  * database rather than written down here, so an article that starts pointing at
@@ -33,9 +34,8 @@ import { referencedCommonFiles } from "~/files/common-references.server"
 import { COMMON_PREFIX_NAME, PUBLIC_BUCKET } from "~/files/prefix"
 import { contentTypeOf } from "~/files/content-types"
 
-/** Where the portal these files still live on serves them from. */
-const ORIGIN = process.env.HUMANDBS_LEGACY_ORIGIN ?? "https://humandbs.dbcls.jp"
-const LEGACY_PREFIX = "/public-files/"
+/** Where the production portal serves the prefix from. */
+const SOURCE = `https://humandbs.dbcls.jp/files/${COMMON_PREFIX_NAME}/`
 
 /** Kept beside the other inputs the development data is built from. */
 const LOCAL_ROOT = join(import.meta.dirname, "..", "migration", "input", "public-files")
@@ -49,13 +49,13 @@ const client = new S3Client({
   credentials: { accessKeyId: store.accessKeyId, secretAccessKey: store.secretAccessKey },
 })
 
-/** The body, from what was kept last time or from the portal that still has it. */
+/** The body, from what was kept last time or from the production portal. */
 async function bodyOf(name: string): Promise<Buffer> {
   const local = join(LOCAL_ROOT, name)
   try {
     return readFileSync(local)
   } catch {
-    const from = `${ORIGIN}${LEGACY_PREFIX}${name.split("/").map(encodeURIComponent).join("/")}`
+    const from = `${SOURCE}${name.split("/").map(encodeURIComponent).join("/")}`
     const response = await fetch(from)
     if (!response.ok) throw new Error(`${from} returned ${response.status}`)
     const body = Buffer.from(await response.arrayBuffer())

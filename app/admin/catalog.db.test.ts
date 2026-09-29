@@ -12,7 +12,7 @@ import * as s from "~/db/schema"
 import { seedVersion } from "~/db/seed"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
-import { catalogAction, catalogPage, fieldTermsPage, linkTermsToDocuments } from "./catalog.server"
+import { catalogAction, catalogPage, fieldTermsPage } from "./catalog.server"
 import { saveDatasetEntry } from "./drafts.server"
 
 /**
@@ -1071,54 +1071,5 @@ describe("an article linked only from the data use policies", () => {
       documentId: "",
     }))).toMatchObject({ status: "ok" })
     expect(only(await db.select().from(s.vocabularyTerm)).labelEn).toBe("Whole blood")
-  })
-
-  it("throws when the migration asks to link a term of another vocabulary, and sets nothing", async () => {
-    const setId = await vocabulary("tissue")
-    await term(setId, "blood")
-    await documentAt("guidelines/data-use-policy")
-
-    await expect(linkTermsToDocuments(db, [
-      { setCode: "tissue", termCode: "blood", documentSlug: "guidelines/data-use-policy" },
-    ])).rejects.toThrow()
-    expect(only(await db.select().from(s.vocabularyTerm)).documentId).toBeNull()
-  })
-})
-
-describe("linking terms to documents by slug, the way the migration does it", () => {
-  it("sets document_id on the named term", async () => {
-    const setId = await vocabulary("policies")
-    const termId = await term(setId, "policy-hum0001")
-    await documentAt("guidelines/data-use-policy")
-
-    await linkTermsToDocuments(db, [
-      { setCode: "policies", termCode: "policy-hum0001", documentSlug: "guidelines/data-use-policy" },
-    ])
-
-    expect(only(await db.select().from(s.vocabularyTerm)).id).toBe(termId)
-    const [row] = await db.select({ documentId: s.vocabularyTerm.documentId }).from(s.vocabularyTerm)
-    const [doc] = await db.select({ id: s.document.id }).from(s.document)
-    expect(row?.documentId).toBe(doc?.id)
-  })
-
-  it("throws on a term the vocabulary does not hold, and sets nothing", async () => {
-    const setId = await vocabulary("policies")
-    await documentAt("guidelines/data-use-policy")
-
-    await expect(linkTermsToDocuments(db, [
-      { setCode: "policies", termCode: "no-such-policy", documentSlug: "guidelines/data-use-policy" },
-    ])).rejects.toThrow()
-    expect(only(await db.select().from(s.vocabularySet)).id).toBe(setId)
-  })
-
-  it("throws on a slug no document has", async () => {
-    const setId = await vocabulary("policies")
-    const termId = await term(setId, "policy-hum0001")
-
-    await expect(linkTermsToDocuments(db, [
-      { setCode: "policies", termCode: "policy-hum0001", documentSlug: "no-such-document" },
-    ])).rejects.toThrow()
-    expect(only(await db.select().from(s.vocabularyTerm)).id).toBe(termId)
-    expect(only(await db.select().from(s.vocabularyTerm)).documentId).toBeNull()
   })
 })

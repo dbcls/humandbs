@@ -44,10 +44,9 @@ import {
   ownLines,
 } from "./build"
 import { countingKeys, prefixedVersion, type SourceDatasetContent, type SourceVersionContent } from "./number-words"
-import { withoutKeys } from "./archive-keys"
 import { ACCESS_CRITERIA_KEY, TYPE_OF_DATA_KEY } from "./catalog"
 import { loadDump, selectPublishedDatasets, versionNumber } from "./es"
-import { DROPPED_FILE_KEYS } from "./file-keys"
+import { DROPPED_FILE_KEYS, withoutKeys } from "./file-keys"
 import {
   identityOf,
   insertChunked,

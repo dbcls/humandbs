@@ -18,23 +18,12 @@
  * somebody works through. Measured over the dump the rules below read 74–99% of
  * the lines depending on the key, and every line they decline is counted.
  *
- * **This runs again at cutover, over data that has moved on.** What is here was
- * written against a dump taken at one moment; the real migration reads the
- * archive as it stands then, and every count in these comments is a count of
- * that dump rather than a property of the rules. Three things follow:
- *
- * - **The residue has to be re-read.** `input/unread-numbers.json` is produced
- *   by a run, not kept between them, and lines that were read by hand are
- *   matched by their exact text (`input/read-by-hand.json`). A line whose
- *   wording changed upstream falls back into the residue rather than being read
- *   as something it no longer states, which is the safe direction — but it means
- *   the by-hand file is a starting point at cutover, not an answer
- * - **The coverage figures have to be measured again**, because whether a rule
- *   reads 90% or 60% of a key is what decides if that key should be a number at
- *   all
- * - **Nothing here is idempotent and nothing needs to be.** The development
- *   load rebuilds from the dump every time; the cutover runs once against the
- *   real archive and is checked by hand
+ * **The counts in these comments are counts of the dump** the development
+ * data is built from, not properties of the rules. The residue is written to
+ * `input/unread-numbers.json` on every run rather than kept between runs, and
+ * the lines read by hand (`input/read-by-hand.json`) are matched by their exact
+ * text, so a line whose wording differs falls back into the residue rather than
+ * being read as something it does not state.
  */
 
 import type { Bilingual } from "~/content/types"
@@ -52,39 +41,17 @@ export interface ReadNumber {
   note: string | null
 }
 
-/**
- * A source string translated by hand, keyed by the exact string. Optional: a
- * run without the file translates by which script a string is written in
- * alone (`bilingualOf`), the same as a run before anybody has translated
- * anything.
- */
-export type LabelTranslations = ReadonlyMap<string, Bilingual>
-
 /** Kana and kanji, the two scripts a v1 label or note is written in when it is Japanese. */
 const JAPANESE = /[぀-ヿ㐀-䶿一-鿿]/
 
 /**
- * A v1 string, sorted to the side of its own language. **The table wins when it
- * has both sides** — a hand translation is a fact about the string, not a guess
- * from its script — and a string the table does not hold goes to `ja` when it
- * contains kana or kanji and to `en` otherwise. Nothing here decides that a
+ * A v1 string, sorted to the side of its own language: `ja` when it contains
+ * kana or kanji and `en` otherwise. Nothing here decides that a
  * string needs no translation: `ja` holding a Japanese string with `en` empty
  * is the ordinary, untranslated shape a curator later fills in.
  */
-export function bilingualOf(source: string, table: LabelTranslations): Bilingual {
-  const found = table.get(source)
-  if (found !== undefined) return found
+export function bilingualOf(source: string): Bilingual {
   return JAPANESE.test(source) ? { ja: source, en: "" } : { ja: "", en: source }
-}
-
-/**
- * The hand translation table, read into the map `bilingualOf` looks a string
- * up in. The file it comes from (`input/l12/hand/number-labels.json`) is
- * gitignored and may not exist yet, so a caller passes `{}` where it is
- * absent rather than this function reading the file itself.
- */
-export function labelTranslations(raw: Readonly<Record<string, Bilingual>>): LabelTranslations {
-  return new Map(Object.entries(raw))
 }
 
 /** The multipliers a Japanese count may be written with. */
@@ -452,26 +419,24 @@ export function counts(units: readonly string[] = []) {
 /**
  * What the catalog stores, once the unit a line was written in is converted.
  * `convertedHigh` is the upper end of a width, converted the same way; null on
- * every reading that is not one. `translations` sorts the label and the note
- * to the side of their own language, or takes both sides from a hand
- * translation where one is on record (`bilingualOf`).
+ * every reading that is not one. The label and the note are sorted to the side
+ * of their own language (`bilingualOf`).
  */
 export function storedNumber(
   read: ReadNumber,
   converted: number,
   canonical: string | null,
   convertedHigh: number | null = null,
-  translations: LabelTranslations = new Map(),
 ): SourceNumber {
   return {
-    label: read.label === null ? null : bilingualOf(read.label, translations),
+    label: read.label === null ? null : bilingualOf(read.label),
     value: converted,
     unit: canonical,
     inputValue: read.value,
     inputUnit: read.unit,
     high: convertedHigh,
     inputHigh: read.high,
-    note: read.note === null ? null : bilingualOf(read.note, translations),
+    note: read.note === null ? null : bilingualOf(read.note),
   }
 }
 

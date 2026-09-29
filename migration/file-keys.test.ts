@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { withoutKeys } from "./archive-keys"
+import { withoutKeys } from "./file-keys"
 
 const value = (keyId: string) => ({ keyId, value: { kind: "text" } })
 

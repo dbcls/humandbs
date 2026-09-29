@@ -74,7 +74,7 @@ repo の主なディレクトリと、そこに置くものを挙げる。型と
 | `app/cart/` `app/icd10/` `app/assistant/` | カート、ICD10 の分類、申請支援アシスタントへの中継 |
 | `app/components/` | 画面の部品。見た目の規則は source を読むテストにある ([development.md](development.md) の「画面の規則のテスト」) |
 | `app/i18n/` | 画面の文言の辞書 (`messages.ts`、日本語と英語) と、表示する言語の選び方 |
-| `migration/` | 旧ポータルのデータを変換して入れる処理 (開発用データと本番の移行) |
+| `migration/` | 旧ポータルの dump から開発用データを作って入れる処理 |
 | `scripts/` | `npm run` から呼ぶ CLI と、配置先の更新 (`deploy.sh`) |
 | `drizzle/` | 配置先に適用する schema の migration。`npm run db:generate` で作る ([deployment.md](deployment.md)) |
 | `docker/` | nginx、Postgres の初期化、SeaweedFS の設定 |

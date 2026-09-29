@@ -109,7 +109,7 @@ function one<T>(rows: T[]): T {
  * column is part of the draft rather than of a table of links: turning sharing
  * off and on again has to give back the same address.
  */
-export function newShareToken(): string {
+function newShareToken(): string {
   return randomBytes(SHARE_TOKEN_BYTES).toString("base64url")
 }
 

@@ -52,10 +52,7 @@ import type {
   EsSummaryShort,
   PublishedDataset,
 } from "./es"
-import { DASH } from "./dashes"
 import {
-  DISEASE_SOURCE,
-  type DiseaseText,
   facetValueSlots,
   MERGED_READERS,
   NUMBER_FACETS,
@@ -65,7 +62,7 @@ import {
   type TextNumberKey,
   VOCABULARY_FACETS,
 } from "./facets"
-import { readCell, storedNumber, withHandReadings, type LabelTranslations, type ReadNumber } from "./numbers"
+import { readCell, storedNumber, withHandReadings, type ReadNumber } from "./numbers"
 import { richTextFromMarkdown, richTextFromPlain } from "./richtext"
 
 function held<T>(value: T): Slot<T> {
@@ -73,9 +70,16 @@ function held<T>(value: T): Slot<T> {
 }
 
 /**
+ * A dash and nothing else, of any of the widths the articles type. An
+ * article's experiment table has a row for every heading of its template, and
+ * the rows that do not apply to the experiment hold a dash.
+ */
+export const DASH = /^[\s\u00a0\u3000]*[-\uff0d\u30fc\u2015\u2014\u2013\u2010]+[\s\u00a0\u3000]*$/
+
+/**
  * A cell the article filled with a dash: the row did not apply to the
- * experiment (`dashes.ts`). A dash in one language is that language's; a
- * number or a term has no language, so a dash in either language is enough.
+ * experiment. A dash in one language is that language's; a number or a term
+ * has no language, so a dash in either language is enough.
  */
 function isDashCell(value: EsBilingualRich | null | undefined): boolean {
   const ja = value?.ja?.text ?? ""
@@ -83,38 +87,21 @@ function isDashCell(value: EsBilingualRich | null | undefined): boolean {
   return (DASH.test(ja) || DASH.test(en)) && [ja, en].every((text) => text.trim() === "" || DASH.test(text))
 }
 
-/**
- * How one language of a v1 rich value becomes prose. The default reads v1's
- * extracted text, which is markdown, and leaves the HTML it came from behind;
- * a load that recovers what the extraction lost passes its own.
- */
-export type ProseReader = (value: EsRichText | null | undefined, lang: "ja" | "en") => RichText
-
-export const proseFromText: ProseReader = (value) => richTextFromMarkdown(value?.text ?? "")
-
-function prose(value: EsBilingualRich | null | undefined, read: ProseReader): TranslatedRichText {
+/** A v1 rich value as prose: v1's extracted text, which is markdown. */
+function prose(value: EsBilingualRich | null | undefined): TranslatedRichText {
   return {
-    ja: held(read(value?.ja, "ja")),
-    en: held(read(value?.en, "en")),
+    ja: held(richTextFromMarkdown(value?.ja?.text ?? "")),
+    en: held(richTextFromMarkdown(value?.en?.text ?? "")),
   }
 }
 
-/**
- * How one language of a v1 value v2 holds as a single line becomes the line.
- * The default keeps v1's text; a load that has the pages v1 read it from
- * passes its own.
- */
-export type TextReader = (value: string, lang: "ja" | "en") => string
-
-const textAsV1Wrote: TextReader = (value) => value
-
 /** A v1 rich field that v2 holds as a value, which is its text without markup. */
-function valueText(value: EsBilingualRich | null | undefined, read: TextReader): TranslatedText {
-  return { ja: held(read(value?.ja?.text ?? "", "ja")), en: held(read(value?.en?.text ?? "", "en")) }
+function valueText(value: EsBilingualRich | null | undefined): TranslatedText {
+  return { ja: held(value?.ja?.text ?? ""), en: held(value?.en?.text ?? "") }
 }
 
-function plainText(value: EsBilingual | null | undefined, read: TextReader = textAsV1Wrote): TranslatedText {
-  return { ja: held(read(value?.ja ?? "", "ja")), en: held(read(value?.en ?? "", "en")) }
+function plainText(value: EsBilingual | null | undefined): TranslatedText {
+  return { ja: held(value?.ja ?? ""), en: held(value?.en ?? "") }
 }
 
 /** The language that has a value wins; when both do they agree in the data. */
@@ -204,44 +191,36 @@ export interface ResearchContentInput {
    * every dataset in `datasetIdByLabel` counts as this research's.
    */
   humOfLabel?: ReadonlyMap<string, string>
-  readProse?: ProseReader
-  /** The reader of the listing summary, which the old portal wrote on the listing rather than on the research's page. */
-  readListing?: ProseReader
-  /** The reader of the values held as a single line: providers, projects, grants and publication titles. */
-  readText?: TextReader
 }
 
 export function buildResearchContent(input: ResearchContentInput): ResearchContent {
   const { version: rv, listingSummary, datasetIdByLabel, humOfLabel } = input
-  const read = input.readProse ?? proseFromText
-  const readListing = input.readListing ?? read
-  const readText = input.readText ?? textAsV1Wrote
   const own = (label: string): boolean => humOfLabel === undefined || humOfLabel.get(label) === rv.humId
 
   const dataProviders: DataProvider[] = (rv.dataProvider ?? []).map((p, i) => ({
     id: `data-provider-${i + 1}`,
-    name: valueText(p.name, readText),
+    name: valueText(p.name),
     organization: {
-      name: valueText(p.organization?.name, readText),
+      name: valueText(p.organization?.name),
     },
   }))
 
   const researchProjects: ResearchProject[] = (rv.researchProject ?? []).map((p, i) => ({
     id: `research-project-${i + 1}`,
-    name: valueText(p.name, readText),
+    name: valueText(p.name),
     url: localizedLinks([p.url?.ja], [p.url?.en], `research-project-${i + 1}-url`),
   }))
 
   const grants: Grant[] = (rv.grant ?? []).map((g, i) => ({
     id: `grant-${i + 1}`,
-    title: plainText(g.title, readText),
-    agency: { name: plainText(g.agency?.name, readText) },
+    title: plainText(g.title),
+    agency: { name: plainText(g.agency?.name) },
     grantIds: held(g.id ?? []),
   }))
 
   const relatedPublications: RelatedPublication[] = (rv.relatedPublication ?? []).map((p, i) => ({
     id: `publication-${i + 1}`,
-    title: single(p.title?.en && readText(p.title.en, "en"), p.title?.ja && readText(p.title.ja, "ja")),
+    title: single(p.title?.en, p.title?.ja),
     doi: single(p.doi),
     ...publicationDatasets(p.datasetIds ?? [], datasetIdByLabel, own),
   }))
@@ -249,15 +228,15 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
   return {
     title: plainText(rv.title),
     summary: {
-      aims: prose(rv.summary?.aims, read),
-      methods: prose(rv.summary?.methods, read),
-      targets: prose(rv.summary?.targets, read),
+      aims: prose(rv.summary?.aims),
+      methods: prose(rv.summary?.methods),
+      targets: prose(rv.summary?.targets),
       url: localizedLinks(rv.summary?.url?.ja ?? [], rv.summary?.url?.en ?? [], "summary-url"),
     },
     listingSummary: {
-      methods: prose(listingSummary?.methods, readListing),
-      targets: prose(listingSummary?.targets, readListing),
-      typeOfData: prose(listingSummary?.typeOfData, readListing),
+      methods: prose(listingSummary?.methods),
+      targets: prose(listingSummary?.targets),
+      typeOfData: prose(listingSummary?.typeOfData),
       // Empty, which is what makes the listing read the research's own
       // providers. v1 draws the column from the same names, so a table built
       // this way shows what v1's shows; a copy taken here would instead be a
@@ -265,7 +244,7 @@ export function buildResearchContent(input: ResearchContentInput): ResearchConte
       // correction made to the first.
       dataProviders: [],
     },
-    releaseNote: prose(rv.releaseNote, read),
+    releaseNote: prose(rv.releaseNote),
     dataProviders,
     researchProjects,
     grants,
@@ -322,48 +301,34 @@ const BRACKETED = /[（(]([^)）]*)[)）]/g
  */
 const HEADED = /^\s*(?:【([^】]*)】|\[([^\]]*)\](?!\())(.*)$/
 
-/** JGAS to the JGAD registered under it (`inversion.ts` の `jgadsByStudy`). */
-export type Studies = ReadonlyMap<string, readonly string[]>
-
-const NO_STUDIES: Studies = new Map()
-
 /**
  * What a line states, and the datasets it is about, if any. The label before
  * the colon names them itself (`JGAD000001(追加)`), in the brackets after a
- * caption (`大腸がん(JGAD000139)`), or by the study they are registered under
- * (`JGAS000630：…`); so does a heading in brackets at the start
- * (`【JGAS000586】…`). **A heading with nothing after it names no dataset
+ * caption (`大腸がん(JGAD000139)`); so does a heading in brackets at the start
+ * (`【JGAD000001】…`). **A heading with nothing after it names no dataset
  * here**: it heads the lines under it, and taking it away alone would leave
  * them without it.
  */
-function readLine(line: string, labels: ReadonlySet<string>, studies: Studies = NO_STUDIES): {
+function readLine(line: string, labels: ReadonlySet<string>): {
   said: string
   about: string[]
-  /** Named by a heading in brackets or by a study: a line of a list the cell is made of (`staying`). */
+  /** Named by a heading in brackets: a line of a list the cell is made of (`staying`). */
   headed: boolean
 } {
   const headed = HEADED.exec(line)
   if (headed !== null) {
     const said = (headed[3] ?? "").trim()
-    const { about } = namedIn(headed[1] ?? headed[2] ?? "", labels, studies)
+    const about = namedIn(headed[1] ?? headed[2] ?? "", labels)
     if (said !== "" && about.length > 0) return { said, about, headed: true }
   }
   const at = topLevelColon(line)
   if (at === -1) return { said: line.trim(), about: [], headed: false }
   const label = line.slice(0, at)
-  const direct = namedIn(label.replace(BRACKETED, ""), labels, studies)
+  const direct = namedIn(label.replace(BRACKETED, ""), labels)
   // A link's address is in brackets too, and names nothing.
   const inBrackets = [...label.matchAll(BRACKETED)]
-    .map((match) => (match[1]?.includes("://") ? { about: [], byStudy: false, byLabel: false } : namedIn(match[1] ?? "", labels, studies)))
-  const found = direct.about.length > 0
-    ? direct
-    : {
-        about: inBrackets.flatMap((one) => one.about),
-        byStudy: inBrackets.some((one) => one.byStudy),
-        byLabel: inBrackets.some((one) => one.byLabel),
-      }
-  // A label naming a dataset directly is read as it always was; one naming only a study is a heading.
-  return { said: line.slice(at + 1).trim(), about: found.about, headed: found.byStudy && !found.byLabel }
+    .flatMap((match) => (match[1]?.includes("://") ? [] : namedIn(match[1] ?? "", labels)))
+  return { said: line.slice(at + 1).trim(), about: direct.length > 0 ? direct : inBrackets, headed: false }
 }
 
 /** One heading alone on its line and the lines under it, up to the next heading (`to` is exclusive). */
@@ -382,12 +347,12 @@ interface HeadingGroup {
  * heading may go with the heading above it or caption the one below, and
  * nothing tells which.
  */
-function headingGroups(lines: readonly string[], labels: ReadonlySet<string>, studies: Studies): HeadingGroup[] | null {
+function headingGroups(lines: readonly string[], labels: ReadonlySet<string>): HeadingGroup[] | null {
   const heads: { at: number, about: string[] }[] = []
   for (const [at, line] of lines.entries()) {
     const headed = HEADED.exec(line)
     if (headed === null) continue
-    const { about } = namedIn(headed[1] ?? headed[2] ?? "", labels, studies)
+    const about = namedIn(headed[1] ?? headed[2] ?? "", labels)
     if (about.length === 0) continue
     if ((headed[3] ?? "").trim() !== "") return null
     heads.push({ at, about })
@@ -403,23 +368,9 @@ function groupKey(label: string, sourceKey: string, lang: Language, lines: reado
   return lineKey(label, sourceKey, lang, GROUP_PART + lines.slice(group.from + 1, group.to).join("\n"))
 }
 
-/** The datasets a label or heading names, directly or by the study they are registered under. */
-function namedIn(text: string, labels: ReadonlySet<string>, studies: Studies): { about: string[], byStudy: boolean, byLabel: boolean } {
-  const about: string[] = []
-  let byStudy = false
-  let byLabel = false
-  for (const part of text.split(/[、,/／・]|および/)) {
-    const label = citedLabel(part.trim())
-    if (labels.has(label)) {
-      about.push(label)
-      byLabel = true
-      continue
-    }
-    const registered = (studies.get(label) ?? []).filter((one) => labels.has(one))
-    if (registered.length > 0) byStudy = true
-    about.push(...registered)
-  }
-  return { about, byStudy, byLabel }
+/** The datasets a label or heading names. */
+function namedIn(text: string, labels: ReadonlySet<string>): string[] {
+  return text.split(/[、,/／・]|および/).map((part) => citedLabel(part.trim())).filter((label) => labels.has(label))
 }
 
 /**
@@ -438,40 +389,26 @@ function topLevelColon(line: string): number {
   return -1
 }
 
-/** The lines of a value as the reader sees them, as plain strings. */
-function plainLines(value: EsRichText | null | undefined, lang: Language, read: ProseReader | undefined): string[] {
-  if (read === undefined) return (value?.text ?? "").split("\n")
-  return read(value, lang).map((line) => line.map((span) => span.text).join(""))
-}
-
 /**
  * Every line each dataset states about itself, which is what makes a copy a copy,
  * and every group under a heading alone on its line that is about it (`headingGroups`).
  * A cell naming no dataset states each of its lines, whole, about the dataset
  * it is in: `8.5 GB (bam)` there is the same line as `JGAD000783: 8.5 GB (bam)`
  * on a sibling, but `fastq: 8.5 GB` is not.
- * Given the reader the load builds prose with, the lines are the ones it reads;
- * `readFor` gives a dataset a reader of its own, as the load does.
  */
-export function ownLines(
-  datasets: readonly PublishedDataset[],
-  read?: ProseReader,
-  readFor?: (dataset: PublishedDataset) => ProseReader,
-  studies?: Studies,
-): ReadonlySet<string> {
+export function ownLines(datasets: readonly PublishedDataset[]): ReadonlySet<string> {
   const labels = new Set(datasets.map((one) => one.label))
   const keys = new Set<string>()
   for (const one of datasets) {
-    const reader = readFor?.(one) ?? read
     for (const experiment of one.doc.experiments ?? []) {
       for (const [sourceKey, value] of Object.entries(experiment.data ?? {})) {
         for (const lang of LANGUAGES) {
-          const lines = plainLines(value[lang], lang, reader)
-          const read = lines.map((line) => readLine(line, labels, studies))
+          const lines = (value[lang]?.text ?? "").split("\n")
+          const read = lines.map((line) => readLine(line, labels))
           for (const { said, about } of read) {
             if (about.includes(one.label)) keys.add(lineKey(one.label, sourceKey, lang, said))
           }
-          const groups = headingGroups(lines, labels, studies ?? NO_STUDIES)
+          const groups = headingGroups(lines, labels)
           for (const group of groups ?? []) {
             if (group.about.includes(one.label)) keys.add(groupKey(one.label, sourceKey, lang, lines, group))
           }
@@ -496,8 +433,6 @@ export interface DatasetContentInput {
   codeBySourceKey: Map<string, string>
   /** `{set code}/{term code}` to identity. */
   termIdBySetAndCode: Map<string, string>
-  /** The terms a code the reading mints goes to, where the vocabulary was settled by hand (`vocabulary-plan.ts`). */
-  termIdsOf?: (setCode: string, code: string) => string[]
   /** Whether the ICD10 dictionary holds a code, which is what resolves one. */
   knownCode: (code: string) => boolean
   accessCriteriaKeyCode: string
@@ -507,13 +442,6 @@ export interface DatasetContentInput {
   /** What each dataset states about itself (`ownLines`). */
   ownLines: ReadonlySet<string>
   /**
-   * Whether the dataset keeps its blocks whole (`prepare.ts` の `ExperimentEdit`):
-   * the lines naming the other datasets of a block are about it too, and stay.
-   */
-  whole?: boolean
-  /** The studies a line may name its datasets by, the same as `ownLines` was given. */
-  studies?: Studies
-  /**
    * Where the lines no rule could read are collected. **They are not dropped
    * quietly**: a cell that states something this cannot hold as a number is work
    * for somebody, and the list is what that work is done from.
@@ -521,16 +449,6 @@ export interface DatasetContentInput {
   unread: { dataset: string, sourceKey: string, line: string }[]
   /** The lines somebody read by hand (`numbers.ts` の `byHand`). */
   byHand: ReadonlyMap<string, ReadNumber[]>
-  /**
-   * Hand translations of a number's label or note (`numbers.ts` の
-   * `labelTranslations`). Absent before anybody has translated one, which
-   * leaves every label and note sorted by script alone (`bilingualOf`).
-   */
-  labelTranslations?: LabelTranslations
-  /** The same reader `ownLines` was given, if any. */
-  readProse?: ProseReader
-  /** The type of data as rich text, from the plain string v1 stored. Absent, the string is read as it is (`richTextFromPlain`). */
-  readTypeOfData?: (text: string, lang: Language) => RichText
 }
 
 /**
@@ -572,7 +490,6 @@ export function narrowedToCaption(slots: SourceValueSlot[], caption: { ja: strin
 export function buildDatasetContent(input: DatasetContentInput): SourceDatasetContent {
   const { dataset, keyIdByCode, codeBySourceKey, termIdBySetAndCode, knownCode } = input
   const doc = dataset.doc
-  const translations = input.labelTranslations ?? new Map()
 
   /**
    * Which lines of a cell stay. A line about other datasets goes where every
@@ -591,15 +508,14 @@ export function buildDatasetContent(input: DatasetContentInput): SourceDatasetCo
    * itself, and this dataset has a group of its own in the cell.
    */
   const staying = (sourceKey: string, lang: Language, lines: readonly string[]): boolean[] => {
-    if (input.whole === true) return lines.map(() => true)
-    const read = lines.map((line) => readLine(line, input.datasetLabels, input.studies))
+    const read = lines.map((line) => readLine(line, input.datasetLabels))
     const stays = read.map(({ said, about }) => about.length === 0 || about.includes(dataset.label)
       || !about.every((label) => input.ownLines.has(lineKey(label, sourceKey, lang, said))))
     const first = read.findIndex((one) => one.headed)
     const listed = lines.every((line, at) => at < first || line.trim() === "" || read[at]?.headed === true)
     const own = read.some((one) => one.headed && one.about.includes(dataset.label))
     const divided = first === -1 || (listed && own) ? stays : stays.map((stay, at) => stay || read[at]?.headed === true)
-    const groups = headingGroups(lines, input.datasetLabels, input.studies ?? NO_STUDIES) ?? []
+    const groups = headingGroups(lines, input.datasetLabels) ?? []
     if (!groups.some((group) => group.about.includes(dataset.label))) return divided
     const elsewhere = groups.filter((group) => !group.about.includes(dataset.label)
       && group.about.every((label) => input.ownLines.has(groupKey(label, sourceKey, lang, lines, group))))
@@ -613,39 +529,13 @@ export function buildDatasetContent(input: DatasetContentInput): SourceDatasetCo
     return mask.every(Boolean) ? text : lines.filter((_, at) => mask[at]).join("\n")
   }
 
-  /** The same, for a cell read as prose by the load's reader. */
-  const keptProse = (sourceKey: string, lang: Language, value: EsRichText | null | undefined): RichText => {
-    if (input.readProse === undefined) return richTextFromMarkdown(kept(sourceKey, lang, value?.text ?? ""))
-    const lines = input.readProse(value, lang)
-    const mask = staying(sourceKey, lang, lines.map((line) => line.map((span) => span.text).join("")))
-    const remaining = lines.filter((_, at) => mask[at])
-    // A dropped line can leave two paragraph breaks side by side, or one at an
-    // edge; neither means anything.
-    const joined: RichText = []
-    for (const line of remaining) {
-      if (line.length > 0 || (joined.at(-1)?.length ?? 0) > 0) joined.push(line)
-    }
-    if (joined.at(-1)?.length === 0) joined.pop()
-    return joined
-  }
+  /** The same, for a cell read as prose. */
+  const keptProse = (sourceKey: string, lang: Language, value: EsRichText | null | undefined): RichText =>
+    richTextFromMarkdown(kept(sourceKey, lang, value?.text ?? ""))
 
   /**
-   * The text an experiment's diseases are read from: the cell as the article
-   * wrote it, where the load's reader finds it, with the lines about other
-   * datasets taken out the same as the cell shown (`keptProse`). A disease
-   * only another dataset's group names is that dataset's. The caption narrows
-   * the diseases afterwards (`narrowedToCaption`).
-   */
-  const diseaseTextOf = (e: EsExperiment): DiseaseText | undefined => {
-    const cell = e.data?.[DISEASE_SOURCE]
-    if (input.readProse === undefined || cell === undefined) return undefined
-    const plain = (rich: RichText) => rich.map((line) => line.map((span) => span.text).join("")).join("\n")
-    return { ja: plain(keptProse(DISEASE_SOURCE, "ja", cell.ja)), en: plain(keptProse(DISEASE_SOURCE, "en", cell.en)) }
-  }
-
-  /**
-   * The facets whose row the article filled with a dash (`dashes.ts`) and
-   * which read no value out of anything else. **A facet is read from v1's
+   * The facets whose row the article filled with a dash and which read no
+   * value out of anything else. **A facet is read from v1's
    * extracted layer**, not from the cell, so the cell's dash is the only record
    * that the key does not apply.
    */
@@ -695,15 +585,14 @@ export function buildDatasetContent(input: DatasetContentInput): SourceDatasetCo
   }
 
   const typeOfDataKeyId = keyIdByCode.get(input.typeOfDataKeyCode)
-  const readTypeOfData = input.readTypeOfData ?? richTextFromPlain
   if (typeOfDataKeyId && (doc.typeOfData?.ja || doc.typeOfData?.en)) {
     values.push({
       keyId: typeOfDataKeyId,
       value: {
         kind: "text",
         text: {
-          ja: held(readTypeOfData(doc.typeOfData.ja ?? "", "ja")),
-          en: held(readTypeOfData(doc.typeOfData.en ?? "", "en")),
+          ja: held(richTextFromPlain(doc.typeOfData.ja ?? "")),
+          en: held(richTextFromPlain(doc.typeOfData.en ?? "")),
         },
       },
     })
@@ -719,7 +608,7 @@ export function buildDatasetContent(input: DatasetContentInput): SourceDatasetCo
     // slot becomes `unknown` rather than disappearing, because the cell said
     // something.
     const unresolved = new Set<string>()
-    // A number key whose row the article filled with a dash (`dashes.ts`).
+    // A number key whose row the article filled with a dash.
     const notApplicable = new Set<string>()
     for (const [sourceKey, value] of Object.entries(e.data ?? {})) {
       const text = kept(sourceKey, "ja", value.ja?.text ?? "")
@@ -754,7 +643,7 @@ export function buildDatasetContent(input: DatasetContentInput): SourceDatasetCo
           // nothing: the label existed to tell sibling rows apart, and those
           // have gone to the datasets they were about (`ownLines`).
           const one = raw.label !== null && citedLabel(raw.label) === dataset.label ? { ...raw, label: null } : raw
-          if (canonical === null) return [storedNumber(one, one.value, one.unit, one.high, translations)]
+          if (canonical === null) return [storedNumber(one, one.value, one.unit, one.high)]
           const converted = one.unit === canonical ? one.value : convert(one.value, one.unit, canonical)
           // A number in a sibling key's unit is that key's to store: a depth
           // read by the breadth half of a split cell is not residue.
@@ -773,7 +662,7 @@ export function buildDatasetContent(input: DatasetContentInput): SourceDatasetCo
           const convertedHigh = one.high === null
             ? null
             : (one.unit === canonical ? one.high : convert(one.high, one.unit, canonical))
-          return [storedNumber(one, converted, canonical, convertedHigh, translations)]
+          return [storedNumber(one, converted, canonical, convertedHigh)]
         })
         numbers.set(key.code, [...(numbers.get(key.code) ?? []), ...stored])
         if (trulyDeclined.length > 0) unresolved.add(key.code)
@@ -781,7 +670,7 @@ export function buildDatasetContent(input: DatasetContentInput): SourceDatasetCo
     }
 
     const facetSlots = narrowedToCaption(
-      facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode, termIdsOf: input.termIdsOf }, diseaseTextOf(e)),
+      facetValueSlots(e, { keyIdByCode, termIdBySetAndCode, knownCode }),
       captionOf(e, dataset.label),
     )
     return {

@@ -5,9 +5,9 @@ import { filled } from "~/content/empty"
 import type { Slot } from "~/content/types"
 
 import type { SourceValueSlot } from "./number-words"
-import { buildCauRows, buildDatasetContent, buildResearchContent, captionOf, narrowedToCaption, ownLines, type ProseReader } from "./build"
+import { buildCauRows, buildDatasetContent, buildResearchContent, captionOf, DASH, narrowedToCaption, ownLines } from "./build"
 import type { EsDataset, EsExperiment, EsResearchVersion, PublishedDataset } from "./es"
-import { byHand, labelTranslations, type LabelTranslations, type ReadNumber } from "./numbers"
+import { byHand, type ReadNumber } from "./numbers"
 
 interface UnreadLine { dataset: string, sourceKey: string, line: string }
 
@@ -65,10 +65,8 @@ function dataset(doc: Partial<EsDataset>, label = "JGAD000001", firstListedOn: s
 function datasetOf(
   all: readonly PublishedDataset[],
   label: string,
-  readProse?: ProseReader,
   unread: UnreadLine[] = [],
   hand: ReadonlyMap<string, ReadNumber[]> = new Map(),
-  translations?: LabelTranslations,
 ) {
   const one = all.find((row) => row.label === label)
   if (one === undefined) throw new Error(`no dataset ${label}`)
@@ -81,11 +79,9 @@ function datasetOf(
     accessCriteriaKeyCode: "access-criteria",
     typeOfDataKeyCode: "type-of-data",
     datasetLabels: new Set(all.map((row) => row.label)),
-    ownLines: ownLines(all, readProse),
+    ownLines: ownLines(all),
     unread,
     byHand: hand,
-    labelTranslations: translations,
-    readProse,
   })
 }
 
@@ -99,6 +95,13 @@ function value<T>(slot: Slot<T>): T {
   if (slot.state !== "value") throw new Error(`expected a value, got ${slot.state}`)
   return slot.value
 }
+
+describe("DASH", () => {
+  it("is a dash of any width and nothing else", () => {
+    for (const cell of ["-", "－", " ― ", "—", "–", "‐", "ー"]) expect(DASH.test(cell), cell).toBe(true)
+    for (const cell of ["", "NA", "-1", "HLA-A", "- none"]) expect(DASH.test(cell), cell).toBe(false)
+  })
+})
 
 describe("buildResearchContent", () => {
   it("turns a field v1 never filled in into an empty value rather than unknown", () => {
@@ -123,42 +126,6 @@ describe("buildResearchContent", () => {
       [{ text: "詳細は " }, { text: "NBDC policy", href: "/nbdc-policy" }, { text: " を参照" }],
       [{ text: "2 行目" }],
     ])
-  })
-
-  it("reads the single-line values through the text reader, but not the title", () => {
-    const content = buildResearchContent({
-      version: version({
-        title: { ja: "題名 (1)", en: "Title" },
-        dataProvider: [{ name: { ja: { text: "山田 太郎" } }, organization: { name: { ja: { text: "大学 (本部)" } } } }],
-        researchProject: [{ name: { ja: { text: "計画 (A)" } } }],
-        grant: [{ title: { ja: "課題 (B)" }, agency: { name: { ja: "機関 (C)" } }, id: ["16H06279"] }],
-        relatedPublication: [{ title: { en: "Parkinson's" } }],
-      }),
-      listingSummary: null,
-      datasetIdByLabel: new Map(),
-      readText: (text, lang) => lang === "ja" ? text.replace(/ \(/g, "（").replace(/\)/g, "）") : text.toUpperCase(),
-    })
-
-    expect(value(content.title.ja)).toBe("題名 (1)")
-    expect(value(first(content.dataProviders).organization.name.ja)).toBe("大学（本部）")
-    expect(value(first(content.researchProjects).name.ja)).toBe("計画（A）")
-    expect(value(first(content.grants).title.ja)).toBe("課題（B）")
-    expect(value(first(content.grants).agency.name.ja)).toBe("機関（C）")
-    expect(first(content.grants).grantIds).toEqual({ state: "value", value: ["16H06279"] })
-    expect(value(first(content.relatedPublications).title)).toBe("PARKINSON'S")
-  })
-
-  it("reads the listing summary through the listing's reader and the research's prose through its own", () => {
-    const content = buildResearchContent({
-      version: version({ summary: { aims: { ja: { text: "目的" } } } }),
-      listingSummary: { methods: { ja: { text: "配列決定" } } },
-      datasetIdByLabel: new Map(),
-      readProse: (leaf) => [[{ text: `research: ${leaf?.text ?? ""}` }]],
-      readListing: (leaf) => [[{ text: `listing: ${leaf?.text ?? ""}` }]],
-    })
-
-    expect(value(content.summary.aims.ja)).toEqual([[{ text: "research: 目的" }]])
-    expect(value(content.listingSummary.methods.ja)).toEqual([[{ text: "listing: 配列決定" }]])
   })
 
   it("keeps a publication title single-valued, preferring the English side", () => {
@@ -330,7 +297,7 @@ describe("buildDatasetContent", () => {
     // A bare number read by hand as a depth reaches both halves of the cell.
     const hand = byHand([{ sourceKey: "Coverage", line: "46", read: [{ label: null, value: 46, unit: "x", high: null, note: null }], why: "" }])
     const unread: UnreadLine[] = []
-    const content = datasetOf([dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "46" } } } }] }, "JGAD000001", null)], "JGAD000001", undefined, unread, hand)
+    const content = datasetOf([dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "46" } } } }] }, "JGAD000001", null)], "JGAD000001", unread, hand)
 
     expect(unread).toEqual([])
     expect(new Map(first(content.experiments).values.map((v) => [v.keyId, v.value])).get("key-coverage-depth"))
@@ -339,12 +306,12 @@ describe("buildDatasetContent", () => {
 
   it("still counts a number in neither half's unit as residue", () => {
     const unread: UnreadLine[] = []
-    datasetOf([dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "5 GB" } } } }] }, "JGAD000001", null)], "JGAD000001", undefined, unread)
+    datasetOf([dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "5 GB" } } } }] }, "JGAD000001", null)], "JGAD000001", unread)
 
     expect(unread.length).toBeGreaterThan(0)
   })
 
-  it("sorts a number's label to the side of its own language when no translation is on record", () => {
+  it("sorts a number's label to the side of its own language", () => {
     const hand = byHand([{
       sourceKey: "Coverage",
       line: "常染色体: 31.8x",
@@ -354,35 +321,12 @@ describe("buildDatasetContent", () => {
     const content = datasetOf(
       [dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "常染色体: 31.8x" } } } }] }, "JGAD000001", null)],
       "JGAD000001",
-      undefined,
       [],
       hand,
     )
     const values = new Map(first(content.experiments).values.map((v) => [v.keyId, v.value]))
     expect(values.get("key-coverage-depth")).toMatchObject({
       values: { state: "value", value: [{ label: { ja: "常染色体", en: "" } }] },
-    })
-  })
-
-  it("takes both sides of a number's label from the hand translation table when one is on record", () => {
-    const hand = byHand([{
-      sourceKey: "Coverage",
-      line: "常染色体: 31.8x",
-      why: "",
-      read: [{ label: "常染色体", value: 31.8, unit: "x", high: null, note: null }],
-    }])
-    const table = labelTranslations({ 常染色体: { ja: "常染色体", en: "Autosome" } })
-    const content = datasetOf(
-      [dumpRow({ experiments: [{ data: { Coverage: { ja: { text: "常染色体: 31.8x" } } } }] }, "JGAD000001", null)],
-      "JGAD000001",
-      undefined,
-      [],
-      hand,
-      table,
-    )
-    const values = new Map(first(content.experiments).values.map((v) => [v.keyId, v.value]))
-    expect(values.get("key-coverage-depth")).toMatchObject({
-      values: { state: "value", value: [{ label: { ja: "常染色体", en: "Autosome" } }] },
     })
   })
 
@@ -430,7 +374,7 @@ describe("buildDatasetContent", () => {
 
   it("makes a number cell with a dash not-applicable rather than a question", () => {
     const unread: UnreadLine[] = []
-    const content = datasetOf([dumpRow({ experiments: [{ data: { "Total Data Volume": { ja: { text: "-" }, en: { text: "-" } } } }] }, "JGAD000001", null)], "JGAD000001", undefined, unread)
+    const content = datasetOf([dumpRow({ experiments: [{ data: { "Total Data Volume": { ja: { text: "-" }, en: { text: "-" } } } }] }, "JGAD000001", null)], "JGAD000001", unread)
 
     expect(first(content.experiments).values).toEqual([{ keyId: "key-volume", value: { kind: "number", values: { state: "not-applicable" } } }])
     expect(unread).toEqual([])
@@ -577,8 +521,7 @@ describe("a cell holding a table about several datasets", () => {
   })
 })
 
-describe("a line headed by the study or dataset it is about", () => {
-  const studies = new Map([["JGAS000001", ["JGAD000001"]], ["JGAS000002", ["JGAD000002"]], ["JGAS000009", ["JGAD000001", "JGAD000002"]]])
+describe("a line headed by the dataset it is about", () => {
   const materials = (text: string) => ({ experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }] })
   const linesOf = (text: string, label: string) => linesFrom({ JGAD000001: text, JGAD000002: text }, label)
   const linesFrom = (texts: Record<string, string>, label: string) => {
@@ -594,8 +537,7 @@ describe("a line headed by the study or dataset it is about", () => {
       accessCriteriaKeyCode: "access-criteria",
       typeOfDataKeyCode: "type-of-data",
       datasetLabels: new Set(all.map((row) => row.label)),
-      ownLines: ownLines(all, undefined, undefined, studies),
-      studies,
+      ownLines: ownLines(all),
       unread: [],
       byHand: new Map(),
     })
@@ -604,124 +546,60 @@ describe("a line headed by the study or dataset it is about", () => {
     return value(held.text.ja).map((line) => line.map((span) => span.text).join(""))
   }
 
-  it("keeps only the lines headed by the dataset's own study", () => {
-    const text = "【JGAS000001】1症例：腫瘍組織\n【JGAS000002】2症例：正常組織"
-    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001】1症例：腫瘍組織"])
-    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAS000002】2症例：正常組織"])
+  it("keeps only the lines headed by the dataset itself", () => {
+    const text = "【JGAD000001】1症例：腫瘍組織\n【JGAD000002】2症例：正常組織"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAD000001】1症例：腫瘍組織"])
+    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAD000002】2症例：正常組織"])
   })
 
   it("reads the English page's square brackets as the heading", () => {
-    const text = "[JGAS000001] 1 case: tumor\n[JGAS000002] 2 cases: normal"
-    expect(linesOf(text, "JGAD000001")).toEqual(["[JGAS000001] 1 case: tumor"])
+    const text = "[JGAD000001] 1 case: tumor\n[JGAD000002] 2 cases: normal"
+    expect(linesOf(text, "JGAD000001")).toEqual(["[JGAD000001] 1 case: tumor"])
   })
 
   it("does not read a link as a heading, nor its address as naming a dataset", () => {
-    const text = "[JGAS000001] 1 case: tumor\n[JGAD000002](https://example.org/JGAD000002) 3 cases: blood"
-    expect(linesOf(text, "JGAD000001")).toEqual(["[JGAS000001] 1 case: tumor", "JGAD000002 3 cases: blood"])
-  })
-
-  it("reads a study before a colon the same as one in lenticular brackets", () => {
-    const text = "JGAS000001：CD19+細胞のRNA\nJGAS000002：Treg細胞のRNA"
-    expect(linesOf(text, "JGAD000001")).toEqual(["JGAS000001：CD19+細胞のRNA"])
-  })
-
-  it("keeps every line of a dataset that keeps its blocks whole", () => {
-    const text = "【JGAS000001】1症例：腫瘍組織\n【JGAS000002】2症例：正常組織"
-    const all = [dumpRow(materials(text), "JGAD000001", null), dumpRow(materials(text), "JGAD000002", null)]
-    const [one] = all
-    if (one === undefined) throw new Error("no dataset")
-    const content = buildDatasetContent({
-      dataset: one,
-      keyIdByCode: KEY_IDS,
-      codeBySourceKey: CODE_BY_SOURCE,
-      termIdBySetAndCode: TERM_IDS,
-      knownCode: () => false,
-      accessCriteriaKeyCode: "access-criteria",
-      typeOfDataKeyCode: "type-of-data",
-      datasetLabels: new Set(all.map((row) => row.label)),
-      ownLines: ownLines(all, undefined, undefined, studies),
-      whole: true,
-      studies,
-      unread: [],
-      byHand: new Map(),
-    })
-    const held = first(first(content.experiments).values).value
-    if (held.kind !== "text") throw new Error("expected text")
-    expect(value(held.text.ja).map((line) => line.map((span) => span.text).join(""))).toEqual(text.split("\n"))
-  })
-
-  it("reads a dataset in lenticular brackets", () => {
-    const text = "【JGAD000001】腫瘍組織：22検体\n【JGAD000002】腫瘍組織：4検体"
-    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAD000002】腫瘍組織：4検体"])
+    const text = "[JGAD000001] 1 case: tumor\n[JGAD000002](https://example.org/JGAD000002) 3 cases: blood"
+    expect(linesOf(text, "JGAD000001")).toEqual(["[JGAD000001] 1 case: tumor", "JGAD000002 3 cases: blood"])
   })
 
   it("keeps the group under the dataset's own heading when every heading stands alone on its line", () => {
-    const text = "【JGAS000001】\n悪性骨巨細胞腫：1症例\n腫瘍組織：1検体\n【JGAS000002】\n軟骨肉腫：2症例\n腫瘍組織：1検体\n合計：4検体"
-    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001】", "悪性骨巨細胞腫：1症例", "腫瘍組織：1検体"])
-    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAS000002】", "軟骨肉腫：2症例", "腫瘍組織：1検体", "合計：4検体"])
+    const text = "【JGAD000001】\n悪性骨巨細胞腫：1症例\n腫瘍組織：1検体\n【JGAD000002】\n軟骨肉腫：2症例\n腫瘍組織：1検体\n合計：4検体"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAD000001】", "悪性骨巨細胞腫：1症例", "腫瘍組織：1検体"])
+    expect(linesOf(text, "JGAD000002")).toEqual(["【JGAD000002】", "軟骨肉腫：2症例", "腫瘍組織：1検体", "合計：4検体"])
   })
 
   it("reads the English page's square brackets alone on a line as a group's heading", () => {
-    const text = "[JGAS000001]\nAML: 4 cases\n[JGAS000002]\nAML: 4 cases\nhealthy control: 2 samples"
-    expect(linesOf(text, "JGAD000002")).toEqual(["[JGAS000002]", "AML: 4 cases", "healthy control: 2 samples"])
-  })
-
-  it("reads the diseases out of the dataset's own lines only", () => {
-    const text = "【JGAS000001】\n悪性骨巨細胞腫（ICD10：D48.0）：1症例\n【JGAS000002】\n軟骨肉腫（ICD10：C41.9）：2症例"
-    const all = ["JGAD000001", "JGAD000002"].map((label) => dumpRow(materials(text), label, null))
-    const diseasesOf = (label: string) => {
-      const one = all.find((row) => row.label === label)
-      if (one === undefined) throw new Error(`no dataset ${label}`)
-      const content = buildDatasetContent({
-        dataset: one,
-        keyIdByCode: new Map([...KEY_IDS, ["disease", "key-disease"]]),
-        codeBySourceKey: CODE_BY_SOURCE,
-        termIdBySetAndCode: TERM_IDS,
-        knownCode: () => false,
-        accessCriteriaKeyCode: "access-criteria",
-        typeOfDataKeyCode: "type-of-data",
-        datasetLabels: new Set(all.map((row) => row.label)),
-        ownLines: ownLines(all, undefined, undefined, studies),
-        studies,
-        unread: [],
-        byHand: new Map(),
-        readProse: (leaf) => (leaf?.text ?? "").split("\n").map((line) => [{ text: line }]),
-      })
-      return first(content.experiments).values.flatMap((slot) => slot.value.kind === "disease" && slot.value.diseases.state === "value"
-        ? slot.value.diseases.value.map((one) => one.nameJa)
-        : [])
-    }
-    expect(diseasesOf("JGAD000001")).toEqual(["悪性骨巨細胞腫"])
-    expect(diseasesOf("JGAD000002")).toEqual(["軟骨肉腫"])
+    const text = "[JGAD000001]\nAML: 4 cases\n[JGAD000002]\nAML: 4 cases\nhealthy control: 2 samples"
+    expect(linesOf(text, "JGAD000002")).toEqual(["[JGAD000002]", "AML: 4 cases", "healthy control: 2 samples"])
   })
 
   it("keeps the lines above the first heading alone on its line for every dataset", () => {
-    const text = "子宮頸がん\n【JGAS000001】\n腫瘍組織：8検体\n【JGAS000002】\n正常組織：2検体"
-    expect(linesOf(text, "JGAD000002")).toEqual(["子宮頸がん", "【JGAS000002】", "正常組織：2検体"])
+    const text = "子宮頸がん\n【JGAD000001】\n腫瘍組織：8検体\n【JGAD000002】\n正常組織：2検体"
+    expect(linesOf(text, "JGAD000002")).toEqual(["子宮頸がん", "【JGAD000002】", "正常組織：2検体"])
   })
 
   it("keeps a group the dataset its heading names does not have itself", () => {
     const texts = {
-      JGAD000001: "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：2検体",
-      JGAD000002: "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：3検体",
+      JGAD000001: "【JGAD000001】\n腫瘍組織：1検体\n【JGAD000002】\n正常組織：2検体",
+      JGAD000002: "【JGAD000001】\n腫瘍組織：1検体\n【JGAD000002】\n正常組織：3検体",
     }
     expect(linesFrom(texts, "JGAD000001")).toEqual(texts.JGAD000001.split("\n"))
-    expect(linesFrom(texts, "JGAD000002")).toEqual(["【JGAS000002】", "正常組織：3検体"])
+    expect(linesFrom(texts, "JGAD000002")).toEqual(["【JGAD000002】", "正常組織：3検体"])
   })
 
   it("keeps a group whose heading names the dataset beside another", () => {
-    const text = "【JGAS000001/JGAD000002】\n腫瘍組織：1検体\n【JGAS000002】\n正常組織：2検体"
+    const text = "【JGAD000001/JGAD000002】\n腫瘍組織：1検体\n【JGAD000002】\n正常組織：2検体"
     expect(linesOf(text, "JGAD000002")).toEqual(text.split("\n"))
-    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAS000001/JGAD000002】", "腫瘍組織：1検体"])
+    expect(linesOf(text, "JGAD000001")).toEqual(["【JGAD000001/JGAD000002】", "腫瘍組織：1検体"])
   })
 
   it("leaves groups under headings alone on their lines whole where none is the dataset's own", () => {
-    const text = "【JGAD000002】\nJGAD000001 の vcf\n【JGAS000002】\n正常組織：2検体"
+    const text = "【JGAD000002】\nJGAD000001 の vcf\n【JGAD000002】\n正常組織：2検体"
     expect(linesFrom({ JGAD000001: text, JGAD000002: text }, "JGAD000001")).toEqual(text.split("\n"))
   })
 
   it("leaves a cell whole where one heading stands alone and another has words after it", () => {
-    const text = "【JGAS000001】\n腫瘍組織：1検体\n【JGAS000002】正常組織：2検体"
+    const text = "【JGAD000001】\n腫瘍組織：1検体\n【JGAD000002】正常組織：2検体"
     expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
   })
 
@@ -731,116 +609,38 @@ describe("a line headed by the study or dataset it is about", () => {
   })
 
   it("leaves a cell whole where a heading has lines under it that are not headed", () => {
-    const text = "【JGAS000001】寒冷凝集素症：1症例\n頬粘膜：1検体\n【JGAS000002】寒冷凝集素症：1症例\n頬粘膜：2検体"
+    const text = "【JGAD000001】寒冷凝集素症：1症例\n頬粘膜：1検体\n【JGAD000002】寒冷凝集素症：1症例\n頬粘膜：2検体"
     expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
   })
 
   it("leaves a cell whole where a caption heads a later group", () => {
-    const text = "子宮頸がん\n【JGAS000001】4症例：腫瘍組織\n\nNIKS18細胞株\n【JGAS000002】siNPM3：2検体"
+    const text = "子宮頸がん\n【JGAD000001】4症例：腫瘍組織\n\nNIKS18細胞株\n【JGAD000002】siNPM3：2検体"
     expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
   })
 
   it("leaves a cell whole where a note follows a heading", () => {
-    const text = "【JGAS000001】腫瘍組織：2検体※\n※EM-seqと同じ組織由来\n【JGAS000002】正常組織：1検体"
+    const text = "【JGAD000001】腫瘍組織：2検体※\n※EM-seqと同じ組織由来\n【JGAD000002】正常組織：1検体"
     expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
   })
 
   it("leaves a cell whole where no heading is the dataset's own", () => {
-    const text = "【JGAS000002】2症例：正常組織\n【JGAS000002】3症例：腫瘍組織"
+    const text = "【JGAD000002】2症例：正常組織\n【JGAD000002】3症例：腫瘍組織"
     expect(linesOf(text, "JGAD000001")).toEqual(text.split("\n"))
   })
 
   it("divides a line naming its dataset directly beside the study as before, whatever else the cell holds", () => {
-    const text = "【オルガノイド】\nJGAS000001/JGAD000001：21症例\nJGAS000002/JGAD000002：27症例\n（v4に正常肺オルガノイド含む）"
-    expect(linesOf(text, "JGAD000001")).toEqual(["【オルガノイド】", "JGAS000001/JGAD000001：21症例", "（v4に正常肺オルガノイド含む）"])
+    const text = "【オルガノイド】\nJGAD000001/JGAD000001：21症例\nJGAD000002/JGAD000002：27症例\n（v4に正常肺オルガノイド含む）"
+    expect(linesOf(text, "JGAD000001")).toEqual(["【オルガノイド】", "JGAD000001/JGAD000001：21症例", "（v4に正常肺オルガノイド含む）"])
   })
 
   it("keeps the lines above the first heading for every dataset", () => {
-    const text = "子宮頸がん（ICD10：C539）\n【JGAS000001】4症例：腫瘍組織\n【JGAS000002】1症例：オルガノイド"
-    expect(linesOf(text, "JGAD000002")).toEqual(["子宮頸がん（ICD10：C539）", "【JGAS000002】1症例：オルガノイド"])
-  })
-
-  it("leaves a line headed by no study or dataset, or by a study of both", () => {
-    const text = "【GWAS集計情報】要約統計量\n【JGAS000009】共通の対照群：100名"
-    expect(linesOf(text, "JGAD000001")).toEqual(["【GWAS集計情報】要約統計量", "【JGAS000009】共通の対照群：100名"])
-  })
-})
-
-/**
- * A reader that recovers line breaks v1's text lost: here, each `|` of the
- * stored text is a break the source had, and a `~` a paragraph break.
- */
-const recovering: ProseReader = (value) => (value?.text ?? "")
-  .split(/[|\n]/)
-  .map((line) => (line === "~" ? [] : [{ text: line }]))
-
-describe("a cell read by the load's own reader", () => {
-  const cell = (text: string) => ({
-    experiments: [{ data: { "Materials and Participants": { ja: { text }, en: { text } } } }],
-  })
-  const lines = (content: ReturnType<typeof datasetOf>) => {
-    const held = first(first(content.experiments).values).value
-    if (held.kind !== "text") throw new Error("expected text")
-    return value(held.text.ja).map((line) => line.map((span) => span.text).join(""))
-  }
-
-  it("keeps the breaks the reader finds", () => {
-    const one = [dumpRow(cell("healthy adults|Japanese"), "JGAD000001", null)]
-    expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["healthy adults", "Japanese"])
-  })
-
-  it("drops a line about a sibling when the sibling has the same line, reading both through the reader", () => {
-    const table = "JGAD000001: 88 GB|JGAD000002: 32 GB"
-    const siblings = [dumpRow(cell(table), "JGAD000001", null), dumpRow(cell(table), "JGAD000002", null)]
-    expect(lines(datasetOf(siblings, "JGAD000001", recovering))).toEqual(["JGAD000001: 88 GB"])
-    expect(lines(datasetOf(siblings, "JGAD000002", recovering))).toEqual(["JGAD000002: 32 GB"])
-  })
-
-  it("leaves no paragraph break doubled or at an edge after a line is dropped", () => {
-    const table = "~|JGAD000002: 32 GB|~|JGAD000001: 88 GB|~|~|JGAD000002: 1 GB|~"
-    const siblings = [
-      dumpRow(cell(table), "JGAD000001", null),
-      dumpRow(cell("JGAD000002: 32 GB|JGAD000002: 1 GB"), "JGAD000002", null),
-    ]
-    expect(lines(datasetOf(siblings, "JGAD000001", recovering))).toEqual(["JGAD000001: 88 GB"])
-  })
-
-  it("keeps a paragraph break between two lines that stay", () => {
-    const one = [dumpRow(cell("first|~|second"), "JGAD000001", null)]
-    expect(lines(datasetOf(one, "JGAD000001", recovering))).toEqual(["first", "", "second"])
-  })
-
-  it("drops a sibling's line from a number cell when the reader writes the sibling's own line in full-width forms", () => {
-    const table = "JGAD000001: 88 GB(fastq)\nJGAD000002: 32 GB(fastq)"
-    const volume = { experiments: [{ data: { "Total Data Volume": { ja: { text: table }, en: { text: table } } } }] }
-    const siblings = [dumpRow(volume, "JGAD000001", null), dumpRow(volume, "JGAD000002", null)]
-    const fullWidth: ProseReader = (value, lang) => (value?.text ?? "").split("\n")
-      .map((line) => [{ text: lang === "ja" ? line.replace(": ", "：").replace("(", "（").replace(")", "）") : line }])
-    const volumes = (label: string) => {
-      const held = first(first(datasetOf(siblings, label, fullWidth).experiments).values).value
-      if (held.kind !== "number") throw new Error("expected numbers")
-      return value(held.values).map((one) => one.value)
-    }
-
-    expect(volumes("JGAD000001")).toEqual([88])
-    expect(volumes("JGAD000002")).toEqual([32])
-  })
-
-  it("reads each dataset's lines with the reader given for it", () => {
-    const table = "JGAD000001: 88 GB|JGAD000002: 32 GB"
-    const siblings = [dumpRow(cell(table), "JGAD000001", null), dumpRow(cell(table), "JGAD000002", null)]
-    const readFor = (one: PublishedDataset): ProseReader => (one.label === "JGAD000002" ? recovering : (value) => [[{ text: value?.text ?? "" }]])
-
-    const keys = [...ownLines(siblings, undefined, readFor)]
-
-    // JGAD000001's reader keeps the cell one line; JGAD000002's reads each row as a line.
-    expect(keys.filter((key) => key.startsWith("JGAD000001")).map((key) => key.endsWith("88GB|JGAD000002:32GB"))).toEqual([true, true])
-    expect(keys.filter((key) => key.startsWith("JGAD000002")).map((key) => key.endsWith("32GB") && !key.includes("88GB"))).toEqual([true, true])
+    const text = "子宮頸がん（ICD10：C539）\n【JGAD000001】4症例：腫瘍組織\n【JGAD000002】1症例：オルガノイド"
+    expect(linesOf(text, "JGAD000002")).toEqual(["子宮頸がん（ICD10：C539）", "【JGAD000002】1症例：オルガノイド"])
   })
 })
 
 describe("the type of data", () => {
-  const typed = (readTypeOfData?: (text: string, lang: "ja" | "en") => ReturnType<ProseReader>) => {
+  const typed = () => {
     const one = dumpRow({ typeOfData: { ja: "NGS(Exome) SNP-chip", en: "NGS (Exome) SNP-chip" } }, "JGAD000001", null)
     const content = buildDatasetContent({
       dataset: one,
@@ -854,22 +654,12 @@ describe("the type of data", () => {
       ownLines: new Set(),
       unread: [],
       byHand: new Map(),
-      readTypeOfData,
     })
     return content.values.find((slot) => slot.keyId === "key-type")?.value
   }
 
-  it("is the string v1 stored, read as it is, without a reader", () => {
+  it("is the string v1 stored, read as it is", () => {
     expect(typed()).toEqual({ kind: "text", text: { ja: filled([[{ text: "NGS(Exome) SNP-chip" }]]), en: filled([[{ text: "NGS (Exome) SNP-chip" }]]) } })
-  })
-
-  it("is what the reader makes of the string, in each language", () => {
-    const read = (text: string, lang: "ja" | "en") => (lang === "ja" ? [[{ text: "NGS（Exome）" }], [{ text: "SNP-chip" }]] : [[{ text }]])
-
-    expect(typed(read)).toEqual({ kind: "text", text: {
-      ja: filled([[{ text: "NGS（Exome）" }], [{ text: "SNP-chip" }]]),
-      en: filled([[{ text: "NGS (Exome) SNP-chip" }]]),
-    } })
   })
 })
 

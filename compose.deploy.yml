@@ -19,9 +19,8 @@ services:
   s3:
     userns_mode: "keep-id:uid=1000,gid=1000"
 
-  # The image runs as `node`. It writes the data migration's reports under the
-  # mounted `migration/input/`, and reads the directories an operator mounts
-  # for the file have, both of which the deploying user owns.
+  # The image runs as `node`. It writes what the ICD10 import downloads under
+  # the mounted `migration/input/`, which the deploying user owns.
   tools:
     userns_mode: "keep-id:uid=1000,gid=1000"
 
