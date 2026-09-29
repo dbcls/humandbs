@@ -47,7 +47,7 @@ import type { MountedMarkdown } from "./codemirror.client"
 import { readFieldHash } from "~/admin/urls"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
-import { holdUnsaved } from "~/components/unsaved"
+import { holdUnsaved, letSendingThrough } from "~/components/unsaved"
 import { usePressed } from "~/navigating"
 import { Flag } from "./flags"
 
@@ -1080,11 +1080,13 @@ export function Editing({ children, onInput, onSubmit, onDirty, ...rest }: Compo
         onInput?.(event)
       }}
       // **Sending is a way off the screen the guard must not stop**, so the
-      // hold is let go in the same event, before the router asks. A refused
-      // save comes back with the words still here, and the walk above takes
-      // the hold again.
+      // hold is let go and the sending let through in the same event, before
+      // the router asks (`letSendingThrough`): what another form holds stays
+      // on the screen through a save. A refused save comes back with the words
+      // still here, and the walk above takes the hold again.
       onSubmit={(event) => {
         holdUnsaved(id, false)
+        letSendingThrough()
         onSubmit?.(event)
       }}
     >

@@ -97,6 +97,36 @@ test.describe("P-SITE サイトコンテンツ", () => {
     await expect(page).toHaveURL(/\/admin\/documents$/)
   })
 
+  test("S-SITE-03: 記事の ja と en の両方に入力してから ja を保存しても画面の移動を確認せず、en の入力は残る", async ({ page }) => {
+    await openScreen(page, "/admin/documents")
+    await page.getByRole("button", { name: "記事の作成" }).click()
+    const slug = `${E2E}-${Date.now()}`
+    await page.getByRole("dialog").getByRole("textbox", { name: "slug" }).fill(slug)
+    await page.getByRole("dialog").getByRole("button", { name: "作成" }).click()
+    await expect(page).toHaveURL(/\/admin\/documents\/[0-9a-f-]{36}$/)
+    await page.waitForLoadState("networkidle")
+    // 右の pane を編集 en にして、左 (ja) と右 (en) の両方に入力する
+    await page.getByRole("tablist").nth(1).getByRole("tab", { name: "編集 en" }).click()
+    const forms = page.locator("[data-pane-body] form")
+    const [ja, en] = [forms.nth(0), forms.nth(1)]
+    await ja.getByRole("textbox", { name: /^タイトル/ }).fill(e2eName())
+    await en.getByRole("textbox", { name: /^タイトル/ }).fill(`${E2E} en`)
+    const saveJa = ja.getByRole("button", { name: "保存", exact: true })
+    const saveEn = en.getByRole("button", { name: "保存", exact: true })
+
+    await saveJa.click()
+    await expect(saveJa).toBeDisabled()
+    await expect(page.getByRole("dialog").filter({ hasText: "保存していない変更があります。" })).toHaveCount(0)
+    await expect(en.getByRole("textbox", { name: /^タイトル/ })).toHaveValue(`${E2E} en`)
+    await expect(saveEn).toBeEnabled()
+
+    await saveEn.click()
+    await expect(saveEn).toBeDisabled()
+    await page.getByRole("button", { name: "記事の削除" }).click()
+    await page.getByRole("dialog").getByRole("button", { name: "削除", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin\/documents$/)
+  })
+
   test("S-SITE-01: アラートは表示せずに保存でき、HTML を含む本文は行番号付きで拒否され、削除できる", async ({ page }) => {
     await openScreen(page, "/admin/alert")
     const before = await alertBodies(page).count()

@@ -51,8 +51,28 @@ export function useHoldsUnsaved(dirty: boolean): void {
   }, [id, dirty])
 }
 
+/**
+ * Whether the navigation the router is asking about is a form sending itself.
+ *
+ * **A save stays on the screen, so it is let through whatever else is held.**
+ * Another form's words — the other language of an article, typed into and not
+ * yet saved — are still on the screen after the save lands, and still held; a
+ * panel asking whether to leave, over a press that leaves nothing, is a panel
+ * the reader learns to dismiss unread. The form marks its own submission in
+ * the event that sends it (`form.tsx` の `Editing`), and the router asks in
+ * the same event, so the mark is cleared as soon as that event has run.
+ */
+let sending = false
+
+export function letSendingThrough(): void {
+  sending = true
+  queueMicrotask(() => {
+    sending = false
+  })
+}
+
 function shouldBlockLeave(): boolean {
-  return anyUnsaved()
+  return !sending && anyUnsaved()
 }
 
 function askBeforeUnload(event: BeforeUnloadEvent): void {

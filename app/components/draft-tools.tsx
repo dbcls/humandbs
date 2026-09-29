@@ -14,7 +14,7 @@ import type { RenameResult } from "~/admin/pages.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useHoldsUnsaved } from "~/components/unsaved"
-import { drawingKey } from "~/navigating"
+import { drawingKey, useDrawingMayStart } from "~/navigating"
 
 import { AdminBack } from "./admin"
 import { Button, Heading, PANE_LABEL, Stack } from "./base"
@@ -300,14 +300,22 @@ export function useDrawn<T>(at: string, body: string, initial: T | null): T | nu
   const id = useId()
   const drawing = useFetcher({ key: drawingKey(id) }) as { data?: T | null, submit: ReturnType<typeof useFetcher>["submit"] }
   const submit = drawing.submit
+  // **Nothing is drawn while a save is in flight or being read back**
+  // (`drawingMayStart`); the wait is taken up again once it has landed, and
+  // what was already drawn is not asked for again.
+  const mayStart = useDrawingMayStart()
+  const sent = useRef<string | null>(null)
   useEffect(() => {
+    const asked = `${at}\n${body}`
+    if (!mayStart || sent.current === asked) return
     const waiting = setTimeout(() => {
+      sent.current = asked
       void submit(body, { method: "post", action: at, encType: "application/json", defaultShouldRevalidate: false })
     }, DRAW_AFTER)
     return () => {
       clearTimeout(waiting)
     }
-  }, [body, at, submit])
+  }, [body, at, submit, mayStart])
 
   return drawing.data ?? initial
 }

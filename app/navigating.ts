@@ -72,6 +72,10 @@ export function drawingKey(id: string): string {
   return `${DRAWING_PREFIX}${id}`
 }
 
+function isDrawing(key: string): boolean {
+  return key.startsWith(DRAWING_PREFIX)
+}
+
 /**
  * Whether a fetcher in flight is sending something to an action.
  *
@@ -82,7 +86,31 @@ export function drawingKey(id: string): string {
  * what the panel sent had gone through (`base.tsx` の `Dialog`).
  */
 export function fetcherSends(fetcher: { state: string, formMethod?: string, key: string }): boolean {
-  return fetcher.state !== "idle" && sends(fetcher.formMethod) && !fetcher.key.startsWith(DRAWING_PREFIX)
+  return fetcher.state !== "idle" && sends(fetcher.formMethod) && !isDrawing(fetcher.key)
+}
+
+/**
+ * Whether a page may be drawn beside a form now: no navigation under way, and
+ * no fetcher but the drawings sending or loading.
+ *
+ * **A drawing started while a save is being read back takes the reading
+ * away.** A fetcher's action ends by reloading the screen, and one that lands
+ * while a navigation is loading finishes that navigation with its own reading
+ * and aborts the navigation's; a drawing reloads nothing, so the screen is
+ * left as it was before the save — the words shown as unsent, and the
+ * revision the next save is checked against a step behind. An older fetcher's
+ * reload is aborted the same way. So a drawing waits until nothing else is in
+ * flight (`draft-tools.tsx` の `useDrawn`).
+ */
+export function drawingMayStart(
+  navigation: { state: string },
+  fetchers: readonly { state: string, key: string }[],
+): boolean {
+  return navigation.state === "idle" && fetchers.every((fetcher) => fetcher.state === "idle" || isDrawing(fetcher.key))
+}
+
+export function useDrawingMayStart(): boolean {
+  return drawingMayStart(useNavigation(), useFetchers())
 }
 
 /**
