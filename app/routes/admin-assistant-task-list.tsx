@@ -46,43 +46,45 @@ export function AdminAssistantTaskList({
         {/* **The table stays when there is nothing in it**: the column names
             say what would have been here. */}
         <Counted locale={locale} total={tasks.length} />
-        <Table
-          headers={[
-            words.taskId,
-            words.applicationType,
-            words.status,
-            words.updated,
-          ]}
-          whenEmpty={loading ? words.loading : words.none}
-        >
-          {tasks.map((task) => (
-            <tr
-              key={task.task_id}
-              className={
-                selectedTaskId === task.task_id ? "bg-surface-hover" : ""
-              }
-            >
-              <Td nowrap>
-                {/* The identifier opens the task beside the listing; the indicator
+        <div className="max-h-[250px] overflow-y-auto">
+          <Table
+            headers={[
+              words.taskId,
+              words.applicationType,
+              words.status,
+              words.updated,
+            ]}
+            whenEmpty={loading ? words.loading : words.none}
+          >
+            {tasks.map((task) => (
+              <tr
+                key={task.task_id}
+                className={
+                  selectedTaskId === task.task_id ? "bg-surface-hover" : ""
+                }
+              >
+                <Td nowrap>
+                  {/* The identifier opens the task beside the listing; the indicator
                     says so, where the identifier alone reads as a cell of text. */}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  icon={<Chevron dir="right" />}
-                  onClick={() => { onSelect(task.task_id) }}
-                >
-                  {task.task_id}
-                </Button>
-              </Td>
-              <Td>{task.application_type}</Td>
-              <Td>
-                <AssistantStatus status={task.status} locale={locale} />
-              </Td>
-              <Td>{timeOf(task.updated_at ?? task.created_at)}</Td>
-            </tr>
-          ))}
-        </Table>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    icon={<Chevron dir="right" />}
+                    onClick={() => { onSelect(task.task_id) }}
+                  >
+                    {task.task_id}
+                  </Button>
+                </Td>
+                <Td>{task.application_type}</Td>
+                <Td>
+                  <AssistantStatus status={task.status} locale={locale} />
+                </Td>
+                <Td>{timeOf(task.updated_at ?? task.created_at)}</Td>
+              </tr>
+            ))}
+          </Table>
+        </div>
       </Stack>
     </Section>
   )
