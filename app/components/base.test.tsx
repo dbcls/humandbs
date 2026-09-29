@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest"
 import fc from "fast-check"
 
 import { linksIn } from "./_links"
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, startAtTop, MoreLink, ValueChip, wentThrough } from "./base"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, LanguagePills, PanelButton, PaneHeading, ReorderButtons, startAtTop, MoreLink, SwitchTabs, ValueChip, wentThrough } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -667,5 +667,32 @@ describe("a link to a search a crawler is kept off", () => {
     expect(rels(render(<MoreLink to="/news">more</MoreLink>))).toEqual([["/news", false]])
     expect(rels(render(<Chip field="疾患" value="C53" to="/research?q=cancer" remove="外す" />)))
       .toEqual([["/research?q=cancer", true]])
+  })
+
+  it("has nofollow on the listing tabs that carry a search, the one being read among them", () => {
+    const rels = (tabs: { to: string, current: boolean }[]) => linksIn(render(
+      <SwitchTabs label="切り替え" tabs={tabs.map((tab) => ({ ...tab, label: tab.to }))} />,
+    )).map((link) => [link.href, link.rel.includes("nofollow")])
+
+    expect(rels([{ to: "/research?q=cancer", current: true }, { to: "/dataset?q=cancer", current: false }]))
+      .toEqual([["/research?q=cancer", true], ["/dataset?q=cancer", true]])
+    expect(rels([{ to: "/en/research?q=cancer", current: false }, { to: "/en/dataset?q=cancer", current: true }]))
+      .toEqual([["/en/research?q=cancer", true], ["/en/dataset?q=cancer", true]])
+    expect(rels([{ to: "/research", current: true }, { to: "/dataset", current: false }]))
+      .toEqual([["/research", false], ["/dataset", false]])
+  })
+
+  it("has nofollow on the other language of a search, and not on the other language of a page", () => {
+    const rels = (to: string) => linksIn(render(
+      <LanguagePills
+        label="言語"
+        options={[{ code: "en", label: "EN", to, current: false }, { code: "ja", label: "JA", to: "/", current: true }]}
+      />,
+    )).map((link) => [link.href, link.rel.includes("nofollow")])
+
+    expect(rels("/en/research?q=cancer")).toEqual([["/en/research?q=cancer", true]])
+    expect(rels("/en/dataset?q=disease%3AC53&page=2")).toEqual([["/en/dataset?q=disease%3AC53&page=2", true]])
+    expect(rels("/en/research")).toEqual([["/en/research", false]])
+    expect(rels("/en/research/hum0001")).toEqual([["/en/research/hum0001", false]])
   })
 })

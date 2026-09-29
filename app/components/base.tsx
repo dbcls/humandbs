@@ -1506,6 +1506,7 @@ export function LanguagePills({ label, options }: {
               <Link
                 key={option.code}
                 to={option.to}
+                rel={crawlRel(option.to)}
                 hrefLang={option.code}
                 lang={option.code}
                 className="inline-flex size-7 items-center justify-center rounded-full font-semibold text-ink-muted text-xs no-underline hover:text-ink"
@@ -1635,6 +1636,7 @@ export function SwitchTabs({ label, tabs }: {
         <Link
           key={tab.to}
           to={tab.to}
+          rel={crawlRel(tab.to)}
           aria-current={tab.current ? "page" : undefined}
           className={[
             "relative flex items-center rounded-tr-lg px-6 font-bold text-sm no-underline",
