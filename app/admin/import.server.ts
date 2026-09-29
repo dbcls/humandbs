@@ -86,8 +86,8 @@ export interface ImportView {
   application: {
     /** Importing an application in pins dataset labels, which not everybody may. */
     allowed: boolean
-    /** False where the application system cannot be reached from here. */
-    connected: boolean
+    /** False where the branches have never been fetched here. */
+    fetched: boolean
     branches: UpstreamBranchView[]
     /** An application ID that was typed and identifies no branch. */
     unknown: string | null
@@ -169,7 +169,7 @@ export async function importPage(
   const branches = allowed ? await applicationBranches(db, humLabel) : []
   const application = {
     allowed,
-    connected: branches !== null,
+    fetched: branches !== null,
     branches: branches ?? [],
     unknown: null as string | null,
   }
@@ -225,7 +225,7 @@ export async function importPage(
   if (applicationId !== null && applicationId !== "") {
     if (!allowed) throw new Response(null, { status: 403, statusText: "Forbidden" })
     const read = await readApplication(db, applicationId)
-    if (read.status === "unconnected") return { ...view, application: { ...application, connected: false } }
+    if (read.status === "unfetched") return { ...view, application: { ...application, fetched: false } }
     if (read.status === "unknown") return { ...view, application: { ...application, unknown: applicationId } }
     return chosen(
       { kind: "application", applicationId, branch: read.view, choice: read.choice },

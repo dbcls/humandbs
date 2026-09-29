@@ -76,6 +76,13 @@ export interface AppConfig {
    */
   slackIntervalMinutes: number
   /**
+   * How often the upstream caches are refreshed, in minutes, counted from
+   * midnight in Japan so that the same clock times come round every day; 180
+   * refreshes at three, six, nine. Zero is never on its own: a deployment that
+   * needs no fresher copy than it was given refreshes from the command line.
+   */
+  upstreamIntervalMinutes: number
+  /**
    * Whether the site keeps itself out of search engines: a deployment with the
    * same content as another, which only the other should be found by.
    */
@@ -110,6 +117,7 @@ export function loadConfig(env: Env): AppConfig {
     assistantOrigin: readAssistantOrigin(env),
     slackWebhookUrl: readSlackWebhookUrl(env),
     slackIntervalMinutes: readSlackIntervalMinutes(env),
+    upstreamIntervalMinutes: readUpstreamIntervalMinutes(env),
     noindex: readFlag(env, "HUMANDBS_NOINDEX"),
   }
 }
@@ -175,6 +183,32 @@ function readSlackIntervalMinutes(env: Env): number {
   const minutes = /^[0-9]+$/.test(value) ? Number(value) : 0
   if (minutes < 1 || MINUTES_PER_DAY % minutes !== 0) {
     throw new ConfigError(`HUMANDBS_SLACK_INTERVAL_MINUTES must be a number of minutes that divides a day (${String(MINUTES_PER_DAY)})`)
+  }
+  return minutes
+}
+
+/**
+ * Every three hours: a branch approved in the morning can be seeded in the
+ * afternoon, and the heaviest query reaches another project's database eight
+ * times a day.
+ */
+const DEFAULT_UPSTREAM_INTERVAL_MINUTES = 180
+
+/**
+ * Each refresh runs queries that pass over the whole of the application
+ * system's largest tables, and that database is not the portal's to load.
+ */
+const MIN_UPSTREAM_INTERVAL_MINUTES = 60
+
+function readUpstreamIntervalMinutes(env: Env): number {
+  const value = env.HUMANDBS_UPSTREAM_INTERVAL_MINUTES?.trim()
+  if (value === undefined || value === "") return DEFAULT_UPSTREAM_INTERVAL_MINUTES
+  const minutes = /^[0-9]+$/.test(value) ? Number(value) : -1
+  if (minutes === 0) return 0
+  if (minutes < MIN_UPSTREAM_INTERVAL_MINUTES || MINUTES_PER_DAY % minutes !== 0) {
+    throw new ConfigError(
+      `HUMANDBS_UPSTREAM_INTERVAL_MINUTES must be 0 or a number of minutes of at least ${String(MIN_UPSTREAM_INTERVAL_MINUTES)} that divides a day (${String(MINUTES_PER_DAY)})`,
+    )
   }
   return minutes
 }

@@ -36,6 +36,7 @@ describe("loadConfig", () => {
       assistantOrigin: null,
       slackWebhookUrl: null,
       slackIntervalMinutes: 60,
+      upstreamIntervalMinutes: 180,
       noindex: false,
     })
   })
@@ -265,6 +266,40 @@ describe("loadConfig と Slack の通知の間隔", () => {
 
   it("1440 の約数でない分・0・整数でない値は起動時にエラーにし、エラーに値を含めない", () => {
     for (const value of ["7", "100", "2880", "0", "-60", "1.5", "60m", "1e1", "abc"]) {
+      expect(() => loadConfig(withInterval(value)), value).toThrow(ConfigError)
+      try {
+        loadConfig(withInterval(value))
+      } catch (error) {
+        expect(String(error)).not.toContain(`: ${value}`)
+      }
+    }
+  })
+})
+
+/**
+ * How often the upstream caches are refreshed: like the Slack interval it falls
+ * on the clock, and it also has a floor, because each refresh loads another
+ * project's database. Zero switches the loop off.
+ */
+describe("loadConfig と外部から取ってきたデータを取り直す間隔", () => {
+  const withInterval = (value: string | undefined) => ({ ...VALID, HUMANDBS_UPSTREAM_INTERVAL_MINUTES: value })
+
+  it("設定が無いときと空のときは 180 分", () => {
+    for (const value of [undefined, "", " \n"]) expect(loadConfig(withInterval(value)).upstreamIntervalMinutes, String(value)).toBe(180)
+  })
+
+  it("0 は自動で取り直さない値としてそのまま使う", () => {
+    for (const value of ["0", " 0\n", "00"]) expect(loadConfig(withInterval(value)).upstreamIntervalMinutes, value).toBe(0)
+  })
+
+  it("60 以上の 1440 の約数は、前後の空白を除いてそのまま使う", () => {
+    for (const [value, minutes] of [["60", 60], [" 90\n", 90], ["180", 180], ["360", 360], ["1440", 1440]] as const) {
+      expect(loadConfig(withInterval(value)).upstreamIntervalMinutes).toBe(minutes)
+    }
+  })
+
+  it("60 より短い約数・1440 の約数でない分・負の数・整数でない値は起動時にエラーにし、エラーに値を含めない", () => {
+    for (const value of ["1", "45", "59", "100", "2880", "-180", "1.5", "180m", "1e3", "abc"]) {
       expect(() => loadConfig(withInterval(value)), value).toThrow(ConfigError)
       try {
         loadConfig(withInterval(value))

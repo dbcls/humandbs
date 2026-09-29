@@ -10,7 +10,7 @@ import { Icon } from "~/components/icons"
 import { Card, Page, Section, Table, Td } from "~/components/page"
 import { ApplicationDatasets, ApplicationWarning, researchParts, sourceName, SourceTable, ImportForm } from "~/components/import"
 import { Stated } from "~/components/flags"
-import { APPLICATION_TYPE_FLAG, BranchCells, BranchDialog, UpstreamNotConnected } from "~/components/upstream"
+import { APPLICATION_TYPE_FLAG, BranchCells, BranchDialog, UpstreamNotFetched } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
@@ -145,8 +145,8 @@ function Sources({ view, here }: { view: Route.ComponentProps["loaderData"], her
           title={t.application}
           note={view.humLabel === null ? t.applicationNoteUnlabelled : t.applicationNote(view.humLabel)}
         >
-          {!view.application.connected
-            ? <UpstreamNotConnected locale={locale} />
+          {!view.application.fetched
+            ? <UpstreamNotFetched locale={locale} />
             : (
                 <Stack gap="normal">
                   {/* **The table is narrowed, and the unnarrowed one is a way

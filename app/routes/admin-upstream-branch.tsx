@@ -9,7 +9,7 @@ import { Answer, Submit } from "~/components/form"
 import { Icon } from "~/components/icons"
 import { Card, Page, Section } from "~/components/page"
 import { Flag } from "~/components/flags"
-import { APPLICATION_TYPE_FLAG, BranchDatasets, BranchPairs, DroppedNote, UpstreamNotConnected } from "~/components/upstream"
+import { APPLICATION_TYPE_FLAG, BranchDatasets, BranchPairs, DroppedNote, UpstreamNotFetched } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { adminWindowTitle } from "~/i18n/title"
@@ -84,8 +84,8 @@ export default function AdminUpstreamBranch({ loaderData, actionData }: Route.Co
             />
           </Heading>
 
-          {!view.connected || view.branch === null || view.chosen === null
-            ? <UpstreamNotConnected locale={locale} />
+          {!view.fetched || view.branch === null || view.chosen === null
+            ? <UpstreamNotFetched locale={locale} />
             : (
                 <>
                   {view.branch.humLabel === null && (

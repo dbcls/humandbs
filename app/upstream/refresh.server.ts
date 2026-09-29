@@ -12,6 +12,11 @@
  * anything anybody can see. One transaction rather than one per source is what
  * keeps that rebuild to a single pass.
  *
+ * **A source that comes back with fewer than half the rows it wrote last time
+ * is failed too.** A system being stopped or restored can answer with part of
+ * its tables, and writing that would blank as much as an outage would; a
+ * shrink that is real is written from the command line (`allowShrink`).
+ *
  * A source with no connection to reach is skipped, not failed, and leaves no
  * record: the table records how the last fetch went, and no fetch was made.
  */
@@ -23,7 +28,17 @@ import { isPortalIssuedId } from "~/admin/labels"
 import { lockAllResearches } from "~/admin/locks.server"
 import { loadConfig, type ApplicationDbConfig } from "~/config.server"
 import type { Database, Executor, Transaction } from "~/db/client.server"
-import { accessionDate, accessionFileSummary, cauEntry, humAccession, labelPin, upstreamRefresh } from "~/db/schema"
+import {
+  accessionDate,
+  accessionFileSummary,
+  cauEntry,
+  dsBranch,
+  humAccession,
+  jgadRegistration,
+  labelPin,
+  upstreamRefresh,
+} from "~/db/schema"
+import { lastBoundaryInJst } from "~/dates"
 import { syncFileFormatTerms } from "~/files/format-terms.server"
 import { rebuildSearchDocs } from "~/search/rebuild.server"
 
@@ -31,9 +46,11 @@ import { archiveResourceOf, calendarDayOf } from "./archive"
 import { archiveFilesKindOf, readArchiveFiles } from "./archive-files"
 import {
   fetchCauEntries,
+  fetchDsBranches,
   fetchHumAccessions,
   fetchJgadDates,
   fetchJgadFileGroups,
+  fetchJgadRegistrations,
   openApplicationDb,
   type AccessionDateUpstreamRow,
 } from "./application-db.server"
@@ -73,9 +90,27 @@ export function needsApplicationDb(source: UpstreamSource): boolean {
   return (APPLICATION_DB_SOURCES as readonly UpstreamSource[]).includes(source)
 }
 
+export interface RefreshOptions {
+  /**
+   * Write a source even when it came back with fewer than half the rows it
+   * wrote last time. Only the command line sets it, for a shrink somebody has
+   * checked is real.
+   */
+  allowShrink?: boolean
+}
+
+/**
+ * Whether a fetch came back with fewer than half the rows the last one wrote.
+ * Nothing shrinks from a source that has never written, or last wrote none.
+ */
+export function shrankByHalf(rowCount: number, previous: number | null): boolean {
+  return previous !== null && rowCount * 2 < previous
+}
+
 export async function runUpstreamRefresh(
   db: Database,
   sources: readonly UpstreamSource[] = UPSTREAM_SOURCES,
+  options: RefreshOptions = {},
 ): Promise<SourceOutcome[]> {
   const applicationDb = loadConfig(process.env).applicationDb
   // Opened only if one of the sources asked for reads it, so refreshing the
@@ -83,6 +118,11 @@ export async function runUpstreamRefresh(
   const pool = applicationDb !== null && sources.some(needsApplicationDb)
     ? openApplicationDb(applicationDb)
     : null
+
+  const previous = new Map(
+    (await db.select({ source: upstreamRefresh.source, rowCount: upstreamRefresh.rowCount }).from(upstreamRefresh))
+      .map((row) => [row.source, row.rowCount]),
+  )
 
   const outcomes: SourceOutcome[] = []
   const written = new Map<UpstreamSource, Fetched>()
@@ -94,6 +134,15 @@ export async function runUpstreamRefresh(
       }
       try {
         const fetched = await fetchSource(source, db, pool, applicationDb)
+        const before = previous.get(source) ?? null
+        if (options.allowShrink !== true && shrankByHalf(fetched.rowCount, before)) {
+          outcomes.push({
+            source,
+            status: "failed",
+            failure: `returned ${String(fetched.rowCount)} rows, fewer than half of the ${String(before)} written last time`,
+          })
+          continue
+        }
         written.set(source, fetched)
         outcomes.push({
           source,
@@ -137,7 +186,7 @@ async function fetchSource(
     return fileSummariesFetched(source, await fetchArchiveFiles(db))
   }
 
-  // The four below are only reached with a connection; the caller skips them
+  // The six below are only reached with a connection; the caller skips them
   // otherwise, and this makes that known to the type checker rather than by comment.
   if (pool === null || applicationDb === null) {
     throw new Error("the application system is not configured")
@@ -170,6 +219,28 @@ async function fetchSource(
 
   if (source === "jgad-file") {
     return fileSummariesFetched(source, summarizeJgadFiles(await fetchJgadFileGroups(pool, applicationDb.schema)))
+  }
+
+  if (source === "ds-branch") {
+    const rows = await fetchDsBranches(pool, applicationDb.schema)
+    return {
+      rowCount: rows.length,
+      write: async (tx) => {
+        await tx.delete(dsBranch)
+        await insertChunked(rows, (chunk) => tx.insert(dsBranch).values(chunk))
+      },
+    }
+  }
+
+  if (source === "jgad-registration") {
+    const rows = await fetchJgadRegistrations(pool, applicationDb.schema)
+    return {
+      rowCount: rows.length,
+      write: async (tx) => {
+        await tx.delete(jgadRegistration)
+        await insertChunked(rows, (chunk) => tx.insert(jgadRegistration).values(chunk))
+      },
+    }
   }
 
   const rows = firstPerKey(
@@ -315,17 +386,23 @@ async function record(tx: Transaction, outcome: SourceOutcome, at: Date): Promis
  *
  * The row is the lock. Several application processes run the same loop, so the
  * claim has to be one statement: whoever's update returns a row does the work.
- * An attempt older than the timeout is treated as abandoned, which is how a
- * source recovers from a process that stopped mid-fetch.
+ *
+ * **A source is due once the clock passes a boundary it has not succeeded
+ * since.** The boundaries are multiples of the interval counted from midnight in
+ * JST (`lastBoundaryInJst`), so the refreshes fall on the same clock times every
+ * day. It is claimed at the first look past the boundary, and after that only
+ * once the last attempt is `retryMs` old — which is how a source that failed is
+ * tried again, and how one whose process stopped mid-fetch is recovered, without
+ * an attempt still in flight being started a second time.
  */
 export async function claimDueSources(
   db: Database,
   sources: readonly UpstreamSource[],
   now: Date,
-  interval: { refreshMs: number, attemptTimeoutMs: number },
+  interval: { minutes: number, retryMs: number },
 ): Promise<UpstreamSource[]> {
-  const dueBefore = new Date(now.getTime() - interval.refreshMs)
-  const abandonedBefore = new Date(now.getTime() - interval.attemptTimeoutMs)
+  const boundary = lastBoundaryInJst(now, interval.minutes)
+  const retryBefore = new Date(now.getTime() - interval.retryMs)
 
   const claimed: UpstreamSource[] = []
   for (const source of sources) {
@@ -336,10 +413,13 @@ export async function claimDueSources(
         target: upstreamRefresh.source,
         set: { attemptedAt: now },
         setWhere: and(
-          sql`${upstreamRefresh.attemptedAt} < ${abandonedBefore}`,
           or(
             isNull(upstreamRefresh.succeededAt),
-            sql`${upstreamRefresh.succeededAt} < ${dueBefore}`,
+            sql`${upstreamRefresh.succeededAt} < ${boundary}`,
+          ),
+          or(
+            sql`${upstreamRefresh.attemptedAt} < ${boundary}`,
+            sql`${upstreamRefresh.attemptedAt} < ${retryBefore}`,
           ),
         ),
       })

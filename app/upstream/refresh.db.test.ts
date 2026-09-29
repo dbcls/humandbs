@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
@@ -18,6 +19,8 @@ vi.mock("./application-db.server", () => ({
   fetchHumAccessions: vi.fn(),
   fetchJgadDates: vi.fn(),
   fetchJgadFileGroups: vi.fn(),
+  fetchDsBranches: vi.fn(),
+  fetchJgadRegistrations: vi.fn(),
 }))
 
 vi.mock("./ddbj-search.server", () => ({ fetchArchiveEntry: vi.fn() }))
@@ -34,14 +37,17 @@ import { FILE_FORMATS } from "~/files/formats"
 
 import {
   fetchCauEntries,
+  fetchDsBranches,
   fetchHumAccessions,
   fetchJgadDates,
   fetchJgadFileGroups,
+  fetchJgadRegistrations,
+  type DsBranchDetail,
 } from "./application-db.server"
 import { geaFileListPath } from "./archive-files"
 import { fetchArchiveEntry } from "./ddbj-search.server"
 import { publicFiles } from "./public-files.server"
-import { claimDueSources, runUpstreamRefresh } from "./refresh.server"
+import { claimDueSources, runUpstreamRefresh, shrankByHalf } from "./refresh.server"
 
 const db = getDb()
 
@@ -53,6 +59,8 @@ beforeEach(async () => {
   vi.mocked(fetchHumAccessions).mockReset()
   vi.mocked(fetchJgadDates).mockReset()
   vi.mocked(fetchJgadFileGroups).mockReset()
+  vi.mocked(fetchDsBranches).mockReset()
+  vi.mocked(fetchJgadRegistrations).mockReset()
   vi.mocked(fetchArchiveEntry).mockReset()
   vi.mocked(publicFiles.text).mockReset()
   vi.mocked(publicFiles.size).mockReset()
@@ -150,6 +158,159 @@ describe("a source that responds", () => {
     const [row] = await db.select().from(s.upstreamRefresh)
     expect(row?.rowCount).toBe(2)
     expect(row?.failure).toBeNull()
+  })
+})
+
+/**
+ * A system being stopped or restored can answer with part of its tables, which
+ * cannot be told from a real shrink — except that a real one is rare and
+ * somebody can check it.
+ */
+describe("a source that comes back with far fewer rows than last time", () => {
+  const cau = (count: number) => Array.from({ length: count }, (_, index) => cauRow(`J-DU${String(index).padStart(6, "0")}`))
+
+  async function writtenBefore(count: number): Promise<void> {
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce(cau(count))
+    await runUpstreamRefresh(db, ["cau"])
+  }
+
+  it("is failed and keeps its rows when it returns fewer than half", async () => {
+    await writtenBefore(5)
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce(cau(2))
+
+    const outcomes = await runUpstreamRefresh(db, ["cau"])
+
+    expect(outcomes).toEqual([{
+      source: "cau",
+      status: "failed",
+      failure: "returned 2 rows, fewer than half of the 5 written last time",
+    }])
+    expect(await db.select().from(s.cauEntry)).toHaveLength(5)
+    const [row] = await db.select().from(s.upstreamRefresh)
+    expect(row?.rowCount).toBe(5)
+  })
+
+  it("is failed when it returns none at all", async () => {
+    await writtenBefore(1)
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce([])
+
+    const [outcome] = await runUpstreamRefresh(db, ["cau"])
+
+    expect(outcome?.status).toBe("failed")
+    expect(await db.select().from(s.cauEntry)).toHaveLength(1)
+  })
+
+  it("is written when it returns exactly half", async () => {
+    await writtenBefore(4)
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce(cau(2))
+
+    const [outcome] = await runUpstreamRefresh(db, ["cau"])
+
+    expect(outcome).toEqual({ source: "cau", status: "written", rowCount: 2 })
+    expect(await db.select().from(s.cauEntry)).toHaveLength(2)
+  })
+
+  it("is written whatever it returns the first time, or after a fetch that wrote nothing", async () => {
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce([])
+    const [first] = await runUpstreamRefresh(db, ["cau"])
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce([])
+    const [afterNone] = await runUpstreamRefresh(db, ["cau"])
+
+    expect(first).toEqual({ source: "cau", status: "written", rowCount: 0 })
+    expect(afterNone).toEqual({ source: "cau", status: "written", rowCount: 0 })
+  })
+
+  it("is written when the command line allows the shrink, and the count it is measured against moves", async () => {
+    await writtenBefore(5)
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce(cau(1))
+
+    const [outcome] = await runUpstreamRefresh(db, ["cau"], { allowShrink: true })
+
+    expect(outcome).toEqual({ source: "cau", status: "written", rowCount: 1 })
+    expect(await db.select().from(s.cauEntry)).toHaveLength(1)
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce(cau(1))
+    const [next] = await runUpstreamRefresh(db, ["cau"])
+    expect(next?.status).toBe("written")
+  })
+
+  it("does not hold back a source that kept its size", async () => {
+    await writtenBefore(4)
+    vi.mocked(fetchCauEntries).mockResolvedValueOnce(cau(1))
+    vi.mocked(fetchHumAccessions).mockResolvedValueOnce([
+      { accession: "JGAD000001", humLabel: "hum0001", kind: "jga-dataset", study: null },
+    ])
+
+    const outcomes = await runUpstreamRefresh(db, ["cau", "hum-accession"])
+
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(["failed", "written"])
+  })
+})
+
+describe("shrankByHalf", () => {
+  it("is true exactly when fewer than half the previous rows came back, and never without a previous count", () => {
+    fc.assert(fc.property(fc.nat(10_000), fc.option(fc.nat(10_000), { nil: null }), (rows, previous) => {
+      expect(shrankByHalf(rows, previous)).toBe(previous !== null && rows < previous / 2)
+    }))
+  })
+})
+
+/** The two sources the screens that seed a draft read instead of the application system. */
+describe("the branches and the registrations", () => {
+  const branch: DsBranchDetail = {
+    applicationId: "J-DS000136-010",
+    humLabel: "hum0522",
+    applicationType: "new",
+    approvedOn: "2024-05-18",
+    titleJa: "ゲノム解析",
+    titleEn: "A genome study",
+    piNameJa: "田中 太郎",
+    piNameEn: "Taro Tanaka",
+    accessions: ["JGAD000891", "JGAS000720"],
+    aimsJa: "目的",
+    aimsEn: "",
+    methodsJa: "方法",
+    methodsEn: "",
+    targetsJa: "対象",
+    targetsEn: "",
+    affiliationJa: "大学",
+    affiliationEn: "University",
+    country: "Japan",
+    dataAccess: 2,
+    icd10: "C34.9",
+  }
+
+  it("writes every branch as it came back, and replaces them on the next fetch", async () => {
+    vi.mocked(fetchDsBranches).mockResolvedValueOnce([branch, { ...branch, applicationId: "J-DS000136-011" }])
+    await runUpstreamRefresh(db, ["ds-branch"])
+    vi.mocked(fetchDsBranches).mockResolvedValueOnce([{ ...branch, applicationId: "J-DS000136-011", humLabel: null }])
+    await runUpstreamRefresh(db, ["ds-branch"])
+
+    const rows = await db.select().from(s.dsBranch)
+    expect(rows).toEqual([expect.objectContaining({ applicationId: "J-DS000136-011", humLabel: null, icd10: "C34.9" })])
+  })
+
+  it("writes the registrations, unpublished ones included", async () => {
+    vi.mocked(fetchJgadRegistrations).mockResolvedValueOnce([
+      { accession: "JGAD000891", title: "A cohort", datasetType: "WGS" },
+      { accession: "JGAD000999", title: "Not yet public", datasetType: "" },
+    ])
+
+    const outcomes = await runUpstreamRefresh(db, ["jgad-registration"])
+
+    expect(outcomes).toEqual([{ source: "jgad-registration", status: "written", rowCount: 2 }])
+    expect((await db.select().from(s.jgadRegistration)).map((row) => row.accession).sort())
+      .toEqual(["JGAD000891", "JGAD000999"])
+  })
+
+  it("keeps the branches when the application system fails, so the screens still list them", async () => {
+    vi.mocked(fetchDsBranches).mockResolvedValueOnce([branch])
+    await runUpstreamRefresh(db, ["ds-branch"])
+    vi.mocked(fetchDsBranches).mockRejectedValueOnce(new Error("connect ECONNREFUSED"))
+
+    const [outcome] = await runUpstreamRefresh(db, ["ds-branch"])
+
+    expect(outcome?.status).toBe("failed")
+    expect(await db.select().from(s.dsBranch)).toHaveLength(1)
   })
 })
 
@@ -326,13 +487,14 @@ describe("the dataset files", () => {
   it("drops a dataset the server no longer has files for", async () => {
     const researchId = await aResearch()
     await pinDataset(researchId, "E-GEAD-1076")
-    vi.mocked(publicFiles.text).mockResolvedValueOnce(GEA)
+    await pinDataset(researchId, "E-GEAD-1077")
+    vi.mocked(publicFiles.text).mockResolvedValue(GEA)
     await runUpstreamRefresh(db, ["archive-file"])
-    vi.mocked(publicFiles.text).mockResolvedValueOnce(null)
+    vi.mocked(publicFiles.text).mockImplementation((path) => Promise.resolve(path === geaFileListPath("E-GEAD-1077") ? null : GEA))
 
     await runUpstreamRefresh(db, ["archive-file"])
 
-    expect(await summaries()).toEqual([])
+    expect((await summaries()).map((row) => row.accession)).toEqual(["E-GEAD-1076"])
   })
 
   async function summaries() {
@@ -355,16 +517,19 @@ describe("without a connection to the application system", () => {
     delete process.env.HUMANDBS_JGA_DATABASE_URL
   })
 
-  it("skips the four sources that read it rather than failing them", async () => {
-    const outcomes = await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date", "jgad-file"])
+  const reading = ["cau", "hum-accession", "jgad-date", "jgad-file", "ds-branch", "jgad-registration"] as const
+
+  it("skips the six sources that read it rather than failing them", async () => {
+    const outcomes = await runUpstreamRefresh(db, reading)
 
     expect(outcomes.every((outcome) => outcome.status === "skipped")).toBe(true)
     expect(vi.mocked(fetchCauEntries)).not.toHaveBeenCalled()
     expect(vi.mocked(fetchJgadFileGroups)).not.toHaveBeenCalled()
+    expect(vi.mocked(fetchDsBranches)).not.toHaveBeenCalled()
   })
 
   it("leaves no record, because the table records how the last fetch went", async () => {
-    await runUpstreamRefresh(db, ["cau", "hum-accession", "jgad-date", "jgad-file"])
+    await runUpstreamRefresh(db, reading)
 
     expect(await db.select().from(s.upstreamRefresh)).toHaveLength(0)
   })
@@ -372,42 +537,74 @@ describe("without a connection to the application system", () => {
 
 /**
  * Several application processes run the loop, so what stops two of them
- * querying upstream at once is that the claim is one statement.
+ * querying upstream at once is that the claim is one statement. The
+ * boundaries fall on the clock in JST: with 180 minutes, at 0:00, 3:00, 6:00.
  */
 describe("claiming a due source", () => {
-  const interval = { refreshMs: 24 * 60 * 60 * 1000, attemptTimeoutMs: 60 * 60 * 1000 }
-  const now = new Date("2026-08-11T03:00:00Z")
+  const interval = { minutes: 180, retryMs: 60 * 60 * 1000 }
+  /** An instant at a time of day in JST on 2026-08-11. */
+  const jst = (time: string) => new Date(`2026-08-11T${time}+09:00`)
+
+  async function lastRun(at: { attemptedAt: Date, succeededAt: Date | null }): Promise<void> {
+    await db.insert(s.upstreamRefresh).values({ source: "cau", ...at, rowCount: 1 })
+  }
 
   it("claims a source that has never been fetched", async () => {
-    expect(await claimDueSources(db, ["cau"], now, interval)).toEqual(["cau"])
+    expect(await claimDueSources(db, ["cau"], jst("12:34:00"), interval)).toEqual(["cau"])
   })
 
   it("does not claim it a second time while the first attempt is in flight", async () => {
-    await claimDueSources(db, ["cau"], now, interval)
+    await claimDueSources(db, ["cau"], jst("12:34:00"), interval)
 
-    expect(await claimDueSources(db, ["cau"], now, interval)).toEqual([])
+    expect(await claimDueSources(db, ["cau"], jst("12:34:00"), interval)).toEqual([])
+    expect(await claimDueSources(db, ["cau"], jst("13:33:59"), interval)).toEqual([])
   })
 
-  it("does not claim a source that succeeded within the interval", async () => {
-    vi.mocked(fetchCauEntries).mockResolvedValueOnce([cauRow("J-DU000001")])
-    await runUpstreamRefresh(db, ["cau"])
+  it("does not claim a source that succeeded since the last boundary", async () => {
+    await lastRun({ attemptedAt: jst("03:04:00"), succeededAt: jst("03:04:00") })
 
-    expect(await claimDueSources(db, ["cau"], new Date(), interval)).toEqual([])
+    expect(await claimDueSources(db, ["cau"], jst("05:59:59"), interval)).toEqual([])
   })
 
-  it("claims it again once the interval has passed", async () => {
-    vi.mocked(fetchCauEntries).mockResolvedValueOnce([cauRow("J-DU000001")])
-    await runUpstreamRefresh(db, ["cau"])
-    const later = new Date(Date.now() + 25 * 60 * 60 * 1000)
+  it("claims it at the next boundary, however soon after the last success that is", async () => {
+    await lastRun({ attemptedAt: jst("05:30:00"), succeededAt: jst("05:30:00") })
 
-    expect(await claimDueSources(db, ["cau"], later, interval)).toEqual(["cau"])
+    expect(await claimDueSources(db, ["cau"], jst("06:00:00"), interval)).toEqual(["cau"])
+  })
+
+  it("counts the boundaries from midnight in JST, not in UTC", async () => {
+    const sixHours = { ...interval, minutes: 360 }
+    await lastRun({ attemptedAt: jst("08:30:00"), succeededAt: jst("08:30:00") })
+
+    // 09:00 JST is midnight UTC: a boundary counted in UTC, not in JST.
+    expect(await claimDueSources(db, ["cau"], jst("09:00:00"), sixHours)).toEqual([])
+    expect(await claimDueSources(db, ["cau"], jst("11:59:59"), sixHours)).toEqual([])
+    expect(await claimDueSources(db, ["cau"], jst("12:00:00"), sixHours)).toEqual(["cau"])
+  })
+
+  it("tries a failed source again an hour after the attempt, not at the next boundary", async () => {
+    await lastRun({ attemptedAt: jst("03:04:00"), succeededAt: jst("00:04:00") })
+
+    expect(await claimDueSources(db, ["cau"], jst("04:04:00"), interval)).toEqual([])
+    expect(await claimDueSources(db, ["cau"], jst("04:04:01"), interval)).toEqual(["cau"])
+  })
+
+  it("tries a failed source again at the next boundary, even within the hour", async () => {
+    await lastRun({ attemptedAt: jst("05:40:00"), succeededAt: jst("00:04:00") })
+
+    expect(await claimDueSources(db, ["cau"], jst("06:00:00"), interval)).toEqual(["cau"])
   })
 
   it("claims an attempt abandoned by a process that stopped", async () => {
-    await claimDueSources(db, ["cau"], now, interval)
-    const muchLater = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+    await claimDueSources(db, ["cau"], jst("12:34:00"), interval)
 
-    expect(await claimDueSources(db, ["cau"], muchLater, interval)).toEqual(["cau"])
+    expect(await claimDueSources(db, ["cau"], jst("13:34:01"), interval)).toEqual(["cau"])
+  })
+
+  it("claims each source on its own", async () => {
+    await lastRun({ attemptedAt: jst("03:04:00"), succeededAt: jst("03:04:00") })
+
+    expect(await claimDueSources(db, ["cau", "hum-accession"], jst("04:00:00"), interval)).toEqual(["hum-accession"])
   })
 })
 

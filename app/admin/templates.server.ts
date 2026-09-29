@@ -1,29 +1,25 @@
 /**
  * The screens that start a draft from what an upstream system already has.
  *
- * Two systems answer here and they are read directly rather than through the
- * caches: those hold what is public, and a draft is written for something that
- * is not published yet.
- *
- * **The connection is opened for the request and closed with it.** The daily
- * refresh does the same; holding a connection into another project's production
- * database open to respond to a screen somebody opens a few times a month would be
- * paying rent for nothing.
+ * **The application system is read through its caches, never directly**
+ * (`upstream/branches.server.ts`): the approved branches and the JGA
+ * registrations are copied at every refresh, unpublished ones included, so a
+ * curator can start a draft while that system is down. DDBJ Search is still
+ * asked directly for a DRA submission, which it holds from the moment it is
+ * registered.
  *
  * **What was looked at and what is created are two separate reads.** The form
- * sends which datasets to make and nothing else, and the values are fetched
+ * sends which datasets to make and nothing else, and the values are read
  * again. Passing them through the form would mean writing content the browser
- * handed over rather than content upstream states, and upstream moves on the
- * scale of a day.
+ * handed over rather than content upstream states, and a refresh may have
+ * replaced them in between.
  */
 
 import { and, eq, inArray } from "drizzle-orm"
-import type { Pool } from "pg"
 import { redirect } from "react-router"
 
 import { requireCapability } from "~/auth/actor.server"
 import { can, type Actor } from "~/auth/capabilities"
-import { loadConfig } from "~/config.server"
 import type { ResearchContent } from "~/content/types"
 import { getDb, type Executor } from "~/db/client.server"
 import { dataset, labelPin } from "~/db/schema"
@@ -31,16 +27,14 @@ import type { Locale } from "~/i18n/locale"
 import { href } from "~/public/urls"
 import { type ListingSize, readListingSize } from "~/search/page-size"
 import { isSortOrder, type SortOrder } from "~/search/sort"
+import type { DsBranchDetail, DsBranchRow, JgadRegistration } from "~/upstream/application-db.server"
 import {
-  fetchAccessionBranchId,
-  fetchDsBranch,
-  fetchJgadRegistrations,
-  openApplicationDb,
-  searchDsBranches,
-  type DsBranchDetail,
-  type DsBranchRow,
-  type JgadRegistration,
-} from "~/upstream/application-db.server"
+  branchesFetched,
+  branchOfAccession,
+  readBranch,
+  readJgadRegistrations,
+  searchBranches,
+} from "~/upstream/branches.server"
 import { fetchDraSubmission } from "~/upstream/dra.server"
 
 import {
@@ -145,8 +139,8 @@ export interface UpstreamChoiceView {
 
 export interface UpstreamResearchView {
   locale: Locale
-  /** False where this deployment cannot reach the application system at all. */
-  connected: boolean
+  /** False where the branches have never been fetched here. */
+  fetched: boolean
   keyword: string
   branchStatuses: BranchStatus[]
   applicationTypes: ApplicationType[]
@@ -184,7 +178,7 @@ export interface UpstreamHolderView {
  */
 export interface UpstreamBranchPageView {
   locale: Locale
-  connected: boolean
+  fetched: boolean
   applicationId: string
   branch: UpstreamBranchView | null
   chosen: UpstreamChoiceView | null
@@ -210,29 +204,6 @@ export type UpstreamResult
     | { status: "conflict" }
 
 // === reading the upstream ===
-
-interface Connection {
-  pool: Pool
-  schema: string
-}
-
-/**
- * The application system, for as long as one request needs it.
- *
- * Answering null rather than throwing is what makes a deployment with no
- * connection an ordinary deployment: the screen shows it cannot reach the
- * system, and the half of it that reads DDBJ Search still works.
- */
-async function withApplicationDb<T>(run: (at: Connection) => Promise<T>): Promise<T | null> {
-  const config = loadConfig(process.env).applicationDb
-  if (config === null) return null
-  const pool = openApplicationDb(config)
-  try {
-    return await run({ pool, schema: config.schema })
-  } finally {
-    await pool.end()
-  }
-}
 
 /** Which research each hum label already identifies. */
 async function humHolders(
@@ -298,12 +269,12 @@ function fieldsOf(branch: DsBranchDetail): SeededFieldView[] {
 
 /** The JGAD a branch registered, seeded from what the registration system holds. */
 async function jgadSeeds(
-  at: Connection,
+  db: Executor,
   branch: DsBranchDetail,
   catalog: CatalogWithTerms,
 ): Promise<DatasetSeed[]> {
   const accessions = branch.accessions.filter((accession) => JGAD.test(accession))
-  const registrations = await fetchJgadRegistrations(at.pool, at.schema, accessions)
+  const registrations = await readJgadRegistrations(db, accessions)
   const stated = new Map(registrations.map((row) => [row.accession, row]))
   return accessions.map((accession) => {
     const registration: JgadRegistration = stated.get(accession)
@@ -357,11 +328,10 @@ function dedupe(dropped: readonly DroppedValue[]): DroppedValue[] {
 /**
  * The applications a draft can be imported from, newest approval first.
  *
- * **Every branch the word matched is read, and the page is sliced here rather than
- * upstream.** One of the two things a curator narrows by — whether the portal
- * already holds the hum label — is the portal's own answer about the branch,
- * which the application system has no way to know. Reading all of them costs
- * what reading thirty costs (`upstream/application-db.server.ts`).
+ * **Every branch the word matched is read, and the page is sliced here.** One of
+ * the two things a curator narrows by — whether the portal already holds the
+ * hum label — is the portal's own answer about the branch, which the cached
+ * rows do not hold.
  *
  * An ordering or a size that is not one of the offered ones is read as none
  * asked for, the way every other listing reads its address.
@@ -385,12 +355,10 @@ export async function upstreamResearchPage(
   const size = readListingSize(url.searchParams.get("size"))
   const presented = { ...filter, keyword, sort, order, size }
 
-  const rows = await withApplicationDb((at) =>
-    searchDsBranches(at.pool, at.schema, keyword, null))
-  if (rows === null) {
+  if (!await branchesFetched(db)) {
     return {
       locale,
-      connected: false,
+      fetched: false,
       ...presented,
       counts: {
         branchStatuses: axisCounts([], BRANCH_STATUSES, () => false),
@@ -405,7 +373,7 @@ export async function upstreamResearchPage(
     }
   }
 
-  const found = await branchViews(db, rows)
+  const found = await branchViews(db, await searchBranches(db, keyword))
   const page = pageOf(
     sortBranchRows(filterBranchRows(found, filter), sort, order),
     readPage(url.searchParams.get("page")),
@@ -427,7 +395,7 @@ export async function upstreamResearchPage(
   }
   return {
     locale,
-    connected: true,
+    fetched: true,
     ...presented,
     counts,
     rows: page.rows,
@@ -457,26 +425,24 @@ export async function upstreamBranchPage(
   const applicationId = params.applicationId
   if (applicationId === undefined || applicationId === "") notFound()
 
-  const catalog = await loadCatalogWithTerms(db)
-  const read = await withApplicationDb(async (at) => {
-    const branch = await fetchDsBranch(at.pool, at.schema, applicationId)
-    return { branch, seeds: branch === null ? [] : await jgadSeeds(at, branch, catalog) }
-  })
-  if (read === null) {
-    return { locale, connected: false, applicationId, branch: null, chosen: null, holder: null }
+  if (!await branchesFetched(db)) {
+    return { locale, fetched: false, applicationId, branch: null, chosen: null, holder: null }
   }
-  if (read.branch === null) notFound()
+  const branch = await readBranch(db, applicationId)
+  if (branch === null) notFound()
+  const catalog = await loadCatalogWithTerms(db)
+  const seeds = await jgadSeeds(db, branch, catalog)
 
-  const [view] = await branchViews(db, [read.branch])
+  const [view] = await branchViews(db, [branch])
   const holder = view?.heldBy == null || view.humLabel === null
     ? null
     : { researchId: view.heldBy, humLabel: view.humLabel }
   return {
     locale,
-    connected: true,
+    fetched: true,
     applicationId,
     branch: view ?? null,
-    chosen: await choiceOf(db, { applicationId, branch: read.branch, seeds: read.seeds }),
+    chosen: await choiceOf(db, { applicationId, branch, seeds }),
     holder,
   }
 }
@@ -501,12 +467,10 @@ export async function upstreamBranchAction(
   const form = await request.formData()
   if (readString(form, "into") !== "new") badRequest()
 
+  const branch = await readBranch(db, applicationId)
+  if (branch === null) notFound()
   const catalog = await loadCatalogWithTerms(db)
-  const read = await withApplicationDb(async (at) => {
-    const branch = await fetchDsBranch(at.pool, at.schema, applicationId)
-    return branch === null ? null : { branch, seeds: await jgadSeeds(at, branch, catalog) }
-  })
-  if (read == null) notFound()
+  const read = { branch, seeds: await jgadSeeds(db, branch, catalog) }
 
   // **Every dataset the application registered is made with the research,
   // except one a research already holds** — there is nothing to choose: a
@@ -537,9 +501,9 @@ export async function upstreamBranchAction(
  * branches, on the screen that imports an application
  * (`upstreamDraftPage`).
  *
- * A DRA accession is answered without the application system, which is why the
- * two halves are read apart — a deployment that cannot reach the application
- * system can still seed from DDBJ Search.
+ * A DRA accession is answered by DDBJ Search and a JGAD by the cached branches,
+ * which is why the two halves are read apart. A JGAD registered since the last
+ * refresh is not found until the next one.
  */
 export async function upstreamDatasetPage(
   request: Request,
@@ -573,26 +537,20 @@ export async function upstreamDatasetPage(
 
   if (accession === "") return { ...listing, chosen: null, unknown: null }
 
-  const read = await withApplicationDb(async (connection) => {
-    const named = JGAD.test(accession)
-      ? await fetchAccessionBranchId(connection.pool, connection.schema, accession)
-      : null
-    const branch = named === null
-      ? null
-      : await fetchDsBranch(connection.pool, connection.schema, named)
-    if (branch === null) return null
-    // A typed accession takes only itself, not the rest of the branch it came in.
-    const seeds = await jgadSeeds(connection, branch, catalog)
-    return { branch, seeds: seeds.filter((seed) => seed.label === accession) }
-  })
+  const named = JGAD.test(accession) ? await branchOfAccession(db, accession) : null
+  const branch = named === null ? null : await readBranch(db, named)
+  // A typed accession takes only itself, not the rest of the branch it came in.
+  const seeds = branch === null
+    ? []
+    : (await jgadSeeds(db, branch, catalog)).filter((seed) => seed.label === accession)
 
-  if (read == null || read.seeds.length === 0) return { ...listing, chosen: null, unknown: accession }
+  if (branch === null || seeds.length === 0) return { ...listing, chosen: null, unknown: accession }
   return {
     ...listing,
     chosen: await choiceOf(db, {
-      applicationId: read.branch.applicationId,
+      applicationId: branch.applicationId,
       branch: null,
-      seeds: read.seeds,
+      seeds,
     }),
     unknown: null,
   }
@@ -629,16 +587,10 @@ export async function upstreamDatasetAction(
 
   const jga = [...wanted].filter((value) => JGAD.test(value))
   if (jga.length > 0) {
-    const read = await withApplicationDb(async (connection) => {
-      const named = applicationId
-        ?? await fetchAccessionBranchId(connection.pool, connection.schema, jga[0] ?? "")
-      const branch = named === null
-        ? null
-        : await fetchDsBranch(connection.pool, connection.schema, named)
-      return branch === null ? null : jgadSeeds(connection, branch, catalog)
-    })
-    if (read == null) notFound()
-    seeds.push(...read.filter((seed) => wanted.has(seed.label)))
+    const named = applicationId ?? await branchOfAccession(db, jga[0] ?? "")
+    const branch = named === null ? null : await readBranch(db, named)
+    if (branch === null) notFound()
+    seeds.push(...(await jgadSeeds(db, branch, catalog)).filter((seed) => wanted.has(seed.label)))
   }
 
   // An accession neither archive answered for is not something to create.
@@ -657,25 +609,21 @@ export async function upstreamDatasetAction(
 
 /**
  * This research's own branches, newest approval first, for the import
- * screen's table. Null where the application system cannot be reached.
+ * screen's table. Null where the branches have never been fetched here.
  */
 export async function applicationBranches(
   db: Executor,
   humLabel: string | null,
 ): Promise<UpstreamBranchView[] | null> {
-  const rows = await withApplicationDb((connection) =>
-    humLabel === null
-      ? Promise.resolve([])
-      : searchDsBranches(connection.pool, connection.schema, humLabel, null))
-  if (rows === null) return null
-
-  const matched = humLabel === null ? [] : rows.filter((row) => row.humLabel === humLabel)
-  return branchViews(db, matched)
+  if (!await branchesFetched(db)) return null
+  if (humLabel === null) return []
+  const rows = await searchBranches(db, humLabel)
+  return branchViews(db, rows.filter((row) => row.humLabel === humLabel))
 }
 
 /** One branch as a source, with the datasets it registered. */
 export type ApplicationRead
-  = | { status: "unconnected" }
+  = | { status: "unfetched" }
     | { status: "unknown" }
     | {
       status: "found"
@@ -685,18 +633,16 @@ export type ApplicationRead
     }
 
 export async function readApplication(db: Executor, applicationId: string): Promise<ApplicationRead> {
+  if (!await branchesFetched(db)) return { status: "unfetched" }
+  const branch = await readBranch(db, applicationId)
+  if (branch === null) return { status: "unknown" }
   const catalog = await loadCatalogWithTerms(db)
-  const read = await withApplicationDb(async (connection) => {
-    const branch = await fetchDsBranch(connection.pool, connection.schema, applicationId)
-    return { branch, seeds: branch === null ? [] : await jgadSeeds(connection, branch, catalog) }
-  })
-  if (read === null) return { status: "unconnected" }
-  if (read.branch === null) return { status: "unknown" }
+  const seeds = await jgadSeeds(db, branch, catalog)
 
-  const choice = await choiceOf(db, { applicationId, branch: read.branch, seeds: read.seeds })
-  const [view] = await branchViews(db, [read.branch])
+  const choice = await choiceOf(db, { applicationId, branch, seeds })
+  const [view] = await branchViews(db, [branch])
   if (view === undefined) return { status: "unknown" }
-  return { status: "found", branch: read.branch, view, choice }
+  return { status: "found", branch, view, choice }
 }
 
 /**
@@ -713,12 +659,9 @@ export async function importApplication(
   actor: Actor,
 ): Promise<{ status: "gone" } | { status: "added" } | UpstreamResult> {
   const catalog = await loadCatalogWithTerms(db)
-  const read = await withApplicationDb(async (connection) => {
-    const branch = await fetchDsBranch(connection.pool, connection.schema, seed.applicationId)
-    if (branch === null) return null
-    return { branch, seeds: await jgadSeeds(connection, branch, catalog) }
-  })
-  if (read == null) return { status: "gone" }
+  const branch = await readBranch(db, seed.applicationId)
+  if (branch === null) return { status: "gone" }
+  const read = { branch, seeds: await jgadSeeds(db, branch, catalog) }
 
   const outcome = await applyUpstreamToDraft(
     db,

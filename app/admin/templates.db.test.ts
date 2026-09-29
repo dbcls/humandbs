@@ -1,15 +1,11 @@
 import { and, eq } from "drizzle-orm"
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 
-/** The two systems outside the portal's own boundary, the only ones a test may mock. */
-vi.mock("~/upstream/application-db.server", () => ({
-  openApplicationDb: vi.fn(() => ({ end: vi.fn(() => Promise.resolve()) })),
-  searchDsBranches: vi.fn(),
-  fetchDsBranch: vi.fn(),
-  fetchJgadRegistrations: vi.fn(),
-  fetchAccessionBranchId: vi.fn(),
-}))
-
+/**
+ * DDBJ Search is outside the portal's own boundary, the only thing here a test
+ * may mock. The application system is not reached at all: the screens read its
+ * caches, which the tests fill.
+ */
 vi.mock("~/upstream/dra.server", () => ({ fetchDraSubmission: vi.fn() }))
 
 import { grantAdmin } from "~/auth/admins.server"
@@ -20,14 +16,7 @@ import type { DatasetContent } from "~/content/types"
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
 import { emptyDatabase } from "~/db/empty.server"
 import * as s from "~/db/schema"
-import {
-  fetchAccessionBranchId,
-  fetchDsBranch,
-  fetchJgadRegistrations,
-  searchDsBranches,
-  type DsBranchDetail,
-  type DsBranchRow,
-} from "~/upstream/application-db.server"
+import type { DsBranchDetail, JgadRegistration } from "~/upstream/application-db.server"
 
 import {
   addDatasetsFromUpstream,
@@ -42,6 +31,7 @@ import { readDatasetEntry, readDraft } from "./queries.server"
 import {
   upstreamBranchAction,
   upstreamBranchPage,
+  upstreamDatasetAction,
   upstreamDatasetPage,
   upstreamResearchPage,
 } from "./templates.server"
@@ -358,18 +348,24 @@ describe("the screen that starts a research from an application", () => {
     icd10: "C34.9",
   }
 
-  beforeEach(() => {
-    vi.mocked(searchDsBranches).mockReset().mockResolvedValue([branch])
-    vi.mocked(fetchDsBranch).mockReset().mockResolvedValue(branch)
-    vi.mocked(fetchAccessionBranchId).mockReset().mockResolvedValue(null)
-    vi.mocked(fetchJgadRegistrations).mockReset().mockResolvedValue([
-      { accession: "JGAD000891", title: "A cohort", datasetType: "WGS" },
-    ])
-    process.env.HUMANDBS_JGA_DATABASE_URL = "postgres://reader:secret@jga:5432/jgadb"
-  })
+  /** What a refresh of the branches would have left: the rows, and a success recorded. */
+  async function cacheBranches(...branches: DsBranchDetail[]): Promise<void> {
+    await db.delete(s.dsBranch)
+    if (branches.length > 0) await db.insert(s.dsBranch).values(branches)
+    const at = new Date()
+    await db.insert(s.upstreamRefresh)
+      .values({ source: "ds-branch", attemptedAt: at, succeededAt: at, rowCount: branches.length })
+      .onConflictDoUpdate({ target: s.upstreamRefresh.source, set: { succeededAt: at, rowCount: branches.length } })
+  }
 
-  afterAll(() => {
-    delete process.env.HUMANDBS_JGA_DATABASE_URL
+  async function cacheRegistrations(...rows: JgadRegistration[]): Promise<void> {
+    await db.delete(s.jgadRegistration)
+    if (rows.length > 0) await db.insert(s.jgadRegistration).values(rows)
+  }
+
+  beforeEach(async () => {
+    await cacheBranches(branch)
+    await cacheRegistrations({ accession: "JGAD000891", title: "A cohort", datasetType: "WGS" })
   })
 
   async function signIn(): Promise<string> {
@@ -399,14 +395,39 @@ describe("the screen that starts a research from an application", () => {
 
   const at = { applicationId: BRANCH }
 
-  it("reports it cannot reach the application system rather than responding as if it were empty", async () => {
-    delete process.env.HUMANDBS_JGA_DATABASE_URL
+  it("reports the branches have never been fetched rather than responding as if none were approved", async () => {
+    await db.delete(s.upstreamRefresh)
+    const token = await signIn()
+
+    const view = await upstreamResearchPage(get(token, ""), "ja")
+    const one = await upstreamBranchPage(get(token, ""), "ja", at)
+
+    expect(view.fetched).toBe(false)
+    expect(view.rows).toEqual([])
+    expect(one).toEqual(expect.objectContaining({ fetched: false, branch: null, chosen: null }))
+  })
+
+  it("lists nothing, rather than reporting the branches unfetched, once a fetch has found no branch", async () => {
+    await cacheBranches()
     const token = await signIn()
 
     const view = await upstreamResearchPage(get(token, ""), "ja")
 
-    expect(view.connected).toBe(false)
+    expect(view.fetched).toBe(true)
     expect(view.rows).toEqual([])
+    expect(view.total).toBe(0)
+  })
+
+  it("keeps listing the branches last fetched while the refresh has been failing since", async () => {
+    await db.update(s.upstreamRefresh)
+      .set({ attemptedAt: new Date(), failure: "connect ECONNREFUSED" })
+      .where(eq(s.upstreamRefresh.source, "ds-branch"))
+    const token = await signIn()
+
+    const view = await upstreamResearchPage(get(token, ""), "ja")
+
+    expect(view.fetched).toBe(true)
+    expect(view.rows.map((row) => row.applicationId)).toEqual([BRANCH])
   })
 
   it("names the research a hum label already belongs to, instead of offering to start one", async () => {
@@ -433,13 +454,6 @@ describe("the screen that starts a research from an application", () => {
     expect(kept.total).toBe(1)
     expect(dropped.rows).toEqual([])
     expect(dropped.total).toBe(0)
-    // The page is cut here, so upstream is asked for every branch that matched.
-    expect(vi.mocked(searchDsBranches)).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.anything(),
-      "",
-      null,
-    )
   })
 
   it("offers no form at all once the hum already identifies a research", async () => {
@@ -498,22 +512,6 @@ describe("the screen that starts a research from an application", () => {
     return { researchId: made.researchId, draftId: made.draftId }
   }
 
-  /** A row `searchDsBranches` could return, shaped like the mocked one. */
-  function branchRow(overrides: Partial<DsBranchRow> = {}): DsBranchRow {
-    return {
-      applicationId: branch.applicationId,
-      humLabel: branch.humLabel,
-      applicationType: branch.applicationType,
-      approvedOn: branch.approvedOn,
-      titleJa: branch.titleJa,
-      titleEn: branch.titleEn,
-      piNameJa: branch.piNameJa,
-      piNameEn: branch.piNameEn,
-      accessions: branch.accessions,
-      ...overrides,
-    }
-  }
-
   function draftGet(researchId: string, draftId: string, token: string, query = ""): Request {
     const headers = new Headers({ cookie: sessionCookie(token).split(";")[0] ?? "" })
     return new Request(
@@ -542,26 +540,24 @@ describe("the screen that starts a research from an application", () => {
     it("reads only this research's own branches, filtered on the exact hum", async () => {
       const token = await signIn()
       const own = await otherDraft()
-      // A row whose hum only *contains* the searched one is not this research's.
-      vi.mocked(searchDsBranches).mockResolvedValue([
-        branchRow({ humLabel: "hum0600" }),
-        branchRow({ applicationId: "J-DS000999-002", humLabel: "hum06000" }),
-      ])
+      // A row whose hum only *contains* this research's is not this research's.
+      await cacheBranches(
+        branch,
+        { ...branch, applicationId: "J-DS000600-001", humLabel: "hum0600" },
+        { ...branch, applicationId: "J-DS000999-002", humLabel: "hum06000" },
+      )
 
       const view = await importPage(draftGet(own.researchId, own.draftId, token), "ja", own)
 
-      expect(view.application.connected).toBe(true)
+      expect(view.application.fetched).toBe(true)
       expect(view.chosen).toBeNull()
-      expect(view.application.branches.map((row) => row.applicationId)).toEqual([BRANCH])
-      expect(vi.mocked(searchDsBranches))
-        .toHaveBeenLastCalledWith(expect.anything(), expect.anything(), "hum0600", null)
+      expect(view.application.branches.map((row) => row.applicationId)).toEqual(["J-DS000600-001"])
     })
 
-    it("reads no branches and sends upstream no query before a hum is issued", async () => {
+    it("reads no branches before a hum is issued", async () => {
       const token = await signIn()
       const made = await createResearchFromUpstream(db, seed(null, []), CURATOR)
       if (made.status !== "created") throw new Error(made.status)
-      vi.mocked(searchDsBranches).mockClear()
 
       const view = await importPage(
         draftGet(made.researchId, made.draftId, token),
@@ -569,9 +565,25 @@ describe("the screen that starts a research from an application", () => {
         { researchId: made.researchId, draftId: made.draftId },
       )
 
-      expect(view.application.connected).toBe(true)
+      expect(view.application.fetched).toBe(true)
       expect(view.application.branches).toEqual([])
-      expect(vi.mocked(searchDsBranches)).not.toHaveBeenCalled()
+    })
+
+    it("reports the branches have never been fetched, both in the table and for a chosen application", async () => {
+      await db.delete(s.upstreamRefresh)
+      const token = await signIn()
+      const own = await otherDraft()
+
+      const listed = await importPage(draftGet(own.researchId, own.draftId, token), "ja", own)
+      const chosen = await importPage(
+        draftGet(own.researchId, own.draftId, token, `?application=${BRANCH}`),
+        "ja",
+        own,
+      )
+
+      expect(listed.application).toEqual(expect.objectContaining({ fetched: false, branches: [] }))
+      expect(chosen.application.fetched).toBe(false)
+      expect(chosen.chosen).toBeNull()
     })
 
     /** The row of the draft being written is shown in the table, and cannot be taken from. */
@@ -609,10 +621,9 @@ describe("the screen that starts a research from an application", () => {
       expect(source.branch.humLabel).toBe("hum0522")
     })
 
-    it("reports an application ID is unknown rather than reporting the system unreachable", async () => {
+    it("reports an application ID is unknown rather than reporting the branches unfetched", async () => {
       const token = await signIn()
       const own = await otherDraft()
-      vi.mocked(fetchDsBranch).mockResolvedValue(null)
 
       const view = await importPage(
         draftGet(own.researchId, own.draftId, token, "?application=J-DS999999-001"),
@@ -620,7 +631,7 @@ describe("the screen that starts a research from an application", () => {
         own,
       )
 
-      expect(view.application.connected).toBe(true)
+      expect(view.application.fetched).toBe(true)
       expect(view.application.unknown).toBe("J-DS999999-001")
       expect(view.chosen).toBeNull()
     })
@@ -747,20 +758,71 @@ describe("the screen that starts a research from an application", () => {
   it("chooses no application on the dataset screen, and a typed JGAD takes only itself", async () => {
     const token = await signIn()
     const aim = await otherDraft()
-    vi.mocked(fetchAccessionBranchId).mockResolvedValue(BRANCH)
-    const registeredTwo = { ...branch, accessions: ["JGAD000891", "JGAD000892", "JGAS000720"] }
-    vi.mocked(fetchJgadRegistrations).mockResolvedValue([
+    await cacheBranches({ ...branch, accessions: ["JGAD000891", "JGAD000892", "JGAS000720"] })
+    await cacheRegistrations(
       { accession: "JGAD000891", title: "A cohort", datasetType: "WGS" },
       { accession: "JGAD000892", title: "Another cohort", datasetType: "WES" },
-    ])
+    )
 
     const named = await upstreamDatasetPage(get(token, `?application=${BRANCH}`), "ja", aim)
     expect(named.chosen).toBeNull()
-    expect(vi.mocked(fetchDsBranch)).not.toHaveBeenCalled()
 
-    vi.mocked(fetchDsBranch).mockResolvedValue(registeredTwo)
     const typed = await upstreamDatasetPage(get(token, "?accession=JGAD000892"), "ja", aim)
-    expect(typed.chosen?.datasets.map((one) => one.accession)).toEqual(["JGAD000892"])
+    expect(typed.chosen?.applicationId).toBe(BRANCH)
+    expect(typed.chosen?.datasets).toEqual([
+      expect.objectContaining({ accession: "JGAD000892", description: "WES" }),
+    ])
+  })
+
+  it("does not find a JGAD no fetched branch registered, which is one registered since the last refresh", async () => {
+    const token = await signIn()
+    const aim = await otherDraft()
+    await cacheRegistrations({ accession: "JGAD000999", title: "Registered today", datasetType: "WGS" })
+
+    const typed = await upstreamDatasetPage(get(token, "?accession=JGAD000999"), "ja", aim)
+
+    expect(typed.chosen).toBeNull()
+    expect(typed.unknown).toBe("JGAD000999")
+  })
+
+  it("does not guess between two branches that registered the same JGAD", async () => {
+    const token = await signIn()
+    const aim = await otherDraft()
+    await cacheBranches(branch, { ...branch, applicationId: "J-DS000136-011", dataAccess: 4 })
+
+    const typed = await upstreamDatasetPage(get(token, "?accession=JGAD000891"), "ja", aim)
+
+    expect(typed.chosen).toBeNull()
+    expect(typed.unknown).toBe("JGAD000891")
+  })
+
+  it("seeds a JGAD whose registration was never fetched, from its branch alone", async () => {
+    const token = await signIn()
+    const aim = await otherDraft()
+    await cacheRegistrations()
+
+    const typed = await upstreamDatasetPage(get(token, "?accession=JGAD000891"), "ja", aim)
+
+    expect(typed.chosen?.datasets).toEqual([expect.objectContaining({ accession: "JGAD000891", description: "" })])
+  })
+
+  it("creates a typed JGAD from the cached branch", async () => {
+    const token = await signIn()
+    const aim = await otherDraft()
+    const headers = new Headers({
+      "content-type": "application/x-www-form-urlencoded",
+      "cookie": sessionCookie(token).split(";")[0] ?? "",
+    })
+    const body = new URLSearchParams([["revision", String(await revisionOf(aim.draftId))], ["accession", "JGAD000891"]])
+    const request = new Request(
+      `http://localhost:8080/admin/research/${aim.researchId}/draft/${aim.draftId}/dataset/upstream`,
+      { method: "POST", headers, body: body.toString() },
+    )
+
+    const answer = await upstreamDatasetAction(request, "ja", aim)
+
+    expect(answer).toBeInstanceOf(Response)
+    expect(await pinnedLabels("dataset")).toEqual(["JGAD000891"])
   })
 
   it("creates every dataset the application registered, whatever the form sends", async () => {
@@ -773,7 +835,7 @@ describe("the screen that starts a research from an application", () => {
   })
 
   it("creates the research from an application that has registered nothing yet", async () => {
-    vi.mocked(fetchDsBranch).mockResolvedValue({ ...branch, accessions: [] })
+    await cacheBranches({ ...branch, accessions: [] })
     const token = await signIn()
 
     const answer = await upstreamBranchAction(post(token, [["into", "new"]]), "ja", at)
@@ -784,11 +846,11 @@ describe("the screen that starts a research from an application", () => {
   })
 
   it("leaves out a dataset another research already holds, rather than refusing the creation", async () => {
-    vi.mocked(fetchDsBranch).mockResolvedValue({ ...branch, accessions: ["JGAD000891", "JGAD000892"] })
-    vi.mocked(fetchJgadRegistrations).mockResolvedValue([
+    await cacheBranches({ ...branch, accessions: ["JGAD000891", "JGAD000892"] })
+    await cacheRegistrations(
       { accession: "JGAD000891", title: "A cohort", datasetType: "WGS" },
       { accession: "JGAD000892", title: "Another", datasetType: "WES" },
-    ])
+    )
     const other = await createResearchFromUpstream(db, seed("hum0001", ["JGAD000892"]), CURATOR)
     if (other.status !== "created") throw new Error(other.status)
     const token = await signIn()
@@ -831,7 +893,7 @@ describe("the screen that starts a research from an application", () => {
     expect(content?.relatedPublications).toEqual([])
   })
 
-  it("sends somebody who is not signed in to sign in, rather than reading the upstream", async () => {
+  it("sends somebody who is not signed in to sign in, rather than reading the branches", async () => {
     const request = new Request("http://localhost:8080/admin/research/upstream")
 
     const answer: unknown = await upstreamResearchPage(request, "ja")
@@ -839,7 +901,6 @@ describe("the screen that starts a research from an application", () => {
 
     expect(answer).toBeInstanceOf(Response)
     expect((answer as Response).status).toBe(302)
-    expect(vi.mocked(searchDsBranches)).not.toHaveBeenCalled()
   })
 
   it("refuses somebody signed in who is not an administrator", async () => {

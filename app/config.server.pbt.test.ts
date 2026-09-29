@@ -92,3 +92,26 @@ describe("the Slack notification's interval", () => {
     }))
   })
 })
+
+describe("the upstream refresh's interval", () => {
+  const load = (value: string) => loadConfig({ ...VALID, HUMANDBS_UPSTREAM_INTERVAL_MINUTES: value }).upstreamIntervalMinutes
+
+  it("takes zero, or a whole number of minutes of at least sixty exactly when it divides a day", () => {
+    fc.assert(fc.property(fc.integer({ min: 0, max: 3 * 1440 }), (minutes) => {
+      if (minutes === 0 || (minutes >= 60 && 1440 % minutes === 0)) expect(load(String(minutes))).toBe(minutes)
+      else expect(() => load(String(minutes))).toThrow(ConfigError)
+    }))
+  })
+
+  it("never lets the value into the error message", () => {
+    fc.assert(fc.property(fc.string(), (value) => {
+      try {
+        load(value)
+      } catch (error) {
+        expect(error).toBeInstanceOf(ConfigError)
+        expect((error as ConfigError).message)
+          .toBe("HUMANDBS_UPSTREAM_INTERVAL_MINUTES must be 0 or a number of minutes of at least 60 that divides a day (1440)")
+      }
+    }))
+  })
+})

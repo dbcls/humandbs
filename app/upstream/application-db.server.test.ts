@@ -2,7 +2,7 @@ import { createServer, type Server, type Socket } from "node:net"
 
 import { afterEach, describe, expect, it } from "vitest"
 
-import { APPLICATION_DB_CONNECT_TIMEOUT_MS, openApplicationDb } from "./application-db.server"
+import { openApplicationDb } from "./application-db.server"
 
 /**
  * The application system's database belongs to another project and may take
@@ -39,10 +39,5 @@ describe("the application database's pool", () => {
     await pool.end()
 
     expect(Date.now() - started).toBeLessThan(2_000)
-  })
-
-  /** The admin screens reading it are behind a proxy that gives up after a minute. */
-  it("gives up on connecting well within the proxy's minute", () => {
-    expect(APPLICATION_DB_CONNECT_TIMEOUT_MS).toBeLessThan(60_000)
   })
 })

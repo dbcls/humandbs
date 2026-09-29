@@ -26,9 +26,9 @@ import { researchFieldLabel, SEEDED_PATH } from "./research-fields"
  * datasets.
  */
 
-export function UpstreamNotConnected({ locale }: { locale: Locale }) {
+export function UpstreamNotFetched({ locale }: { locale: Locale }) {
   const t = messagesFor(locale).admin.templates
-  return <Empty>{t.notConnected}</Empty>
+  return <Empty>{t.notFetched}</Empty>
 }
 
 /**
@@ -306,7 +306,7 @@ export function BranchDialog({ applicationId, locale }: { applicationId: string,
         {view === undefined
           ? <Empty>{t.branchLoading}</Empty>
           : view.branch === null || view.chosen === null
-            ? <UpstreamNotConnected locale={locale} />
+            ? <UpstreamNotFetched locale={locale} />
             : (
                 <Stack gap="block">
                   {/* **The panel is named by its kind and the branch is the

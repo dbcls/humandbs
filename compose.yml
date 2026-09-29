@@ -33,6 +33,8 @@ x-app-environment: &app-environment
   HUMANDBS_SLACK_WEBHOOK_URL: ${HUMANDBS_SLACK_WEBHOOK_URL:-}
   # How often it posts, in minutes; empty is 60.
   HUMANDBS_SLACK_INTERVAL_MINUTES: ${HUMANDBS_SLACK_INTERVAL_MINUTES:-}
+  # How often the upstream caches are refreshed, in minutes; empty is 180, 0 never.
+  HUMANDBS_UPSTREAM_INTERVAL_MINUTES: ${HUMANDBS_UPSTREAM_INTERVAL_MINUTES:-}
   # `true` keeps the site out of search engines (staging).
   HUMANDBS_NOINDEX: ${HUMANDBS_NOINDEX:-}
 

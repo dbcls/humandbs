@@ -138,4 +138,4 @@ ID を実体に付けることを、コード上は pin と呼ぶ。付けた ID
 ジョブは、時間のかかる処理を DB の行として登録し、app のプロセスが後から実行するものである。専用の worker は置かない。
 
 - ファイルの公開と非公開の切り替え (`file_publish_job`) は、ファイルの中身を bucket 間でコピーするので、公開の操作とは別に実行する ([files.md](files.md) の「公開・非公開の切り替え」)。
-- 申請管理システム・DDBJ Search・DDBJ の公開 FTP からの取得 (`upstream_refresh`) は、取得元ごとに 1 日 1 回実行する ([upstream.md](upstream.md))。
+- 申請管理システム・DDBJ Search・DDBJ の公開 FTP からの取得 (`upstream_refresh`) は、取得元ごとに、配置先で決めた間隔で実行する ([upstream.md](upstream.md) の「取り直しと失敗」)。

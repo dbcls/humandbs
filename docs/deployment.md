@@ -47,6 +47,7 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 | `HUMANDBS_NOINDEX` | `true` にすると、検索エンジンに載せない ([public-site.md](public-site.md) の「検索エンジンとリンクのプレビュー」)。staging は `true`、本番は空 |
 | `HUMANDBS_SLACK_WEBHOOK_URL` | Slack への通知の送り先 ([publishing.md](publishing.md) の「Slack への通知」)。空なら送らない |
 | `HUMANDBS_SLACK_INTERVAL_MINUTES` | Slack への通知の間隔 (分)。1440 の約数で、空なら 60。約数でない値では起動しない |
+| `HUMANDBS_UPSTREAM_INTERVAL_MINUTES` | 外部から取ってきたデータを取り直す間隔 (分) ([upstream.md](upstream.md) の「取り直しと失敗」)。1440 の約数で 60 以上、空なら 180。`0` なら自動では取り直さない。staging は `0` にし、取り直すときは CLI を実行する |
 
 redirect URI は Keycloak の client にも登録されている必要がある。登録が無いと認可要求が `400 Invalid parameter: redirect_uri` で失敗し、公開ページは表示されるのにログインだけができない状態になる。新しいアドレスで配置するときは、先に登録を依頼する。
 

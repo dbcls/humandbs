@@ -156,7 +156,7 @@ test.describe("P-DRAFT 下書き", () => {
     await openScreen(page, "/admin/research/upstream")
     const branches = page.getByRole("main").locator("a[href^=\"/admin/research/upstream/\"]")
     const hrefs = [...new Set(await branches.evaluateAll((all) => all.map((one) => one.getAttribute("href") ?? "")))]
-    test.skip(hrefs.length === 0, "データ提供申請の枝番が無い (申請管理システムに接続していない)")
+    test.skip(hrefs.length === 0, "データ提供申請の枝番が無い (申請管理システムの値を取得していない)")
 
     for (const href of hrefs.slice(0, 20)) {
       await page.goto(href)

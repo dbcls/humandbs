@@ -106,6 +106,13 @@
       "when": 1790597975222,
       "tag": "0014_link_unlisted_files",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790643765690,
+      "tag": "0015_application_caches",
+      "breakpoints": true
     }
   ]
 }

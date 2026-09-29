@@ -5,7 +5,7 @@
 要るのは Docker と Docker Compose だけである。開発コマンドはすべて container の中で打つ。`node_modules` は named volume に置いているので、ホストで `npm` を実行すると container の中と状態が食い違うためである。守ることは次のとおり。
 
 - production 環境を直接変更しない。検証は staging で行い、production からコピーしたデータは読むだけにする。
-- JGA 申請管理システムの DB は他プロジェクトの所管である。schema の変更も書き込みもせず、接続は read-only に強制する。この DB の staging には実データが無いので、ポータルの staging の配置先からも production の DB を読む ([deployment.md](deployment.md) の「.env」)。
+- JGA 申請管理システムの DB は他プロジェクトの所管である。schema の変更も書き込みもせず、接続は read-only に強制する。この DB の staging には実データが無いので、ポータルの staging の配置先で取り直すときも production の DB を読む ([deployment.md](deployment.md) の「.env」)。
 - 仕様が絡む変更は `docs/` を先に直す。型と値の一覧はコードを見れば分かるので、docs にコピーしない。
 - 作業の経緯を成果物に持ち込まない。コメント・テスト名・docs・commit message には現在の意図だけを書く。
 - route を変えたら `npm run build` も通す。route module の `loader` / `action` / `middleware` / `headers` 以外が `.server` の module に依存すると、画面の中の遷移でだけ 500 になる。SSR・lint・typecheck・テストは通ってしまい、見つけられるのは build だけである。
@@ -134,14 +134,15 @@ docker compose exec app npm run admin:list                      # admin の一�
 
 ### 外部から取ってきたデータ
 
-外部から取ってきたデータのキャッシュは、アプリのプロセスが毎日取り直す。手で実行することもでき、そのときは期限を見ずに取り直す。
+外部から取ってきたデータのキャッシュは、アプリのプロセスが一定の間隔で取り直す ([upstream.md](upstream.md) の「取り直しと失敗」)。手で実行することもでき、そのときは間隔に関係なく取り直す。
 
 ```bash
 docker compose exec app npm run upstream:refresh                           # すべての取得元から取り直す
 docker compose exec app npm run upstream:refresh -- --source=archive-date  # DDBJ Search の日付だけを取り直す
+docker compose exec app npm run upstream:refresh -- --allow-shrink         # 件数が前回の半分より少なくても置き換える
 ```
 
-`archive-date` (DDBJ Search) は手元でも動く。残る 3 つは申請管理システムの DB を読み、`HUMANDBS_JGA_DATABASE_URL` が空なら skip する。その DB は踏み台の内側からしか接続できないので、手元では空のままにする。結果は `/admin` に表示される。
+`archive-date` (DDBJ Search) と `archive-file` (DDBJ の公開 FTP) は手元でも動く。残る 6 つは申請管理システムの DB を読み、`HUMANDBS_JGA_DATABASE_URL` が空なら skip する。その DB は踏み台の内側からしか接続できないので、手元では空のままにするか、下の代わりの schema を指す。結果は `/admin` に表示される。
 
 ### 申請管理システムの代わりの schema
 
@@ -150,6 +151,7 @@ docker compose exec app npm run upstream:refresh -- --source=archive-date  # DDB
 1. `scripts/seed-jga-dev.sh` をホストで実行する。`db` が起動している必要がある。
 2. `.env` の `HUMANDBS_JGA_DATABASE_URL` を `HUMANDBS_DATABASE_URL` と同じ値にし、`HUMANDBS_JGA_DB_SCHEMA` を `jgasys` にする。
 3. `docker compose up -d --force-recreate app` で `.env` を読み直させる。`restart` では読み直さない。
+4. `docker compose exec app npm run upstream:refresh` で取り直す。画面は取得したキャッシュを読むので、取り直すまで一覧は空である。
 
 ### ファイルストア
 

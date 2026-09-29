@@ -50,7 +50,7 @@ draft (editing) --publish--> research version + search rows --> public pages / s
 2. 共有リンクで提供者にプレビューを見せ、コメントを受け取る。
 3. 公開すると下書きがバージョンになり、同じトランザクションでその研究の検索用の行を作り直す ([publishing.md](publishing.md))。
 4. 公開ページ・一覧・JSON API は、公開中のものを検索用の行からだけ読む ([data-model.md](data-model.md))。
-5. 申請管理システム・DDBJ Search・DDBJ の公開 FTP の値 (利用者の一覧、accession の日付、データセットのファイルの大きさと形式など) は、1 日 1 回取得して DB にコピーし、公開ページはそのコピーを読む。外部システムが止まっていても公開ページを表示し続けるためである ([upstream.md](upstream.md))。
+5. 申請管理システム・DDBJ Search・DDBJ の公開 FTP の値 (利用者の一覧、accession の日付、データセットのファイルの大きさと形式、承認済みのデータ提供申請など) は、一定の間隔で取得して DB にコピーし、公開ページと管理画面はそのコピーを読む。外部システムが止まっていても表示し続けるためである ([upstream.md](upstream.md))。
 
 記事・お知らせ・アラートは研究の下書きとバージョンを使わない別の流れで、本文と公開の状態だけを管理する ([site-content.md](site-content.md))。
 

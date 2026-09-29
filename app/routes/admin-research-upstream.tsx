@@ -27,7 +27,7 @@ import { Checkbox } from "~/components/form"
 import { Flag, KindIcon, Stated } from "~/components/flags"
 import { Card, IdWithIcon, Page, Paging, Table, Td } from "~/components/page"
 import { type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
-import { APPLICATION_TYPE_FLAG, BranchCells, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamNotConnected } from "~/components/upstream"
+import { APPLICATION_TYPE_FLAG, BranchCells, BranchStatusBadge, BRANCH_STATUS_FLAG, UpstreamNotFetched } from "~/components/upstream"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
@@ -101,8 +101,8 @@ export default function AdminResearchUpstream({ loaderData }: Route.ComponentPro
         <Stack gap="normal">
           <Heading title={t.heading} />
 
-          {!view.connected
-            ? <UpstreamNotConnected locale={locale} />
+          {!view.fetched
+            ? <UpstreamNotFetched locale={locale} />
             : (
                 <RefinableList
                   open={paneOpen}

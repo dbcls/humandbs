@@ -30,7 +30,7 @@ function screen(branches: UpstreamBranchView[]): string {
     revision: 1,
     humLabel: "hum0001",
     rows: [],
-    application: { allowed: true, connected: true, branches, unknown: null },
+    application: { allowed: true, fetched: true, branches, unknown: null },
     chosen: null,
   }
   const props = { loaderData, actionData: undefined, params: {}, matches: [] } as unknown as Route.ComponentProps

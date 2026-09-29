@@ -1,5 +1,7 @@
 import { bigint, date, index, integer, pgEnum, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core"
 
+import type { ApplicationType } from "~/admin/listing"
+
 import { UPSTREAM_SOURCES } from "~/upstream/sources"
 
 import { primaryId } from "./common"
@@ -14,10 +16,13 @@ import { primaryId } from "./common"
  * falling to the deleting side would blank published pages. Nothing here is
  * backed up: it can all be fetched again.
  *
- * **Only values that appear on a public page are cached.** The application
- * system holds names, addresses, telephone numbers and the head of institution;
- * none of that is brought over. The one exception is the key a row is matched to
- * upstream by, which is stored but never projected.
+ * **What a public page reads holds only values that appear on a public page.**
+ * The one exception is the key a row is matched to upstream by, which is stored
+ * but never projected. The two tables the seeding screens read (`dsBranch`,
+ * `jgadRegistration`) hold what those screens import into a draft, published or
+ * not, and nothing more: the application system also holds addresses,
+ * telephone numbers, collaborators and the head of institution, and none of
+ * that is brought over.
  */
 
 /**
@@ -131,6 +136,56 @@ export const accessionFileSummary = pgTable("accession_file_summary", {
   source: text().notNull(),
 })
 
+/**
+ * The approved branches of the data-submission applications (`J-DS000136-010`),
+ * with what a draft seeded from one takes from its form.
+ *
+ * **The seeding screens read this instead of the application system**, so that
+ * a curator can start a draft while that system is down. What that costs is
+ * time: a branch approved since the last fetch appears after the next one. The
+ * values are the form as written, before a curator has looked at them — the
+ * same values a draft holds once they are imported.
+ */
+export const dsBranch = pgTable("ds_branch", {
+  applicationId: text().primaryKey(),
+  humLabel: text(),
+  applicationType: text().$type<ApplicationType>().notNull(),
+  /** The day in JST the branch was last approved. */
+  approvedOn: date(),
+  titleJa: text().notNull().default(""),
+  titleEn: text().notNull().default(""),
+  piNameJa: text().notNull().default(""),
+  piNameEn: text().notNull().default(""),
+  aimsJa: text().notNull().default(""),
+  aimsEn: text().notNull().default(""),
+  methodsJa: text().notNull().default(""),
+  methodsEn: text().notNull().default(""),
+  targetsJa: text().notNull().default(""),
+  targetsEn: text().notNull().default(""),
+  affiliationJa: text().notNull().default(""),
+  affiliationEn: text().notNull().default(""),
+  /** As the applicant wrote it in English. */
+  country: text().notNull().default(""),
+  /** 1 unrestricted, 2 controlled type I, 3 both, 4 controlled type II. */
+  dataAccess: integer(),
+  /** As typed: codes separated by commas, ideographic commas or spaces. */
+  icd10: text().notNull().default(""),
+  /** The studies and datasets registered under the branch. */
+  accessions: text().array().notNull(),
+})
+
+/**
+ * What JGA holds about each registered dataset, read from the submitted XML:
+ * the only place a dataset's title and type exist before it is published, and a
+ * draft is written for one that has not been.
+ */
+export const jgadRegistration = pgTable("jgad_registration", {
+  accession: text().primaryKey(),
+  title: text().notNull().default(""),
+  /** The EGA-controlled assay of the dataset, empty where none is stated. */
+  datasetType: text().notNull().default(""),
+})
+
 export const upstreamSource = pgEnum("upstream_source", UPSTREAM_SOURCES)
 
 /**
@@ -143,9 +198,10 @@ export const upstreamSource = pgEnum("upstream_source", UPSTREAM_SOURCES)
  * without this table a stalled refresh is invisible until somebody notices a
  * value that should have changed.
  *
- * The row is also the lock. A refresh claims its source with `FOR UPDATE SKIP
- * LOCKED`, so several application processes can run the same loop without two
- * of them querying the upstream at once.
+ * The row is also the lock. A refresh claims its source by moving
+ * `attemptedAt` in a single statement (`claimDueSources`), so several
+ * application processes can run the same loop without two of them querying the
+ * upstream at once.
  */
 export const upstreamRefresh = pgTable("upstream_refresh", {
   source: upstreamSource().primaryKey(),

@@ -511,6 +511,8 @@ const ja = {
         "archive-date": "外部アクセッションの日付",
         "jgad-file": "JGAD のファイル",
         "archive-file": "外部アクセッションのファイル",
+        "ds-branch": "データ提供申請",
+        "jgad-registration": "JGAD の登録内容",
       },
     },
     admins: {
@@ -1153,7 +1155,7 @@ const ja = {
       openDataset: "外部アクセッションからの作成",
       humDiffers: (branch: string, draft: string) =>
         `この申請の研究 ID は ${branch} で、取り込み先の下書きの研究 (${draft}) と違います。`,
-      notConnected: "この環境からは申請管理システムに接続していません。",
+      notFetched: "申請管理システムの値をまだ取得していません。",
       keyword: "研究 ID・提供申請 ID・研究課題名・研究代表者名",
       accessionHint: "JGAD または DRA",
       accessionPlaceholder: "DRA000123",

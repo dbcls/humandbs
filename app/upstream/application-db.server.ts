@@ -6,22 +6,23 @@
  * rather than trusting every query here to stay a `SELECT`, and the schema name
  * is configured because it differs between that system's deployments.
  *
- * The queries answer four of the six cached sources, and the reads that seed a
- * draft from an approved application.
- * The cached four are written as one statement each because the joins that
- * resolve a hum label or a dataset's files are expensive enough — a full pass
- * over the accession history and the current entries' 24 million relations —
- * that pulling the pieces into the application and joining them there would
- * mean paying for that pass more than once.
+ * The queries answer six of the eight cached sources (`sources.ts`), and
+ * nothing else reads this database: the screens that seed a draft read the
+ * caches, so they keep working while it is down. Each source is written as one
+ * statement because the joins that resolve a hum label or a dataset's files are
+ * expensive enough — a full pass over the accession history and the current
+ * entries' 24 million relations — that pulling the pieces into the application
+ * and joining them there would mean paying for that pass more than once.
  *
- * **Only what a public page shows is selected.** The application forms hold
- * addresses, telephone numbers, the head of institution and every collaborator;
- * of all that, only the country and the state line of the investigator's
- * address are read, and the state survives only where a state is a
- * jurisdiction of its own.
+ * **Only what a page shows is selected.** The application forms hold
+ * addresses, telephone numbers, the head of institution and every collaborator.
+ * Of the usage applications only the country and the state line of the
+ * investigator's address are read, and the state survives only where a state
+ * is a jurisdiction of its own; of the approved submissions, only the values a
+ * draft imports (`FORM_KEYS`).
  *
- * The reads that seed a draft answer a screen rather than a nightly batch, so
- * they are shaped around what this database is fast at. Three things decide it:
+ * The branch queries are shaped around what this database is fast at. Three
+ * things decide it:
  *
  * - **`relation` has no index.** Anything joining it is a pass over 24 million
  *   rows, so a draft's accessions are found through `accession.alias`, which
@@ -38,7 +39,6 @@
 import { Pool } from "pg"
 
 import type { ApplicationDbConfig } from "~/config.server"
-import { likeEscaped } from "~/db/like"
 import type { ApplicationType } from "~/admin/listing"
 import { affiliationOf, joinAffiliation, type StatedAffiliation } from "~/upstream/affiliation"
 import { countryName } from "~/upstream/country"
@@ -52,9 +52,8 @@ const STATEMENT_TIMEOUT_MS = 300_000
 
 /**
  * How long connecting is waited on. **Without a bound, a database that takes
- * the connection and never answers is waited on for good**: the admin screen
- * reading it fails at the proxy's minute instead of saying it could not
- * connect, and the refresh holds its runner, which then runs no source at all.
+ * the connection and never answers is waited on for good**, and the refresh
+ * holds its runner, which then runs no source at all.
  */
 export const APPLICATION_DB_CONNECT_TIMEOUT_MS = 10_000
 
@@ -670,18 +669,14 @@ const APPROVED = 60
 const DATA_UPDATE = 20
 
 /**
- * The values a row of a listing is read from: what a branch is recognised by,
- * and nothing that would be read past. Kept apart from the rest because a
- * listing returns every branch that matched — the aims and the methods of
- * a thousand branches are a megabyte nobody looks at.
+ * The keys of the application form a draft reads. **Naming them is what makes
+ * the pivot cheap**, and it is also the whole of what leaves the upstream
+ * system: the connection can reach the addresses and the telephone numbers, and
+ * this list is where it is decided that it does not.
  */
-const ROW_KEYS = [
+const FORM_KEYS = [
   "submission_study_title", "submission_study_title_en",
   "pi_last_name", "pi_first_name", "pi_last_name_en", "pi_first_name_en",
-] as const
-
-/** The rest of what one branch hands a draft, read a branch at a time. */
-const DETAIL_KEYS = [
   "aim", "aim_en",
   "method", "method_en",
   "participant", "participant_en",
@@ -689,14 +684,6 @@ const DETAIL_KEYS = [
   "pi_country_en",
   "icd10",
 ] as const
-
-/**
- * The keys of the application form a draft reads. **Naming them is what makes
- * the pivot cheap**, and it is also the whole of what leaves the upstream
- * system: the connection can reach the addresses and the telephone numbers, and
- * this list is where it is decided that it does not.
- */
-const FORM_KEYS = [...ROW_KEYS, ...DETAIL_KEYS] as const
 
 /**
  * The branches, the form values, and what each branch registered.
@@ -708,9 +695,8 @@ const FORM_KEYS = [...ROW_KEYS, ...DETAIL_KEYS] as const
  * **Every step is marked `MATERIALIZED`.** Left to itself the planner inlines these
  * into the query that reads them, and with no statistics to go on it estimates
  * one row where there are over a thousand — so the pivot below is re-run once
- * per branch, and the form components are read eight hundred thousand times
- * for a page that shows thirty rows. Computing each step once takes the search
- * from 5.6s to 0.15s, and a search with a word in it from 11.4s to 0.11s. The
+ * per branch, and the form components are read eight hundred thousand times.
+ * Computing each step once takes the query from seconds to a tenth of one. The
  * answers are the same; only how often each step runs changes.
  */
 function branchCte(schema: string): string {
@@ -758,17 +744,12 @@ function branchCte(schema: string): string {
     )`
 }
 
-/** What a listing selects of a branch, which is what its rows show. */
-const ROW_COLUMNS = `
-  b.application_id, b.hum_label, b.application_type,
+/** What a branch selects: what it is recognised by, and everything a draft takes from it. */
+const BRANCH_COLUMNS = `
+  b.application_id, b.hum_label, b.application_type, b.data_access,
   (ap.approved_at AT TIME ZONE 'Asia/Tokyo')::date::text AS approved_on,
-  ${ROW_KEYS.map((key) => `v."${key}"`).join(", ")},
+  ${FORM_KEYS.map((key) => `v."${key}"`).join(", ")},
   coalesce(r.accessions, ARRAY[]::text[]) AS accessions`
-
-/** What one branch selects: its row, and everything a draft takes from it. */
-const DETAIL_COLUMNS = `
-  ${ROW_COLUMNS}, b.data_access,
-  ${DETAIL_KEYS.map((key) => `v."${key}"`).join(", ")}`
 
 const BRANCH_FROM = `
   FROM branch b
@@ -776,25 +757,37 @@ const BRANCH_FROM = `
   LEFT JOIN approved ap ON ap.appl_id = b.appl_id
   LEFT JOIN registered r ON r.appl_id = b.appl_id`
 
-interface BranchRowQuery extends Record<(typeof ROW_KEYS)[number], string | null> {
+interface BranchQuery extends Record<(typeof FORM_KEYS)[number], string | null> {
   application_id: string
   hum_label: string | null
   application_type: number
+  data_access: number | null
   approved_on: string | null
   accessions: string[]
-}
-
-interface BranchDetailQuery
-  extends BranchRowQuery, Record<(typeof DETAIL_KEYS)[number], string | null> {
-  data_access: number | null
 }
 
 function text(value: string | null | undefined): string {
   return value?.trim() ?? ""
 }
 
-function branchRow(row: BranchRowQuery): DsBranchRow {
-  return {
+/**
+ * Every approved branch, with everything a draft takes from it.
+ *
+ * **One statement for all of them.** The CTE above assembles every approved
+ * branch whatever the query then keeps, so a branch read alone costs what the
+ * whole list costs; the seeding screens read the cache this fills
+ * (`app/upstream/branches.server.ts`).
+ */
+export async function fetchDsBranches(
+  pool: Pool,
+  schema: string,
+): Promise<DsBranchDetail[]> {
+  const { rows } = await pool.query<BranchQuery>(`
+    WITH ${branchCte(schema)}
+    SELECT ${BRANCH_COLUMNS}
+    ${BRANCH_FROM}
+    ORDER BY b.application_id`)
+  return rows.map((row) => ({
     applicationId: row.application_id,
     humLabel: row.hum_label,
     applicationType: row.application_type === DATA_UPDATE ? "update" : "new",
@@ -804,65 +797,6 @@ function branchRow(row: BranchRowQuery): DsBranchRow {
     piNameJa: joinName(row.pi_last_name, row.pi_first_name),
     piNameEn: joinName(row.pi_first_name_en, row.pi_last_name_en),
     accessions: row.accessions,
-  }
-}
-
-/**
- * The branches a keyword names, newest approval first.
- *
- * The keyword is matched against the hum label, the application number, the
- * study title and the name of the investigator — everything the row shows, so
- * that what is searched and what is read back are the same four things. An
- * empty keyword returns the newest branches, which is what somebody who has
- * just been told a number is looking at.
- *
- * **A null limit is every branch that matched**, which is what a listing that
- * counts and pages needs. Cutting the answer short saves nothing: the CTE
- * above assembles every approved branch before the cut is applied, so thirty
- * rows and all of them are the same 110ms. (`LIMIT NULL` is how Postgres spells
- * no limit at all, so the cut needs no second query.)
- */
-export async function searchDsBranches(
-  pool: Pool,
-  schema: string,
-  keyword: string,
-  limit: number | null,
-): Promise<DsBranchRow[]> {
-  const trimmed = keyword.trim()
-  const { rows } = await pool.query<BranchRowQuery>(`
-    WITH ${branchCte(schema)}
-    SELECT ${ROW_COLUMNS}
-    ${BRANCH_FROM}
-    WHERE $1 = '' OR (
-         b.application_id ILIKE $3 ESCAPE '\\'
-      OR coalesce(b.hum_label, '') ILIKE $3 ESCAPE '\\'
-      OR coalesce(v."submission_study_title", '') ILIKE $3 ESCAPE '\\'
-      OR coalesce(v."submission_study_title_en", '') ILIKE $3 ESCAPE '\\'
-      OR coalesce(v."pi_last_name", '') || coalesce(v."pi_first_name", '') ILIKE $3 ESCAPE '\\'
-      OR coalesce(v."pi_first_name_en", '') || ' ' || coalesce(v."pi_last_name_en", '') ILIKE $3 ESCAPE '\\'
-    )
-    ORDER BY ap.approved_at DESC NULLS LAST, b.appl_id DESC
-    LIMIT $2`, [trimmed, limit, `%${likeEscaped(trimmed)}%`])
-  return rows.map(branchRow)
-}
-
-/** One branch, with everything a draft takes from it. */
-export async function fetchDsBranch(
-  pool: Pool,
-  schema: string,
-  applicationId: string,
-): Promise<DsBranchDetail | null> {
-  const { rows } = await pool.query<BranchDetailQuery>(`
-    WITH ${branchCte(schema)}
-    SELECT ${DETAIL_COLUMNS}
-    ${BRANCH_FROM}
-    WHERE b.application_id = $1
-    LIMIT 1`, [applicationId])
-
-  const row = rows[0]
-  if (row === undefined) return null
-  return {
-    ...branchRow(row),
     aimsJa: text(row.aim),
     aimsEn: text(row.aim_en),
     methodsJa: text(row.method),
@@ -874,37 +808,12 @@ export async function fetchDsBranch(
     country: text(row.pi_country_en),
     dataAccess: row.data_access,
     icd10: text(row.icd10),
-  }
+  }))
 }
 
 /**
- * The branch an accession was registered under, so that an accession typed on
- * its own still has the application's access type and diseases.
- *
- * **Nothing is answered when the registration belongs to more than one approved
- * branch.** Thirty-six registrations are referenced by two applications, and
- * the two can disagree about the access type; guessing between them would put a
- * value in the draft that no application states.
- */
-export async function fetchAccessionBranchId(
-  pool: Pool,
-  schema: string,
-  accession: string,
-): Promise<string | null> {
-  const { rows } = await pool.query<{ application_id: string }>(`
-    WITH ${branchCte(schema)}
-    SELECT DISTINCT b.application_id
-    FROM jga j
-    JOIN ${schema}.submission_permission sp ON sp.submission_id = j.submission_id
-    JOIN branch b ON b.appl_id = sp.appl_id
-    WHERE j.accession = $1
-    LIMIT 2`, [accession])
-  return rows.length === 1 ? rows[0]?.application_id ?? null : null
-}
-
-/**
- * What the registration system has about datasets, read from the submitted XML
- * rather than from DDBJ Search.
+ * What the registration system has about every dataset, read from the
+ * submitted XML rather than from DDBJ Search.
  *
  * **The XML is the only source that has the data before publication**, and a draft is
  * written for something that has not been published yet. The extraction is left
@@ -913,9 +822,7 @@ export async function fetchAccessionBranchId(
 export async function fetchJgadRegistrations(
   pool: Pool,
   schema: string,
-  accessions: readonly string[],
 ): Promise<JgadRegistration[]> {
-  if (accessions.length === 0) return []
   const { rows } = await pool.query<{
     accession: string
     title: string | null
@@ -925,14 +832,14 @@ export async function fetchJgadRegistrations(
       SELECT DISTINCT ON (a.accession) a.accession, m.metadata
       FROM ${schema}.accession a
       JOIN ${schema}.metadata m ON m.accession_id = a.accession_id
-      WHERE a.accession = ANY($1)
+      WHERE a.accession LIKE 'JGAD%' AND a.accession ~ '^JGAD[0-9]'
       ORDER BY a.accession, m.metadata_version DESC
     )
     SELECT accession,
            (xpath('/DATASET/TITLE/text()', metadata::xml))[1]::text AS title,
            (xpath('/DATASET/DATASET_TYPE/text()', metadata::xml))[1]::text AS dataset_type
     FROM latest
-    ORDER BY accession`, [[...accessions]])
+    ORDER BY accession`)
   return rows.map((row) => ({
     accession: row.accession,
     title: text(row.title),

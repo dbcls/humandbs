@@ -69,7 +69,7 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
   function screen(view: Partial<UpstreamBranchPageView>): string {
     const loaderData: UpstreamBranchPageView = {
       locale: "ja",
-      connected: true,
+      fetched: true,
       applicationId: "J-DS000597-001",
       branch,
       chosen: {
@@ -107,15 +107,15 @@ describe("枝番 1 本の画面の 2 つの状態", () => {
     expect(heading(screen({ branch: { ...branch, applicationType: "update" } }))).not.toContain(">新規<")
   })
 
-  it("申請管理 DB に接続できないときは、申請の種類のバッジを出さない", () => {
-    const html = screen({ connected: false, branch: null, chosen: null })
+  it("申請管理システムの値をまだ取得していないときは、申請の種類のバッジを出さない", () => {
+    const html = screen({ fetched: false, branch: null, chosen: null })
     expect(html).not.toContain("新規")
     expect(html).not.toContain("データ更新")
   })
 
-  it("申請管理 DB に接続できない環境でも一覧へ戻るボタンは残し、接続できないことを示す", () => {
-    const html = screen({ connected: false, branch: null, chosen: null })
-    expect(html).toContain(t.notConnected)
+  it("申請管理システムの値をまだ取得していない環境でも一覧へ戻るボタンは残し、取得していないことを示す", () => {
+    const html = screen({ fetched: false, branch: null, chosen: null })
+    expect(html).toContain(t.notFetched)
     expect(html).toMatch(new RegExp(`<a[^>]*>[\\s\\S]*?${t.backToList}[\\s\\S]*?</a>`))
   })
 

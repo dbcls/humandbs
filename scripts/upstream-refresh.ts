@@ -1,12 +1,16 @@
 /**
  * Refreshing the upstream caches from the command line.
  *
- * The application process does this daily on its own; this is the same run,
- * started by hand. **It does not wait for a source to be due and does not
- * claim** — whoever runs it means now, and the alternative would be a command
- * that silently does nothing because the loop refreshed an hour ago. Two runs
- * at once would only fetch the same values twice; the write is a transaction
- * either way.
+ * The application process does this on its own at the configured interval;
+ * this is the same run, started by hand. **It does not wait for a source to be
+ * due and does not claim** — whoever runs it means now, and the alternative
+ * would be a command that silently does nothing because the loop refreshed an
+ * hour ago. Two runs at once would only fetch the same values twice; the write
+ * is a transaction either way.
+ *
+ * `--allow-shrink` writes a source that came back with fewer than half the rows
+ * it wrote last time, which the loop refuses (`shrankByHalf`). It is for a
+ * shrink somebody has checked upstream is real.
  */
 
 import { closePools, getDb } from "~/db/client.server"
@@ -16,12 +20,18 @@ import { isUpstreamSource, UPSTREAM_SOURCES, type UpstreamSource } from "~/upstr
 const USAGE = `usage:
   npm run upstream:refresh
   npm run upstream:refresh -- --source=<name>
+  npm run upstream:refresh -- --allow-shrink
 
 sources: ${UPSTREAM_SOURCES.join(", ")}`
 
 const requested: UpstreamSource[] = []
+let allowShrink = false
 let usageError = false
 for (const argument of process.argv.slice(2)) {
+  if (argument === "--allow-shrink") {
+    allowShrink = true
+    continue
+  }
   const name = argument.startsWith("--source=") ? argument.slice("--source=".length) : null
   if (name !== null && isUpstreamSource(name)) requested.push(name)
   else usageError = true
@@ -34,6 +44,7 @@ if (usageError) {
   const outcomes = await runUpstreamRefresh(
     getDb(),
     requested.length > 0 ? requested : UPSTREAM_SOURCES,
+    { allowShrink },
   )
   for (const outcome of outcomes) {
     if (outcome.status === "written") {
