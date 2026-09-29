@@ -7,15 +7,45 @@ import {
   forwardedResponseHeaders,
 } from "./target"
 
+/** Long enough for a service that is up, short enough that the screen does not wait long on one that is not. */
+const RUNNING_TIMEOUT_MS = 3_000
+
+/**
+ * Whether the assistant is configured and responds, for the screen to choose
+ * between the assistant and the notice that it is not running.
+ *
+ * **Any response counts, whatever its status.** The request goes to the root
+ * of the origin, which is none of the service's endpoints, so the portal still
+ * knows nothing about the API; all that is checked is that something is
+ * listening there. The screen receives a boolean, never the address.
+ */
+export async function isAssistantRunning(timeoutMs = RUNNING_TIMEOUT_MS): Promise<boolean> {
+  const origin = loadConfig(process.env).assistantOrigin
+  if (origin === null) return false
+
+  try {
+    await fetch(new URL("/", origin), {
+      method: "HEAD",
+      redirect: "manual",
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    return true
+  } catch {
+    // The name does not resolve, the connection is refused or nothing comes
+    // back in time: the container is removed, stopped or still starting.
+    return false
+  }
+}
+
 /**
  * Hands a request on to the assistant and returns its response.
  *
- * **This is the whole of the portal's part.** The assistant holds no
+ * **This module is the whole of the portal's part.** The assistant holds no
  * authorisation of its own and is not published outside the compose network, so
  * the guard in front of this call is the only one there is — and the two
  * invariants that keeps are worth stating plainly: the route requires
- * `use-assistant` before calling this, and nothing else in the portal calls the
- * service at all.
+ * `use-assistant` before calling this, and nothing outside this module calls
+ * the service at all.
  *
  * **Nothing about the API is known here.** Paths, methods, bodies and status
  * codes are passed through, so the service can grow an endpoint without the

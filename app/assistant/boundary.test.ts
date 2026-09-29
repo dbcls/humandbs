@@ -57,10 +57,10 @@ describe("アシスタントとの境界", () => {
 
   /**
    * Knowing where the service is would be enough to call it directly. The screen
-   * is allowed to read whether the address is set at all — that is how it reports
-   * the assistant is not running — and nothing else may read it.
+   * asks the proxy module whether the service is running and receives a
+   * boolean, so nothing but the configuration and that module reads it.
    */
-  it("サービスのアドレスを知っているのは proxy と、動いているかを示す画面だけ", async () => {
+  it("サービスのアドレスを知っているのは設定と proxy だけ", async () => {
     const readers = (await sources())
       .filter(({ text }) => text.includes("assistantOrigin"))
       .map(({ name }) => name)
@@ -69,7 +69,6 @@ describe("アシスタントとの境界", () => {
     expect(readers).toEqual([
       "assistant/proxy.server.ts",
       "config.server.ts",
-      "routes/admin-assistant.tsx",
     ])
   })
 
