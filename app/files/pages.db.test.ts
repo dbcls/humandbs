@@ -1,6 +1,7 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { eq } from "drizzle-orm"
+import fc from "fast-check"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { fileDownloadPath } from "~/admin/urls"
@@ -24,6 +25,7 @@ import {
 } from "./prefix"
 import { today } from "~/dates"
 import { emptyDatasetContent } from "~/content/empty"
+import { messagesFor } from "~/i18n/messages"
 
 import {
   commonFilesAction,
@@ -1245,6 +1247,45 @@ describe("a private file's download", () => {
     await signed(token, "a.zip")
 
     expect((await db.select().from(s.event)).filter((row) => row.subjectType === "file")).toEqual([])
+  })
+})
+
+/**
+ * A public file read through the proxy. Works under a prefix of its own in
+ * `common/`, for the reason the article assets below do.
+ */
+describe("a public file through the proxy", () => {
+  const MINE = `${commonPrefix()}zz-test-proxy-${crypto.randomUUID()}/`
+  const address = (name: string): string => `http://localhost:8080/files/${MINE}${encodeURIComponent(name)}`
+
+  afterEach(async () => {
+    await clearPrefix(PUBLIC_BUCKET, MINE)
+  })
+
+  it("is served by the store when it is there", async () => {
+    await putTestObject(PUBLIC_BUCKET, `${MINE}a.zip`, "1234")
+
+    const fetched = await getThroughProxy(address("a.zip"))
+
+    expect(fetched.status).toBe(200)
+    expect(fetched.body).toBe("1234")
+    expect(fetched.headers["content-disposition"]).toBe("attachment")
+  })
+
+  it("is answered with the portal's 404 page rather than the store's error saved as a file when it is not there", async () => {
+    await fc.assert(fc.asyncProperty(
+      fc.string({ minLength: 1, maxLength: 20, unit: "grapheme" })
+        .filter((name) => !/[\p{Cc}/]/u.test(name) && name !== "." && name !== ".."),
+      async (name) => {
+        const fetched = await getThroughProxy(address(name))
+
+        expect(fetched.status).toBe(404)
+        expect(fetched.headers["content-type"]).toMatch(/^text\/html/)
+        expect(fetched.headers["content-disposition"]).toBeUndefined()
+        expect(fetched.headers["content-security-policy"]).not.toMatch(/^sandbox/)
+        expect(fetched.body).toContain(messagesFor(JA).notFoundTitle)
+      },
+    ), { numRuns: 20 })
   })
 })
 

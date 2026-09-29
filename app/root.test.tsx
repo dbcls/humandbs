@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it, vi } from "vitest"
@@ -42,11 +43,24 @@ describe("root の ErrorBoundary", () => {
     expect(html).toContain(messages.notFoundBody)
   })
 
-  it("404 以外の route error response はエラーの文言を表示する", () => {
-    const html = render(routeErrorResponse(500))
+  it("403 の route error response は権限が無い旨を表示し、時間をおいて試すようには案内しない", () => {
+    const html = render(routeErrorResponse(403))
     const messages = messagesFor("ja")
-    expect(heading(html)).toBe(messages.errorTitle)
-    expect(html).toContain(messages.errorBody)
+    expect(heading(html)).toBe(messages.forbiddenTitle)
+    expect(html).toContain(messages.forbiddenBody)
+    expect(html).not.toContain(messages.errorBody)
+  })
+
+  it("403 と 404 以外の route error response はエラーの文言を表示する", () => {
+    fc.assert(fc.property(
+      fc.integer({ min: 400, max: 599 }).filter((status) => status !== 403 && status !== 404),
+      (status) => {
+        const html = render(routeErrorResponse(status))
+        const messages = messagesFor("ja")
+        expect(heading(html)).toBe(messages.errorTitle)
+        expect(html).toContain(messages.errorBody)
+      },
+    ))
   })
 
   it("route の外の例外は、開発中でなければエラーの文言を表示する", () => {
@@ -70,5 +84,11 @@ describe("root の ErrorBoundary", () => {
   it("英語では英語の文言で表示する", () => {
     const html = render(routeErrorResponse(404), "en")
     expect(heading(html)).toBe(messagesFor("en").notFoundTitle)
+  })
+
+  it("英語では 403 も英語の文言で表示する", () => {
+    const html = render(routeErrorResponse(403), "en")
+    expect(heading(html)).toBe(messagesFor("en").forbiddenTitle)
+    expect(html).toContain(messagesFor("en").forbiddenBody)
   })
 })

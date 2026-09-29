@@ -73,4 +73,11 @@ test.describe("P-ANON 非制限公開ファイル", () => {
     expect(file.headers()["content-disposition"] ?? "", type).toMatch(inline ? /^(?!attachment)/ : /^attachment/)
     expect((await file.body()).length).toBe(smallest?.size)
   })
+
+  test("S-FILE-03: 無いファイルの URL はダウンロードさせずに 404 のページを表示する", async ({ page }) => {
+    const response = await page.goto("/files/common/e2e-no-such-file.zip")
+    expect(response?.status()).toBe(404)
+    expect(response?.headers()["content-disposition"]).toBeUndefined()
+    await expect(page.getByRole("heading", { name: "ページが見つかりません" })).toBeVisible()
+  })
 })

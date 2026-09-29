@@ -251,7 +251,7 @@ test.describe("P-ADMIN", () => {
     await expect.poll(() => panes.evaluateAll((all) => all.map((one) => one.scrollTop))).toEqual(before)
   })
 
-  test("S-ADMIN-09: admin でない人は /admin で自分の sub だけを見て、ほかの管理画面は 403 になる", async ({ browser, playwright }) => {
+  test("S-ADMIN-09: admin でない人は /admin で自分の sub だけを見て、ほかの管理画面は 403 になり権限が無いことを表示する", async ({ browser, playwright }) => {
     test.skip(NON_ADMIN === "", "HUMANDBS_E2E_NON_ADMIN_SESSION が無い (npm run e2e:session -- non-admin)")
     const baseURL = test.info().project.use.baseURL
     const context = await browser.newContext({ baseURL, storageState: sessionState(NON_ADMIN) })
@@ -264,6 +264,10 @@ test.describe("P-ADMIN", () => {
       await expect(page.getByRole("heading", { name: heading }), heading).toHaveCount(0)
     }
     await expect(page.getByText("アプリのバージョン")).toHaveCount(0)
+    // 待っても変わらないので、時間をおいて試すようには案内しない
+    expect((await page.goto("/admin/research"))?.status()).toBe(403)
+    await expect(page.getByRole("heading", { name: "権限がありません" })).toBeVisible()
+    await expect(page.getByText("時間をおいて、もう一度お試しください。")).toHaveCount(0)
     await context.close()
 
     const request = await playwright.request.newContext({ baseURL, storageState: sessionState(NON_ADMIN) })

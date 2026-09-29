@@ -210,10 +210,11 @@ export default function App() {
 }
 
 /**
- * **Only 404 has a message of its own; every other error shows the same one.**
- * A bare status number gives the reader nothing to do, where "not found" does
- * (go back, check the address), so a 500 and an uncaught exception both ask
- * the reader to try again later.
+ * **Only 404 and 403 have messages of their own; every other error shows the
+ * same one.** A bare status number gives the reader nothing to do, where "not
+ * found" does (go back, check the address), so a 500 and an uncaught exception
+ * both ask the reader to try again later. A 403 does not ask that: it is a
+ * signed-in account without the permission, and waiting does not change it.
  *
  * Laid out as the public screens are (`Page` → `Card` → `Stack` → `Heading`)
  * with no `Crumbs`: this also renders for an error under `/admin`, which has
@@ -228,7 +229,10 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let stack: string | undefined
 
   if (isRouteErrorResponse(error)) {
-    if (error.status !== 404) {
+    if (error.status === 403) {
+      title = messages.forbiddenTitle
+      detail = messages.forbiddenBody
+    } else if (error.status !== 404) {
       title = messages.errorTitle
       detail = messages.errorBody
     }
