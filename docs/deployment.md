@@ -148,4 +148,4 @@ role は database の外にあるので dump に入らず、database への接�
 - `migrate` を `app` の起動に結び付けること。podman-compose 1.0.6 は完了を待つ依存を扱えず、結び付けると終了した container に `app` の起動が左右される。
 - 環境ごとに compose の file を分けること。違いは `.env` に書き、env の template は値の雛形でしかない。
 - 配置先のアドレスやホスト名を repo に書くこと。
-- アシスタントを既定で起動すること。起動と設定の変更は `podman-compose up -d --force-recreate assistant-api` だけで行う。手順と使わないコマンドは `assistant-api/README.md` の「配信先で設定を変える・更新する」にある。
+- アシスタントを既定で起動すること。起動・停止・更新は assistant-api のサービス名を指定したコマンドだけで行い、ポータルを止めない。手順と使わないコマンドは `assistant-api/README.md` の「配信先で動かす」にある。
