@@ -19,7 +19,7 @@ import { Icon } from "~/components/icons"
 import { Card, DatasetIds, IdWithIcon, Page, Paging, Table, Td } from "~/components/page"
 import { formatSize } from "~/files/prefix"
 import { listingSummariesOf } from "~/files/listing.server"
-import { DateRange, type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, usePaneOpen } from "~/components/search"
+import { DateRange, type ListingPaging, ListingPresented, ListingTools, type Presentation, presentedQuery, RefinableList, RefineAxis, SearchBox, sortName, usePaneOpen } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
@@ -394,7 +394,6 @@ function listingAt(view: ViewProps["view"], locale: Locale, over: Partial<Listin
  * same way (`app/search/sort.ts`).
  */
 function presentation(view: ViewProps["view"], locale: Locale): Presentation<SortKey> {
-  const messages = messagesFor(locale)
   return {
     sort: {
       keys: SORT_KEYS,
@@ -402,7 +401,7 @@ function presentation(view: ViewProps["view"], locale: Locale): Presentation<Sor
       order: view.order,
       unwritten: DEFAULT_SORT,
       runs: defaultOrder,
-      name: (key) => messages.search.sort[key],
+      name: (key) => sortName(locale, "research", key),
     },
     size: view.size,
   }

@@ -3,9 +3,11 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
 import { describe, expect, it } from "vitest"
 
+import { LOCALES } from "~/i18n/locale"
 import type { ListingSize } from "~/search/page-size"
+import { SORT_KEYS } from "~/search/sort"
 
-import { AppliedConditions, DateRange, ListingPresented, ListingTools, PageSizeChooser, Pagination, type Presentation, presentedQuery, RefinableList, SearchForm, SortChooser } from "./search"
+import { AppliedConditions, DateRange, ListingPresented, ListingTools, PageSizeChooser, Pagination, type Presentation, presentedQuery, RefinableList, SearchForm, SortChooser, sortName } from "./search"
 
 /** Rendered at a given address, since the links are built relative to none. */
 function render(element: React.ReactNode): string {
@@ -294,6 +296,24 @@ describe("how many rows a page holds", () => {
   belongs to: the box starts a new search, and a new search is read the way its
   key is read.
 */
+describe("the name of a sort key", () => {
+  it("names the ID after the rows of the listing, in either language", () => {
+    expect(sortName("ja", "research", "id")).toBe("研究 ID")
+    expect(sortName("ja", "dataset", "id")).toBe("データセット ID")
+    expect(sortName("en", "research", "id")).toBe("Research ID")
+    expect(sortName("en", "dataset", "id")).toBe("Dataset ID")
+  })
+
+  it("names every other key the same over either listing, and never with an empty name", () => {
+    for (const locale of LOCALES) {
+      for (const key of SORT_KEYS) {
+        expect(sortName(locale, "research", key), `${locale} ${key}`).not.toBe("")
+        if (key !== "id") expect(sortName(locale, "dataset", key)).toBe(sortName(locale, "research", key))
+      }
+    }
+  })
+})
+
 describe("which way the ordering runs", () => {
   it("offers the other end, and writes it because it is not the key's own", () => {
     const html = render(
@@ -335,7 +355,15 @@ describe("which way the ordering runs", () => {
       <SortChooser locale="ja" target="research" query="cancer" sort="id" order="asc" rows={null} />,
     )
     expect(html).toContain("降順にする")
-    for (const name of ["更新日", "公開日", "ID"]) expect(html).toContain(name)
+    for (const name of ["更新日", "公開日", "研究 ID"]) expect(html).toContain(name)
+  })
+
+  it("names the ID after the rows of the listing", () => {
+    const html = render(
+      <SortChooser locale="en" target="dataset" query="" sort="dateModified" order="desc" rows={null} />,
+    )
+    expect(html).toContain("Dataset ID")
+    expect(html).not.toContain("Research ID")
   })
 
   /*

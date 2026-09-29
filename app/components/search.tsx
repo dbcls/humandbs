@@ -990,16 +990,31 @@ export function ListingPresented<K extends string>({ presented }: { presented: P
   )
 }
 
+/**
+ * What a sort key is called over a listing of `target`. **The ID is named for
+ * the rows**: both listings show a research ID and a dataset ID, so "ID" alone
+ * does not say which one the rows are ordered by.
+ */
+export function sortName(locale: Locale, target: "research" | "dataset", key: SortKey): string {
+  const names = messagesFor(locale).search.sort
+  if (key !== "id") return names[key]
+  return target === "research" ? names.researchId : names.datasetId
+}
+
 /** The public listings' ordering, read the way `app/search/sort.ts` reads it. */
-function publicSort(locale: Locale, sort: SortKey, order: SortOrder): ListingSort<SortKey> {
-  const messages = messagesFor(locale)
+function publicSort(
+  locale: Locale,
+  target: "research" | "dataset",
+  sort: SortKey,
+  order: SortOrder,
+): ListingSort<SortKey> {
   return {
     keys: SORT_KEYS,
     current: sort,
     order,
     unwritten: DEFAULT_SORT,
     runs: defaultOrder,
-    name: (key) => messages.search.sort[key],
+    name: (key) => sortName(locale, target, key),
   }
 }
 
@@ -1020,7 +1035,7 @@ export function SortChooser({ locale, target, query, sort, order, rows }: {
   return (
     <SortChoice
       locale={locale}
-      sort={publicSort(locale, sort, order)}
+      sort={publicSort(locale, target, sort, order)}
       at={(key, turned) => href(locale, listPath(target) + searchQuery({
         q: query,
         sort: key,
