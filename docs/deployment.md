@@ -65,7 +65,7 @@ DB とファイルストアのデータをホストのどこに保存するか�
 - DB (`pgdata`) とファイルストア (`s3data`) の中身は、`HUMANDBS_DATA_DIR` の下の `pgdata/` と `s3data/` に置く。podman は named volume を container の実行環境の中に置くが、配信するデータ (特に数 TB の配信ファイル) はホストを移ったり実行環境を作り直したりしても残る場所に置く必要がある。そのため `compose.deploy.yml` が 2 つの volume をこの dir への bind にしている。
 - volume の名前は project 名 (配置先の dir 名) と volume の key から決まるので、dir 名も key も変えない。`down -v` は実行しない。
 - 2 つの dir は最初の起動の前に作り、配置先のユーザーの所有にする。
-- `compose.deploy.yml` の `userns_mode` (`keep-id`) は、`db`・`s3`・`tools` の container の中のユーザーを、配置先のユーザーに対応させる設定である。この設定が無いと、bind した dir に書けないか、持ち主の分からないファイルが残る。rootless podman では、container の中の root 以外のユーザーがホストでは別の uid になるためである。保存先が共有のファイルシステムのときに特に問題になる。
+- `compose.deploy.yml` の `userns_mode` (`keep-id`) は、`db`・`s3`・`tools`・`assistant-api` の container の中のユーザーを、配置先のユーザーに対応させる設定である。この設定が無いと、bind した dir に書けないか、持ち主の分からないファイルが残る。rootless podman では、container の中の root 以外のユーザーがホストでは別の uid になるためである。保存先が共有のファイルシステムのときに特に問題になる。
 - `tools` にもこの設定が要るのは、データの移行が `migration/input/` にレポートを書き、ファイルのコピーが配置先のユーザーの dir を読むためである。
 - ポータルへの書き込みは admin の操作だけなので、DB の保存先の書き込みの速さは画面の速さにほとんど影響しない。
 - DB の backup は `HUMANDBS_DATA_DIR/backup/` にたまる。更新のたびに、migration の前に `pg_dump -Fc` で `<日時>-before-<tag>.dump` を作る。古い backup は手で消す。backup はデータと同じファイルシステムにあるので、防げるのは migration の失敗であり、保存先の故障ではない。

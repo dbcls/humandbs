@@ -25,6 +25,11 @@ services:
   tools:
     userns_mode: "keep-id:uid=1000,gid=1000"
 
+  # The image runs as `appuser`. It writes logs, results, and other persistent data
+  # under directories the deploying user owns.
+  assistant-api:
+    userns_mode: "keep-id:uid=1000,gid=1000"
+
 # The data a deployment serves outlives the container runtime, so the two
 # volumes are directories the deployment names rather than storage podman
 # keeps for itself. Both must exist before the first start.
