@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Badge, Clamped, Excerpt, Stack } from "~/components/base"
+import { Badge, Chevron, Clamped, Excerpt, Note, Stack } from "~/components/base"
 import { CartColumnHead, CartToggle } from "~/components/cart"
 import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
@@ -62,6 +62,26 @@ const UNRESTRICTED_ACCESS = "unrestricted-access"
  * articles put them in cannot be recovered, so a version lists its datasets and
  * each dataset describes its own.
  */
+/**
+ * The way from a past version to the newest, at the end of the notice.
+ * **A button's size without its edge** (`Button` の `sm`): the notice already
+ * draws a frame around it, and a second frame inside it read as two boxes.
+ *
+ * **The words and the chevron stand in one line of text, not in a flex row.**
+ * A flex row centres the chevron on the line box, which is above where
+ * Japanese sits in it. Set inline, the icon's own offset (`icons.tsx`) still
+ * leaves it a little above the middle of a kanji, so it is lowered by the
+ * rest (`TO_LATEST_CHEVRON`).
+ *
+ * **The words are raised in the box by the tenth of an em they sit low**, as
+ * the notice raises its own sentence (`base.tsx` の `CENTRED_WORDS`): the top
+ * padding is given up to the foot, so the words stay level with the sentence
+ * and the tint a pointer brings up is even above and below them.
+ */
+const TO_LATEST_CHEVRON = "ml-1.5 inline-block translate-y-[0.09em]"
+
+const TO_LATEST = "group/link inline-block shrink-0 whitespace-nowrap rounded px-3 pt-[calc(0.375rem-0.1em)] pb-[calc(0.375rem+0.1em)] font-medium text-brand text-sm no-underline transition-colors hover:bg-surface-hover"
+
 export function ResearchVersionPage({ view, locale, origin, numbered = false }: {
   view: ResearchView
   locale: Locale
@@ -111,23 +131,38 @@ export function ResearchVersionPage({ view, locale, origin, numbered = false }: 
         )}
       >
         {/*
-          Whether this is the newest version, and the way to the newest one if
-          it is not. The two are drawn the same way — a badge on the header bar —
-          because they answer the same question; the one that leads somewhere
-          is the rounded one, which is the shape v1 gives a badge that is a link.
+          That this is the newest version. **A past version has nothing
+          here**: the way to the newest one is in the notice at the head of the
+          card, and a second one in the bar's corner is the one nobody reads.
         */}
-        {view.isLatest
-          ? <Badge onHeaderBar>{t.latestVersion}</Badge>
-          : (
-              <Link to={href(locale, researchPath(view.humLabel))}>
-                <Badge onHeaderBar pill>
-                  {`${t.toLatestVersion} (v${view.latestVersionNumber})`}
-                </Badge>
-              </Link>
-            )}
+        {view.isLatest && <Badge onHeaderBar>{t.latestVersion}</Badge>}
       </PageHeader>
 
-      <Card><ResearchBody view={view} locale={locale} cart fileUrls={{ list: researchFileListPath(view.humLabel), origin }} /></Card>
+      <Card>
+        <Stack gap="block">
+          {/*
+            **On a past version, the notice that it is one stands above the
+            content**, where the reading starts: the bar's corner is passed over
+            by somebody going straight to the aims and the datasets. It is the
+            first thing in the card rather than a strip between the bar and the
+            card, which are one box.
+          */}
+          {!view.isLatest && (
+            <Note
+              kind="info"
+              action={(
+                <Link to={href(locale, researchPath(view.humLabel))} className={TO_LATEST}>
+                  {`${t.toLatestVersion} (v${view.latestVersionNumber})`}
+                  <span className={TO_LATEST_CHEVRON}><Chevron dir="right" /></span>
+                </Link>
+              )}
+            >
+              {t.pastVersion(view.versionNumber, view.latestVersionNumber)}
+            </Note>
+          )}
+          <ResearchBody view={view} locale={locale} cart fileUrls={{ list: researchFileListPath(view.humLabel), origin }} />
+        </Stack>
+      </Card>
     </Page>
   )
 }

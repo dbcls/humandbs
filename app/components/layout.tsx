@@ -579,8 +579,11 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             {named.map((entry) => (
               <Stack key={entry.path} gap="tight" as="section">
                 {/* Lighter than what is under it: the name of a group is there
-                    to be skipped past on the way to a link. */}
-                <h3 className="text-ink-muted text-xs">{navLabel(entry.label, locale)}</h3>
+                    to be skipped past on the way to a link. **In capitals**,
+                    so that in English it is not read as a second copy of
+                    the link under it that has the same words. Japanese has no
+                    capitals and is drawn as it is. */}
+                <h3 className="text-ink-muted text-xs uppercase">{navLabel(entry.label, locale)}</h3>
                 {/* The size is on the line rather than on the link inside it:
                     a list whose items are 12px text but whose own font is the
                     page's leaves a 24px line box around every 18px line. */}

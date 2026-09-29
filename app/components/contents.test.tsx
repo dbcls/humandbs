@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { createRoutesStub } from "react-router"
+import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import type { LocaleEditor } from "~/admin/contents.server"
@@ -11,8 +12,10 @@ import {
   LocaleEditors,
   contentsSaid,
   PublicPageButtons,
+  shownLanguagesOf,
   SlugEditor,
   StateCell,
+  wordsDiffer,
 } from "./contents"
 
 function render(element: React.ReactElement): string {
@@ -260,6 +263,57 @@ describe("leftLanguageOf", () => {
 
   it("どちらのペインも公開ページなら、送る form は無い", () => {
     expect(leftLanguageOf({ left: "page", showing: "both" })).toBeNull()
+  })
+})
+
+/**
+ * A language whose form no pane shows is the one whose words the screen has to
+ * hold as unsent itself, since no form on the screen is holding them.
+ */
+describe("shownLanguagesOf", () => {
+  const CONTENTS = ["form-ja", "form-en", "page", "page-en"] as const
+  const SHOWING = ["both", "left", "right"] as const
+
+  it("既定 (左が編集 ja、右が公開ページ ja) では ja だけ", () => {
+    expect(shownLanguagesOf({ left: "form-ja", right: "page", showing: "both" })).toEqual(new Set(["ja"]))
+  })
+
+  it("両方の pane に編集があれば両方、同じ言語なら 1 つ", () => {
+    expect(shownLanguagesOf({ left: "form-ja", right: "form-en", showing: "both" })).toEqual(new Set(["ja", "en"]))
+    expect(shownLanguagesOf({ left: "form-en", right: "form-en", showing: "both" })).toEqual(new Set(["en"]))
+  })
+
+  it("隠れている pane の編集は数えない", () => {
+    expect(shownLanguagesOf({ left: "form-ja", right: "form-en", showing: "left" })).toEqual(new Set(["ja"]))
+    expect(shownLanguagesOf({ left: "form-ja", right: "form-en", showing: "right" })).toEqual(new Set(["en"]))
+  })
+
+  it("どの並べ方でも、表示している pane の編集の言語とちょうど一致する", () => {
+    fc.assert(fc.property(fc.constantFrom(...CONTENTS), fc.constantFrom(...CONTENTS), fc.constantFrom(...SHOWING), (left, right, showing) => {
+      const visible = [showing === "right" ? null : left, showing === "left" ? null : right]
+      const expected = new Set(visible.flatMap((one) => one === "form-ja" ? ["ja"] : one === "form-en" ? ["en"] : []))
+      expect(shownLanguagesOf({ left, right, showing })).toEqual(expected)
+    }))
+  })
+})
+
+describe("wordsDiffer", () => {
+  it("題名か本文が違えば違う", () => {
+    expect(wordsDiffer({ title: "a", body: "b" }, { title: "a", body: "b" })).toBe(false)
+    expect(wordsDiffer({ title: "a", body: "b" }, { title: "a ", body: "b" })).toBe(true)
+    expect(wordsDiffer({ title: "a", body: "b" }, { title: "a", body: "b\n" })).toBe(true)
+  })
+
+  it("本文の改行が CRLF か LF かだけの違いは同じと読む", () => {
+    fc.assert(fc.property(fc.array(fc.string({ unit: "grapheme-ascii" }).map((line) => line.replaceAll(/[\r\n]/g, ""))), fc.string(), (lines, title) => {
+      expect(wordsDiffer({ title, body: lines.join("\r\n") }, { title, body: lines.join("\n") })).toBe(false)
+    }))
+  })
+
+  it("題名の違いは、本文の改行とは別に違いと読む", () => {
+    fc.assert(fc.property(fc.string(), fc.string(), fc.string(), (one, other, body) => {
+      expect(wordsDiffer({ title: one, body }, { title: other, body })).toBe(one !== other)
+    }))
   })
 })
 

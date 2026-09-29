@@ -27,6 +27,7 @@ import { Icon } from "./icons"
 import { Markdown } from "./markdown"
 import { Card, Section } from "./page"
 import { Flag, type FlagKind, KindIcon, Stated } from "./flags"
+import { useHoldsUnsaved } from "./unsaved"
 
 /**
  * What the last form did.
@@ -307,7 +308,7 @@ export interface Publishing {
   ahead: boolean
 }
 
-export function LocaleEditors({ editors, locale, remember, result, onTyped, onDirty, publishing }: {
+export function LocaleEditors({ editors, locale, remember, result, typed, onTyped, onDirty, publishing }: {
   editors: LocaleEditor[]
   locale: Locale
   /**
@@ -318,6 +319,11 @@ export function LocaleEditors({ editors, locale, remember, result, onTyped, onDi
   remember: string
   /** What the last form did, for the language whose body it refused. */
   result?: ContentsResult
+  /**
+   * What each language's form held when a pane last took it off the screen,
+   * put back as the form mounts again (`useArticlePanes`).
+   */
+  typed?: Partial<Record<Locale, ArticleContent>>
   /** Told what a language's form holds as it is typed, for the page drawn beside it. */
   onTyped?: (language: Locale, typed: ArticleContent) => void
   /** Told whenever a language's own "has this been typed into" answer changes. */
@@ -335,6 +341,7 @@ export function LocaleEditors({ editors, locale, remember, result, onTyped, onDi
           problems={result?.status === "body"
             ? result.problems.filter((one) => one.locale === editor.locale)
             : []}
+          typed={typed?.[editor.locale]}
           onTyped={onTyped}
           onDirty={onDirty}
           publishing={publishing}
@@ -344,12 +351,13 @@ export function LocaleEditors({ editors, locale, remember, result, onTyped, onDi
   )
 }
 
-function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publishing }: {
+function LanguageSection({ editor, locale, id, problems, typed, onTyped, onDirty, publishing }: {
   editor: LocaleEditor
   locale: Locale
   /** The form's own id; its save is found by it (`ArticleTools` の Ctrl+S). */
   id: string
   problems: BodyProblem[]
+  typed?: ArticleContent
   onTyped?: (language: Locale, typed: ArticleContent) => void
   onDirty?: (language: Locale, dirty: boolean) => void
   publishing?: Publishing
@@ -432,7 +440,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
             does — a title-less body still saves, and only the switch below
             can turn it into a published page. The server is what refuses it;
             the field has no HTML `required`. */}
-        <Field label={t.title} name="title" value={editor.title} width="w-full" required={messages.admin.required} />
+        <Field label={t.title} name="title" value={editor.title} typed={typed?.title} width="w-full" required={messages.admin.required} />
         {/* The box and the lines it was refused for are one part of the form:
             the list stands under the box at an error's distance (8px), not at
             the distance the form keeps between its parts. **The part does not
@@ -446,6 +454,7 @@ function LanguageSection({ editor, locale, id, problems, onTyped, onDirty, publi
             label={t.body}
             name="body"
             value={editor.body}
+            typed={typed?.body}
             accepts={messages.admin.accepts.markdown}
             refused={problems.length === 0
               ? undefined
@@ -537,7 +546,30 @@ interface PaneArrangement {
 /** Which language, if any, the left pane holds for editing — what Ctrl+S sends. */
 export function leftLanguageOf(panes: Pick<PaneArrangement, "left" | "showing">): Locale | null {
   if (panes.showing === "right") return null
-  return panes.left === "form-ja" ? "ja" : panes.left === "form-en" ? "en" : null
+  return formLanguageOf(panes.left)
+}
+
+/** The languages whose forms are on the screen, in either pane. */
+export function shownLanguagesOf(panes: PaneArrangement): Set<Locale> {
+  const shown = [
+    panes.showing === "right" ? null : formLanguageOf(panes.left),
+    panes.showing === "left" ? null : formLanguageOf(panes.right),
+  ]
+  return new Set(shown.filter((one): one is Locale => one !== null))
+}
+
+function formLanguageOf(content: string): Locale | null {
+  return content === "form-ja" ? "ja" : content === "form-en" ? "en" : null
+}
+
+/**
+ * Whether two readings of a language's words differ. Line endings are the
+ * browser's to choose — a box holds `\n` whatever it was loaded with — so they
+ * are read as the same.
+ */
+export function wordsDiffer(one: ArticleContent, other: ArticleContent): boolean {
+  const lines = (text: string) => text.replaceAll("\r\n", "\n")
+  return one.title !== other.title || lines(one.body) !== lines(other.body)
 }
 
 /**
@@ -597,6 +629,13 @@ export function ArticleTools({ publicPages, panesControl, leftFormId }: {
  * pane never disagrees with what a save would publish, and there is no second
  * reading of the markdown to keep in step. Each language is drawn on its own,
  * since each is its own form.
+ *
+ * **What is typed outlives the form it was typed into.** A pane shows one tab
+ * at a time, so switching a pane off a language's form takes the form off the
+ * screen, and its boxes with it. The words are kept here as they are typed and
+ * put back when the form is shown again; while it is not shown, this is what
+ * holds them as unsent (`useHoldsUnsaved`), so leaving the screen still asks
+ * first. Nothing is kept past the screen.
  */
 export function useArticlePanes({ locale, remember, editors, result, publicPages, dated = null, publishing }: {
   locale: Locale
@@ -619,6 +658,20 @@ export function useArticlePanes({ locale, remember, editors, result, publicPages
   const onTyped = useCallback((language: Locale, content: ArticleContent) => {
     setTyped((was) => ({ ...was, [language]: content }))
   }, [])
+  // **A save makes the saved words what was typed.** A language whose revision
+  // moved starts again from what the server read back, and only that language:
+  // the other may be holding words of its own that have not been sent.
+  const revisions = useRef(new Map(editors.map((one) => [one.locale, one.revision])))
+  useEffect(() => {
+    const moved = editors.filter((one) => revisions.current.get(one.locale) !== one.revision)
+    if (moved.length === 0) return
+    for (const one of moved) revisions.current.set(one.locale, one.revision)
+    setTyped((was) => {
+      const next = { ...was }
+      for (const one of moved) next[one.locale] = contentOf(editors, one.locale)
+      return next
+    })
+  }, [editors])
   const at = adminArticlePreviewPath()
   const initial = (language: Locale): ArticleView => {
     const editor = editors.find((one) => one.locale === language)
@@ -644,6 +697,7 @@ export function useArticlePanes({ locale, remember, editors, result, publicPages
           locale={locale}
           remember={remember}
           result={result}
+          typed={typed}
           onTyped={onTyped}
           publishing={publishing}
         />
@@ -662,6 +716,11 @@ export function useArticlePanes({ locale, remember, editors, result, publicPages
       { id: "page-en", label: words.panePageEn, body: <ArticlePage language="en" drawn={drawnEn} dated={dated} /> },
     ],
   })
+
+  // A form on the screen holds its own words as unsent (`Editing`); this holds
+  // the words of one that is not.
+  const shown = shownLanguagesOf(panes)
+  useHoldsUnsaved(LOCALES.some((language) => !shown.has(language) && wordsDiffer(typed[language], contentOf(editors, language))))
 
   const leftLanguage = leftLanguageOf(panes)
   const tools = (

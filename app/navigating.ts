@@ -58,10 +58,31 @@ export function useBusyHere(): boolean {
 export function useSubmitting(): boolean {
   const navigation = useNavigation()
   const fetchers = useFetchers()
-  const sends = (method: string | undefined): boolean =>
-    method !== undefined && method.toUpperCase() !== "GET"
-  return (navigation.state !== "idle" && sends(navigation.formMethod))
-    || fetchers.some((fetcher) => fetcher.state !== "idle" && sends(fetcher.formMethod))
+  return (navigation.state !== "idle" && sends(navigation.formMethod)) || fetchers.some(fetcherSends)
+}
+
+function sends(method: string | undefined): boolean {
+  return method !== undefined && method.toUpperCase() !== "GET"
+}
+
+const DRAWING_PREFIX = "drawing:"
+
+/** What a fetcher that draws a page beside a form is keyed by, so that it is not taken for sending (`fetcherSends`). */
+export function drawingKey(id: string): string {
+  return `${DRAWING_PREFIX}${id}`
+}
+
+/**
+ * Whether a fetcher in flight is sending something to an action.
+ *
+ * **A page drawn beside a form is not** (`draft-tools.tsx` の `useDrawn`). It
+ * is posted only because the content is too long for an address, and it writes
+ * nothing. Counted as sending, it shut the buttons of a panel opened while the
+ * page was being drawn, and closed the panel when the drawing came back, as if
+ * what the panel sent had gone through (`base.tsx` の `Dialog`).
+ */
+export function fetcherSends(fetcher: { state: string, formMethod?: string, key: string }): boolean {
+  return fetcher.state !== "idle" && sends(fetcher.formMethod) && !fetcher.key.startsWith(DRAWING_PREFIX)
 }
 
 /**

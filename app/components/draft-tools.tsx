@@ -14,6 +14,7 @@ import type { RenameResult } from "~/admin/pages.server"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useHoldsUnsaved } from "~/components/unsaved"
+import { drawingKey } from "~/navigating"
 
 import { AdminBack } from "./admin"
 import { Button, Heading, PANE_LABEL, Stack } from "./base"
@@ -294,8 +295,10 @@ const DRAW_AFTER = 300
  */
 export function useDrawn<T>(at: string, body: string, initial: T | null): T | null {
   // The fetcher is typed by what the route responds with; a generic one cannot
-  // be told that a JSON document survives the trip unchanged.
-  const drawing = useFetcher() as { data?: T | null, submit: ReturnType<typeof useFetcher>["submit"] }
+  // be told that a JSON document survives the trip unchanged. **Its key marks
+  // it as a drawing**, which is posted but sends nothing (`fetcherSends`).
+  const id = useId()
+  const drawing = useFetcher({ key: drawingKey(id) }) as { data?: T | null, submit: ReturnType<typeof useFetcher>["submit"] }
   const submit = drawing.submit
   useEffect(() => {
     const waiting = setTimeout(() => {

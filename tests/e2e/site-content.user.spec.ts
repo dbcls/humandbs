@@ -53,6 +53,50 @@ test.describe("P-SITE サイトコンテンツ", () => {
     await expect(page.getByText(slug)).toHaveCount(0)
   })
 
+  test("S-SITE-02: 記事の編集中に pane を公開ページに切り替えて戻しても入力が残り、フォームを表示していないあいだも画面を離れる前に確認する", async ({ page }) => {
+    await openScreen(page, "/admin/documents")
+    await page.getByRole("button", { name: "記事の作成" }).click()
+    const slug = `${E2E}-${Date.now()}`
+    await page.getByRole("dialog").getByRole("textbox", { name: "slug" }).fill(slug)
+    await page.getByRole("dialog").getByRole("button", { name: "作成" }).click()
+    await expect(page).toHaveURL(/\/admin\/documents\/[0-9a-f-]{36}$/)
+    await page.waitForLoadState("networkidle")
+    const title = e2eName()
+    const [body, save] = bodyAndSave(page)
+    await page.getByRole("textbox", { name: /^タイトル/ }).first().fill(title)
+    await body.fill(`${E2E} の本文\n2 行目`)
+    const here = page.url()
+
+    // 左の pane を公開ページにすると、どちらの pane にもフォームが無い
+    const left = page.getByRole("tablist").first()
+    await left.getByRole("tab", { name: "公開ページ en" }).click()
+    await expect(page.locator("[data-pane-body]").locator("form textarea, form input[name=title]")).toHaveCount(0)
+    await page.getByRole("navigation").getByRole("link", { name: "記事一覧" }).first().click()
+    const leave = page.getByRole("dialog").filter({ hasText: "保存していない変更があります。" })
+    await expect(leave).toBeVisible()
+    await leave.getByRole("button", { name: "キャンセル" }).click()
+    expect(page.url()).toBe(here)
+
+    // 戻すと入力が残っていて、保存していないので保存を押せる
+    await left.getByRole("tab", { name: "編集 ja" }).click()
+    await expect(page.getByRole("textbox", { name: /^タイトル/ }).first()).toHaveValue(title)
+    // 送られるのは editor の下の textarea の値で、editor もそれを表示する
+    await expect(page.locator("[data-pane-body] form textarea[name=body]").first()).toHaveValue(`${E2E} の本文\n2 行目`)
+    await expect(body).toContainText("2 行目")
+    await expect(save).toBeEnabled()
+    await save.click()
+    await expect(save).toBeDisabled()
+
+    // 保存したあとは、切り替えても画面を離れるときに確認しない
+    await left.getByRole("tab", { name: "公開ページ en" }).click()
+    await page.getByRole("navigation").getByRole("link", { name: "記事一覧" }).first().click()
+    await expect(page).toHaveURL(/\/admin\/documents$/)
+    await page.goto(here)
+    await page.getByRole("button", { name: "記事の削除" }).click()
+    await page.getByRole("dialog").getByRole("button", { name: "削除", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin\/documents$/)
+  })
+
   test("S-SITE-01: アラートは表示せずに保存でき、HTML を含む本文は行番号付きで拒否され、削除できる", async ({ page }) => {
     await openScreen(page, "/admin/alert")
     const before = await alertBodies(page).count()

@@ -19,7 +19,7 @@
  * as well.
  */
 
-import { createContext, useContext, useEffect, useEffectEvent, useId, useRef, useState, type ComponentProps, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react"
 import { Form, useLocation, useNavigation } from "react-router"
 
 import { scrollPaneTo } from "./scroll"
@@ -433,6 +433,27 @@ function edge(error?: string) {
   return error === undefined ? "" : "border-danger"
 }
 
+/**
+ * Putting back what was typed into a box before it was taken off the screen —
+ * a pane switched to another tab (`contents.tsx` の `useArticlePanes`).
+ *
+ * **Once, as the box mounts, and into the box only.** It stays uncontrolled
+ * with what was loaded as its default, so the walk that tells unsent work
+ * (`changedIn`) still compares against what was saved and reads the words put
+ * back as unsent. Put back on every render instead, an older value would be
+ * written over characters typed since — an IME's among them.
+ */
+function useResumedControl<Control extends HTMLInputElement | HTMLTextAreaElement>(typed: string | undefined): RefObject<Control | null> {
+  const box = useRef<Control>(null)
+  const first = useRef(typed)
+  useLayoutEffect(() => {
+    const element = box.current
+    const wanted = first.current
+    if (element !== null && wanted !== undefined && element.value !== wanted) element.value = wanted
+  }, [])
+  return box
+}
+
 export function Field({
   label,
   name,
@@ -445,8 +466,11 @@ export function Field({
   type = "text",
   placeholder,
   hideLabel = false,
+  typed,
 }: FieldLook & {
   value?: string
+  /** What was typed before the box was last taken off the screen, shown in place of `value` (`useResumedControl`). */
+  typed?: string
   width?: string
   /** `text` unless the value has a shape the browser can help with. */
   type?: "text" | "email" | "url" | "number" | "date" | "datetime-local" | "search"
@@ -460,10 +484,12 @@ export function Field({
   hideLabel?: boolean
 }) {
   const id = useId()
+  const box = useResumedControl<HTMLInputElement>(typed)
   return (
     <Labelled id={id} label={label} required={required} hint={hint} error={error} hideLabel={hideLabel}>
       <input
         id={id}
+        ref={box}
         type={type}
         name={name}
         defaultValue={value}
@@ -712,10 +738,16 @@ export function Select({
 /** As many lines as a body's box shows at once; the rest scroll inside it. */
 const BODY_ROWS = 30
 
-export function MarkdownEditor({ label, name, value, required, accepts, hint, error, refused, onReady }: {
+export function MarkdownEditor({ label, name, value, typed, required, accepts, hint, error, refused, onReady }: {
   label: string
   name: string
   value: string
+  /**
+   * What was typed before the box was last taken off the screen, shown in
+   * place of `value` (`useResumedControl`). The editor mounts on what the box then
+   * holds.
+   */
+  typed?: string
   /** That the body has to be written — see `FieldLook`. */
   required?: string
   accepts?: string
@@ -737,7 +769,7 @@ export function MarkdownEditor({ label, name, value, required, accepts, hint, er
   onReady?: (goToLine: ((line: number) => void) | null) => void
 }) {
   const id = useId()
-  const box = useRef<HTMLTextAreaElement>(null)
+  const box = useResumedControl<HTMLTextAreaElement>(typed)
   const container = useRef<HTMLDivElement>(null)
   const editor = useRef<MountedMarkdown | null>(null)
   const refusedLines = refused?.lines.join(",") ?? ""
@@ -768,7 +800,7 @@ export function MarkdownEditor({ label, name, value, required, accepts, hint, er
       textarea.hidden = false
       onReady?.(null)
     }
-  }, [label, onReady])
+  }, [box, label, onReady])
 
   // The indicators follow the answer: set when a save is refused, cleared when the
   // next one goes through. Before the editor is shown there is nothing to mark,

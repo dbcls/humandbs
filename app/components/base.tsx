@@ -68,6 +68,18 @@ export function Stack({ gap = "normal", as: Tag = "div", at, fill = false, child
 /* ------------------------------------------------------- remarks */
 
 /**
+ * What raises a remark's words onto the middle of its box.
+ *
+ * **The box centres everything on the middle of the lines, and the words are
+ * drawn a tenth of an em below it**: a kanji's ink sits that much low in its
+ * line (the site's Japanese typeface). The glyph at the head and the control at
+ * the end are centred in the box; raised by the same tenth, the words are too,
+ * on one line or on several. It is in `em` so that it follows the remark's
+ * size, and a transform so that the box's height does not change.
+ */
+const CENTRED_WORDS = "-translate-y-[0.1em]"
+
+/**
  * The three parts a remark is made of, as class names.
  *
  * **Exported because site content has remarks too.** A blockquote in a document
@@ -78,17 +90,19 @@ export function Stack({ gap = "normal", as: Tag = "div", at, fill = false, child
 export const REMARK_CLASSES = {
   box: "flex items-center gap-2 rounded border px-4 py-2 text-sm",
   icon: "flex size-6 shrink-0 items-center justify-center",
-  body: "min-w-0 flex-1 text-ink",
+  body: `min-w-0 flex-1 text-ink ${CENTRED_WORDS}`,
 }
 
 /**
  * A glyph at the head of a line of text.
  *
- * **The box is the height of the line, so nothing has to be nudged.** An icon
+ * **The box is the height of the line**, so nothing has to be nudged by hand. An icon
  * set beside `text-sm` is shorter than the line it starts, and the three places
  * that drew one had each corrected it by hand and by a different amount
  * (`mt-0.5`, `mt-1`, nothing at all). Putting the drawing in a box the line's
- * own height centres it wherever it is used.
+ * own height centres it wherever it is used; what is left between the middle
+ * of the line and the middle of the words is taken up by the words
+ * (`CENTRED_WORDS`).
  */
 function LineIcon({ name, className = "" }: { name: IconName, className?: string }) {
   return (
