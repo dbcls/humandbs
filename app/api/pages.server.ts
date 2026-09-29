@@ -26,7 +26,7 @@ import {
   type CauUsage,
   type StoredFile,
 } from "~/content/public"
-import { getDb } from "~/db/client.server"
+import { getDb, getSearchDb, type Executor } from "~/db/client.server"
 import { everyPublicListing, publicListingsOf } from "~/files/listing.server"
 import type { FileLabel } from "~/files/labels"
 import { fileLabelsByHumLabel } from "~/files/labels.server"
@@ -44,6 +44,7 @@ import {
 } from "~/public/queries.server"
 import { parseVersionSegment } from "~/public/urls"
 import { findVersion, latestOf } from "~/public/versions"
+import { isSearchBusy, RETRY_AFTER_SECONDS } from "~/search/busy.server"
 import { loadFacetDefinitions, publishedFacetValues, publishedFormats } from "~/search/catalog.server"
 import { parseQuery, serializeQuery } from "~/search/dsl"
 import { BUILT_IN_FIELDS, FILE_TYPE_FIELD, queryFields } from "~/search/fields"
@@ -75,6 +76,7 @@ import {
   invalidQuery,
   invalidSort,
   notFound,
+  searchRefused,
   unknownAccessionType,
 } from "./problem"
 import {
@@ -99,8 +101,8 @@ function originOf(): string {
  * answer out of the labels alone, and reading a table they never look at would
  * be a cost paid on every one of those calls.
  */
-async function contextOf(): Promise<ApiContext> {
-  return { origin: originOf(), catalog: await loadCatalog(getDb()) }
+async function contextOf(db: Executor): Promise<ApiContext> {
+  return { origin: originOf(), catalog: await loadCatalog(db) }
 }
 
 // --- research -------------------------------------------------------------
@@ -176,7 +178,7 @@ export async function researchEntry(
   if (version === null) return problemResponse(notFound(request, "research-version"))
 
   const [context, cau, listings, labels, fileLabels, onPage] = await Promise.all([
-    contextOf(),
+    contextOf(db),
     cauByHumLabel(db, [resolved.primaryLabel]),
     include ? publicListingsOf([resolved.primaryLabel]) : null,
     publishedDatasetLabels(db, citedDatasetIds(version.content)),
@@ -293,7 +295,7 @@ export async function datasetEntry(request: Request, datasetId: string): Promise
   if (bundle === undefined) return problemResponse(notFound(request, "dataset"))
 
   const [context, listings, fileLabels] = await Promise.all([
-    contextOf(),
+    contextOf(db),
     include ? publicListingsOf([bundle.humLabel]) : null,
     include ? fileLabelsByHumLabel(db, [bundle.humLabel]) : null,
   ])
@@ -313,8 +315,26 @@ function datasetObjects(
 
 // --- search ---------------------------------------------------------------
 
+/**
+ * A search endpoint's response, or 503 where the search is refused
+ * (`search/busy.server.ts`). Everything the response reads goes through the
+ * search's own connections, so a refused search leaves the others alone.
+ */
+async function orRefused(request: Request, respond: () => Promise<Response>): Promise<Response> {
+  try {
+    return await respond()
+  } catch (error) {
+    if (!isSearchBusy(error)) throw error
+    return problemResponse(searchRefused(request), { "Retry-After": String(RETRY_AFTER_SECONDS) })
+  }
+}
+
 export async function apiSearch(request: Request, target: SearchTarget): Promise<Response> {
-  const db = getDb()
+  return orRefused(request, () => searchResponse(request, target))
+}
+
+async function searchResponse(request: Request, target: SearchTarget): Promise<Response> {
+  const db = getSearchDb()
   const url = new URL(request.url)
 
   const definitions = await loadFacetDefinitions(db)
@@ -358,7 +378,7 @@ export async function apiSearch(request: Request, target: SearchTarget): Promise
   if (typeof include !== "boolean") return include
 
   const result = await searchDocs(db, { target, ast, fields, sort, order, page })
-  const context = await contextOf()
+  const context = await contextOf(db)
   const ranking = result.hits.map((hit) =>
     target === "research" ? hit.humLabel : hit.datasetLabel ?? "")
   const humLabels = result.hits.map((hit) => hit.humLabel)
@@ -407,8 +427,12 @@ function inOrder<T extends { id: string }>(objects: readonly T[], order: readonl
  * not as `key:word`.
  *
  */
-export async function searchFields(): Promise<Response> {
-  const db = getDb()
+export async function searchFields(request: Request): Promise<Response> {
+  return orRefused(request, fieldsResponse)
+}
+
+async function fieldsResponse(): Promise<Response> {
+  const db = getSearchDb()
   const [definitions, values, formats] = await Promise.all([
     loadFacetDefinitions(db),
     publishedFacetValues(db),
@@ -459,11 +483,15 @@ function builtInLabel(code: string): ApiText {
 // --- bulk -----------------------------------------------------------------
 
 export async function apiBulk(request: Request, target: SearchTarget): Promise<Response> {
+  return orRefused(request, () => bulkResponse(request, target))
+}
+
+async function bulkResponse(request: Request, target: SearchTarget): Promise<Response> {
   const include = includeFilesOf(request)
   if (typeof include !== "boolean") return include
-  const db = getDb()
+  const db = getSearchDb()
   const [context, listings, fileLabels] = await Promise.all([
-    contextOf(),
+    contextOf(db),
     include ? everyPublicListing() : null,
     include ? fileLabelsByHumLabel(db, null) : null,
   ])

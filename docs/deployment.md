@@ -21,6 +21,7 @@ staging と production は、この repo から作った image で動く。配�
 - 安全のための header (CSP・`X-Frame-Options`・`nosniff`・`Referrer-Policy`) は、proxy がすべての応答に付ける。値は `docker/nginx/default.conf` にある。アプリが自分で `Referrer-Policy` を決めた応答 (共有リンク) はその値を残す。配信するファイルの header は [files.md](files.md) の「配信の安全」にある。
 - proxy は平文で待ち受け、TLS はホストの外の終端で処理する。proxy が `Strict-Transport-Security` を付けるのは、TLS の終端が `X-Forwarded-Proto: https` を渡したときだけである。終端がこの header を渡さないなら、HSTS は終端の側で付ける。
 - proxy は、app とファイルストアに渡す `Host` を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定し、ファイルストアには `X-Forwarded-Host` も同じ値で渡す。TLS の終端や途中の中継が `Host` を書き換えても、書き込みの `Origin` の検査 ([auth.md](auth.md) の「CSRF」) と署名付き URL の検証を、ブラウザがアクセスしたアドレスで行うためである。ファイルストアは `X-Forwarded-Host` があればその値で署名を検証する。host は proxy の起動時にこの変数から取り出し、取り出せなければ proxy は起動しない。
+- 公開の検索 (一覧・書き出し・API の検索と一括取得・`/api/fields`) は、ほかとは別の DB の接続の pool を使う。同時に使う接続の数、空きを待つ時間、1 つの SQL の時間に上限があり (値は `app/db/client.server.ts`)、超えたときは画面も API も 503 を `Retry-After` 付きで返す。検索が大量に来ても、研究のページ・管理画面・`/healthz` が使う接続は埋まらない。
 - アシスタント (`assistant-api`) は `assistant` network にあり、同じ network にいるのは `app` だけである。アシスタントからは DB・ファイルストア・filer に接続できない。外部への通信はできる。
 
 ### podman-compose 1.0.6 に合わせていること

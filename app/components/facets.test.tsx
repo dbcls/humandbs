@@ -11,6 +11,7 @@ import type {
   FacetView,
 } from "~/public/facets.server"
 
+import { linksIn } from "./_links"
 import { EDGE_SHADE } from "./base"
 import { FacetPanel } from "./facets"
 
@@ -335,5 +336,15 @@ describe("a facet the result has no value for", () => {
   it("draws no list and no box to narrow one", () => {
     expect(empty).not.toContain("<ul")
     expect(empty).not.toContain("値を探す")
+  })
+})
+
+describe("the links of the refinement panel", () => {
+  it("have nofollow, since each is a search a crawler is kept off", () => {
+    const html = render([{ code: null, label: null, facets: [DISEASES] }])
+    const links = linksIn(html)
+
+    expect(links.length).toBeGreaterThan(0)
+    for (const link of links) expect(link.rel, link.href).toContain("nofollow")
   })
 })

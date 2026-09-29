@@ -23,7 +23,7 @@ const JSON_TYPE = "application/json"
 const PROBLEM_TYPE = "application/problem+json"
 const NDJSON_TYPE = "application/x-ndjson"
 
-function headers(contentType: string): HeadersInit {
+function headers(contentType: string): Record<string, string> {
   return {
     "Content-Type": `${contentType}; charset=utf-8`,
     "Access-Control-Allow-Origin": "*",
@@ -34,10 +34,10 @@ export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: headers(JSON_TYPE) })
 }
 
-export function problemResponse(problem: Problem): Response {
+export function problemResponse(problem: Problem, extra: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(problem), {
     status: problem.status,
-    headers: headers(PROBLEM_TYPE),
+    headers: { ...headers(PROBLEM_TYPE), ...extra },
   })
 }
 

@@ -12,6 +12,7 @@ import * as schema from "./schema"
  */
 const globalForDb = globalThis as typeof globalThis & {
   humandbsPool?: Pool
+  humandbsSearchPool?: Pool
   humandbsOwnerPool?: Pool
 }
 
@@ -20,6 +21,34 @@ export function getPool(): Pool {
     connectionString: loadConfig(process.env).databaseUrl,
   })
   return globalForDb.humandbsPool
+}
+
+/**
+ * The limits of the connections the public search runs on (`getSearchDb`):
+ * how many there are, how long a search waits for one to come free, and how
+ * long one statement may run. A search past either time is refused with a 503
+ * (`search/busy.server.ts`).
+ *
+ * One listing page sends its statements at once, a handful of them, so a few
+ * connections serve a person at a time with room to spare, and a crawler asking
+ * for search after search is held to the same few.
+ */
+export const SEARCH_POOL = { connections: 4, waitMs: 5_000, statementMs: 10_000 } as const
+
+/**
+ * The connections the public search runs on: the listings, the exports and the
+ * API's search, bulk and fields. **Apart from `getPool`'s**, so searches that
+ * arrive faster than they are answered use up these and not the ones every
+ * other page, the management screens and `/healthz` run on.
+ */
+export function getSearchPool(): Pool {
+  globalForDb.humandbsSearchPool ??= new Pool({
+    connectionString: loadConfig(process.env).databaseUrl,
+    max: SEARCH_POOL.connections,
+    connectionTimeoutMillis: SEARCH_POOL.waitMs,
+    statement_timeout: SEARCH_POOL.statementMs,
+  })
+  return globalForDb.humandbsSearchPool
 }
 
 /**
@@ -49,6 +78,7 @@ export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0]
 export type Executor = Database | Transaction
 
 let db: Database | undefined
+let searchDb: Database | undefined
 let ownerDb: Database | undefined
 
 /**
@@ -60,6 +90,11 @@ export function getDb(): Database {
   return db
 }
 
+export function getSearchDb(): Database {
+  searchDb ??= drizzle(getSearchPool(), { schema, casing: "snake_case" })
+  return searchDb
+}
+
 export function getOwnerDb(): Database {
   ownerDb ??= drizzle(getOwnerPool(), { schema, casing: "snake_case" })
   return ownerDb
@@ -69,10 +104,13 @@ export function getOwnerDb(): Database {
 export async function closePools(): Promise<void> {
   await Promise.all([
     globalForDb.humandbsPool?.end(),
+    globalForDb.humandbsSearchPool?.end(),
     globalForDb.humandbsOwnerPool?.end(),
   ])
   globalForDb.humandbsPool = undefined
+  globalForDb.humandbsSearchPool = undefined
   globalForDb.humandbsOwnerPool = undefined
   db = undefined
+  searchDb = undefined
   ownerDb = undefined
 }

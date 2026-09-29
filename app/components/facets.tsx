@@ -7,6 +7,7 @@ import { Code, Empty, TermLabel } from "~/components/page"
 import { DateRange } from "~/components/search"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { crawlRel } from "~/public/crawl"
 import { matches, rolledUpFind } from "~/public/facet-find"
 import type { FacetPanelView, FacetValueView, FacetView } from "~/public/facets.server"
 import { href, listPath } from "~/public/urls"
@@ -289,8 +290,8 @@ function Values({ locale, values, kind }: {
  * The address still changes, so the choice is shared and stepping back still
  * lifts it. What is held is only where the reader was standing.
  */
-function RefineLink(props: ComponentProps<typeof Link>) {
-  return <Link {...props} preventScrollReset />
+function RefineLink(props: ComponentProps<typeof Link> & { to: string }) {
+  return <Link {...props} rel={crawlRel(props.to)} preventScrollReset />
 }
 
 /**

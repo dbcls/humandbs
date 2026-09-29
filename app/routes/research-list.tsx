@@ -5,6 +5,7 @@ import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { canonicalRedirect, researchListPage } from "~/public/lists.server"
 import { readLocale } from "~/public/urls"
+import { orBusy } from "~/search/busy.server"
 
 import type { Route } from "./+types/research-list"
 
@@ -20,9 +21,11 @@ import type { Route } from "./+types/research-list"
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
   const locale = readLocale(url.pathname).locale
-  const canonical = await canonicalRedirect(url, "research", locale)
-  if (canonical !== null) throw canonical
-  return researchListPage({ locale, url })
+  return orBusy(async () => {
+    const canonical = await canonicalRedirect(url, "research", locale)
+    if (canonical !== null) throw canonical
+    return researchListPage({ locale, url })
+  })
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {

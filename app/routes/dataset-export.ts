@@ -1,5 +1,6 @@
 import { datasetExportTable } from "~/public/lists.server"
 import { readLocale } from "~/public/urls"
+import { orBusy } from "~/search/busy.server"
 import { exportResponse } from "~/search/export"
 
 import type { Route } from "./+types/dataset-export"
@@ -9,7 +10,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
   const locale = readLocale(url.pathname).locale
   const format = url.searchParams.get("format") === "copy" ? "copy" : "tsv"
-  const table = await datasetExportTable({ locale, url })
+  const table = await orBusy(() => datasetExportTable({ locale, url }))
   // The listing responds to an unreadable `?q=` by indicating so; a file cannot, so it
   // refuses rather than handing over a different search than the one asked for.
   if (table === null) throw new Response(null, { status: 400 })

@@ -22,6 +22,7 @@ import { Link, useActionData, useLocation } from "react-router"
 import { Icon, Spinner, type IconName } from "~/components/icons"
 import { messagesFor } from "~/i18n/messages"
 import { usePressed, useSubmitting } from "~/navigating"
+import { crawlRel } from "~/public/crawl"
 
 /* ---------------------------------------------------------------- rhythm */
 
@@ -795,8 +796,8 @@ export function ButtonLink(props: Omit<ButtonLook, "icon"> & {
       {chevron && <Chevron dir="right" />}
     </>
   )
-  if (!external) return <Link to={to} className={shape}>{inside}</Link>
-  return <a href={to} className={shape} download={download || undefined}>{inside}</a>
+  if (!external) return <Link to={to} rel={crawlRel(to)} className={shape}>{inside}</Link>
+  return <a href={to} rel={crawlRel(to)} className={shape} download={download || undefined}>{inside}</a>
 }
 
 /**
@@ -1290,7 +1291,7 @@ export const PANE_LABEL = "font-semibold text-ink-muted text-xs"
  */
 export function MoreLink({ to, children }: { to: string, children: ReactNode }) {
   return (
-    <Link to={to} className={MORE}>
+    <Link to={to} rel={crawlRel(to)} className={MORE}>
       {children}
       <Chevron dir="right" />
     </Link>
@@ -1353,6 +1354,7 @@ export function Chip({ field, value, to, remove }: {
   return (
     <Link
       to={to}
+      rel={crawlRel(to)}
       // Lifting a condition leaves the reader where they were: what they are
       // watching is the listing this chip is shown over, and it is still there
       // afterwards with more in it.

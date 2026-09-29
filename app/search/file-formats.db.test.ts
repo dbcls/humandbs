@@ -173,7 +173,7 @@ describe("the fields a query can name", () => {
   it("lists the formats the published set holds under file-type, and no others", async () => {
     await seed()
 
-    const { fields } = JSON.parse(await (await searchFields()).text()) as { fields: { code: string, values?: { code: string }[] }[] }
+    const { fields } = JSON.parse(await (await searchFields(new Request("https://humandbs.dbcls.jp/api/fields"))).text()) as { fields: { code: string, values?: { code: string }[] }[] }
     const fileType = fields.find((one) => one.code === "file-type")
     expect(fileType?.values?.map((one) => one.code)).toEqual(["fastq", "bam", "txt", "html"])
   })

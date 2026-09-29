@@ -10,12 +10,15 @@ import { EXPECTED } from "../../playwright.config"
  * rows and differ only in whether search engines are kept out.
  */
 test.describe("P-ANON 配置", () => {
-  test("S-SEO-01: robots.txt が sitemap を示し、sitemap と研究・データセットのページが検索エンジン向けの情報を持つ", async ({ page, request }) => {
+  test("S-SEO-01: robots.txt が条件の付いた一覧と書き出しだけを拒否して sitemap を示し、sitemap と研究・データセットのページが検索エンジン向けの情報を持つ", async ({ page, request }) => {
     test.skip(EXPECTED.noindex !== "false", "HUMANDBS_E2E_NOINDEX=false で回す先ではない")
     const { research, dataset } = await firstOfEach(request)
 
     const robots = await (await request.get("/robots.txt")).text()
-    expect(robots).toMatch(/^Disallow:\s*$/m)
+    for (const path of ["/research?", "/research/export", "/dataset?", "/dataset/export", "/en/research?", "/en/dataset/export"]) {
+      expect(robots.split("\n"), path).toContain(`Disallow: ${path}`)
+    }
+    expect(robots).not.toMatch(/^Disallow:\s*\/\s*$/m)
     expect(robots).toMatch(/^Sitemap: https?:\/\/[^/\s]+\/sitemap\.xml$/m)
 
     const sitemap = await request.get("/sitemap.xml")

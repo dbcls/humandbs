@@ -33,11 +33,13 @@ export type ProblemSlug
     | "invalid-sort"
     | "invalid-order"
     | "unknown-accession-type"
+    | "service-unavailable"
 
 const TITLES: Record<number, string> = {
   404: "Not Found",
   422: "Unprocessable Entity",
   500: "Internal Server Error",
+  503: "Service Unavailable",
 }
 
 function problemOf(input: {
@@ -160,6 +162,20 @@ export function unknownAccessionType(request: Request, known: readonly string[])
     slug: "unknown-accession-type",
     status: 422,
     detail: `Unknown accession type. Known types: ${known.join(", ")}.`,
+    instance: instanceOf(request),
+  })
+}
+
+/**
+ * A search refused because it could not run now (`search/busy.server.ts`). The
+ * request itself is fine, so the detail asks only for the same request again later; how
+ * much later is in the response's `Retry-After`.
+ */
+export function searchRefused(request: Request): Problem {
+  return problemOf({
+    slug: "service-unavailable",
+    status: 503,
+    detail: "The search cannot run now. Send the same request again after the number of seconds in Retry-After.",
     instance: instanceOf(request),
   })
 }

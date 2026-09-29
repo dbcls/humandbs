@@ -7,6 +7,7 @@ import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
+import { crawlRel } from "~/public/crawl"
 import { href } from "~/public/urls"
 import type { FieldView, LinksView, TermView } from "~/public/view.server"
 
@@ -1259,7 +1260,7 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most, in
   return (
     <nav aria-label={label} className="flex flex-wrap items-center gap-1 text-sm">
       {page > 1 && (
-        <Link to={at(page - 1)} {...stay} aria-label={previous} title={previous} className={PAGE_STEP}>
+        <Link to={at(page - 1)} rel={crawlRel(at(page - 1))} {...stay} aria-label={previous} title={previous} className={PAGE_STEP}>
           <Chevron dir="left" />
         </Link>
       )}
@@ -1272,14 +1273,14 @@ export function PageLinks({ label, page, pageCount, at, previous, next, most, in
       {pageWindow(page, pageCount, most).map((number) => (
         number === page
           ? (
-              <Link key={number} to={at(number)} {...stay} className={PAGE_HERE} aria-current="page">
+              <Link key={number} to={at(number)} rel={crawlRel(at(number))} {...stay} className={PAGE_HERE} aria-current="page">
                 {number}
               </Link>
             )
-          : <Link key={number} to={at(number)} {...stay} className={PAGE_STEP}>{number}</Link>
+          : <Link key={number} to={at(number)} rel={crawlRel(at(number))} {...stay} className={PAGE_STEP}>{number}</Link>
       ))}
       {page < pageCount && (
-        <Link to={at(page + 1)} {...stay} aria-label={next} title={next} className={PAGE_STEP}>
+        <Link to={at(page + 1)} rel={crawlRel(at(page + 1))} {...stay} aria-label={next} title={next} className={PAGE_STEP}>
           <Chevron dir="right" />
         </Link>
       )}

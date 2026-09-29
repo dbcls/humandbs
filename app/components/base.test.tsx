@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest"
 
 import fc from "fast-check"
 
-import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, startAtTop, ValueChip, wentThrough } from "./base"
+import { linksIn } from "./_links"
+import { Button, ButtonLink, Chevron, Chip, Clamped, Confirm, CopyButton, copyText, CountBubble, Collapsible, collapsibleOpen, Dialog, IconButton, type DialogSubject, PanelButton, PaneHeading, ReorderButtons, startAtTop, MoreLink, ValueChip, wentThrough } from "./base"
 import { Stated } from "./flags"
 
 /** Rendered at an address, since a part may hold a link. */
@@ -651,5 +652,20 @@ describe("what a panel acts on", () => {
 
   it("draws no line when there is nothing to name", () => {
     expect(confirm()).not.toContain("ファイル名")
+  })
+})
+
+describe("a link to a search a crawler is kept off", () => {
+  it("has nofollow on a button, the way to more and a condition, and not on a research's page", () => {
+    const rels = (html: string) => linksIn(html).map((link) => [link.href, link.rel.includes("nofollow")])
+
+    expect(rels(render(<ButtonLink to="/research/export?q=cancer" external>書き出し</ButtonLink>)))
+      .toEqual([["/research/export?q=cancer", true]])
+    expect(rels(render(<ButtonLink to="/research?q=cancer">例</ButtonLink>))).toEqual([["/research?q=cancer", true]])
+    expect(rels(render(<ButtonLink to="/research/hum0001">研究</ButtonLink>))).toEqual([["/research/hum0001", false]])
+    expect(rels(render(<MoreLink to="/en/dataset?q=cancer">more</MoreLink>))).toEqual([["/en/dataset?q=cancer", true]])
+    expect(rels(render(<MoreLink to="/news">more</MoreLink>))).toEqual([["/news", false]])
+    expect(rels(render(<Chip field="疾患" value="C53" to="/research?q=cancer" remove="外す" />)))
+      .toEqual([["/research?q=cancer", true]])
   })
 })

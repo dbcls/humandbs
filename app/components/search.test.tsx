@@ -7,7 +7,10 @@ import { LOCALES } from "~/i18n/locale"
 import type { ListingSize } from "~/search/page-size"
 import { SORT_KEYS } from "~/search/sort"
 
-import { AppliedConditions, DateRange, ListingPresented, ListingTools, PageSizeChooser, Pagination, type Presentation, presentedQuery, RefinableList, SearchForm, SortChooser, sortName } from "./search"
+import { crawlRel } from "~/public/crawl"
+
+import { linksIn } from "./_links"
+import { AppliedConditions, DateRange, ListingPresented, ListingTools, PageSizeChooser, Pagination, type Presentation, presentedQuery, RefinableList, SearchExamples, SearchForm, SortChooser, sortName } from "./search"
 
 /** Rendered at a given address, since the links are built relative to none. */
 function render(element: React.ReactNode): string {
@@ -682,5 +685,56 @@ describe("ListingTools", () => {
     )
     expect(html).not.toContain("並び替え")
     expect(html).toContain("表示件数")
+  })
+})
+
+describe("the links that change a search", () => {
+  /** Each link a crawler is kept off has `rel="nofollow"`, and no other link does. */
+  function expectCrawlRels(html: string): void {
+    const links = linksIn(html)
+    expect(links.length).toBeGreaterThan(0)
+    for (const link of links) expect(link.rel.includes("nofollow"), link.href).toBe(crawlRel(link.href) === "nofollow")
+  }
+
+  it("have nofollow on every ordering, page size and page of a search", () => {
+    for (const locale of LOCALES) {
+      expectCrawlRels(render(<SortChooser locale={locale} target="research" query="cancer" sort="id" order="asc" rows={null} />))
+      expectCrawlRels(render(<PageSizeChooser locale={locale} target="dataset" query="disease:C53" sort="id" order={null} size={20} />))
+      expectCrawlRels(render(
+        <Pagination
+          locale={locale}
+          target="research"
+          query="cancer"
+          sort={null}
+          order={null}
+          page={2}
+          pageCount={5}
+          rows={null}
+          total={100}
+          from={21}
+          to={40}
+        />,
+      ))
+    }
+  })
+
+  it("have nofollow on the example searches", () => {
+    for (const locale of LOCALES) {
+      const html = render(<SearchExamples locale={locale} />)
+      expect(linksIn(html).every((link) => link.rel.includes("nofollow"))).toBe(true)
+      expectCrawlRels(html)
+    }
+  })
+
+  it("have nofollow on lifting one condition, and not on lifting all of them back to the bare listing", () => {
+    const html = render(
+      <AppliedConditions
+        conditions={[{ field: "疾患", value: "C53", code: "C53", href: "/research?q=cancer" }]}
+        clearHref="/research"
+        locale="ja"
+      />,
+    )
+    expect(linksIn(html).map((link) => [link.href, link.rel.includes("nofollow")]))
+      .toEqual([["/research", false], ["/research?q=cancer", true]])
   })
 })

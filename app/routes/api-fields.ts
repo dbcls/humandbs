@@ -1,5 +1,7 @@
 import { searchFields } from "~/api/pages.server"
 
-export function loader() {
-  return searchFields()
+import type { Route } from "./+types/api-fields"
+
+export function loader({ request }: Route.LoaderArgs) {
+  return searchFields(request)
 }

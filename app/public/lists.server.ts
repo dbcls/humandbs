@@ -17,7 +17,7 @@ import { redirect } from "react-router"
 import { publicDatasetContent, publicResearchContent, PUBLISHED } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import { today } from "~/dates"
-import { getDb, type Executor } from "~/db/client.server"
+import { getDb, getSearchDb, type Executor } from "~/db/client.server"
 import { searchDoc, searchFacetTerm } from "~/db/schema"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor, type Messages } from "~/i18n/messages"
@@ -189,7 +189,7 @@ export async function canonicalRedirect(
     return null
   }
 
-  const db = getDb()
+  const db = getSearchDb()
   const definitions = await loadFacetDefinitions(db)
   const fields = queryFields(definitions.map((one) => one.field))
   const parsed = parseQuery(url.searchParams.get("q") ?? "", fields)
@@ -326,7 +326,7 @@ async function listShell(
   target: SearchTarget,
   request: { locale: Locale, url: URL },
 ): Promise<Shell> {
-  const db = getDb()
+  const db = getSearchDb()
   const [catalog, definitions] = await Promise.all([loadCatalog(db), loadFacetDefinitions(db)])
   const fields = queryFields(definitions.map((one) => one.field))
   const locale = request.locale
@@ -446,7 +446,7 @@ async function researchRowsOf(
   catalog: CatalogView,
   locale: Locale,
 ): Promise<ResearchListRowView[]> {
-  const db = getDb()
+  const db = getSearchDb()
   const ids = hits.map((hit) => hit.targetId)
   const [snapshots, datasetRows, facetRows] = await Promise.all([
     db
@@ -510,7 +510,7 @@ async function facetTermsByResearch(
     return key === undefined ? [] : [[key.id, code] as const]
   }))
   if (codeOf.size === 0) return new Map()
-  const rows = await getDb()
+  const rows = await getSearchDb()
     .select({
       researchId: searchDoc.researchId,
       keyId: searchFacetTerm.keyId,
@@ -550,7 +550,7 @@ async function datasetRowsOf(
   locale: Locale,
 ): Promise<DatasetListRowView[]> {
   const ids = hits.map((hit) => hit.targetId)
-  const contents = await getDb()
+  const contents = await getSearchDb()
     .select({
       datasetId: searchDoc.targetId,
       content: sql<DatasetContent>`${searchDoc.content}`,
@@ -618,7 +618,7 @@ async function everyHit(
   target: SearchTarget,
   request: { locale: Locale, url: URL },
 ): Promise<{ hits: SearchHit[], catalog: CatalogView } | null> {
-  const db = getDb()
+  const db = getSearchDb()
   const [catalog, definitions] = await Promise.all([loadCatalog(db), loadFacetDefinitions(db)])
   const fields = queryFields(definitions.map((one) => one.field))
   const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)

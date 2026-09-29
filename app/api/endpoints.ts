@@ -49,9 +49,9 @@ export interface ApiEndpoint {
     description: string
   }
   /** Statuses other than 200. Each responds with a problem document. */
-  problems: (404 | 422)[]
+  problems: (404 | 422 | 503)[]
   /** What a status means on this endpoint, where the general sentence would mislead. */
-  problemNotes?: Partial<Record<404 | 422, string>>
+  problemNotes?: Partial<Record<404 | 422 | 503, string>>
 }
 
 /**
@@ -180,7 +180,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       + "its own text or any of its published datasets does.",
     query: searchQuery,
     response: { mediaType: JSON_MEDIA, schema: researchSearchSchema, description: "Matches." },
-    problems: [422],
+    problems: [422, 503],
   },
   {
     path: "api/research.jsonl",
@@ -197,7 +197,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       schema: researchSchema,
       description: "One research per line.",
     },
-    problems: [422],
+    problems: [422, 503],
     problemNotes: { 422: INCLUDE_FILES_REFUSED },
   },
   {
@@ -250,7 +250,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       + "between the two listings and keeps its meaning.",
     query: searchQuery,
     response: { mediaType: JSON_MEDIA, schema: datasetSearchSchema, description: "Matches." },
-    problems: [422],
+    problems: [422, 503],
   },
   {
     path: "api/dataset.jsonl",
@@ -267,7 +267,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       schema: datasetSchema,
       description: "One dataset per line.",
     },
-    problems: [422],
+    problems: [422, 503],
     problemNotes: { 422: INCLUDE_FILES_REFUSED },
   },
   {
@@ -312,7 +312,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
       schema: searchFieldsSchema,
       description: "The fields.",
     },
-    problems: [],
+    problems: [503],
   },
   {
     path: "api/dblink",

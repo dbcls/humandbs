@@ -64,6 +64,9 @@ export function documentPath(path: string): string {
 }
 
 const PROBLEM_DESCRIPTIONS: Record<number, string> = {
+  503:
+    "The search cannot run now (`service-unavailable`): too many are running. Send the same request "
+    + "again after the number of seconds in the `Retry-After` header.",
   404: "No published object has that label.",
   422:
     "A parameter could not be read: the query (`invalid-query`, with `code`, `column` and "

@@ -7,6 +7,7 @@ import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { canonicalRedirect, datasetListPage } from "~/public/lists.server"
 import { datasetPath, href, readLocale, researchPath } from "~/public/urls"
+import { orBusy } from "~/search/busy.server"
 
 import type { Route } from "./+types/dataset-list"
 
@@ -20,9 +21,11 @@ import type { Route } from "./+types/dataset-list"
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url)
   const locale = readLocale(url.pathname).locale
-  const canonical = await canonicalRedirect(url, "dataset", locale)
-  if (canonical !== null) throw canonical
-  return datasetListPage({ locale, url })
+  return orBusy(async () => {
+    const canonical = await canonicalRedirect(url, "dataset", locale)
+    if (canonical !== null) throw canonical
+    return datasetListPage({ locale, url })
+  })
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {

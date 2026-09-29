@@ -7,6 +7,7 @@ import { Icon } from "~/components/icons"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { useBusyHere } from "~/navigating"
+import { crawlRel } from "~/public/crawl"
 import type { ConditionChip, ListShell } from "~/public/lists.server"
 import { exportPath, href, listPath, searchQuery } from "~/public/urls"
 import { useAsk, useSearchAsTyped } from "~/search-as-typed"
@@ -529,6 +530,7 @@ export function DateRange({ locale, action, windows, from, to, names = { from: "
             <Link
               key={window.label}
               to={window.href}
+              rel={crawlRel(window.href)}
               // The reader is in the pane when they press, beside a
               // result they are watching change; landing at the top of the
               // page would take both out of sight (`components/facets.tsx`).
@@ -725,7 +727,7 @@ export function AppliedConditions({ conditions, clearHref, locale }: {
       <div className="flex items-center justify-between gap-x-3">
         <span className={PANE_LABEL}>{messages.applied}</span>
         {clearHref !== null && (
-          <Link to={clearHref} preventScrollReset className={CLEAR}>{messages.clear}</Link>
+          <Link to={clearHref} rel={crawlRel(clearHref)} preventScrollReset className={CLEAR}>{messages.clear}</Link>
         )}
       </div>
       <Stack gap="tight" as="ul">
@@ -841,9 +843,11 @@ function SortChoice<K extends string>({ locale, sort, at }: {
   const turn = flipped === "asc"
     ? messages.search.sort.toAscending
     : messages.search.sort.toDescending
+  const flipTo = at(written, flipped === sort.runs(sort.current) ? null : flipped)
   const flip = (
     <Link
-      to={at(written, flipped === sort.runs(sort.current) ? null : flipped)}
+      to={flipTo}
+      rel={crawlRel(flipTo)}
       preventScrollReset
       aria-label={turn}
       title={turn}
@@ -857,10 +861,12 @@ function SortChoice<K extends string>({ locale, sort, at }: {
     <Chooser label={messages.search.sort.label} value={sort.name(sort.current)} beside={flip}>
       {sort.keys.map((option) => {
         const opens = sort.opens?.(option) ?? sort.runs(option)
+        const to = at(option === sort.unwritten ? null : option, opens === sort.runs(option) ? null : opens)
         return (
           <Link
             key={option}
-            to={at(option === sort.unwritten ? null : option, opens === sort.runs(option) ? null : opens)}
+            to={to}
+            rel={crawlRel(to)}
             preventScrollReset
             aria-current={option === sort.current ? "true" : undefined}
             className={option === sort.current ? MENU_ITEM_HERE : MENU_ITEM}
@@ -897,18 +903,22 @@ function SizeChoice<S extends ListingSize>({ locale, sizes, size, at, inPlace = 
   const named = (option: ListingSize): string => option === ALL_ROWS ? messages.search.allRows : String(option)
   return (
     <Chooser label={messages.search.pageSize} value={named(size)}>
-      {sizes.map((option) => (
-        <Link
-          key={option}
-          to={at(option === PAGE_SIZE ? null : option)}
-          preventScrollReset
-          replace={inPlace}
-          aria-current={option === size ? "true" : undefined}
-          className={option === size ? MENU_ITEM_HERE : MENU_ITEM}
-        >
-          {named(option)}
-        </Link>
-      ))}
+      {sizes.map((option) => {
+        const to = at(option === PAGE_SIZE ? null : option)
+        return (
+          <Link
+            key={option}
+            to={to}
+            rel={crawlRel(to)}
+            preventScrollReset
+            replace={inPlace}
+            aria-current={option === size ? "true" : undefined}
+            className={option === size ? MENU_ITEM_HERE : MENU_ITEM}
+          >
+            {named(option)}
+          </Link>
+        )
+      })}
     </Chooser>
   )
 }

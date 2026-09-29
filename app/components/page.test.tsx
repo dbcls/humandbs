@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
+import { linksIn } from "./_links"
 import { AnnotationLayer, HeaderBarSection, DatasetIds, Fact, Facts, IdWithIcon, KeyValue, AnnotatedCell, pageWindow, Paging, PageLinks, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
@@ -379,6 +380,22 @@ describe("どれだけ出ていて、残りへどう行くか", () => {
   it("ページ送りが要らないときも、行は同じ高さを保つ", () => {
     expect(paging(1)).toMatch(/<div class="[^"]*min-h-tap/)
     expect(paging(3)).toMatch(/<div class="[^"]*min-h-tap/)
+  })
+})
+
+describe("PageLinks の nofollow", () => {
+  it("検索の一覧のページ送りには付け、研究のページのファイル一覧のページ送りには付けない", () => {
+    const listing = linksIn(routed(
+      <PageLinks label="ページ" page={2} pageCount={3} at={(n) => `/research?q=cancer&page=${n}`} previous="前へ" next="次へ" />,
+    ))
+    const files = linksIn(routed(
+      <PageLinks label="ページ" page={2} pageCount={3} at={(n) => `/research/hum0001?files=${n}`} previous="前へ" next="次へ" />,
+    ))
+
+    expect(listing.length).toBeGreaterThan(0)
+    expect(listing.every((link) => link.rel.includes("nofollow"))).toBe(true)
+    expect(files.length).toBeGreaterThan(0)
+    expect(files.some((link) => link.rel.includes("nofollow"))).toBe(false)
   })
 })
 

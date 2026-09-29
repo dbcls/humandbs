@@ -399,7 +399,8 @@ export const problemSchema = z.object({
   type: z.string().meta({
     description:
       "`https://humandbs.dbcls.jp/problems/` and one of `not-found`, `invalid-query`, "
-      + "`invalid-parameter`, `invalid-sort`, `invalid-order`, `unknown-accession-type`. It names "
+      + "`invalid-parameter`, `invalid-sort`, `invalid-order`, `unknown-accession-type`, "
+      + "`service-unavailable`. It names "
       + "the kind of failure and is not a page to open.",
   }),
   title: z.string(),

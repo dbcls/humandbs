@@ -7,6 +7,11 @@
  * leaves the API and its documentation page open: they are there to be read
  * by programs, and an agent that honours robots.txt would otherwise be turned
  * away from the one part of the site written for it.
+ *
+ * **A deployment that is indexed still keeps crawlers off the listings once a
+ * condition is written, and off the exports.** The refinements combine without
+ * end, so a crawler following them never runs out of addresses, and every one
+ * of them is a search. The pages the listings lead to are in the sitemap.
  */
 
 /** The API and what its documentation page loads (`api/docs.ts`). */
@@ -14,12 +19,27 @@ const OPEN_WHEN_NOINDEX = ["/api/", "/swagger-ui/"]
 
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "~/i18n/locale"
 
-import { href } from "./urls"
+import { exportPath, href, listPath } from "./urls"
+
+/** A listing with a condition written, and an export, in every language. */
+const CLOSED_WHEN_INDEXED = LOCALES.flatMap((locale) => (["research", "dataset"] as const).flatMap((target) => [
+  `${href(locale, listPath(target))}?`,
+  href(locale, exportPath(target)),
+]))
+
+/**
+ * The `rel` of a link to an address: `nofollow` where an indexed deployment's
+ * robots.txt keeps crawlers off the address, so the page and robots.txt give a
+ * crawler the same answer.
+ */
+export function crawlRel(to: string): "nofollow" | undefined {
+  return CLOSED_WHEN_INDEXED.some((path) => to.startsWith(path)) ? "nofollow" : undefined
+}
 
 export function robotsText(input: { origin: string, noindex: boolean }): string {
   return input.noindex
     ? `User-agent: *\n${OPEN_WHEN_NOINDEX.map((path) => `Allow: ${path}\n`).join("")}Disallow: /\n`
-    : `User-agent: *\nDisallow:\n\nSitemap: ${input.origin}/sitemap.xml\n`
+    : `User-agent: *\n${CLOSED_WHEN_INDEXED.map((path) => `Disallow: ${path}\n`).join("")}\nSitemap: ${input.origin}/sitemap.xml\n`
 }
 
 export interface SitemapPage {
