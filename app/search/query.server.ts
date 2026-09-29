@@ -102,14 +102,15 @@ function likePattern(value: string): string {
  * which means a code naming no term matches nothing — the honest answer for a
  * condition nobody can satisfy.
  */
-function termPredicate(facet: FacetField, code: string): SQL {
+function termPredicate(facet: FacetField, codes: readonly string[]): SQL {
   // **The code is compared without regard to case**, because a reader writes
   // the address by hand and the panel's find box already ignores case. Codes
   // are unique within a set only as spelled, so the lookup may name more than
   // one term and is matched as a set.
   const chosen = sql`ARRAY(
     SELECT vt.id FROM vocabulary_term vt
-    WHERE vt.set_id = ${facet.setId}::uuid AND lower(vt.code) = lower(${code})
+    WHERE vt.set_id = ${facet.setId}::uuid
+      AND lower(vt.code) IN (${sql.join(codes.map((code) => sql`lower(${code})`), sql`, `)})
   )`
   return sql`EXISTS (
     SELECT 1 FROM search_facet_term f
@@ -144,7 +145,7 @@ function compileField(node: FieldNode, query: SearchQuery): SQL {
   if (facet !== undefined) {
     if (facet.kind === "number") return numberPredicate(facet, node)
     // A vocabulary takes no range; the parser has already refused one.
-    return typeof node.value === "string" ? termPredicate(facet, node.value) : sql`FALSE`
+    return typeof node.value === "string" ? termPredicate(facet, [node.value]) : sql`FALSE`
   }
   // The codes are lower-case (`codeFrom`), and the reader's spelling is not.
   if (node.field === FILE_TYPE_FIELD) {
@@ -177,6 +178,32 @@ function compileField(node: FieldNode, query: SearchQuery): SQL {
   }
 }
 
+/**
+ * The values of an `OR` whose every rule is a value of one vocabulary, or null
+ * when it has anything else in it.
+ *
+ * **Such an `OR` is tested once rather than once per value.** A row holds one
+ * of the values exactly when it holds one of the set of them, and each value
+ * written out on its own is a subquery the planner has to plan and cost: a
+ * search of a few facets with a few values each, the shape the panel's links
+ * add up to, is planned for longer than it runs.
+ */
+function valuesOfOneVocabulary(
+  rules: readonly QueryNode[],
+  query: SearchQuery,
+): { facet: FacetField, codes: string[] } | null {
+  let facet: FacetField | undefined
+  const codes: string[] = []
+  for (const rule of rules) {
+    if (rule.op !== "field" || typeof rule.value !== "string") return null
+    const own = query.fields.facet(rule.field)
+    if (own === undefined || own.kind === "number" || (facet !== undefined && own.code !== facet.code)) return null
+    facet = own
+    codes.push(rule.value)
+  }
+  return facet === undefined ? null : { facet, codes }
+}
+
 function compile(node: QueryNode, query: SearchQuery): SQL {
   // A JGA accession copied from JGA or DDBJ Search may be spelled with eleven
   // digits; the rows hold six (`jga-ids.ts`).
@@ -185,6 +212,10 @@ function compile(node: QueryNode, query: SearchQuery): SQL {
   if (node.op === "NOT") {
     const [only] = node.rules
     return only === undefined ? sql`TRUE` : sql`NOT coalesce(${compile(only, query)}, FALSE)`
+  }
+  if (node.op === "OR") {
+    const alternatives = valuesOfOneVocabulary(node.rules, query)
+    if (alternatives !== null) return termPredicate(alternatives.facet, alternatives.codes)
   }
   const parts = node.rules.map((rule) => compile(rule, query))
   const [first, ...rest] = parts

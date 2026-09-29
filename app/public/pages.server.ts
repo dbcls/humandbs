@@ -23,9 +23,9 @@ import { getDb } from "~/db/client.server"
 import type { Locale } from "~/i18n/locale"
 import type { PageSize } from "~/search/page-size"
 
+import { publicCatalog } from "./catalog-cache.server"
 import {
   controlledAccessUsers,
-  loadCatalog,
   publishedDataset,
   archiveFilesOf,
   citedDatasets,
@@ -93,7 +93,7 @@ export async function researchPage(request: ResearchPageRequest): Promise<Resear
   if (version === null) notFound()
 
   const [catalog, cau, labels, onPage] = await Promise.all([
-    loadCatalog(db),
+    publicCatalog(db),
     controlledAccessUsers(db, resolved.primaryLabel),
     fileLabelsOf(db, resolved.id),
     researchPageFilesOf(db, resolved.id),
@@ -213,7 +213,7 @@ export async function datasetPage(
   }
 
   const [catalog, listing, secondary, labels, archiveFiles] = await Promise.all([
-    loadCatalog(db),
+    publicCatalog(db),
     publicListing(row.humLabel),
     secondaryLabels(db, "dataset", resolved.id),
     fileLabelsByHumLabel(db, [row.humLabel]),

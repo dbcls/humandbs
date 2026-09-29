@@ -80,7 +80,14 @@ function termCount(row: TermRow): TermCount {
   }
 }
 
-/** Every value of the given facets that at least one matching row has. */
+/**
+ * Every value of the given facets that at least one matching row has.
+ *
+ * **Counted before the labels are joined.** A row holding two terms under one
+ * root is one row under it, so the pairs of a root and a row are made distinct
+ * first and then counted; joining the labels only onto the counted roots keeps
+ * the text out of both steps.
+ */
 export async function countTerms(
   db: Executor,
   query: SearchQuery,
@@ -88,15 +95,20 @@ export async function countTerms(
 ): Promise<TermCount[]> {
   if (keyIds.length === 0) return []
   const result = await db.execute<TermRow>(sql`
-    WITH ${hitsCte(query)}
-    SELECT f.key_id, root.id AS term_id, root.code, root.label_ja, root.label_en, root.maker,
-           count(DISTINCT f.doc_id)::int AS n
-    FROM hits h
-    JOIN search_facet_term f ON f.doc_id = h.doc_id
-    JOIN vocabulary_term root ON root.id = ${ROOT_ID}
-    WHERE f.key_id IN ${anyOf(keyIds)}
-    GROUP BY f.key_id, root.id
-    ORDER BY n DESC, root.label_en
+    WITH ${hitsCte(query)},
+    held AS (
+      SELECT DISTINCT f.key_id, ${ROOT_ID} AS root_id, f.doc_id
+      FROM hits h
+      JOIN search_facet_term f ON f.doc_id = h.doc_id
+      WHERE f.key_id IN ${anyOf(keyIds)}
+    ),
+    counted AS (
+      SELECT key_id, root_id, count(*)::int AS n FROM held GROUP BY key_id, root_id
+    )
+    SELECT c.key_id, root.id AS term_id, root.code, root.label_ja, root.label_en, root.maker, c.n
+    FROM counted c
+    JOIN vocabulary_term root ON root.id = c.root_id
+    ORDER BY c.n DESC, root.label_en
   `)
   return result.rows.map(termCount)
 }

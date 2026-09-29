@@ -21,6 +21,8 @@
  */
 
 import { OPENAPI_PATH } from "./endpoints"
+import { API_SUMMARY, API_TITLE } from "./openapi"
+import { docsText } from "./overview"
 
 /** Under `public/`, and under the site, at the same name. */
 export const SWAGGER_UI_DIR = "swagger-ui"
@@ -37,18 +39,26 @@ export const SWAGGER_UI_FILES = [STYLES, SCRIPT]
  *
  * `tryItOutEnabled` because there is nothing to fill in first — the API takes
  * no credentials, so every operation here is one button away from an answer.
+ *
+ * **The element Swagger UI draws into already holds the API in text** (`docsText`),
+ * and `service-desc` names the document, for a program that reads the page
+ * without running its script. Swagger UI replaces the text when it draws.
  */
 const PAGE = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NBDC Human Database API</title>
+    <title>${API_TITLE}</title>
+    <meta name="description" content="${API_SUMMARY}">
     <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="service-desc" type="application/vnd.oai.openapi+json;version=3.1" href="/${OPENAPI_PATH}">
     <link rel="stylesheet" href="/${SWAGGER_UI_DIR}/${STYLES}">
   </head>
   <body>
-    <div id="swagger-ui"></div>
+    <div id="swagger-ui">
+${docsText()}
+    </div>
     <script src="/${SWAGGER_UI_DIR}/${SCRIPT}"></script>
     <script>
       SwaggerUIBundle({

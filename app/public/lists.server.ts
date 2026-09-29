@@ -55,7 +55,7 @@ import {
 import { onPanel, withRange } from "~/search/selection"
 
 import { facetPanel, type FacetPanelView } from "./facets.server"
-import { loadCatalog } from "./queries.server"
+import { publicCatalog } from "./catalog-cache.server"
 import { href, listPath, searchQuery } from "./urls"
 import {
   ACCESS_TYPE_KEY,
@@ -327,7 +327,7 @@ async function listShell(
   request: { locale: Locale, url: URL },
 ): Promise<Shell> {
   const db = getSearchDb()
-  const [catalog, definitions] = await Promise.all([loadCatalog(db), loadFacetDefinitions(db)])
+  const [catalog, definitions] = await Promise.all([publicCatalog(db), loadFacetDefinitions(db)])
   const fields = queryFields(definitions.map((one) => one.field))
   const locale = request.locale
   const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)
@@ -587,7 +587,7 @@ export async function cartRows(
 ): Promise<DatasetListRowView[]> {
   if (labels.length === 0) return []
   const db = getDb()
-  const catalog = await loadCatalog(db)
+  const catalog = await publicCatalog(db)
   const docs = await db
     .select({
       targetId: searchDoc.targetId,
@@ -619,7 +619,7 @@ async function everyHit(
   request: { locale: Locale, url: URL },
 ): Promise<{ hits: SearchHit[], catalog: CatalogView } | null> {
   const db = getSearchDb()
-  const [catalog, definitions] = await Promise.all([loadCatalog(db), loadFacetDefinitions(db)])
+  const [catalog, definitions] = await Promise.all([publicCatalog(db), loadFacetDefinitions(db)])
   const fields = queryFields(definitions.map((one) => one.field))
   const parsed = parseQuery(request.url.searchParams.get("q") ?? "", fields)
   // **A query that cannot be read has no answer.** Treating it as the empty

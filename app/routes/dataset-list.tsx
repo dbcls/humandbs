@@ -6,6 +6,7 @@ import { ListingScreen } from "~/components/search"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { canonicalRedirect, datasetListPage } from "~/public/lists.server"
+import { listingAlternate } from "~/public/seo"
 import { datasetPath, href, readLocale, researchPath } from "~/public/urls"
 import { orBusy } from "~/search/busy.server"
 
@@ -30,7 +31,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: windowTitle(messages, [messages.search.datasetList]) }]
+  return [{ title: windowTitle(messages, [messages.search.datasetList]) }, ...listingAlternate("dataset", loaderData)]
 }
 
 export default function DatasetList({ loaderData }: Route.ComponentProps) {

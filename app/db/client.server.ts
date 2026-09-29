@@ -1,5 +1,5 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres"
-import { Pool } from "pg"
+import { Client, Pool } from "pg"
 
 import { loadConfig, loadOwnerDatabaseUrl } from "~/config.server"
 
@@ -14,11 +14,31 @@ const globalForDb = globalThis as typeof globalThis & {
   humandbsPool?: Pool
   humandbsSearchPool?: Pool
   humandbsOwnerPool?: Pool
+  humandbsListeners?: Set<Client>
 }
+
+/**
+ * How every connection that serves a request is opened.
+ *
+ * **No JIT.** The planner compiles a statement once its estimated cost passes a
+ * threshold, and a search with many conditions is estimated as though each of
+ * them were tested on every row: a few dozen values over a few thousand rows is
+ * costed in the millions, compiled for far longer than it then runs, and
+ * compiled again by every statement of the same page. Nothing a request reads is
+ * large enough for compiled code to pay back.
+ *
+ * **A connection once opened is kept.** The first statement on a new connection
+ * reads the server's own table definitions and opens the full-text index, which
+ * costs more than the statement itself; a pool that closed the connections it had not used for a
+ * while would pay that again after every quiet spell. `allowExitOnIdle` so that
+ * the kept connections do not hold open a script that has finished.
+ */
+const SERVING = { options: "-c jit=off", idleTimeoutMillis: 0, allowExitOnIdle: true } as const
 
 export function getPool(): Pool {
   globalForDb.humandbsPool ??= new Pool({
     connectionString: loadConfig(process.env).databaseUrl,
+    ...SERVING,
   })
   return globalForDb.humandbsPool
 }
@@ -44,6 +64,7 @@ export const SEARCH_POOL = { connections: 4, waitMs: 5_000, statementMs: 10_000 
 export function getSearchPool(): Pool {
   globalForDb.humandbsSearchPool ??= new Pool({
     connectionString: loadConfig(process.env).databaseUrl,
+    ...SERVING,
     max: SEARCH_POOL.connections,
     connectionTimeoutMillis: SEARCH_POOL.waitMs,
     statement_timeout: SEARCH_POOL.statementMs,
@@ -64,6 +85,26 @@ function getOwnerPool(): Pool {
     connectionString: loadOwnerDatabaseUrl(process.env),
   })
   return globalForDb.humandbsOwnerPool
+}
+
+/**
+ * A connection of its own for `LISTEN`, apart from the pools: a pooled
+ * connection goes back to the pool between statements, and a `LISTEN` holds only
+ * on the connection that ran it. Named after what it listens for, so that it can
+ * be told apart among the server's connections. Not yet connected; `closePools`
+ * ends it with the pools.
+ */
+export function listenerClient(name: string): Client {
+  const client = new Client({
+    connectionString: loadConfig(process.env).databaseUrl,
+    application_name: name,
+    connectionTimeoutMillis: SEARCH_POOL.waitMs,
+    query_timeout: SEARCH_POOL.waitMs,
+  })
+  const listeners = globalForDb.humandbsListeners ??= new Set()
+  listeners.add(client)
+  client.once("end", () => listeners.delete(client))
+  return client
 }
 
 export type Database = NodePgDatabase<typeof schema>
@@ -100,12 +141,13 @@ export function getOwnerDb(): Database {
   return ownerDb
 }
 
-/** Releases whichever pools were opened. Scripts and tests end this way. */
+/** Releases whichever pools and listening connections were opened. Scripts and tests end this way. */
 export async function closePools(): Promise<void> {
   await Promise.all([
     globalForDb.humandbsPool?.end(),
     globalForDb.humandbsSearchPool?.end(),
     globalForDb.humandbsOwnerPool?.end(),
+    ...[...globalForDb.humandbsListeners ?? []].map((client) => client.end().catch(() => undefined)),
   ])
   globalForDb.humandbsPool = undefined
   globalForDb.humandbsSearchPool = undefined

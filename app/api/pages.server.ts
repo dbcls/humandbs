@@ -35,8 +35,8 @@ import { datasetFileSummary, formatLabel } from "~/files/summary"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { parsePageNumber } from "~/paging"
+import { publicCatalog } from "~/public/catalog-cache.server"
 import {
-  loadCatalog,
   publishedDatasetLabels,
   publishedVersions,
   resolveDatasetLabel,
@@ -102,7 +102,7 @@ function originOf(): string {
  * be a cost paid on every one of those calls.
  */
 async function contextOf(db: Executor): Promise<ApiContext> {
-  return { origin: originOf(), catalog: await loadCatalog(db) }
+  return { origin: originOf(), catalog: await publicCatalog(db) }
 }
 
 // --- research -------------------------------------------------------------

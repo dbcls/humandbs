@@ -47,12 +47,12 @@ test.describe("P-ANON 配置", () => {
     }
   })
 
-  test("S-SEO-02: すべてのページに noindex があり、robots.txt は API のほかを拒否し、sitemap は 404 になる", async ({ page, request }) => {
+  test("S-SEO-02: すべてのページに noindex があり、robots.txt は API と /llms.txt のほかを拒否し、sitemap は 404 になる", async ({ page, request }) => {
     test.skip(EXPECTED.noindex !== "true", "HUMANDBS_E2E_NOINDEX=true で回す先ではない")
     const { research, dataset } = await firstOfEach(request)
 
     const robots = (await (await request.get("/robots.txt")).text()).split("\n").map((line) => line.trim()).filter((line) => line !== "")
-    expect(robots).toEqual(["User-agent: *", "Allow: /api/", "Allow: /swagger-ui/", "Disallow: /"])
+    expect(robots).toEqual(["User-agent: *", "Allow: /api/", "Allow: /swagger-ui/", "Allow: /llms.txt", "Disallow: /"])
     expect((await request.get("/sitemap.xml")).status()).toBe(404)
 
     for (const path of ["/", "/research", `/research/${research}`, `/dataset/${dataset}`, "/en/research", "/aim"]) {

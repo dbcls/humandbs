@@ -37,6 +37,19 @@ describe("the connections the public search runs on", () => {
     }
   })
 
+  it("compile no statement and keep a connection once opened, as the other request connections do", async () => {
+    for (const pool of [getSearchPool(), getPool()]) {
+      expect(pool.options.idleTimeoutMillis).toBe(0)
+      const client = await pool.connect()
+      try {
+        const { rows } = await client.query<{ jit: string }>("SHOW jit")
+        expect(rows[0]?.jit).toBe("off")
+      } finally {
+        client.release()
+      }
+    }
+  })
+
   it("refuse a search once every one of them is taken, leave the other connections free, and serve again once one is", async () => {
     const held = await Promise.all(Array.from({ length: SEARCH_POOL.connections }, () => getSearchPool().connect()))
     try {

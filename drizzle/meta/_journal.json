@@ -113,6 +113,13 @@
       "when": 1790643765690,
       "tag": "0015_application_caches",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790723629475,
+      "tag": "0016_catalog_changed",
+      "breakpoints": true
     }
   ]
 }

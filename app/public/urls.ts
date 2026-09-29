@@ -119,6 +119,16 @@ export function datasetPath(datasetLabel: string): string {
 }
 
 /**
+ * Where the JSON API has the content of a research's, a version's or a
+ * dataset's page, or the results of a listing, given the page's address
+ * without the language: the same address under `/api`, which is how the API's
+ * addresses are laid out.
+ */
+export function apiPath(path: string): string {
+  return `/api${path}`
+}
+
+/**
  * The addresses of every public file a research or a dataset has, one to a
  * line, for a tool to fetch them all. **It takes no language prefix**, for the
  * reason `filePath` does not: the list is the same in both languages.

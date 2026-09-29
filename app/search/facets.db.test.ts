@@ -1,3 +1,4 @@
+import fc from "fast-check"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 import { emptyDatasetContent } from "~/content/empty"
@@ -183,6 +184,21 @@ describe("filtering by a facet", () => {
     expect(await labels("disease:C34 assay:wgs")).toEqual(["JGAD000001"])
   })
 
+  it("takes any values joined by OR as the rows any one of them takes, and NOT of them as the rest", async () => {
+    const values = ["disease:C34", "disease:c349", "disease:C341", "disease:C61", "disease:Z99", "disease:wgs", "assay:wgs", "assay:RNA-seq"]
+    const every = await labels("")
+    await fc.assert(fc.asyncProperty(
+      fc.uniqueArray(fc.constantFrom(...values), { minLength: 2, maxLength: values.length }),
+      fc.boolean(),
+      async (chosen, negated) => {
+        const taken = new Set((await Promise.all(chosen.map((value) => labels(value)))).flat())
+        const alternatives = `(${chosen.join(" OR ")})`
+        expect(await labels(negated ? `NOT ${alternatives}` : alternatives))
+          .toEqual(every.filter((label) => taken.has(label) !== negated))
+      },
+    ), { numRuns: 40 })
+  })
+
   it("matches a vocabulary code whatever case it is written in", async () => {
     // The ICD10 set here is reached through a plain vocabulary key, whose codes
     // are not lower case — matching has to ignore case rather than assume it.
@@ -242,6 +258,23 @@ describe("counting the facets of a result", () => {
     const counts = await countTerms(db, query(""), [identities.disease ?? ""])
 
     expect(counts.map((row) => [row.code, row.count])).toEqual([["C34", 3], ["C61", 2]])
+  })
+
+  it("counts a row once under a root it holds both itself and a child of", async () => {
+    const counted = async () => new Map((await countTerms(db, query(""), [identities.disease ?? ""]))
+      .map((row) => [row.code, row.count]))
+    const before = await counted()
+    await doc({
+      label: "JGAD000005",
+      terms: [
+        { keyId: identities.disease ?? "", termId: identities.lung ?? "" },
+        { keyId: identities.disease ?? "", termId: identities.lungUnspecified ?? "", ancestorIds: [identities.lung ?? ""] },
+      ],
+    })
+    const after = await counted()
+
+    expect(after.get("C34")).toBe((before.get("C34") ?? 0) + 1)
+    expect(after.get("C61")).toBe(before.get("C61"))
   })
 
   it("gives the span a numeric facet covers in the result", async () => {

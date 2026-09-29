@@ -12,7 +12,7 @@ import { formatSize } from "~/files/prefix"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 
-import { datasetFileListPath, datasetPath, filePath, href, researchPath, researchVersionPath } from "./urls"
+import { apiPath, datasetFileListPath, datasetPath, filePath, href, researchPath, researchVersionPath } from "./urls"
 import type { PageSeo } from "./seo"
 import { fieldText, valuesText, type DatasetView, type FieldView, type ResearchView } from "./view.server"
 
@@ -86,6 +86,7 @@ export function researchSeo(view: ResearchView, input: { origin: string, locale:
 
   return {
     url,
+    api: apiPath(researchPath(view.humLabel)),
     description: researchDescription(view, DESCRIPTION_LENGTH),
     jsonLd: {
       "@context": "https://schema.org",
@@ -125,6 +126,7 @@ export function researchVersionSeo(view: ResearchView, input: { origin: string, 
   const { origin, locale } = input
   return {
     url: `${origin}${href(locale, researchVersionPath(view.humLabel, view.versionNumber))}`,
+    api: apiPath(researchVersionPath(view.humLabel, view.versionNumber)),
     description: researchDescription(view, DESCRIPTION_LENGTH),
     jsonLd: null,
   }
@@ -162,6 +164,7 @@ export function datasetSeo(view: DatasetView, input: { origin: string, locale: L
 
   return {
     url,
+    api: apiPath(datasetPath(view.label)),
     description: cut(description, DESCRIPTION_LENGTH),
     jsonLd: {
       "@context": "https://schema.org",

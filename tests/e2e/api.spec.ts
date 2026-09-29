@@ -141,6 +141,24 @@ test.describe("public API", () => {
     const painted = await operations.first().evaluate((el) =>
       getComputedStyle(el).backgroundColor)
     expect(painted).not.toBe("rgba(0, 0, 0, 0)")
+
+    // script を実行しない読み手のための文は、Swagger UI が描いたあとには残らない
+    await expect(page.locator("#swagger-ui > h1")).toHaveCount(0)
+  })
+
+  test("S-API-12: script を実行しなくても API の説明のページと /llms.txt から OpenAPI の定義とエンドポイントの一覧が読める", async ({ request }) => {
+    const docs = await (await request.get("/api/docs")).text()
+    expect(docs).toContain(`rel="service-desc"`)
+    expect(docs).toContain(`<a href="/api/openapi.json">`)
+    expect(docs).toContain("<code>GET /api/research</code>")
+
+    const llms = await request.get("/llms.txt")
+    expect(llms.status()).toBe(200)
+    const text = await llms.text()
+    expect(text).toMatch(/^# /)
+    expect(text).toMatch(/\]\(https?:\/\/[^)]+\/api\/openapi\.json\)/)
+    expect(text).toContain("`GET /api/dataset`")
+    expect((await request.get(/\]\((https?:\/\/[^)]+\/api\/openapi\.json)\)/.exec(text)?.[1] ?? "")).status()).toBe(200)
   })
 
   test("S-API-09: files は includeFiles=true のときだけキーごと返り、true と false のほかは 422 になる", async ({ request }) => {

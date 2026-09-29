@@ -226,6 +226,7 @@ describe("seoMeta", () => {
       { property: "og:url", content: `${ORIGIN}/en/dataset/JGAD000004` },
       { property: "og:locale", content: "en_US" },
       { "script:ld+json": seo.jsonLd },
+      { tagName: "link", rel: "alternate", type: "application/json", href: "/api/dataset/JGAD000004" },
     ])
   })
 

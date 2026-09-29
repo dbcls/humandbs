@@ -29,8 +29,14 @@ import { problemSchema } from "./schema"
  */
 const API_VERSION = "1.0.0"
 
+/** What the document is called, and what the page drawing it is titled. */
+export const API_TITLE = "NBDC Human Database API"
+
+/** The first line of the document's description, which the page drawing it and `/llms.txt` also open with. */
+export const API_SUMMARY = "The public data of the NBDC Human Database portal, as JSON."
+
 const DESCRIPTION = `
-The public data of the NBDC Human Database portal, as JSON.
+${API_SUMMARY}
 
 **Two kinds of object.** A *research* is a study, published in numbered versions; a *dataset* is
 one body of data belonging to exactly one research. A research is returned with the ids of its
@@ -110,7 +116,7 @@ export function apiDocument(origin: string): object {
   return generator.generateDocument({
     openapi: "3.1.0",
     info: {
-      title: "NBDC Human Database API",
+      title: API_TITLE,
       version: API_VERSION,
       description: DESCRIPTION,
       license: { name: "Apache-2.0", identifier: "Apache-2.0" },

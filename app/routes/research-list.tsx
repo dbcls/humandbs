@@ -4,6 +4,7 @@ import { ListingScreen } from "~/components/search"
 import { messagesFor } from "~/i18n/messages"
 import { windowTitle } from "~/i18n/title"
 import { canonicalRedirect, researchListPage } from "~/public/lists.server"
+import { listingAlternate } from "~/public/seo"
 import { readLocale } from "~/public/urls"
 import { orBusy } from "~/search/busy.server"
 
@@ -30,7 +31,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const messages = messagesFor(loaderData.locale)
-  return [{ title: windowTitle(messages, [messages.search.researchList]) }]
+  return [{ title: windowTitle(messages, [messages.search.researchList]) }, ...listingAlternate("research", loaderData)]
 }
 
 export default function ResearchList({ loaderData }: Route.ComponentProps) {

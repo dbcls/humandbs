@@ -254,6 +254,7 @@ export default [
   // Above the catch-all, which would take them for articles' slugs.
   route("robots.txt", "routes/robots.ts"),
   route("sitemap.xml", "routes/sitemap.ts"),
+  route("llms.txt", "routes/llms.ts"),
   ...auth,
   ...api,
   ...fileLists,

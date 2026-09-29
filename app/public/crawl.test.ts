@@ -63,14 +63,14 @@ describe("robotsText", () => {
       expect(blocked(robots, `${prefix}${list}/${label}`)).toBe(false)
       expect(blocked(robots, `${prefix}${list}/${label}/v2`)).toBe(false)
     }))
-    for (const path of ["/", "/en", "/guidelines", "/en/guidelines", "/hum0001", "/sitemap.xml", "/api/research?q=cancer"]) {
+    for (const path of ["/", "/en", "/guidelines", "/en/guidelines", "/hum0001", "/sitemap.xml", "/llms.txt", "/api/research?q=cancer"]) {
       expect(blocked(robots, path), path).toBe(false)
     }
   })
 
-  it("検索エンジンに載せない配置は、API とその説明のページのほかをすべて拒否し、sitemap を示さない", () => {
+  it("検索エンジンに載せない配置は、API とその説明のページと /llms.txt のほかをすべて拒否し、sitemap を示さない", () => {
     const text = robotsText({ origin: ORIGIN, noindex: true })
-    expect(text).toBe("User-agent: *\nAllow: /api/\nAllow: /swagger-ui/\nDisallow: /\n")
+    expect(text).toBe("User-agent: *\nAllow: /api/\nAllow: /swagger-ui/\nAllow: /llms.txt\nDisallow: /\n")
     expect(text).not.toContain("Sitemap")
   })
 })

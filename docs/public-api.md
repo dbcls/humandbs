@@ -77,7 +77,7 @@ OpenAPI の定義は、エンドポイントの配列 1 か所 (`app/api/endpoin
 
 - URL を 2 か所に書かないので、route と定義がずれない。
 - Swagger UI の script と stylesheet はこのサイトから配信する。CDN に置くと、ページが第三者の可用性に左右されるためである。Swagger UI のバージョンは `package-lock.json` で決まる。
-- `/api/docs` はサイトのページではなく、ヘッダも言語も無い HTML である。
+- `/api/docs` はサイトのページではなく、ヘッダも言語も無い HTML である。JavaScript を実行せずに読むプログラムのために、同じ HTML に API の説明・エンドポイントの一覧・`/api/openapi.json` へのリンクを書き、`<link rel="service-desc">` で OpenAPI の定義を示す。Swagger UI を表示すると、この部分は Swagger UI に置き換わる。
 
 ## やっていないこと
 
