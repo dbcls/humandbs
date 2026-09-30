@@ -122,18 +122,31 @@ function valueSlots(content: DatasetContent): ValueSlot[] {
   return [...content.values, ...content.experiments.flatMap((e) => e.values)]
 }
 
-/** Every vocabulary value a dataset holds, by identity. */
-function chosenTerms(content: DatasetContent): string[] {
+/**
+ * Every vocabulary value a dataset holds, by identity, with the values above
+ * each.
+ *
+ * **The class above a term is text too.** The facets count an ICD10 code under
+ * its three-character class, so a word of the class finds what the facet does;
+ * and the Japanese heading of a four-character code is written to be read after
+ * the class's (C719 is 「脳，部位不明」 under C71's 「脳の悪性新生物＜腫瘍＞」), so
+ * without the class the disease is not in the text at all.
+ */
+function chosenTerms(content: DatasetContent, ancestorsOf: (id: string) => string[]): string[] {
   const ids = new Set<string>()
+  const add = (id: string) => {
+    ids.add(id)
+    for (const ancestor of ancestorsOf(id)) ids.add(ancestor)
+  }
   for (const slot of valueSlots(content)) {
     const value = slot.value
     if (value.kind === "vocabulary" && value.termIds.state === "value") {
-      for (const id of value.termIds.value) ids.add(id)
+      for (const id of value.termIds.value) add(id)
     }
     // A disease holds its own name as text, which the projection already
     // flattens; what is missing without this is the classification's heading.
     if (value.kind === "disease" && value.diseases.state === "value") {
-      for (const one of value.diseases.value) for (const id of one.termIds) ids.add(id)
+      for (const one of value.diseases.value) for (const id of one.termIds) add(id)
     }
   }
   return [...ids]
@@ -437,7 +450,7 @@ export async function rebuildSearchDocs(
       ]),
       // The labels of what the projection kept. A shown vocabulary value is
       // text on the page, so it has to be text in the index.
-      termsSearchText(chosenTerms(projected.content).flatMap((id) => {
+      termsSearchText(chosenTerms(projected.content, ancestorsOf).flatMap((id) => {
         const term = termById.get(id)
         return term === undefined ? [] : [term]
       })),

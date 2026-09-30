@@ -239,6 +239,120 @@ describe("rebuildSearchDocs", () => {
     expect(row?.en.split("Bronchus or lung").length).toBe(2)
   })
 
+  describe("the class above a term", () => {
+    /** C71 with two of the four-character codes below it, as the classification has them. */
+    async function brainClassification() {
+      const { id: setId } = only(await db.insert(s.vocabularySet)
+        .values({ code: "icd10", labelJa: "ICD10", labelEn: "ICD10", hierarchical: true })
+        .returning({ id: s.vocabularySet.id }))
+      const { id: parentId } = only(await db.insert(s.vocabularyTerm)
+        .values({ setId, code: "C71", labelJa: "脳の悪性新生物＜腫瘍＞", labelEn: "Malignant neoplasm of brain" })
+        .returning({ id: s.vocabularyTerm.id }))
+      const { id: childId } = only(await db.insert(s.vocabularyTerm)
+        .values({ setId, code: "C719", labelJa: "脳，部位不明", labelEn: "Malignant neoplasm: Brain, unspecified", parentId })
+        .returning({ id: s.vocabularyTerm.id }))
+      await db.insert(s.vocabularyTerm)
+        .values({ setId, code: "C710", labelJa: "脳葉及び脳室を除く大脳", labelEn: "Malignant neoplasm: Cerebrum, except lobes and ventricles", parentId })
+      const { id: diseaseKeyId } = only(await db.insert(s.contentKey)
+        .values({ code: "disease", scope: "experiment", valueType: "disease", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId })
+        .returning({ id: s.contentKey.id }))
+      return { setId, parentId, childId, diseaseKeyId }
+    }
+
+    async function texts() {
+      const rows = await db
+        .select({ targetType: s.searchDoc.targetType, ja: s.searchDoc.textJa, en: s.searchDoc.textEn })
+        .from(s.searchDoc)
+      return {
+        dataset: only(rows.filter((row) => row.targetType === "dataset")),
+        research: only(rows.filter((row) => row.targetType === "research")),
+      }
+    }
+
+    it("indexes the code and both labels of the class a disease's term is below, and not of the terms beside it", async () => {
+      const { childId, diseaseKeyId } = await brainClassification()
+      const researchId = await createResearch("hum0001")
+      const datasetId = await createDataset(researchId, "NHA000001")
+      describeDataset(datasetId, {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: filled("GWAS"),
+          values: [{
+            keyId: diseaseKeyId,
+            value: { kind: "disease", diseases: filled([{ termIds: [childId], nameJa: "頭蓋内胚細胞腫瘍", nameEn: "Intracranial germ cell tumors" }]) },
+          }],
+        }],
+      })
+      await publish(researchId, 1, [datasetId])
+
+      await rebuildSearchDocs(db)
+
+      // The Japanese heading of a four-character code is read after the one of
+      // its class, so without the class the disease is not in the text at all.
+      const { dataset, research } = await texts()
+      for (const row of [dataset, research]) {
+        expect(row.ja).toContain("脳の悪性新生物＜腫瘍＞")
+        expect(row.en).toContain("Malignant neoplasm of brain")
+        expect(row.ja).toMatch(/\bC71\b/)
+        expect(row.en).toMatch(/\bC71\b/)
+        expect(row.ja).toContain("脳，部位不明")
+        expect(`${row.ja} ${row.en}`).not.toContain("C710")
+        expect(row.ja).not.toContain("脳葉及び脳室を除く大脳")
+        expect(row.en).not.toContain("Cerebrum")
+      }
+    })
+
+    it("indexes a class once when a dataset has both it and a term below it", async () => {
+      const { setId, parentId, childId, diseaseKeyId } = await brainClassification()
+      const { id: vocabularyKeyId } = only(await db.insert(s.contentKey)
+        .values({ code: "disease-icd10", scope: "experiment", valueType: "vocabulary", labelJa: "疾患", labelEn: "Disease", vocabularySetId: setId })
+        .returning({ id: s.contentKey.id }))
+      const researchId = await createResearch("hum0001")
+      const datasetId = await createDataset(researchId, "NHA000001")
+      describeDataset(datasetId, {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: filled("GWAS"),
+          values: [
+            { keyId: diseaseKeyId, value: { kind: "disease", diseases: filled([{ termIds: [childId], nameJa: null, nameEn: null }]) } },
+            { keyId: vocabularyKeyId, value: { kind: "vocabulary", termIds: filled([parentId]) } },
+          ],
+        }],
+      })
+      await publish(researchId, 1, [datasetId])
+
+      await rebuildSearchDocs(db)
+
+      const { dataset } = await texts()
+      expect(dataset.ja.split("脳の悪性新生物＜腫瘍＞").length).toBe(2)
+      expect(dataset.en.split("Malignant neoplasm of brain").length).toBe(2)
+    })
+
+    it("indexes no class for a term that has none", async () => {
+      const { parentId, diseaseKeyId } = await brainClassification()
+      const researchId = await createResearch("hum0001")
+      const datasetId = await createDataset(researchId, "NHA000001")
+      describeDataset(datasetId, {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "experiment-1",
+          label: filled("GWAS"),
+          values: [{ keyId: diseaseKeyId, value: { kind: "disease", diseases: filled([{ termIds: [parentId], nameJa: null, nameEn: null }]) } }],
+        }],
+      })
+      await publish(researchId, 1, [datasetId])
+
+      await rebuildSearchDocs(db)
+
+      const { dataset } = await texts()
+      expect(dataset.ja).toContain("脳の悪性新生物＜腫瘍＞")
+      expect(dataset.ja).not.toContain("脳，部位不明")
+      expect(dataset.ja).not.toContain("脳葉及び脳室を除く大脳")
+    })
+  })
+
   it("passes the facet values of a dataset into the row of the research it belongs to", async () => {
     const researchId = await createResearch("hum0001")
     const { id: setId } = only(await db.insert(s.vocabularySet)
