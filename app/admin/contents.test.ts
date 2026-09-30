@@ -60,6 +60,39 @@ describe("slug の検査", () => {
     expect(slugProblem("ja")).toBe("reserved-slug")
   })
 
+  it("旧ポータルのアドレスとしてリダイレクトされる slug は取れない", () => {
+    for (const slug of [
+      "data-sharing-guidelines-v8",
+      "guideline-revision",
+      "all-news",
+      "all-news2/3362-2025-08-01-1",
+      "component/content/article/19-cat-ja/cat-whats-new/3322-2025-07-04",
+      "hum0001",
+      "hum0001-v2",
+      "hum0001-latest-release",
+    ]) {
+      expect(slugProblem(slug), slug).toBe("legacy-slug")
+    }
+  })
+
+  it("旧ポータルのアドレスはその文字列だけが取られ、前後の語や下の階層は取れる", () => {
+    for (const slug of [
+      "guidelines/data-sharing-guidelines",
+      "guidelines/data-sharing-guidelines/version/9",
+      "data-sharing-guidelines-v9",
+      "all-news2/a/b",
+      "hum0013-jpdsc",
+      "hum0185-v1-st1",
+      "guideline-revision/2026",
+    ]) {
+      expect(slugProblem(slug), slug).toBeNull()
+    }
+  })
+
+  it("先頭の語が route のものなら、旧ポータルのアドレスでも route のほうを理由にする", () => {
+    expect(slugProblem("data-use/all-researches")).toBe("reserved-slug")
+  })
+
   it("先頭の語が違えば似た文字列は通る", () => {
     expect(slugProblem("newsletter")).toBeNull()
     expect(slugProblem("api-terms")).toBeNull()

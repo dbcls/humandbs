@@ -1586,6 +1586,7 @@ const ja = {
         "dated-while-published": "公開中の言語があるため、公開日時を空にできません。先に公開停止してください。",
         "malformed-slug": "slug は英小文字・数字・ハイフン・スラッシュで書きます。",
         "reserved-slug": "その先頭の語はポータルの画面のアドレスに使われているため、document からは使えません。",
+        "legacy-slug": "その slug は旧ポータルのアドレスとして別のページへリダイレクトされるため、document からは使えません。",
         "duplicate-slug": "その slug は既に使われています。",
         "missing-title": "タイトルを入れてください。",
         "missing-translation": "アラートは全ページに表示されるため、日本語と英語の両方が必要です。",

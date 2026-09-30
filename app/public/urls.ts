@@ -385,6 +385,54 @@ function humLabelIn(pattern: RegExp, segment: string): string | null {
   return captured === undefined ? null : captured.toLowerCase()
 }
 
+/** Each old address `{joomlaSlug}{suffix}`, paired with the revision of `base` it is now. */
+function guidelineRevisions(
+  joomlaSlug: string,
+  base: string,
+  numbers: Readonly<Record<string, number>>,
+): [string, string][] {
+  return Object.entries(numbers).map(([suffix, number]) =>
+    [`${joomlaSlug}${suffix}`, `/guidelines/${base}/version/${number}`])
+}
+
+/**
+ * The old Joomla site's page for each revision of a guideline, and the revision
+ * that has the same text here.
+ *
+ * **The numbers do not all carry over.** Ver. 3.1 of the data sharing guidelines
+ * was a page of its own (`-v3-1`) and is revision 4 here, so every later one is
+ * one higher. The English ver. 4.0 for database centers was at `-v3-2`. The
+ * notices of revision were numbered only in Japanese; the English ones had
+ * three addresses of their own, and two of them hold the same text.
+ */
+const JOOMLA_GUIDELINES: ReadonlyMap<string, string> = new Map([
+  ...guidelineRevisions("data-sharing-guidelines-", "data-sharing-guidelines", {
+    "v1": 1, "v2": 2, "v3": 3, "v3-1": 4, "v4": 5, "v5": 6, "v6": 7, "v7": 8, "v8": 9,
+  }),
+  ...guidelineRevisions("security-guidelines-for-dbcenters-", "security-guidelines-for-dbcenters", {
+    "v1": 1, "v2": 2, "v3": 3, "v3-2": 4, "v4": 4,
+  }),
+  ...guidelineRevisions("security-guidelines-for-submitters-", "security-guidelines-for-submitters", {
+    v1: 1, v2: 2, v3: 3,
+  }),
+  ...guidelineRevisions("security-guidelines-for-users-", "security-guidelines-for-users", {
+    v1: 1, v2: 2, v3: 3, v4: 4, v5: 5, v6: 6, v7: 7,
+  }),
+  ...guidelineRevisions("guideline-revision", "revision", {
+    "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "": 7, "-2": 6, "-3": 7,
+  }),
+])
+
+/**
+ * The old Joomla site's listing of news and its items. **Every item goes to the
+ * listing**: nothing here keeps Joomla's numbers, so an item there cannot be
+ * matched to one here.
+ */
+const JOOMLA_NEWS = /^(?:all-news2?(?:\/[^/]+)?|component\/content\/article\/[^/]+\/cat-whats-new(?:\/[^/]+)?)$/
+
+/** The old Joomla site's listing of every research. */
+const JOOMLA_RESEARCH_LIST = "data-use/all-researches"
+
 /**
  * The path a legacy address resolves to, or null if it is not one.
  *
@@ -393,10 +441,16 @@ function humLabelIn(pattern: RegExp, segment: string): string | null {
  * and the resolution happens on the server — v1 rescued them with a redirect
  * issued by the browser, which never reached a client that does not run
  * JavaScript.
+ *
+ * **A document cannot take one of these slugs** (`slugProblem`): the address
+ * resolves here before a document is looked up.
  */
 export function legacyTarget(path: string): string | null {
   const segment = path.replace(/^\/+/, "").replace(/\/+$/, "")
   if (segment === "") return null
+
+  const joomlaPage = joomlaTarget(segment.toLowerCase())
+  if (joomlaPage !== null) return joomlaPage
 
   const releaseOf = humLabelIn(/^(hum\d+)-(?:v\d+|latest)-release$/i, segment)
   if (releaseOf !== null) return researchVersionsPath(releaseOf)
@@ -411,4 +465,11 @@ export function legacyTarget(path: string): string | null {
 
   const bare = humLabelIn(/^(hum\d+)(?:-latest)?$/i, segment)
   return bare === null ? null : researchPath(bare)
+}
+
+/** Where a page of the old Joomla site that is not a research's page went. */
+function joomlaTarget(segment: string): string | null {
+  if (segment === JOOMLA_RESEARCH_LIST) return listPath("research")
+  if (JOOMLA_NEWS.test(segment)) return newsPath()
+  return JOOMLA_GUIDELINES.get(segment) ?? null
 }

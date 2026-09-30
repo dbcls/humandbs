@@ -12,6 +12,7 @@ import {
   readLocale,
   researchPath,
   researchVersionPath,
+  SCREEN_PATHS,
 } from "./urls"
 
 const locale = fc.constantFrom(...LOCALES)
@@ -36,6 +37,33 @@ const internalPath = fc
 
 const humLabel = fc.integer({ min: 1, max: 9999 })
   .map((n) => `hum${String(n).padStart(4, "0")}`)
+
+/**
+ * Addresses shaped like the old sites' — a guideline's page with some suffix, a
+ * research's page, the news — and arbitrary ones, each with or without a slash
+ * at the end.
+ */
+const legacyLike = fc.tuple(
+  fc.oneof(
+    fc.tuple(
+      fc.constantFrom(
+        "data-sharing-guidelines-",
+        "security-guidelines-for-dbcenters-",
+        "security-guidelines-for-submitters-",
+        "security-guidelines-for-users-",
+        "guideline-revision",
+      ),
+      fc.constantFrom("", "v0", "v1", "v3", "v3-1", "v3-2", "v4", "v8", "v9", "2", "7", "8", "-2", "-3", "-4"),
+    ).map(([head, tail]) => `/${head}${tail}`),
+    fc.tuple(humLabel, fc.constantFrom("", "-latest", "-v2", "-v2-release", "-v18-kegg")).map(([label, tail]) => `/${label}${tail}`),
+    fc.tuple(
+      fc.constantFrom("/all-news", "/all-news2", "/component/content/article/19-cat-ja/cat-whats-new", "/data-use/all-researches"),
+      fc.constantFrom("", "/3362-2025-08-01-1", "/a/b"),
+    ).map(([head, tail]) => `${head}${tail}`),
+    internalPath,
+  ),
+  fc.constantFrom("", "/"),
+).map(([path, slash]) => `${path}${slash}`)
 
 describe("the locale in an address", () => {
   it("survives being written and read back", () => {
@@ -99,6 +127,24 @@ describe("legacy resolution", () => {
       expect(legacyTarget(researchPath(label))).toBeNull()
       expect(legacyTarget(researchVersionPath(label, 2))).toBeNull()
     }))
+    for (const path of SCREEN_PATHS) expect(legacyTarget(path), path).toBeNull()
+  })
+
+  it("sends every address it claims to a path of this site that is not itself a legacy address", () => {
+    fc.assert(fc.property(legacyLike, (path) => {
+      const target = legacyTarget(path)
+      if (target === null) return
+      expect(target).toMatch(/^\/(?![/\\])/)
+      expect(legacyTarget(target)).toBeNull()
+    }), { numRuns: 500 })
+  })
+
+  it("resolves an address the same way whatever its case", () => {
+    fc.assert(fc.property(legacyLike, (path) => {
+      // Outside ASCII, changing the case can change the letters themselves (`ſ` upper-cases to `S`).
+      fc.pre(/^[\x20-\x7e]*$/.test(path))
+      expect(legacyTarget(path.toUpperCase())).toBe(legacyTarget(path.toLowerCase()))
+    }), { numRuns: 500 })
   })
 })
 

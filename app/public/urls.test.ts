@@ -167,6 +167,67 @@ describe("legacyTarget", () => {
     expect(legacyTarget("/Hum0001-V2")).toBe("/research/hum0001/v2")
   })
 
+  it("sends the old site's listing of every research to the research listing", () => {
+    expect(legacyTarget("/data-use/all-researches")).toBe("/research")
+    expect(legacyTarget("/data-use/all-researches/")).toBe("/research")
+    expect(legacyTarget("/Data-Use/All-Researches")).toBe("/research")
+  })
+
+  it("sends the old site's news listing and every one of its items to the news listing", () => {
+    for (const path of [
+      "/all-news",
+      "/all-news2",
+      "/all-news2/3362-2025-08-01-1",
+      "/component/content/article/19-cat-ja/cat-whats-new/3322-2025-07-04",
+      "/component/content/article/21-cat-en/cat-whats-new/2734-2024-03-08",
+    ]) {
+      expect(legacyTarget(path), path).toBe("/news")
+    }
+  })
+
+  it("does not take an address near the news listing's for one", () => {
+    expect(legacyTarget("/all-news2/a/b")).toBeNull()
+    expect(legacyTarget("/all-newsletter")).toBeNull()
+    expect(legacyTarget("/component/content/article/19-cat-ja/cat-other/1")).toBeNull()
+    expect(legacyTarget("/component/search")).toBeNull()
+  })
+
+  it("sends a guideline's old page to the revision with the same text, whose number may differ", () => {
+    const guideline = (base: string, number: number) => `/guidelines/${base}/version/${number}`
+    expect(legacyTarget("/data-sharing-guidelines-v1")).toBe(guideline("data-sharing-guidelines", 1))
+    expect(legacyTarget("/data-sharing-guidelines-v3")).toBe(guideline("data-sharing-guidelines", 3))
+    expect(legacyTarget("/data-sharing-guidelines-v3-1")).toBe(guideline("data-sharing-guidelines", 4))
+    expect(legacyTarget("/data-sharing-guidelines-v4")).toBe(guideline("data-sharing-guidelines", 5))
+    expect(legacyTarget("/data-sharing-guidelines-v8")).toBe(guideline("data-sharing-guidelines", 9))
+    expect(legacyTarget("/security-guidelines-for-dbcenters-v3")).toBe(guideline("security-guidelines-for-dbcenters", 3))
+    expect(legacyTarget("/security-guidelines-for-dbcenters-v3-2")).toBe(guideline("security-guidelines-for-dbcenters", 4))
+    expect(legacyTarget("/security-guidelines-for-dbcenters-v4")).toBe(guideline("security-guidelines-for-dbcenters", 4))
+    expect(legacyTarget("/security-guidelines-for-submitters-v3")).toBe(guideline("security-guidelines-for-submitters", 3))
+    expect(legacyTarget("/security-guidelines-for-users-v7")).toBe(guideline("security-guidelines-for-users", 7))
+    expect(legacyTarget("/guideline-revision2")).toBe(guideline("revision", 2))
+    expect(legacyTarget("/guideline-revision7")).toBe(guideline("revision", 7))
+    expect(legacyTarget("/guideline-revision")).toBe(guideline("revision", 7))
+    expect(legacyTarget("/guideline-revision-2")).toBe(guideline("revision", 6))
+    expect(legacyTarget("/guideline-revision-3")).toBe(guideline("revision", 7))
+    expect(legacyTarget("/Data-Sharing-Guidelines-V8/")).toBe(guideline("data-sharing-guidelines", 9))
+  })
+
+  it("does not invent a revision the old site did not have", () => {
+    expect(legacyTarget("/data-sharing-guidelines-v9")).toBeNull()
+    expect(legacyTarget("/data-sharing-guidelines-v0")).toBeNull()
+    expect(legacyTarget("/data-sharing-guidelines")).toBeNull()
+    expect(legacyTarget("/data-sharing-guidelines-v3-2")).toBeNull()
+    expect(legacyTarget("/security-guidelines-for-users-v8")).toBeNull()
+    expect(legacyTarget("/guideline-revision1")).toBeNull()
+    expect(legacyTarget("/guideline-revision8")).toBeNull()
+    expect(legacyTarget("/guideline-revision-4")).toBeNull()
+  })
+
+  it("leaves the old site's list of a research's files alone", () => {
+    expect(legacyTarget("/hum0197-v18-microbiome")).toBeNull()
+    expect(legacyTarget("/hum0181-v1-st1")).toBeNull()
+  })
+
   it("does not claim an address that is not one of these", () => {
     expect(legacyTarget("/")).toBeNull()
     expect(legacyTarget("/guidelines/data-sharing-guidelines")).toBeNull()

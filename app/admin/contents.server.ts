@@ -108,6 +108,7 @@ export type ContentsProblem
     | "dated-while-published"
     | "malformed-slug"
     | "reserved-slug"
+    | "legacy-slug"
     | "duplicate-slug"
     | "missing-title"
     | "missing-translation"

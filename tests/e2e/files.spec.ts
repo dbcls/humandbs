@@ -87,4 +87,11 @@ test.describe("P-ANON 非制限公開ファイル", () => {
     const to = new URL(answer.headers().location ?? "", "http://invalid.example")
     expect(`${to.pathname}${to.search}`).toBe("/files/common/e2e/a%3Fb%20%E8%AA%AC%E6%98%8E.pdf?page=2")
   })
+
+  test("S-FILE-05: hum0197 のバージョン 26 のディレクトリの下の URL は、ディレクトリを除いた URL へリダイレクトする", async ({ request }) => {
+    const answer = await request.get("/files/hum0197/hum0197.v26/metabolome/per-environment/e2e%20a.txt.gz?x=1", { maxRedirects: 0 })
+    expect(answer.status()).toBe(301)
+    const to = new URL(answer.headers().location ?? "", "http://invalid.example")
+    expect(`${to.pathname}${to.search}`).toBe("/files/hum0197/e2e%20a.txt.gz?x=1")
+  })
 })

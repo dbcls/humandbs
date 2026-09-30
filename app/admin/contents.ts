@@ -13,7 +13,7 @@
  */
 
 import type { Locale } from "~/i18n/locale"
-import { SCREEN_PATHS } from "~/public/urls"
+import { SCREEN_PATHS, legacyTarget } from "~/public/urls"
 
 /** Lowercase words joined by `/` or `-`, which is the shape v1's slugs have. */
 const SLUG = /^[a-z0-9]+(?:[/-][a-z0-9]+)*$/
@@ -32,12 +32,19 @@ const RESERVED = new Set([
   "en",
 ].filter((segment) => segment !== ""))
 
-export type SlugProblem = "malformed-slug" | "reserved-slug"
+export type SlugProblem = "malformed-slug" | "reserved-slug" | "legacy-slug"
 
+/**
+ * **An old portal's address is refused as a whole, not by its first segment**:
+ * it redirects before a document is looked up (`legacyTarget`), while a slug
+ * that only resembles one is allowed — `guidelines/data-sharing-guidelines` is a
+ * document, `data-sharing-guidelines-v8` cannot be.
+ */
 export function slugProblem(slug: string): SlugProblem | null {
   if (!SLUG.test(slug)) return "malformed-slug"
   const [first = ""] = slug.split("/")
-  return RESERVED.has(first) ? "reserved-slug" : null
+  if (RESERVED.has(first)) return "reserved-slug"
+  return legacyTarget(`/${slug}`) === null ? null : "legacy-slug"
 }
 
 export function versionSlug(base: string, number: number): string {

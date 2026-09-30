@@ -145,6 +145,21 @@ test.describe("P-ANON", () => {
     }
   })
 
+  test("S-PUB-10: 旧ポータルの研究の一覧・お知らせ・ガイドラインの URL は、同じ内容のページへリダイレクトし、そのページは開ける", async ({ request }) => {
+    for (const [legacy, target] of [
+      ["/data-use/all-researches", "/research"],
+      ["/en/data-use/all-researches", "/en/research"],
+      ["/all-news2/3362-2025-08-01-1", "/news"],
+      ["/data-sharing-guidelines-v8", "/guidelines/data-sharing-guidelines/version/9"],
+      ["/en/data-sharing-guidelines-v8", "/en/guidelines/data-sharing-guidelines/version/9"],
+      ["/security-guidelines-for-dbcenters-v3-2", "/guidelines/security-guidelines-for-dbcenters/version/4"],
+      ["/guideline-revision7", "/guidelines/revision/version/7"],
+    ] as [string, string][]) {
+      expect(await redirectedTo(request, legacy), legacy).toBe(target)
+      expect((await request.get(target, { maxRedirects: 0 })).status(), target).toBe(200)
+    }
+  })
+
   test("S-PUB-08: secondary の ID と大文字小文字だけ違う ID は primary の ID の URL へリダイレクトし、データセットのページに Secondary ID がある", async ({ page, request }) => {
     const { hits } = await (await request.get("/api/research")).json() as { hits: { id: string }[] }
     const research = hits[0]?.id ?? ""

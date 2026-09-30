@@ -67,6 +67,24 @@ describe("リンクを辿って開いた document", () => {
     expect(response.headers.get("location")).toBe("/research/hum0103")
   })
 
+  it("旧ポータルの英語のアドレスは、英語のページへ redirect する", async () => {
+    const cases = [
+      ["/en/data-sharing-guidelines-v8", "/en/guidelines/data-sharing-guidelines/version/9"],
+      ["/en/all-news2/3362-2025-08-01-1", "/en/news"],
+      ["/en/data-use/all-researches", "/en/research"],
+    ]
+    for (const [path = "", location] of cases) {
+      const response = await thrownBy(loader(followed(path)))
+      expect(response.headers.get("location"), path).toBe(location)
+    }
+  })
+
+  it("旧ポータルのアドレスと同じ slug の document があっても、redirect が先に解決する", async () => {
+    await createDocument("data-sharing-guidelines-v8")
+    const response = await thrownBy(loader(followed("/data-sharing-guidelines-v8")))
+    expect(response.headers.get("location")).toBe("/guidelines/data-sharing-guidelines/version/9")
+  })
+
   it("冗長な ja prefix が prefix 無しへ redirect する", async () => {
     const response = await thrownBy(loader(followed("/ja/faq")))
     expect(response.headers.get("location")).toBe("/faq")
