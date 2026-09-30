@@ -193,9 +193,31 @@ scripts/backup.sh restore-files <path>    # HUMANDBS_BACKUP_DIR/files/ の下の
 
 ### backup から戻す
 
-- DB は、上の「戻す」の手順で `db/<日時>.dump` を戻す。
+- DB 全体は、上の「戻す」の手順で `db/<日時>.dump` を戻す。
+- 研究の 1 つのバージョンだけを戻すときは、DB 全体を戻さず、dump の中のそのバージョンの内容を、その研究の新しい下書きにする (下の「研究のバージョンを戻す」)。
 - 配信ファイルは `restore-files` で戻す。`<path>` は `current/<bucket>/<key>` か `deleted/<日付>/<bucket>/<key>` で、同じ bucket と key に書く。ファイルストアに同じ key があれば上書きし、backup に無いファイルは消さない。
 - `<key>` を研究ごとの prefix までにするとその下を、`<key>` を省くと bucket 全体をまとめて戻す。例えば `restore-files deleted/20261015/files/hum0009/` は、10 月 15 日の backup の時点で公開の bucket の `hum0009/` から削除か上書きされていたファイルを、すべて前の中身に戻す。
+
+### 研究のバージョンを戻す
+
+「先週の更新を取り消したい」のように、公開中のバージョンの内容をある日の backup の時点に戻す手順である。dump を使い捨ての DB に戻し、そこからバージョンの内容を読む。
+
+```bash
+podman run -d --rm --name <project>_restore --network <project>_default --network-alias restore-db \
+  -e POSTGRES_PASSWORD=restore docker.io/groonga/pgroonga:4.0.8-debian-18                  # 使い捨ての DB を起動する
+until podman exec <project>_restore pg_isready -q -h 127.0.0.1; do sleep 1; done              # 起動を待つ
+podman exec -i <project>_restore pg_restore -U postgres -d postgres --no-owner --no-privileges \
+  --exit-on-error < <HUMANDBS_BACKUP_DIR>/db/<日時>.dump                                      # dump を戻す
+podman-compose run --rm -T tools npm run --silent restore:version -- \
+  postgres://postgres:restore@restore-db/postgres <研究 ID> <バージョン番号> <日付> </dev/null    # 下書きを作る
+podman stop <project>_restore                                                                  # 使い捨ての DB を消す
+```
+
+- `restore:version` は、使い捨ての DB に今の migration を当ててから、そのバージョンの内容を読み、本番の DB にその研究の新しい下書きとして書き込む。dump のあとで schema や研究の内容の形が変わっていても、今の形の下書きになる。`<日付>` には dump の名前の先頭 8 桁を渡し、下書きの名前は「2026-09-23 の backup から」のようになる。
+- 研究は研究 ID で探す。backup と今とでその研究 ID が別の研究を指していれば、何も書かずにエラーで終わる。
+- 公開中のものはこの時点では変わらない。admin がそのバージョンの行の「編集」で更新を開き、取り込み ([editing.md](editing.md) の「取り込み」) でこの下書きを取り込み元に選んで戻す項目を決め、更新を公開する。済んだらこの下書きを削除する。取り下げたバージョンを戻すときは、この下書きを空いている番号で公開する。
+- 戻らないものは、backup のあとで削除したデータセット (下書きに入れない)、ID の割り当て、ファイルとそのラベル・「研究ページに表示」の設定である。backup のあとで統合した語彙の値は統合前の値を指したまま入り、画面には表示されない。
+- 使い捨ての DB は、rclone と同じく project の network に compose の外から起動する。port は公開しない。
 
 ## schema を変える
 

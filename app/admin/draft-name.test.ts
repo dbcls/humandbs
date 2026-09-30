@@ -1,13 +1,42 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { draftAside, draftNameOf, draftNameShown, plannedDraftName } from "./draft-name"
+import { backupDraftName, draftAside, draftNameOf, draftNameShown, plannedDraftName } from "./draft-name"
 
 describe("plannedDraftName", () => {
   it("plans the number after the highest published, and v1 with none", () => {
     expect(plannedDraftName(null)).toBe("v1 予定")
     fc.assert(fc.property(fc.integer({ min: 0, max: 10_000 }), (highest) => {
       expect(plannedDraftName(highest)).toBe(`v${String(highest + 1)} 予定`)
+    }))
+  })
+})
+
+describe("backupDraftName", () => {
+  it("writes the date a dump is named by with hyphens", () => {
+    expect(backupDraftName("20260923")).toBe("2026-09-23 の backup から")
+    fc.assert(fc.property(
+      fc.date({ min: new Date("2000-01-01T00:00:00Z"), max: new Date("2099-12-31T00:00:00Z"), noInvalidDate: true }),
+      (date) => {
+        const [year, month, day] = date.toISOString().slice(0, 10).split("-")
+        expect(backupDraftName(`${year ?? ""}${month ?? ""}${day ?? ""}`)).toBe(`${year ?? ""}-${month ?? ""}-${day ?? ""} の backup から`)
+      },
+    ))
+  })
+
+  it("refuses a day the calendar does not have", () => {
+    for (const day of ["20260230", "20250229", "20261301", "20260001", "20260900", "20260931", "00260923"]) {
+      expect(backupDraftName(day)).toBeNull()
+    }
+    expect(backupDraftName("20240229")).toBe("2024-02-29 の backup から")
+  })
+
+  it("refuses anything but eight digits", () => {
+    for (const day of ["", "2026923", "202609230", "2026-09-23", " 20260923", "20260923\n", "２０２６０９２３"]) {
+      expect(backupDraftName(day)).toBeNull()
+    }
+    fc.assert(fc.property(fc.string().filter((text) => !/^\d{8}$/.test(text)), (text) => {
+      expect(backupDraftName(text)).toBeNull()
     }))
   })
 })

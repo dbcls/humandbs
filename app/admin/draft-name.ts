@@ -14,6 +14,22 @@ export function plannedDraftName(highest: number | null): string {
   return `v${String((highest ?? 0) + 1)} 予定`
 }
 
+/**
+ * The name of a draft written from a daily backup (`restore.server.ts`), from
+ * the date its dump is named by: `2026-09-23 の backup から` for `20260923`.
+ * Null for anything that is not a date written that way.
+ */
+export function backupDraftName(day: string): string | null {
+  const match = /^(\d{4})(\d{2})(\d{2})$/.exec(day)
+  if (match === null) return null
+  const [, year = "", month = "", date = ""] = match
+  const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(date)))
+  if (parsed.getUTCFullYear() !== Number(year) || parsed.getUTCMonth() !== Number(month) - 1 || parsed.getUTCDate() !== Number(date)) {
+    return null
+  }
+  return `${year}-${month}-${date} の backup から`
+}
+
 /** A name as typed, or null when there is nothing to call the draft by. */
 export function draftNameOf(typed: string): string | null {
   const name = typed.trim()
