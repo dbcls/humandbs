@@ -80,4 +80,11 @@ test.describe("P-ANON 非制限公開ファイル", () => {
     expect(response?.headers()["content-disposition"]).toBeUndefined()
     await expect(page.getByRole("heading", { name: "ページが見つかりません" })).toBeVisible()
   })
+
+  test("S-FILE-04: 旧ポータルの /public-files/ の URL は、エンコードとクエリを変えずに /files/common/ へリダイレクトする", async ({ request }) => {
+    const answer = await request.get("/public-files/e2e/a%3Fb%20%E8%AA%AC%E6%98%8E.pdf?page=2", { maxRedirects: 0 })
+    expect(answer.status()).toBe(301)
+    const to = new URL(answer.headers().location ?? "", "http://invalid.example")
+    expect(`${to.pathname}${to.search}`).toBe("/files/common/e2e/a%3Fb%20%E8%AA%AC%E6%98%8E.pdf?page=2")
+  })
 })
