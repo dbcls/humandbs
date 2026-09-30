@@ -1,6 +1,6 @@
 # 本番と staging の運用
 
-staging と production にポータルを配置し、更新し、戻す手順をまとめる。手元の開発環境は [development.md](development.md)、部品の構成は [overview.md](overview.md) にある。
+staging と production にポータルを配置し、更新し、戻し、backup を取る手順をまとめる。手元の開発環境は [development.md](development.md)、部品の構成は [overview.md](overview.md) にある。
 
 staging と production は、この repo から作った image で動く。配置の定義は `compose.yml` で、source は mount しない。配置先は rootless podman と podman-compose 1.0.6 なので、コマンドは `podman-compose` で書き、配置先で要る設定は `compose.deploy.yml` が足す。配置先ごとに違う値は `.env` にだけ書く。開発環境は、同じ定義に `compose.dev.yml` を重ねたものである。
 
@@ -47,6 +47,7 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 | `HUMANDBS_JGA_DATABASE_URL` | 申請管理システムの DB。配置先 (踏み台の内側) からは直接接続できるので、手元と違って値を埋める |
 | `HUMANDBS_S3_ACCESS_KEY` / `HUMANDBS_S3_SECRET_KEY` | ファイルストアの鍵。配置先ごとに作る (下の「ファイルストアの鍵」) |
 | `HUMANDBS_DATA_DIR` | DB とファイルストアのデータと、DB の backup を保存する dir (下の「データの保存先」) |
+| `HUMANDBS_BACKUP_DIR` | 日次の backup の保存先 (下の「backup」)。backup を取らない staging では空 |
 | `HUMANDBS_NOINDEX` | `true` にすると、検索エンジンに載せない ([public-site.md](public-site.md) の「検索エンジンとリンクのプレビュー」)。staging は `true`、本番は空 |
 | `HUMANDBS_SLACK_WEBHOOK_URL` | Slack への通知の送り先 ([publishing.md](publishing.md) の「Slack への通知」)。空なら送らない |
 | `HUMANDBS_SLACK_INTERVAL_MINUTES` | Slack への通知の間隔 (分)。1440 の約数で、空なら 60。約数でない値では起動しない |
@@ -71,7 +72,7 @@ DB とファイルストアのデータをホストのどこに保存するか�
 - `compose.deploy.yml` の `userns_mode` (`keep-id`) は、`db`・`s3`・`tools`・`assistant-api` の container の中のユーザーを、配置先のユーザーに対応させる設定である。この設定が無いと、bind した dir に書けないか、持ち主の分からないファイルが残る。rootless podman では、container の中の root 以外のユーザーがホストでは別の uid になるためである。保存先が共有のファイルシステムのときに特に問題になる。
 - `tools` にもこの設定が要るのは、ICD10 の取り込みが、取得した配布物を mount した `migration/input/` に書くためである。
 - ポータルへの書き込みは admin の操作だけなので、DB の保存先の書き込みの速さは画面の速さにほとんど影響しない。
-- DB の backup は `HUMANDBS_DATA_DIR/backup/` にたまる。更新のたびに、migration の前に `pg_dump -Fc` で `<日時>-before-<tag>.dump` を作る。古い backup は手で消す。backup はデータと同じファイルシステムにあるので、防げるのは migration の失敗であり、保存先の故障ではない。
+- 更新のたびに、migration の前に `pg_dump -Fc` で `HUMANDBS_DATA_DIR/backup/<日時>-before-<tag>.dump` を作る。古いものは手で消す。データと同じファイルシステムにあるので、防げるのは migration の失敗であり、保存先の故障ではない。保存先の故障には、別のディスクに取る日次の backup (下の「backup」) で備える。
 
 ## 初回
 
@@ -137,6 +138,40 @@ podman start <project>_app_1 && podman start <project>_proxy_1                  
 
 role は database の外にあるので dump に入らず、database への接続の権限は作り直した database から消えている。それを `migrate` が設定し直す。権限だけを設定するなら `tools` で `npm run db:grants` を実行してもよい。
 
+## backup
+
+保存先の故障に備えて、production の DB と配信ファイルを毎日、`HUMANDBS_DATA_DIR` とは別のディスクにコピーする話である。staging では取らない。production の DB の dump で入れ直せるためである。
+
+```bash
+scripts/backup.sh                         # backup を取る。--dry-run も付けられる
+scripts/backup.sh restore-files <path>    # HUMANDBS_BACKUP_DIR/files/ の下の <path> をファイルストアに戻す
+```
+
+- 配置先の dir で、配置先のユーザーの crontab から毎日 1 回実行する。前の実行が終わっていなければ、何もせずにエラーで終わる。
+- `HUMANDBS_BACKUP_DIR` は、`HUMANDBS_DATA_DIR` と別のディスクで、拡張属性 (xattr) が使えるファイルシステムにする。配信ファイルの Content-Type を拡張属性に保存し、戻すときにファイルストアに戻すためである。
+
+`HUMANDBS_BACKUP_DIR` の下には次のものがある。
+
+| パス | 中身 |
+|---|---|
+| `db/<日時>.dump` | `pg_dump -Fc` の出力。取ったあとに `pg_restore --list` で読めることを確かめる |
+| `files/current/<bucket>/<key>` | 2 つの bucket のオブジェクト。backup を取った時点のファイルストアの中身と同じ |
+| `files/deleted/<日付>/<bucket>/<key>` | その日の backup の時点で、削除か上書きされていたオブジェクトの前の中身 |
+| `env/<日付>.env` | `.env` のコピー。申請管理システムの DB の接続先のように、配置先で作り直せない値を含むため |
+| `last-success` | 最後にすべて取り終えた時刻。監視はこのファイルの更新日時を見る |
+
+- dump・`.env` のコピー・`files/deleted/` の日付の dir は、30 日より古いものを消す。日数を DB と配信ファイルで揃えるのは、30 日以内のどの日についても、その日の DB と配信ファイルの両方を戻せるようにするためである。
+- 配信ファイルは rclone で S3 API から読む。ファイルストアのデータの dir (`s3data`) は直接コピーしない。動いているファイルストアの dir をコピーすると、書き込みの途中の状態を取ることがあるためである。
+- 2 つの bucket は順にコピーするので、その間に公開・非公開を切り替えたファイルは、その日の backup では両方の bucket にあるか、どちらにも無いことがある。
+- rclone は、project の network に compose の外から起動した container で動かす。ファイルストアは network の外に port を公開していないためである。compose の label が無いので、`scripts/deploy.sh` の検査 (project に余分な container があると止まる) の対象にならない。更新でファイルストアが作り直されるとその日の backup は失敗し、次の日に取り直す。
+- ファイルストアの鍵は環境変数で container に渡し、コマンドの引数に書かない。引数は同じホストのほかのユーザーから見えるためである。
+
+### backup から戻す
+
+- DB は、上の「戻す」の手順で `db/<日時>.dump` を戻す。
+- 配信ファイルは `restore-files` で戻す。`<path>` は `current/<bucket>/<key>` か `deleted/<日付>/<bucket>/<key>` で、同じ bucket と key に書く。ファイルストアに同じ key があれば上書きし、backup に無いファイルは消さない。
+- `<key>` を研究ごとの prefix までにするとその下を、`<key>` を省くと bucket 全体をまとめて戻す。例えば `restore-files deleted/20261015/files/hum0009/` は、10 月 15 日の backup の時点で公開の bucket の `hum0009/` から削除か上書きされていたファイルを、すべて前の中身に戻す。
+
 ## schema を変える
 
 配置先の schema を変える方法の話である。`drizzle/` に書き出して commit した SQL だけが配置先の schema を変える。書き出し方は [development.md](development.md) の「DB と schema の変更」にある。
@@ -152,4 +187,5 @@ role は database の外にあるので dump に入らず、database への接�
 - `migrate` を `app` の起動に結び付けること。podman-compose 1.0.6 は完了を待つ依存を扱えず、結び付けると終了した container に `app` の起動が左右される。
 - 環境ごとに compose の file を分けること。違いは `.env` に書き、env の template は値の雛形でしかない。
 - 配置先のアドレスやホスト名を repo に書くこと。
+- 配置先のホストの外に backup をコピーすること。ホストごと失うと、backup も失う。
 - アシスタントを既定で起動すること。起動・停止・更新は assistant-api のサービス名を指定したコマンドだけで行い、ポータルを止めない。手順と使わないコマンドは `assistant-api/README.md` の「配信先で動かす」にある。

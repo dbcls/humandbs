@@ -19,7 +19,7 @@ export default defineConfig({
           environment: "node",
           // Components are tested by rendering them to a string, so the unit
           // project picks up `.tsx` as well.
-          include: ["app/**/*.test.{ts,tsx}", "migration/**/*.test.ts"],
+          include: ["app/**/*.test.{ts,tsx}", "migration/**/*.test.ts", "scripts/**/*.test.ts"],
           exclude: [...defaultExclude, "**/*.db.test.ts"],
         },
       },
