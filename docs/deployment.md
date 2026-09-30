@@ -17,7 +17,7 @@ staging と production は、この repo から作った image で動く。配�
 - 配置する container に schema の owner の接続を渡さない。`app` に渡すのは `humandbs_app` (操作の記録を書き換えられない role) の URL だけで、owner の URL は `migrate` と `tools` にだけ渡す。1 回だけ行う操作 (admin の追加と削除、bucket の作成、ICD10 の取り込み) は `tools` で実行する。例は `podman-compose run --rm -T tools npm run admin:list` である。
 - dev サーバーを配置に使わない。vite は知らないホスト名の要求を拒否し、`react-router-serve` は `NODE_ENV` が production でないと例外の stack trace を返すためである。待ち受ける port は dev サーバーと同じなので、nginx の設定は 1 つで済む。
 - 静的ファイルは proxy が返す。proxy の image にあるファイルはそこから返し、無いものは `app` に渡す。`app` の image も同じファイルを含むので、proxy に無いファイルも返せる。`/assets/` の下はファイル名に中身の hash が入るので長いキャッシュの期限を付け、それ以外 (アイコン) と画面には付けない。`robots.txt` は配置ごとに内容が違うので、アプリが返す。
-- 圧縮も proxy が行う。nginx の image は `gzip` が off なので、`docker/nginx/default.conf` で on にしている。
+- 画面と API の JSON はアプリが圧縮する。`react-router-serve` の圧縮の middleware が、クライアントが受け付けるなら Brotli で、そうでなければ gzip で圧縮し、proxy は圧縮済みの応答をそのまま返す。proxy が gzip で圧縮するのは、それ以外 (静的ファイル、ファイルストアのファイル、API の一括取得の NDJSON) である。アプリの圧縮を止めて proxy にまとめないのは、Brotli のほうが gzip より小さくなるためである。nginx の image は `gzip` が off なので、`docker/nginx/default.conf` で on にしている。
 - 安全のための header (CSP・`X-Frame-Options`・`nosniff`・`Referrer-Policy`) は、proxy がすべての応答に付ける。値は `docker/nginx/default.conf` にある。アプリが自分で `Referrer-Policy` を決めた応答 (共有リンク) はその値を残す。配信するファイルの header は [files.md](files.md) の「配信の安全」にある。
 - proxy は平文で待ち受け、TLS はホストの外の終端で処理する。proxy が `Strict-Transport-Security` を付けるのは、TLS の終端が `X-Forwarded-Proto: https` を渡したときだけである。終端がこの header を渡さないなら、HSTS は終端の側で付ける。
 - proxy は、app とファイルストアに渡す `Host` を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定し、ファイルストアには `X-Forwarded-Host` も同じ値で渡す。TLS の終端や途中の中継が `Host` を書き換えても、書き込みの `Origin` の検査 ([auth.md](auth.md) の「CSRF」) と署名付き URL の検証を、ブラウザがアクセスしたアドレスで行うためである。ファイルストアは `X-Forwarded-Host` があればその値で署名を検証する。host は proxy の起動時にこの変数から取り出し、取り出せなければ proxy は起動しない。
@@ -73,6 +73,7 @@ DB とファイルストアのデータをホストのどこに保存するか�
 - `compose.deploy.yml` の `userns_mode` (`keep-id`) は、`db`・`s3`・`tools`・`assistant-api` の container の中のユーザーを、配置先のユーザーに対応させる設定である。この設定が無いと、bind した dir に書けないか、持ち主の分からないファイルが残る。rootless podman では、container の中の root 以外のユーザーがホストでは別の uid になるためである。保存先が共有のファイルシステムのときに特に問題になる。
 - `tools` にもこの設定が要るのは、ICD10 の取り込みが、取得した配布物を mount した `migration/input/` に書くためである。
 - ポータルへの書き込みは admin の操作だけなので、DB の保存先の書き込みの速さは画面の速さにほとんど影響しない。
+- ファイルストアは、保存先の空きが下限を切るとすべての volume を読み取り専用にし、アップロードを受け付けなくなる。`compose.deploy.yml` はこの下限を、SeaweedFS の既定の「ファイルシステムの 1%」ではなく容量で指定している。保存先が大きな共有のファイルシステムだと、1% でもポータルが保存する量よりずっと大きく、空きが十分に残っているうちにアップロードが止まるためである。
 - 更新のたびに、migration の前に `pg_dump -Fc` で `HUMANDBS_DATA_DIR/backup/<日時>-before-<tag>.dump` を作る。古いものは手で消す。データと同じファイルシステムにあるので、防げるのは migration の失敗であり、保存先の故障ではない。保存先の故障には、別のディスクに取る日次の backup (下の「backup」) で備える。
 
 ## ログ

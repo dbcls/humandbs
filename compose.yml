@@ -85,6 +85,8 @@ services:
         -e "s|@HUMANDBS_S3_SECRET_KEY@|$$HUMANDBS_S3_SECRET_KEY|"
         /etc/seaweedfs/s3.json.template > /etc/seaweedfs/s3.json
         && exec /entrypoint.sh "$$0" "$$@"
+    # compose.deploy.yml repeats this list with a limit on free space, so a
+    # change here has to be made there too.
     command:
       - server
       - -dir=/data
@@ -98,8 +100,12 @@ services:
     volumes:
       - s3data:/data
       - ./docker/s3/s3.json.template:/etc/seaweedfs/s3.json.template:ro
+    # **The S3 API is what is asked, since it is what the application uses** and
+    # it is the last to start: the master answers within a second, but the S3 API
+    # only after every volume is loaded and the filer is up, which takes tens of
+    # seconds on the deployments.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:9333/cluster/status"]
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:8333/status"]
       interval: 5s
       timeout: 5s
       retries: 12

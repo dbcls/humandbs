@@ -32,6 +32,19 @@ services:
   # directory to it otherwise.
   s3:
     userns_mode: "keep-id:uid=1000,gid=1000"
+    # **The free space below which every volume turns read-only is an amount,
+    # not SeaweedFS's default of 1% of the file system.** The data directory is
+    # on a large shared file system, where 1% is far more than the portal will
+    # ever store, so uploads would stop while plenty of space is left.
+    # The list replaces compose.yml's rather than adding to it, so a change
+    # there has to be made here too.
+    command:
+      - server
+      - -dir=/data
+      - -filer
+      - -s3
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -volume.minFreeSpace=100GiB
     logging:
       driver: k8s-file
       options:
