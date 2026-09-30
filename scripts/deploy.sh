@@ -69,6 +69,19 @@ if podman container exists "${project}_assistant-api_1"; then
   images="$images assistant-api"
 fi
 
+# Where compose.deploy.yml has each service write its output. podman is handed
+# the path as it is written, and nothing expands a `~/` in it.
+log_dir=$(env_value HUMANDBS_LOG_DIR)
+case $log_dir in
+  /*) ;;
+  "") die "HUMANDBS_LOG_DIR is not set in .env" ;;
+  *) die "HUMANDBS_LOG_DIR is not an absolute path: $log_dir" ;;
+esac
+
+# The time of this run, in the names of the database backup and of the output
+# set aside, so that the two can be matched.
+stamp=$(date +%Y%m%d-%H%M%S)
+
 # Any other container of the project would stop the swap from working: a
 # one-off (`podman-compose run`) holds the database and the store as
 # dependencies, so recreating them under it fails halfway; a leftover one made
@@ -109,7 +122,55 @@ healthz_url() {
   echo "http://${host}:${port:-8080}/healthz"
 }
 
+# What this run renames the service's output to, or nothing when there is no
+# output or a file already has that name. A file is never renamed over another;
+# the container made next appends to it instead.
+set_aside_name() {
+  name="$log_dir/$1-$stamp-before-$tag.log"
+  if [ -e "$log_dir/$1.log" ] && [ ! -e "$name" ] && [ ! -e "$name.gz" ]; then
+    echo "$name"
+  fi
+}
+
+# Renames the application's and the proxy's output once their containers are
+# gone, so that each file holds what one release wrote; the containers made
+# next start new files.
+set_aside_logs() {
+  step "set aside the output of proxy and app"
+  for service in proxy app; do
+    name=$(set_aside_name "$service")
+    if [ -n "$name" ]; then
+      run mv "$log_dir/$service.log" "$name"
+    fi
+  done
+}
+
+# Run once the site is serving again: compressing a large file in the swap
+# would keep the site down for as long. A file an earlier run set aside but did
+# not get to compress is compressed here too.
+compress_logs() {
+  step "compress the output set aside"
+  for file in "$log_dir"/*-before-*.log; do
+    if [ -e "$file" ]; then
+      run gzip "$file"
+    fi
+  done
+  # A dry run renamed nothing, so what it would have set aside is not there to
+  # be found.
+  if [ -n "$dry_run" ]; then
+    for service in proxy app; do
+      name=$(set_aside_name "$service")
+      if [ -n "$name" ]; then
+        printf '+ gzip %s\n' "$name"
+      fi
+    done
+  fi
+}
+
 swap() {
+  # podman is not relied on to make the directory the containers write to.
+  run mkdir -p "$log_dir"
+
   # The proxy first, so that nothing new reaches the application while it
   # stops. The application closes its listener on SIGTERM but keeps its timers,
   # so the grace period is what ends it.
@@ -122,6 +183,7 @@ swap() {
     run podman stop -t 2 "${project}_app_1"
     run podman rm "${project}_app_1"
   fi
+  set_aside_logs
 
   # Recreates the database and the store if their definitions changed and
   # leaves them running otherwise; the data is in the volumes either way. The
@@ -144,15 +206,17 @@ swap() {
   step "wait for $url"
   if [ -n "$dry_run" ]; then
     printf '+ curl -fsS -o /dev/null %s\n' "$url"
-    return
+  else
+    i=0
+    until curl -fsS -o /dev/null "$url"; do
+      i=$((i + 1))
+      [ "$i" -lt 60 ] || die "/healthz did not answer 200 within a minute"
+      sleep 1
+    done
+    echo "serving"
   fi
-  i=0
-  until curl -fsS -o /dev/null "$url"; do
-    i=$((i + 1))
-    [ "$i" -lt 60 ] || die "/healthz did not answer 200 within a minute"
-    sleep 1
-  done
-  echo "serving"
+
+  compress_logs
 }
 
 case "${1:-}" in
@@ -204,7 +268,7 @@ case "${1:-}" in
     [ -n "$data_dir" ] || die "HUMANDBS_DATA_DIR is not set in .env"
     # shellcheck disable=SC2088 # a literal `~/` from .env is what is matched
     case $data_dir in "~/"*) data_dir="$HOME/${data_dir#"~/"}" ;; esac
-    backup="$data_dir/backup/$(date +%Y%m%d-%H%M%S)-before-${tag}.dump"
+    backup="$data_dir/backup/${stamp}-before-${tag}.dump"
     if [ -n "$dry_run" ]; then
       printf '+ podman exec %s pg_dump -Fc ... > %s\n' "${project}_db_1" "$backup"
     else

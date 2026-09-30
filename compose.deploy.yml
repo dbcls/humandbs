@@ -9,25 +9,59 @@
 # accepts them. Rootless podman maps the invoking user onto container root and
 # everything else onto a range of its own, so a container process that is not
 # root reaches a bind mount as nobody would — which is what each line puts back.
+#
+# The `logging` lines write each long-running service's output to a file of its
+# own under HUMANDBS_LOG_DIR instead of the host's journal, whose size is set
+# for the whole host and whose oldest lines go as soon as anything else on it
+# writes a lot. **The directory is on another disk than the data**: podman
+# writes a line only after reading it from the container, so a write that
+# stalls there stalls every process writing to its stdout, the proxy and the
+# application included. scripts/deploy.sh renames the application's and the
+# proxy's files when it replaces those two containers; the others are appended
+# to by every container made for the service.
 services:
   # The image drops to `postgres` before it reads the initialisation scripts.
   db:
     userns_mode: "keep-id:uid=999,gid=999"
+    logging:
+      driver: k8s-file
+      options:
+        path: ${HUMANDBS_LOG_DIR:?HUMANDBS_LOG_DIR is required}/db.log
 
   # The image's entrypoint drops to `seaweed` (1000) and would chown the data
   # directory to it otherwise.
   s3:
     userns_mode: "keep-id:uid=1000,gid=1000"
+    logging:
+      driver: k8s-file
+      options:
+        path: ${HUMANDBS_LOG_DIR:?HUMANDBS_LOG_DIR is required}/s3.log
 
   # The image runs as `node`. It writes what the ICD10 import downloads under
   # the mounted `migration/input/`, which the deploying user owns.
   tools:
     userns_mode: "keep-id:uid=1000,gid=1000"
 
+  app:
+    logging:
+      driver: k8s-file
+      options:
+        path: ${HUMANDBS_LOG_DIR:?HUMANDBS_LOG_DIR is required}/app.log
+
+  proxy:
+    logging:
+      driver: k8s-file
+      options:
+        path: ${HUMANDBS_LOG_DIR:?HUMANDBS_LOG_DIR is required}/proxy.log
+
   # The image runs as `appuser`. It writes logs, results, and other persistent data
   # under directories the deploying user owns.
   assistant-api:
     userns_mode: "keep-id:uid=1000,gid=1000"
+    logging:
+      driver: k8s-file
+      options:
+        path: ${HUMANDBS_LOG_DIR:?HUMANDBS_LOG_DIR is required}/assistant-api.log
 
 # The data a deployment serves outlives the container runtime, so the two
 # volumes are directories the deployment names rather than storage podman

@@ -48,6 +48,7 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 | `HUMANDBS_S3_ACCESS_KEY` / `HUMANDBS_S3_SECRET_KEY` | ファイルストアの鍵。配置先ごとに作る (下の「ファイルストアの鍵」) |
 | `HUMANDBS_DATA_DIR` | DB とファイルストアのデータと、DB の backup を保存する dir (下の「データの保存先」) |
 | `HUMANDBS_BACKUP_DIR` | 日次の backup の保存先 (下の「backup」)。backup を取らない staging では空 |
+| `HUMANDBS_LOG_DIR` | container の出力を書く dir (下の「ログ」)。`HUMANDBS_DATA_DIR` と別のディスクの絶対パスにする。podman は `~/` を展開しない |
 | `HUMANDBS_NOINDEX` | `true` にすると、検索エンジンに載せない ([public-site.md](public-site.md) の「検索エンジンとリンクのプレビュー」)。staging は `true`、本番は空 |
 | `HUMANDBS_SLACK_WEBHOOK_URL` | Slack への通知の送り先 ([publishing.md](publishing.md) の「Slack への通知」)。空なら送らない |
 | `HUMANDBS_SLACK_INTERVAL_MINUTES` | Slack への通知の間隔 (分)。1440 の約数で、空なら 60。約数でない値では起動しない |
@@ -74,6 +75,27 @@ DB とファイルストアのデータをホストのどこに保存するか�
 - ポータルへの書き込みは admin の操作だけなので、DB の保存先の書き込みの速さは画面の速さにほとんど影響しない。
 - 更新のたびに、migration の前に `pg_dump -Fc` で `HUMANDBS_DATA_DIR/backup/<日時>-before-<tag>.dump` を作る。古いものは手で消す。データと同じファイルシステムにあるので、防げるのは migration の失敗であり、保存先の故障ではない。保存先の故障には、別のディスクに取る日次の backup (下の「backup」) で備える。
 
+## ログ
+
+配置した container の出力 (stdout と stderr) をどこに残し、どうローテーションするかの話である。
+
+- `db`・`s3`・`app`・`proxy`・`assistant-api` の出力は、`compose.deploy.yml` の設定で `HUMANDBS_LOG_DIR/<service>.log` に書く (podman の log driver の `k8s-file`)。各行の先頭に時刻と `stdout` / `stderr` が付く。`app` は要求ごとに 1 行を stdout に、エラーを stderr に書く。`proxy` は nginx の access log を stdout に、error log を stderr に書く。
+- podman の既定の journald に書かないのは、ホストの journald の保存量がホスト全体で決まるためである。同じホストのほかの出力が多いと、数時間前の行も消える。
+- `HUMANDBS_LOG_DIR` は `HUMANDBS_DATA_DIR` と別のディスクにする。データのディスクが止まったときのエラーを残すためである。同じディスクに書くと、ログの書き込みが止まったときに、stdout に書こうとした `app` と nginx も止まり、DB を使わない応答 (静的ファイルなど) まで返らなくなる。
+- dir は最初の起動の前に作り、配置先のユーザーの所有にする。`scripts/deploy.sh` も、無ければ作る。
+- ローテーションは更新と戻すときに `app` と `proxy` のファイルにだけ行う。`scripts/deploy.sh` が 2 つの container を消したあとに `<service>-<日時>-before-<tag>.log` に名前を変え、`/healthz` が 200 を返してから gzip する。日時と tag は、同じ更新で取る DB の backup の名前と同じにする。圧縮を入れ替えの間に行わないのは、大きなファイルの圧縮でサイトの止まる時間が延びるためである。途中で止まって圧縮していないファイルは、次の更新で圧縮する。
+- `db`・`s3`・`assistant-api` のファイルはローテーションしない。これらの container は定義が変わったときにしか作り直さず、出力も少ないためである。作り直した container は、同じファイルに追記する。
+- ログは消さない。
+- `tools`・`migrate` の出力はファイルに書かない。`run` で実行し、出力は端末に出るためである。
+
+```bash
+tail -f <HUMANDBS_LOG_DIR>/app.log                # アプリの出力を見る
+grep ' stderr ' <HUMANDBS_LOG_DIR>/app.log        # 今のバージョンのエラーを見る
+zgrep ' stderr ' <HUMANDBS_LOG_DIR>/app-*.log.gz  # 前のバージョンのエラーを見る
+```
+
+`podman logs <project>_app_1` も使えるが、読むのはローテーションしていない今のファイルだけである。
+
 ## 初回
 
 配置先に初めてポータルを起動する手順である。配置先の dir で、配置先のユーザーとして実行する。
@@ -83,6 +105,7 @@ git clone <repo> <dir> && cd <dir>                           # source を取得�
 cp env.production .env                                       # staging なら env.staging。CHANGE_ME を埋める
 ln -s compose.deploy.yml compose.override.yml                # 配置先の設定を読み込ませる
 mkdir -p <HUMANDBS_DATA_DIR>/pgdata <HUMANDBS_DATA_DIR>/s3data   # .env に書いた dir の下にデータの dir を作る
+mkdir -p <HUMANDBS_LOG_DIR>                                  # ログの dir を作る
 podman-compose build app proxy tools migrate                 # image を作る
 podman-compose up -d db s3                                   # DB とファイルストアを起動する
 podman-compose run --rm -T migrate                           # schema を当て、アプリの role と権限を作る
@@ -109,7 +132,8 @@ scripts/deploy.sh            # tag を省くと、checkout している commit �
 1. 4 つの image (`app`・`proxy`・`tools`・`migrate`) を build し、tag を付ける。`assistant-api` が起動していれば、その image も build して tag を付ける。
 2. DB の backup を取る。
 3. migration を当てる。`migrate` は `--no-deps` で実行し、動いている DB をそのまま使う。
-4. `proxy`、`app` の順に止め、DB とファイルストアを今の定義に合わせてから、`app` と `proxy` を起動する。`/healthz` が 200 を返すまで待つ。
+4. `proxy`、`app` の順に止め、2 つのログの名前を変える。DB とファイルストアを今の定義に合わせてから、`app` と `proxy` を起動する。`/healthz` が 200 を返すまで待つ。
+5. 名前を変えたログを圧縮する (上の「ログ」)。
 
 - 止まるのは、手順 4 の `app` と `proxy` の入れ替えの数秒である。DB とファイルストアは、`compose*.yml` か `.env` が変わったときだけ、この入れ替えの間に作り直す。podman-compose は定義の hash が合わない container を消してから起動するためである。データは volume にあるので消えない。
 - tag は `app` の image に書き込み、管理画面のトップと `/healthz` の応答 (`version`) に表示する。どの commit が動いているかを、配置先に入らずに確かめられるようにするためである。
@@ -188,4 +212,5 @@ scripts/backup.sh restore-files <path>    # HUMANDBS_BACKUP_DIR/files/ の下の
 - 環境ごとに compose の file を分けること。違いは `.env` に書き、env の template は値の雛形でしかない。
 - 配置先のアドレスやホスト名を repo に書くこと。
 - 配置先のホストの外に backup をコピーすること。ホストごと失うと、backup も失う。
+- ログを日ごとや大きさでローテーションすること。ローテーションは container を作り直す更新と戻すときだけに行い、cron には頼らない。podman の log driver の大きさの上限は、超えるとファイルを空にして前の中身を残さないので使わない。
 - アシスタントを既定で起動すること。起動・停止・更新は assistant-api のサービス名を指定したコマンドだけで行い、ポータルを止めない。手順と使わないコマンドは `assistant-api/README.md` の「配信先で動かす」にある。
