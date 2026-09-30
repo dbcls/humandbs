@@ -1,7 +1,7 @@
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { isSearchBusy, orBusy, RETRY_AFTER_SECONDS } from "./busy.server"
+import { isSearchBusy, limiter, orBusy, RETRY_AFTER_SECONDS, SearchesFull } from "./busy.server"
 
 const WAITED_TOO_LONG = new Error("timeout exceeded when trying to connect")
 const RAN_TOO_LONG = Object.assign(new Error("canceling statement due to statement timeout"), { code: "57014" })
@@ -31,6 +31,76 @@ describe("isSearchBusy", () => {
     const error: Error & { cause?: unknown } = new Error("loop")
     error.cause = error
     expect(isSearchBusy(error)).toBe(false)
+  })
+})
+
+/** A call that finishes when told to, and records when it started. */
+function held(started: number[], at: number): { run: () => Promise<void>, finish: () => void } {
+  const { promise, resolve } = Promise.withResolvers<undefined>()
+  return {
+    run: () => {
+      started.push(at)
+      return promise
+    },
+    finish: () => {
+      resolve(undefined)
+    },
+  }
+}
+
+/** Lets every promise that can settle settle. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+describe("limiter", () => {
+  it("runs no more than its size at once, starts the rest in the order they came, and finishes all of them", async () => {
+    await fc.assert(fc.asyncProperty(
+      fc.integer({ min: 1, max: 4 }),
+      fc.integer({ min: 1, max: 12 }).chain((count) => fc.tuple(fc.constant(count), fc.shuffledSubarray([...Array(count).keys()], { minLength: count }))),
+      async (size, [count, finishing]) => {
+        const limit = limiter({ size, waitMs: 60_000 })
+        const started: number[] = []
+        let running = 0
+        let most = 0
+        const calls = Array.from({ length: count }, (_, at) => held(started, at))
+        const results = calls.map((call, at) => limit(async () => {
+          running++
+          most = Math.max(most, running)
+          await call.run()
+          running--
+          return at
+        }))
+        await settle()
+        for (const at of finishing) {
+          calls[at]?.finish()
+          await settle()
+        }
+        expect(await Promise.all(results)).toEqual([...Array(count).keys()])
+        expect(most).toBe(Math.min(size, count))
+        expect(started).toEqual([...Array(count).keys()])
+      },
+    ), { numRuns: 60 })
+  })
+
+  it("refuses a call that waited as long as it may, as a busy search, and still starts the next once one finishes", async () => {
+    const limit = limiter({ size: 1, waitMs: 20 })
+    const started: number[] = []
+    const first = held(started, 0)
+    const running = limit(first.run)
+    const refused = await limit(() => Promise.resolve("never")).catch((error: unknown) => error)
+    expect(refused).toBeInstanceOf(SearchesFull)
+    expect(isSearchBusy(new Error("outer", { cause: refused }))).toBe(true)
+
+    first.finish()
+    await running
+    await expect(limit(() => Promise.resolve("next"))).resolves.toBe("next")
+  })
+
+  it("gives the place of a call that fails to the one waiting", async () => {
+    const limit = limiter({ size: 1, waitMs: 60_000 })
+    const failing = limit(() => Promise.reject(new Error("boom")))
+    const waiting = limit(() => Promise.resolve("ran"))
+    await expect(failing).rejects.toThrow("boom")
+    await expect(waiting).resolves.toBe("ran")
   })
 })
 

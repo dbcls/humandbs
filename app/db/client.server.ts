@@ -44,16 +44,18 @@ export function getPool(): Pool {
 }
 
 /**
- * The limits of the connections the public search runs on (`getSearchDb`):
- * how many there are, how long a search waits for one to come free, and how
- * long one statement may run. A search past either time is refused with a 503
- * (`search/busy.server.ts`).
+ * The limits of the public search (`getSearchDb`): how many searches run at
+ * once, how many connections they share, how long a search waits to start and
+ * for a connection to come free, and how long one statement may run. A search
+ * past any of them is refused with a 503 (`search/busy.server.ts`).
  *
- * One listing page sends its statements at once, a handful of them, so a few
- * connections serve a person at a time with room to spare, and a crawler asking
- * for search after search is held to the same few.
+ * **The searches are limited as well as the connections.** One listing page
+ * borrows a connection a dozen times or more, a few at once, so with only the
+ * connections limited every search waits its turn at every borrow: each wait
+ * stays under the limit, the waits add up to many times it, and nothing is
+ * refused while every reader waits.
  */
-export const SEARCH_POOL = { connections: 4, waitMs: 5_000, statementMs: 10_000 } as const
+export const SEARCH_POOL = { searches: 8, connections: 8, waitMs: 5_000, statementMs: 10_000 } as const
 
 /**
  * The connections the public search runs on: the listings, the exports and the

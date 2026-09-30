@@ -44,7 +44,7 @@ import {
 } from "~/public/queries.server"
 import { parseVersionSegment } from "~/public/urls"
 import { findVersion, latestOf } from "~/public/versions"
-import { isSearchBusy, RETRY_AFTER_SECONDS } from "~/search/busy.server"
+import { isSearchBusy, RETRY_AFTER_SECONDS, searching } from "~/search/busy.server"
 import { loadFacetDefinitions, publishedFacetValues, publishedFormats } from "~/search/catalog.server"
 import { parseQuery, serializeQuery } from "~/search/dsl"
 import { BUILT_IN_FIELDS, FILE_TYPE_FIELD, queryFields } from "~/search/fields"
@@ -322,7 +322,7 @@ function datasetObjects(
  */
 async function orRefused(request: Request, respond: () => Promise<Response>): Promise<Response> {
   try {
-    return await respond()
+    return await searching(respond)
   } catch (error) {
     if (!isSearchBusy(error)) throw error
     return problemResponse(searchRefused(request), { "Retry-After": String(RETRY_AFTER_SECONDS) })
