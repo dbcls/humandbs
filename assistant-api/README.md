@@ -75,7 +75,7 @@ container を削除するので、ポータルの更新でも起動しない。`
 
 ### 別の環境の work/ を取り込む
 
-別の環境で動かしていたアシスタントの `work/` (`uploads/`・`results/`・`logs/`) を、起動している container にコピーする。ファイルの所有者は container の中のユーザーに合わせられる。申請の一覧は要求のたびにファイルから読むので、コピーしたあとに起動し直さなくてよい。
+別の環境で動かしていたアシスタントの `work/` (`uploads/`・`results/`・`logs/`) を、起動している container にコピーする。ファイルの所有者は container の中のユーザーに合わせられる。申請の一覧はリクエストのたびにファイルから読むので、コピーしたあとに起動し直さなくてよい。
 
 ```bash
 podman cp <work のコピー>/. <project>_assistant-api_1:/app/work/

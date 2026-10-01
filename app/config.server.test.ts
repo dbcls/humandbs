@@ -281,7 +281,7 @@ describe("loadConfig と Slack の通知の間隔", () => {
  * on the clock, and it also has a floor, because each refresh loads another
  * project's database. Zero switches the loop off.
  */
-describe("loadConfig と外部から取ってきたデータを取り直す間隔", () => {
+describe("loadConfig と外部データを取り直す間隔", () => {
   const withInterval = (value: string | undefined) => ({ ...VALID, HUMANDBS_UPSTREAM_INTERVAL_MINUTES: value })
 
   it("設定が無いときと空のときは 180 分", () => {

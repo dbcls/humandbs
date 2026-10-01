@@ -2,11 +2,11 @@
 
 staging と production にポータルを配置し、更新し、戻し、backup を取る手順をまとめる。手元の開発環境は [development.md](development.md)、部品の構成は [overview.md](overview.md) にある。
 
-staging と production は、この repo から作った image で動く。配置の定義は `compose.yml` で、source は mount しない。配置先は rootless podman と podman-compose 1.0.6 なので、コマンドは `podman-compose` で書き、配置先で要る設定は `compose.deploy.yml` が足す。配置先ごとに違う値は `.env` にだけ書く。開発環境は、同じ定義に `compose.dev.yml` を重ねたものである。
+staging と production は、この repo から作った image で動く。配置の定義は `compose.yml` で、source は mount しない。配置先は rootless podman と podman-compose 1.0.6 なので、コマンドは `podman-compose` で書く。配置先で要る設定は、`compose.deploy.yml` で足す。配置先ごとに違う値は `.env` にだけ書く。開発環境は、同じ定義に `compose.dev.yml` を重ねたものである。
 
 ## 構成
 
-どの image をどの service で使い、proxy が何を処理するかの話である。
+どの image をどの service で使い、proxy が何を処理するかを説明する。
 
 | image (Dockerfile の target) | 中身 | 使う service |
 |---|---|---|
@@ -15,23 +15,23 @@ staging と production は、この repo から作った image で動く。配�
 | `tools` | すべての依存と source。TypeScript を tsx で動かす | `migrate`、`tools` |
 
 - 配置する container に schema の owner の接続を渡さない。`app` に渡すのは `humandbs_app` (操作の記録を書き換えられない role) の URL だけで、owner の URL は `migrate` と `tools` にだけ渡す。1 回だけ行う操作 (admin の追加と削除、bucket の作成、ICD10 の取り込み) は `tools` で実行する。例は `podman-compose run --rm -T tools npm run admin:list` である。
-- dev サーバーを配置に使わない。vite は知らないホスト名の要求を拒否し、`react-router-serve` は `NODE_ENV` が production でないと例外の stack trace を返すためである。待ち受ける port は dev サーバーと同じなので、nginx の設定は 1 つで済む。
-- 静的ファイルは proxy が返す。proxy の image にあるファイルはそこから返し、無いものは `app` に渡す。`app` の image も同じファイルを含むので、proxy に無いファイルも返せる。`/assets/` の下はファイル名に中身の hash が入るので長いキャッシュの期限を付け、それ以外 (アイコン) と画面には付けない。`robots.txt` は配置ごとに内容が違うので、アプリが返す。
-- 画面と API の JSON はアプリが圧縮する。`react-router-serve` の圧縮の middleware が、クライアントが受け付けるなら Brotli で、そうでなければ gzip で圧縮し、proxy は圧縮済みの応答をそのまま返す。proxy が gzip で圧縮するのは、それ以外 (静的ファイル、ファイルストアのファイル、API の一括取得の NDJSON) である。アプリの圧縮を止めて proxy にまとめないのは、Brotli のほうが gzip より小さくなるためである。nginx の image は `gzip` が off なので、`docker/nginx/default.conf` で on にしている。
-- 安全のための header (CSP・`X-Frame-Options`・`nosniff`・`Referrer-Policy`) は、proxy がすべての応答に付ける。値は `docker/nginx/default.conf` にある。アプリが自分で `Referrer-Policy` を決めた応答 (共有リンク) はその値を残す。配信するファイルの header は [files.md](files.md) の「配信の安全」にある。
-- proxy は平文で待ち受け、TLS はホストの外の終端で処理する。proxy が `Strict-Transport-Security` を付けるのは、TLS の終端が `X-Forwarded-Proto: https` を渡したときだけである。終端がこの header を渡さないなら、HSTS は終端の側で付ける。
-- proxy は、app とファイルストアに渡す `Host` を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定し、ファイルストアには `X-Forwarded-Host` も同じ値で渡す。TLS の終端や途中の中継が `Host` を書き換えても、書き込みの `Origin` の検査 ([auth.md](auth.md) の「CSRF」) と署名付き URL の検証を、ブラウザがアクセスしたアドレスで行うためである。ファイルストアは `X-Forwarded-Host` があればその値で署名を検証する。host は proxy の起動時にこの変数から取り出し、取り出せなければ proxy は起動しない。
-- 公開の検索 (一覧・書き出し・API の検索と一括取得・`/api/fields`) は、ほかとは別の DB の接続の pool を使う。同時に走る検索の数、同時に使う接続の数、空きを待つ時間、1 つの SQL の時間に上限があり (値は `app/db/client.server.ts`)、超えたときは画面も API も 503 を `Retry-After` 付きで返す。検索が大量に来ても、研究のページ・管理画面・`/healthz` が使う接続は埋まらない。同時に走る検索の数にも上限を置くのは、1 回の検索が接続を何度も借りるためである。接続の数だけに上限を置くと、1 回ごとの待ちは上限に収まっても、それを合わせた待ちが長くなり、503 にならないまま応答が遅れる。
-- アプリの DB の接続では JIT を使わず、一度開いた接続を閉じない。条件の多い検索はプランナの見積もりが大きくなり、JIT のコンパイルが実行よりずっと長くかかるためである。新しい接続は最初の SQL で DB の内部の定義と全文検索の索引を読み込むので、閉じると、空いた時間のあとの要求がそのぶん遅くなるためでもある。項目定義と語彙の変更の通知を受ける接続を、pool とは別に 1 本持つ ([catalog.md](catalog.md) の「語彙」)。
+- dev サーバーを配置に使わない。vite は知らないホスト名のリクエストを拒否し、`react-router-serve` は `NODE_ENV` が production でないと例外の stack trace を返すためである。待ち受ける port は dev サーバーと同じなので、nginx の設定は 1 つで済む。
+- 静的ファイルは proxy が返す。proxy の image にあるファイルは proxy の image から返し、無いファイルのリクエストは `app` に渡す。`app` の image も同じファイルを含むので、proxy に無いファイルも返せる。`/assets/` の下はファイル名に中身の hash が入るので、長いキャッシュの期限を付ける。`/assets/` 以外 (アイコン) と画面には、長いキャッシュの期限を付けない。`robots.txt` は配置ごとに内容が違うので、アプリが返す。
+- 画面と API の JSON はアプリが圧縮する。`react-router-serve` の圧縮の middleware が、クライアントが受け付けるなら Brotli で、受け付けなければ gzip で圧縮する。proxy は、圧縮済みの応答をそのまま返す。proxy が gzip で圧縮するのは、画面と API の JSON 以外 (静的ファイル、ファイルストアのファイル、API の一括取得の NDJSON) である。アプリの圧縮を止めて proxy にまとめないのは、Brotli のほうが gzip より小さくなるためである。nginx の image は `gzip` が off なので、`docker/nginx/default.conf` で on にしている。
+- 安全のための header (CSP・`X-Frame-Options`・`nosniff`・`Referrer-Policy`) は、proxy がすべての応答に付ける。値は `docker/nginx/default.conf` にある。アプリが自分で `Referrer-Policy` を決めた応答 (共有リンク) では、アプリが決めた値を残す。配信するファイルの header は [files.md](files.md) の「配信の安全」にある。
+- proxy は平文で待ち受け、TLS はホストの外の終端で処理する。proxy が `Strict-Transport-Security` を付けるのは、TLS の終端が `X-Forwarded-Proto: https` を渡したときだけである。終端が `X-Forwarded-Proto` を渡さないなら、HSTS は終端の側で付ける。
+- proxy は、app とファイルストアに渡す `Host` を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定し、ファイルストアには `X-Forwarded-Host` も同じ値で渡す。TLS の終端や途中の中継が `Host` を書き換えても、書き込みの `Origin` の検査 ([auth.md](auth.md) の「CSRF」) と presigned URL の検証を、ブラウザがアクセスしたアドレスで行うためである。ファイルストアは、`X-Forwarded-Host` があれば、`X-Forwarded-Host` の値で署名を検証する。host は、proxy の起動時に `HUMANDBS_AUTH_REDIRECT_URI` から取り出す。取り出せなければ、proxy は起動しない。
+- 公開の検索 (一覧・書き出し・API の検索と一括取得・`/api/fields`) は、ほかとは別の DB の接続の pool を使う。同時に実行する検索の数、同時に使う接続の数、空きを待つ時間、1 つの SQL の時間に上限があり (値は `app/db/client.server.ts`)、上限を超えたときは、画面も API も 503 を `Retry-After` 付きで返す。検索が大量に来ても、研究のページ・管理画面・`/healthz` が使う接続は使い切られない。同時に実行する検索の数にも上限を設けるのは、1 回の検索が接続を何度も借りるためである。接続の数だけに上限を設けると、1 回ごとの待ちは上限に収まっても、待ちの合計が長くなり、503 にならないまま応答が遅れる。
+- アプリの DB の接続では JIT を使わず、一度開いた接続を閉じない。JIT を使わないのは、条件の多い検索はプランナの見積もりが大きくなり、JIT のコンパイルが実行よりずっと長くかかるためである。接続を閉じないのは、新しい接続は最初の SQL で DB の内部の定義と全文検索の索引を読み込むので、接続を閉じると、空いた時間のあとのリクエストが読み込みのぶん遅くなるためである。項目定義と語彙の変更の通知を受ける接続を、pool とは別に 1 本使う ([catalog.md](catalog.md) の「語彙」)。
 - アシスタント (`assistant-api`) は `assistant` network にあり、同じ network にいるのは `app` だけである。アシスタントからは DB・ファイルストア・filer に接続できない。外部への通信はできる。
 
 ### podman-compose 1.0.6 に合わせていること
 
 compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いている。
 
-- profile を解釈しないので、`up` には起動する service を並べて書く。
+- podman-compose 1.0.6 は profile を解釈しないので、`up` には起動する service を並べて書く。
 - `depends_on` は起動の順番にしか適用されないので、`migrate` は `up` の前に手で実行する。
-- healthcheck は `CMD-SHELL` で書く。`CMD` の配列は引用符を正しく扱わない。
+- healthcheck は `CMD-SHELL` で書く。`CMD` の配列は、引用符を正しく扱えない。
 - あとの file で上書きする volume は、元の file で `{}` と書く。
 - `build` は失敗しても終了コード 0 で終わる。`scripts/deploy.sh` は、build した app の image の `HUMANDBS_VERSION` が今回の tag でなければ止まる。止まらないと、前の image に新しい tag を付けて入れ替えてしまうためである。
 
@@ -41,7 +41,7 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 
 | 変数 | 配置での意味 |
 |---|---|
-| `HUMANDBS_AUTH_REDIRECT_URI` | サイトの origin はこの値から決まる。presigned URL の宛先と cookie の `Secure` もここで決まるので、外から実際に見えるアドレスを書く。proxy が app とファイルストアに渡す host もこの値なので、別のアドレスでアクセスすると、表示はできるが書き込みと署名付き URL は失敗する |
+| `HUMANDBS_AUTH_REDIRECT_URI` | サイトの origin はこの値から決まる。presigned URL の宛先と cookie の `Secure` もこの値で決まるので、外から実際に見えるアドレスを書く。proxy が app とファイルストアに渡す host もこの値なので、別のアドレスでアクセスすると、表示はできるが書き込みと presigned URL は失敗する |
 | `HUMANDBS_PUBLIC_BIND_HOST` / `HUMANDBS_PUBLIC_PORT` | proxy の待ち受け。TLS の終端が別のホストなので `0.0.0.0` にする |
 | `HUMANDBS_DATABASE_URL` / `HUMANDBS_OWNER_DATABASE_URL` | アプリの role と schema の owner。アプリの role は `migrate` が URL のとおりに作る |
 | `HUMANDBS_JGA_DATABASE_URL` | 申請管理システムの DB。配置先 (踏み台の内側) からは直接接続できるので、手元と違って値を埋める |
@@ -52,40 +52,40 @@ compose の定義は podman-compose 1.0.6 が解釈できる範囲で書いて�
 | `HUMANDBS_NOINDEX` | `true` にすると、検索エンジンに載せない ([public-site.md](public-site.md) の「検索エンジンとリンクのプレビュー」)。staging は `true`、本番は空 |
 | `HUMANDBS_SLACK_WEBHOOK_URL` | Slack への通知の送り先 ([publishing.md](publishing.md) の「Slack への通知」)。空なら送らない |
 | `HUMANDBS_SLACK_INTERVAL_MINUTES` | Slack への通知の間隔 (分)。1440 の約数で、空なら 60。約数でない値では起動しない |
-| `HUMANDBS_UPSTREAM_INTERVAL_MINUTES` | 外部から取ってきたデータを取り直す間隔 (分) ([upstream.md](upstream.md) の「取り直しと失敗」)。1440 の約数で 60 以上、空なら 180。`0` なら自動では取り直さない。staging は `0` にし、取り直すときは CLI を実行する |
+| `HUMANDBS_UPSTREAM_INTERVAL_MINUTES` | 外部データを取り直す間隔 (分) ([upstream.md](upstream.md) の「取り直しと失敗」)。1440 の約数で 60 以上、空なら 180。`0` なら自動では取り直さない。staging は `0` にし、取り直すときは CLI を実行する |
 
-redirect URI は Keycloak の client にも登録されている必要がある。登録が無いと認可要求が `400 Invalid parameter: redirect_uri` で失敗し、公開ページは表示されるのにログインだけができない状態になる。新しいアドレスで配置するときは、先に登録を依頼する。
+redirect URI は Keycloak の client にも登録されている必要がある。登録が無いと、認可リクエストが `400 Invalid parameter: redirect_uri` で失敗し、公開ページは表示されるのにログインだけができない状態になる。新しいアドレスで配置するときは、先に登録を依頼する。
 
 ### ファイルストアの鍵
 
 非公開 bucket のファイルを読めるかどうかは、URL に付いた署名だけで決まる。`/private/` は proxy が外部に公開しているためである。署名に使う鍵は `.env` の 2 行なので、template の値や他の配置先の値のまま使うと、その値を知る人は誰でも非公開 bucket の署名を作れる。
 
 - 鍵は配置先ごとに新しく作る。値に `|`・`&`・`\`・`"` を含めない。起動時に `sed` で JSON に埋め込むためである。
-- 同じ鍵をアプリとファイルストアの両方が使い、ファイルストアは起動時にしか鍵を読まない。`.env` を変えると定義の hash が変わるので、次に `podman-compose up -d db s3 app proxy` を実行すると両方が作り直される。
+- 同じ鍵をアプリとファイルストアの両方が使い、ファイルストアは起動時にしか鍵を読まない。`.env` を変えると定義の hash が変わるので、次に `podman-compose up -d db s3 app proxy` を実行すると、アプリとファイルストアの両方が作り直される。
 
 ## データの保存先
 
-DB とファイルストアのデータをホストのどこに保存するかの話である。
+DB とファイルストアのデータを、ホストのどこに保存するかを説明する。
 
-- DB (`pgdata`) とファイルストア (`s3data`) の中身は、`HUMANDBS_DATA_DIR` の下の `pgdata/` と `s3data/` に置く。podman は named volume を container の実行環境の中に置くが、配信するデータ (特に数 TB の配信ファイル) はホストを移ったり実行環境を作り直したりしても残る場所に置く必要がある。そのため `compose.deploy.yml` が 2 つの volume をこの dir への bind にしている。
+- DB (`pgdata`) とファイルストア (`s3data`) の中身は、`HUMANDBS_DATA_DIR` の下の `pgdata/` と `s3data/` に保存する。podman は named volume を container の実行環境の中に作る。しかし、配信するデータ (特に数 TB の配信ファイル) は、ホストを移ったり実行環境を作り直したりしても残る場所に保存する必要がある。そのため、`compose.deploy.yml` で、2 つの volume を `HUMANDBS_DATA_DIR` の下の dir への bind にしている。
 - volume の名前は project 名 (配置先の dir 名) と volume の key から決まるので、dir 名も key も変えない。`down -v` は実行しない。
 - 2 つの dir は最初の起動の前に作り、配置先のユーザーの所有にする。
-- `compose.deploy.yml` の `userns_mode` (`keep-id`) は、`db`・`s3`・`tools`・`assistant-api` の container の中のユーザーを、配置先のユーザーに対応させる設定である。この設定が無いと、bind した dir に書けないか、持ち主の分からないファイルが残る。rootless podman では、container の中の root 以外のユーザーがホストでは別の uid になるためである。保存先が共有のファイルシステムのときに特に問題になる。
-- `tools` にもこの設定が要るのは、ICD10 の取り込みが、取得した配布物を mount した `migration/input/` に書くためである。
-- ポータルへの書き込みは admin の操作だけなので、DB の保存先の書き込みの速さは画面の速さにほとんど影響しない。
-- ファイルストアは、保存先の空きが下限を切るとすべての volume を読み取り専用にし、アップロードを受け付けなくなる。`compose.deploy.yml` はこの下限を、SeaweedFS の既定の「ファイルシステムの 1%」ではなく容量で指定している。保存先が大きな共有のファイルシステムだと、1% でもポータルが保存する量よりずっと大きく、空きが十分に残っているうちにアップロードが止まるためである。
-- 更新のたびに、migration の前に `pg_dump -Fc` で `HUMANDBS_DATA_DIR/backup/<日時>-before-<tag>.dump` を作る。古いものは手で消す。データと同じファイルシステムにあるので、防げるのは migration の失敗であり、保存先の故障ではない。保存先の故障には、別のディスクに取る日次の backup (下の「backup」) で備える。
+- `compose.deploy.yml` の `userns_mode` (`keep-id`) は、`db`・`s3`・`tools`・`assistant-api` の container の中のユーザーを、配置先のユーザーに対応させる設定である。この設定が無いと、bind した dir に書けないか、持ち主の分からないファイルが残る。rootless podman では、container の中の root 以外のユーザーが、ホストでは別の uid になるためである。保存先が共有のファイルシステムのときに、特に問題になる。
+- `tools` にも `userns_mode` の設定が要るのは、ICD10 の取り込みが、取得した配布物を mount した `migration/input/` に書くためである。
+- ポータルへの書き込みは admin の操作だけなので、DB の保存先の書き込みの速さは、画面の速さにほとんど影響しない。
+- ファイルストアは、保存先の空きが下限を下回ると、すべての volume を読み取り専用にし、アップロードを受け付けなくなる。`compose.deploy.yml` では、この下限を、SeaweedFS の既定の「ファイルシステムの 1%」ではなく容量で指定している。保存先が大きな共有のファイルシステムだと、1% でもポータルが保存する量よりずっと大きく、空きが十分に残っているうちにアップロードが止まるためである。
+- 更新のたびに、migration の前に `pg_dump -Fc` で `HUMANDBS_DATA_DIR/backup/<日時>-before-<tag>.dump` を作る。古い dump は手で消す。dump はデータと同じファイルシステムにあるので、防げるのは migration の失敗であり、保存先の故障ではない。保存先の故障には、別のディスクに取る日次の backup (下の「backup」) で備える。
 
 ## ログ
 
-配置した container の出力 (stdout と stderr) をどこに残し、どうローテーションするかの話である。
+配置した container の出力 (stdout と stderr) をどこに残し、どうローテーションするかを説明する。
 
-- `db`・`s3`・`app`・`proxy`・`assistant-api` の出力は、`compose.deploy.yml` の設定で `HUMANDBS_LOG_DIR/<service>.log` に書く (podman の log driver の `k8s-file`)。各行の先頭に時刻と `stdout` / `stderr` が付く。`app` は要求ごとに 1 行を stdout に、エラーを stderr に書く。`proxy` は nginx の access log を stdout に、error log を stderr に書く。
+- `db`・`s3`・`app`・`proxy`・`assistant-api` の出力は、`compose.deploy.yml` の設定で `HUMANDBS_LOG_DIR/<service>.log` に書く (podman の log driver の `k8s-file`)。各行の先頭に時刻と `stdout` / `stderr` が付く。`app` はリクエストごとに 1 行を stdout に、エラーを stderr に書く。`proxy` は nginx の access log を stdout に、error log を stderr に書く。
 - podman の既定の journald に書かないのは、ホストの journald の保存量がホスト全体で決まるためである。同じホストのほかの出力が多いと、数時間前の行も消える。
 - `HUMANDBS_LOG_DIR` は `HUMANDBS_DATA_DIR` と別のディスクにする。データのディスクが止まったときのエラーを残すためである。同じディスクに書くと、ログの書き込みが止まったときに、stdout に書こうとした `app` と nginx も止まり、DB を使わない応答 (静的ファイルなど) まで返らなくなる。
-- dir は最初の起動の前に作り、配置先のユーザーの所有にする。`scripts/deploy.sh` も、無ければ作る。
-- ローテーションは更新と戻すときに `app` と `proxy` のファイルにだけ行う。`scripts/deploy.sh` が 2 つの container を消したあとに `<service>-<日時>-before-<tag>.log` に名前を変え、`/healthz` が 200 を返してから gzip する。日時と tag は、同じ更新で取る DB の backup の名前と同じにする。圧縮を入れ替えの間に行わないのは、大きなファイルの圧縮でサイトの止まる時間が延びるためである。途中で止まって圧縮していないファイルは、次の更新で圧縮する。
-- `db`・`s3`・`assistant-api` のファイルはローテーションしない。これらの container は定義が変わったときにしか作り直さず、出力も少ないためである。作り直した container は、同じファイルに追記する。
+- dir は最初の起動の前に作り、配置先のユーザーの所有にする。`scripts/deploy.sh` も、dir が無ければ作る。
+- ローテーションは、更新と戻すときに、`app` と `proxy` のファイルにだけ行う。`scripts/deploy.sh` が、2 つの container を消したあとに、ファイルの名前を `<service>-<日時>-before-<tag>.log` に変え、`/healthz` が 200 を返してから gzip する。日時と tag は、同じ更新で取る DB の backup の名前と同じにする。圧縮を入れ替えの間に行わないのは、大きなファイルの圧縮でサイトの止まる時間が延びるためである。途中で止まって圧縮していないファイルは、次の更新で圧縮する。
+- `db`・`s3`・`assistant-api` のファイルはローテーションしない。`db`・`s3`・`assistant-api` の container は定義が変わったときにしか作り直さず、出力も少ないためである。作り直した container は、同じファイルに追記する。
 - ログは消さない。
 - `tools`・`migrate` の出力はファイルに書かない。`run` で実行し、出力は端末に出るためである。
 
@@ -99,7 +99,7 @@ zgrep ' stderr ' <HUMANDBS_LOG_DIR>/app-*.log.gz  # 前のバージョンのエ�
 
 ## 初回
 
-配置先に初めてポータルを起動する手順である。配置先の dir で、配置先のユーザーとして実行する。
+配置先で初めてポータルを起動する手順である。配置先の dir で、配置先のユーザーとして実行する。
 
 ```bash
 git clone <repo> <dir> && cd <dir>                           # source を取得する
@@ -109,13 +109,13 @@ mkdir -p <HUMANDBS_DATA_DIR>/pgdata <HUMANDBS_DATA_DIR>/s3data   # .env に書�
 mkdir -p <HUMANDBS_LOG_DIR>                                  # ログの dir を作る
 podman-compose build app proxy tools migrate                 # image を作る
 podman-compose up -d db s3                                   # DB とファイルストアを起動する
-podman-compose run --rm -T migrate                           # schema を当て、アプリの role と権限を作る
+podman-compose run --rm -T migrate                           # schema を適用し、アプリの role と権限を作る
 podman-compose up -d db s3 app proxy                         # アプリと proxy を起動する
 podman-compose run --rm -T tools npm run s3:buckets          # 2 つの bucket を作る
 podman-compose run --rm -T tools npm run icd10:import        # ICD10 を取り込む
 ```
 
-- 依存の service を先に起動するのと `-T` を付けるのは、`podman-compose run` の制約のためである。`--no-deps` を付けても依存の container が要り、TTY の無い環境では `-T` を付けないと container の作成が失敗する。
+- 依存の service を先に起動するのと `-T` を付けるのは、`podman-compose run` の制約のためである。`podman-compose run` は、`--no-deps` を付けても依存の container が要る。TTY の無い環境では、`-T` を付けないと container の作成が失敗する。
 - `/healthz` が 200 を返せば、依存サービスに接続できている。1 つでも接続できなければ 503 になる。
 
 ## 更新
@@ -128,23 +128,23 @@ scripts/deploy.sh --dry-run  # 配置先を変えるコマンドを表示する�
 scripts/deploy.sh            # tag を省くと、checkout している commit の hash の先頭 8 文字を tag にする
 ```
 
-`scripts/deploy.sh` は次の順に進む。新しい image を作り終え、migration を当てるまでは、古い `app` と `proxy` が配信を続ける。
+`scripts/deploy.sh` は次の順に進む。新しい image を作り終え、migration を適用するまでは、古い `app` と `proxy` が配信を続ける。
 
-1. 4 つの image (`app`・`proxy`・`tools`・`migrate`) を build し、tag を付ける。`assistant-api` が起動していれば、その image も build して tag を付ける。
+1. 4 つの image (`app`・`proxy`・`tools`・`migrate`) を build し、tag を付ける。`assistant-api` が起動していれば、`assistant-api` の image も build して tag を付ける。
 2. DB の backup を取る。
-3. migration を当てる。`migrate` は `--no-deps` で実行し、動いている DB をそのまま使う。
+3. migration を適用する。`migrate` は `--no-deps` で実行し、動いている DB をそのまま使う。
 4. `proxy`、`app` の順に止め、2 つのログの名前を変える。DB とファイルストアを今の定義に合わせてから、`app` と `proxy` を起動する。`/healthz` が 200 を返すまで待つ。
 5. 名前を変えたログを圧縮する (上の「ログ」)。
 
-- 止まるのは、手順 4 の `app` と `proxy` の入れ替えの数秒である。DB とファイルストアは、`compose*.yml` か `.env` が変わったときだけ、この入れ替えの間に作り直す。podman-compose は定義の hash が合わない container を消してから起動するためである。データは volume にあるので消えない。
+- 止まるのは、手順 4 の `app` と `proxy` の入れ替えの数秒である。DB とファイルストアは、`compose*.yml` か `.env` が変わったときだけ、入れ替えの間に作り直す。podman-compose は、定義の hash が合わない container を消してから起動するためである。データは volume にあるので消えない。
 - tag は `app` の image に書き込み、管理画面のトップと `/healthz` の応答 (`version`) に表示する。どの commit が動いているかを、配置先に入らずに確かめられるようにするためである。
 - proxy も毎回作り直す。新しいバージョンの静的ファイルは新しい proxy の image にあり、nginx は `app` のアドレスを起動時に 1 度しか引かないためである。
 - `/healthz` の URL は、`.env` の `HUMANDBS_PUBLIC_BIND_HOST` と `HUMANDBS_PUBLIC_PORT` から作る。
-- project に `db`・`s3`・`app`・`proxy`・`assistant-api` 以外の container があると、script は何も変えずにエラーで止まる。1 回だけ実行する container (`run`) は DB とファイルストアに依存しているので、動いている間に作り直すと途中で失敗する。古い定義の container が残っていると、以後の `up` のたびに DB とファイルストアが作り直される。`run` が終わるのを待ち、残った container を消してから実行し直す。
+- project に `db`・`s3`・`app`・`proxy`・`assistant-api` 以外の container があると、script は何も変えずにエラーで止まる。1 回だけ実行する container (`run`) は DB とファイルストアに依存しているので、動いている間に作り直すと途中で失敗する。古い定義の container が残っていると、以後の `up` のたびに DB とファイルストアが作り直される。`run` が終わるのを待ち、残った container を消してから、script を実行し直す。
 
 ## 戻す
 
-前のバージョンに戻す手順である。更新のたびに付けた tag の image は残っているので、image を入れ替えるだけでどのバージョンにも戻せる。要らなくなった tag の image は `podman image rm` で消す。
+前のバージョンに戻す手順である。更新のたびに付けた tag の image は残っているので、image を入れ替えるだけで、どのバージョンにも戻せる。要らなくなった tag の image は `podman image rm` で消す。
 
 ```bash
 scripts/deploy.sh rollback <tag>      # その tag の image に入れ替える。migration は実行しない。--dry-run も付けられる
@@ -161,11 +161,11 @@ podman-compose run --rm -T migrate                                              
 podman start <project>_app_1 && podman start <project>_proxy_1                               # アプリと proxy を起動する
 ```
 
-role は database の外にあるので dump に入らず、database への接続の権限は作り直した database から消えている。それを `migrate` が設定し直す。権限だけを設定するなら `tools` で `npm run db:grants` を実行してもよい。
+role は database の外にあるので、dump に入らない。database への接続の権限は、作り直した database から消えている。接続の権限は、`migrate` が設定し直す。権限だけを設定するなら、`tools` で `npm run db:grants` を実行してもよい。
 
 ## backup
 
-保存先の故障に備えて、production の DB と配信ファイルを毎日、`HUMANDBS_DATA_DIR` とは別のディスクにコピーする話である。staging では取らない。production の DB の dump で入れ直せるためである。
+保存先の故障に備えて、production の DB と配信ファイルを、毎日 `HUMANDBS_DATA_DIR` とは別のディスクにコピーする。staging では backup を取らない。staging は production の DB の dump で入れ直せるためである。
 
 ```bash
 scripts/backup.sh                         # backup を取る。--dry-run も付けられる
@@ -187,20 +187,20 @@ scripts/backup.sh restore-files <path>    # HUMANDBS_BACKUP_DIR/files/ の下の
 
 - dump・`.env` のコピー・`files/deleted/` の日付の dir は、30 日より古いものを消す。日数を DB と配信ファイルで揃えるのは、30 日以内のどの日についても、その日の DB と配信ファイルの両方を戻せるようにするためである。
 - 配信ファイルは rclone で S3 API から読む。ファイルストアのデータの dir (`s3data`) は直接コピーしない。動いているファイルストアの dir をコピーすると、書き込みの途中の状態を取ることがあるためである。
-- 2 つの bucket は順にコピーするので、その間に公開・非公開を切り替えたファイルは、その日の backup では両方の bucket にあるか、どちらにも無いことがある。
-- rclone は、project の network に compose の外から起動した container で動かす。ファイルストアは network の外に port を公開していないためである。compose の label が無いので、`scripts/deploy.sh` の検査 (project に余分な container があると止まる) の対象にならない。更新でファイルストアが作り直されるとその日の backup は失敗し、次の日に取り直す。
+- 2 つの bucket は順にコピーする。そのため、コピーの間に公開・非公開を切り替えたファイルは、その日の backup では両方の bucket にあるか、どちらにも無いことがある。
+- rclone は、project の network に compose の外から起動した container で動かす。ファイルストアは network の外に port を公開していないためである。rclone の container には compose の label が無いので、`scripts/deploy.sh` の検査 (project に余分な container があると止まる) の対象にならない。更新でファイルストアが作り直されると、その日の backup は失敗し、次の日に取り直す。
 - ファイルストアの鍵は環境変数で container に渡し、コマンドの引数に書かない。引数は同じホストのほかのユーザーから見えるためである。
 
 ### backup から戻す
 
 - DB 全体は、上の「戻す」の手順で `db/<日時>.dump` を戻す。
-- 研究の 1 つのバージョンだけを戻すときは、DB 全体を戻さず、dump の中のそのバージョンの内容を、その研究の新しい下書きにする (下の「研究のバージョンを戻す」)。
+- 研究の 1 つのバージョンだけを戻すときは、DB 全体を戻さない。dump の中のそのバージョンの内容を、その研究の新しい下書きにする (下の「研究のバージョンを戻す」)。
 - 配信ファイルは `restore-files` で戻す。`<path>` は `current/<bucket>/<key>` か `deleted/<日付>/<bucket>/<key>` で、同じ bucket と key に書く。ファイルストアに同じ key があれば上書きし、backup に無いファイルは消さない。
-- `<key>` を研究ごとの prefix までにするとその下を、`<key>` を省くと bucket 全体をまとめて戻す。例えば `restore-files deleted/20261015/files/hum0009/` は、10 月 15 日の backup の時点で公開の bucket の `hum0009/` から削除か上書きされていたファイルを、すべて前の中身に戻す。
+- `<key>` を研究ごとの prefix までにすると、prefix の下をまとめて戻す。`<key>` を省くと、bucket 全体をまとめて戻す。例えば `restore-files deleted/20261015/files/hum0009/` は、10 月 15 日の backup の時点で公開の bucket の `hum0009/` から削除か上書きされていたファイルを、すべて前の中身に戻す。
 
 ### 研究のバージョンを戻す
 
-「先週の更新を取り消したい」のように、公開中のバージョンの内容をある日の backup の時点に戻す手順である。dump を使い捨ての DB に戻し、そこからバージョンの内容を読む。
+「先週の更新を取り消したい」のように、公開中のバージョンの内容を、ある日の backup の時点に戻す手順である。dump を使い捨ての DB に戻し、使い捨ての DB からバージョンの内容を読む。
 
 ```bash
 podman run -d --rm --name <project>_restore --network <project>_default --network-alias restore-db \
@@ -213,27 +213,27 @@ podman-compose run --rm -T tools npm run --silent restore:version -- \
 podman stop <project>_restore                                                                  # 使い捨ての DB を消す
 ```
 
-- `restore:version` は、使い捨ての DB に今の migration を当ててから、そのバージョンの内容を読み、本番の DB にその研究の新しい下書きとして書き込む。dump のあとで schema や研究の内容の形が変わっていても、今の形の下書きになる。`<日付>` には dump の名前の先頭 8 桁を渡し、下書きの名前は「2026-09-23 の backup から」のようになる。
-- 研究は研究 ID で探す。backup と今とでその研究 ID が別の研究を指していれば、何も書かずにエラーで終わる。
-- 公開中のものはこの時点では変わらない。admin がそのバージョンの行の「編集」で更新を開き、取り込み ([editing.md](editing.md) の「取り込み」) でこの下書きを取り込み元に選んで戻す項目を決め、更新を公開する。済んだらこの下書きを削除する。取り下げたバージョンを戻すときは、この下書きを空いている番号で公開する。
-- 戻らないものは、backup のあとで削除したデータセット (下書きに入れない)、ID の割り当て、ファイルとそのラベル・「研究ページに表示」の設定である。backup のあとで統合した語彙の値は統合前の値を指したまま入り、画面には表示されない。
-- 使い捨ての DB は、rclone と同じく project の network に compose の外から起動する。port は公開しない。
+- `restore:version` は、使い捨ての DB に今の migration を適用してから、そのバージョンの内容を読み、本番の DB にその研究の新しい下書きとして書き込む。dump のあとで schema や研究の内容の形が変わっていても、今の形の下書きになる。`<日付>` には dump の名前の先頭 8 桁を渡す。下書きの名前は「2026-09-23 の backup から」のようになる。
+- 研究は研究 ID で探す。backup と今とで、その研究 ID が別の研究を指していれば、何も書かずにエラーで終わる。
+- 公開中のものは、この時点では変わらない。admin が、そのバージョンの行の「編集」で更新を開き、取り込み ([editing.md](editing.md) の「取り込み」) でこの下書きを取り込み元に選んで、戻す項目を決め、更新を公開する。済んだら、この下書きを削除する。取り下げたバージョンを戻すときは、この下書きを空いている番号で公開する。
+- 戻らないものは、backup のあとで削除したデータセット (下書きに入れない)、ID の割り当て、ファイルとそのラベル・「研究ページに表示」の設定である。backup のあとで統合した語彙の値は、統合前の値を指したまま下書きに入り、画面には表示されない。
+- 使い捨ての DB は、rclone と同じく、project の network に compose の外から起動する。port は公開しない。
 
 ## schema を変える
 
-配置先の schema を変える方法の話である。`drizzle/` に書き出して commit した SQL だけが配置先の schema を変える。書き出し方は [development.md](development.md) の「DB と schema の変更」にある。
+配置先の schema を変える方法を説明する。配置先の schema を変えるのは、`drizzle/` に書き出して commit した SQL だけである。書き出し方は [development.md](development.md) の「DB と schema の変更」にある。
 
-- `migrate` は owner で接続し、まだ当てていない migration を 1 つのトランザクションで当て、続けて `humandbs_app` の権限を設定し直す。新しい表は、権限を設定し直すまでアプリから読めない。当てた記録は DB の `drizzle.__drizzle_migrations` にある。
+- `migrate` は owner で接続し、まだ適用していない migration を 1 つのトランザクションで適用し、続けて `humandbs_app` の権限を設定し直す。新しい表は、権限を設定し直すまでアプリから読めない。適用した記録は DB の `drizzle.__drizzle_migrations` にある。
 - `drizzle-kit push` は配置先でも使わない。理由は [development.md](development.md) の「DB と schema の変更」にある。
-- migration は、1 つ前のリリースのアプリが動き続ける形にする。更新では migration を当ててからアプリを入れ替えるので、その間は古いアプリが新しい schema で動く。戻すときも同じである。1 つのリリースでは列や表を足すだけにし (既存の行に要る値は default で与える)、消す・名前を変える・型を狭めるのは、それを使うコードが無くなった次のリリースで行う。
-- 更新では、`scripts/deploy.sh` が DB の backup を取ってから migration を当てる。
+- migration は、1 つ前のリリースのアプリが動き続ける形にする。更新では migration を適用してからアプリを入れ替えるので、入れ替えるまでの間は、古いアプリが新しい schema で動く。戻すときも同じである。1 つのリリースでは列や表を足すだけにし (既存の行に要る値は default で与える)、消す・名前を変える・型を狭めるのは、その列や表を使うコードが無くなった次のリリースで行う。
+- 更新では、`scripts/deploy.sh` が DB の backup を取ってから migration を適用する。
 
 ## やっていないこと
 
 - blue-green の切り替え。入れ替えの数秒は止まる。container の名前も proxy の port も 1 組しかない。
-- `migrate` を `app` の起動に結び付けること。podman-compose 1.0.6 は完了を待つ依存を扱えず、結び付けると終了した container に `app` の起動が左右される。
+- `migrate` を `app` の起動に結び付けること。podman-compose 1.0.6 は完了を待つ依存を扱えず、結び付けると、終了した container に `app` の起動が左右される。
 - 環境ごとに compose の file を分けること。違いは `.env` に書き、env の template は値の雛形でしかない。
 - 配置先のアドレスやホスト名を repo に書くこと。
 - 配置先のホストの外に backup をコピーすること。ホストごと失うと、backup も失う。
-- ログを日ごとや大きさでローテーションすること。ローテーションは container を作り直す更新と戻すときだけに行い、cron には頼らない。podman の log driver の大きさの上限は、超えるとファイルを空にして前の中身を残さないので使わない。
+- ログを日ごとや大きさでローテーションすること。ローテーションは、container を作り直す更新と戻すときだけに行い、cron には頼らない。podman の log driver の大きさの上限は、超えるとファイルを空にして前の中身を残さないので使わない。
 - アシスタントを既定で起動すること。起動・停止・更新は assistant-api のサービス名を指定したコマンドだけで行い、ポータルを止めない。手順と使わないコマンドは `assistant-api/README.md` の「配信先で動かす」にある。

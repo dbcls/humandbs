@@ -92,6 +92,9 @@ const COINED: readonly { word: string, pattern: RegExp, allowed?: readonly strin
   { word: "黙って", pattern: /黙/ }, // 警告なしに
   { word: "歩目", pattern: /歩目|[1一] ?歩ずつ/ }, // 1 つ目の直し / 段階 / 1 つずつ
   { word: "公開ゲート", pattern: /公開ゲート/ }, // 公開前の確認
+  { word: "要求", pattern: /要求/ }, // リクエスト
+  { word: "署名付き URL", pattern: /署名付き ?URL/ }, // presigned URL
+  { word: "外部から取ってきたデータ", pattern: /外部から取ってきた/ }, // 外部データ
 ]
 
 /**
@@ -304,7 +307,7 @@ describe("docs の書き方の検査", () => {
     expect(coinedWords("研究の記述を書く")).toEqual(["記述"])
     expect(coinedWords("主の ID と主でない ID")).toEqual(["主の ID"])
     expect(coinedWords("互換性の約束")).toEqual(["約束"])
-    expect(coinedWords("次の要求から効く")).toEqual(["効く"])
+    expect(coinedWords("次のリクエストから効く")).toEqual(["効く"])
     expect(coinedWords("DB には届かない")).toEqual(["届く"])
     expect(coinedWords("変わらない更新は断る")).toEqual(["断る"])
     expect(coinedWords("ファイルを運ぶ")).toEqual(["運ぶ"])
@@ -315,6 +318,10 @@ describe("docs の書き方の検査", () => {
     expect(coinedWords("1 段増える")).toEqual(["段"])
     expect(coinedWords("描画では黙って除く")).toEqual(["黙って"])
     expect(coinedWords("2 歩目は 1 歩ずつ直す")).toEqual(["歩目"])
+    expect(coinedWords("要求のたびに読む")).toEqual(["要求"])
+    expect(coinedWords("署名付き URL でダウンロードする")).toEqual(["署名付き URL"])
+    expect(coinedWords("外部から取ってきたデータのキャッシュ")).toEqual(["外部から取ってきたデータ"])
+    expect(coinedWords("リクエストのたびに、presigned URL と外部データを読む")).toEqual([])
     expect(coinedWords("出版物と矢印と情報源とバージョン")).toEqual([])
     expect(coinedWords("自由記述のキーを有効にし、割り当てを判断する段落と前段")).toEqual([])
     expect(coinedWords("画面を組み立てる。テストが落ちる。持ち主の ID")).toEqual([])

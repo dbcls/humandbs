@@ -2,13 +2,13 @@
 
 手元でポータルを動かし、変更を確かめる手順をまとめる。部品の構成は [overview.md](overview.md)、テストの方針は [testing.md](testing.md)、本番と staging への配置は [deployment.md](deployment.md) にある。
 
-要るのは Docker と Docker Compose だけである。開発コマンドはすべて container の中で打つ。`node_modules` は named volume に置いているので、ホストで `npm` を実行すると container の中と状態が食い違うためである。守ることは次のとおり。
+要るのは Docker と Docker Compose だけである。開発コマンドは、すべて container の中で打つ。`node_modules` は named volume にあるので、ホストで `npm` を実行すると、container の中と状態が食い違うためである。守ることは次のとおり。
 
 - production 環境を直接変更しない。検証は staging で行い、production からコピーしたデータは読むだけにする。
-- JGA 申請管理システムの DB は他プロジェクトの所管である。schema の変更も書き込みもせず、接続は read-only に強制する。この DB の staging には実データが無いので、ポータルの staging の配置先で取り直すときも production の DB を読む ([deployment.md](deployment.md) の「.env」)。
-- 仕様が絡む変更は `docs/` を先に直す。型と値の一覧はコードを見れば分かるので、docs にコピーしない。
-- 作業の経緯を成果物に持ち込まない。コメント・テスト名・docs・commit message には現在の意図だけを書く。
-- route を変えたら `npm run build` も通す。route module の `loader` / `action` / `middleware` / `headers` 以外が `.server` の module に依存すると、画面の中の遷移でだけ 500 になる。SSR・lint・typecheck・テストは通ってしまい、見つけられるのは build だけである。
+- JGA 申請管理システムの DB は他プロジェクトの所管である。schema の変更も書き込みもせず、接続は read-only に強制する。申請管理システムの DB の staging には実データが無い。そのため、ポータルの staging の配置先で取り直すときも、production の DB を読む ([deployment.md](deployment.md) の「.env」)。
+- 仕様が絡む変更では、`docs/` を先に直す。型と値の一覧はコードを見れば分かるので、docs にコピーしない。
+- 作業の経緯を成果物に書かない。コメント・テスト名・docs・commit message には、現在の意図だけを書く。
+- route を変えたら、`npm run build` も成功させる。route module の `loader` / `action` / `middleware` / `headers` 以外が `.server` の module に依存すると、画面の中の遷移でだけ 500 になる。SSR・lint・typecheck・テストは成功してしまい、見つけられるのは build だけである。
 
 ## 初回
 
@@ -18,17 +18,17 @@
 cp env.dev .env                                          # 開発用の設定の雛形をコピーする
 docker compose run --rm --no-deps app npm install        # 依存を volume に入れる
 docker compose up -d                                     # db・s3・app・proxy を起動する
-docker compose exec app npm run db:migrate:dev           # schema を当て、アプリの role とテスト用の database も作る
+docker compose exec app npm run db:migrate:dev           # schema を適用し、アプリの role とテスト用の database も作る
 docker compose exec app npm run s3:buckets               # 2 つの bucket を作る
 docker compose exec app npm run icd10:import             # ICD10 の配布物を取得して DB に入れる
 ```
 
 - `http://localhost:8080/` が開けば起動している。`/healthz` は依存サービスに接続できるかを確かめる URL で、1 つでも接続できなければ 503 を返す。
-- `.env` の `COMPOSE_FILE` の行が開発用の定義を読み込む。`compose.yml` は配置用の定義で、`compose.dev.yml` を重ねて初めて source の bind mount と dev サーバーになる。この行が無いと、`docker compose` は本番用の image を build して起動する。
+- `.env` に `COMPOSE_FILE` の行があると、`docker compose` は開発用の定義も読み込む。`compose.yml` は配置用の定義である。`compose.dev.yml` を重ねて初めて、source の bind mount と dev サーバーで動く構成になる。`COMPOSE_FILE` の行が無いと、`docker compose` は本番用の image を build して起動する。
 - bucket を `s3:buckets` で先に作るのは、書き込みのついでに bucket を作らないためである。ファイルがどちらの bucket にあるかで公開か非公開かが決まるので、bucket は意図して作る。
-- ICD10 の配布物は repo に置かない。`icd10:import` が初回に取得して `migration/input/` に残し、2 回目からはそれを読む。開発用データの読み込みも同じファイルを読む。
+- ICD10 の配布物は repo に入れない。`icd10:import` が初回に取得して `migration/input/` に残し、2 回目からは残したファイルを読む。開発用データの読み込みでも、同じファイルを読む。
 - proxy が 8080 番で待ち受けるのは、Keycloak (DDBJ の staging) に `http://localhost:8080/auth/callback` が登録されているためである。`HUMANDBS_PUBLIC_PORT` を変えるとログインできなくなる。ポータル固有の環境変数は `HUMANDBS_` で始まる。
-- 手元の proxy には `localhost:8080` でアクセスする。proxy は app に渡す host を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定するので ([deployment.md](deployment.md) の「構成」)、別の名前 (`127.0.0.1:8080` や `proxy:8080`) では表示はできても書き込みができない。
+- 手元の proxy には `localhost:8080` でアクセスする。proxy は、app に渡す host を `HUMANDBS_AUTH_REDIRECT_URI` の host に固定する ([deployment.md](deployment.md) の「構成」)。そのため、別の名前 (`127.0.0.1:8080` や `proxy:8080`) でアクセスすると、表示はできても書き込みができない。
 
 ### 作り直す
 
@@ -46,14 +46,14 @@ docker compose build --no-cache app    # app の image を作り直す
 ```bash
 docker compose exec app npm run lint          # eslint (@stylistic) で整形も検査する。直すのは npm run lint:fix
 docker compose exec app npm run typecheck     # 型を検査する
-docker compose exec app npm run test:unit     # DB を使わないテストを回す
-docker compose exec app npm run test:db       # DB を使うテストを回す
-docker compose exec app npm test              # 両方を回す
+docker compose exec app npm run test:unit     # DB を使わないテストを実行する
+docker compose exec app npm run test:db       # DB を使うテストを実行する
+docker compose exec app npm test              # 両方を実行する
 docker compose exec app npm run build         # 本番用に build する
 ```
 
 - `app` が止まっているときは `docker compose run --rm --no-deps app <command>` で 1 回だけ実行できる。ただし `test:db` は `db` を使うので `--no-deps` を付けない。
-- `test:db` は同時に 1 つしか走らず、ほかの実行が終わるまで 2 つ目は 1 件も実行せずに止まる ([testing.md](testing.md) の「テスト同士の独立」)。
+- `test:db` は同時に 1 つしか実行できない。ほかの実行が終わる前に始めた 2 つ目の実行は、1 件も実行せずに止まる ([testing.md](testing.md) の「テスト同士の独立」)。
 
 ## DB と schema の変更
 
@@ -68,33 +68,33 @@ docker compose exec db psql -U humandbs -d humandbs         # 開発用の datab
 
 ### schema を変える手順
 
-schema を変える方法は、開発でも配置先でも 1 つだけである。定義 (`app/db/schema/`) を書き、`drizzle/` に SQL を書き出し、その SQL を当てる。全文検索の生成列と PGroonga の索引も定義に含まれる。
+schema を変える方法は、開発でも配置先でも 1 つだけである。定義 (`app/db/schema/`) を書き、`drizzle/` に SQL を書き出し、書き出した SQL を適用する。全文検索の生成列と PGroonga の索引も定義に含まれる。
 
 ```bash
 docker compose exec app npm run db:generate      # 定義と drizzle/ の差を SQL にして drizzle/ に書き出す
-docker compose exec app npm run db:migrate:dev   # 書き出し忘れが無いか確かめてから、開発用とテスト用の両方に当てる
+docker compose exec app npm run db:migrate:dev   # 書き出し忘れが無いか確かめてから、開発用とテスト用の両方に適用する
 ```
 
-- `db:migrate:dev` は当てたあとに role と権限も設定し直す。配置先への当て方は [deployment.md](deployment.md) の「schema を変える」にある。
-- `drizzle-kit push` は使わない。複数列の unique 制約・複合主キー・PGroonga の索引を、変わっていなくても毎回作り直そうとするためである。行があると対話の確認で止まり、TTY が無いと何も反映しないまま終了コード 0 で終わる。
-- 定義を変えて SQL を書き出し忘れるとテストが落ちる。`app/db/schema-drift.test.ts` が `drizzle/` のコピーに書き出してみて、新しいファイルができないことを確かめる (`npm run db:check` も同じ検査をする)。drizzle-kit は失敗しても終了コード 0 を返すので、書き出しの結果は出力の文で判定している。
-- 書き出した SQL は読んでから commit する。手で直してもよい。まだ配置先に当てていない migration は、消してもう一度書き出せば 1 本にまとまる。当てた DB があれば、その分を先に戻す。
-- テスト用の database は、migration を当てた記録が無ければ作り直す。テストが毎回空にするので、残すものが無いためである。
-- PGroonga の拡張は、volume が空のときの初期化で `docker/db/initdb/` の SQL が入れ、最初の migration も `CREATE EXTENSION IF NOT EXISTS` で入れる。initdb の SQL は volume が空のときにしか実行されないので、変えたら `docker compose down -v` からやり直す。
-- PGroonga の索引の実体は Groonga のファイルで、`pg_relation_size` に出ず、`DROP INDEX` でも小さくならない。大きくなりすぎたら volume ごと作り直す。DB が異常終了したあとは索引を作り直す。
+- `db:migrate:dev` は、SQL を適用したあとに role と権限も設定し直す。配置先への適用の方法は [deployment.md](deployment.md) の「schema を変える」にある。
+- `drizzle-kit push` は使わない。`drizzle-kit push` は、複数列の unique 制約・複合主キー・PGroonga の索引を、変わっていなくても毎回作り直そうとするためである。行があると対話の確認で止まり、TTY が無いと何も反映しないまま終了コード 0 で終わる。
+- 定義を変えて SQL を書き出し忘れると、テストが失敗する。`app/db/schema-drift.test.ts` では、`drizzle/` のコピーに書き出してみて、新しいファイルができないことを確かめる (`npm run db:check` も同じ検査をする)。drizzle-kit は失敗しても終了コード 0 を返すので、書き出しの結果は出力の文で判定している。
+- 書き出した SQL は、読んでから commit する。手で直してもよい。まだ配置先に適用していない migration は、消してもう一度書き出せば 1 本にまとまる。適用した DB があれば、適用した分を先に戻す。
+- テスト用の database は、migration を適用した記録が無ければ作り直す。テストが毎回空にするので、残すものが無いためである。
+- PGroonga の拡張は、volume が空のときの初期化で `docker/db/initdb/` の SQL が入れ、最初の migration も `CREATE EXTENSION IF NOT EXISTS` で入れる。initdb の SQL は volume が空のときにしか実行されないので、initdb の SQL を変えたら `docker compose down -v` からやり直す。
+- PGroonga の索引のデータは Groonga のファイルにあり、`pg_relation_size` に出ず、`DROP INDEX` でも小さくならない。大きくなりすぎたら volume ごと作り直す。DB が異常終了したあとは索引を作り直す。
 
-開発用データを入れ直すときは、schema も空から当て直せる。
+開発用データを入れ直すときは、schema も空から適用し直せる。
 
 ```bash
 docker compose exec db psql -U humandbs -d humandbs \
   -c "DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE; CREATE SCHEMA public; CREATE EXTENSION pgroonga;"
-docker compose exec app npm run db:migrate:dev     # schema を空から当てる
+docker compose exec app npm run db:migrate:dev     # schema を空から適用する
 docker compose exec app npm run db:load-dev-data   # 開発用データを入れ直す
 ```
 
 ## 開発用データ
 
-画面を作るための実データを入れる手順である。値の正しさも網羅性も問わない。入力は `migration/input/` (git 管理外) に置く。
+画面を作るための実データを入れる手順である。値の正しさも網羅性も問わない。入力は `migration/input/` (git 管理外) に保存する。
 
 | 入力 | 中身 |
 |---|---|
@@ -111,17 +111,17 @@ docker compose exec app npm run s3:common-assets   # 記事が参照する画像
 docker compose exec app npm run db:seed-review     # レビュー中の下書きの例を足す (任意)
 ```
 
-- `db:load-dev-data` は全部を 1 つのトランザクションで置き換えるので、途中で失敗しても前のデータが残る。admin とセッションは消さない。schema を変えたら `db:migrate:dev` のあとに流し直す。
-- 記事・お知らせ・アラートの本文は本番と同じ変換を通る。旧ポータルの HTML は markdown に変換され、扱えない記法があると止まる。
-- `s3:common-assets` は、本文が参照しているファイルだけを本番のポータルの `https://humandbs.dbcls.jp/files/common/` から取得してアップロードする。取得したファイルは `migration/input/public-files/` に残るので、2 回目からは外部に取りに行かない。
-- `db:seed-review` は、コメント・提供者が押したボタンの記録・未確定と未翻訳の欄・ID の無いデータセットを含む下書きを足す。何度流しても結果は同じである。`db:load-dev-data` を流し直したら実行し直す。
+- `db:load-dev-data` は全部を 1 つのトランザクションで置き換えるので、途中で失敗しても前のデータが残る。admin とセッションは消さない。schema を変えたら、`db:migrate:dev` のあとに `db:load-dev-data` を実行し直す。
+- 記事・お知らせ・アラートの本文は、本番と同じ変換を通る。旧ポータルの HTML は markdown に変換され、扱えない記法があると止まる。
+- `s3:common-assets` は、本文が参照しているファイルだけを本番のポータルの `https://humandbs.dbcls.jp/files/common/` から取得してアップロードする。取得したファイルは `migration/input/public-files/` に残るので、2 回目からは外部から取得しない。
+- `db:seed-review` は、コメント・提供者が押したボタンの記録・未確定と未翻訳の欄・ID の無いデータセットを含む下書きを足す。何度実行しても結果は同じである。`db:load-dev-data` を実行し直したら、`db:seed-review` も実行し直す。
 - 外部 accession の日付は dump の初出日から作る。JGAD の日付は申請管理システムから取れないので入らない。
 
 ## ログイン
 
-手元でログインして admin になる手順である。`.env` の `HUMANDBS_AUTH_*` の 3 行は `env.dev` の値のまま使う。DDBJ の staging の Keycloak の public client で、PKCE を使うので secret は無い。http で開く手元では cookie に `Secure` が付かない。
+手元でログインして admin になる手順である。`.env` の `HUMANDBS_AUTH_*` の 3 行は `env.dev` の値のまま使う。DDBJ の staging の Keycloak の public client で、PKCE を使うので secret は無い。http で開く手元では、cookie に `Secure` が付かない。
 
-ヘッダからログインして `/admin` を開くと自分の sub が表示されるので、それを admin にしてから `/admin` を開き直す。
+ヘッダからログインして `/admin` を開くと、自分の sub が表示される。表示された sub を admin にしてから、`/admin` を開き直す。
 
 ```bash
 docker compose exec app npm run admin:grant -- <sub> "表示名"   # admin にする
@@ -131,11 +131,11 @@ docker compose exec app npm run admin:list                      # admin の一�
 
 ## 外部サービス
 
-外部から取ってきたデータ、ファイルストア、アシスタントを手元で確かめる手順である。
+外部データ、ファイルストア、アシスタントを手元で確かめる手順である。
 
-### 外部から取ってきたデータ
+### 外部データ
 
-外部から取ってきたデータのキャッシュは、アプリのプロセスが一定の間隔で取り直す ([upstream.md](upstream.md) の「取り直しと失敗」)。手で実行することもでき、そのときは間隔に関係なく取り直す。
+外部データのキャッシュは、アプリのプロセスが一定の間隔で取り直す ([upstream.md](upstream.md) の「取り直しと失敗」)。手で実行することもでき、手で実行したときは間隔に関係なく取り直す。
 
 ```bash
 docker compose exec app npm run upstream:refresh                           # すべての取得元から取り直す
@@ -143,11 +143,11 @@ docker compose exec app npm run upstream:refresh -- --source=archive-date  # DDB
 docker compose exec app npm run upstream:refresh -- --allow-shrink         # 件数が前回の半分より少なくても置き換える
 ```
 
-`archive-date` (DDBJ Search) と `archive-file` (DDBJ の公開 FTP) は手元でも動く。残る 6 つは申請管理システムの DB を読み、`HUMANDBS_JGA_DATABASE_URL` が空なら skip する。その DB は踏み台の内側からしか接続できないので、手元では空のままにするか、下の代わりの schema を指す。結果は `/admin` に表示される。
+`archive-date` (DDBJ Search) と `archive-file` (DDBJ の公開 FTP) は手元でも動く。残る 6 つは申請管理システムの DB を読み、`HUMANDBS_JGA_DATABASE_URL` が空なら skip する。申請管理システムの DB は踏み台の内側からしか接続できないので、手元では空のままにするか、下の代わりの schema を指定する。結果は `/admin` に表示される。
 
 ### 申請管理システムの代わりの schema
 
-データ提供申請一覧と、申請から下書きを作る画面を手元で見るには、開発用の DB に申請管理システムの代わりの schema (`jgasys`) を作る。この schema は production の複製ではない。DDL は production の列定義から機械的に作ったもので、元データは repo の外にある (場所は script の冒頭)。手元で通った SQL が production で通るとは限らない。
+データ提供申請一覧と、申請から下書きを作る画面を手元で見るには、開発用の DB に申請管理システムの代わりの schema (`jgasys`) を作る。代わりの schema は production の複製ではない。DDL は production の列定義から機械的に作ったもので、元データは repo の外にある (場所は script の冒頭)。手元で成功した SQL が production で成功するとは限らない。
 
 1. `scripts/seed-jga-dev.sh` をホストで実行する。`db` が起動している必要がある。
 2. `.env` の `HUMANDBS_JGA_DATABASE_URL` を `HUMANDBS_DATABASE_URL` と同じ値にし、`HUMANDBS_JGA_DB_SCHEMA` を `jgasys` にする。
@@ -156,13 +156,13 @@ docker compose exec app npm run upstream:refresh -- --allow-shrink         # 件
 
 ### ファイルストア
 
-`files` が公開 bucket、`private` が非公開 bucket である。anonymous に読ませる設定は `docker/s3/s3.json.template` にあり、鍵は起動時に `.env` から埋める。鍵を変えたら `docker compose up -d s3` で作り直す。配信は proxy を通して確かめる。
+`files` が公開 bucket、`private` が非公開 bucket である。anonymous に読ませる設定は `docker/s3/s3.json.template` にあり、鍵は起動時に `.env` から埋め込まれる。鍵を変えたら `docker compose up -d s3` で作り直す。配信は proxy を通して確かめる。
 
 ```bash
 curl -D - -o /dev/null http://localhost:8080/files/hum0009/example.zip   # 応答の header を見る
 ```
 
-`X-Content-Type-Options: nosniff` が付き、画像 (SVG を除く) と PDF 以外に `Content-Disposition: attachment` が付いていれば正しい ([files.md](files.md) の「配信の安全」)。開発の proxy は、設定を bind mount した nginx の image そのままである。設定を変えたら `docker compose restart proxy` を打つ。`up -d` では反映されない。build の出力を含まないので、静的ファイルも dev サーバーが返す。
+`X-Content-Type-Options: nosniff` が付き、画像 (SVG を除く) と PDF 以外に `Content-Disposition: attachment` が付いていれば正しい ([files.md](files.md) の「配信の安全」)。開発の proxy は、設定を bind mount した nginx の image そのままである。設定を変えたら `docker compose restart proxy` を打つ。`up -d` では反映されない。開発の proxy は build の出力を含まないので、静的ファイルも dev サーバーが返す。
 
 ### アシスタント
 
@@ -170,31 +170,41 @@ curl -D - -o /dev/null http://localhost:8080/files/hum0009/example.zip   # 応�
 
 ## 画面の規則のテスト
 
-画面の規則は文章ではなく、source を読んで判定するテストに書いてある。間隔・角丸・幅は `app/app.spacing.test.ts`、色とコントラストは `app/app.contrast.test.ts`、書体 (サイトから配信する Noto Sans JP) は `app/app.font.test.ts`、リンクの行き先は `app/app.navigation.test.ts`、アイコンは `app/components/icons.test.ts`、状態のバッジ (下書きやバージョンの状態の表示) は `app/components/flags.test.tsx`、文言と文体は `app/i18n/messages.test.ts` にある。
+画面の規則は、文章ではなく、source を読んで判定するテストに書いてある。規則ごとのテストは次のとおりである。
+
+| 規則 | テスト |
+|---|---|
+| 間隔・角丸・幅 | `app/app.spacing.test.ts` |
+| 色とコントラスト | `app/app.contrast.test.ts` |
+| 書体 (サイトから配信する Noto Sans JP) | `app/app.font.test.ts` |
+| リンクの行き先 | `app/app.navigation.test.ts` |
+| アイコン | `app/components/icons.test.ts` |
+| 状態のバッジ (下書きやバージョンの状態の表示) | `app/components/flags.test.tsx` |
+| 文言と文体 | `app/i18n/messages.test.ts` |
 
 - 規則を変えるときはテストを変える。例外を足すなら、その理由もテストに書く。
-- 画面の文言は `app/i18n/messages.ts` に置く。ドメインの語の意味は [concepts.md](concepts.md) に従う。
-- 部品は多くの画面で共有しているので、見た目を変えたら、その部品を使う画面を開いて変更の前後を見比べる。
+- 画面の文言は `app/i18n/messages.ts` に書く。ドメインの語の意味は [concepts.md](concepts.md) に従う。
+- 部品は多くの画面で共有しているので、見た目を変えたら、その部品を使う画面を開いて、変更の前後を見比べる。
 
 ## e2e
 
-e2e は配置した環境に対して回す ([testing.md](testing.md) の「e2e」)。手元の compose に向けることもできる。e2e の container は proxy と同じ network を使い、`http://localhost:8080` が手元の proxy になる。アプリが返す presigned URL とファイルの URL は `HUMANDBS_AUTH_REDIRECT_URI` の origin を指し、署名がその host を含むためである。
+e2e は配置した環境に対して実行する ([testing.md](testing.md) の「e2e」)。手元の compose に対して実行することもできる。e2e の container は proxy と同じ network を使い、`http://localhost:8080` が手元の proxy になる。アプリが返す presigned URL とファイルの URL は `HUMANDBS_AUTH_REDIRECT_URI` の origin を指し、署名がその host を含むためである。
 
 ```bash
-docker compose --profile e2e run --rm e2e                                                    # 手元の proxy に対して回す
-docker compose --profile e2e run --rm -e HUMANDBS_E2E_BASE_URL=https://example.invalid e2e   # 指定した URL に対して回す
+docker compose --profile e2e run --rm e2e                                                    # 手元の proxy に対して実行する
+docker compose --profile e2e run --rm -e HUMANDBS_E2E_BASE_URL=https://example.invalid e2e   # 指定した URL に対して実行する
 ```
 
-ログインが要るシナリオは、回す先で作ったセッションを渡して回す。admin のセッションの利用者は admin になるので、済んだら消す。
+ログインが要るシナリオは、実行先で作ったセッションを渡して実行する。admin のセッションの利用者は admin になるので、済んだら消す。
 
 ```bash
 export HUMANDBS_E2E_SESSION=$(docker compose exec -T app npm run --silent e2e:session)                         # admin
 export HUMANDBS_E2E_NON_ADMIN_SESSION=$(docker compose exec -T app npm run --silent e2e:session -- non-admin)   # admin でない人
-docker compose --profile e2e run --rm -e HUMANDBS_E2E_SESSION -e HUMANDBS_E2E_NON_ADMIN_SESSION e2e             # セッションを渡して回す
+docker compose --profile e2e run --rm -e HUMANDBS_E2E_SESSION -e HUMANDBS_E2E_NON_ADMIN_SESSION e2e             # セッションを渡して実行する
 docker compose exec -T app npm run e2e:session -- clean                                                         # 2 つのセッションと admin を消す
 ```
 
-回す先の配置を確かめるシナリオは、回す先の `HUMANDBS_NOINDEX` と deploy した tag を渡して回す (`-e HUMANDBS_E2E_NOINDEX=true -e HUMANDBS_E2E_VERSION=<tag>`)。
+実行先の配置を確かめるシナリオは、実行先の `HUMANDBS_NOINDEX` と deploy した tag を渡して実行する (`-e HUMANDBS_E2E_NOINDEX=true -e HUMANDBS_E2E_VERSION=<tag>`)。
 
 ## やっていないこと
 
