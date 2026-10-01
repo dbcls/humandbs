@@ -690,13 +690,20 @@ describe("ボタンの色と形", () => {
    * (`base.tsx` の `Dialog` の `subject`): a table's row is drawn at `row`, and a
    * panel about the one thing a screen is about has its name in the screen's
    * heading. A part handing its caller's line on (`subject={subject}`) is not a place.
+   *
+   * **The one panel opened from a line rather than a table's row is a disease's
+   * chip** (`page.tsx` の `DiseaseCodes`): a key holds several diseases, a line
+   * each, and the panel names the disease whose codes it lists.
    */
   it("本文の先頭の行があるのは、表の行から開くダイアログだけ", async () => {
+    const fromALine = (name: string, subject: string) =>
+      name === "components/page.tsx" && subject.startsWith("{disease.name")
     const hits = (await everySource()).flatMap(({ name, text }) =>
       openingTags(text, ["Dialog", "Confirm"])
         .filter(({ body }) => {
           const subject = ownAttribute(body, "subject")
           return subject !== null && subject !== "{subject}" && ownAttribute(body, "size") !== "\"row\""
+            && !fromALine(name, subject)
         })
         .map(({ tag }) => `${name}: ${tag}`))
     expect(hits).toEqual([])

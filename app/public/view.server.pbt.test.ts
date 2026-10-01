@@ -15,7 +15,7 @@ import { researchListRowView, type CatalogView, type ResearchListRowView } from 
  * about them differs.
  */
 
-const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map(), icd10Order: new Map() }
 
 function row(content: ResearchContent): ResearchListRowView {
   return researchListRowView({

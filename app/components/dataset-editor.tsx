@@ -84,6 +84,7 @@ import { KeyTypeBadge } from "~/components/key-type"
 import { AnnotationLayer, Card, Code, Empty, Page, PageHeader } from "~/components/page"
 import { catalogLabel } from "~/i18n/catalog-label"
 import type { Locale } from "~/i18n/locale"
+import { icd10Range, type Icd10RangeProblem, type Icd10RangeRead } from "~/icd10/codes"
 import { messagesFor } from "~/i18n/messages"
 import { FILE_PAGE_PARAMS, href, researchPath } from "~/public/urls"
 import { commentsByPath } from "~/review/comments"
@@ -1310,7 +1311,7 @@ function VocabularyField({
           disabled={state !== "value"}
           known={known}
           termIds={termIds}
-          onAdd={(id) => { onChange(state, multiple ? [...termIds, id] : [id]) }}
+          onAdd={(ids) => { onChange(state, multiple ? [...termIds, ...ids] : ids.slice(-1)) }}
           onRemove={(id) => { onChange(state, termIds.filter((one) => one !== id)) }}
           trailing={(
             <StateSwitch
@@ -1420,7 +1421,7 @@ function DiseaseField({ label, named = true, type, link, locale, annotations, se
                     disabled={disabled}
                     known={known}
                     termIds={row.termIds}
-                    onAdd={(id) => { edit(at, { termIds: [...row.termIds, id] }) }}
+                    onAdd={(ids) => { edit(at, { termIds: [...row.termIds, ...ids] }) }}
                     onRemove={(id) => {
                       edit(at, { termIds: row.termIds.filter((one) => one !== id) })
                     }}
@@ -1510,8 +1511,8 @@ function TermPicker({ locale, setId, single = false, kind, disabled, known, term
   /** The terms the document names. */
   known: EditableTerm[]
   termIds: string[]
-  /** Called only with a term not chosen already. */
-  onAdd: (id: string) => void
+  /** Called only with terms not chosen already: one from the box, or a disease's range at once. */
+  onAdd: (ids: string[]) => void
   onRemove: (id: string) => void
   /**
    * Stood beside the search box, the way a translated field's state toggles
@@ -1529,6 +1530,9 @@ function TermPicker({ locale, setId, single = false, kind, disabled, known, term
   // screen is read again after a save. Read from the document alone, the
   // choice went unshown and was offered again, and chosen twice.
   const [found, setFound] = useState<EditableTerm[]>([])
+  // A disease's codes are added one at a time from the box, or as a range from
+  // the two ends that take the box's place (`RangeAdd`).
+  const [byRange, setByRange] = useState(false)
   const chosen = resolveTerms([...known, ...found], termIds)
   const held = new Set(termIds)
   // A value that holds more than its key allows is drawn as chips, so that
@@ -1572,32 +1576,180 @@ function TermPicker({ locale, setId, single = false, kind, disabled, known, term
                 ))}
               </ul>
             )}
-      <div className="flex items-center gap-2">
-        <ComboBox
-          label={asOne ? t.findTerm : t.addTerm}
-          disabled={disabled || setId === null}
-          options={candidates}
-          keyOf={(term) => term.id}
-          render={(term) => <CandidateWords term={term} locale={locale} kind={kind} />}
-          loading={search.state !== "idle"}
-          empty={t.noCandidate}
-          more={candidates.length >= PICKER_RESULTS ? t.typeToNarrow(PICKER_RESULTS) : undefined}
-          words={{ searching: t.searching, count: t.candidateCount }}
-          onQuery={(value, typed) => { ask(value, typed ? SEARCH_PAUSE_MS : 0) }}
-          onChoose={(term) => {
-            if (held.has(term.id)) return
-            setFound((before) => [...before, term])
-            onAdd(term.id)
-          }}
-          kept={asOne ? (term) => catalogLabel(term, locale) : undefined}
-          initial={asOne && one !== undefined ? catalogLabel(one, locale) : ""}
-        />
-        {asOne && one !== undefined && !disabled && (
-          <IconButton name="close" label={t.clearTerm} onClick={() => { onRemove(one.id) }} />
-        )}
-        {trailing}
-      </div>
+      {kind === "disease" && byRange
+        ? (
+            <RangeAdd
+              setId={setId}
+              disabled={disabled || setId === null}
+              held={held}
+              onAdd={(terms) => {
+                setFound((before) => [...before, ...terms])
+                onAdd(terms.map((term) => term.id))
+              }}
+            />
+          )
+        : (
+            <div className="flex items-center gap-2">
+              <ComboBox
+                label={asOne ? t.findTerm : t.addTerm}
+                disabled={disabled || setId === null}
+                options={candidates}
+                keyOf={(term) => term.id}
+                render={(term) => <CandidateWords term={term} locale={locale} kind={kind} />}
+                loading={search.state !== "idle"}
+                empty={t.noCandidate}
+                more={candidates.length >= PICKER_RESULTS ? t.typeToNarrow(PICKER_RESULTS) : undefined}
+                words={{ searching: t.searching, count: t.candidateCount }}
+                onQuery={(value, typed) => { ask(value, typed ? SEARCH_PAUSE_MS : 0) }}
+                onChoose={(term) => {
+                  if (held.has(term.id)) return
+                  setFound((before) => [...before, term])
+                  onAdd([term.id])
+                }}
+                kept={asOne ? (term) => catalogLabel(term, locale) : undefined}
+                initial={asOne && one !== undefined ? catalogLabel(one, locale) : ""}
+              />
+              {asOne && one !== undefined && !disabled && (
+                <IconButton name="close" label={t.clearTerm} onClick={() => { onRemove(one.id) }} />
+              )}
+              {trailing}
+            </div>
+          )}
+      {/* **One button, under the boxes, whose word is the way it switches to.**
+          It stays where it is while the boxes above it change, so a second
+          press is in the same place as the first. */}
+      {kind === "disease" && (
+        <div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="xs"
+            icon={<Icon name="plus" />}
+            disabled={disabled || setId === null}
+            onClick={() => { setByRange(!byRange) }}
+          >
+            {byRange ? t.addOneByOne : t.addRange}
+          </Button>
+        </div>
+      )}
     </Stack>
+  )
+}
+
+/** Why the button that adds a range cannot be pressed. */
+export type RangeRefusal = Icd10RangeProblem | "searching" | "empty" | "all-chosen"
+
+/**
+ * What the button that adds a range does: the codes it adds, which leave out
+ * the ones already chosen, or why it cannot be pressed. `codes` is null while
+ * the codes of the range are being looked for.
+ */
+export function rangeAddition(
+  range: Icd10RangeRead,
+  codes: readonly EditableTerm[] | null,
+  held: ReadonlySet<string>,
+  setId: string | null,
+): { state: "add", terms: EditableTerm[] } | { state: "refused", why: RangeRefusal } {
+  if (range.state === "problem") return { state: "refused", why: range.problem }
+  if (codes === null) return { state: "refused", why: "searching" }
+  const own = codes.filter((term) => term.setId === setId)
+  if (own.length === 0) return { state: "refused", why: "empty" }
+  const terms = own.filter((term) => !held.has(term.id))
+  return terms.length === 0 ? { state: "refused", why: "all-chosen" } : { state: "add", terms }
+}
+
+/**
+ * A disease's codes added as a range: its two ends typed, and every code of
+ * the classification between them added at once (`app/icd10/codes.ts` の
+ * `icd10Range`). `C00-C80` is some seventy codes, and the box adds one.
+ *
+ * **In the box's place, on a press.** Most diseases name a code or two, and
+ * two more boxes beside every disease would ask for a range none of them has.
+ *
+ * **The button indicates how many it adds before it is pressed.** A range can
+ * name three codes or two thousand, and nothing else on the screen indicates
+ * which; the codes already chosen are not counted, as they are not added again.
+ */
+function RangeAdd({ setId, disabled, held, onAdd }: {
+  setId: string | null
+  disabled: boolean
+  held: ReadonlySet<string>
+  onAdd: (terms: EditableTerm[]) => void
+}) {
+  const t = messagesFor("ja").admin.datasetEditor
+  const [lower, setLower] = useState("")
+  const [upper, setUpper] = useState("")
+  const search = useFetcher<EditableTerm[]>()
+  const wait = useRef<number | null>(null)
+  // **Which range the codes held are for.** The ends change while the codes
+  // of the last range asked are still held, and counting those would put the
+  // wrong number on the button.
+  const [asked, setAsked] = useState<string | null>(null)
+  const range = icd10Range(lower, upper)
+  const wanted = range.state === "range" ? `${range.lower}-${range.upper}` : null
+  const codes = wanted !== null && asked === wanted && search.state === "idle" ? (search.data ?? null) : null
+  const addition = rangeAddition(range, codes, held, setId)
+
+  /** Asked once the keys are still, as the box above is (`TermPicker` の `ask`). */
+  const ask = (nextLower: string, nextUpper: string) => {
+    if (wait.current !== null) window.clearTimeout(wait.current)
+    const next = icd10Range(nextLower, nextUpper)
+    if (setId === null || next.state !== "range") return
+    const query = new URLSearchParams({ set: setId, kind: "disease", lower: next.lower, upper: next.upper })
+    wait.current = window.setTimeout(() => {
+      setAsked(`${next.lower}-${next.upper}`)
+      void search.load(`${termsPath()}?${query.toString()}`)
+    }, SEARCH_PAUSE_MS)
+  }
+
+  const refusals: Record<RangeRefusal, string> = {
+    "not-code": t.rangeNotCode,
+    "lengths-differ": t.rangeLengthsDiffer,
+    "reversed": t.rangeReversed,
+    "searching": t.searching,
+    "empty": t.rangeEmpty,
+    "all-chosen": t.rangeAllChosen,
+  }
+  const box = `${CONTROL} w-28 text-sm disabled:opacity-50`
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input
+        type="text"
+        value={lower}
+        disabled={disabled}
+        aria-label={t.rangeLower}
+        placeholder={t.rangeLower}
+        onChange={(event) => {
+          setLower(event.target.value)
+          ask(event.target.value, upper)
+        }}
+        className={box}
+      />
+      <span className="text-ink-muted text-sm">{t.numberRangeSeparator}</span>
+      <input
+        type="text"
+        value={upper}
+        disabled={disabled}
+        aria-label={t.rangeUpper}
+        placeholder={t.rangeUpper}
+        onChange={(event) => {
+          setUpper(event.target.value)
+          ask(lower, event.target.value)
+        }}
+        className={box}
+      />
+      <Button
+        type="button"
+        variant="secondary"
+        size="xs"
+        icon={<Icon name="plus" />}
+        disabled={disabled || (addition.state === "refused" && refusals[addition.why])}
+        onClick={() => { if (addition.state === "add") onAdd(addition.terms) }}
+      >
+        {t.addRangeCodes(addition.state === "add" ? addition.terms.length : null)}
+      </Button>
+    </div>
   )
 }
 

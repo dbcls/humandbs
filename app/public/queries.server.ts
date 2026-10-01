@@ -22,6 +22,7 @@ import type { CauUsage } from "~/content/public"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
 import type { ArchiveFiles } from "~/files/summary"
+import { ICD10_SET_CODE, icd10Order } from "~/icd10/codes"
 import {
   accessionFileSummary,
   cauEntry,
@@ -31,6 +32,7 @@ import {
   labelPin,
   researchVersion,
   searchDoc,
+  vocabularySet,
   vocabularyTerm,
 } from "~/db/schema"
 
@@ -375,9 +377,10 @@ export async function loadCatalog(db: Executor): Promise<CatalogView> {
       position: contentKey.position,
     })
     .from(contentKey)
-  const terms = await db
+  const rows = await db
     .select({
       id: vocabularyTerm.id,
+      setCode: vocabularySet.code,
       code: vocabularyTerm.code,
       labelJa: vocabularyTerm.labelJa,
       labelEn: vocabularyTerm.labelEn,
@@ -386,11 +389,15 @@ export async function loadCatalog(db: Executor): Promise<CatalogView> {
       documentSlug: document.slug,
     })
     .from(vocabularyTerm)
+    .innerJoin(vocabularySet, eq(vocabularySet.id, vocabularyTerm.setId))
     .leftJoin(document, eq(document.id, vocabularyTerm.documentId))
+  const icd10 = rows.filter((row) => row.setCode === ICD10_SET_CODE)
+  const order = icd10Order(icd10.map((row) => row.code))
 
   return {
     keyById: new Map(keys.map((key) => [key.id, key])),
     keyByCode: new Map(keys.map((key) => [key.code, key])),
-    termById: new Map(terms.map((term) => [term.id, term])),
+    termById: new Map(rows.map(({ setCode: _, ...term }) => [term.id, term])),
+    icd10Order: new Map(icd10.map((row) => [row.id, order.get(row.code) ?? 0])),
   }
 }

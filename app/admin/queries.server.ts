@@ -708,6 +708,31 @@ export async function findDiseaseTerms(
   return []
 }
 
+/**
+ * The terms a range of ICD10 codes names (`app/icd10/codes.ts` の
+ * `icd10InRange`): as long as its ends, and between them in code order. **All
+ * of them, not a page of candidates** — they are added at once, and the count
+ * shown before adding has to be the count added.
+ *
+ * The order is the byte order (`COLLATE "C"`), the one `icd10InRange` compares
+ * in, rather than the database's own, which need not put digits before letters.
+ */
+export async function findTermsInRange(
+  db: Executor,
+  setId: string,
+  range: { lower: string, upper: string },
+): Promise<EditableTerm[]> {
+  return db
+    .select(TERM_COLUMNS)
+    .from(vocabularyTerm)
+    .where(and(
+      eq(vocabularyTerm.setId, setId),
+      sql`length(${vocabularyTerm.code}) = ${range.lower.length}`,
+      sql`${vocabularyTerm.code} COLLATE "C" BETWEEN ${range.lower} AND ${range.upper}`,
+    ))
+    .orderBy(sql`${vocabularyTerm.code} COLLATE "C"`)
+}
+
 export async function humLabelOf(db: Executor, researchId: string): Promise<string | null> {
   const [row] = await db
     .select({ label: labelPin.label })

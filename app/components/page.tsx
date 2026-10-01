@@ -1,7 +1,8 @@
 import { Children, createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router"
 
-import { Badge, HeaderBar, HEADER_BAR_FILL, type HeaderBarTone, Breadcrumb, Clamped, EDGE_SHADE, LISTING_CONTROL, Note, Stack, Chevron } from "~/components/base"
+import { Badge, HeaderBar, HEADER_BAR_FILL, type HeaderBarTone, Breadcrumb, Clamped, Dialog, EDGE_SHADE, LISTING_CONTROL, Note, Stack, Chevron } from "~/components/base"
+import { CHIP_SEPARATOR } from "~/components/experiment-chips"
 import { Icon, type IconName, SUBJECT_ICON } from "~/components/icons"
 import { linkHref } from "~/content/richtext"
 import type { RichText, Span } from "~/content/types"
@@ -9,7 +10,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { crawlRel } from "~/public/crawl"
 import { href } from "~/public/urls"
-import type { FieldView, LinksView, TermView } from "~/public/view.server"
+import type { DiseaseCodeView, DiseaseView, FieldView, LinksView, TermView } from "~/public/view.server"
 
 import { scrollPaneTo, scrollTableTo } from "./scroll"
 
@@ -165,7 +166,9 @@ export function ValueAtPath({ at, onHeaderBar = false, within = false, children 
         ? undefined
         : (event) => {
             const pressed = event.target instanceof Element ? event.target : null
-            if (pressed?.closest("a, button, summary, details, input, textarea, select") !== null) return
+            // A panel opened from the place is drawn over the page but sits
+            // inside the place, so a press anywhere in it would go to the form.
+            if (pressed?.closest("a, button, summary, details, input, textarea, select, dialog") !== null) return
             // **The innermost place responds, and only it.** A section is a
             // place holding places (a list's table holds its cells), and a
             // press left to rise would go on to the section's own field and
@@ -815,8 +818,19 @@ const CONTROL_ON_FIRST_LINE = "pt-1.25"
  * window: the floors are held by `Td`, so a table of one wide cell stops
  * travelling sideways for as long as it has no rows.
  */
-export function Table({ headers: named, children, stuck = 0, whenEmpty, align = "top", actions }: {
+export function Table({ headers: named, children, stuck = 0, whenEmpty, align = "top", actions, widths }: {
   headers: ReactNode[]
+  /**
+   * A width for each column, as a whole `w-*` class, or `""` for a column that
+   * takes an equal share of what the others leave.
+   *
+   * **Given, the columns are laid out by these and not by what they hold**
+   * (`table-fixed`). It is the one way two columns come out the same width:
+   * laid out by their content, the column with the longer words takes more,
+   * whatever share it is asked for. The table keeps a floor of its own, so on a
+   * narrow window it scrolls sideways rather than squeezing every column.
+   */
+  widths?: readonly string[]
   /**
    * The rows end in a column of things to press, **named for anyone hearing the
    * row read aloud and nowhere else** — a word over a column of icons is a
@@ -952,7 +966,7 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
             column needs to draw its edge with. With no spacing between them the
             two draw the same rules.
           */}
-          <table className="min-w-full table-auto border-separate border-spacing-0 text-sm">
+          <table className={`${widths === undefined ? "min-w-full table-auto" : "w-full min-w-3xl table-fixed"} border-separate border-spacing-0 text-sm`}>
             <thead>
               {/*
                 **The header row finishes its sweep inside the box, not inside the
@@ -1008,7 +1022,7 @@ export function Table({ headers: named, children, stuck = 0, whenEmpty, align = 
                     // Which column a value belongs to, for a reader who hears
                     // the row rather than seeing it line up under the name.
                     scope="col"
-                    className={`px-3 align-middle font-semibold ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${CEILING} ${ICON_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${HEADER_BAR_FILL.brand} ${STUCK_HEADER_BAR[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
+                    className={`px-3 align-middle font-semibold ${widths?.[index] ?? ""} ${typeof header === "string" ? "whitespace-nowrap py-1.5" : `${CEILING} ${ICON_COLUMN} py-0`} ${index < stuck ? `${STUCK[index] ?? ""} ${HEADER_BAR_FILL.brand} ${STUCK_HEADER_BAR[index] ?? ""} ${index === edgeAt ? FROZEN_EDGE : ""}` : ""}`}
                   >
                     {header}
                   </th>
@@ -1452,7 +1466,97 @@ export function Value({ field, locale }: { field: FieldView, locale: Locale }) {
   if (field.state === "rich") {
     return field.text.length === 0 ? null : <Prose text={field.text} />
   }
+  if (field.state === "diseases") {
+    return field.diseases.length === 0 ? null : <Diseases diseases={field.diseases} locale={locale} />
+  }
   return field.text === "" ? null : <>{field.text}</>
+}
+
+/**
+ * Diseases, a line each: the name the article wrote, and its codes on one chip
+ * after it (`view.server.ts` の `DiseaseView`).
+ */
+function Diseases({ diseases, locale }: { diseases: DiseaseView[], locale: Locale }) {
+  return (
+    <ul>
+      {diseases.map((disease, at) => (
+        <li key={at} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          {disease.name !== null && <span>{disease.name}</span>}
+          {disease.spans.length > 0 && <DiseaseCodes disease={disease} locale={locale} />}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * A disease's codes as a chip, and the table of them it opens.
+ *
+ * **The chip is the button.** `C00-C80` stands for some seventy codes, and the
+ * range does not say what any of them is; the table names each, with its titles
+ * in both languages and a link to WHO's page for it. **The panel shows which
+ * disease it is about**, as the name stays on the page behind it.
+ */
+function DiseaseCodes({ disease, locale }: { disease: DiseaseView, locale: Locale }) {
+  const messages = messagesFor(locale)
+  const t = messages.dataset
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => { setOpen(true) }}
+        className="rounded border border-line-strong bg-white px-2 py-0.5 text-left text-ink text-sm transition-colors hover:bg-surface-hover"
+      >
+        {/* **A range is not broken across lines**: `I20-` at the end of one and
+            `I25` at the start of the next read as two codes. The chip breaks
+            between its entries instead. */}
+        {disease.spans.map((span, at) => (
+          <Fragment key={span}>
+            {at > 0 && CHIP_SEPARATOR[locale]}
+            <span className="whitespace-nowrap">{span}</span>
+          </Fragment>
+        ))}
+      </button>
+      <Dialog
+        title={t.icd10Codes}
+        subject={disease.name === null ? undefined : { name: t.diseaseName, value: disease.name }}
+        held={{ open, close: () => { setOpen(false) } }}
+        dismiss={messages.comment.close}
+        wide
+      >
+        <DiseaseCodeTable codes={disease.codes} locale={locale} />
+      </Dialog>
+    </>
+  )
+}
+
+/**
+ * A disease's codes, a row each, with the title each classification gives
+ * them. **A code WHO's classification names is a link to WHO's page for it**;
+ * one only the Japanese classification has is text, with no English title
+ * (`view.server.ts` の `DiseaseCodeView`).
+ *
+ * **The two titles take the same width** (`Table` の `widths`), so that the two
+ * columns read as the same thing in two classifications rather than as a name
+ * and a note.
+ */
+export function DiseaseCodeTable({ codes, locale }: { codes: DiseaseCodeView[], locale: Locale }) {
+  const t = messagesFor(locale).dataset
+  return (
+    <Table headers={[t.icd10Code, t.estatTitle, t.whoTitle]} widths={["w-32", "", ""]}>
+      {codes.map((one) => (
+        <tr key={one.code}>
+          <Td nowrap>
+            {one.url === null ? one.code : <ExternalLink to={one.url} locale={locale}>{one.code}</ExternalLink>}
+          </Td>
+          <Td>{one.labelJa}</Td>
+          <Td>{one.labelEn}</Td>
+        </tr>
+      ))}
+    </Table>
+  )
 }
 
 /**

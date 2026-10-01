@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import type { CauUsage } from "~/content/public"
 
 import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/empty"
+import { icd10Order } from "~/icd10/codes"
 import { PAGE_SIZE, PAGE_SIZES, type PageSize } from "~/search/page-size"
 import type {
   DataProvider,
@@ -17,6 +18,7 @@ import {
   ACCESS_TYPE_KEY,
   TYPE_OF_DATA_KEY,
   datasetView,
+  fieldText,
   makerOf,
   researchListRowView,
   researchView,
@@ -46,6 +48,7 @@ const KEYS = [
 const catalog: CatalogView = {
   keyById: new Map(KEYS.map((k) => [k.id, k])),
   keyByCode: new Map(KEYS.map((k) => [k.code, k])),
+  icd10Order: new Map(),
   termById: new Map([
     ["t-open", { code: "unrestricted-access", labelJa: "非制限公開", labelEn: "Unrestricted-access", maker: null, position: 0, documentSlug: null }],
     ["t-en-only", { code: "en-only", labelJa: null, labelEn: "English only", maker: null, position: 1, documentSlug: null }],
@@ -768,6 +771,105 @@ describe("the several values one key holds", () => {
     if (field === undefined) throw new Error("the value is drawn")
     expect(valuesText(field, ", ")).toBe("NEBNext Ultra DNA Library Prep Kit for Illumina, SureSelect Human All Exon V6")
     expect(valuesText(field, "、")).toBe("NEBNext Ultra DNA Library Prep Kit for Illumina、SureSelect Human All Exon V6")
+  })
+})
+
+describe("the diseases one key holds", () => {
+  /** An ICD10 term, titled as the import titles it (`vocabulary.server.ts` の `labelsOf`). */
+  function icd10(code: string, labelEn: string | null, labelJa: string | null): [string, VocabularyTermView] {
+    return [`t-${code}`, { code, labelJa, labelEn: labelEn ?? labelJa ?? code, maker: null, position: 0, documentSlug: null }]
+  }
+  const ICD10: [string, VocabularyTermView][] = [
+    icd10("C18", "Malignant neoplasm of colon", "結腸の悪性新生物"),
+    icd10("C19", "Malignant neoplasm of rectosigmoid junction", "直腸S状結腸移行部の悪性新生物"),
+    icd10("C20", "Malignant neoplasm of rectum", "直腸の悪性新生物"),
+    icd10("C21", "Malignant neoplasm of anus and anal canal", "肛門及び肛門管の悪性新生物"),
+    icd10("C349", "Bronchus or lung, unspecified", "気管支又は肺, 部位不明"),
+    icd10("U07", "Emergency use of U07", null),
+    icd10("A90", null, "デング熱［古典デング］"),
+  ]
+  const order = icd10Order(ICD10.map(([, term]) => term.code))
+  const withDiseases: CatalogView = {
+    ...catalog,
+    termById: new Map([...catalog.termById, ...ICD10]),
+    icd10Order: new Map(ICD10.map(([id, term]) => [id, order.get(term.code) ?? 0])),
+  }
+
+  function fieldOf(diseases: { termIds: string[], nameJa: string | null, nameEn: string | null }[], locale: "ja" | "en" = "ja") {
+    const field = datasetView({
+      archiveFiles: null,
+      studyAccession: null,
+      secondaryLabels: [],
+      label: "JGAD000001",
+      humLabel: "hum0001",
+      content: {
+        ...emptyDatasetContent(),
+        experiments: [{
+          id: "e1",
+          label: filled("WES"),
+          values: [{ keyId: "k-early", value: { kind: "disease", diseases: filled(diseases) } }],
+        }],
+      },
+      selection: [],
+      datePublished: "2020-01-01",
+      dateModified: null,
+      files: [],
+    }, locale, withDiseases).experiments[0]?.values[0]?.field
+    if (field?.state !== "diseases") throw new Error("the value is drawn as diseases")
+    return field
+  }
+
+  it("puts the codes on one chip after the name, three consecutive ones as their ends", () => {
+    const field = fieldOf([{ termIds: ["t-C21", "t-C18", "t-C19", "t-C20"], nameJa: "大腸がん", nameEn: "Colorectal cancer" }])
+
+    expect(field.diseases).toHaveLength(1)
+    expect(field.diseases[0]?.name).toBe("大腸がん")
+    expect(field.diseases[0]?.spans).toEqual(["C18-C21"])
+    expect(field.diseases[0]?.codes.map((one) => one.code)).toEqual(["C18", "C19", "C20", "C21"])
+  })
+
+  it("puts the chip's entries in code order, whatever order the codes were chosen in", () => {
+    expect(fieldOf([{ termIds: ["t-C349", "t-C20", "t-C18"], nameJa: "がん", nameEn: "Cancer" }]).diseases[0]?.spans)
+      .toEqual(["C18", "C20", "C349"])
+  })
+
+  it("links a code WHO names to WHO's page, and gives one only the Japanese classification has no link and no English title", () => {
+    const field = fieldOf([{ termIds: ["t-C349", "t-U07", "t-A90"], nameJa: "混合", nameEn: null }])
+
+    expect(field.diseases[0]?.codes).toEqual([
+      { code: "A90", url: null, labelEn: null, labelJa: "デング熱［古典デング］" },
+      { code: "C349", url: "https://icd.who.int/browse10/2019/en#/C34.9", labelEn: "Bronchus or lung, unspecified", labelJa: "気管支又は肺, 部位不明" },
+      { code: "U07", url: "https://icd.who.int/browse10/2019/en#/U07", labelEn: "Emergency use of U07", labelJa: null },
+    ])
+  })
+
+  it("keeps a term of another classification as it is, with no range and no link", () => {
+    const field = fieldOf([{ termIds: ["t-open", "t-C18"], nameJa: "x", nameEn: null }])
+
+    expect(field.diseases[0]?.spans).toEqual(["C18", "unrestricted-access"])
+    expect(field.diseases[0]?.codes[1]).toEqual({ code: "unrestricted-access", url: null, labelEn: "Unrestricted-access", labelJa: "非制限公開" })
+  })
+
+  it("names a disease by the other language's name, then by its first code's title", () => {
+    expect(fieldOf([{ termIds: ["t-C20"], nameJa: null, nameEn: "Rectal cancer" }]).diseases[0]?.name).toBe("Rectal cancer")
+    expect(fieldOf([{ termIds: ["t-C20", "t-C18"], nameJa: null, nameEn: null }]).diseases[0]?.name).toBe("直腸の悪性新生物")
+  })
+
+  it("draws a disease naming no code with no chip, and one naming nothing the catalog knows the same way", () => {
+    for (const termIds of [[], ["t-forgotten"]]) {
+      const [disease] = fieldOf([{ termIds, nameJa: "健常者", nameEn: null }]).diseases
+      expect(disease).toEqual({ name: "健常者", spans: [], codes: [] })
+    }
+  })
+
+  it("reads as the name and the chip in brackets, a disease to a line", () => {
+    const field = fieldOf([
+      { termIds: ["t-C18", "t-C19", "t-C20"], nameJa: "大腸がん", nameEn: null },
+      { termIds: [], nameJa: "健常者", nameEn: null },
+    ])
+
+    expect(fieldText(field)).toBe("大腸がん (C18-C20) 健常者")
+    expect(valuesText(field, "、")).toBe("大腸がん (C18-C20)、健常者")
   })
 })
 

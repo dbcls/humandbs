@@ -10,7 +10,7 @@ import type { RichText } from "~/content/types"
 import type { FieldView } from "~/public/view.server"
 
 import { linksIn } from "./_links"
-import { AnnotationLayer, HeaderBarSection, DatasetIds, Fact, Facts, IdWithIcon, KeyValue, AnnotatedCell, pageWindow, Paging, PageLinks, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
+import { AnnotationLayer, HeaderBarSection, DatasetIds, DiseaseCodeTable, Fact, Facts, IdWithIcon, KeyValue, AnnotatedCell, pageWindow, Paging, PageLinks, Pairs, Section, Table, Td, TermLabel, Value } from "./page"
 
 function render(field: FieldView): string {
   return renderToStaticMarkup(<Value field={field} locale="ja" />)
@@ -93,6 +93,89 @@ function pressesAtWorst(pageCount: number, most?: number): number {
   }
   return worst
 }
+
+describe("a disease value", () => {
+  /** A chip opens a panel, and a panel is drawn inside a route. */
+  const routed = (element: ReactNode) => {
+    const Stub = createRoutesStub([{ path: "/*", Component: () => <>{element}</> }])
+    return renderToStaticMarkup(<Stub initialEntries={["/dataset/JGAD000001"]} />)
+  }
+  const field: FieldView = {
+    state: "diseases",
+    diseases: [
+      {
+        name: "大腸がん",
+        spans: ["C18-C20"],
+        codes: ["C18", "C19", "C20"].map((code) => ({ code, url: null, labelEn: `${code} en`, labelJa: `${code} ja` })),
+      },
+      { name: "健常者", spans: [], codes: [] },
+    ],
+  }
+
+  it("puts each disease on a line of its own, its name and then its codes on one chip that opens a panel", () => {
+    const html = routed(<Value field={field} locale="ja" />)
+    const lines = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)].map((match) => match[1] ?? "")
+
+    expect(lines).toHaveLength(2)
+    expect(lines[0]).toMatch(/^<span>大腸がん<\/span><button type="button" aria-haspopup="dialog"[^>]*><span class="whitespace-nowrap">C18-C20<\/span><\/button><dialog/)
+    expect(lines[1]).toBe("<span>健常者</span>")
+  })
+
+  it("joins the chip's entries as the page's chips are joined, and breaks a line only between them", () => {
+    const two: FieldView = {
+      state: "diseases",
+      diseases: [{ name: null, spans: ["C18", "I20-I25"], codes: [{ code: "C18", url: null, labelEn: null, labelJa: null }] }],
+    }
+    const chip = (locale: "ja" | "en") =>
+      /<button[^>]*>([\s\S]*?)<\/button>/.exec(routed(<Value field={two} locale={locale} />))?.[1]
+
+    expect(chip("ja")).toBe("<span class=\"whitespace-nowrap\">C18</span>、<span class=\"whitespace-nowrap\">I20-I25</span>")
+    expect(chip("en")).toBe("<span class=\"whitespace-nowrap\">C18</span>, <span class=\"whitespace-nowrap\">I20-I25</span>")
+  })
+
+  it("keeps the table of codes out of the page until the chip is pressed", () => {
+    const html = routed(<Value field={field} locale="ja" />)
+
+    expect(html).not.toContain("WHO ICD-10")
+    expect(html).not.toContain("C19")
+  })
+
+  it("draws nothing for a key holding no disease", () => {
+    expect(render({ state: "diseases", diseases: [] })).toBe("")
+  })
+})
+
+describe("a disease's table of codes", () => {
+  const table = (locale: "ja" | "en") => renderToStaticMarkup(
+    <DiseaseCodeTable
+      codes={[
+        { code: "A90", url: null, labelEn: null, labelJa: "デング熱［古典デング］" },
+        { code: "C349", url: "https://icd.who.int/browse10/2019/en#/C34.9", labelEn: "Bronchus or lung, unspecified", labelJa: "気管支又は肺, 部位不明" },
+      ]}
+      locale={locale}
+    />,
+  )
+  const rows = (html: string) => [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].map((match) => match[1] ?? "").slice(1)
+
+  it("heads its columns with the code and the classification each title is taken from, Japanese first", () => {
+    expect(table("ja")).toMatch(/ICD-10 コード[\s\S]*疾病、傷害及び死因の統計分類 \(2013\)[\s\S]*WHO ICD-10 \(2019\)/)
+    expect(table("en")).toMatch(/ICD-10 code[\s\S]*Japanese statistical classification \(2013\)[\s\S]*WHO ICD-10 \(2019\)/)
+  })
+
+  it("links a code WHO names to WHO's page in a new tab", () => {
+    const [, who] = rows(table("ja"))
+
+    expect(who).toMatch(/<a href="https:\/\/icd\.who\.int\/browse10\/2019\/en#\/C34\.9" target="_blank" rel="noopener noreferrer"[^>]*>C349/)
+    expect(who).toContain("Bronchus or lung, unspecified")
+  })
+
+  it("leaves a code only the Japanese classification has as text, with no English title", () => {
+    const [estat] = rows(table("ja"))
+    const cells = [...(estat ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((match) => match[1])
+
+    expect(cells).toEqual(["A90", "デング熱［古典デング］", ""])
+  })
+})
 
 describe("the pages a listing offers", () => {
   it("steps away from the current page by doubling", () => {

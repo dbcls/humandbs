@@ -88,7 +88,7 @@ function researchAnswer(content: ResearchContent): unknown {
     cau: [],
     files: [],
     fileLabels: new Map(),
-  }, { origin: ORIGIN, catalog: { keyById: new Map(), keyByCode: new Map(), termById: new Map() } }))
+  }, { origin: ORIGIN, catalog: { keyById: new Map(), keyByCode: new Map(), termById: new Map(), icd10Order: new Map() } }))
 }
 
 /** Every slot of a content turned into a question nobody has responded to yet. */

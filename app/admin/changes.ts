@@ -17,6 +17,7 @@ import { diffDraftInput } from "./diff"
 import { researchContentInput, type SlotState } from "./form"
 import { readAt } from "./paths"
 
+import { diseaseLine } from "~/components/experiment-chips"
 import { toPlainText } from "~/content/richtext"
 import type { DatasetContent, ResearchContent } from "~/content/types"
 import type { AnchoredValue } from "~/public/view.server"
@@ -249,5 +250,6 @@ export function anchoredSide(value: AnchoredValue): Side {
   }
   const field = value.field
   if (field.state === "rich") return { state: "value", text: toPlainText(field.text) }
+  if (field.state === "diseases") return { state: "value", text: field.diseases.map(diseaseLine).join("\n") }
   return { state: "value", text: field.state === "plain" ? field.text : "" }
 }

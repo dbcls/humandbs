@@ -4,8 +4,12 @@ import { describe, expect, it } from "vitest"
 import {
   icd10Code,
   icd10CodesIn,
+  icd10InRange,
   icd10Parent,
+  icd10Order,
+  icd10Range,
   icd10Resolve,
+  icd10Spans,
   mergeEntries,
   parseWhoMeta,
   type Icd10Entry,
@@ -152,6 +156,86 @@ describe("resolving against a dictionary", () => {
   it("gives nothing when the dictionary is empty", () => {
     fc.assert(fc.property(code, (written) => {
       expect(icd10Resolve(written, () => false)).toBeNull()
+    }))
+  })
+})
+
+/** A three- or four-character code, the two lengths the classification is imported at. */
+const termCode = fc
+  .tuple(
+    fc.constantFrom(...LETTERS.slice(0, 4)),
+    fc.integer({ min: 0, max: 99 }),
+    fc.stringMatching(/^[0-9]?$/),
+  )
+  .map(([letter, digits, tail]) => `${letter}${String(digits).padStart(2, "0")}${tail}`)
+
+/** A classification, and some of its codes. */
+const chosen = fc
+  .uniqueArray(termCode, { minLength: 1, maxLength: 60 })
+  .chain((classification) => fc.tuple(fc.constant(classification), fc.subarray(classification)))
+
+/** The codes of the classification a chip's entry stands for. */
+function expanded(span: string, classification: readonly string[]): string[] {
+  const [lower, upper] = span.split("-")
+  if (lower === undefined) return []
+  if (upper === undefined) return [lower]
+  return classification.filter((code) => icd10InRange(code, { lower, upper }))
+}
+
+describe("a range typed as two ends", () => {
+  it("is a range for ends of one length in order, whichever order they are typed in", () => {
+    fc.assert(fc.property(termCode, termCode, (a, b) => {
+      const read = icd10Range(a, b)
+      if (a.length !== b.length) {
+        expect(read).toEqual({ state: "problem", problem: "lengths-differ" })
+        return
+      }
+      if (a > b) {
+        expect(read).toEqual({ state: "problem", problem: "reversed" })
+        return
+      }
+      expect(read).toEqual({ state: "range", lower: a, upper: b })
+      expect(icd10InRange(a, { lower: a, upper: b })).toBe(true)
+      expect(icd10InRange(b, { lower: a, upper: b })).toBe(true)
+    }))
+  })
+})
+
+describe("codes as a disease's chip shows them", () => {
+  it("stands for exactly the codes it was given", () => {
+    fc.assert(fc.property(chosen, ([classification, codes]) => {
+      const spans = icd10Spans(codes, icd10Order(classification))
+      const shown = spans.flatMap((span) => expanded(span, classification))
+      expect([...shown].sort()).toEqual([...codes].sort())
+    }))
+  })
+
+  it("writes no range of fewer than three codes, and lists its entries in code order", () => {
+    fc.assert(fc.property(chosen, ([classification, codes]) => {
+      const spans = icd10Spans(codes, icd10Order(classification))
+      for (const span of spans) {
+        if (span.includes("-")) expect(expanded(span, classification).length).toBeGreaterThanOrEqual(3)
+      }
+      const firsts = spans.map((span) => span.split("-")[0] ?? "")
+      expect(firsts).toEqual([...firsts].sort())
+    }))
+  })
+
+  it("never leaves three consecutive codes outside one range", () => {
+    fc.assert(fc.property(chosen, ([classification, codes]) => {
+      const order = icd10Order(classification)
+      const spans = icd10Spans(codes, order)
+      const spanOf = (code: string) => spans.find((span) => expanded(span, classification).includes(code))
+      const held = new Set(codes)
+      const at = new Map([...order].map(([code, index]) => [`${code.length}:${index}`, code]))
+      for (const code of codes) {
+        const index = order.get(code) ?? 0
+        const next = at.get(`${code.length}:${index + 1}`)
+        const after = at.get(`${code.length}:${index + 2}`)
+        if (next === undefined || after === undefined || !held.has(next) || !held.has(after)) continue
+        expect(spanOf(next)).toBe(spanOf(code))
+        expect(spanOf(after)).toBe(spanOf(code))
+      }
     }))
   })
 })

@@ -1,5 +1,5 @@
 import type { Locale } from "~/i18n/locale"
-import type { FieldView, ValueView } from "~/public/view.server"
+import type { DiseaseView, FieldView, ValueView } from "~/public/view.server"
 
 /**
  * The keys an experiment's page draws as chips, under the key whose paragraph
@@ -89,7 +89,19 @@ export function experimentRows(
   })
 }
 
-const SEPARATOR: Record<Locale, string> = { ja: "、", en: ", " }
+/** What a chip joins its values with, in the page's language. */
+export const CHIP_SEPARATOR: Record<Locale, string> = { ja: "、", en: ", " }
+
+/**
+ * A disease as one line of text, where a page's chip cannot be drawn — a
+ * comparison of two versions, the text a value is read as: its name, and its
+ * chip's entries in brackets after it.
+ */
+export function diseaseLine(disease: DiseaseView): string {
+  const codes = disease.spans.join(", ")
+  if (disease.name === null) return codes
+  return codes === "" ? disease.name : `${disease.name} (${codes})`
+}
 
 /**
  * A value as a chip draws it: the values a row draws a line each, run together
@@ -101,6 +113,6 @@ export function onOneLine(field: FieldView, locale: Locale): FieldView {
   if (field.state !== "rich" || field.text.length <= 1) return field
   return {
     ...field,
-    text: [field.text.flatMap((line, at) => at === 0 ? line : [{ text: SEPARATOR[locale] }, ...line])],
+    text: [field.text.flatMap((line, at) => at === 0 ? line : [{ text: CHIP_SEPARATOR[locale] }, ...line])],
   }
 }

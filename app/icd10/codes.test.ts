@@ -3,8 +3,14 @@ import { describe, expect, it } from "vitest"
 import {
   icd10Code,
   icd10CodesIn,
+  icd10InRange,
+  icd10NamedByWho,
   icd10Parent,
+  icd10Order,
+  icd10Range,
   icd10Resolve,
+  icd10Spans,
+  icd10WhoUrl,
   mergeEntries,
   parseEstatCsv,
   parseWhoMeta,
@@ -70,6 +76,95 @@ describe("the codes an annotation names", () => {
   it("drops a range that crosses letters or runs backwards", () => {
     expect(icd10CodesIn("C00-D48")).toEqual([])
     expect(icd10CodesIn("C20-18")).toEqual([])
+  })
+})
+
+describe("a range typed as two ends", () => {
+  it("reads each end as a code is read, with or without the point", () => {
+    expect(icd10Range("c34.0", "C34.9")).toEqual({ state: "range", lower: "C340", upper: "C349" })
+    expect(icd10Range(" C00 ", "C80")).toEqual({ state: "range", lower: "C00", upper: "C80" })
+  })
+
+  it("is a range across letters, and a range of one code when the ends are the same", () => {
+    expect(icd10Range("C00", "D48")).toEqual({ state: "range", lower: "C00", upper: "D48" })
+    expect(icd10Range("C34", "C34")).toEqual({ state: "range", lower: "C34", upper: "C34" })
+  })
+
+  it("is not a range when the ends differ in length", () => {
+    expect(icd10Range("C34", "C35.9")).toEqual({ state: "problem", problem: "lengths-differ" })
+    expect(icd10Range("C34.0", "C35")).toEqual({ state: "problem", problem: "lengths-differ" })
+  })
+
+  it("is not a range when an end is not a three- or four-character code", () => {
+    for (const [lower, upper] of [["", "C80"], ["C00", ""], ["C3", "C80"], ["C00", "肺がん"], ["K75.81", "K75.89"]]) {
+      expect(icd10Range(lower ?? "", upper ?? "")).toEqual({ state: "problem", problem: "not-code" })
+    }
+  })
+
+  it("is not a range when the ends are the wrong way round", () => {
+    expect(icd10Range("C80", "C00")).toEqual({ state: "problem", problem: "reversed" })
+    expect(icd10Range("C34.9", "C34.0")).toEqual({ state: "problem", problem: "reversed" })
+  })
+
+  it("names the codes between its ends that are as long as its ends", () => {
+    const classification = ["C25", "C26", "C30", "C34", "C340", "C349", "D00"]
+    const range = { lower: "C26", upper: "C34" }
+    expect(classification.filter((code) => icd10InRange(code, range))).toEqual(["C26", "C30", "C34"])
+  })
+})
+
+describe("codes as a disease's chip shows them", () => {
+  const order = icd10Order([
+    "C18", "C19", "C20", "C21", "C25", "C26", "C30", "C34",
+    "C340", "C341", "C342", "C343", "C348", "C349",
+  ])
+
+  it("writes three or more consecutive codes as their two ends", () => {
+    expect(icd10Spans(["C18", "C19", "C20"], order)).toEqual(["C18-C20"])
+    expect(icd10Spans(["C340", "C341", "C342", "C343", "C348", "C349"], order)).toEqual(["C340-C349"])
+  })
+
+  it("leaves two consecutive codes as two", () => {
+    expect(icd10Spans(["C18", "C19"], order)).toEqual(["C18", "C19"])
+    // There is no C27 to C29, so C26 and C30 are consecutive.
+    expect(icd10Spans(["C26", "C30"], order)).toEqual(["C26", "C30"])
+  })
+
+  it("runs over the codes the classification does not have", () => {
+    expect(icd10Spans(["C25", "C26", "C30"], order)).toEqual(["C25-C30"])
+  })
+
+  it("leaves codes with one missing between them apart", () => {
+    expect(icd10Spans(["C18", "C20", "C21"], order)).toEqual(["C18", "C20", "C21"])
+  })
+
+  it("runs three-character and four-character codes separately, and puts them in code order", () => {
+    expect(icd10Spans(["C349", "C34", "C348", "C18", "C343"], order)).toEqual(["C18", "C34", "C343-C349"])
+  })
+
+  it("shows a code the classification does not have on its own, and each code once", () => {
+    expect(icd10Spans(["X99", "C19", "C18", "C19"], order)).toEqual(["C18", "C19", "X99"])
+  })
+
+  it("shows nothing for no codes", () => {
+    expect(icd10Spans([], order)).toEqual([])
+  })
+})
+
+describe("a code in WHO's classification", () => {
+  it("opens WHO's browser at the code, written with its point", () => {
+    expect(icd10WhoUrl("C34")).toBe("https://icd.who.int/browse10/2019/en#/C34")
+    expect(icd10WhoUrl("C349")).toBe("https://icd.who.int/browse10/2019/en#/C34.9")
+  })
+
+  it("is one with an English title of its own", () => {
+    expect(icd10NamedByWho({ code: "C34", labelEn: "Malignant neoplasm of bronchus and lung", labelJa: "気管支及び肺の悪性新生物" })).toBe(true)
+    expect(icd10NamedByWho({ code: "U07", labelEn: "Emergency use of U07", labelJa: null })).toBe(true)
+  })
+
+  it("is not one whose English column holds the Japanese title or the code", () => {
+    expect(icd10NamedByWho({ code: "A90", labelEn: "デング熱［古典デング］", labelJa: "デング熱［古典デング］" })).toBe(false)
+    expect(icd10NamedByWho({ code: "X99", labelEn: "X99", labelJa: null })).toBe(false)
   })
 })
 

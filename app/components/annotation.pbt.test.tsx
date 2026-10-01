@@ -57,6 +57,7 @@ const KEYS = [
 const catalog: CatalogView = {
   keyById: new Map(KEYS.map((row) => [row.id, row])),
   keyByCode: new Map(KEYS.map((row) => [row.code, row])),
+  icd10Order: new Map(),
   termById: new Map([["t-open", {
     code: "unrestricted-access", labelJa: "非制限", labelEn: "Open", maker: null, position: 0, documentSlug: null,
   }]]),

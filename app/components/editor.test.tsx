@@ -16,7 +16,7 @@ import type { PlaceSources } from "./places"
 const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
 
 /** Nothing in this fixture has values, so an empty catalog draws every place. */
-const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map(), icd10Order: new Map() }
 
 /** The draft drawn as its page, which the editor shows beside the form. */
 function drawn(): DrawnDraft {

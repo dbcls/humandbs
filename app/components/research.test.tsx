@@ -407,7 +407,7 @@ describe("what a grant shows, in the order it shows it", () => {
 })
 
 describe("the row of the research listing", () => {
-  const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+  const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map(), icd10Order: new Map() }
   const row = researchListRowView({
     humLabel: "hum0001",
     content: emptyResearchContent(),

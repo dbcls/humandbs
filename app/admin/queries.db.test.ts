@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 import { closePools, getDb, getOwnerDb } from "~/db/client.server"
@@ -7,6 +8,7 @@ import * as s from "~/db/schema"
 import {
   findDiseaseTerms,
   findTerms,
+  findTermsInRange,
   loadCatalogWithTerms,
   loadEditableCatalog,
   TERM_CANDIDATES,
@@ -139,6 +141,31 @@ describe("the candidates for what was typed", () => {
 
   it("responds with nothing when no length of the code is held", async () => {
     expect(await diseaseCodesOf("Q999")).toEqual([])
+  })
+
+  it("returns every code between the ends of a range that is as long as its ends, in code order", async () => {
+    const codesIn = async (lower: string, upper: string) =>
+      (await findTermsInRange(db, setId, { lower, upper })).map((term) => term.code)
+
+    expect(await codesIn("C00", "C80")).toEqual(["C34", "C50", "C61"])
+    expect(await codesIn("C340", "C349")).toEqual(["C349"])
+    expect(await codesIn("C50", "C50")).toEqual(["C50"])
+    expect(await codesIn("C35", "C49")).toEqual([])
+  })
+
+  it("returns no code of another vocabulary for a range", async () => {
+    const other = only(await db
+      .insert(s.vocabularySet)
+      .values({ code: "range-other", labelJa: "別", labelEn: "Other" })
+      .returning({ id: s.vocabularySet.id })).id
+    try {
+      await db.insert(s.vocabularyTerm).values({ setId: other, code: "C40", labelEn: "Elsewhere" })
+
+      const codes = (await findTermsInRange(db, setId, { lower: "C00", upper: "C80" })).map((term) => term.code)
+      expect(codes).toEqual(["C34", "C50", "C61"])
+    } finally {
+      await db.delete(s.vocabularySet).where(eq(s.vocabularySet.id, other))
+    }
   })
 
   it("stops at the cap however many match", async () => {

@@ -9,11 +9,12 @@ import { datasetContentInput, emptyValueInput, type DatasetContentInput } from "
 import type { DatasetEditorView } from "~/admin/pages.server"
 import type { EditableCatalog, EditableTerm } from "~/admin/queries.server"
 import { emptyDatasetContent, filled } from "~/content/empty"
+import { icd10Range } from "~/icd10/codes"
 import type { DatasetContent } from "~/content/types"
 import { anchoredDatasetView, type CatalogView } from "~/public/view.server"
 import type { DrawnDataset } from "~/review/preview.server"
 
-import { CandidateWords, ChoicesLink, copiedExperiment, DatasetEditor, resolveTerms, TermWords } from "./dataset-editor"
+import { CandidateWords, ChoicesLink, copiedExperiment, DatasetEditor, rangeAddition, resolveTerms, TermWords } from "./dataset-editor"
 import type { PlaceSources } from "./places"
 
 const NO_PLACES: PlaceSources = { humLabel: null, rows: {}, datasets: [], experiments: {}, keyLabels: {} }
@@ -168,7 +169,7 @@ const TERMS = [
 ]
 
 /** Nothing in this fixture has values, so an empty catalog draws every place. */
-const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map() }
+const NO_CATALOG: CatalogView = { keyById: new Map(), keyByCode: new Map(), termById: new Map(), icd10Order: new Map() }
 
 /** The dataset drawn as its page, which the editor shows beside the form. */
 function drawn(content: DatasetContent): DrawnDataset {
@@ -607,6 +608,36 @@ describe("the dataset editing form", () => {
     expect(html).toContain("疾患の追加")
   })
 
+  it("offers a range under a disease's code box, which keeps its place until the range is pressed", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{
+        keyId: DISEASE_KEY,
+        value: {
+          kind: "disease",
+          diseases: filled([{ termIds: ["term-k758"], nameJa: "NASH", nameEn: "NASH" }]),
+        },
+      }],
+    }))
+
+    const box = html.indexOf("選択肢の追加")
+    const range = html.indexOf(">範囲で追加</button>")
+    expect(box).toBeGreaterThan(-1)
+    expect(range).toBeGreaterThan(box)
+    expect(html).not.toContain("aria-label=\"下限\"")
+    expect(html).not.toContain("1 つずつ追加")
+  })
+
+  it("offers no range under a vocabulary's box", () => {
+    const html = render(view({
+      ...emptyDatasetContent(),
+      values: [{ keyId: MULTI_KEY, value: { kind: "vocabulary", termIds: filled(["term-hiseq"]) } }],
+    }))
+
+    expect(html).toContain("プラットフォーム")
+    expect(html).not.toContain("範囲で追加")
+  })
+
   it("shows a disease naming no code as an ordinary row, not as an empty item", () => {
     const html = render(view({
       ...emptyDatasetContent(),
@@ -807,6 +838,53 @@ describe("the chosen terms", () => {
         expect(shown).toEqual([...new Set(ids)].filter((id) => knownIds.includes(id)))
       },
     ))
+  })
+})
+
+describe("the button that adds a range", () => {
+  const term = (id: string, setId = ICD10_SET): EditableTerm => ({ id, setId, code: id, labelJa: null, labelEn: id, position: 0 })
+  const range = icd10Range("C00", "C80")
+
+  it("adds the codes of the range that are not chosen yet", () => {
+    const codes = [term("C18"), term("C19"), term("C20")]
+
+    expect(rangeAddition(range, codes, new Set(["C19"]), ICD10_SET)).toEqual({ state: "add", terms: [term("C18"), term("C20")] })
+  })
+
+  it("is refused for ends that are not a range, for the reason they are not", () => {
+    expect(rangeAddition(icd10Range("C34", "C35.9"), [term("C34")], new Set(), ICD10_SET))
+      .toEqual({ state: "refused", why: "lengths-differ" })
+    expect(rangeAddition(icd10Range("", ""), null, new Set(), ICD10_SET)).toEqual({ state: "refused", why: "not-code" })
+    expect(rangeAddition(icd10Range("C80", "C00"), null, new Set(), ICD10_SET)).toEqual({ state: "refused", why: "reversed" })
+  })
+
+  it("is refused while the codes of the range are being looked for", () => {
+    expect(rangeAddition(range, null, new Set(), ICD10_SET)).toEqual({ state: "refused", why: "searching" })
+  })
+
+  it("is refused for a range the classification has no code in, whatever another vocabulary has", () => {
+    expect(rangeAddition(range, [], new Set(), ICD10_SET)).toEqual({ state: "refused", why: "empty" })
+    expect(rangeAddition(range, [term("C18", SET)], new Set(), ICD10_SET)).toEqual({ state: "refused", why: "empty" })
+  })
+
+  it("is refused for a range whose codes are all chosen", () => {
+    expect(rangeAddition(range, [term("C18"), term("C19")], new Set(["C18", "C19"]), ICD10_SET))
+      .toEqual({ state: "refused", why: "all-chosen" })
+  })
+
+  it("adds exactly the codes of its vocabulary not chosen yet, or is refused when there are none", () => {
+    const codes = fc.uniqueArray(fc.record({
+      id: fc.constantFrom("C18", "C19", "C20", "C21", "C25"),
+      setId: fc.constantFrom(ICD10_SET, SET),
+    }), { selector: (one) => one.id })
+    fc.assert(fc.property(codes, fc.subarray(["C18", "C19", "C20", "C21", "C25"]), (picked, chosen) => {
+      const terms = picked.map((one) => term(one.id, one.setId))
+      const held = new Set(chosen)
+      const added = rangeAddition(range, terms, held, ICD10_SET)
+      const expected = terms.filter((one) => one.setId === ICD10_SET && !held.has(one.id))
+      if (expected.length === 0) expect(added.state).toBe("refused")
+      else expect(added).toEqual({ state: "add", terms: expected })
+    }))
   })
 })
 

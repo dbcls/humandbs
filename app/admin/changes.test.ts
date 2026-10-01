@@ -5,6 +5,7 @@ import { emptyDatasetContent, emptyResearchContent, filled } from "~/content/emp
 import type { DatasetContent, ResearchContent } from "~/content/types"
 
 import {
+  anchoredSide,
   changedDatasetFromPublished,
   changedFromPublished,
   describeAt,
@@ -118,6 +119,24 @@ describe("showing what the published version has at a path", () => {
   it("gives nothing for a list of elements, where the difference is the membership", () => {
     expect(describeAt(published, "grants")).toBe(null)
     expect(describeAt(published, "nowhere")).toBe(null)
+  })
+})
+
+describe("a value the page draws, as the comparison reads it", () => {
+  it("reads diseases a line each, the name and then the chip's entries in brackets", () => {
+    const side = anchoredSide({
+      kind: "field",
+      field: {
+        state: "diseases",
+        diseases: [
+          { name: "大腸がん", spans: ["C18-C20", "C349"], codes: [] },
+          { name: null, spans: ["E11"], codes: [] },
+          { name: "健常者", spans: [], codes: [] },
+        ],
+      },
+    })
+
+    expect(side).toEqual({ state: "value", text: "大腸がん (C18-C20, C349)\nE11\n健常者" })
   })
 })
 

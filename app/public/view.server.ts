@@ -14,7 +14,7 @@
  * only the code that walks them can know it.
  */
 
-import { CHIPS_UNDER, type KeyHeading } from "~/components/experiment-chips"
+import { CHIPS_UNDER, diseaseLine, type KeyHeading } from "~/components/experiment-chips"
 import type { CauUsage } from "~/content/public"
 import type {
   ContentValue,
@@ -34,6 +34,7 @@ import type {
 import { fileListOf } from "~/files/prefix"
 import { datasetFileSummary, formatLabel, type ArchiveFiles, type FileSummary } from "~/files/summary"
 import { catalogLabel } from "~/i18n/catalog-label"
+import { icd10NamedByWho, icd10Spans, icd10WhoUrl } from "~/icd10/codes"
 import { messagesFor } from "~/i18n/messages"
 import {
   resolveBilingual,
@@ -102,6 +103,33 @@ export type FieldView
     | { state: "unsettled" }
     | { state: "rich", text: RichText, untranslated: boolean }
     | { state: "plain", text: string, untranslated: boolean }
+    | { state: "diseases", diseases: DiseaseView[] }
+
+/**
+ * A disease as the page shows it: **the name the article wrote, and its codes
+ * on one chip after it.** The chip opens a table of the codes, a row each.
+ */
+export interface DiseaseView {
+  /** The name the article wrote, or the title of its first code where it wrote none. */
+  name: string | null
+  /** The codes as the chip shows them (`icd10Spans`): `C10-C30` for a range. Empty for a disease naming no code. */
+  spans: string[]
+  /** Every code, in code order. */
+  codes: DiseaseCodeView[]
+}
+
+export interface DiseaseCodeView {
+  code: string
+  /** WHO's page for the code, where WHO's classification names it (`icd10NamedByWho`). */
+  url: string | null
+  /**
+   * Null for an ICD10 code WHO's classification does not name: the term's
+   * English label is then the Japanese title again, and a column headed English
+   * would show it in Japanese.
+   */
+  labelEn: string | null
+  labelJa: string | null
+}
 
 /**
  * Links as a page shows them. A URL is the one kind of value whose two
@@ -219,6 +247,13 @@ export interface CatalogView {
   keyById: ReadonlyMap<string, CatalogKeyView>
   keyByCode: ReadonlyMap<string, CatalogKeyView>
   termById: ReadonlyMap<string, VocabularyTermView>
+  /**
+   * The ICD10 terms, by identity, each with its code's index among the
+   * classification's codes of its length (`app/icd10/codes.ts` の `icd10Order`).
+   * **Which terms are ICD10 is read from here and nowhere else**: a term outside
+   * it is drawn without a range and without a link to WHO's classification.
+   */
+  icd10Order: ReadonlyMap<string, number>
 }
 
 /**
@@ -261,6 +296,7 @@ function linksText(links: LinksView, words: ReturnType<typeof messagesFor>): str
 export function fieldText(field: FieldView): string {
   if (field.state === "plain") return field.text
   if (field.state === "rich") return field.text.map((line) => line.map((span) => span.text).join("")).join(" ")
+  if (field.state === "diseases") return field.diseases.map(diseaseLine).join(" ")
   return ""
 }
 
@@ -270,6 +306,7 @@ export function fieldText(field: FieldView): string {
  */
 export function valuesText(field: FieldView, separator: string): string {
   if (field.state === "rich") return field.text.map((line) => line.map((span) => span.text).join("")).join(separator)
+  if (field.state === "diseases") return field.diseases.map(diseaseLine).join(separator)
   return fieldText(field)
 }
 
@@ -336,25 +373,41 @@ function plainOf(slot: Slot<string>): FieldView {
 }
 
 /**
- * A disease as the page shows it: **the name the article wrote, and the code
- * after it in brackets.**
+ * A disease as the page shows it (`DiseaseView`).
  *
  * The name falls back to the other language before it falls back to the
  * classification, because a name written in one language only is what the
- * article had — dropping to the heading would put a word on the page that
- * nobody wrote. **No code means no brackets**: a disease no classification
+ * article had — dropping to the title would put a word on the page that
+ * nobody wrote. **No code means no chip**: a disease no classification
  * names is an ordinary value.
  */
-function writtenDisease(disease: DiseaseValue, locale: Locale, catalog: CatalogView): string {
-  const terms = disease.termIds
-    .map((id) => catalog.termById.get(id))
-    .filter((term) => term !== undefined)
-  const written = (locale === "ja" ? disease.nameJa : disease.nameEn)
+function diseaseView(disease: DiseaseValue, locale: Locale, catalog: CatalogView): DiseaseView {
+  const terms = disease.termIds.flatMap((id) => {
+    const term = catalog.termById.get(id)
+    return term === undefined ? [] : [{ term, index: catalog.icd10Order.get(id) }]
+  })
+  const [first] = terms
+  const name = (locale === "ja" ? disease.nameJa : disease.nameEn)
     ?? (locale === "ja" ? disease.nameEn : disease.nameJa)
-    ?? (terms[0] === undefined ? null : catalogLabel(terms[0], locale))
-  const codes = terms.map((term) => term.code).join(", ")
-  if (written === null) return codes
-  return codes === "" ? written : `${written} (${codes})`
+    ?? (first === undefined ? null : catalogLabel(first.term, locale))
+  const order = new Map(terms.flatMap(({ term, index }) => index === undefined ? [] : [[term.code, index] as const]))
+  const codes = terms
+    .map(({ term, index }): DiseaseCodeView => {
+      const icd10 = index !== undefined
+      const who = icd10 && icd10NamedByWho(term)
+      return {
+        code: term.code,
+        url: who ? icd10WhoUrl(term.code) : null,
+        labelEn: !icd10 || who ? term.labelEn : null,
+        labelJa: term.labelJa,
+      }
+    })
+    .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
+  return {
+    name,
+    spans: icd10Spans(codes.map((one) => one.code), order),
+    codes,
+  }
 }
 
 /**
@@ -399,12 +452,12 @@ function valueField(
     case "disease": {
       if (value.diseases.state === "not-applicable") return { state: "not-applicable" }
       if (value.diseases.state === "unknown") return { state: "unsettled" }
-      // A line each, like the numbers: a name with a code after it is a phrase,
-      // and running several together makes the brackets unreadable.
+      // A line each, like the numbers: a name with a chip after it is a
+      // phrase, and running several together leaves no telling which chip
+      // belongs to which name.
       return {
-        state: "rich",
-        text: value.diseases.value.map((one) => [{ text: writtenDisease(one, locale, catalog) }]),
-        untranslated: false,
+        state: "diseases",
+        diseases: value.diseases.value.map((one) => diseaseView(one, locale, catalog)),
       }
     }
     case "number": {

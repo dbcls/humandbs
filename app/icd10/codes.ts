@@ -113,6 +113,135 @@ export function icd10Resolve(written: string, known: (code: string) => boolean):
   return null
 }
 
+/** Code order, which is the order of the characters: digits before letters. */
+function byCode(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
+/**
+ * Why two ends typed for a range are not a range. **The ends have one length**:
+ * `C34-C35.9` cannot say whether it names three-character codes or
+ * four-character ones, and the two readings add different codes.
+ */
+export type Icd10RangeProblem = "not-code" | "lengths-differ" | "reversed"
+
+export type Icd10RangeRead
+  = | { state: "range", lower: string, upper: string }
+    | { state: "problem", problem: Icd10RangeProblem }
+
+/** The two ends of a range as typed, normalised as a code is (`icd10Code`). */
+export function icd10Range(lowerRaw: string, upperRaw: string): Icd10RangeRead {
+  const lower = icd10Code(lowerRaw)
+  const upper = icd10Code(upperRaw)
+  if (lower === null || upper === null || lower.length > 4 || upper.length > 4) {
+    return { state: "problem", problem: "not-code" }
+  }
+  if (lower.length !== upper.length) return { state: "problem", problem: "lengths-differ" }
+  if (byCode(lower, upper) > 0) return { state: "problem", problem: "reversed" }
+  return { state: "range", lower, upper }
+}
+
+/**
+ * Whether a code is one a range names: as long as its ends, and between them
+ * in code order. **Only the classification's codes are asked**, so a range
+ * names the codes the classification has and skips the ones it does not —
+ * `C00-C80` holds no C27 to C29.
+ */
+export function icd10InRange(code: string, range: { lower: string, upper: string }): boolean {
+  return code.length === range.lower.length && byCode(code, range.lower) >= 0 && byCode(code, range.upper) <= 0
+}
+
+/**
+ * The index of each code among the classification's codes of its length, in
+ * code order. **Two codes are consecutive when their indexes are**, which is not
+ * the same as their digits being: there is no C27 to C29, so C26 and C30 are
+ * consecutive, and so are C343 and C348.
+ */
+export function icd10Order(codes: Iterable<string>): Map<string, number> {
+  const byLength = new Map<number, string[]>()
+  for (const code of new Set(codes)) {
+    const group = byLength.get(code.length) ?? []
+    group.push(code)
+    byLength.set(code.length, group)
+  }
+  const order = new Map<string, number>()
+  for (const group of byLength.values()) {
+    group.sort(byCode).forEach((code, at) => {
+      order.set(code, at)
+    })
+  }
+  return order
+}
+
+/** How many consecutive codes it takes to be shown as a range. */
+const SHORTEST_SPAN = 3
+
+/**
+ * Codes as a disease's chip shows them: in code order, with **every run of three
+ * or more consecutive codes written as its two ends** (`C10-C30`). A disease
+ * added as a range holds every code in it, and listed one by one they fill the
+ * line the disease's name is on.
+ *
+ * **Two are left as two.** Consecutive skips what the classification does not
+ * have, so C26 and C30 are a run, and written `C26-C30` they read as a range
+ * that whoever chose them did not have in mind.
+ *
+ * Three-character and four-character codes run separately, as a range's ends
+ * have one length. A code without an index (`icd10Order`) stands alone.
+ */
+export function icd10Spans(codes: readonly string[], order: ReadonlyMap<string, number>): string[] {
+  const runs: string[][] = []
+  const byLength = new Map<number, string[]>()
+  for (const code of new Set(codes)) {
+    if (!order.has(code)) {
+      runs.push([code])
+      continue
+    }
+    const group = byLength.get(code.length) ?? []
+    group.push(code)
+    byLength.set(code.length, group)
+  }
+  const index = (code: string): number => order.get(code) ?? 0
+  for (const group of byLength.values()) {
+    let run: string[] = []
+    for (const code of group.sort((a, b) => index(a) - index(b))) {
+      const last = run.at(-1)
+      if (last !== undefined && index(code) !== index(last) + 1) {
+        runs.push(run)
+        run = []
+      }
+      run.push(code)
+    }
+    if (run.length > 0) runs.push(run)
+  }
+  return runs
+    .flatMap((run) => {
+      const [first] = run
+      const last = run.at(-1)
+      return run.length >= SHORTEST_SPAN && first !== undefined && last !== undefined
+        ? [{ first, text: `${first}-${last}` }]
+        : run.map((code) => ({ first: code, text: code }))
+    })
+    .sort((a, b) => byCode(a.first, b.first))
+    .map((span) => span.text)
+}
+
+/** The page of WHO's ICD-10 browser that shows a code. It writes the code with its point. */
+export function icd10WhoUrl(code: string): string {
+  const dotted = code.length > 3 ? `${code.slice(0, 3)}.${code.slice(3)}` : code
+  return `https://icd.who.int/browse10/2019/en#/${dotted}`
+}
+
+/**
+ * Whether WHO's distribution names a code. **Nothing records it, but the
+ * titles show it**: a code WHO names has WHO's English title, and the import
+ * gave a code it does not name the Japanese title, or the code itself, in the
+ * English column (`vocabulary.server.ts` の `labelsOf`).
+ */
+export function icd10NamedByWho(term: { code: string, labelEn: string, labelJa: string | null }): boolean {
+  return term.labelEn !== term.labelJa && term.labelEn !== term.code
+}
+
 /**
  * WHO's meta distribution: semicolon-separated, one line per code, no header.
  * Column 8 is the code without its point and column 9 its title; the columns
@@ -185,7 +314,7 @@ export function mergeEntries(...groups: readonly Icd10Entry[][]): Icd10Entry[] {
       one.titleJa ??= entry.titleJa
     }
   }
-  return [...held.values()].sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
+  return [...held.values()].sort((a, b) => byCode(a.code, b.code))
 }
 
 /** Rows of a CSV, with quoted fields that may hold commas and newlines. */

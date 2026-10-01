@@ -303,6 +303,17 @@ const ja = {
     noExperiments: "解析手法の情報はありません。",
     files: "このデータセットに紐づく非制限公開ファイル",
     secondaryIds: "Secondary ID",
+    /** The title of the panel a disease's chip opens. */
+    icd10Codes: "ICD-10 コード",
+    icd10Code: "ICD-10 コード",
+    /**
+     * The two columns of titles, named for the classification each is taken
+     * from rather than for its language: the two are different versions, and a
+     * code one of them does not have leaves its column empty.
+     */
+    estatTitle: "疾病、傷害及び死因の統計分類 (2013)",
+    whoTitle: "WHO ICD-10 (2019)",
+    diseaseName: "疾患名",
   },
   cart: {
     heading: "利用申請の対象となるデータセット",
@@ -948,6 +959,18 @@ const ja = {
       diseaseNameEn: "疾患名 (英語)",
       addDisease: "疾患の追加",
       removeDisease: "疾患の削除",
+      addRange: "範囲で追加",
+      /** The same button while the two ends are shown, which goes back to the box that adds one code. */
+      addOneByOne: "1 つずつ追加",
+      rangeLower: "下限",
+      rangeUpper: "上限",
+      /** The count is unknown while the ends are not a range, or while its codes are being looked for. */
+      addRangeCodes: (count: number | null) => count === null ? "コードの追加" : `${count} 件のコードの追加`,
+      rangeNotCode: "下限と上限に、3 桁か 4 桁の ICD10 のコードを入力してください。",
+      rangeLengthsDiffer: "下限と上限の桁数が違うため、追加できません。",
+      rangeReversed: "上限が下限より小さいため、追加できません。",
+      rangeEmpty: "この範囲のコードはありません。",
+      rangeAllChosen: "この範囲のコードはすべて選択済みです。",
       emptyDisease: "空のままだと、この項目は保存されない。",
       experiments: "解析手法",
       experimentLabel: "表示ラベル",
@@ -1717,7 +1740,7 @@ const en: Messages = {
     navigatorFor: "New users",
     apply: "Apply to submit data",
     applyFor: "Returning users",
-    account: "[A DDBJ account](https://accounts.ddbj.nig.ac.jp/) is required to submit data. Create one if you do not have one yet, or sign in if you already do. Please see [here](https://www.ddbj.nig.ac.jp/ddbj-account.html) for details.",
+    account: "[A DDBJ account](https://accounts.ddbj.nig.ac.jp/) is required to submit data. Create one if you do not have one yet, or sign in if you already do. Please see [here](https://www.ddbj.nig.ac.jp/ddbj-account-e.html) for details.",
     procedure: "Please see [here](https://bsi.nig.ac.jp/humandbs#%E3%83%87%E3%83%BC%E3%82%BF%E6%8F%90%E4%BE%9B%E7%94%B3%E8%AB%8B%E3%81%AB%E5%90%91%E3%81%91%E3%81%9F%E4%BA%8B%E5%89%8D%E6%BA%96%E5%82%99) for the data submission procedure.",
   },
   use: {
@@ -1873,6 +1896,11 @@ const en: Messages = {
     noExperiments: "No information on analysis methods.",
     files: "Unrestricted-access files linked to this dataset",
     secondaryIds: "Secondary ID",
+    icd10Codes: "ICD-10 codes",
+    icd10Code: "ICD-10 code",
+    estatTitle: "Japanese statistical classification (2013)",
+    whoTitle: "WHO ICD-10 (2019)",
+    diseaseName: "Disease name",
   },
   cart: {
     heading: "Datasets for your access application",
