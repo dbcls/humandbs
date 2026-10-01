@@ -97,12 +97,59 @@ describe("the indicator showing that the published version reads otherwise", () 
   })
 })
 
+describe("what the office asks the reader to check at a place", () => {
+  const ASKED: CommentView = {
+    id: "a-1",
+    anchor: { kind: "research-field", path: "summary.aims" },
+    authorName: "事務局",
+    bySignedIn: true,
+    byAdmin: true,
+    body: "表 2 の検体数と合いません。\n論文の値を確かめてください。",
+    resolved: false,
+    resolvedBy: null,
+    resolvedAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+  }
+
+  function draw(comments: readonly CommentView[]): string {
+    return render(<FieldAnnotations context={CONTEXT} at="summary.aims" view={VIEW} comments={comments} heading="" />)
+  }
+
+  it("shows 「ご確認ください」 in red with the words of the administrator's open comment, line breaks kept", () => {
+    const html = draw([ASKED])
+    expect(html).toMatch(/class="[^"]*\bborder-danger\b[^"]*\bborder-dashed\b[^"]*"[\s\S]*ご確認ください/)
+    expect(html).toContain("表 2 の検体数と合いません。\n論文の値を確かめてください。")
+    expect(html).toMatch(/class="[^"]*\bwhitespace-pre-wrap\b[^"]*">表 2/)
+  })
+
+  it("takes a line of its own after the indicators, outside the row the indicators keep to one line", () => {
+    const html = draw([ASKED])
+    expect(html.indexOf("ご確認ください")).toBeGreaterThan(html.indexOf("</span>"))
+    expect(html).toMatch(/<span class="[^"]*\border-last\b[^"]*\bbasis-full\b/)
+  })
+
+  it("lists each open request, oldest first", () => {
+    const html = draw([ASKED, { ...ASKED, id: "a-2", body: "二つ目の確認" }])
+    expect(html.match(/ご確認ください/g)).toHaveLength(1)
+    expect(html.indexOf("表 2")).toBeLessThan(html.indexOf("二つ目の確認"))
+  })
+
+  it("shows nothing for a provider's comment, a resolved request, or none at all", () => {
+    for (const comments of [[], [{ ...ASKED, byAdmin: false }], [{ ...ASKED, resolved: true }]]) {
+      const html = draw(comments)
+      expect(html).not.toContain("ご確認ください")
+      expect(html).not.toContain("表 2")
+    }
+  })
+})
+
 describe("the header of a preview", () => {
   const WHOLE: CommentView = {
     id: "c-1",
     anchor: { kind: "draft" },
     authorName: "提供者 A",
     bySignedIn: false,
+    byAdmin: false,
     body: "全体についての長い問い",
     resolved: false,
     resolvedBy: null,
@@ -222,6 +269,14 @@ describe("the header of a preview", () => {
     expect(html).toMatch(/<p class="text-sm"><span class="text-ink-muted">お名前: <\/span><span[^>]*bg-surface[^>]*><code[^>]*>山田花子<\/code>/)
     expect(html).not.toContain("/auth/login")
     expect(html).not.toMatch(/<input[^>]*name="name"/)
+  })
+
+  it("explains 「ご確認ください」 after 「ご教示ください」, the two requests the page can show in red", () => {
+    const steps = stepsOf(head())
+    const unsettled = steps.findIndex((step) => step.includes("「ご教示ください」"))
+    const asked = steps.findIndex((step) => step.includes("「ご確認ください」"))
+    expect(unsettled).toBeGreaterThan(-1)
+    expect(asked).toBe(unsettled + 1)
   })
 
   it("explains the changed badge only on a draft that updates a published version", () => {

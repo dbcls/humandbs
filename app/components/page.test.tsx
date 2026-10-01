@@ -466,7 +466,7 @@ describe("where a field's annotations are shown", () => {
   it("a cell's annotations are shown at the value's right on its row, once", () => {
     const html = draw(<AnnotatedCell at="grants.g.title" name="研究課題名">課題名</AnnotatedCell>)
     expect(html.indexOf("annotation:grants.g.title")).toBeGreaterThan(html.indexOf("課題名"))
-    expect(html).toContain("flex items-start")
+    expect(html).toMatch(/class="flex flex-wrap items-start[ "]/)
     expect(html.match(/annotation:grants/g)).toHaveLength(1)
   })
 

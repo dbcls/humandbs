@@ -7,6 +7,7 @@ import {
   NAME_LIMIT,
   checkComment,
   checkName,
+  checkRequests,
   commentsByPath,
   commentsForPage,
   memoComments,
@@ -22,6 +23,7 @@ function said(overrides: Partial<CommentView> & { id: string }): CommentView {
     anchor: { kind: "research-field", path: "title" },
     authorName: "provider",
     bySignedIn: false,
+    byAdmin: false,
     body: "…",
     resolved: false,
     resolvedBy: null,
@@ -102,5 +104,19 @@ describe("the comments a screen shows", () => {
       said({ id: "c7" }),
       said({ id: "memo", anchor: { kind: "memo" } }),
     ])).toBe(1)
+  })
+})
+
+describe("what the office still asks a provider to check", () => {
+  it("is an administrator's open comment on a field, of the research or of a dataset, in the order written", () => {
+    const comments = [
+      said({ id: "provider", anchor: { kind: "research-field", path: "title" } }),
+      said({ id: "research", anchor: { kind: "research-field", path: "title" }, byAdmin: true, bySignedIn: true }),
+      said({ id: "resolved", byAdmin: true, bySignedIn: true, resolved: true }),
+      said({ id: "whole", anchor: { kind: "draft" }, byAdmin: true, bySignedIn: true }),
+      said({ id: "memo", anchor: { kind: "memo" }, byAdmin: true, bySignedIn: true }),
+      said({ id: "dataset", anchor: { kind: "dataset-field", datasetId: "d1", path: "experiments.e.values.k" }, byAdmin: true, bySignedIn: true }),
+    ]
+    expect(checkRequests(comments).map((one) => one.id)).toStrictEqual(["research", "dataset"])
   })
 })

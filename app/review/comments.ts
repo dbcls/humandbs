@@ -32,6 +32,8 @@ export interface CommentView {
   authorName: string
   /** Written while signed in with a DDBJ account. */
   bySignedIn: boolean
+  /** Written by an account that is an administrator now — the office, as a provider reads it. */
+  byAdmin: boolean
   body: string
   /** Dealt with, by an administrator's hand. A line of the memo never is. */
   resolved: boolean
@@ -129,4 +131,14 @@ export function commentsByPath(
 /** How many are still waiting for an answer. The memo is not a question, so it is never counted. */
 export function unresolvedCount(comments: readonly CommentView[]): number {
   return comments.filter((one) => one.anchor.kind !== "memo" && !one.resolved).length
+}
+
+/**
+ * What the office still asks a provider to check at a place: the open
+ * comments an administrator wrote on a field. **Nothing else marks them** — an
+ * administrator's note to other administrators is the memo, and what is said
+ * about the whole draft names no place.
+ */
+export function checkRequests(comments: readonly CommentView[]): CommentView[] {
+  return comments.filter((one) => isFieldAnchor(one.anchor) && one.byAdmin && !one.resolved)
 }

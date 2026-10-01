@@ -392,6 +392,8 @@ const ja = {
     whoPlaceholder: "山田 太郎",
     /** The badge an unsettled slot is shown with here: a request to the reader, not the name of a state. */
     unsettledBadge: "ご教示ください",
+    /** Over what the office asks the reader to check at an item: its comments, written by an administrator. */
+    checkRequest: "ご確認ください",
     stepsHeading: "ご確認の手順",
     steps: {
       who: "はじめに、下の「お名前」にお名前を入力するか、DDBJ アカウントでログインしてください。コメントには、そのお名前が表示されます。",
@@ -401,6 +403,8 @@ const ja = {
       changed: "「変更あり」と表示された項目は、公開中の内容から変わった項目です。「変更あり」を押すと、変更の前後を比べられます。",
       unsettled: "赤い「ご教示ください」が表示された項目は、事務局で内容を確定できていないものです。"
         + "項目名の横の吹き出しのボタンを押し、正しい内容や、お分かりになる範囲のことをお書きください。",
+      checkRequest: "赤い「ご確認ください」が表示された項目は、事務局が内容の確認をお願いしたいものです。"
+        + "その下に書かれたことをお読みになり、項目名の横の吹き出しのボタンからコメントをお書きください。",
       other: "そのほかの項目でも、誤りやお気づきの点があれば、同じく吹き出しのボタンからお書きください。"
         + "研究全体については、下の「全体へのコメント」にお書きください。",
       datasets: "研究情報の「データセット」の表から、データセットごとのページも開いてご確認ください。"
@@ -1929,6 +1933,7 @@ const en: Messages = {
     logIn: "Log in with a DDBJ account",
     whoPlaceholder: "Taro Yamada",
     unsettledBadge: "Please let us know",
+    checkRequest: "Please check",
     stepsHeading: "How to review",
     steps: {
       who: "First, please enter your name under \"Your name\" below, or log in with a DDBJ account. Your comments will be shown with that name.",
@@ -1937,6 +1942,8 @@ const en: Messages = {
       changed: "An item showing \"Changed\" differs from the published version. Press \"Changed\" to compare the text before and after the change.",
       unsettled: "An item showing \"Please let us know\" in red is one the office has not been able to settle. "
         + "Please press the speech-bubble button beside the item's name and write the correct content, or whatever you know about it.",
+      checkRequest: "An item showing \"Please check\" in red is one the office asks you to check. "
+        + "Please read what is written under it and write a comment from the speech-bubble button beside the item's name.",
       other: "If you notice a mistake or anything else in other items, please write it in the same way from the speech-bubble button. "
         + "For the research as a whole, please use \"Comments on the whole\" below.",
       datasets: "Please also open and review the page of each dataset from the \"Datasets\" table in the research information. "

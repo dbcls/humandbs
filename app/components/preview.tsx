@@ -18,7 +18,7 @@ import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { href } from "~/public/urls"
 import { RESEARCH } from "~/review/anchors"
-import { commentsByPath, type CommentProblem, type CommentView } from "~/review/comments"
+import { checkRequests, commentsByPath, type CommentProblem, type CommentView } from "~/review/comments"
 import type {
   PreviewActionResult,
   PreviewDatasetPageView,
@@ -153,13 +153,15 @@ export function PreviewDatasetScreen({ view, problem }: {
 }
 
 /**
- * Both indicators of one place: what changed, and what has been said about it.
+ * Both indicators of one place — what changed, and what has been said about it —
+ * and what the office asks the reader to check there.
  *
- * **They sit on the first line of the value and do not make it taller.** Both
+ * **The indicators sit on the first line of the value and do not make it taller.** Both
  * are drawn no higher than the 22.4px line the words set (`CommentSpot`,
  * `PreviousIndicator`), so a pair is shown inside it and pushes no row of any table down.
  * Both are shown with the name (`page.tsx` の `Annotate`), the comment first and
- * the change after it — the same order the form beside the page uses.
+ * the change after it — the same order the form beside the page uses. The
+ * request is the exception (`CheckRequest`).
  */
 export function FieldAnnotations({ context, at, view, comments, heading, fieldLabel }: {
   context: CommentContext
@@ -171,17 +173,51 @@ export function FieldAnnotations({ context, at, view, comments, heading, fieldLa
   fieldLabel?: string
 }) {
   return (
-    <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-top">
-      <CommentSpot context={context} at={at} comments={comments} fieldLabel={fieldLabel} />
-      {view.changed.includes(at) && (
-        <PreviousIndicator
-          locale={context.locale}
-          value={view.previous[at]}
-          current={view.current[at]}
-          heading={heading}
-          fieldLabel={fieldLabel}
-        />
-      )}
+    <>
+      <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-top">
+        <CommentSpot context={context} at={at} comments={comments} fieldLabel={fieldLabel} />
+        {view.changed.includes(at) && (
+          <PreviousIndicator
+            locale={context.locale}
+            value={view.previous[at]}
+            current={view.current[at]}
+            heading={heading}
+            fieldLabel={fieldLabel}
+          />
+        )}
+      </span>
+      <CheckRequest locale={context.locale} comments={comments} />
+    </>
+  )
+}
+
+/**
+ * What the office asks the reader to check at one place: 「ご確認ください」 in
+ * red, and under it the words of each open comment an administrator wrote there.
+ *
+ * **The words are shown, not left in the comment panel**: they are what the
+ * reader has to act on, and a count beside a speech bubble does not say that
+ * the office is asking anything. **It takes a line of its own under the name**
+ * (`basis-full` in the row the name and its indicators are laid out in), so it
+ * does make the row taller — a request the reader has to read cannot be fitted
+ * into the height of a line. **It is laid out after everything else in that row**
+ * (`order-last`): a chip has two places, each with its indicators, and the
+ * second's would otherwise be pushed under the first's request. **The same red, dashed edge and tint as
+ * 「ご教示ください」** (`Badge` の `large`): both ask the reader for something.
+ * The words are the body's colour, weight and size whatever heading they are under.
+ */
+function CheckRequest({ locale, comments }: { locale: Locale, comments: readonly CommentView[] }) {
+  const asked = checkRequests(comments)
+  if (asked.length === 0) return null
+  return (
+    <span className="order-last flex basis-full flex-col items-start gap-1 rounded border border-danger border-dashed bg-danger-surface px-3 py-2 font-normal text-sm">
+      <span className="inline-flex items-center gap-1.5 font-semibold text-danger">
+        <Icon name="alert" aria-hidden="true" />
+        {messagesFor(locale).preview.checkRequest}
+      </span>
+      {asked.map((one) => (
+        <span key={one.id} className="whitespace-pre-wrap text-ink">{one.body}</span>
+      ))}
     </span>
   )
 }
@@ -297,6 +333,7 @@ function stepsFor(shell: PreviewShell): ReactNode[] {
         ),
     shell.publishedNumber === null ? t.steps.read : `${t.steps.read}${shell.locale === "ja" ? "" : " "}${t.steps.changed}`,
     t.steps.unsettled,
+    t.steps.checkRequest,
     t.steps.other,
     t.steps.datasets,
     t.steps.commented(t.commented),

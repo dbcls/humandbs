@@ -42,6 +42,7 @@ function comment(anchor: CommentAnchor, resolved = false): CommentView {
     anchor,
     authorName: "山田太郎",
     bySignedIn: false,
+    byAdmin: false,
     body: "気づいたこと",
     resolved,
     resolvedBy: null,

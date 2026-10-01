@@ -79,7 +79,8 @@ export function Annotation({ at, name }: { at: string, name?: string }) {
  * A place with its indicator beside it, for a cell that has no name of its own —
  * the name is the column's heading, and an indicator under the value read as
  * belonging to the row below. The indicator is shown at the value's right on its
- * first line.
+ * first line; what takes a line of its own (`preview.tsx` の `CheckRequest`) goes
+ * under both. **The value starts from no width** (`flex-1`), so only that wraps.
  */
 export function AnnotatedCell({ at, name, children }: {
   at: string
@@ -88,7 +89,7 @@ export function AnnotatedCell({ at, name, children }: {
   children: ReactNode
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex flex-wrap items-start gap-3">
       <div className="min-w-0 flex-1"><ValueAtPath at={at}>{children}</ValueAtPath></div>
       <Annotation at={at} name={name} />
     </div>

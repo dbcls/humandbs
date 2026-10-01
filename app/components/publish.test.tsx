@@ -385,6 +385,7 @@ describe("the publish screen", () => {
       anchor: { kind: "research-field" as const, path: "title" },
       authorName: "データ提供者 A",
       bySignedIn: false,
+      byAdmin: false,
       body: "題目を直してください",
       resolved: false,
       resolvedBy: null,

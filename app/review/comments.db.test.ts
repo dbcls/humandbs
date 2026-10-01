@@ -149,6 +149,22 @@ describe("a comment", () => {
     expect(reopened?.resolvedBy).toBe(null)
   })
 
+  it("is the office's when its author is an administrator now — not a signed-in reader, not one taken off the list", async () => {
+    const { draftId } = await draft()
+    await db.insert(s.adminUser).values({ keycloakSub: CURATOR_SUB, displayName: "curator" })
+    const asked = await saidAt(draftId, "title", "論文の値を確かめてください", CURATOR)
+    const anonymous = await saidAt(draftId, "title", "これは何ですか")
+    const signedIn = await saidAt(draftId, "title", "違います", { sub: "reader-sub", name: "reader" })
+    // Resolved by the administrator: who closed it is not who wrote it.
+    await setCommentResolved(db, { draftId, commentId: anonymous, resolved: true, actorSub: CURATOR_SUB })
+
+    const byAdmin = async () => Object.fromEntries((await readComments(db, draftId)).map((row) => [row.id, row.byAdmin]))
+    expect(await byAdmin()).toStrictEqual({ [asked]: true, [anonymous]: false, [signedIn]: false })
+
+    await db.delete(s.adminUser).where(eq(s.adminUser.keycloakSub, CURATOR_SUB))
+    expect((await byAdmin())[asked]).toBe(false)
+  })
+
   it("is resolved on its own, leaving the others at the same place open", async () => {
     const { draftId } = await draft()
     const first = await saidAt(draftId, "title", "一つ目")

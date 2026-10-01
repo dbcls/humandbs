@@ -740,7 +740,7 @@ describe("the toolbar", () => {
   it("draws the pane switch once, and the open-comments panel counting this dataset's open questions only", () => {
     const base = view()
     const said = (id: string, anchor: CommentAnchor, resolved = false) => ({
-      id, anchor, authorName: "provider", bySignedIn: false, body: id, resolved,
+      id, anchor, authorName: "provider", bySignedIn: false, byAdmin: false, body: id, resolved,
       resolvedBy: null, resolvedAt: null, createdAt: "2026-01-01T00:00:00.000Z",
     })
     base.review.comments = [
@@ -777,6 +777,7 @@ describe("the comment panel's own name", () => {
       anchor: { kind: "dataset-field", datasetId: withComment.datasetId, path: "experiments" },
       authorName: "provider",
       bySignedIn: false,
+      byAdmin: false,
       body: "この項目でよいか確認したい",
       resolved: false,
       resolvedBy: null,

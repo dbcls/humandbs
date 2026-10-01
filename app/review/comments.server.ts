@@ -14,6 +14,7 @@
  */
 
 import { and, asc, eq, ne, sql } from "drizzle-orm"
+import { alias } from "drizzle-orm/pg-core"
 
 import type { AcknowledgementKind, CommentAnchor, ResearchContent } from "~/content/types"
 import type { Executor } from "~/db/client.server"
@@ -29,13 +30,21 @@ export interface CommentAuthor {
   name: string
 }
 
-/** Everything said about one draft, oldest first — the order each place reads in. */
+/**
+ * Everything said about one draft, oldest first — the order each place reads in.
+ *
+ * **Whether the author is an administrator is read now, not when they wrote**:
+ * the table of administrators keeps no history, and an account taken off it
+ * no longer writes for the office.
+ */
 export async function readComments(db: Executor, draftId: string): Promise<CommentView[]> {
+  const author = alias(adminUser, "author")
   const rows = await db
     .select({
       id: comment.id,
       anchor: comment.anchor,
       authorSub: comment.authorSub,
+      authorAdminId: author.id,
       authorName: comment.authorName,
       body: comment.body,
       resolved: comment.resolved,
@@ -45,6 +54,7 @@ export async function readComments(db: Executor, draftId: string): Promise<Comme
     })
     .from(comment)
     .leftJoin(adminUser, eq(adminUser.keycloakSub, comment.resolvedBySub))
+    .leftJoin(author, eq(author.keycloakSub, comment.authorSub))
     .where(eq(comment.draftId, draftId))
     .orderBy(asc(comment.createdAt), asc(comment.id))
 
@@ -53,6 +63,7 @@ export async function readComments(db: Executor, draftId: string): Promise<Comme
     anchor: row.anchor,
     authorName: row.authorName,
     bySignedIn: row.authorSub !== null,
+    byAdmin: row.authorAdminId !== null,
     body: row.body,
     resolved: row.resolved,
     resolvedBy: row.resolvedBy,

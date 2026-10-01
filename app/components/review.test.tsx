@@ -57,6 +57,7 @@ function said(id: string, anchor: CommentAnchor, body: string): CommentView {
     anchor,
     authorName: "データ提供者",
     bySignedIn: false,
+    byAdmin: false,
     body,
     resolved: false,
     resolvedBy: null,

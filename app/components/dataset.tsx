@@ -260,7 +260,7 @@ function Chips({ experimentId, chips, locale }: { experimentId: string, chips: E
   return (
     <ul className="flex flex-wrap gap-2">
       {chips.map(({ value, countedAs }) => (
-        <li key={value.keyId} className="flex items-center gap-1">
+        <li key={value.keyId} className="flex flex-wrap items-center gap-1">
           <div className="flex items-stretch overflow-hidden rounded border border-line-strong bg-white text-ink text-sm">
             <span className="shrink-0 border-line-strong border-r bg-surface px-2 py-1 text-ink-muted">{value.label}</span>
             <div className="flex min-w-0 items-baseline gap-1 px-2 py-1">
