@@ -33,7 +33,7 @@ import { Icon, type IconName, SUBJECT_ICON } from "~/components/icons"
 import { minuteInJst } from "~/dates"
 import type { CommentAnchor } from "~/content/types"
 import { commentSpotId, isFieldAnchor, type AnchorSubject } from "~/review/anchors"
-import { unresolvedCount, type CommentView } from "~/review/comments"
+import { checkRequests, unresolvedCount, type CommentView } from "~/review/comments"
 import type { Locale } from "~/i18n/locale"
 import { messagesFor } from "~/i18n/messages"
 import { Flag } from "./flags"
@@ -193,6 +193,45 @@ export function CommentSpot({ context, at, comments, fieldLabel }: {
       >
         <CommentTimeline context={context} comments={shown} at={at} fetcher={fetcher} placeholder={t.bodyPlaceholder} />
       </Dialog>
+    </span>
+  )
+}
+
+/**
+ * The request to check one place: 「ご確認ください」 in red, and under it the
+ * text of each open comment that an administrator wrote at the place.
+ *
+ * The preview and the page pane of an editing screen show the request in the
+ * same way. A provider reads the preview, and an administrator checks in the
+ * page pane what the provider will see.
+ *
+ * The text of the comments is shown on the page. A count beside the speech
+ * bubble does not tell the reader that the office asks them to do something.
+ *
+ * The request uses `basis-full` in the row of the name and its indicators, so
+ * the request takes a line of its own under the name. The row becomes taller,
+ * because the reader cannot read a request in the height of one line.
+ *
+ * The request uses `order-last`, so the request comes after everything else in
+ * the row. A chip has two places with indicators. Without `order-last`, the
+ * indicators of the second place move under the request of the first place.
+ *
+ * The request uses the red, the dashed edge and the tint of 「ご教示ください」
+ * (`Badge` の `large`), because both ask the reader for something. The text
+ * uses the colour, weight and size of the body under any heading.
+ */
+export function CheckRequest({ locale, comments }: { locale: Locale, comments: readonly CommentView[] }) {
+  const asked = checkRequests(comments)
+  if (asked.length === 0) return null
+  return (
+    <span className="order-last flex basis-full flex-col items-start gap-1 rounded border border-danger border-dashed bg-danger-surface px-3 py-2 font-normal text-sm">
+      <span className="inline-flex items-center gap-1.5 font-semibold text-danger">
+        <Icon name="alert" aria-hidden="true" />
+        {messagesFor(locale).preview.checkRequest}
+      </span>
+      {asked.map((one) => (
+        <span key={one.id} className="whitespace-pre-wrap text-ink">{one.body}</span>
+      ))}
     </span>
   )
 }

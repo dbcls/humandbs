@@ -782,6 +782,44 @@ describe("merging one term into another", () => {
       .toHaveLength(0)
   })
 
+  it("records the merge under the administrator who made it, with both terms' labels as they were", async () => {
+    const token = await signIn(CURATOR, true)
+    const { setId, keyId, from, into } = await twoSpellings()
+    await db.update(s.vocabularyTerm).set({ labelJa: "全ゲノム" }).where(eq(s.vocabularyTerm.id, into))
+    await publishedValue({ keyId, termId: from })
+
+    await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: into }))
+
+    // The merged term is gone, so the record is the only place its label is left.
+    const merges = await db.select().from(s.event).where(eq(s.event.action, "merge-term"))
+    expect(merges).toHaveLength(1)
+    expect(merges[0]).toMatchObject({
+      actorSub: CURATOR.sub,
+      actorName: CURATOR.name,
+      subjectType: "vocabulary-term",
+      subjectId: from,
+      detail: {
+        setId,
+        from: { labelJa: null, labelEn: "wgs" },
+        into: { id: into, labelJa: "全ゲノム", labelEn: "whole-genome-sequencing" },
+        versions: 1,
+        draftEntries: 0,
+      },
+    })
+  })
+
+  it("records nothing for a merge it refuses", async () => {
+    const token = await signIn(CURATOR, true)
+    const { from } = await twoSpellings()
+    const elsewhere = await term(await vocabulary("platform"), "hiseq")
+
+    await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: elsewhere }))
+    await catalogAction(post(token, { intent: "merge-term", termId: from, intoId: from }))
+    await catalogAction(post(token, { intent: "merge-term", termId: crypto.randomUUID(), intoId: from }))
+
+    expect(await db.select().from(s.event).where(eq(s.event.action, "merge-term"))).toEqual([])
+  })
+
   it("rewrites a draft and moves its revision on, so an open editor is refused", async () => {
     const token = await signIn(CURATOR, true)
     const { keyId, from, into } = await twoSpellings()

@@ -120,6 +120,13 @@
       "when": 1790723629475,
       "tag": "0016_catalog_changed",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790828924115,
+      "tag": "0017_merge_term_event",
+      "breakpoints": true
     }
   ]
 }

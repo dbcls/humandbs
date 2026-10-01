@@ -141,6 +141,13 @@ function text(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null
 }
 
+/** A term as a merge wrote it down, called by its Japanese label where it has one. */
+function termLabel(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return null
+  const { labelJa, labelEn } = value as Record<string, unknown>
+  return text(labelJa) ?? text(labelEn)
+}
+
 /** The research a record names in its detail, under whichever key the operation wrote it. */
 function researchOf(record: EventRecord): string | null {
   if (record.subjectType === "research") return record.subjectId
@@ -282,6 +289,13 @@ function subjectName(
       return now.content ?? text(detail.text)
     case "admin":
       return now.admin ?? text(detail.displayName) ?? record.subjectId
+    // The merged term is deleted by the merge, so both ends are named by what
+    // the record wrote at the time.
+    case "vocabulary-term": {
+      const from = termLabel(detail.from)
+      const into = termLabel(detail.into)
+      return from !== null && into !== null ? `${from} → ${into}` : from
+    }
     // A label and a file are named by what the record holds: the label itself,
     // and the file's name.
     default:

@@ -12,7 +12,7 @@ import type { ShownLine } from "~/admin/changes"
 import type { AnchoredValue } from "~/public/view.server"
 import type { CommentView } from "~/review/comments"
 
-import { CommentSpot, type CommentContext } from "./comments"
+import { CheckRequest, CommentSpot, type CommentContext } from "./comments"
 import { PreviousLines, PreviousIndicator } from "./previous"
 
 export interface FieldReviewData {
@@ -31,6 +31,8 @@ export interface FieldReviewData {
 /**
  * A place's review, beside its name (`page.tsx` の `Annotate`): the comment
  * button, and after it the indicator showing that the published version reads otherwise.
+ * The page pane shows the request to check the place (`CheckRequest`) in the
+ * same way as the preview.
  */
 export function FieldReview({ review, at, fieldLabel, drawn }: {
   review: FieldReviewData
@@ -51,27 +53,30 @@ export function FieldReview({ review, at, fieldLabel, drawn }: {
 }) {
   const table = drawn?.previous[at]?.kind === "rows" ? drawn : null
   return (
-    <span className="inline-flex flex-wrap items-center gap-1 align-top">
-      <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
-      {table !== null && table.changed.includes(at) && (
-        <PreviousIndicator
-          locale={review.context.locale}
-          value={table.previous[at]}
-          current={table.current[at]}
-          heading={review.heading}
-          fieldLabel={fieldLabel}
-        />
-      )}
-      {table === null && review.changed.includes(at) && (
-        <PreviousLines
-          locale={review.context.locale}
-          lines={review.previous[at] ?? null}
-          current={review.current(at)}
-          heading={review.heading}
-          fieldLabel={fieldLabel}
-          termLabel={review.termLabel}
-        />
-      )}
-    </span>
+    <>
+      <span className="inline-flex flex-wrap items-center gap-1 align-top">
+        <CommentSpot context={review.context} at={at} comments={review.comments[at] ?? []} fieldLabel={fieldLabel} />
+        {table !== null && table.changed.includes(at) && (
+          <PreviousIndicator
+            locale={review.context.locale}
+            value={table.previous[at]}
+            current={table.current[at]}
+            heading={review.heading}
+            fieldLabel={fieldLabel}
+          />
+        )}
+        {table === null && review.changed.includes(at) && (
+          <PreviousLines
+            locale={review.context.locale}
+            lines={review.previous[at] ?? null}
+            current={review.current(at)}
+            heading={review.heading}
+            fieldLabel={fieldLabel}
+            termLabel={review.termLabel}
+          />
+        )}
+      </span>
+      <CheckRequest locale={review.context.locale} comments={review.comments[at] ?? []} />
+    </>
   )
 }

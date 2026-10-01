@@ -1,0 +1,1 @@
+ALTER TYPE "public"."event_action" ADD VALUE 'merge-term';

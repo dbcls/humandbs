@@ -999,13 +999,15 @@ export async function discardDraft(
  * The condition is handed over rather than built here — which rows point at a
  * term is the catalog's question, and this module's job is that they are
  * written the one way drafts are written (`drafts.test.ts`).
+ *
+ * Returns how many rows it rewrote, for the merge's record in the event log.
  */
 export async function mergeTermInDrafts(
   db: Executor,
   pointing: SQL,
   from: string,
   into: string,
-): Promise<void> {
+): Promise<number> {
   // Held until the merge commits, in id order (`locks.server.ts`). A save that was writing a row when this read
   // it is waited for, and the row is read as that save left it; a save after
   // this is refused by the revision moved here.
@@ -1028,4 +1030,5 @@ export async function mergeTermInDrafts(
       })
       .where(eq(draftDatasetEntry.id, entry.id))
   }
+  return entries.length
 }

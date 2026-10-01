@@ -37,6 +37,12 @@ export const eventAction = pgEnum("event_action", [
   "grant-admin",
   "revoke-admin",
   "pass-publish-check",
+  /**
+   * A vocabulary term merged into another. Recorded although the catalog is a
+   * definition rather than a publication: the merge rewrites the versions that
+   * point at the term, and nothing else changes a published version in place.
+   */
+  "merge-term",
 ])
 
 export type EventAction = (typeof eventAction.enumValues)[number]
@@ -53,6 +59,7 @@ export type EventSubjectType
     | "news"
     | "alert"
     | "admin"
+    | "vocabulary-term"
 
 /**
  * Append-only record of the operations that changed what is published.

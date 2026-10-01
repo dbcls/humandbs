@@ -79,8 +79,10 @@ export function Annotation({ at, name }: { at: string, name?: string }) {
  * A place with its indicator beside it, for a cell that has no name of its own —
  * the name is the column's heading, and an indicator under the value read as
  * belonging to the row below. The indicator is shown at the value's right on its
- * first line; what takes a line of its own (`preview.tsx` の `CheckRequest`) goes
- * under both. **The value starts from no width** (`flex-1`), so only that wraps.
+ * first line. The request to check the place (`comments.tsx` の `CheckRequest`)
+ * takes a line of its own under the value and the indicator, so the row can
+ * wrap. The value has a flex basis of zero (`flex-1`), so only the request
+ * moves to the next line.
  */
 export function AnnotatedCell({ at, name, children }: {
   at: string

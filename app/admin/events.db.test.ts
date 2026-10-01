@@ -198,6 +198,35 @@ describe("操作の記録の一覧", () => {
     expect((await listing()).rows.map((row) => row.subject.name)).toEqual(["Dave", "Carol Now"])
   })
 
+  it("語彙の値の統合は、記録に書いた表示名 (日本語が先) で「統合元 → 統合先」と呼ぶ。名前を書いていない記録は名前を返さない", async () => {
+    await write(
+      {
+        at: "2026-09-01T00:00:00Z",
+        action: "merge-term",
+        subjectType: "vocabulary-term",
+        subjectId: crypto.randomUUID(),
+        detail: {
+          from: { labelJa: null, labelEn: "HiSeq2000" },
+          into: { id: crypto.randomUUID(), labelJa: "イルミナ HiSeq 2000", labelEn: "Illumina HiSeq 2000" },
+        },
+      },
+      {
+        at: "2026-09-02T00:00:00Z",
+        action: "merge-term",
+        subjectType: "vocabulary-term",
+        subjectId: crypto.randomUUID(),
+        detail: { from: { labelJa: "", labelEn: "WGS" }, into: { labelJa: null, labelEn: "" } },
+      },
+      { at: "2026-09-03T00:00:00Z", action: "merge-term", subjectType: "vocabulary-term", subjectId: crypto.randomUUID() },
+    )
+
+    expect((await listing()).rows.map((row) => row.subject)).toEqual([
+      { kind: "vocabulary-term", name: null, researchId: null },
+      { kind: "vocabulary-term", name: "WGS", researchId: null },
+      { kind: "vocabulary-term", name: "HiSeq2000 → イルミナ HiSeq 2000", researchId: null },
+    ])
+  })
+
   it("削除した研究とデータセットは、記録に書いた名前で呼び、開けるようにはしない", async () => {
     const gone = crypto.randomUUID()
     await write(

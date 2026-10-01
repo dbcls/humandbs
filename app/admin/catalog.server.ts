@@ -1,9 +1,11 @@
 /**
  * The catalog screens: what they read, and what their forms do.
  *
- * Everything here requests `manage-catalog`. Nothing here is written to the
- * event log — what that records is the operations that changed what is
- * published, and a catalog entry is a definition rather than a publication.
+ * Everything here requests `manage-catalog`. Only a merge is written to the
+ * event log. What that records is the operations that changed what is
+ * published, and a catalog entry is a definition rather than a publication;
+ * a merge is the exception because it rewrites the published versions that
+ * point at the merged term.
  *
  * **Every write rebuilds the search rows.** Some catalog changes reach them and
  * some do not — renaming a term does not, because labels are joined at query
@@ -21,6 +23,7 @@ import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm"
 import type { PgColumn } from "drizzle-orm/pg-core"
 
 import { requireCapability } from "~/auth/actor.server"
+import { recordEvent, type EventActor } from "~/auth/events.server"
 import { getDb, type Executor } from "~/db/client.server"
 import { likeEscaped } from "~/db/like"
 import {
@@ -617,7 +620,7 @@ async function nextPosition(db: Executor, scope: "dataset" | "experiment"): Prom
 const ORDER_ONLY: ReadonlySet<CatalogIntent> = new Set<CatalogIntent>(["move-key-up", "move-key-down", "move-key-to"])
 
 export async function catalogAction(request: Request): Promise<CatalogResult> {
-  await requireCapability(request, "manage-catalog")
+  const actor = await requireCapability(request, "manage-catalog")
   const form = await request.formData()
   const intent = text(form, "intent")
   if (!isIntent(intent)) return { status: "unknown-target" }
@@ -628,7 +631,7 @@ export async function catalogAction(request: Request): Promise<CatalogResult> {
     // merging a term rewrites versions and drafts of any of them: all research
     // rows are locked before those rows (`locks.server.ts`).
     if (!ORDER_ONLY.has(intent)) await lockAllResearches(tx, "key share")
-    const result = await apply(tx, intent, form)
+    const result = await apply(tx, intent, form, actor)
     if (result.status !== "ok") return result
     // Which catalog changes reach the search rows and which do not is a
     // distinction nobody should have to make at a call site.
@@ -637,7 +640,7 @@ export async function catalogAction(request: Request): Promise<CatalogResult> {
   })
 }
 
-async function apply(tx: Executor, intent: CatalogIntent, form: FormData): Promise<Outcome> {
+async function apply(tx: Executor, intent: CatalogIntent, form: FormData, actor: EventActor): Promise<Outcome> {
   switch (intent) {
     case "create-key":
       return createKey(tx, form)
@@ -664,7 +667,7 @@ async function apply(tx: Executor, intent: CatalogIntent, form: FormData): Promi
     case "delete-term":
       return deleteTerm(tx, form)
     case "merge-term":
-      return mergeTerm(tx, form)
+      return mergeTerm(tx, form, actor)
   }
 }
 
@@ -962,8 +965,12 @@ async function deleteTerm(db: Executor, form: FormData): Promise<Outcome> {
  * **The draft rows move their revision on.** An editor holding one open is
  * looking at a description that no longer matches the row, so the next
  * save has to be refused the same way any other outside change refuses it.
+ *
+ * **The merge is written to the event log** with both terms' labels as they
+ * were: the merged term is deleted here, and the record is what names it
+ * afterwards.
  */
-async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
+async function mergeTerm(db: Executor, form: FormData, actor: EventActor): Promise<Outcome> {
   const from = text(form, "termId")
   const into = text(form, "intoId")
   // Merging a term into itself is not an operation; it would only delete it.
@@ -973,12 +980,16 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
   if ("status" in refused) return refused
 
   const ends = await db
-    .select({ setId: vocabularyTerm.setId })
+    .select({ id: vocabularyTerm.id, setId: vocabularyTerm.setId, labelJa: vocabularyTerm.labelJa, labelEn: vocabularyTerm.labelEn })
     .from(vocabularyTerm)
     .where(inArray(vocabularyTerm.id, [from, into]))
   // Both have to exist, and both have to be values of the same axis.
   const sets = new Set(ends.map((end) => end.setId))
-  if (ends.length !== 2 || sets.size !== 1) return { status: "unknown-target" }
+  const merged = ends.find((end) => end.id === from)
+  const kept = ends.find((end) => end.id === into)
+  if (ends.length !== 2 || sets.size !== 1 || merged === undefined || kept === undefined) {
+    return { status: "unknown-target" }
+  }
 
   const match = pointingAt(from)
 
@@ -998,8 +1009,21 @@ async function mergeTerm(db: Executor, form: FormData): Promise<Outcome> {
 
   // **Drafts are written in one module and nowhere else** — that is what lets
   // every write to one have a revision (`drafts.test.ts`).
-  await mergeTermInDrafts(db, match, from, into)
+  const draftEntries = await mergeTermInDrafts(db, match, from, into)
 
   await db.delete(vocabularyTerm).where(eq(vocabularyTerm.id, from))
+  await recordEvent(db, {
+    actor,
+    action: "merge-term",
+    subjectType: "vocabulary-term",
+    subjectId: from,
+    detail: {
+      setId: merged.setId,
+      from: { labelJa: merged.labelJa, labelEn: merged.labelEn },
+      into: { id: into, labelJa: kept.labelJa, labelEn: kept.labelEn },
+      versions: versions.length,
+      draftEntries,
+    },
+  })
   return { status: "ok" }
 }

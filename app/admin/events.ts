@@ -30,6 +30,7 @@ export const EVENT_ACTIONS = [
   "unpublish-site-content",
   "grant-admin",
   "revoke-admin",
+  "merge-term",
 ] as const
 
 export type EventActionCode = (typeof EVENT_ACTIONS)[number]
@@ -49,6 +50,7 @@ export const EVENT_SUBJECT_KINDS = [
   "news",
   "alert",
   "admin",
+  "vocabulary-term",
 ] as const
 
 export type EventSubjectKind = (typeof EVENT_SUBJECT_KINDS)[number]

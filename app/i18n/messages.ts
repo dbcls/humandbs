@@ -597,6 +597,7 @@ const ja = {
         "unpublish-site-content": "サイトコンテンツの公開停止",
         "grant-admin": "管理者の追加",
         "revoke-admin": "管理者の削除",
+        "merge-term": "値の統合",
       },
       kinds: {
         "research": "研究",
@@ -609,6 +610,7 @@ const ja = {
         "news": "お知らせ",
         "alert": "アラート",
         "admin": "管理者",
+        "vocabulary-term": "値",
       },
     },
     version: {

@@ -33,9 +33,10 @@ export interface CommentAuthor {
 /**
  * Everything said about one draft, oldest first — the order each place reads in.
  *
- * **Whether the author is an administrator is read now, not when they wrote**:
- * the table of administrators keeps no history, and an account taken off it
- * no longer writes for the office.
+ * The query reads whether the author is an administrator at the time of the
+ * query, not at the time of writing. The table of administrators keeps no
+ * history. After an account is removed from the table, the comments of the
+ * account no longer show as requests from the office.
  */
 export async function readComments(db: Executor, draftId: string): Promise<CommentView[]> {
   const author = alias(adminUser, "author")
